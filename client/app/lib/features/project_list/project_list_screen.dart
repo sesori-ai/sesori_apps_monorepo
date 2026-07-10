@@ -133,9 +133,9 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   }
 
   /// The scaffold's bottom-right floating action for the current [state]: the
-  /// add-project FAB once projects exist, the onboarding "Need help?" support
-  /// menu in the two empty states (never-registered setup and connected-but-
-  /// empty), and nothing otherwise.
+  /// add-project FAB once projects exist, the "Need help?" support menu on the
+  /// onboarding and recovery surfaces (never-registered setup, connected-but-
+  /// empty, and bridge-offline), and nothing otherwise.
   Widget? _floatingAction({required BuildContext context, required ProjectListState state}) {
     if (state is ProjectListLoaded && state.projects.isNotEmpty) {
       return PregoButtonsIconGlass(
@@ -145,10 +145,12 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
       );
     }
-    // The two onboarding surfaces get the same pill but report distinct
+    // The onboarding/recovery surfaces get the same pill but report distinct
     // analytics surfaces, so help-seeking is attributable to the funnel step.
-    if (state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges) {
-      return const _NeedHelpMenu(surface: OnboardingSurface.connectSetup);
+    if (state is ProjectListBridgeDisconnected) {
+      return _NeedHelpMenu(
+        surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
+      );
     }
     if (state is ProjectListLoaded && state.projects.isEmpty) {
       return const _NeedHelpMenu(surface: OnboardingSurface.connectedEmpty);
@@ -180,8 +182,8 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         ),
       ],
       // Bottom-right floating action, resolved per state: the add-project FAB
-      // once projects exist, the onboarding "Need help?" support menu in the two
-      // empty states, and nothing while loading/offline/errored.
+      // once projects exist, the "Need help?" support menu on the onboarding
+      // and bridge-offline surfaces, and nothing while loading/errored.
       floatingActionButton: _floatingAction(context: context, state: state),
       onRefresh: _refreshFor(context: context, state: state),
       slivers: _buildContentSlivers(context: context, state: state, isRefreshing: isRefreshing),
@@ -239,12 +241,12 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       // shorter than the viewport sit still while a taller one — the offline
       // view with its install commands expanded — scrolls the page.
       // SafeArea(top: false) keeps the last box clear of the home indicator.
-      ProjectListBridgeDisconnected(:final hasRegisteredBridges) => [
+      ProjectListBridgeDisconnected(:final hasRegisteredBridges, :final bridges) => [
         SliverFillRemaining(
           hasScrollBody: false,
           child: SafeArea(
             top: false,
-            child: hasRegisteredBridges ? const _BridgeOfflineView() : const _ConnectBridgeChecklist(),
+            child: hasRegisteredBridges ? _BridgeOfflineView(bridges: bridges) : const _ConnectBridgeChecklist(),
           ),
         ),
       ],

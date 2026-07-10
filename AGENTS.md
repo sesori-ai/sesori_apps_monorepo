@@ -545,6 +545,7 @@ Do not skip either step. The reviewers exist because violations compound — one
 - Treat user feedback in **PR comments** and in the **live chat** as guidance for future code, not just the current patch.
 - When the user pushes back on a coding practice, architecture choice, testing shape, utility placement, or workflow decision, proactively update the closest relevant `AGENTS.md` file so the same mistake is less likely to recur.
 - Prefer updating both the **repo-root `AGENTS.md`** for general guidance and the **workspace/module `AGENTS.md`** for domain-specific guidance when the feedback is scoped.
+- For UI review comments from bots, do not assume a changed shared component is an unintended regression just because the PR title names one screen. First check whether the design changed across all consumers; if the design source or user intent says the shared visual changed globally, decline the bot comment instead of preserving old styling on non-focused screens.
 - Do this proactively after the lesson is clear; do not wait for the user to ask a second time.
 - Assume the user reviews **committed and pushed code**, not your uncommitted local workspace. If you are expecting PR feedback to reflect your latest work, proactively commit and push first.
 - Never rely on users reviewing uncommitted changes. Remote PR state is the review source of truth unless the user explicitly says otherwise.

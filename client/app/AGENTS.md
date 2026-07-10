@@ -37,6 +37,7 @@ lib/
 
 - Localize all user-facing text in `lib/l10n/app_en.arb`, access via `context.loc.myResource`
 - English only for now
+- When review feedback claims a shared widget style change unintentionally affects other screens, verify the design intent before preserving older styling. If the design changed for every consumer, keep the shared widget change and explain that in the PR reply.
 
 ## Theming
 

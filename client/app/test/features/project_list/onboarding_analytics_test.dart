@@ -60,6 +60,7 @@ void main() {
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
+    when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
     when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
     when(
       () => mockAnalyticsReporter.logEvent(event: any(named: "event")),
@@ -136,7 +137,7 @@ void main() {
     );
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
     await pumpScreen(tester);
-    expect(find.text("Bridge disconnected"), findsOneWidget);
+    expect(find.text("Disconnected"), findsOneWidget);
   }
 
   void verifyLogged(AnalyticsEvent event) {
@@ -344,8 +345,9 @@ void main() {
       await tester.tap(find.text("Install commands"));
       await tester.pumpAndSettle();
 
-      // Expanded, the install box sits above the run box.
-      await tester.tap(find.bySemanticsLabel("Copy command").at(0));
+      // Expanded, the install box unfolds below the disclosure at the end of
+      // the body, so it sits after the always-visible run box.
+      await tester.tap(find.bySemanticsLabel("Copy command").at(1));
       await tester.pumpAndSettle();
 
       verifyLogged(
@@ -355,6 +357,32 @@ void main() {
           surface: OnboardingSurface.bridgeOffline,
         ),
       );
+    });
+
+    testWidgets("tapping the Need help pill logs the bridge-offline surface", (tester) async {
+      await pumpBridgeOffline(tester);
+
+      await tester.tap(find.text("Need help?"));
+      await tester.pumpAndSettle();
+
+      verifyLogged(
+        const AnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.bridgeOffline),
+      );
+      // The popup actually opened alongside the event.
+      expect(find.text("Email"), findsOneWidget);
+    });
+
+    testWidgets("opening the why-bridge explainer logs the bridge-offline surface", (tester) async {
+      await pumpBridgeOffline(tester);
+
+      await tester.tap(find.text("Why is this needed?"));
+      await tester.pumpAndSettle();
+
+      verifyLogged(
+        const AnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.bridgeOffline),
+      );
+      // The sheet actually opened alongside the event (button + sheet title).
+      expect(find.text("Why is this needed?"), findsNWidgets(2));
     });
   });
 }
