@@ -338,6 +338,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     _initResult = null;
     _residentSessions.clear();
     _bareSessionListUnsupported = false;
+    _commandTracker.clear();
     // Let subclasses drop any process-global state cached against the dead agent
     // (e.g. Cursor's applied model/mode) so it is re-applied on the next turn.
     onConnectionReset();

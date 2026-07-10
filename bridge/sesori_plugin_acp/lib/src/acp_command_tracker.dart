@@ -16,6 +16,9 @@ class AcpCommandTracker {
   List<PluginCommand> get commands => List.unmodifiable(_commands);
   List<PluginCommand> _commands = const [];
 
+  /// Drops commands advertised by the prior ACP process.
+  void clear() => _commands = const [];
+
   /// Consumes one agent notification; a no-op unless it is a
   /// `session/update` carrying an `available_commands_update`.
   void consume(AcpNotification notification) {

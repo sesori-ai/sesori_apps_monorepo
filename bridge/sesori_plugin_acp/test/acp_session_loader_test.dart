@@ -188,6 +188,24 @@ void main() {
       expect(messages[1].parts.single.text, "identified message");
     });
 
+    test("id-less text after an explicit messageId starts a new message", () {
+      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor")
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "messageId": "m1",
+          "content": {"type": "text", "text": "identified message"},
+        }))
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "id-less message"},
+        }));
+
+      final messages = collector.build();
+      expect(messages, hasLength(2));
+      expect(messages[0].parts.single.text, "identified message");
+      expect(messages[1].parts.single.text, "id-less message");
+    });
+
     test("a same-message thought and text share the message; tools attach without an id", () {
       final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor")
         ..consume(upd({

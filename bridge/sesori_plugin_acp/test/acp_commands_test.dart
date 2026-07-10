@@ -128,5 +128,40 @@ void main() {
       expect(commands.single.description, "Plan before coding");
       expect(commands.single.hints, ["what to plan"]);
     });
+
+    test("clears commands when the ACP process connection resets", () async {
+      final connecting = plugin.ensureConnected();
+      final init = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": init["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": <Object?>[],
+        },
+      });
+      expect(await connecting, isTrue);
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "old_process_command"},
+            ],
+          },
+        },
+      });
+      await pump();
+      expect(await plugin.getCommands(projectId: cwd), hasLength(1));
+
+      await plugin.resetConnectionAfterExit();
+
+      expect(await plugin.getCommands(projectId: cwd), isEmpty);
+    });
   });
 }
