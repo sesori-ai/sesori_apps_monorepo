@@ -8,7 +8,7 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.15 Dev control-host harness for manual supervised testing (`tool/`) — PR raised on branch `next-step-desktop-plan` (PR 1.14 merged as #385)
+- **Last completed phase:** Phase 1 — PR 1.16 Coalesce supervised provisioning download progress (MT-1 finding) — PR raised on branch `test-manual-phase-1` (PR 1.15 merged as #390)
 - **Next up:** Phase 1 — MT-1 manual checkpoint: bridge supervised mode end-to-end (user-run; see phase doc). This is the last ☐ before Phase 2 and is **user-run** — per resume rule 5, present its checklist and let the user run it; do not implement anything.
 - **Branch:** one feature branch per PR, cut from `main`
 
@@ -401,6 +401,7 @@ them). Only the user checks an MT box.
 - ☑ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
 - ☑ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
 - ☑ 1.15 Dev control-host harness for manual supervised testing (`tool/`) — Low / S
+- ☑ 1.16 Coalesce supervised provisioning download progress (MT-1 finding) — Low / S
 - ☐ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
 
 ### Phase 2 — Desktop shell + supervisor → `phase-2-desktop-shell.md`
