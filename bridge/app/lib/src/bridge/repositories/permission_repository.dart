@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../persistence/daos/session_dao.dart";
 import "mappers/plugin_permission_mapper.dart";
 
 /// Layer 2 repository wrapping [plugin_interface.BridgePlugin] for permission operations.
@@ -14,12 +15,20 @@ import "mappers/plugin_permission_mapper.dart";
 /// decoupled.
 class PermissionRepository {
   final BridgePluginApi _plugin;
+  final SessionDao _sessionDao;
 
-  PermissionRepository({required BridgePluginApi plugin}) : _plugin = plugin;
+  PermissionRepository({required BridgePluginApi plugin, required SessionDao sessionDao})
+    : _plugin = plugin,
+      _sessionDao = sessionDao;
 
   /// Pending permissions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingPermission>> getPendingPermissions({required String sessionId}) async {
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      if (await _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: plugin.id)) {
+        return const [];
+      }
+    }
     final pluginPermissions = await _plugin.getPendingPermissions(sessionId: sessionId);
     return pluginPermissions.map((p) => p.toSharedPendingPermission()).toList();
   }

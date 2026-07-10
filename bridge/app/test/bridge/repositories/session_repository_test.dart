@@ -535,7 +535,7 @@ void main() {
       expect(row.lastAgentModel?.variant, isNull);
     });
 
-    test("renameSession delegates to plugin and returns enriched shared session", () async {
+    test("renameSession delegates to plugin and maps its shared session", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -595,8 +595,8 @@ void main() {
       expect(plugin.lastRenameSessionId, equals("s1"));
       expect(plugin.lastRenameSessionTitle, equals("Renamed"));
       expect(result.title, equals("Renamed"));
-      expect(result.hasWorktree, isTrue);
-      expect(result.pullRequest?.number, equals(12));
+      expect(result.hasWorktree, isFalse);
+      expect(result.pullRequest, isNull);
     });
 
     test("findProjectIdForSession returns stored project id without scanning plugin", () async {
@@ -901,7 +901,10 @@ void main() {
       const worktree = "/tmp/proj/alpha/.worktrees/session-001";
       final plugin = _FakeDerivedPlugin(
         launchDirectory: parent,
-        allSessions: [pluginSession(parent, id: "s1"), pluginSession(worktree, id: "w1")],
+        allSessions: [
+          pluginSession(parent, id: "s1"),
+          pluginSession(worktree, id: "w1"),
+        ],
       );
       final repository = SessionRepository(
         plugin: plugin,
@@ -1134,7 +1137,7 @@ void main() {
       expect(byId["/tmp/proj/beta"]!.activeSessions.single.awaitingInput, isTrue);
     });
 
-    test("renameSession persists the title for a derived plugin; enumeration serves it stored-wins", () async {
+    test("setSessionTitleIfStored makes a derived title win over enumeration", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -1180,8 +1183,10 @@ void main() {
         pluginId: "codex",
       );
 
-      final renamed = await repository.renameSession(sessionId: "s1", title: "My rename");
-      expect(renamed.title, "My rename");
+      expect(
+        await repository.setSessionTitleIfStored(sessionId: "s1", title: "My rename"),
+        isTrue,
+      );
 
       // The next enumeration keeps serving the rename, not the backend's
       // auto-title: the stored copy wins for derived plugins.
@@ -1199,7 +1204,10 @@ void main() {
         launchDirectory: parent,
         // The backend has no session deletion, so it keeps enumerating the
         // deleted session forever.
-        allSessions: [pluginSession(parent, id: "deleted-s"), pluginSession(parent, id: "kept-s")],
+        allSessions: [
+          pluginSession(parent, id: "deleted-s"),
+          pluginSession(parent, id: "kept-s"),
+        ],
       );
       final repository = SessionRepository(
         plugin: plugin,

@@ -194,11 +194,7 @@ class SessionRepository {
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
     final updated = await _plugin.renameSession(sessionId: sessionId, title: title);
-    // A derived backend doesn't persist renames (ACP has no rename RPC — the
-    // plugin only echoes the title), so the bridge keeps the authoritative
-    // copy; the enrichment overlay then serves it on every read.
-    await setSessionTitleIfStored(sessionId: sessionId, title: title);
-    return enrichPluginSession(pluginSession: updated);
+    return updated.toSharedSession();
   }
 
   Future<CommandListResponse> getCommands({required String? projectId}) async {
@@ -267,9 +263,8 @@ class SessionRepository {
     return pluginMessages.toSharedMessageWithParts();
   }
 
-  /// Persists the bridge's title copy for a derived-plugin session (null
-  /// clears it — ACP's `session_info_update` documents null as a deliberate
-  /// clear). No-op for native plugins, whose backends persist their own
+  /// Persists the bridge's title copy for a derived-plugin session. Null
+  /// removes the copy, so later reads fall back to the backend title. No-op for native plugins, whose backends persist their own
   /// titles (a stored copy would go stale), and for rowless sessions.
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
     if (_plugin is! BridgeDerivedProjectsPluginApi) return true;

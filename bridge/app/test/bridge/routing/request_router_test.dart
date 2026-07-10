@@ -90,7 +90,7 @@ void main() {
       );
       final agentRepository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
       final providerRepository = ProviderRepository(plugin: plugin, projectsDao: db.projectsDao);
-      final permissionRepository = PermissionRepository(plugin: plugin);
+      final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
       final questionRepository = QuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -460,11 +460,9 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       );
-      final agentRepository = AgentRepository(plugin: plugin,
-        projectsDao: db.projectsDao);
-      final providerRepository = ProviderRepository(plugin: plugin,
-        projectsDao: db.projectsDao);
-      final permissionRepository = PermissionRepository(plugin: plugin);
+      final agentRepository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final providerRepository = ProviderRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -533,8 +531,7 @@ void main() {
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         sessionTitleService: sessionTitleService,
         permissionRepository: permissionRepository,
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,

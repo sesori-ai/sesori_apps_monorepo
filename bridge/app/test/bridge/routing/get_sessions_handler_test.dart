@@ -279,6 +279,7 @@ void main() {
     });
 
     test("persists sessions after successful fetch", () async {
+      sessionTitleService.failSessionIds.add("s2");
       plugin.sessionsResult = [
         const PluginSession(
           id: "s1",
@@ -319,7 +320,43 @@ void main() {
 
       final rows = await db.select(db.sessionTable).get();
       expect(rows.map((row) => row.sessionId).toList()..sort(), equals(["s1", "s2", "s3"]));
-      expect(sessionTitleService.appliedSessionIds, ["s1", "s2", "s3"]);
+      expect(sessionTitleService.appliedSessionIds, ["s1", "s3"]);
+    });
+
+    test("returns sessions re-enriched after pending titles are applied", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "project-1",
+          directory: "/tmp/project-1",
+          parentID: null,
+          title: "Backend title",
+          time: null,
+          summary: null,
+        ),
+      ];
+      final titleService = _TrackingSessionTitleService(
+        onApply: (sessionId) {
+          sessionRepository.enrichedTitleOverrides[sessionId] = "Pending title";
+        },
+      );
+      final localHandler = GetSessionsHandler(
+        sessionRepository: sessionRepository,
+        prSyncService: prSyncService,
+        sessionPersistenceService: sessionPersistenceService,
+        sessionTitleService: titleService,
+        sessionUnseenService: unseenService,
+      );
+
+      final response = await localHandler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.items.single.title, "Pending title");
     });
 
     test("start and limit are null when absent from body", () async {
@@ -484,7 +521,6 @@ void main() {
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
-          hasTitle: false,
         ),
       );
 
@@ -560,7 +596,6 @@ void main() {
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
-          hasTitle: false,
         ),
       );
 
@@ -627,7 +662,6 @@ void main() {
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
-          hasTitle: false,
         ),
       );
       sessionDao.setSession(
@@ -648,7 +682,6 @@ void main() {
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
-          hasTitle: false,
         ),
       );
 
@@ -697,7 +730,6 @@ void main() {
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
-          hasTitle: false,
         ),
       );
 
@@ -743,7 +775,6 @@ void main() {
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
-          hasTitle: false,
         ),
       );
 
@@ -1128,10 +1159,16 @@ void main() {
 
 class _TrackingSessionTitleService implements SessionTitleService {
   final List<String> appliedSessionIds = [];
+  final Set<String> failSessionIds = {};
+  final void Function(String sessionId)? onApply;
+
+  _TrackingSessionTitleService({this.onApply});
 
   @override
   Future<void> applyPendingTitle({required String sessionId}) async {
+    if (failSessionIds.contains(sessionId)) throw StateError("title write failed");
     appliedSessionIds.add(sessionId);
+    onApply?.call(sessionId);
   }
 
   @override
@@ -1139,4 +1176,7 @@ class _TrackingSessionTitleService implements SessionTitleService {
 
   @override
   Future<void> deleteSession({required String sessionId}) async {}
+
+  @override
+  Future<Session> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
 }

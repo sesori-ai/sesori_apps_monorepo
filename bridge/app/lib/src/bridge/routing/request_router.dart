@@ -104,10 +104,10 @@ class RequestRouter {
          agentRepository: agentRepository,
          permissionRepository: permissionRepository,
          questionRepository: questionRepository,
-          sessionPersistenceService: sessionPersistenceService,
-          sessionUnseenService: sessionUnseenService,
-          sessionTitleService: sessionTitleService,
-          worktreeService: worktreeService,
+         sessionPersistenceService: sessionPersistenceService,
+         sessionUnseenService: sessionUnseenService,
+         sessionTitleService: sessionTitleService,
+         worktreeService: worktreeService,
          sessionDiffsHandler: sessionDiffsHandler,
          restartService: restartService,
        );
@@ -154,7 +154,7 @@ class RequestRouter {
         sessionUnseenService: sessionUnseenService,
       ),
       CreateSessionHandler(sessionCreationService: sessionCreationService),
-      RenameSessionHandler(sessionRepository: sessionRepository),
+      RenameSessionHandler(sessionTitleService: sessionTitleService),
       MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
       UpdateSessionArchiveStatusHandler(
         sessionArchiveService: sessionArchiveService,

@@ -64,22 +64,36 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     // rows that already existed when the snapshot was taken — a session created
     // concurrently (row inserted after this point) is kept.
     final fetchStartedAt = DateTime.now().millisecondsSinceEpoch;
-    final sessions = await _sessionRepository.getSessionsForProject(
+    var sessions = await _sessionRepository.getSessionsForProject(
       projectId: projectId,
       start: start,
       limit: limit,
     );
 
+    var persisted = false;
     try {
       await _sessionPersistenceService.persistSessionsForProject(
         projectId: projectId,
         sessions: sessions,
       );
-      for (final session in sessions) {
-        await _sessionTitleService.applyPendingTitle(sessionId: session.id);
-      }
+      persisted = true;
     } on Object catch (e, st) {
-      Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
+      Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId", e, st);
+    }
+
+    if (persisted) {
+      for (final session in sessions) {
+        try {
+          await _sessionTitleService.applyPendingTitle(sessionId: session.id);
+        } on Object catch (e, st) {
+          Log.w("GetSessionsHandler: pending title failed for sessionId=${session.id}", e, st);
+        }
+      }
+      try {
+        sessions = await _sessionRepository.enrichSessions(sessions: sessions);
+      } on Object catch (e, st) {
+        Log.w("GetSessionsHandler: post-persistence enrichment failed for projectId=$projectId", e, st);
+      }
     }
 
     if (start == null && limit == null && _sessionRepository.sessionListIsAuthoritative) {

@@ -135,6 +135,10 @@ In the push subsystem, `PushDispatcher` owns only outbound push sends. `Completi
 
 Backend-specific endpoint semantics and the workarounds they require (synchronous vs async endpoints, dispatch timeouts compensating for upstream API shape, retry quirks) belong inside the plugin that implements `BridgePluginApi` — never in bridge `app/` services or handlers. Bridge `app/` code must stay plugin-agnostic: it programs against the `BridgePluginApi` contract, and the contract's doc comments define the semantics (e.g., `sendCommand` completes on acceptance, not on run completion). If a fix requires knowing how a specific backend behaves, it goes in that backend's plugin.
 
+Do not persist a backend edge case merely because its schema permits it. A
+sentinel, presence bit, or tri-state column needs evidence that the backend
+actually emits the distinction and that users observe different behavior.
+
 ### Orchestrator Owns SSE Decisions
 
 No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams (`plugin.events`, `prSyncService.prChanges`) and decides what to emit to phones. No `emitBridgeEvent()` or similar public methods on the Orchestrator.

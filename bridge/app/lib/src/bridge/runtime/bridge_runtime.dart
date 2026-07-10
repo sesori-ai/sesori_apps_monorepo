@@ -170,7 +170,6 @@ class BridgeRuntime {
       rssBytesReader: readCurrentRssBytes,
     );
 
-
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
@@ -258,7 +257,7 @@ class BridgeRuntime {
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,
-        permissionRepository: PermissionRepository(plugin: plugin),
+        permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
         questionRepository: QuestionRepository(
           plugin: plugin,
           sessionDao: database.sessionDao,

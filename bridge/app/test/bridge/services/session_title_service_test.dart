@@ -55,7 +55,17 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Early title");
     });
 
-    test("preserves an explicit null pending title", () async {
+    test("buffers a rename until its session row exists", () async {
+      final renamed = await service.renameSession(sessionId: "s1", title: "User rename");
+      expect(renamed.title, "User rename");
+      await insertSession();
+
+      await service.applyPendingTitle(sessionId: "s1");
+
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "User rename");
+    });
+
+    test("applies a pending null by removing the stored title copy", () async {
       await service.captureTitle(sessionId: "s1", title: null);
       await insertSession();
       await db.sessionDao.setTitle(sessionId: "s1", title: "stale");
@@ -89,6 +99,17 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
   @override
   void primeSessionDirectory({required String sessionId, required String directory}) {}
+
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async => PluginSession(
+    id: sessionId,
+    projectID: "/repo",
+    directory: "/repo",
+    parentID: null,
+    title: title,
+    time: null,
+    summary: null,
+  );
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -86,7 +86,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -186,7 +186,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -288,7 +292,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -377,7 +381,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -457,7 +465,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -562,7 +570,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -644,7 +656,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -776,7 +788,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -887,7 +903,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -987,7 +1003,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1045,7 +1065,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -1145,7 +1165,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1228,7 +1252,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -1328,7 +1352,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1789,8 +1817,7 @@ class _RecordingControlChannelClient implements ControlChannelClient {
   Stream<String> get inbound => const Stream<String>.empty();
 
   @override
-  Stream<ControlChannelConnectionState> get connectionState =>
-      const Stream<ControlChannelConnectionState>.empty();
+  Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();
 
   @override
   void send(String frame) => sentFrames.add(frame);
@@ -2241,8 +2268,7 @@ class _DelayingSessionRepository implements SessionRepository {
   Future<void> deleteSession({required String sessionId}) => _base.deleteSession(sessionId: sessionId);
 
   @override
-  Future<bool> isSessionTombstoned({required String sessionId}) =>
-      _base.isSessionTombstoned(sessionId: sessionId);
+  Future<bool> isSessionTombstoned({required String sessionId}) => _base.isSessionTombstoned(sessionId: sessionId);
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) =>
@@ -2453,5 +2479,6 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<String> resolveProjectDirectory({required String projectId}) => _base.resolveProjectDirectory(projectId: projectId);
+  Future<String> resolveProjectDirectory({required String projectId}) =>
+      _base.resolveProjectDirectory(projectId: projectId);
 }

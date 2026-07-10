@@ -176,7 +176,7 @@ class SessionCreationService {
   }) async {
     if (metadata?.title case final title?) {
       try {
-        return await _sessionRepository.renameSession(sessionId: session.id, title: title);
+        return await _sessionTitleService.renameSession(sessionId: session.id, title: title);
       } catch (e) {
         Log.w("Failed to rename session ${session.id}: $e");
       }

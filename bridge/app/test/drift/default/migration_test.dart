@@ -487,25 +487,28 @@ void main() {
     },
   );
 
-  test('the v5 session→project FK stays enforced on the current schema', () async {
-    final db = await _migrateFromV4(verifier: verifier);
-    addTearDown(db.close);
+  test(
+    'the v5 session→project FK stays enforced on the current schema',
+    () async {
+      final db = await _migrateFromV4(verifier: verifier);
+      addTearDown(db.close);
 
-    expect(
-      () => db
-          .into(db.sessionTable)
-          .insert(
-            SessionTableCompanion.insert(
-              sessionId: 'test',
-              projectId: 'nonexistent',
-              isDedicated: false,
-              createdAt: 0,
-              pluginId: 'opencode',
+      expect(
+        () => db
+            .into(db.sessionTable)
+            .insert(
+              SessionTableCompanion.insert(
+                sessionId: 'test',
+                projectId: 'nonexistent',
+                isDedicated: false,
+                createdAt: 0,
+                pluginId: 'opencode',
+              ),
             ),
-          ),
-      throwsA(_isForeignKeyViolation),
-    );
-  });
+        throwsA(_isForeignKeyViolation),
+      );
+    },
+  );
 
   test('migration v5 → v6 structural validation', () async {
     final connection = await verifier.startAt(5);
@@ -953,7 +956,6 @@ void main() {
                 lastUserMessageAt: 1700000004000,
                 pluginId: 'opencode',
                 title: null,
-                hasTitle: 0,
               ),
             ],
           );

@@ -75,7 +75,7 @@ Session enrichSharedSession({
       // Known accepted edge: a backend title generated while the bridge was
       // down isn't reflected until its next title event or rename. Native
       // backends stay authoritative for their own titles.
-      title: adoptStoredProjectId && storedSession.hasTitle ? storedSession.title : session.title,
+      title: adoptStoredProjectId ? (storedSession.title ?? session.title) : session.title,
       time: mergedTime,
       hasWorktree: storedSession.worktreePath != null,
       promptDefaults: _promptDefaultsFromStoredSession(storedSession),

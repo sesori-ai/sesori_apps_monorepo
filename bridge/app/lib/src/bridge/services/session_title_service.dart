@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:sesori_shared/sesori_shared.dart";
+
 import "../repositories/session_repository.dart";
 
 /// Coordinates bridge-owned title updates that can race session persistence.
@@ -8,17 +10,19 @@ class SessionTitleService {
   final Map<String, String?> _pendingTitles = {};
   Future<void> _tail = Future<void>.value();
 
-  SessionTitleService({required SessionRepository sessionRepository})
-    : _sessionRepository = sessionRepository;
+  SessionTitleService({required SessionRepository sessionRepository}) : _sessionRepository = sessionRepository;
 
   Future<void> captureTitle({required String sessionId, required String? title}) {
     return _serialized(() async {
-      if (await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) return;
-      final stored = await _sessionRepository.setSessionTitleIfStored(
-        sessionId: sessionId,
-        title: title,
-      );
-      if (!stored) _pendingTitles[sessionId] = title;
+      await _captureTitle(sessionId: sessionId, title: title);
+    });
+  }
+
+  Future<Session> renameSession({required String sessionId, required String title}) {
+    return _serialized(() async {
+      final renamed = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
+      await _captureTitle(sessionId: sessionId, title: title);
+      return _sessionRepository.enrichSession(session: renamed);
     });
   }
 
@@ -38,6 +42,15 @@ class SessionTitleService {
       await _sessionRepository.deleteSession(sessionId: sessionId);
       _pendingTitles.remove(sessionId);
     });
+  }
+
+  Future<void> _captureTitle({required String sessionId, required String? title}) async {
+    if (await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) return;
+    final stored = await _sessionRepository.setSessionTitleIfStored(
+      sessionId: sessionId,
+      title: title,
+    );
+    if (!stored) _pendingTitles[sessionId] = title;
   }
 
   Future<T> _serialized<T>(Future<T> Function() operation) {

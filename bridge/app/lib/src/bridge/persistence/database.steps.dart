@@ -915,7 +915,6 @@ final class Schema9 extends i0.VersionedSchema {
         _column_26,
         _column_30,
         _column_31,
-        _column_32,
       ],
       attachedDatabase: database,
     ),
@@ -927,7 +926,7 @@ final class Schema9 extends i0.VersionedSchema {
       withoutRowId: true,
       isStrict: false,
       tableConstraints: ['PRIMARY KEY(plugin_id, session_id)'],
-      columns: [_column_4, _column_30, _column_33],
+      columns: [_column_4, _column_30, _column_32],
       attachedDatabase: database,
     ),
     alias: null,
@@ -991,8 +990,6 @@ class Shape8 extends i0.VersionedTable {
       columnsByName['plugin_id']! as i1.GeneratedColumn<String>;
   i1.GeneratedColumn<String> get title =>
       columnsByName['title']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get hasTitle =>
-      columnsByName['has_title']! as i1.GeneratedColumn<int>;
 }
 
 i1.GeneratedColumn<String> _column_31(String aliasedName) =>
@@ -1002,15 +999,6 @@ i1.GeneratedColumn<String> _column_31(String aliasedName) =>
       true,
       type: i1.DriftSqlType.string,
       $customConstraints: 'NULL',
-    );
-i1.GeneratedColumn<int> _column_32(String aliasedName) =>
-    i1.GeneratedColumn<int>(
-      'has_title',
-      aliasedName,
-      false,
-      type: i1.DriftSqlType.int,
-      $customConstraints: 'NOT NULL DEFAULT 0 CHECK (has_title IN (0, 1))',
-      defaultValue: const i1.CustomExpression('0'),
     );
 
 class Shape9 extends i0.VersionedTable {
@@ -1023,7 +1011,7 @@ class Shape9 extends i0.VersionedTable {
       columnsByName['deleted_at']! as i1.GeneratedColumn<int>;
 }
 
-i1.GeneratedColumn<int> _column_33(String aliasedName) =>
+i1.GeneratedColumn<int> _column_32(String aliasedName) =>
     i1.GeneratedColumn<int>(
       'deleted_at',
       aliasedName,

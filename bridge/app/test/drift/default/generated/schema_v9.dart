@@ -427,7 +427,6 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
   int? get lastUserMessageAt;
   String get pluginId;
   String? get title;
-  int get hasTitle;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -469,7 +468,6 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
     if (!nullToAbsent || title != null) {
       map['title'] = Variable<String>(title);
     }
-    map['has_title'] = Variable<int>(hasTitle);
     return map;
   }
 }
@@ -609,15 +607,6 @@ class SessionsTable extends Table
     requiredDuringInsert: false,
     $customConstraints: 'NULL',
   );
-  late final GeneratedColumn<int> hasTitle = GeneratedColumn<int>(
-    'has_title',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    $customConstraints: 'NOT NULL DEFAULT 0 CHECK (has_title IN (0, 1))',
-    defaultValue: const CustomExpression('0'),
-  );
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
@@ -636,7 +625,6 @@ class SessionsTable extends Table
     lastUserMessageAt,
     pluginId,
     title,
-    hasTitle,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -713,10 +701,6 @@ class SessionsTable extends Table
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       ),
-      hasTitle: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}has_title'],
-      )!,
     );
   }
 
@@ -766,8 +750,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   final String pluginId;
   @override
   final String? title;
-  @override
-  final int hasTitle;
   const SessionsTableData({
     required this.sessionId,
     required this.projectId,
@@ -785,7 +767,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     this.lastUserMessageAt,
     required this.pluginId,
     this.title,
-    required this.hasTitle,
   });
   SessionsTableCompanion toCompanion(bool nullToAbsent) {
     return SessionsTableCompanion(
@@ -827,7 +808,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       title: title == null && nullToAbsent
           ? const Value.absent()
           : Value(title),
-      hasTitle: Value(hasTitle),
     );
   }
 
@@ -853,7 +833,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       lastUserMessageAt: serializer.fromJson<int?>(json['lastUserMessageAt']),
       pluginId: serializer.fromJson<String>(json['pluginId']),
       title: serializer.fromJson<String?>(json['title']),
-      hasTitle: serializer.fromJson<int>(json['hasTitle']),
     );
   }
   @override
@@ -876,7 +855,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       'lastUserMessageAt': serializer.toJson<int?>(lastUserMessageAt),
       'pluginId': serializer.toJson<String>(pluginId),
       'title': serializer.toJson<String?>(title),
-      'hasTitle': serializer.toJson<int>(hasTitle),
     };
   }
 
@@ -897,7 +875,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     Value<int?> lastUserMessageAt = const Value.absent(),
     String? pluginId,
     Value<String?> title = const Value.absent(),
-    int? hasTitle,
   }) => SessionsTableData(
     sessionId: sessionId ?? this.sessionId,
     projectId: projectId ?? this.projectId,
@@ -921,7 +898,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
         : this.lastUserMessageAt,
     pluginId: pluginId ?? this.pluginId,
     title: title.present ? title.value : this.title,
-    hasTitle: hasTitle ?? this.hasTitle,
   );
   SessionsTableData copyWithCompanion(SessionsTableCompanion data) {
     return SessionsTableData(
@@ -961,7 +937,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           : this.lastUserMessageAt,
       pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
       title: data.title.present ? data.title.value : this.title,
-      hasTitle: data.hasTitle.present ? data.hasTitle.value : this.hasTitle,
     );
   }
 
@@ -983,8 +958,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('lastUserMessageAt: $lastUserMessageAt, ')
           ..write('pluginId: $pluginId, ')
-          ..write('title: $title, ')
-          ..write('hasTitle: $hasTitle')
+          ..write('title: $title')
           ..write(')'))
         .toString();
   }
@@ -1007,7 +981,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     lastUserMessageAt,
     pluginId,
     title,
-    hasTitle,
   );
   @override
   bool operator ==(Object other) =>
@@ -1028,8 +1001,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           other.lastSeenAt == this.lastSeenAt &&
           other.lastUserMessageAt == this.lastUserMessageAt &&
           other.pluginId == this.pluginId &&
-          other.title == this.title &&
-          other.hasTitle == this.hasTitle);
+          other.title == this.title);
 }
 
 class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
@@ -1049,7 +1021,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   final Value<int?> lastUserMessageAt;
   final Value<String> pluginId;
   final Value<String?> title;
-  final Value<int> hasTitle;
   const SessionsTableCompanion({
     this.sessionId = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -1067,7 +1038,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.lastUserMessageAt = const Value.absent(),
     this.pluginId = const Value.absent(),
     this.title = const Value.absent(),
-    this.hasTitle = const Value.absent(),
   });
   SessionsTableCompanion.insert({
     required String sessionId,
@@ -1086,7 +1056,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.lastUserMessageAt = const Value.absent(),
     required String pluginId,
     this.title = const Value.absent(),
-    this.hasTitle = const Value.absent(),
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
        isDedicated = Value(isDedicated),
@@ -1109,7 +1078,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Expression<int>? lastUserMessageAt,
     Expression<String>? pluginId,
     Expression<String>? title,
-    Expression<int>? hasTitle,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -1128,7 +1096,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       if (lastUserMessageAt != null) 'last_user_message_at': lastUserMessageAt,
       if (pluginId != null) 'plugin_id': pluginId,
       if (title != null) 'title': title,
-      if (hasTitle != null) 'has_title': hasTitle,
     });
   }
 
@@ -1149,7 +1116,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Value<int?>? lastUserMessageAt,
     Value<String>? pluginId,
     Value<String?>? title,
-    Value<int>? hasTitle,
   }) {
     return SessionsTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -1168,7 +1134,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       lastUserMessageAt: lastUserMessageAt ?? this.lastUserMessageAt,
       pluginId: pluginId ?? this.pluginId,
       title: title ?? this.title,
-      hasTitle: hasTitle ?? this.hasTitle,
     );
   }
 
@@ -1223,9 +1188,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     if (title.present) {
       map['title'] = Variable<String>(title.value);
     }
-    if (hasTitle.present) {
-      map['has_title'] = Variable<int>(hasTitle.value);
-    }
     return map;
   }
 
@@ -1247,8 +1209,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('lastUserMessageAt: $lastUserMessageAt, ')
           ..write('pluginId: $pluginId, ')
-          ..write('title: $title, ')
-          ..write('hasTitle: $hasTitle')
+          ..write('title: $title')
           ..write(')'))
         .toString();
   }

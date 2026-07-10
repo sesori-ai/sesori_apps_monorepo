@@ -167,6 +167,20 @@ void main() {
       );
       expect(
         await service.enrich(
+          const BridgeSsePermissionAsked(
+            requestID: "child-prompt",
+            sessionID: "child",
+            displaySessionId: "gone",
+            tool: "shell",
+            description: "Run command",
+          ),
+        ),
+        isNull,
+      );
+      const deleted = BridgeSseSessionDeleted(info: info);
+      expect(await service.enrich(deleted), same(deleted));
+      expect(
+        await service.enrich(
           const BridgeSseMessagePartDelta(
             sessionID: "gone",
             messageID: "m1",
@@ -251,7 +265,7 @@ void main() {
         expect(stored?.title, "Backend rename");
       });
 
-      test("an explicit null title on session.updated clears the stored copy", () async {
+      test("a null title removes the stored copy and restores backend fallback", () async {
         await insertStored(title: "Old title");
 
         final result = await derivedService.enrich(
@@ -261,6 +275,10 @@ void main() {
         expect((result! as BridgeSseSessionUpdated).info["title"], isNull);
         final stored = await db.sessionDao.getSession(sessionId: "s1");
         expect(stored?.title, isNull);
+        final refreshed = await derivedRepository.enrichSession(
+          session: Session.fromJson(sessionInfo(title: "Backend auto-title")),
+        );
+        expect(refreshed.title, "Backend auto-title");
       });
 
       test("a title update before row insertion is applied when the row arrives", () async {
@@ -328,8 +346,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   String get launchDirectory => "/repo";
 
   @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async =>
-      const [];
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async => const [];
 
   @override
   void primeSessionDirectory({required String sessionId, required String directory}) {}

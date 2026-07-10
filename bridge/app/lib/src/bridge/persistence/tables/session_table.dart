@@ -69,9 +69,6 @@ class SessionTable extends Table {
   /// authoritative) and for sessions with no bridge-known title.
   TextColumn get title => text().nullable()();
 
-  /// Distinguishes an explicit null title clear from no stored title.
-  BoolColumn get hasTitle => boolean().withDefault(const Constant(false))();
-
   @override
   bool get withoutRowId => true;
 
@@ -98,7 +95,6 @@ sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
     required int? lastUserMessageAt,
     required String pluginId,
     required String? title,
-    required bool hasTitle,
   }) = _SessionDto;
 
   const SessionDto._();

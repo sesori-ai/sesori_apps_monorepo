@@ -385,9 +385,6 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   /// backend's enumeration title. Null for native plugins (their backend is
   /// authoritative) and for sessions with no bridge-known title.
   String? get title;
-
-  /// Distinguishes an explicit null title clear from no stored title.
-  bool get hasTitle;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -431,7 +428,6 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
     if (!nullToAbsent || title != null) {
       map['title'] = Variable<String>(title);
     }
-    map['has_title'] = Variable<bool>(hasTitle);
     return map;
   }
 }
@@ -620,21 +616,6 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _hasTitleMeta = const VerificationMeta(
-    'hasTitle',
-  );
-  @override
-  late final GeneratedColumn<bool> hasTitle = GeneratedColumn<bool>(
-    'has_title',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("has_title" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
@@ -653,7 +634,6 @@ class $SessionTableTable extends SessionTable
     lastUserMessageAt,
     pluginId,
     title,
-    hasTitle,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -782,12 +762,6 @@ class $SessionTableTable extends SessionTable
         title.isAcceptableOrUnknown(data['title']!, _titleMeta),
       );
     }
-    if (data.containsKey('has_title')) {
-      context.handle(
-        _hasTitleMeta,
-        hasTitle.isAcceptableOrUnknown(data['has_title']!, _hasTitleMeta),
-      );
-    }
     return context;
   }
 
@@ -863,10 +837,6 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       ),
-      hasTitle: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}has_title'],
-      )!,
     );
   }
 
@@ -900,7 +870,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<int?> lastUserMessageAt;
   final Value<String> pluginId;
   final Value<String?> title;
-  final Value<bool> hasTitle;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -918,7 +887,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.lastUserMessageAt = const Value.absent(),
     this.pluginId = const Value.absent(),
     this.title = const Value.absent(),
-    this.hasTitle = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
@@ -937,7 +905,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.lastUserMessageAt = const Value.absent(),
     required String pluginId,
     this.title = const Value.absent(),
-    this.hasTitle = const Value.absent(),
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
        isDedicated = Value(isDedicated),
@@ -960,7 +927,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<int>? lastUserMessageAt,
     Expression<String>? pluginId,
     Expression<String>? title,
-    Expression<bool>? hasTitle,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -979,7 +945,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (lastUserMessageAt != null) 'last_user_message_at': lastUserMessageAt,
       if (pluginId != null) 'plugin_id': pluginId,
       if (title != null) 'title': title,
-      if (hasTitle != null) 'has_title': hasTitle,
     });
   }
 
@@ -1000,7 +965,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<int?>? lastUserMessageAt,
     Value<String>? pluginId,
     Value<String?>? title,
-    Value<bool>? hasTitle,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -1019,7 +983,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       lastUserMessageAt: lastUserMessageAt ?? this.lastUserMessageAt,
       pluginId: pluginId ?? this.pluginId,
       title: title ?? this.title,
-      hasTitle: hasTitle ?? this.hasTitle,
     );
   }
 
@@ -1078,9 +1041,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (title.present) {
       map['title'] = Variable<String>(title.value);
     }
-    if (hasTitle.present) {
-      map['has_title'] = Variable<bool>(hasTitle.value);
-    }
     return map;
   }
 
@@ -1102,8 +1062,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('lastUserMessageAt: $lastUserMessageAt, ')
           ..write('pluginId: $pluginId, ')
-          ..write('title: $title, ')
-          ..write('hasTitle: $hasTitle')
+          ..write('title: $title')
           ..write(')'))
         .toString();
   }
@@ -2339,7 +2298,6 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<int?> lastUserMessageAt,
       required String pluginId,
       Value<String?> title,
-      Value<bool> hasTitle,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -2359,7 +2317,6 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<int?> lastUserMessageAt,
       Value<String> pluginId,
       Value<String?> title,
-      Value<bool> hasTitle,
     });
 
 final class $$SessionTableTableReferences
@@ -2467,11 +2424,6 @@ class $$SessionTableTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get hasTitle => $composableBuilder(
-    column: $table.hasTitle,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2583,11 +2535,6 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get hasTitle => $composableBuilder(
-    column: $table.hasTitle,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   $$ProjectsTableTableOrderingComposer get projectId {
     final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2687,9 +2634,6 @@ class $$SessionTableTableAnnotationComposer
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
-  GeneratedColumn<bool> get hasTitle =>
-      $composableBuilder(column: $table.hasTitle, builder: (column) => column);
-
   $$ProjectsTableTableAnnotationComposer get projectId {
     final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -2758,7 +2702,6 @@ class $$SessionTableTableTableManager
                 Value<int?> lastUserMessageAt = const Value.absent(),
                 Value<String> pluginId = const Value.absent(),
                 Value<String?> title = const Value.absent(),
-                Value<bool> hasTitle = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 projectId: projectId,
@@ -2776,7 +2719,6 @@ class $$SessionTableTableTableManager
                 lastUserMessageAt: lastUserMessageAt,
                 pluginId: pluginId,
                 title: title,
-                hasTitle: hasTitle,
               ),
           createCompanionCallback:
               ({
@@ -2796,7 +2738,6 @@ class $$SessionTableTableTableManager
                 Value<int?> lastUserMessageAt = const Value.absent(),
                 required String pluginId,
                 Value<String?> title = const Value.absent(),
-                Value<bool> hasTitle = const Value.absent(),
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 projectId: projectId,
@@ -2814,7 +2755,6 @@ class $$SessionTableTableTableManager
                 lastUserMessageAt: lastUserMessageAt,
                 pluginId: pluginId,
                 title: title,
-                hasTitle: hasTitle,
               ),
           withReferenceMapper: (p0) => p0
               .map(

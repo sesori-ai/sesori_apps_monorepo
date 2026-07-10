@@ -109,9 +109,10 @@ never touches another's rows (CONSIDERATIONS §2).
   title copy for derived-plugin sessions: `renameSession` persists the title
   (covering both the explicit `PATCH /session/title` and the bridge's
   post-create generated title), and a title-bearing `session.updated` from the
-  backend itself (ACP's `session_info_update` — where an explicit null
-  deliberately clears — and codex's `thread/name/updated`) is captured into
-  the stored row *before* enrichment. Reads overlay stored-wins for derived
+  backend itself (ACP's `session_info_update` and codex's
+  `thread/name/updated`) is captured into the stored row *before* enrichment.
+  A null title removes the stored copy rather than adding durable tri-state
+  semantics. Reads overlay non-null stored titles for derived
   plugins, so a rename survives enumeration even though the backend keeps
   reporting its own auto-title, while the backend's newer auto-titles still
   flow through the event capture. Native backends (OpenCode) stay fully

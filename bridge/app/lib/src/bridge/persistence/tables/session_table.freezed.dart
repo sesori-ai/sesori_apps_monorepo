@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SessionDto {
 
- String get sessionId; String get projectId; String? get worktreePath; String? get branchName; bool get isDedicated; int? get archivedAt; String? get baseBranch; String? get baseCommit; String? get lastAgent; AgentModel? get lastAgentModel; int get createdAt; int? get lastActivityAt; int? get lastSeenAt; int? get lastUserMessageAt; String get pluginId; String? get title; bool get hasTitle;
+ String get sessionId; String get projectId; String? get worktreePath; String? get branchName; bool get isDedicated; int? get archivedAt; String? get baseBranch; String? get baseCommit; String? get lastAgent; AgentModel? get lastAgentModel; int get createdAt; int? get lastActivityAt; int? get lastSeenAt; int? get lastUserMessageAt; String get pluginId; String? get title;
 /// Create a copy of SessionDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $SessionDtoCopyWith<SessionDto> get copyWith => _$SessionDtoCopyWithImpl<Session
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.isDedicated, isDedicated) || other.isDedicated == isDedicated)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.lastAgent, lastAgent) || other.lastAgent == lastAgent)&&(identical(other.lastAgentModel, lastAgentModel) || other.lastAgentModel == lastAgentModel)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lastActivityAt, lastActivityAt) || other.lastActivityAt == lastActivityAt)&&(identical(other.lastSeenAt, lastSeenAt) || other.lastSeenAt == lastSeenAt)&&(identical(other.lastUserMessageAt, lastUserMessageAt) || other.lastUserMessageAt == lastUserMessageAt)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.title, title) || other.title == title)&&(identical(other.hasTitle, hasTitle) || other.hasTitle == hasTitle));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.isDedicated, isDedicated) || other.isDedicated == isDedicated)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.lastAgent, lastAgent) || other.lastAgent == lastAgent)&&(identical(other.lastAgentModel, lastAgentModel) || other.lastAgentModel == lastAgentModel)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lastActivityAt, lastActivityAt) || other.lastActivityAt == lastActivityAt)&&(identical(other.lastSeenAt, lastSeenAt) || other.lastSeenAt == lastSeenAt)&&(identical(other.lastUserMessageAt, lastUserMessageAt) || other.lastUserMessageAt == lastUserMessageAt)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.title, title) || other.title == title));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId,worktreePath,branchName,isDedicated,archivedAt,baseBranch,baseCommit,lastAgent,lastAgentModel,createdAt,lastActivityAt,lastSeenAt,lastUserMessageAt,pluginId,title,hasTitle);
+int get hashCode => Object.hash(runtimeType,sessionId,projectId,worktreePath,branchName,isDedicated,archivedAt,baseBranch,baseCommit,lastAgent,lastAgentModel,createdAt,lastActivityAt,lastSeenAt,lastUserMessageAt,pluginId,title);
 
 @override
 String toString() {
-  return 'SessionDto(sessionId: $sessionId, projectId: $projectId, worktreePath: $worktreePath, branchName: $branchName, isDedicated: $isDedicated, archivedAt: $archivedAt, baseBranch: $baseBranch, baseCommit: $baseCommit, lastAgent: $lastAgent, lastAgentModel: $lastAgentModel, createdAt: $createdAt, lastActivityAt: $lastActivityAt, lastSeenAt: $lastSeenAt, lastUserMessageAt: $lastUserMessageAt, pluginId: $pluginId, title: $title, hasTitle: $hasTitle)';
+  return 'SessionDto(sessionId: $sessionId, projectId: $projectId, worktreePath: $worktreePath, branchName: $branchName, isDedicated: $isDedicated, archivedAt: $archivedAt, baseBranch: $baseBranch, baseCommit: $baseCommit, lastAgent: $lastAgent, lastAgentModel: $lastAgentModel, createdAt: $createdAt, lastActivityAt: $lastActivityAt, lastSeenAt: $lastSeenAt, lastUserMessageAt: $lastUserMessageAt, pluginId: $pluginId, title: $title)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $SessionDtoCopyWith<$Res>  {
   factory $SessionDtoCopyWith(SessionDto value, $Res Function(SessionDto) _then) = _$SessionDtoCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, String projectId, String? worktreePath, String? branchName, bool isDedicated, int? archivedAt, String? baseBranch, String? baseCommit, String? lastAgent, AgentModel? lastAgentModel, int createdAt, int? lastActivityAt, int? lastSeenAt, int? lastUserMessageAt, String pluginId, String? title, bool hasTitle
+ String sessionId, String projectId, String? worktreePath, String? branchName, bool isDedicated, int? archivedAt, String? baseBranch, String? baseCommit, String? lastAgent, AgentModel? lastAgentModel, int createdAt, int? lastActivityAt, int? lastSeenAt, int? lastUserMessageAt, String pluginId, String? title
 });
 
 
@@ -62,7 +62,7 @@ class _$SessionDtoCopyWithImpl<$Res>
 
 /// Create a copy of SessionDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? projectId = null,Object? worktreePath = freezed,Object? branchName = freezed,Object? isDedicated = null,Object? archivedAt = freezed,Object? baseBranch = freezed,Object? baseCommit = freezed,Object? lastAgent = freezed,Object? lastAgentModel = freezed,Object? createdAt = null,Object? lastActivityAt = freezed,Object? lastSeenAt = freezed,Object? lastUserMessageAt = freezed,Object? pluginId = null,Object? title = freezed,Object? hasTitle = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? projectId = null,Object? worktreePath = freezed,Object? branchName = freezed,Object? isDedicated = null,Object? archivedAt = freezed,Object? baseBranch = freezed,Object? baseCommit = freezed,Object? lastAgent = freezed,Object? lastAgentModel = freezed,Object? createdAt = null,Object? lastActivityAt = freezed,Object? lastSeenAt = freezed,Object? lastUserMessageAt = freezed,Object? pluginId = null,Object? title = freezed,}) {
   return _then(_self.copyWith(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
@@ -80,8 +80,7 @@ as int?,lastSeenAt: freezed == lastSeenAt ? _self.lastSeenAt : lastSeenAt // ign
 as int?,lastUserMessageAt: freezed == lastUserMessageAt ? _self.lastUserMessageAt : lastUserMessageAt // ignore: cast_nullable_to_non_nullable
 as int?,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
-as String?,hasTitle: null == hasTitle ? _self.hasTitle : hasTitle // ignore: cast_nullable_to_non_nullable
-as bool,
+as String?,
   ));
 }
 /// Create a copy of SessionDto
@@ -105,7 +104,7 @@ $AgentModelCopyWith<$Res>? get lastAgentModel {
 
 
 class _SessionDto extends SessionDto {
-  const _SessionDto({required this.sessionId, required this.projectId, required this.worktreePath, required this.branchName, required this.isDedicated, required this.archivedAt, required this.baseBranch, required this.baseCommit, required this.lastAgent, required this.lastAgentModel, required this.createdAt, required this.lastActivityAt, required this.lastSeenAt, required this.lastUserMessageAt, required this.pluginId, required this.title, required this.hasTitle}): super._();
+  const _SessionDto({required this.sessionId, required this.projectId, required this.worktreePath, required this.branchName, required this.isDedicated, required this.archivedAt, required this.baseBranch, required this.baseCommit, required this.lastAgent, required this.lastAgentModel, required this.createdAt, required this.lastActivityAt, required this.lastSeenAt, required this.lastUserMessageAt, required this.pluginId, required this.title}): super._();
   
 
 @override final  String sessionId;
@@ -124,7 +123,6 @@ class _SessionDto extends SessionDto {
 @override final  int? lastUserMessageAt;
 @override final  String pluginId;
 @override final  String? title;
-@override final  bool hasTitle;
 
 /// Create a copy of SessionDto
 /// with the given fields replaced by the non-null parameter values.
@@ -136,16 +134,16 @@ _$SessionDtoCopyWith<_SessionDto> get copyWith => __$SessionDtoCopyWithImpl<_Ses
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.isDedicated, isDedicated) || other.isDedicated == isDedicated)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.lastAgent, lastAgent) || other.lastAgent == lastAgent)&&(identical(other.lastAgentModel, lastAgentModel) || other.lastAgentModel == lastAgentModel)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lastActivityAt, lastActivityAt) || other.lastActivityAt == lastActivityAt)&&(identical(other.lastSeenAt, lastSeenAt) || other.lastSeenAt == lastSeenAt)&&(identical(other.lastUserMessageAt, lastUserMessageAt) || other.lastUserMessageAt == lastUserMessageAt)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.title, title) || other.title == title)&&(identical(other.hasTitle, hasTitle) || other.hasTitle == hasTitle));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.isDedicated, isDedicated) || other.isDedicated == isDedicated)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.lastAgent, lastAgent) || other.lastAgent == lastAgent)&&(identical(other.lastAgentModel, lastAgentModel) || other.lastAgentModel == lastAgentModel)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lastActivityAt, lastActivityAt) || other.lastActivityAt == lastActivityAt)&&(identical(other.lastSeenAt, lastSeenAt) || other.lastSeenAt == lastSeenAt)&&(identical(other.lastUserMessageAt, lastUserMessageAt) || other.lastUserMessageAt == lastUserMessageAt)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.title, title) || other.title == title));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId,worktreePath,branchName,isDedicated,archivedAt,baseBranch,baseCommit,lastAgent,lastAgentModel,createdAt,lastActivityAt,lastSeenAt,lastUserMessageAt,pluginId,title,hasTitle);
+int get hashCode => Object.hash(runtimeType,sessionId,projectId,worktreePath,branchName,isDedicated,archivedAt,baseBranch,baseCommit,lastAgent,lastAgentModel,createdAt,lastActivityAt,lastSeenAt,lastUserMessageAt,pluginId,title);
 
 @override
 String toString() {
-  return 'SessionDto(sessionId: $sessionId, projectId: $projectId, worktreePath: $worktreePath, branchName: $branchName, isDedicated: $isDedicated, archivedAt: $archivedAt, baseBranch: $baseBranch, baseCommit: $baseCommit, lastAgent: $lastAgent, lastAgentModel: $lastAgentModel, createdAt: $createdAt, lastActivityAt: $lastActivityAt, lastSeenAt: $lastSeenAt, lastUserMessageAt: $lastUserMessageAt, pluginId: $pluginId, title: $title, hasTitle: $hasTitle)';
+  return 'SessionDto(sessionId: $sessionId, projectId: $projectId, worktreePath: $worktreePath, branchName: $branchName, isDedicated: $isDedicated, archivedAt: $archivedAt, baseBranch: $baseBranch, baseCommit: $baseCommit, lastAgent: $lastAgent, lastAgentModel: $lastAgentModel, createdAt: $createdAt, lastActivityAt: $lastActivityAt, lastSeenAt: $lastSeenAt, lastUserMessageAt: $lastUserMessageAt, pluginId: $pluginId, title: $title)';
 }
 
 
@@ -156,7 +154,7 @@ abstract mixin class _$SessionDtoCopyWith<$Res> implements $SessionDtoCopyWith<$
   factory _$SessionDtoCopyWith(_SessionDto value, $Res Function(_SessionDto) _then) = __$SessionDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, String projectId, String? worktreePath, String? branchName, bool isDedicated, int? archivedAt, String? baseBranch, String? baseCommit, String? lastAgent, AgentModel? lastAgentModel, int createdAt, int? lastActivityAt, int? lastSeenAt, int? lastUserMessageAt, String pluginId, String? title, bool hasTitle
+ String sessionId, String projectId, String? worktreePath, String? branchName, bool isDedicated, int? archivedAt, String? baseBranch, String? baseCommit, String? lastAgent, AgentModel? lastAgentModel, int createdAt, int? lastActivityAt, int? lastSeenAt, int? lastUserMessageAt, String pluginId, String? title
 });
 
 
@@ -173,7 +171,7 @@ class __$SessionDtoCopyWithImpl<$Res>
 
 /// Create a copy of SessionDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? projectId = null,Object? worktreePath = freezed,Object? branchName = freezed,Object? isDedicated = null,Object? archivedAt = freezed,Object? baseBranch = freezed,Object? baseCommit = freezed,Object? lastAgent = freezed,Object? lastAgentModel = freezed,Object? createdAt = null,Object? lastActivityAt = freezed,Object? lastSeenAt = freezed,Object? lastUserMessageAt = freezed,Object? pluginId = null,Object? title = freezed,Object? hasTitle = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? projectId = null,Object? worktreePath = freezed,Object? branchName = freezed,Object? isDedicated = null,Object? archivedAt = freezed,Object? baseBranch = freezed,Object? baseCommit = freezed,Object? lastAgent = freezed,Object? lastAgentModel = freezed,Object? createdAt = null,Object? lastActivityAt = freezed,Object? lastSeenAt = freezed,Object? lastUserMessageAt = freezed,Object? pluginId = null,Object? title = freezed,}) {
   return _then(_SessionDto(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
@@ -191,8 +189,7 @@ as int?,lastSeenAt: freezed == lastSeenAt ? _self.lastSeenAt : lastSeenAt // ign
 as int?,lastUserMessageAt: freezed == lastUserMessageAt ? _self.lastUserMessageAt : lastUserMessageAt // ignore: cast_nullable_to_non_nullable
 as int?,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
-as String?,hasTitle: null == hasTitle ? _self.hasTitle : hasTitle // ignore: cast_nullable_to_non_nullable
-as bool,
+as String?,
   ));
 }
 

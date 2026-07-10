@@ -22,11 +22,11 @@ typedef SessionUnseenRow = ({
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   SessionDao(super.attachedDatabase);
 
-  /// Sets the bridge-owned title copy for [sessionId] (null clears it).
+  /// Sets the bridge-owned title copy for [sessionId] (null removes the copy).
   /// No-op for rowless sessions.
   Future<void> setTitle({required String sessionId, required String? title}) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
-      SessionTableCompanion(title: Value(title), hasTitle: const Value(true)),
+      SessionTableCompanion(title: Value(title)),
     );
   }
 

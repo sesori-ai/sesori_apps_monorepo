@@ -23,9 +23,8 @@ class SessionEventEnrichmentService {
 
   Future<BridgeSseEvent?> enrich(BridgeSseEvent event) async {
     try {
-      final sessionId = _sessionId(event);
-      if (sessionId != null && await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) {
-        return null;
+      for (final sessionId in _sessionIds(event)) {
+        if (await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) return null;
       }
       return switch (event) {
         BridgeSseSessionCreated(:final info) => BridgeSseSessionCreated(
@@ -37,8 +36,7 @@ class SessionEventEnrichmentService {
         ),
         BridgeSseSessionsUpdated(:final sessionID, :final projectID) => BridgeSseSessionsUpdated(
           sessionID: sessionID,
-          projectID:
-              await _sessionRepository.findProjectIdForSession(sessionId: sessionID) ?? projectID,
+          projectID: await _sessionRepository.findProjectIdForSession(sessionId: sessionID) ?? projectID,
         ),
         _ => event,
       };
@@ -60,9 +58,8 @@ class SessionEventEnrichmentService {
     }
   }
 
-  /// A `session.updated` from a derived backend is its own rename signal (ACP's
-  /// `session_info_update` — where an explicit null deliberately clears the
-  /// title — and codex's `thread/name/updated`). Persist the title BEFORE
+  /// A title-changing `session.updated` from a derived backend is its own rename
+  /// signal. Persist the title BEFORE
   /// enriching, so the stored-wins overlay serves the new value both on this
   /// very event and on every later enumeration. `session.created` events are
   /// deliberately not captured: their null title means "unknown", not
@@ -78,14 +75,22 @@ class SessionEventEnrichmentService {
     return _sessionRepository.enrichSession(session: session);
   }
 
-  String? _sessionId(BridgeSseEvent event) {
+  List<String> _sessionIds(BridgeSseEvent event) {
     return switch (event) {
       BridgeSseSessionCreated(:final info) ||
-      BridgeSseSessionUpdated(:final info) ||
-      BridgeSseSessionDeleted(:final info) => info["id"] is String ? info["id"] as String : null,
-      BridgeSseMessageUpdated(:final info) =>
-        info["sessionID"] is String ? info["sessionID"] as String : null,
-      BridgeSseMessagePartUpdated(:final part) => part.sessionID,
+      BridgeSseSessionUpdated(:final info) => [if (info["id"] case final String id) id],
+      BridgeSseMessageUpdated(:final info) => [
+        if (info["sessionID"] case final String sessionId) sessionId,
+      ],
+      BridgeSseMessagePartUpdated(:final part) => [part.sessionID],
+      BridgeSsePermissionAsked(:final sessionID, :final displaySessionId) ||
+      BridgeSsePermissionReplied(:final sessionID, :final displaySessionId) ||
+      BridgeSseQuestionAsked(:final sessionID, :final displaySessionId) ||
+      BridgeSseQuestionReplied(:final sessionID, :final displaySessionId) ||
+      BridgeSseQuestionRejected(:final sessionID, :final displaySessionId) => [
+        sessionID,
+        ?displaySessionId,
+      ],
       BridgeSseSessionsUpdated(:final sessionID) ||
       BridgeSseSessionDiff(:final sessionID) ||
       BridgeSseSessionCompacted(:final sessionID) ||
@@ -95,17 +100,13 @@ class SessionEventEnrichmentService {
       BridgeSseMessageRemoved(:final sessionID) ||
       BridgeSseMessagePartDelta(:final sessionID) ||
       BridgeSseMessagePartRemoved(:final sessionID) ||
-      BridgeSsePermissionAsked(:final sessionID) ||
-      BridgeSsePermissionReplied(:final sessionID) ||
-      BridgeSseQuestionAsked(:final sessionID) ||
-      BridgeSseQuestionReplied(:final sessionID) ||
-      BridgeSseQuestionRejected(:final sessionID) ||
-      BridgeSseTodoUpdated(:final sessionID) => sessionID,
-      BridgeSseSessionError(:final sessionID) => sessionID,
+      BridgeSseTodoUpdated(:final sessionID) => [sessionID],
+      BridgeSseSessionError(:final sessionID) => [?sessionID],
       BridgeSseServerConnected() ||
       BridgeSseServerHeartbeat() ||
       BridgeSseServerInstanceDisposed() ||
       BridgeSseGlobalDisposed() ||
+      BridgeSseSessionDeleted() ||
       BridgeSsePtyCreated() ||
       BridgeSsePtyUpdated() ||
       BridgeSsePtyExited() ||
@@ -125,7 +126,7 @@ class SessionEventEnrichmentService {
       BridgeSseWorkspaceFailed() ||
       BridgeSseTuiToastShow() ||
       BridgeSseWorktreeReady() ||
-      BridgeSseWorktreeFailed() => null,
+      BridgeSseWorktreeFailed() => const [],
     };
   }
 }

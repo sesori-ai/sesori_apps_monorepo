@@ -291,20 +291,6 @@
             "default_dart": null,
             "default_client_dart": null,
             "dsl_features": []
-          },
-          {
-            "name": "has_title",
-            "getter_name": "hasTitle",
-            "moor_type": "bool",
-            "nullable": false,
-            "customConstraints": null,
-            "defaultConstraints": "CHECK (\"has_title\" IN (0, 1))",
-            "dialectAwareDefaultConstraints": {
-              "sqlite": "CHECK (\"has_title\" IN (0, 1))"
-            },
-            "default_dart": "const CustomExpression('0')",
-            "default_client_dart": null,
-            "dsl_features": []
           }
         ],
         "is_virtual": false,
@@ -541,7 +527,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"last_activity_at\" INTEGER NULL, \"last_seen_at\" INTEGER NULL, \"last_user_message_at\" INTEGER NULL, \"plugin_id\" TEXT NOT NULL, \"title\" TEXT NULL, \"has_title\" INTEGER NOT NULL DEFAULT 0 CHECK (\"has_title\" IN (0, 1)), PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"last_activity_at\" INTEGER NULL, \"last_seen_at\" INTEGER NULL, \"last_user_message_at\" INTEGER NULL, \"plugin_id\" TEXT NOT NULL, \"title\" TEXT NULL, PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
         }
       ]
     },

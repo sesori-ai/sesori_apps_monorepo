@@ -12,6 +12,11 @@ Sesori today is "monitor + answer one assistant from your phone." The destinatio
 
 **This biases design; it does not licence building the future early.** When two designs both satisfy the layer rules, prefer the one that doesn't foreclose a direction below — but **never add abstraction/generalization for these before a concrete present need**. YAGNI and the cohesion/ownership rules still win.
 
+Do not add persisted sentinels, presence flags, or tri-state fields solely to
+preserve a hypothetical backend distinction. Require a concrete wire trace,
+shipped behavior, or explicit product requirement before making that state
+durable; otherwise use the simpler observable semantics.
+
 **Directional invariants (don't weld these doors shut):**
 
 - **Plugin boundary is sacred** — no backend specifics leak past `BridgePluginApi` into `shared/`, the relay protocol, or the client; our own harness is *just a plugin*; differing abilities are optional, declared capabilities.

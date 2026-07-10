@@ -455,7 +455,6 @@ class FakeSessionDao {
       lastUserMessageAt: null,
       pluginId: pluginId,
       title: null,
-      hasTitle: false,
     );
   }
 
@@ -714,12 +713,10 @@ class _NoopSessionRepository implements SessionRepository {
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async =>
-      const <MessageWithParts>[];
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const <MessageWithParts>[];
 
   @override
-  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async =>
-      const <ProjectActivitySummary>[];
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const <ProjectActivitySummary>[];
 
   @override
   Future<Session> createSession({
@@ -852,6 +849,7 @@ class FakeSessionRepository implements SessionRepository {
   final FakePullRequestRepository _pullRequestRepository;
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
+  final Map<String, String?> enrichedTitleOverrides = {};
 
   /// Settable so handler tests can exercise the non-authoritative
   /// (bridge-derived) reconcile gating.
@@ -989,13 +987,19 @@ class FakeSessionRepository implements SessionRepository {
       for (final session in sessions)
         if (_selectBestPr(prsBySessionId[session.id]) case final pr?) session.id: pullRequestInfoFromDto(pr),
     };
-    return enrichSharedSessions(
+    final enriched = enrichSharedSessions(
       sessions: sessions,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: const SessionUnseenCalculator(),
       adoptStoredProjectId: false,
     );
+    return [
+      for (final session in enriched)
+        enrichedTitleOverrides.containsKey(session.id)
+            ? session.copyWith(title: enrichedTitleOverrides[session.id])
+            : session,
+    ];
   }
 
   static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {
