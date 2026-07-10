@@ -1,8 +1,8 @@
 // Local smoke test for the Cursor backend. Drives CursorPlugin directly
-// against a real `cursor-agent acp` — no relay, no Sesori account needed.
+// against a real `agent acp` — no relay, no Sesori account needed.
 //
-// Prereqs: `cursor-agent` on PATH, authenticated (`cursor-agent login`), and
-// recent enough to expose the `acp` subcommand (`cursor-agent update`).
+// Prereqs: the Cursor CLI (`agent`) on PATH, authenticated (`agent login`),
+// and recent enough to expose the `acp` subcommand (`agent update`).
 //
 // Usage:
 //   dart run tool/cursor_smoke.dart "Reply with exactly: hello world"

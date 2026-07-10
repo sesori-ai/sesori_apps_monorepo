@@ -79,6 +79,13 @@ sealed class BridgePluginApi {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses();
 
   /// Get all messages for a session.
+  ///
+  /// An empty list means a **genuinely empty thread** (including a backend
+  /// that cannot serve history at all). Implementations MUST throw — e.g. a
+  /// [PluginOperationException] — when history retrieval *fails* (transport,
+  /// auth, replay errors), never swallow the failure into an empty list: the
+  /// phone renders an error-with-retry state for a failed load, which must
+  /// stay distinguishable from "no messages yet".
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId);
 
   Future<void> sendPrompt({
@@ -218,4 +225,15 @@ abstract class BridgeDerivedProjectsPluginApi extends BridgePluginApi {
   /// "there is always somewhere to start a session" behaviour derive-style
   /// backends had before the bridge owned their project list.
   String get launchDirectory;
+
+  /// Hints the bridge's stored directory attribution for [sessionId] before an
+  /// operation that carries only the session id (prompt dispatch, history
+  /// replay). After a bridge restart a directory-scoped backend (ACP) may not
+  /// have enumerated the session yet, so without this hint it would operate in
+  /// its launch directory instead of the session's own cwd — the bridge's
+  /// stored row (worktree path or owning project directory) is the durable
+  /// attribution it cannot self-resolve. A hint, not an override: a backend
+  /// keeps its own fresher attribution when it has one. The default is a
+  /// no-op for backends with a global session index.
+  void primeSessionDirectory({required String sessionId, required String directory}) {}
 }

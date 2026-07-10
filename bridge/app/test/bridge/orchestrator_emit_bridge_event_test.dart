@@ -809,6 +809,30 @@ void main() {
       equals(11),
     );
 
+    final summaryGate = Completer<void>();
+    sessionRepository.projectSummariesDelay = summaryGate.future;
+    plugin.add(const BridgeSseProjectUpdated());
+    plugin.add(const BridgeSseSessionDiff(sessionID: "s1"));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(
+      pushDispatcher.events,
+      hasLength(3),
+      reason: "a later plugin event must wait for the preceding summary rebuild",
+    );
+    summaryGate.complete();
+
+    final summaryTimeoutAt = DateTime.now().add(const Duration(seconds: 2));
+    while (pushDispatcher.events.length < 5) {
+      if (DateTime.now().isAfter(summaryTimeoutAt)) {
+        fail("Timed out waiting for ordered project summary events");
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(
+      pushDispatcher.events.skip(3).map((event) => event.toJson()["type"]),
+      equals(["projects.summary", "session.diff"]),
+    );
+
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
     await plugin.close();
@@ -2040,6 +2064,12 @@ class _NoopSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
+
+  @override
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const [];
+
+  @override
   Future<Session> createSession({
     required String directory,
     required String? parentSessionId,
@@ -2165,8 +2195,20 @@ class _DelayingSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
 
+  @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) =>
+      _base.getSessionMessages(sessionId: sessionId);
+
+  @override
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async {
+    final delay = projectSummariesDelay;
+    if (delay != null) await delay;
+    return _base.getProjectActivitySummaries();
+  }
+
   final SessionRepository _base;
   final Map<String, Future<void>> _delaySessionIds;
+  Future<void>? projectSummariesDelay;
 
   _DelayingSessionRepository({
     required SessionRepository base,

@@ -307,13 +307,13 @@ HealthResponse testHealthResponse() {
   return const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
 }
 
-BridgeSummary testBridgeSummary({String? id, String? name}) {
+BridgeSummary testBridgeSummary({String? id, String? name, DateTime? addedAt, DateTime? lastSeenAt}) {
   return BridgeSummary(
     id: id ?? "br_test1234",
     name: name ?? "test-macbook",
     platform: "macos",
-    addedAt: DateTime.utc(2026, 1, 1),
-    lastSeenAt: null,
+    addedAt: addedAt ?? DateTime.utc(2026, 1, 1),
+    lastSeenAt: lastSeenAt,
   );
 }
 

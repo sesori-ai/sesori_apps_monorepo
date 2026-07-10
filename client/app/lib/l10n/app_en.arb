@@ -128,15 +128,22 @@
   "@projectsOnboardingStepInfoSemantics": {
     "description": "Accessibility label for the info icon button next to an onboarding step title, which opens a popover explaining that step."
   },
-  "projectsBridgeOfflineTitle": "Bridge disconnected",
+  "projectsBridgeOfflineDisconnected": "Disconnected",
+  "@projectsBridgeOfflineDisconnected": {
+    "description": "Status caption under the connection graphic on the bridge-offline Projects screen, rendered with a trailing crossed-circle icon."
+  },
   "projectsBridgeOfflineReconnect": "Reconnect",
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
     "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."
   },
-  "projectsBridgeOfflineRunBridge": "Run the bridge",
-  "@projectsBridgeOfflineRunBridge": {
-    "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge."
+  "projectsBridgeOfflineStartBridge": "Start your bridge",
+  "@projectsBridgeOfflineStartBridge": {
+    "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon."
+  },
+  "projectsBridgeOfflineStartBridgeInfo": "Leave it running while you use Sesori from your phone.",
+  "@projectsBridgeOfflineStartBridgeInfo": {
+    "description": "Popover text explaining the 'Start your bridge' command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers."
   },
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",

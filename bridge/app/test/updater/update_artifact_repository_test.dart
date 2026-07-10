@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
 import 'package:sesori_bridge/src/updater/models/checksum_manifest.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
+import 'package:sesori_bridge/src/updater/models/update_result.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_artifact_repository.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
@@ -73,6 +75,7 @@ class _UnusedCommandExecutor implements CommandExecutor {
 UpdateArtifactRepository buildRepository({
   required ChecksumManifestApi checksumManifestApi,
   required ChecksumValidator checksumValidator,
+  StreamSink<DownloadProgress>? progressSink,
 }) {
   return UpdateArtifactRepository(
     downloadClient: BinaryDownloadClient(
@@ -84,6 +87,7 @@ UpdateArtifactRepository buildRepository({
     checksumValidator: checksumValidator,
     archiveExtractor: ArchiveExtractor(commandExecutor: _UnusedCommandExecutor()),
     archiveFormat: ArchiveFormat.tarGz,
+    progressSink: progressSink ?? StreamController<DownloadProgress>.broadcast().sink,
   );
 }
 
@@ -184,6 +188,52 @@ void main() {
       );
 
       expect(result, isFalse);
+    });
+  });
+
+  group('UpdateArtifactRepository.downloadArchive', () {
+    test('forwards download byte-progress to the injected sink', () async {
+      final release = ReleaseInfo(
+        version: '1.2.3',
+        assetUrl: 'https://example.com/download/sesori-bridge-macos-arm64.tar.gz',
+        checksumsUrl: 'https://example.com/checksums.txt',
+        publishedAt: DateTime(2024),
+      );
+      final List<int> payload = List<int>.filled(16, 7);
+      final progress = <DownloadProgress>[];
+      final controller = StreamController<DownloadProgress>();
+      final subscription = controller.stream.listen(progress.add);
+
+      final repository = UpdateArtifactRepository(
+        downloadClient: BinaryDownloadClient(
+          httpClient: _FakeUpdateHttpClient(
+            handler: (request) async =>
+                http.StreamedResponse(Stream.fromIterable([payload]), 200, contentLength: payload.length),
+          ),
+        ),
+        checksumManifestApi: _FakeChecksumManifestApi(),
+        checksumValidator: _FakeChecksumValidator(result: true),
+        archiveExtractor: ArchiveExtractor(commandExecutor: _UnusedCommandExecutor()),
+        archiveFormat: ArchiveFormat.tarGz,
+        progressSink: controller.sink,
+      );
+
+      final tempDir = await Directory.systemTemp.createTemp('artifact-progress');
+      try {
+        final result = await repository.downloadArchive(
+          release: release,
+          archivePath: '${tempDir.path}/archive.tar.gz',
+        );
+        await controller.close();
+        await subscription.cancel();
+
+        expect(result, UpdateResult.success);
+        expect(progress, isNotEmpty);
+        expect(progress.last.receivedBytes, payload.length);
+        expect(progress.last.totalBytes, payload.length);
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
     });
   });
 }

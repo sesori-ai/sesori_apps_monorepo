@@ -217,6 +217,26 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     if (isClosed) return;
     if (!_isBridgeUnavailable) return;
     emit(ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
+    // The machine identity arrives as an enrichment of the already-shown state:
+    // the latch above resolves without the network in the common (latched)
+    // case, so the recovery view is never held back by this fetch — and a
+    // failed fetch (e.g. the phone itself is offline) simply leaves the
+    // machine-name row hidden. The setup onboarding has no machine row, so a
+    // bridge-less account skips the fetch entirely.
+    if (!hasRegisteredBridges) return;
+    final bridges = await _registeredBridgesService.getRegisteredBridges();
+    if (isClosed || bridges.isEmpty) return;
+    // The bridge may have come back while the fetch was in flight — the
+    // connected transition owns the next state then.
+    if (!_isBridgeUnavailable) return;
+    if (state case ProjectListBridgeDisconnected(:final hasRegisteredBridges)) {
+      emit(
+        ProjectListState.bridgeDisconnected(
+          hasRegisteredBridges: hasRegisteredBridges,
+          bridges: bridges,
+        ),
+      );
+    }
   }
 
   void _onStaleReconnect() {

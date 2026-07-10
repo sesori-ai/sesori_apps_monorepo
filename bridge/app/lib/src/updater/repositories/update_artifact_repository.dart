@@ -14,12 +14,19 @@ import '../models/update_result.dart';
 /// of the shared runtime primitives ([BinaryDownloadClient], [ChecksumValidator],
 /// [ArchiveExtractor]) into the updater's [UpdateResult] vocabulary. The mapping
 /// boundary lives here so the primitives stay reusable by other consumers.
+///
+/// Byte progress from the download is forwarded to the injected [_progressSink]
+/// so a presentation layer can render it; the repository itself performs no
+/// terminal output. Composition wires a sink backed by a rendering listener
+/// (the explicit `update` command) or a no-listener drain (the background
+/// updater).
 class UpdateArtifactRepository {
   final BinaryDownloadClient _downloadClient;
   final ChecksumManifestApi _checksumManifestApi;
   final ChecksumValidator _checksumValidator;
   final ArchiveExtractor _archiveExtractor;
   final ArchiveFormat _archiveFormat;
+  final StreamSink<DownloadProgress> _progressSink;
 
   UpdateArtifactRepository({
     required BinaryDownloadClient downloadClient,
@@ -27,24 +34,27 @@ class UpdateArtifactRepository {
     required ChecksumValidator checksumValidator,
     required ArchiveExtractor archiveExtractor,
     required ArchiveFormat archiveFormat,
+    required StreamSink<DownloadProgress> progressSink,
   }) : _downloadClient = downloadClient,
        _checksumManifestApi = checksumManifestApi,
        _checksumValidator = checksumValidator,
        _archiveExtractor = archiveExtractor,
-       _archiveFormat = archiveFormat;
+       _archiveFormat = archiveFormat,
+       _progressSink = progressSink;
 
   Future<UpdateResult> downloadArchive({
     required ReleaseInfo release,
     required String archivePath,
   }) async {
     try {
-      // Drain the progress stream: the background/explicit updaters only need
-      // the terminal success/failure, not byte progress. A connection-phase
-      // error (e.g. SocketException from the initial send) propagates raw and is
-      // classified by the install service, matching the prior behavior.
+      // Forward each byte-progress event to the injected sink (a rendering
+      // listener, or a no-listener drain). `forEach` completes with the stream's
+      // error, so a thrown `DownloadException` is still caught and mapped below;
+      // a connection-phase error (e.g. SocketException from the initial send)
+      // propagates raw and is classified by the install service, as before.
       await _downloadClient
           .download(url: release.assetUrl, destinationPath: archivePath)
-          .drain<void>();
+          .forEach(_progressSink.add);
       return UpdateResult.success;
     } on DownloadException catch (error) {
       switch (error.kind) {

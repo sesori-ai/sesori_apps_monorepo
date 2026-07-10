@@ -354,6 +354,13 @@ class CodexPlugin implements CodexManagedApi {
   @override
   String get launchDirectory => _projectCwd;
 
+  /// No-op: codex's global rollout index self-resolves every session's cwd,
+  /// so the bridge's stored-directory hint adds nothing. (Spelled out because
+  /// this class `implements` the plugin interface rather than extending it,
+  /// so the interface's no-op default does not apply.)
+  @override
+  void primeSessionDirectory({required String sessionId, required String directory}) {}
+
   @override
   Future<List<PluginSession>> getSessions(
     String projectId, {

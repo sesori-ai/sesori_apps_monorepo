@@ -1,15 +1,34 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgeDerivedProjectsPluginApi, BridgePluginApi, Log, NativeProjectsPluginApi, PluginSession, PluginSessionVariant;
+    show
+        BridgeDerivedProjectsPluginApi,
+        BridgePluginApi,
+        Log,
+        NativeProjectsPluginApi,
+        PluginActiveSession,
+        PluginSession,
+        PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
-    show AgentModel, CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionVariant;
+    show
+        AgentModel,
+        CommandListResponse,
+        MessageWithParts,
+        PrState,
+        ProjectActivitySummary,
+        PromptModel,
+        PromptPart,
+        PullRequestInfo,
+        Session,
+        SessionVariant;
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
 import "derived_session_builder.dart";
+import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
+import "mappers/plugin_message_mapper.dart";
 import "mappers/plugin_session_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
 import "mappers/pull_request_mapper.dart";
@@ -196,7 +215,8 @@ class SessionRepository {
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
-  }) {
+  }) async {
+    await _primeDerivedSessionDirectory(sessionId: sessionId);
     return _plugin.sendCommand(
       sessionId: sessionId,
       command: command,
@@ -216,7 +236,8 @@ class SessionRepository {
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
-  }) {
+  }) async {
+    await _primeDerivedSessionDirectory(sessionId: sessionId);
     return _plugin.sendPrompt(
       sessionId: sessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
@@ -227,6 +248,78 @@ class SessionRepository {
         null => null,
       },
     );
+  }
+
+  /// All messages of [sessionId], mapped to the shared model. The stored
+  /// directory is primed first: after a bridge restart, the history replay can
+  /// be the FIRST plugin call for a stored worktree session, and a
+  /// directory-scoped backend would otherwise replay in its launch directory.
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+    await _primeDerivedSessionDirectory(sessionId: sessionId);
+    final pluginMessages = await _plugin.getSessionMessages(sessionId);
+    return pluginMessages.toSharedMessageWithParts();
+  }
+
+  /// Feeds a derived plugin the bridge's stored session→directory attribution
+  /// (the dedicated worktree path, else the owning project directory — which
+  /// for derived plugins IS the canonical path) before an operation that
+  /// carries only a session id. No-op for native plugins and rowless sessions.
+  Future<void> _primeDerivedSessionDirectory({required String sessionId}) async {
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      final stored = await _sessionDao.getSession(sessionId: sessionId);
+      if (stored == null) return;
+      plugin.primeSessionDirectory(
+        sessionId: sessionId,
+        directory: stored.worktreePath ?? stored.projectId,
+      );
+    }
+  }
+
+  /// The plugin's live activity summary with the bridge's session→project
+  /// attribution applied. A derived plugin reports each active session under
+  /// its own cwd — a dedicated worktree path for worktree sessions — while the
+  /// project list folds that session under the stored *parent* project row, so
+  /// without this remap the activity badge lands on a project id the phone
+  /// doesn't show. A native plugin owns its own attribution and passes
+  /// through 1:1.
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async {
+    final summaries = _plugin.getActiveSessionsSummary();
+    switch (_plugin) {
+      case NativeProjectsPluginApi():
+        return [
+          for (final summary in summaries)
+            ProjectActivitySummary(
+              id: summary.id,
+              activeSessions: [
+                for (final active in summary.activeSessions) active.toSharedActiveSession(),
+              ],
+            ),
+        ];
+      case final BridgeDerivedProjectsPluginApi plugin:
+        final rows = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);
+        final projectPathBySessionId = {for (final row in rows) row.sessionId: row.projectPath};
+        // Regroup under the stored attribution — the same rule the REST path's
+        // DerivedSessionBuilder/DerivedProjectBuilder apply. A rowless session
+        // keeps the plugin's own grouping.
+        final byProject = <String, List<PluginActiveSession>>{};
+        for (final summary in summaries) {
+          for (final active in summary.activeSessions) {
+            final target = normalizeProjectDirectory(
+              directory: projectPathBySessionId[active.id] ?? summary.id,
+            );
+            (byProject[target] ??= []).add(active);
+          }
+        }
+        return [
+          for (final entry in byProject.entries)
+            ProjectActivitySummary(
+              id: entry.key,
+              activeSessions: [
+                for (final active in entry.value) active.toSharedActiveSession(),
+              ],
+            ),
+        ];
+    }
   }
 
   PluginSessionVariant? _toPluginVariant(SessionVariant? variant) {

@@ -37,5 +37,12 @@ sealed class ProjectListState with _$ProjectListState {
   ///   bridge" view.
   const factory ProjectListState.bridgeDisconnected({
     required bool hasRegisteredBridges,
+
+    /// The account's registered bridges (most recently seen first), so the UI
+    /// can name the machine it is trying to reach. Emitted empty first and
+    /// enriched by a follow-up emit once the fetch resolves; stays empty when
+    /// the fetch fails (e.g. the phone itself is offline) — the UI hides the
+    /// machine identity in that case.
+    @Default(<BridgeSummary>[]) List<BridgeSummary> bridges,
   }) = ProjectListBridgeDisconnected;
 }

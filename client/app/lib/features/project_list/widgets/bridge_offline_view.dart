@@ -3,15 +3,26 @@ part of "../project_list_screen.dart";
 /// Shown when the account has a bridge registered but none is connected — the
 /// user already completed setup, so instead of the install onboarding they are
 /// asked to reconnect. Mirrors the Figma "bridge disconnected" state: the
-/// connection graphic, a "Reconnect" CTA, and an expandable "Install commands"
-/// disclosure for when the bridge needs to be (re)installed or restarted.
+/// connection graphic with a "Disconnected" status caption and the machine
+/// name of the bridge being reached, a "Reconnect" CTA, the always-visible
+/// "Start your bridge" command, a "Why is this needed?" explainer, and an
+/// expandable "Install commands" disclosure at the end for when the bridge
+/// needs to be (re)installed. The "Need help?" support menu ([_NeedHelpMenu])
+/// is not part of this scroll flow — it rides the scaffold's floating-action
+/// slot.
 ///
 /// A body, not a page: it is hosted in the project list's own page scroll (see
 /// [ProjectListScreen]) so the large title collapses into the bar as the
 /// expanded install commands scroll. Centred while it fits the viewport; the
 /// enclosing sliver grows past it once it doesn't.
 class _BridgeOfflineView extends StatefulWidget {
-  const _BridgeOfflineView();
+  const _BridgeOfflineView({required this.bridges});
+
+  /// The account's registered bridges, most recently seen first. The first
+  /// entry names the machine the app is trying to reach; empty when the
+  /// lookup failed (e.g. the phone itself is offline), which hides the
+  /// machine row.
+  final List<BridgeSummary> bridges;
 
   @override
   State<_BridgeOfflineView> createState() => _BridgeOfflineViewState();
@@ -48,23 +59,69 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const ExcludeSemantics(child: Center(child: ConnectionGraphic.connectionOff())),
-          const SizedBox(height: 18),
-          Text(
-            loc.projectsBridgeOfflineTitle,
-            textAlign: TextAlign.center,
-            style: prego.textTheme.textLg.medium.copyWith(color: prego.colors.textPrimary),
+          const SizedBox(height: PregoSpacing.lg),
+          // "Disconnected ⊗" status caption: the crossed circle reads as part
+          // of the caption, mirroring the check on the onboarding's connected
+          // status line. Merged so screen readers announce it as one unit.
+          MergeSemantics(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    loc.projectsBridgeOfflineDisconnected,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                  child: Icon(
+                    TablerRegular.circle_x,
+                    size: 14,
+                    color: prego.colors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 28),
+          if (widget.bridges.isNotEmpty) ...[
+            const SizedBox(height: PregoSpacing.xxs),
+            Center(child: _MachineNameRow(name: widget.bridges.first.name)),
+          ],
+          const SizedBox(height: PregoSpacing.x5l),
           PregoButtonsSolid(
             label: loc.projectsBridgeOfflineReconnect,
             hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
             size: PregoButtonsSolidSize.xl,
-            leadingIcon: TablerRegular.refresh,
+            leadingIcon: TablerRegular.rotate_clockwise,
             fullWidth: true,
             isLoading: _reconnecting,
             onPressed: _reconnect,
           ),
-          const SizedBox(height: 18),
+          // Always visible: the bridge is already installed here, so the common
+          // recovery is to (re)start it rather than reinstall.
+          const SizedBox(height: PregoSpacing.xl),
+          _InfoLabel(
+            title: loc.projectsBridgeOfflineStartBridge,
+            info: loc.projectsBridgeOfflineStartBridgeInfo,
+          ),
+          const SizedBox(height: PregoSpacing.md),
+          const _CommandBoxFrame(
+            child: _CommandActionRow(
+              command: BridgeInstall.runCommand,
+              copiedEvent: AnalyticsEvent.runCommandCopied(
+                surface: OnboardingSurface.bridgeOffline,
+              ),
+              sharedEvent: AnalyticsEvent.runCommandShared(
+                surface: OnboardingSurface.bridgeOffline,
+              ),
+            ),
+          ),
+          const SizedBox(height: PregoSpacing.xl),
+          const _WhyBridgeButton(surface: OnboardingSurface.bridgeOffline),
+          const SizedBox(height: PregoSpacing.xl),
           // expanded semantics so screen readers announce the open/closed state
           // of the install-commands disclosure; MergeSemantics folds it onto the
           // button's own node.
@@ -95,43 +152,53 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(height: PregoSpacing.lg),
-                  _InstallCommandBoxes(),
+                  _InstallCommandBoxes(surface: OnboardingSurface.bridgeOffline),
+                  // Bottom breathing room so the last install box can be
+                  // scrolled clear of the "Need help?" button pinned in the
+                  // bottom-right corner. Inside the disclosure so the collapsed
+                  // body keeps its exact vertical centring.
+                  SizedBox(height: PregoSpacing.x6l),
                 ],
               ),
             ),
           ),
-          // Always visible: the bridge is already installed here, so the common
-          // recovery is to (re)start it rather than reinstall.
-          const SizedBox(height: PregoSpacing.xl),
-          const _RunBridgeCommand(),
         ],
       ),
     );
   }
 }
 
-/// The bridge-offline "Run the bridge" command: a label and a single-command
-/// box showing [BridgeInstall.runCommand]. Always visible (unlike the collapsed
-/// install commands) because the bridge is already installed, so the common
-/// recovery is to start it. Reuses the onboarding command-box chrome
-/// ([_CommandBoxFrame] / [_CommandActionRow]) so it matches the install
-/// commands.
-class _RunBridgeCommand extends StatelessWidget {
-  const _RunBridgeCommand();
+/// The machine identity row under the "Disconnected" caption: a laptop glyph
+/// and the machine name of the bridge being reached (the hostname the bridge
+/// registered with the auth server). A static, non-interactive label — the
+/// account runs a single bridge at a time, so there is nothing to act on
+/// here.
+class _MachineNameRow extends StatelessWidget {
+  const _MachineNameRow({required this.name});
+
+  /// The registered bridge's machine name.
+  final String name;
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          context.loc.projectsBridgeOfflineRunBridge,
-          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+        SizedBox(
+          width: 20,
+          height: 20,
+          child: Center(
+            child: Icon(TablerRegular.device_laptop, size: 12, color: prego.colors.textSecondary),
+          ),
         ),
-        const SizedBox(height: PregoSpacing.md),
-        const _CommandBoxFrame(
-          child: _CommandActionRow(command: BridgeInstall.runCommand),
+        Flexible(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+          ),
         ),
       ],
     );

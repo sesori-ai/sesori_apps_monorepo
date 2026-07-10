@@ -19,6 +19,7 @@ abstract final class AcpMethods {
   static const String sessionNew = "session/new";
   static const String sessionList = "session/list";
   static const String sessionLoad = "session/load";
+  static const String sessionResume = "session/resume";
   static const String sessionPrompt = "session/prompt";
   static const String sessionCancel = "session/cancel";
   static const String sessionUpdate = "session/update";
@@ -46,6 +47,7 @@ class AcpAgentCapabilities {
   const AcpAgentCapabilities({
     required this.loadSession,
     required this.listSessions,
+    required this.resumeSession,
     required this.raw,
   });
 
@@ -54,6 +56,11 @@ class AcpAgentCapabilities {
 
   /// Whether the standard `session/list` is supported.
   final bool listSessions;
+
+  /// Whether `session/resume` (re-activate a prior session with no history
+  /// replay) is supported. Used only when [loadSession] is absent — load is
+  /// strictly richer.
+  final bool resumeSession;
 
   /// Full raw capabilities object for harness-specific probing.
   final Map<String, dynamic> raw;
@@ -65,9 +72,11 @@ class AcpAgentCapabilities {
     // object (Cursor sends `"list": {}` to mean "supported"); presence of a
     // non-false value signals support.
     final list = session?["list"];
+    final resume = session?["resume"];
     return AcpAgentCapabilities(
       loadSession: json["loadSession"] == true,
       listSessions: list != null && list != false,
+      resumeSession: resume != null && resume != false,
       raw: json,
     );
   }

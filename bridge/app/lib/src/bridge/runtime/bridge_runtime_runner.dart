@@ -7,7 +7,7 @@ import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator, OsVersionFormatter, PlatformOs;
+    show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator, DownloadProgress, OsVersionFormatter, PlatformOs;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgePlugin,
@@ -76,10 +76,11 @@ import "../../updater/api/platform_update_api.dart";
 import "../../updater/api/update_attempt_api.dart";
 import "../../updater/api/update_cache_api.dart";
 import "../../updater/api/update_log_api.dart";
+import "../../updater/formatters/update_message_formatter.dart";
+import "../../updater/formatters/update_output_formatter.dart";
 import "../../updater/foundation/filesystem_cleaner.dart";
 import "../../updater/foundation/release_track.dart";
 import "../../updater/foundation/update_lock.dart";
-import "../../updater/foundation/update_message_formatter.dart";
 import "../../updater/foundation/update_policy.dart";
 import "../../updater/models/distribution_target.dart";
 import "../../updater/models/managed_runtime_paths.dart";
@@ -386,8 +387,19 @@ class BridgeRuntimeRunner {
         Log.w("Failed to resolve release track; defaulting to stable: $error");
       }
       final releaseTrack = configuredTrack ?? ReleaseTrack.stable;
+      // Resolve the shared policy once so startup diagnostics and update
+      // lifecycle gating cannot disagree about whether this run may update.
+      final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
+        environment: environment,
+        executablePath: io.Platform.resolvedExecutable,
+        managedExecutablePath: managedRuntimePaths.binaryPath,
+        isSupervised: options.isSupervised,
+      );
       if (releaseTrack == ReleaseTrack.internal) {
-        Log.w("Release track: internal (pre-release auto-updates enabled)");
+        final updateStatus = updatesEnabledForThisInstall
+            ? "pre-release auto-updates enabled"
+            : "auto-updates disabled for this run";
+        Log.w("Release track: internal ($updateStatus)");
       } else {
         Log.d("Release track: ${releaseTrack.wireValue}");
       }
@@ -407,12 +419,6 @@ class BridgeRuntimeRunner {
       // non-managed binary (npm payload, dev build, CI, or updates disabled)
       // must not touch the managed install's attempt/residue state, and a
       // supervised (GUI-bundled) bridge must never rewrite itself.
-      final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
-        environment: environment,
-        executablePath: io.Platform.resolvedExecutable,
-        managedExecutablePath: managedRuntimePaths.binaryPath,
-        isSupervised: options.isSupervised,
-      );
       if (updatesEnabledForThisInstall) {
         try {
           await updateLifecycle.reconcile();
@@ -1028,9 +1034,19 @@ class BridgeRuntimeRunner {
     required bool isSupervised,
   }) {
     const clock = Clock();
-    const messageFormatter = UpdateMessageFormatter();
+    final messageFormatter = UpdateMessageFormatter(
+      outFormatter: UpdateOutputFormatter.forStream(out: io.stdout, environment: io.Platform.environment),
+      errFormatter: UpdateOutputFormatter.forStream(out: io.stderr, environment: io.Platform.environment),
+    );
     const filesystemCleaner = FilesystemCleaner();
     final installRoot = managedRuntimePaths.installRoot;
+
+    // The unattended auto-updater must not hijack the terminal with a
+    // spontaneous progress bar, so its download progress is forwarded to a
+    // broadcast sink with no listener: events are dropped and nothing is
+    // buffered. It lives for the process lifetime (an explicit close is
+    // unnecessary for a broadcast controller that retains nothing).
+    final progressController = StreamController<DownloadProgress>.broadcast();
 
     // Opportunistically authenticate GitHub release checks when a token is
     // present in the environment. Unauthenticated requests share a 60/hour
@@ -1089,6 +1105,7 @@ class BridgeRuntimeRunner {
           checksumValidator: ChecksumValidator(),
           archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
           archiveFormat: distributionTarget.archiveFormat,
+          progressSink: progressController.sink,
         ),
         filesystemCleaner: filesystemCleaner,
         // The background updater uses the shared, fixed staging paths.

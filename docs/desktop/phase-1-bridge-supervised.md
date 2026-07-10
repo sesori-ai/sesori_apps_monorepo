@@ -829,8 +829,8 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   supervised); detection works on close code `4007` alone (no reason string)
   AND on the `1000/"replaced"` rollout fallback; normal drop reconnection
   unchanged; covered by connection-level tests.
-- **Aristotle:** plan ☑ · impl ☑ (bridge PR raised on branch `start-next-step-desktop-plan`;
-  relay prerequisite raised as `sesori-ai/sesori_relay_server#7`).
+- **Aristotle:** plan ☑ · impl ☑ (merged #385; relay prerequisite
+  `sesori-ai/sesori_relay_server#7`).
 - **Findings:** Shipped as an additive shared constant + predicate, a Layer-0
   transport accessor, an orchestrator backoff-policy change, and a notifier map
   extension — no new classes. (1) **Shared** (`close_codes.dart`):
@@ -897,7 +897,100 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   observe: secret handshake, token pull/push, status/registered/provision
   events, prompt round-trip, unregister-and-exit, and grace-period exit on
   harness kill.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-step-desktop-plan`).
+- **Findings:** Shipped as a single dev-only file
+  (`bridge/app/tool/dev_control_host.dart`, ~490 lines with doc comments), no
+  `lib/` change and no new dependency — it reuses the app package's existing
+  `args`, `dart:io` (`HttpServer`/`WebSocketTransformer`), `sesori_shared`
+  (`ControlMessage`, `jsonDecodeMap`) and `sesori_bridge_foundation`
+  (`sesoriDataDirectory()`). `main()` parses `--bridge <path>` (required),
+  `--deny-token`, `--help`, and forwards everything after `--` verbatim to the
+  bridge; the access token defaults to the developer's own `token.json`
+  `accessToken`, is overridable via the `SESORI_DEV_CONTROL_TOKEN` env var
+  (kept off argv, which other local processes can read; the spawned bridge's
+  environment blanks that var so the override never reaches the child — or,
+  via the plugin host copying its environment, the backend), and degrades to
+  token-less (answering `token_request` with null) when both are absent. A
+  private `_DevControlHost` owns one harness session — the per-spawn secret
+  (`Random.secure()` → base64url), the loopback WS control server
+  (`HttpServer.bind(loopbackIPv4, 0)`, ephemeral port), the single helper
+  socket, and the pending-prompt list. It
+  spawns the bridge with `--control-url ws://127.0.0.1:<port>`, delivers the
+  secret **off-argv** as the child's first stdin line (ADR A8), and echoes the
+  child's stdout/stderr inline. The WS upgrade is accepted only when the
+  `Authorization: Bearer <secret>` header matches (else 401); one helper per
+  spawn (a concurrent second is 409'd, but a dropped socket is cleared so the
+  helper's reconnect is accepted, and a post-drop send logs-and-drops instead
+  of crashing the harness). Inbound frames are decoded with the real
+  `ControlMessage.fromJson` (undecodable → stderr + skip, never swallowed),
+  printed with `accessToken` redacted (a saved MT-1 terminal log never captures
+  the developer's bearer token), and reacted to via an exhaustive sealed
+  switch: `token_request` → auto-`token_response` (null when denied /
+  token-less), `prompt_request` →
+  tracked + printed; all other variants are informational. Keyboard commands on
+  the harness's own stdin: `t` push `token_update`, `u` `unregister_and_exit`,
+  `y`/`n [id]` answer a prompt, `x` toggle token-denial, `q` simulate GUI-gone
+  (close socket+server so the helper's reconnects fail → observe the ADR-A9
+  grace exit while the harness stays attached to print the exit code), `?` help.
+  On child exit the harness prints and interprets the code against the
+  documented supervised sentinels (86 restart / 87 login-needed / 88 contention
+  / 1 control-loss / 0 clean). Never shipped: `dart build cli` compiles the
+  `bin/bridge.dart` entrypoint only and nothing imports the tool, so it is
+  excluded from the bundle (same as `tool/bump_version.dart`); `avoid_print` is
+  honoured (all output via `stdout`/`stderr`). `dart analyze --fatal-infos`
+  clean; `make analyze` clean; `make test` all pass (1727, unchanged — the tool
+  is not in any import/test graph). Enables MT-1.
+- **Deltas:** PR-review hardening dropped the goal's planned `--token` flag for
+  the `SESORI_DEV_CONTROL_TOKEN` env var (a bearer token must not sit in argv),
+  and added helper-reconnect acceptance, token redaction in printed frames,
+  guarded child-stdin/secret and socket writes (a child that crashes instantly
+  is still reported via its exit code), and upgrade-handler isolation (a
+  mid-handshake disconnect can't crash the control server).
+
+## PR 1.16 — Address MT-1 supervised findings
+- **Goal:** Prevent per-download-chunk `provision_progress` frames from flooding
+  the GUI control channel while preserving the bridge's local typed progress
+  stream and standalone stderr rendering unchanged. Keep release-track startup
+  diagnostics truthful when the shared update policy suppresses auto-updates.
+- **Risk:** Low. **Size:** S.
+- **Regression guide:** touches only the supervised provision-message choke
+  point. Check: (1) known-size downloads send the first update, each integer
+  percentage advance, and 100%; (2) unknown-size downloads remain observable;
+  (3) resolving/notice/verifying/extracting/ready/failed remain immediate and
+  ordered; (4) channel-down sends stay best-effort; (5) runner consumption,
+  `ProvisionReady.binaryPath`, and standalone formatting are untouched; (6) the
+  internal release-track warning agrees with the existing update-policy result,
+  without changing reconciliation or background-update behavior.
+- **Acceptance:** a known-size download emits at most about 101 control frames
+  instead of one per network chunk; null/non-positive totals emit at 512 KiB
+  intervals; every phase and terminal event is delivered immediately; focused
+  notifier tests and the full bridge analyze/test gates pass. An internal-track
+  supervised run reports that auto-updates are disabled instead of claiming
+  they are enabled.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch
+  `test-manual-phase-1`).
+- **Findings:** MT-1 check 12 downloaded the 55,170,827-byte OpenCode archive and
+  reached `verifying` → `extracting` → `ready`, proving the tee end-to-end, but
+  exposed thousands of download frames because `BinaryDownloadClient` emits
+  once per response-body chunk and `ControlProvisionNotifier` forwarded every
+  event. The fix stays in `ControlProvisionNotifier`, the existing Layer-4
+  outbound choke point: known totals are coalesced by integer percentage;
+  null/non-positive totals by 512 KiB. Phase/terminal events bypass coalescing,
+  and selected buckets are recorded before the best-effort send so a down
+  channel cannot restore per-chunk retry/log spam. No timer, new collaborator,
+  shared DTO change, or client-side debounce was added. A manual rerun against
+  the PR binary emitted 101 download frames in this run, plus one each for
+  `verifying`, `extracting`, and `ready`; the standalone rerun still rendered
+  its download bar and all three phase transitions. MT-1 check 14 then exposed
+  a contradictory diagnostic: supervised mode correctly suppresses updates but
+  still logged `pre-release auto-updates enabled` on the internal track. The
+  runner now resolves `shouldSkipUpdates` once before logging and uses that same
+  value for both the message and the existing reconciliation gate; update policy
+  is unchanged.
+- **Deltas:** PR 1.13's documented one-frame-per-source-event implementation is
+  intentionally narrowed at the wire seam. The runner still feeds every local
+  event to the notifier and standalone stderr remains byte-identical; only
+  supervised download frames are coalesced before serialization.
 
 ---
 
@@ -919,7 +1012,7 @@ which is not in the repo, so it fails on a fresh checkout); have a logged-in
 | 1 | Standalone regression (all PRs) | run `sesori-bridge` in a terminal; connect the phone | login/startup output unchanged; phone browses sessions; `bridge_id` file exists; `token.json` has no `bridgeId` field |
 | 2 | Secret handshake (1.1) | start via harness; then try `ps aux \| grep bridge` | helper connects; secret NOT visible in argv; `Authorization` only on the WS upgrade |
 | 3 | Token pull (1.3/1.4) | harness answers `token_request` | helper authenticates to the relay with the harness-supplied token; phone connects through it |
-| 4 | Token push + live re-auth (1.5) | push `token_update` with a fresh token while connected | relay session survives; no reconnect loop; helper uses the new token on next reconnect |
+| 4 | Token push + live re-auth (1.5) | push `token_update` while connected; the dev harness reuses its startup token, so use the existing connection-level tests for fresh same-/changed-identity tokens | frame arrives without a reconnect loop; tests prove same-identity rotation keeps the socket and changed identity reconnects with the new token |
 | 5 | Signed-out behaviour (1.4/1.5) | harness replies null `token_response` | helper defers relay reconnect (no stale-token re-auth); recovers after a valid push |
 | 6 | Grace-period exit (1.1) | kill the harness process | helper exits (~5s grace), exit code 1, managed runtime shut down (no orphaned `opencode serve`) |
 | 7 | Restart sentinel (1.7) | trigger restart from the phone | helper flushes `{restarting:true}`, exits **86**, does NOT spawn a successor |
@@ -931,5 +1024,25 @@ which is not in the repo, so it fails on a fresh checkout); have a logged-in
 | 13 | No takeover war (1.14) | run a second bridge for the same account on another machine/VM (same-machine is blocked by the single-live mutex) | displaced bridge logs takeover + goes quiet (long backoff); no 1s flip-flop; phone stays usable on the winner |
 | 14 | Self-update suppressed (1.8) | run supervised from a managed install | no reconcile/update attempt in logs; standalone still reconciles |
 
-- **Aristotle:** n/a (no code). **Findings:** — (record surprises here; file
-  §8 risks or plan-deltas for anything that fails) **Deltas:** —
+- **Aristotle:** n/a (no code). **Findings:** Check 12 passed both ways:
+  supervised download/verifying/extracting/ready delivery (coalesced to 101
+  download frames in this run by PR 1.16) and standalone stderr download/phase
+  output.
+  A long-running harness session also outlived its startup access token: because
+  the dev host cannot mint a genuinely fresh token, the first unregister retry
+  returned 401; restarting with a freshly persisted token made check 11 pass
+  (server unregister, `bridge_id` removal, exit 0). Keep this harness-only
+  limitation in mind for the remaining checks; the production GUI is the
+  refresh authority. Check 14 exposed a misleading internal-track message that
+  claimed auto-updates were enabled during supervised suppression; PR 1.16 now
+  reports the shared policy result truthfully. The standalone-reconciliation
+  behavior then passed with a synthetic `.lib.rollback`: supervised mode left it
+  untouched, while standalone removed it during startup reconciliation and also
+  applied `v1.5.0-internal.213`. Check 13 passed across macOS and Windows: the
+  displaced Mac reported `takenOver`, stayed quiet for the two-minute backoff,
+  Windows and the phone remained usable, and Mac reclaimed the relay after the
+  winner stopped. The user accepted check 4's manual same-token push/no-loop
+  evidence together with the existing automated same-identity rotation and
+  changed-identity re-auth coverage; genuine GUI-driven forced refresh is now an
+  explicit PR 2.5 acceptance item. **Deltas:** MT-1 complete; Phase 1 is done and
+  the plan advances to PR 2.1.

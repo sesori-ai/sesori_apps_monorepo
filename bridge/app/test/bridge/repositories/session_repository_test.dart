@@ -967,6 +967,125 @@ void main() {
       expect(plugin.receivedKnownDirectories, contains(opened));
     });
 
+    test("sendPrompt/sendCommand/getSessionMessages prime a derived plugin with the stored directory", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      final plugin = _FakeDerivedPlugin(launchDirectory: parent, allSessions: const []);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      // One dedicated-worktree session and one plain in-project session.
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
+      await db.sessionDao.insertSession(
+        sessionId: "p1",
+        projectId: parent,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: "codex",
+      );
+
+      // The worktree session primes with its worktree path...
+      await repository.sendPrompt(sessionId: "w1", parts: const [], variant: null, agent: null, model: null);
+      expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
+
+      // ...a plain session primes with the owning project directory...
+      await repository.getSessionMessages(sessionId: "p1");
+      expect(plugin.primedDirectories.last, (sessionId: "p1", directory: parent));
+
+      await repository.sendCommand(
+        sessionId: "w1",
+        command: "review",
+        arguments: "",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
+
+      // ...and a rowless session primes nothing (there is no stored attribution).
+      final primesBefore = plugin.primedDirectories.length;
+      await repository.sendPrompt(sessionId: "ghost", parts: const [], variant: null, agent: null, model: null);
+      expect(plugin.primedDirectories.length, primesBefore);
+    });
+
+    test("getProjectActivitySummaries folds a worktree session under its stored parent project", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      final plugin = _FakeDerivedPlugin(launchDirectory: parent, allSessions: const []);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
+      // The plugin groups the active worktree session under its own cwd (the
+      // worktree) — exactly what the ACP plugin reports — plus a rowless
+      // session under its own directory.
+      plugin.activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: worktree,
+          activeSessions: [
+            PluginActiveSession(
+              id: "w1",
+              mainAgentRunning: true,
+              awaitingInput: false,
+              isRetrying: false,
+              childSessionIds: [],
+            ),
+          ],
+        ),
+        PluginProjectActivitySummary(
+          id: "/tmp/proj/beta",
+          activeSessions: [
+            PluginActiveSession(
+              id: "b1",
+              mainAgentRunning: false,
+              awaitingInput: true,
+              isRetrying: false,
+              childSessionIds: [],
+            ),
+          ],
+        ),
+      ];
+
+      final summaries = await repository.getProjectActivitySummaries();
+
+      // The worktree session's badge lands on the stored parent project — the
+      // id the phone's project list actually shows.
+      final byId = {for (final s in summaries) s.id: s};
+      expect(byId.keys, containsAll(<String>[parent, "/tmp/proj/beta"]));
+      expect(byId.keys, isNot(contains(worktree)));
+      expect(byId[parent]!.activeSessions.single.id, "w1");
+      expect(byId[parent]!.activeSessions.single.mainAgentRunning, isTrue);
+      // A rowless session keeps the plugin's own grouping.
+      expect(byId["/tmp/proj/beta"]!.activeSessions.single.id, "b1");
+      expect(byId["/tmp/proj/beta"]!.activeSessions.single.awaitingInput, isTrue);
+    });
+
     test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1143,6 +1262,13 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   /// The hint set received on the most recent [listAllSessions] call.
   Set<String>? receivedKnownDirectories;
 
+  /// Every stored-directory prime the bridge fed this plugin, in order.
+  final List<({String sessionId, String directory})> primedDirectories = [];
+
+  /// Configurable activity summaries (the plugin's own grouping — for a
+  /// worktree session that is the worktree cwd).
+  List<PluginProjectActivitySummary> activitySummaries = const [];
+
   @override
   String get id => "codex";
 
@@ -1151,6 +1277,36 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
     receivedKnownDirectories = knownDirectories;
     return allSessions;
   }
+
+  @override
+  void primeSessionDirectory({required String sessionId, required String directory}) {
+    primedDirectories.add((sessionId: sessionId, directory: directory));
+  }
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() => activitySummaries;
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
+
+  @override
+  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => const [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

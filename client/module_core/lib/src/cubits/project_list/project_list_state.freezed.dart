@@ -240,10 +240,25 @@ as RemoteFailureReason,
 
 
 class ProjectListBridgeDisconnected implements ProjectListState {
-  const ProjectListBridgeDisconnected({required this.hasRegisteredBridges});
+  const ProjectListBridgeDisconnected({required this.hasRegisteredBridges, final  List<BridgeSummary> bridges = const <BridgeSummary>[]}): _bridges = bridges;
   
 
  final  bool hasRegisteredBridges;
+/// The account's registered bridges (most recently seen first) as resolved
+/// when this state was emitted, so the UI can name the machine it is
+/// trying to reach. Empty when the lookup failed (e.g. the phone itself is
+/// offline) — the UI hides the machine identity in that case.
+ final  List<BridgeSummary> _bridges;
+/// The account's registered bridges (most recently seen first) as resolved
+/// when this state was emitted, so the UI can name the machine it is
+/// trying to reach. Empty when the lookup failed (e.g. the phone itself is
+/// offline) — the UI hides the machine identity in that case.
+@JsonKey() List<BridgeSummary> get bridges {
+  if (_bridges is EqualUnmodifiableListView) return _bridges;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_bridges);
+}
+
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
@@ -255,16 +270,16 @@ $ProjectListBridgeDisconnectedCopyWith<ProjectListBridgeDisconnected> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListBridgeDisconnected&&(identical(other.hasRegisteredBridges, hasRegisteredBridges) || other.hasRegisteredBridges == hasRegisteredBridges));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListBridgeDisconnected&&(identical(other.hasRegisteredBridges, hasRegisteredBridges) || other.hasRegisteredBridges == hasRegisteredBridges)&&const DeepCollectionEquality().equals(other._bridges, _bridges));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,hasRegisteredBridges);
+int get hashCode => Object.hash(runtimeType,hasRegisteredBridges,const DeepCollectionEquality().hash(_bridges));
 
 @override
 String toString() {
-  return 'ProjectListState.bridgeDisconnected(hasRegisteredBridges: $hasRegisteredBridges)';
+  return 'ProjectListState.bridgeDisconnected(hasRegisteredBridges: $hasRegisteredBridges, bridges: $bridges)';
 }
 
 
@@ -275,7 +290,7 @@ abstract mixin class $ProjectListBridgeDisconnectedCopyWith<$Res> implements $Pr
   factory $ProjectListBridgeDisconnectedCopyWith(ProjectListBridgeDisconnected value, $Res Function(ProjectListBridgeDisconnected) _then) = _$ProjectListBridgeDisconnectedCopyWithImpl;
 @useResult
 $Res call({
- bool hasRegisteredBridges
+ bool hasRegisteredBridges, List<BridgeSummary> bridges
 });
 
 
@@ -292,10 +307,11 @@ class _$ProjectListBridgeDisconnectedCopyWithImpl<$Res>
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? hasRegisteredBridges = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? hasRegisteredBridges = null,Object? bridges = null,}) {
   return _then(ProjectListBridgeDisconnected(
 hasRegisteredBridges: null == hasRegisteredBridges ? _self.hasRegisteredBridges : hasRegisteredBridges // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,bridges: null == bridges ? _self._bridges : bridges // ignore: cast_nullable_to_non_nullable
+as List<BridgeSummary>,
   ));
 }
 
