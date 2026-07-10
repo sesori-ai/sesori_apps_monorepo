@@ -815,6 +815,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     try {
       client = await _connectedClient();
     } on Object catch (error, stack) {
+      // An abort that landed while the reconnect was in flight already
+      // discarded this turn — settle it silently instead of surfacing a
+      // session error for a prompt the user cancelled.
+      if (state.generation != expectedGeneration) {
+        Log.d("[$id] queued turn on $sessionId aborted during reconnect: $error");
+        _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+        return;
+      }
       // The send was already accepted, so a dead/unrespawnable agent must
       // surface as a failed turn, not a silent drop.
       Log.w("[$id] could not reach the agent for a queued turn on $sessionId", error, stack);
