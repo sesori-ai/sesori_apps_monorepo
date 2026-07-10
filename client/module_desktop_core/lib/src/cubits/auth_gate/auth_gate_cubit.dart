@@ -80,9 +80,9 @@ class AuthGateCubit extends Cubit<AuthGateState> {
       if (!restored) {
         // Deliberately stay provisionally signed in: an unreachable auth
         // server must not log the user out. A server-REJECTED (revoked)
-        // token also lands here because the auth layer cannot distinguish
-        // the two cases yet (tracked in the plan's risk register); until it
-        // can, the user resolves a genuinely dead session by signing out.
+        // token also lands here because the auth layer cannot yet
+        // distinguish the two cases; until it can, the user resolves a
+        // genuinely dead session by signing out.
         logw("Background session restore could not confirm the user; staying provisionally signed in");
       }
     } on Object catch (error, stackTrace) {
@@ -109,11 +109,11 @@ class AuthGateCubit extends Cubit<AuthGateState> {
         // after it settles: sign-out always wins eventually.
         logw("Background session restore still pending at sign-out; re-clearing when it settles");
         // Deliberately UNCONDITIONAL: the settling restore's own token
-        // refresh can re-persist tokens after the logout, so no local check
-        // can distinguish them from a fresh sign-in (the auth layer has no
-        // logout generation — see the plan's risk register). A fresh sign-in
-        // completing inside this pathological window is bounced once —
-        // visible and recoverable — which beats a silently undone sign-out.
+        // refresh can re-persist tokens after the logout, and the auth layer
+        // has no logout generation, so no local check can distinguish them
+        // from a fresh sign-in. A fresh sign-in completing inside this
+        // pathological window is bounced once — visible and recoverable —
+        // which beats a silently undone sign-out.
         unawaited(pending.whenComplete(_clearSessionBestEffort));
       }
     }
