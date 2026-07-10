@@ -705,7 +705,13 @@ class OrchestratorSession {
               reason: "Failed to build projects summary event",
               information: const [],
             )
-            .catchError((_) {}),
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w(
+                "[sse] projects-summary failure report failed",
+                reportError,
+                reportStackTrace,
+              );
+            }),
       );
       return null;
     }
