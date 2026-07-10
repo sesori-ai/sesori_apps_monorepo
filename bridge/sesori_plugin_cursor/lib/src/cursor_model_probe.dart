@@ -27,13 +27,29 @@ abstract final class CursorModelProbe {
       findConfig(session, "model");
 
   /// The selectable `{value, name}` entries for a config option.
+  ///
+  /// ACP allows the option list to be *grouped* (`{group, name, options: […]}`
+  /// entries instead of flat `{value, name}` ones). Groups are flattened in
+  /// order — a group entry carries no `value` of its own, so returning it
+  /// as-is would drop every nested model/variant from the catalog and leave
+  /// `applyTurnSelection` unable to find any selectable value.
   static List<Map<String, dynamic>> options(Map<String, dynamic> config) {
     final raw = config["options"];
     if (raw is! List) return const [];
-    return raw
-        .whereType<Map<dynamic, dynamic>>()
-        .map((m) => m.cast<String, dynamic>())
-        .toList(growable: false);
+    final flattened = <Map<String, dynamic>>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final map = entry.cast<String, dynamic>();
+      final nested = map["options"];
+      if (nested is List) {
+        flattened.addAll(
+          nested.whereType<Map<dynamic, dynamic>>().map((m) => m.cast<String, dynamic>()),
+        );
+      } else {
+        flattened.add(map);
+      }
+    }
+    return flattened;
   }
 
   /// Alias of [options] for the model config (reads more clearly at the model

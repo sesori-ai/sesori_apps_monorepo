@@ -387,8 +387,19 @@ class BridgeRuntimeRunner {
         Log.w("Failed to resolve release track; defaulting to stable: $error");
       }
       final releaseTrack = configuredTrack ?? ReleaseTrack.stable;
+      // Resolve the shared policy once so startup diagnostics and update
+      // lifecycle gating cannot disagree about whether this run may update.
+      final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
+        environment: environment,
+        executablePath: io.Platform.resolvedExecutable,
+        managedExecutablePath: managedRuntimePaths.binaryPath,
+        isSupervised: options.isSupervised,
+      );
       if (releaseTrack == ReleaseTrack.internal) {
-        Log.w("Release track: internal (pre-release auto-updates enabled)");
+        final updateStatus = updatesEnabledForThisInstall
+            ? "pre-release auto-updates enabled"
+            : "auto-updates disabled for this run";
+        Log.w("Release track: internal ($updateStatus)");
       } else {
         Log.d("Release track: ${releaseTrack.wireValue}");
       }
@@ -408,12 +419,6 @@ class BridgeRuntimeRunner {
       // non-managed binary (npm payload, dev build, CI, or updates disabled)
       // must not touch the managed install's attempt/residue state, and a
       // supervised (GUI-bundled) bridge must never rewrite itself.
-      final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
-        environment: environment,
-        executablePath: io.Platform.resolvedExecutable,
-        managedExecutablePath: managedRuntimePaths.binaryPath,
-        isSupervised: options.isSupervised,
-      );
       if (updatesEnabledForThisInstall) {
         try {
           await updateLifecycle.reconcile();

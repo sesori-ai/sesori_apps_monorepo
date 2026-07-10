@@ -95,7 +95,7 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(height: PregoSpacing.lg),
-                  _InstallCommandBoxes(),
+                  _InstallCommandBoxes(surface: OnboardingSurface.bridgeOffline),
                 ],
               ),
             ),
@@ -131,7 +131,15 @@ class _RunBridgeCommand extends StatelessWidget {
         ),
         const SizedBox(height: PregoSpacing.md),
         const _CommandBoxFrame(
-          child: _CommandActionRow(command: BridgeInstall.runCommand),
+          child: _CommandActionRow(
+            command: BridgeInstall.runCommand,
+            copiedEvent: AnalyticsEvent.runCommandCopied(
+              surface: OnboardingSurface.bridgeOffline,
+            ),
+            sharedEvent: AnalyticsEvent.runCommandShared(
+              surface: OnboardingSurface.bridgeOffline,
+            ),
+          ),
         ),
       ],
     );

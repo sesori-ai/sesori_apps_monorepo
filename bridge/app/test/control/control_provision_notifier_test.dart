@@ -47,13 +47,113 @@ void main() {
       expect(message.progress, equals(const ControlProvisionProgress.failed(message: "checksum mismatch")));
     });
 
-    test("sends one frame per event, in order", () {
+    test("coalesces known-size downloads by integer percentage and sends completion", () {
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 100, totalBytes: 10000),
+      );
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 199, totalBytes: 10000),
+      );
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 200, totalBytes: 10000),
+      );
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 9999, totalBytes: 10000),
+      );
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 10000, totalBytes: 10000),
+      );
+
+      expect(
+        _sentProgress(client),
+        equals(const <ControlProvisionProgress>[
+          ControlProvisionProgress.downloading(receivedBytes: 100, totalBytes: 10000),
+          ControlProvisionProgress.downloading(receivedBytes: 200, totalBytes: 10000),
+          ControlProvisionProgress.downloading(receivedBytes: 9999, totalBytes: 10000),
+          ControlProvisionProgress.downloading(receivedBytes: 10000, totalBytes: 10000),
+        ]),
+      );
+    });
+
+    for (final totalBytes in <int?>[null, 0]) {
+      test("coalesces ${totalBytes == null ? "unknown" : "non-positive"}-size downloads by 512 KiB", () {
+        const stepBytes = 512 * 1024;
+        notifier.handleProvisionProgress(
+          event: ProvisionDownloading(receivedBytes: 0, totalBytes: totalBytes),
+        );
+        notifier.handleProvisionProgress(
+          event: ProvisionDownloading(receivedBytes: stepBytes - 1, totalBytes: totalBytes),
+        );
+        notifier.handleProvisionProgress(
+          event: ProvisionDownloading(receivedBytes: stepBytes, totalBytes: totalBytes),
+        );
+        notifier.handleProvisionProgress(
+          event: ProvisionDownloading(receivedBytes: stepBytes + 1, totalBytes: totalBytes),
+        );
+
+        expect(
+          _sentProgress(client),
+          equals(<ControlProvisionProgress>[
+            ControlProvisionProgress.downloading(receivedBytes: 0, totalBytes: totalBytes),
+            ControlProvisionProgress.downloading(receivedBytes: stepBytes, totalBytes: totalBytes),
+          ]),
+        );
+      });
+    }
+
+    test("a changed total or regressed byte count starts a new download", () {
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 500, totalBytes: 1000),
+      );
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 505, totalBytes: 1000),
+      );
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 100, totalBytes: 2000),
+      );
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 50, totalBytes: 2000),
+      );
+
+      expect(
+        _sentProgress(client),
+        equals(const <ControlProvisionProgress>[
+          ControlProvisionProgress.downloading(receivedBytes: 500, totalBytes: 1000),
+          ControlProvisionProgress.downloading(receivedBytes: 100, totalBytes: 2000),
+          ControlProvisionProgress.downloading(receivedBytes: 50, totalBytes: 2000),
+        ]),
+      );
+    });
+
+    test("phase changes reset download coalescing and remain ordered", () {
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 100, totalBytes: 1000),
+      );
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 105, totalBytes: 1000),
+      );
+      notifier.handleProvisionProgress(event: const ProvisionVerifying());
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 105, totalBytes: 1000),
+      );
+
+      expect(
+        _sentProgress(client),
+        equals(const <ControlProvisionProgress>[
+          ControlProvisionProgress.downloading(receivedBytes: 100, totalBytes: 1000),
+          ControlProvisionProgress.verifying(),
+          ControlProvisionProgress.downloading(receivedBytes: 105, totalBytes: 1000),
+        ]),
+      );
+    });
+
+    test("sends every non-download phase in order", () {
       notifier.handleProvisionProgress(event: const ProvisionResolving());
       notifier.handleProvisionProgress(event: const ProvisionExtracting());
       notifier.handleProvisionProgress(event: const ProvisionVerifying());
 
       expect(
-        client.sentMessages.map((message) => (message as ControlProvisionProgressMessage).progress),
+        _sentProgress(client),
         equals(const <ControlProvisionProgress>[
           ControlProvisionProgress.resolving(),
           ControlProvisionProgress.extracting(),
@@ -72,6 +172,28 @@ void main() {
       expect(client.sentFrames, isEmpty);
     });
 
+    test("a dropped download bucket is still coalesced", () {
+      client.throwOnSend = true;
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 100, totalBytes: 10000),
+      );
+
+      client.throwOnSend = false;
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 199, totalBytes: 10000),
+      );
+      notifier.handleProvisionProgress(
+        event: const ProvisionDownloading(receivedBytes: 200, totalBytes: 10000),
+      );
+
+      expect(
+        _sentProgress(client),
+        equals(const <ControlProvisionProgress>[
+          ControlProvisionProgress.downloading(receivedBytes: 200, totalBytes: 10000),
+        ]),
+      );
+    });
+
     test("an unexpected send error is swallowed (best-effort — no throw)", () {
       client.sendError = StateError("sink is closed");
 
@@ -83,6 +205,9 @@ void main() {
     });
   });
 }
+
+Iterable<ControlProvisionProgress> _sentProgress(_FakeControlChannelClient client) =>
+    client.sentMessages.map((message) => (message as ControlProvisionProgressMessage).progress);
 
 class _FakeControlChannelClient implements ControlChannelClient {
   final List<String> sentFrames = <String>[];
