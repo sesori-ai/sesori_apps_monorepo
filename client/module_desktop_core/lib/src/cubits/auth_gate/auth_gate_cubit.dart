@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
+import "package:meta/meta.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "auth_gate_state.dart";
@@ -15,11 +16,17 @@ import "auth_gate_state.dart";
 /// its own progress UI.
 class AuthGateCubit extends Cubit<AuthGateState> {
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  AuthGateCubit(AuthSession authSession) : _authSession = authSession, super(const AuthGateState.checking()) {
+  AuthGateCubit(
+    AuthSession authSession, {
+    @visibleForTesting Duration signOutRestoreFence = const Duration(seconds: 5),
+  }) : _authSession = authSession,
+       _signOutRestoreFence = signOutRestoreFence,
+       super(const AuthGateState.checking()) {
     unawaited(_restoreAndSubscribe());
   }
 
   final AuthSession _authSession;
+  final Duration _signOutRestoreFence;
   StreamSubscription<AuthState>? _subscription;
   Future<void>? _backgroundRestore;
 
@@ -72,8 +79,10 @@ class AuthGateCubit extends Cubit<AuthGateState> {
       final bool restored = await _authSession.restoreSession();
       if (!restored) {
         // Deliberately stay provisionally signed in: an unreachable auth
-        // server must not log the user out; genuinely dead credentials
-        // surface as an unauthenticated stream event on first real use.
+        // server must not log the user out. A server-REJECTED (revoked)
+        // token also lands here because the auth layer cannot distinguish
+        // the two cases yet (tracked in the plan's risk register); until it
+        // can, the user resolves a genuinely dead session by signing out.
         logw("Background session restore could not confirm the user; staying provisionally signed in");
       }
     } on Object catch (error, stackTrace) {
@@ -92,14 +101,20 @@ class AuthGateCubit extends Cubit<AuthGateState> {
     final Future<void>? pending = _backgroundRestore;
     if (pending != null) {
       try {
-        await pending.timeout(const Duration(seconds: 5));
+        await pending.timeout(_signOutRestoreFence);
       } on TimeoutException {
         // Pathologically slow restore: proceed with the sign-out rather than
-        // blocking the user; the stale-completion window this reopens is the
-        // hang itself.
-        logw("Background session restore still pending at sign-out; proceeding");
+        // blocking the user — but the hung restore can still re-emit
+        // authenticated when it finally lands, so re-run the local logout
+        // after it settles: sign-out always wins eventually.
+        logw("Background session restore still pending at sign-out; re-clearing when it settles");
+        unawaited(pending.whenComplete(_clearSessionBestEffort));
       }
     }
+    await _clearSessionBestEffort();
+  }
+
+  Future<void> _clearSessionBestEffort() async {
     try {
       await _authSession.logoutCurrentDevice();
     } on Object catch (error, stackTrace) {
