@@ -1012,7 +1012,7 @@ which is not in the repo, so it fails on a fresh checkout); have a logged-in
 | 1 | Standalone regression (all PRs) | run `sesori-bridge` in a terminal; connect the phone | login/startup output unchanged; phone browses sessions; `bridge_id` file exists; `token.json` has no `bridgeId` field |
 | 2 | Secret handshake (1.1) | start via harness; then try `ps aux \| grep bridge` | helper connects; secret NOT visible in argv; `Authorization` only on the WS upgrade |
 | 3 | Token pull (1.3/1.4) | harness answers `token_request` | helper authenticates to the relay with the harness-supplied token; phone connects through it |
-| 4 | Token push + live re-auth (1.5) | push `token_update` with a fresh token while connected | relay session survives; no reconnect loop; helper uses the new token on next reconnect |
+| 4 | Token push + live re-auth (1.5) | push `token_update` while connected; the dev harness reuses its startup token, so use the existing connection-level tests for fresh same-/changed-identity tokens | frame arrives without a reconnect loop; tests prove same-identity rotation keeps the socket and changed identity reconnects with the new token |
 | 5 | Signed-out behaviour (1.4/1.5) | harness replies null `token_response` | helper defers relay reconnect (no stale-token re-auth); recovers after a valid push |
 | 6 | Grace-period exit (1.1) | kill the harness process | helper exits (~5s grace), exit code 1, managed runtime shut down (no orphaned `opencode serve`) |
 | 7 | Restart sentinel (1.7) | trigger restart from the phone | helper flushes `{restarting:true}`, exits **86**, does NOT spawn a successor |
