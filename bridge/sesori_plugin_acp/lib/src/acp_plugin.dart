@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "acp_approval_registry.dart";
+import "acp_command_tracker.dart";
 import "acp_event_mapper.dart";
 import "acp_process_factory.dart";
 import "acp_protocol.dart";
@@ -59,6 +60,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   final AcpProcessFactory? _processFactory;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
+
+  /// Snapshot of the agent's advertised slash commands, fed by the
+  /// notification listener and served by [getCommands].
+  final AcpCommandTracker _commandTracker = AcpCommandTracker();
 
   /// sessionId -> the canonical directory the session lives in. Populated on
   /// create and on every `session/list` hit, so a turn/history load runs in
@@ -233,6 +238,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       try {
         await client.connect();
         _notificationSubscription = client.notifications.listen((notification) {
+          // The command snapshot consumes every notification — including a
+          // suppressed resume replay, whose advertised commands are current.
+          _commandTracker.consume(notification);
           if (notification.method == AcpMethods.sessionUpdate) {
             final sid = notification.params["sessionId"];
             if (sid is String && _suppressedSessions.contains(sid)) {
@@ -562,9 +570,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async =>
-      // Served from the mapper's `available_commands_update` cache — ACP
-      // advertises commands via that notification, not a request endpoint.
-      eventMapper.availableCommands;
+      // Served from the `available_commands_update` snapshot — ACP advertises
+      // commands via that notification, not a request endpoint.
+      _commandTracker.commands;
 
   @override
   Future<PluginSession> createSession({

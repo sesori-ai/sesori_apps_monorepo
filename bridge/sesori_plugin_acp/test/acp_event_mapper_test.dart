@@ -346,38 +346,6 @@ void main() {
       expect(late.whereType<BridgeSseMessagePartDelta>().single.messageID, firstId);
     });
 
-    test("available_commands_update caches the advertised commands", () {
-      final events = mapper.map(update({
-        "sessionUpdate": "available_commands_update",
-        "availableCommands": [
-          {
-            "name": "create_plan",
-            "description": "Plan before coding",
-            "input": {"hint": "what to plan"},
-          },
-          {"name": "compress", "description": "Compact the thread"},
-          {"description": "malformed: no name"},
-          "not-a-map",
-        ],
-      }));
-      expect(events.single, isA<BridgeSseProjectUpdated>());
-      final commands = mapper.availableCommands;
-      expect(commands, hasLength(2));
-      expect(commands[0].name, "create_plan");
-      expect(commands[0].description, "Plan before coding");
-      expect(commands[0].hints, ["what to plan"]);
-      expect(commands[0].source, PluginCommandSource.command);
-      expect(commands[1].name, "compress");
-      expect(commands[1].hints, isEmpty);
-
-      // The next update replaces the cache (last update wins).
-      mapper.map(update({
-        "sessionUpdate": "available_commands_update",
-        "availableCommands": const <Object?>[],
-      }));
-      expect(mapper.availableCommands, isEmpty);
-    });
-
     test("plan maps to a todo update, commands to a project update", () {
       expect(
         mapper.map(update({"sessionUpdate": "plan", "entries": const <Object?>[]})).single,

@@ -96,14 +96,6 @@ class AcpEventMapper {
     if (updatedMs != null) snapshot.updatedMs = updatedMs;
   }
 
-  /// Commands last advertised by the agent via `available_commands_update`,
-  /// served by the plugin's `getCommands`. Process-global (last update wins):
-  /// ACP scopes the notification per session, but the commands are agent-global
-  /// for every shipping backend, and `getCommands` is project-scoped — so a
-  /// per-session cache would invent scoping the API can't express.
-  List<PluginCommand> get availableCommands => List.unmodifiable(_availableCommands);
-  List<PluginCommand> _availableCommands = const [];
-
   /// Per-session project directory (an ACP project id *is* its `cwd`). The
   /// plugin records it so `session_info_update` (title) events are filed under
   /// the session's real project, not the launch [launchDirectory]. The mobile
@@ -217,9 +209,9 @@ class AcpEventMapper {
       case "plan":
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "available_commands_update":
-        // Cache the advertised commands so `getCommands` can serve them; the
-        // refresh event tells the phone to re-fetch.
-        _availableCommands = _parseAvailableCommands(update["availableCommands"]);
+        // The advertised commands themselves are tracked by AcpCommandTracker
+        // (served via getCommands); the refresh event tells the phone to
+        // re-fetch.
         return const [BridgeSseProjectUpdated()];
       case "session_info_update":
         // The notification may carry `updatedAt` (ISO 8601 or epoch) — keep
@@ -470,32 +462,6 @@ class AcpEventMapper {
       pullRequest: null,
       promptDefaults: null,
     );
-  }
-
-  /// Parses an `available_commands_update` payload's `availableCommands` list
-  /// fail-soft: a malformed entry is skipped rather than dropping the batch.
-  static List<PluginCommand> _parseAvailableCommands(Object? raw) {
-    if (raw is! List) return const [];
-    final commands = <PluginCommand>[];
-    for (final entry in raw) {
-      if (entry is! Map) continue;
-      final map = entry.cast<String, dynamic>();
-      final name = map["name"];
-      if (name is! String || name.isEmpty) continue;
-      final description = map["description"];
-      final input = map["input"];
-      final hint = input is Map ? input["hint"] : null;
-      commands.add(
-        PluginCommand(
-          name: name,
-          description: description is String && description.isNotEmpty ? description : null,
-          hints: [if (hint is String && hint.isNotEmpty) hint],
-          provider: null,
-          source: PluginCommandSource.command,
-        ),
-      );
-    }
-    return commands;
   }
 
   /// Lenient timestamp: the spec sends ISO 8601 strings, live agents have

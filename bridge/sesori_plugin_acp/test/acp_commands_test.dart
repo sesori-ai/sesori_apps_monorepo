@@ -1,11 +1,58 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 /// `getCommands` serves the commands the agent advertised via the
 /// `available_commands_update` notification (ACP has no request endpoint for
 /// them). Before any update arrives, the list is empty.
 void main() {
+  group("AcpCommandTracker", () {
+    AcpNotification update(Map<String, dynamic> body) => AcpNotification(
+      method: "session/update",
+      params: {"sessionId": "s1", "update": body},
+    );
+
+    test("parses advertised commands fail-soft; last update wins", () {
+      final tracker = AcpCommandTracker()
+        ..consume(update({
+          "sessionUpdate": "available_commands_update",
+          "availableCommands": [
+            {
+              "name": "create_plan",
+              "description": "Plan before coding",
+              "input": {"hint": "what to plan"},
+            },
+            {"name": "compress", "description": "Compact the thread"},
+            {"description": "malformed: no name"},
+            "not-a-map",
+          ],
+        }));
+
+      final commands = tracker.commands;
+      expect(commands, hasLength(2));
+      expect(commands[0].name, "create_plan");
+      expect(commands[0].description, "Plan before coding");
+      expect(commands[0].hints, ["what to plan"]);
+      expect(commands[0].source, PluginCommandSource.command);
+      expect(commands[1].name, "compress");
+      expect(commands[1].hints, isEmpty);
+
+      tracker.consume(update({
+        "sessionUpdate": "available_commands_update",
+        "availableCommands": const <Object?>[],
+      }));
+      expect(tracker.commands, isEmpty);
+    });
+
+    test("ignores unrelated notifications", () {
+      final tracker = AcpCommandTracker()
+        ..consume(const AcpNotification(method: "cursor/update_todos", params: {}))
+        ..consume(update({"sessionUpdate": "plan", "entries": <Object?>[]}));
+      expect(tracker.commands, isEmpty);
+    });
+  });
+
   group("AcpPlugin.getCommands", () {
     late FakeAcpProcess fake;
     late AcpPlugin plugin;
