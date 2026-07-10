@@ -713,6 +713,9 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> recordSessionTitle({required String sessionId, required String? title}) async {}
 
   @override
+  Future<void> deleteSession({required String sessionId}) async {}
+
+  @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async =>
       const <MessageWithParts>[];
 
@@ -875,6 +878,9 @@ class FakeSessionRepository implements SessionRepository {
   Future<void> recordSessionTitle({required String sessionId, required String? title}) async {
     recordedTitles.add((sessionId: sessionId, title: title));
   }
+
+  @override
+  Future<void> deleteSession({required String sessionId}) async {}
 
   @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => [

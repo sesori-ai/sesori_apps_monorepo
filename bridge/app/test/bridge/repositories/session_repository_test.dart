@@ -19,6 +19,53 @@ void main() {
       plugin = _FakeBridgePlugin();
     });
 
+    test("deleteSession records a plugin-scoped tombstone and removes the stored row", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["proj-tomb"]);
+      await db.sessionDao.insertSession(
+        pluginId: plugin.id,
+        sessionId: "sess-tomb",
+        projectId: "proj-tomb",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      await repository.deleteSession(sessionId: "sess-tomb");
+
+      expect(await db.sessionDao.getSession(sessionId: "sess-tomb"), isNull);
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
+        contains("sess-tomb"),
+      );
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: "other"),
+        isNot(contains("sess-tomb")),
+      );
+
+      // Re-deleting the rowless session remains idempotent.
+      await repository.deleteSession(sessionId: "sess-tomb");
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
+        contains("sess-tomb"),
+      );
+    });
+
     test("enrichSession merges stored archive and selected PR metadata", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

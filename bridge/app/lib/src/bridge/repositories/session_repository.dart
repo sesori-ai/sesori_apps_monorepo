@@ -257,6 +257,20 @@ class SessionRepository {
     await _sessionDao.setTitle(sessionId: sessionId, title: title);
   }
 
+  /// Records a delete tombstone and removes the stored row atomically. The
+  /// tombstone is written even for rowless sessions because a backend without
+  /// session deletion may still enumerate them.
+  Future<void> deleteSession({required String sessionId}) async {
+    await _sessionDao.transaction(() async {
+      await _sessionDao.insertSessionTombstone(
+        sessionId: sessionId,
+        pluginId: _plugin.id,
+        deletedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await _sessionDao.deleteSession(sessionId: sessionId);
+    });
+  }
+
   /// Feeds a derived plugin the bridge's stored session→directory attribution
   /// (the dedicated worktree path, else the owning project directory — which
   /// for derived plugins IS the canonical path) before an operation that

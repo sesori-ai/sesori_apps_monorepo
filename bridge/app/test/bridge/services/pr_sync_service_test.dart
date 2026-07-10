@@ -405,6 +405,9 @@ class _FakeSessionRepository implements SessionRepository {
   Future<void> recordSessionTitle({required String sessionId, required String? title}) async {}
 
   @override
+  Future<void> deleteSession({required String sessionId}) async {}
+
+  @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
 
   @override

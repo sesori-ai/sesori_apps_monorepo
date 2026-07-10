@@ -2031,6 +2031,9 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> recordSessionTitle({required String sessionId, required String? title}) async {}
 
   @override
+  Future<void> deleteSession({required String sessionId}) async {}
+
+  @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
 
   @override
@@ -2162,6 +2165,9 @@ class _DelayingSessionRepository implements SessionRepository {
   @override
   Future<void> recordSessionTitle({required String sessionId, required String? title}) =>
       _base.recordSessionTitle(sessionId: sessionId, title: title);
+
+  @override
+  Future<void> deleteSession({required String sessionId}) => _base.deleteSession(sessionId: sessionId);
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) =>

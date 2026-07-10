@@ -159,7 +159,6 @@ class RequestRouter {
         plugin: plugin,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionPersistenceService: sessionPersistenceService,
       ),
       sendPromptHandler,
       abortSessionHandler,
