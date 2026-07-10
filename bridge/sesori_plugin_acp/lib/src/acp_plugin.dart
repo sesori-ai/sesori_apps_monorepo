@@ -535,10 +535,18 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final directory = normalizeProjectDirectory(directory: hasCwd ? rawCwd : fallbackDirectory);
     final id = info.sessionId;
     // Remember the session's directory so a later turn/history load uses its
-    // own cwd and events/activity attribute to the right project.
+    // own cwd and events/activity attribute to the right project. The
+    // title/time snapshot keeps `session_info_update` emissions full-fidelity
+    // (the mobile list replaces the whole session on session.updated).
     if (id.isNotEmpty) {
       _sessionDirectories[id] = directory;
       eventMapper.setSessionProject(id, directory);
+      eventMapper.setSessionSnapshot(
+        sessionId: id,
+        title: info.title,
+        createdMs: info.updatedAtMs,
+        updatedMs: info.updatedAtMs,
+      );
     }
     final ts = info.updatedAtMs;
     return PluginSession(
@@ -554,7 +562,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async =>
-      const [];
+      // Served from the mapper's `available_commands_update` cache — ACP
+      // advertises commands via that notification, not a request endpoint.
+      eventMapper.availableCommands;
 
   @override
   Future<PluginSession> createSession({
@@ -581,8 +591,17 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     if (session.sessionId.isEmpty) {
       throw StateError("session/new response missing sessionId");
     }
+    final createdAt = DateTime.now().millisecondsSinceEpoch;
     _sessionDirectories[session.sessionId] = canonicalDirectory;
     eventMapper.setSessionProject(session.sessionId, canonicalDirectory);
+    // Seed the snapshot so a title event during the creation race (before the
+    // bridge has a stored row to enrich from) still carries a sane time.
+    eventMapper.setSessionSnapshot(
+      sessionId: session.sessionId,
+      title: null,
+      createdMs: createdAt,
+      updatedMs: createdAt,
+    );
     // A session/new response is the authoritative source of the backend's
     // new-session default model/mode.
     captureSessionConfig(session.raw, sessionId: session.sessionId, fromNewSession: true);
@@ -608,14 +627,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         variant: variant,
       );
     }
-    final now = DateTime.now().millisecondsSinceEpoch;
     return PluginSession(
       id: session.sessionId,
       projectID: canonicalDirectory,
       directory: canonicalDirectory,
       parentID: parentSessionId,
       title: null,
-      time: PluginSessionTime(created: now, updated: now, archived: null),
+      time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
       summary: null,
     );
   }
@@ -682,8 +700,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// (timeout, RPC hiccup) is retried on the next turn instead of leaving the
   /// conversation unrecoverable until the agent respawns.
   Future<void> _loadResident(AcpStdioClient client, String sessionId) async {
-    if (!(_initResult?.agentCapabilities.loadSession ?? false)) {
-      // No load capability: there is nothing to re-load — memoize residency so
+    final loadSupported = _initResult?.agentCapabilities.loadSession ?? false;
+    final resumeSupported = _initResult?.agentCapabilities.resumeSession ?? false;
+    if (!loadSupported && !resumeSupported) {
+      // No way to re-activate a prior-run session — memoize residency so
       // turns proceed without re-checking.
       _residentSessions.add(sessionId);
       return;
@@ -697,6 +717,12 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // the prior fallback behaviour remains.
     if (!_sessionDirectories.containsKey(sessionId)) {
       await listAllSessions(knownDirectories: const {});
+    }
+    if (!loadSupported) {
+      // Resume-only agent: `session/resume` re-activates the session with NO
+      // history replay, so no suppression window is needed.
+      await _resumeResident(client, sessionId);
+      return;
     }
     _suppressedSessions.add(sessionId);
     _suppressedReplayCounts.remove(sessionId);
@@ -737,6 +763,44 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     } finally {
       _suppressedSessions.remove(sessionId);
       _suppressedReplayCounts.remove(sessionId);
+    }
+  }
+
+  /// Re-activates [sessionId] via `session/resume` for an agent that
+  /// advertises `sessionCapabilities.resume` but not `loadSession`. Without
+  /// this, the session would be marked resident with no RPC at all and the
+  /// next `session/prompt` after a bridge restart would hit a session the
+  /// fresh agent process never loaded. Same residency policy as the load
+  /// path: resident on success or on a permanently unsupported RPC; transient
+  /// failures retry on the next turn.
+  Future<void> _resumeResident(AcpStdioClient client, String sessionId) async {
+    try {
+      final raw = await client.request(
+        method: AcpMethods.sessionResume,
+        params: {
+          "sessionId": sessionId,
+          "cwd": _directoryForSession(sessionId),
+          "mcpServers": const <Object?>[],
+        },
+        timeout: const Duration(minutes: 2),
+      );
+      // The resume result carries the modes/configOptions catalog (and this
+      // session's current selection) — capture it, but never as the
+      // new-session default.
+      captureSessionConfig(
+        raw is Map ? raw.cast<String, dynamic>() : const {},
+        sessionId: sessionId,
+      );
+      _residentSessions.add(sessionId);
+    } on AcpRpcException catch (error, stack) {
+      if (error.code == -32601 || error.code == -32602) {
+        Log.w("[$id] session/resume unsupported (code ${error.code}); proceeding without resume", error, stack);
+        _residentSessions.add(sessionId);
+      } else {
+        Log.w("[$id] session/resume of $sessionId failed; will retry on next turn", error, stack);
+      }
+    } on Object catch (error, stack) {
+      Log.w("[$id] session/resume of $sessionId failed; will retry on next turn", error, stack);
     }
   }
 

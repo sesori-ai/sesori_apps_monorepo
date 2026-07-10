@@ -69,6 +69,41 @@ class AcpEventMapper {
   String? providerForSession(String sessionId) =>
       _sessionProvider[sessionId] ?? currentProviderId;
 
+  /// Last-known per-session metadata (title/times), fed by the plugin from
+  /// enumeration and creation (like [setSessionProject]). `session_info_update`
+  /// merges against it so the emitted `session.updated` payload doesn't null
+  /// out the session's time — which would make the mobile list row lose its
+  /// sort position until a full refresh.
+  final Map<String, _SessionSnapshot> _sessionSnapshots = {};
+
+  /// Records the last-known [title]/[createdMs]/[updatedMs] for [sessionId].
+  /// A null field leaves the prior value in place (an enumeration hit may
+  /// know times but not a cleared title). Title and updated take the latest
+  /// value; created keeps the earliest known (enumeration only reports
+  /// last-activity time, which must not drag the creation time forward).
+  void setSessionSnapshot({
+    required String sessionId,
+    required String? title,
+    required int? createdMs,
+    required int? updatedMs,
+  }) {
+    final snapshot = _sessionSnapshots.putIfAbsent(sessionId, _SessionSnapshot.new);
+    if (title != null && title.isNotEmpty) snapshot.title = title;
+    if (createdMs != null) {
+      final prior = snapshot.createdMs;
+      snapshot.createdMs = prior == null || createdMs < prior ? createdMs : prior;
+    }
+    if (updatedMs != null) snapshot.updatedMs = updatedMs;
+  }
+
+  /// Commands last advertised by the agent via `available_commands_update`,
+  /// served by the plugin's `getCommands`. Process-global (last update wins):
+  /// ACP scopes the notification per session, but the commands are agent-global
+  /// for every shipping backend, and `getCommands` is project-scoped — so a
+  /// per-session cache would invent scoping the API can't express.
+  List<PluginCommand> get availableCommands => List.unmodifiable(_availableCommands);
+  List<PluginCommand> _availableCommands = const [];
+
   /// Per-session project directory (an ACP project id *is* its `cwd`). The
   /// plugin records it so `session_info_update` (title) events are filed under
   /// the session's real project, not the launch [launchDirectory]. The mobile
@@ -99,6 +134,7 @@ class AcpEventMapper {
     _sessionModel.remove(sessionId);
     _sessionProvider.remove(sessionId);
     _sessionProject.remove(sessionId);
+    _sessionSnapshots.remove(sessionId);
     _turnSeq.remove(sessionId);
     _startedParts.remove(sessionId);
     // Exact per-session removal — session ids are opaque agent strings that may
@@ -181,8 +217,22 @@ class AcpEventMapper {
       case "plan":
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "available_commands_update":
+        // Cache the advertised commands so `getCommands` can serve them; the
+        // refresh event tells the phone to re-fetch.
+        _availableCommands = _parseAvailableCommands(update["availableCommands"]);
         return const [BridgeSseProjectUpdated()];
       case "session_info_update":
+        // The notification may carry `updatedAt` (ISO 8601 or epoch) — keep
+        // the snapshot's recency fresh even when no title change is emitted.
+        final eventUpdatedMs = _timestampMs(update["updatedAt"]);
+        if (eventUpdatedMs != null) {
+          setSessionSnapshot(
+            sessionId: sessionId,
+            title: null,
+            createdMs: null,
+            updatedMs: eventUpdatedMs,
+          );
+        }
         // The agent's auto-generated title for the thread. Surfaced as a
         // session update so the mobile session list / app bar live-update.
         // Only emit when the update actually carries a `title` field: absent =
@@ -193,8 +243,11 @@ class AcpEventMapper {
         if (!update.containsKey("title")) return const [];
         final rawTitle = update["title"];
         final title = rawTitle is String && rawTitle.isNotEmpty ? rawTitle : null;
+        // Keep the snapshot's title in sync (including a clear) so a later
+        // emission doesn't resurrect the old title.
+        _sessionSnapshots.putIfAbsent(sessionId, _SessionSnapshot.new).title = title;
         return [
-          BridgeSseSessionUpdated(info: _minimalSession(sessionId, title).toJson()),
+          BridgeSseSessionUpdated(info: _sessionUpdate(sessionId, title).toJson()),
         ];
     }
 
@@ -218,7 +271,16 @@ class AcpEventMapper {
     final text = acpContentText(update["content"]);
     if (text == null || text.isEmpty) return const [];
 
-    final messageId = "$sessionId-t${_turn(sessionId)}-${role.name}";
+    // ACP v1: chunks of one message share a `messageId`; a change starts a new
+    // message. Group by it when present, so an agent emitting several same-role
+    // messages in one turn doesn't collapse them into one sesori message. The
+    // role stays in the id so a pathological cross-role id reuse can't merge a
+    // user chunk into an assistant envelope. Absent (Cursor today) → the
+    // synthesized per-turn id.
+    final acpMessageId = update["messageId"];
+    final messageId = acpMessageId is String && acpMessageId.isNotEmpty
+        ? "$sessionId-m$acpMessageId-${role.name}"
+        : "$sessionId-t${_turn(sessionId)}-${role.name}";
     final partId = "$messageId-$partSuffix";
 
     final events = <BridgeSseEvent>[];
@@ -271,6 +333,10 @@ class AcpEventMapper {
     return [
       _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
+      // An agent may report the whole mutation as one complete initial
+      // `tool_call` (no follow-up update), so the diff signal must fire here
+      // too, mirroring `_toolCallUpdate`.
+      if (_isFileMutation(update)) BridgeSseSessionDiff(sessionID: sessionId),
     ];
   }
 
@@ -375,22 +441,69 @@ class AcpEventMapper {
     };
   }
 
-  /// A minimal [shared.Session] for a `session_info_update`; the bridge
-  /// enrichment + mobile merge it against existing state, so only the id and
-  /// title matter here.
-  shared.Session _minimalSession(String id, String? title) {
+  /// The [shared.Session] emitted for a `session_info_update`. The mobile list
+  /// handler REPLACES the whole session on `session.updated`, so beyond the id
+  /// and new title this must carry the best-known `time` — a null time would
+  /// drop the row's sort position to epoch 0 until a full refresh whenever no
+  /// stored bridge row exists to enrich from (creation race, never-persisted
+  /// historical session). Times come from the plugin-fed snapshot (see
+  /// [setSessionSnapshot]); with no snapshot at all, time stays null.
+  shared.Session _sessionUpdate(String id, String? title) {
     final project = projectForSession(id);
+    final snapshot = _sessionSnapshots[id];
+    final created = snapshot?.createdMs;
+    final updated = snapshot?.updatedMs ?? created;
     return shared.Session(
       id: id,
       projectID: project,
       directory: project,
       parentID: null,
       title: title,
-      time: null,
+      time: created == null && updated == null
+          ? null
+          : shared.SessionTime(
+              created: created ?? updated!,
+              updated: updated ?? created!,
+              archived: null,
+            ),
       summary: null,
       pullRequest: null,
       promptDefaults: null,
     );
+  }
+
+  /// Parses an `available_commands_update` payload's `availableCommands` list
+  /// fail-soft: a malformed entry is skipped rather than dropping the batch.
+  static List<PluginCommand> _parseAvailableCommands(Object? raw) {
+    if (raw is! List) return const [];
+    final commands = <PluginCommand>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final map = entry.cast<String, dynamic>();
+      final name = map["name"];
+      if (name is! String || name.isEmpty) continue;
+      final description = map["description"];
+      final input = map["input"];
+      final hint = input is Map ? input["hint"] : null;
+      commands.add(
+        PluginCommand(
+          name: name,
+          description: description is String && description.isNotEmpty ? description : null,
+          hints: [if (hint is String && hint.isNotEmpty) hint],
+          provider: null,
+          source: PluginCommandSource.command,
+        ),
+      );
+    }
+    return commands;
+  }
+
+  /// Lenient timestamp: the spec sends ISO 8601 strings, live agents have
+  /// shipped epoch numbers — accept both, anything else is null.
+  static int? _timestampMs(Object? raw) {
+    if (raw is num) return raw.round();
+    if (raw is String) return DateTime.tryParse(raw)?.millisecondsSinceEpoch;
+    return null;
   }
 
   PluginMessagePart _part({
@@ -441,9 +554,20 @@ class AcpEventMapper {
     );
   }
 
+  /// Whether a `tool_call`/`tool_call_update` payload reports a file mutation:
+  /// a mutating `kind`, or a standard tool `content` entry of `type: "diff"`
+  /// (a spec-compliant agent may report an edit only through the diff content
+  /// shape, with a non-mutating or absent kind).
   bool _isFileMutation(Map<String, dynamic> update) {
-    final kind = update["kind"] as String?;
-    return kind == "edit" || kind == "delete" || kind == "move";
+    final kind = update["kind"];
+    if (kind == "edit" || kind == "delete" || kind == "move") return true;
+    final content = update["content"];
+    if (content is List) {
+      for (final entry in content) {
+        if (entry is Map && entry["type"] == "diff") return true;
+      }
+    }
+    return false;
   }
 
   Map<String, dynamic>? _asMap(Object? value) {
@@ -453,6 +577,14 @@ class AcpEventMapper {
 }
 
 enum _ChunkRole { user, assistant }
+
+/// Last-known metadata for one session (title, times), merged into the
+/// `session.updated` payload a `session_info_update` emits.
+class _SessionSnapshot {
+  String? title;
+  int? createdMs;
+  int? updatedMs;
+}
 
 /// The last-rendered state of one live tool call, so a partial
 /// `tool_call_update` merges onto it instead of replacing it.

@@ -48,9 +48,9 @@ than observed Cursor bugs. That is called out per item.
 | H  | Resume-load & per-session turn robustness            | **User-facing:** stuck conversations, dropped queued prompts, replay leak | **Resolved** |
 | A  | Bridge↔plugin stored-directory / attribution seam    | Real worktree flows on restart; one hook resolves three threads | Open (Medium) |
 | B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | Open (Medium) |
-| C  | ACP protocol completeness in the mapper / parsers    | Correctness for the next ACP backend                            | Open (Medium) |
+| C  | ACP protocol completeness in the mapper / parsers    | Correctness for the next ACP backend                            | **Resolved** |
 | G  | Concurrent multi-session turn attribution            | Wrong-conversation routing of `sessionId`-less requests         | **Resolved** |
-| I  | Lossy `session.updated` payload on title changes     | List row loses time/summary/defaults until refresh             | Open (Small–Med) |
+| I  | Lossy `session.updated` payload on title changes     | List row loses time/summary/defaults until refresh             | **Resolved** |
 | E  | Typed ACP/Cursor boundary DTOs                        | Enabler / safety net for C and F                                | Blocked on traces (Large) |
 | F  | `getSessionMessages` richer failure contract         | "Broken replay" vs "empty thread" on the phone                  | Open (Small–Med) |
 | D  | Cursor decisions needing a trace / product call      | Small, but blocked on evidence                                  | Blocked on evidence |
@@ -141,64 +141,51 @@ reconcile paths, `SessionRepository`, derived-session enumeration filtering.
 
 ---
 
-## Theme C — ACP protocol completeness in the mapper
+## Theme C — ACP protocol completeness in the mapper ✅ Resolved
 
-Cursor does not exercise these; a spec-compliant ACP agent would. **Gate each on
-a real trace of a driving agent** — do not add speculative branches (the live
-per-chunk `messageId` variant was already declined once on exactly this YAGNI
-ground). Theme E (typed DTOs) is the safety net that makes these less error-prone.
+**Resolved** — all five items. Each was verified against the published ACP v1
+JSON schema (`zed-industries/agent-client-protocol`, `schema/v1/schema.json`)
+before implementation, satisfying the "gate on evidence" requirement without a
+live trace: the schema pins `ContentChunk.messageId`, the `{type: "diff"}`
+tool-content variant, `available_commands_update.availableCommands`,
+`sessionCapabilities.resume` + `session/resume` (documented as replaying no
+history), and grouped `SessionConfigSelectOptions`. Parsing stays fail-soft
+raw-map (Theme E's typed DTOs remain deferred).
 
-- **C1 — honor `ContentChunk.messageId` for message boundaries.** ACP v1 says a
-  change in `messageId` starts a new message; the mapper groups solely by role,
-  so an agent emitting multiple same-role messages in one turn collapses distinct
-  ids into one Sesori message (later chunks can merge/overwrite the wrong one).
-  Applies to both the **live** path (`acp_event_mapper.dart`) and the **replay**
-  path (`acp_session_loader.dart` `_ensureRole`). Use chunk `messageId` when
-  present; synthesize a fallback only when absent.
+- **C1 — `ContentChunk.messageId` honoured for message boundaries.** Both the
+  live mapper and the replay collector group chunks by the explicit
+  `messageId` when present (a change starts a new sesori message, same-id
+  chunks merge back), and fall back to the previous synthesis (per-turn id
+  live, role-grouping in replay) when absent — Cursor today stamps none.
   Sources: [#332 r3542170721](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3542170721),
   [r3536293262](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536293262),
   [r3542170730](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3542170730)
 
-- **C2 — treat diff `content` and initial file-mutating `tool_call` as
-  mutations.** Today `BridgeSseSessionDiff` is emitted only when a
-  `tool_call_update` carries `kind` `edit`/`delete`/`move`. An agent that reports
-  an edit through the standard tool `content` diff shape (`type: "diff"`), or
-  sends the mutation as a complete initial `tool_call`, never triggers the SSE,
-  so mobile diff/unseen refresh leaves session diff state stale. Detect `content`
-  entries with `type: "diff"` and mirror the emission for initial file-mutating
-  `tool_call`s.
+- **C2 — diff `content` and initial file-mutating `tool_call` emit the diff
+  signal.** `_isFileMutation` also detects `content` entries of
+  `type: "diff"`, and the initial `tool_call` mirrors `tool_call_update`'s
+  `BridgeSseSessionDiff` emission.
   Source: [#332 r3542170739](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3542170739)
 
-- **C3 — cache and serve ACP slash commands.** When an ACP agent advertises
-  commands via `available_commands_update`, the mapper emits a refresh signal but
-  the `/commands` endpoint (`getCommands`) always returns empty, so ACP/Cursor
-  users never see backend-provided slash commands. Store the latest command
-  payload from `available_commands_update` and map it in `getCommands`.
+- **C3 — ACP slash commands are cached and served.** The mapper caches the
+  latest `available_commands_update` payload (process-global, last update
+  wins — the notification is per-session but commands are agent-global for
+  every shipping backend) and `getCommands` serves it.
   Source: [#332 r3542170736](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3542170736)
 
-- **C4 — resume-only sessions (`session/resume`).** `_ensureResident` only
-  handles agents advertising `loadSession`; for one that advertises
-  `sessionCapabilities.resume` but not `loadSession`, it marks the session
-  resident without any resume RPC. After a bridge restart `_residentSessions` is
-  empty, so the next prompt hits `session/prompt` against a session the new agent
-  process never loaded, and resume-only agents reject it as unknown. Parse the
-  resume capability and issue `session/resume` before prompting. Cursor uses the
-  `loadSession` path, so no shipping backend needs this yet.
+- **C4 — resume-only sessions.** `sessionCapabilities.resume` is parsed, and
+  an agent advertising it without `loadSession` gets `session/resume`
+  (session cwd, no replay suppression — resume replays nothing) before the
+  first prompt of a prior-run session, with the same residency policy as the
+  load path: resident on success or permanently-unsupported RPC, transient
+  failures retry on the next turn.
   Source: [#332 r3545348046](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545348046)
 
-- **C5 — flatten grouped `SessionConfigSelectOptions`.** ACP config select
-  options can be *grouped*, but `cursor_model_probe` only returns the top-level
-  maps. If Cursor (or another ACP agent) groups its model/mode choices, the
-  returned entries are group objects with no `value`, so `getProviders` drops
-  every nested model/variant and `applyTurnSelection` can no longer find a
-  selectable value. Flatten nested group `options` before caching the catalog.
-  (Landed at merge; Cursor's current shape is flat, so this is robustness for a
-  grouped agent rather than an observed Cursor bug.)
+- **C5 — grouped `SessionConfigSelectOptions` are flattened.**
+  `CursorModelProbe.options` expands group entries (`{group, name, options}`)
+  in order, so a grouped model/mode catalog surfaces every nested value for
+  `getProviders` and `applyTurnSelection`.
   Source: [#332 r3545873657](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873657)
-
-**Affected surfaces.** `acp_event_mapper.dart`, `acp_session_loader.dart`,
-`acp_plugin.dart` (command cache + `getCommands` + `_ensureResident`),
-`sesori_plugin_cursor/lib/src/cursor_model_probe.dart` (C5), plugin models.
 
 ---
 
@@ -267,23 +254,24 @@ turn-lifecycle rework in `acp_plugin.dart`, covered by
 
 ---
 
-## Theme I — Lossy `session.updated` payload on title changes
+## Theme I — Lossy `session.updated` payload on title changes ✅ Resolved
 
-`session_info_update` emits a full minimal `Session` (id + title, other fields
-null). When no stored bridge row exists yet — during ACP session creation before
-`insertStoredSession`, or for a historical Cursor session — enrichment cannot
-restore the omitted fields. Because the mobile list handler *replaces* the whole
-session on `session.updated`, `time`, `summary`, prompt defaults, etc. go null
-and the row can sort at updated-time `0` until a full refresh. Emit a title
-patch, or merge against the previous session, instead of a full minimal `Session`
-with null fields. This is the field-fidelity flip side of the title-clear work:
-clearing the title is correct, but the minimal payload should not null unrelated
-fields.
+**Resolved at the emitter.** The plugin feeds the mapper a per-session
+title/time snapshot (from every enumeration hit and from `createSession`, so
+the creation race before `insertStoredSession` is covered), and the
+`session_info_update` emission merges against it: the payload keeps the new
+title semantics (explicit null still clears) but now carries the best-known
+`time` — including the notification's own `updatedAt` when the agent sends
+one — instead of nulling it, so the mobile list row keeps its sort position
+even when no stored bridge row exists to enrich from.
+
+The client's `SessionListCubit._onSessionUpdated` replace semantics were
+deliberately left unchanged: a client-side merge would have to guess whether a
+null field means "unknown" or "cleared", while the emitter knows exactly which
+fields it has — fidelity is fixed at the source. (`summary`/`promptDefaults`/
+`pullRequest`/`unseen` are bridge-enrichment fields filled from the stored row
+when one exists; when none exists there is genuinely nothing to restore.)
 Source: [#332 r3545873668](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873668)
-
-**Affected surfaces.** `acp_event_mapper.dart` (`_minimalSession` / the
-`session_info_update` emission), and the client `session.updated` merge semantics
-(`SessionListCubit._onSessionUpdated`).
 
 ---
 

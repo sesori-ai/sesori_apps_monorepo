@@ -34,13 +34,13 @@ class AcpReplayCollector {
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
         final t = acpContentText(update["content"]);
-        if (t != null) _assistant().text.write(t);
+        if (t != null) _assistant(messageId: _chunkMessageId(update)).text.write(t);
       case "agent_thought_chunk":
         final t = acpContentText(update["content"]);
-        if (t != null) _assistant().reasoning.write(t);
+        if (t != null) _assistant(messageId: _chunkMessageId(update)).reasoning.write(t);
       case "user_message_chunk":
         final t = acpContentText(update["content"]);
-        if (t != null) _user().text.write(t);
+        if (t != null) _user(messageId: _chunkMessageId(update)).text.write(t);
       case "tool_call":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
@@ -162,14 +162,42 @@ class AcpReplayCollector {
     );
   }
 
-  _Draft _assistant() => _ensureRole("assistant");
-  _Draft _user() => _ensureRole("user");
+  // Tool calls carry no messageId (they are not ContentChunks) and attach to
+  // the current assistant message, so the tool paths call these without one.
+  _Draft _assistant({String? messageId}) => _ensureRole("assistant", messageId: messageId);
+  _Draft _user({String? messageId}) => _ensureRole("user", messageId: messageId);
 
-  _Draft _ensureRole(String role) {
-    if (_drafts.isNotEmpty && _drafts.last.role == role) return _drafts.last;
-    final draft = _Draft(role: role, id: "$sessionId-h${_seq++}-$role");
+  /// The draft the next chunk belongs to. ACP v1: chunks of one message share
+  /// a `messageId`, and a change starts a new message — so the last draft is
+  /// reused only when both the role AND the message id match (a chunk without
+  /// an id, tool attachment included, always continues the current same-role
+  /// message). Comparison is against the last draft only, matching the spec's
+  /// sequential "a change indicates a new message" semantics.
+  _Draft _ensureRole(String role, {String? messageId}) {
+    if (_drafts.isNotEmpty && _drafts.last.role == role) {
+      final last = _drafts.last;
+      if (messageId == null || last.acpMessageId == null || last.acpMessageId == messageId) {
+        // Adopt the id when the running draft was started by id-less chunks:
+        // agents may stamp ids only on some chunk kinds of one message.
+        last.acpMessageId ??= messageId;
+        return last;
+      }
+    }
+    final draft = _Draft(
+      role: role,
+      id: messageId != null && messageId.isNotEmpty
+          ? "$sessionId-m$messageId-$role"
+          : "$sessionId-h${_seq++}-$role",
+      acpMessageId: messageId,
+    );
     _drafts.add(draft);
     return draft;
+  }
+
+  /// The chunk's ACP `messageId`, when present and well-formed.
+  static String? _chunkMessageId(Map<String, dynamic> update) {
+    final id = update["messageId"];
+    return id is String && id.isNotEmpty ? id : null;
   }
 
   _ToolDraft? _findTool(String toolId) {
@@ -193,10 +221,14 @@ class AcpReplayCollector {
 }
 
 class _Draft {
-  _Draft({required this.role, required this.id});
+  _Draft({required this.role, required this.id, required this.acpMessageId});
 
   final String role;
   final String id;
+
+  /// The ACP `messageId` this draft groups, when the agent stamped one.
+  /// Adopted late when the first stamped chunk arrives mid-message.
+  String? acpMessageId;
   final StringBuffer text = StringBuffer();
   final StringBuffer reasoning = StringBuffer();
   final Map<String, _ToolDraft> tools = {};
