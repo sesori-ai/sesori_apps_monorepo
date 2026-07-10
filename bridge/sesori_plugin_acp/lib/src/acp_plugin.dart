@@ -1127,7 +1127,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         return const [];
       }
       var received = 0;
-      final deferredCommandRefreshes = <BridgeSseSessionsUpdated>[];
+      BridgeSseSessionsUpdated? deferredCommandRefresh;
       sub = replayClient.notifications.listen((notification) {
         if (notification.method == AcpMethods.sessionUpdate) {
           received++;
@@ -1135,9 +1135,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           final update = notification.params["update"];
           if (update is Map && update["sessionUpdate"] == "available_commands_update") {
             _commandTracker.consume(notification);
-            deferredCommandRefreshes.addAll(
-              eventMapper.map(notification).whereType<BridgeSseSessionsUpdated>(),
-            );
+            final refreshes = eventMapper.map(notification).whereType<BridgeSseSessionsUpdated>();
+            if (refreshes.isNotEmpty) deferredCommandRefresh = refreshes.last;
           }
         }
       });
@@ -1162,7 +1161,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // AFTER it. Drain until the replay stream goes quiet so multi-turn history
       // is captured in full, bounded so a chatty agent can't hang the request.
       await _drainReplay(() => received);
-      deferredCommandRefreshes.forEach(_eventBuffer.add);
+      final commandRefresh = deferredCommandRefresh;
+      if (commandRefresh != null) _eventBuffer.add(commandRefresh);
       collector.modelId = eventMapper.modelForSession(sessionId);
       collector.providerId = eventMapper.providerForSession(sessionId);
       return collector.build();

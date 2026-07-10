@@ -235,6 +235,19 @@ void main() {
           "update": {
             "sessionUpdate": "available_commands_update",
             "availableCommands": [
+              {"name": "stale_replay_command"},
+            ],
+          },
+        },
+      });
+      replay.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
               {"name": "from_replay"},
             ],
           },
