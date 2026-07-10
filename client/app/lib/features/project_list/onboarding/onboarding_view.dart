@@ -351,9 +351,9 @@ class _NeedHelpMenu extends StatelessWidget {
 /// The per-platform install commands: a flat iOS-style segmented control that
 /// switches between the Unix (macOS/Linux/WSL) and Windows install groups, and
 /// a single [_InstallCommandBox] showing the selected group's methods. Shared
-/// by the [_OnboardingChecklist] and the bridge-offline reconnect disclosure
-/// ([_BridgeOfflineView]) so both stay in sync; callers supply their own
-/// surrounding padding.
+/// by the connect-setup onboarding ([_ConnectBridgeChecklist]) and the
+/// bridge-offline reconnect disclosure ([_BridgeOfflineView]) so both stay in
+/// sync; callers supply their own surrounding padding.
 class _InstallCommandBoxes extends StatefulWidget {
   const _InstallCommandBoxes({required this.surface, this.stepHeader});
 
