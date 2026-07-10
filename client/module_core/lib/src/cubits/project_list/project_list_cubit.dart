@@ -421,6 +421,9 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           unseenByProjectId: _unseenByProjectId(remaining),
         ),
       );
+      // Hiding the last project lands on the connected-empty body, which
+      // names the machine — same follow-up enrichment as an empty fetch.
+      if (remaining.isEmpty) unawaited(_enrichLoadedEmptyWithBridges());
     }
   }
 

@@ -741,6 +741,38 @@ void main() {
               .having((s) => s.bridges.map((b) => b.name), "bridge names", ["Macbook-Pro.local"]),
         ],
       );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "hiding the last project enriches the now-empty list with the machine identity",
+        build: () {
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success(Projects(data: [testProject(id: "only")])),
+          );
+          when(
+            () => mockProjectService.hideProject(projectId: any(named: "projectId")),
+          ).thenAnswer((_) async => ApiResponse.success(null));
+          when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
+            (_) async => [testBridgeSummary(name: "Macbook-Pro.local")],
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero); // non-empty initial load
+          await cubit.hideProject("only");
+          await Future<void>.delayed(Duration.zero); // enrichment lands
+        },
+        skip: 1, // the non-empty initial load
+        // The local hide reaches the connected-empty body just like an empty
+        // fetch does, so it gets the same follow-up machine-identity emit.
+        expect: () => [
+          isA<ProjectListLoaded>()
+              .having((s) => s.projects, "projects", isEmpty)
+              .having((s) => s.bridges, "bridges", isEmpty),
+          isA<ProjectListLoaded>()
+              .having((s) => s.projects, "projects", isEmpty)
+              .having((s) => s.bridges.map((b) => b.name), "bridge names", ["Macbook-Pro.local"]),
+        ],
+      );
     });
 
     // -------------------------------------------------------------------------
