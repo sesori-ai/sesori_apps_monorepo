@@ -85,6 +85,17 @@ void main() {
           },
         },
       });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "old-session",
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": const <Object?>[],
+          },
+        },
+      });
       await pump();
       fake.emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
 
@@ -104,6 +115,9 @@ void main() {
 
       // The suppressed replay produced no message events on the live stream.
       expect(emitted.whereType<BridgeSseMessagePartDelta>(), isEmpty);
+      // Command metadata is current even during a history replay, so the
+      // client receives the stale-session signal and re-fetches it.
+      expect(emitted.whereType<BridgeSseSessionsUpdated>(), hasLength(1));
 
       // Complete the first turn so the follow-up prompt dispatches (turns on
       // one session are serialized).

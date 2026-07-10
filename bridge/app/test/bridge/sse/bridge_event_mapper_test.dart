@@ -94,6 +94,15 @@ void main() {
       expect((result! as SesoriSessionDiff).sessionID, equals("s1"));
     });
 
+    test("maps stale project sessions to sessions.updated", () {
+      final result = mapper.map(
+        const BridgeSseSessionsUpdated(sessionID: "s1", projectID: "p1"),
+      );
+
+      expect(result, isA<SesoriSessionsUpdated>());
+      expect((result! as SesoriSessionsUpdated).projectID, "p1");
+    });
+
     test("maps command.executed events", () {
       final result = mapper.map(
         const BridgeSseCommandExecuted(
