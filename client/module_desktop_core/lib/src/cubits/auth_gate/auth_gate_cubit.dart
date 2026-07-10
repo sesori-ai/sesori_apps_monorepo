@@ -21,6 +21,7 @@ class AuthGateCubit extends Cubit<AuthGateState> {
 
   final AuthSession _authSession;
   StreamSubscription<AuthState>? _subscription;
+  Future<void>? _backgroundRestore;
 
   Future<void> _restoreAndSubscribe() async {
     bool hasLocalSession = false;
@@ -58,7 +59,15 @@ class AuthGateCubit extends Cubit<AuthGateState> {
     }
 
     // Recover the account details in the background; the auth stream upgrades
-    // the state to a full signedIn(user) when it completes.
+    // the state to a full signedIn(user) when it completes. The future is
+    // kept so signOut() can fence on it.
+    final Future<void> restore = _recoverUserInBackground();
+    _backgroundRestore = restore;
+    await restore;
+    _backgroundRestore = null;
+  }
+
+  Future<void> _recoverUserInBackground() async {
     try {
       final bool restored = await _authSession.restoreSession();
       if (!restored) {
@@ -77,6 +86,20 @@ class AuthGateCubit extends Cubit<AuthGateState> {
   /// signed in). The coordinated bridge-unregister logout flow builds on top
   /// of this later.
   Future<void> signOut() async {
+    // Fence on the startup user recovery: its /auth/me completion re-emits
+    // authenticated, which must land BEFORE logout's unauthenticated — never
+    // after, or a signed-out user would be flipped back to signed in.
+    final Future<void>? pending = _backgroundRestore;
+    if (pending != null) {
+      try {
+        await pending.timeout(const Duration(seconds: 5));
+      } on TimeoutException {
+        // Pathologically slow restore: proceed with the sign-out rather than
+        // blocking the user; the stale-completion window this reopens is the
+        // hang itself.
+        logw("Background session restore still pending at sign-out; proceeding");
+      }
+    }
     try {
       await _authSession.logoutCurrentDevice();
     } on Object catch (error, stackTrace) {

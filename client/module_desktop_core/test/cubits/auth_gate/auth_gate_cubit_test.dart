@@ -102,6 +102,35 @@ void main() {
     verify(() => authSession.restoreSession()).called(1);
   });
 
+  test("signing out during token-only recovery cannot be undone by the in-flight restore", () async {
+    when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => true);
+    when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
+    final Completer<bool> restore = Completer<bool>();
+    when(() => authSession.restoreSession()).thenAnswer(
+      (_) => restore.future.then((confirmed) {
+        if (confirmed) {
+          authStates.add(const AuthState.authenticated(user: _user));
+        }
+        return confirmed;
+      }),
+    );
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {
+      authStates.add(const AuthState.unauthenticated());
+    });
+    final AuthGateCubit cubit = AuthGateCubit(authSession);
+    addTearDown(cubit.close);
+    await pumpEventQueue();
+    expect(cubit.state, const AuthGateState.signedIn(user: null));
+
+    final Future<void> signOut = cubit.signOut();
+    // The /auth/me confirmation lands only AFTER the user clicked sign out.
+    restore.complete(true);
+    await signOut;
+    await pumpEventQueue();
+
+    expect(cubit.state, const AuthGateState.signedOut());
+  });
+
   test("an unconfirmed background restore stays provisionally signed in", () async {
     when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => true);
     when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
