@@ -71,7 +71,14 @@ class SessionRepository {
         // The plugin scopes sessions by directory, so hand it the project's
         // live directory — the id may point where the folder used to be.
         final directory = await _projectsDao.getResolvedPath(projectId: projectId);
-        return plugin.getSessions(directory, start: start, limit: limit);
+        final sessions = await plugin.getSessions(directory, start: start, limit: limit);
+        // Sessions fetched for a project belong to it by construction. Re-key
+        // them to the stable id: when the lookup went through a moved folder's
+        // live path, the plugin can only echo the directory it was asked
+        // about, not the identifier the phone and the bridge key on.
+        return [
+          for (final session in sessions) session.copyWith(projectID: projectId),
+        ];
 
       case final BridgeDerivedProjectsPluginApi plugin:
         final sessionProjectPaths = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);

@@ -122,6 +122,16 @@ void main() {
     expect(pushedProjectId, equals("/projects/my-app"));
   });
 
+  testWidgets("tile derives the name from a Windows bridge path", (tester) async {
+    // Paths come from the bridge's host platform — a Windows bridge sends
+    // backslash-separated directories that the phone must still parse.
+    final project = testProject(id: r"C:\dev\win-app", path: r"C:\dev\win-app");
+
+    await pumpScreen(tester, projects: [project], onSessionsRoute: (_) {});
+
+    expect(find.text("win-app"), findsOneWidget);
+  });
+
   testWidgets("tile falls back to the id when an older bridge sends no path", (tester) async {
     // Older bridges omit `path`; there the id IS the directory.
     final project = Project.fromJson({

@@ -21,7 +21,7 @@ class _ProjectTile extends StatelessWidget {
     // Display the live directory; the id is a stable handle that may point
     // where the folder used to be before a move.
     final displayPath = _projectDisplayPath(project);
-    final lastSegment = displayPath.split("/").last;
+    final lastSegment = _projectDirectoryBasename(project);
     final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
     final updatedAt = project.time?.updated;
     final isActive = activeSessions > 0;

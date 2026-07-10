@@ -657,7 +657,7 @@ void main() {
     });
 
     group("moved project (stable id, new live path)", () {
-      test("getSessionsForProject hands the plugin the live directory", () async {
+      test("getSessionsForProject hands the plugin the live directory and re-keys sessions to the id", () async {
         final db = createTestDatabase();
         addTearDown(db.close);
         await db.projectsDao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", openedAt: 1);
@@ -665,6 +665,8 @@ void main() {
           "/moved/a": const [
             PluginSession(
               id: "s-live",
+              // The plugin can only echo the directory it was asked about —
+              // it has no notion of the bridge's stable identifier.
               projectID: "/moved/a",
               directory: "/moved/a",
               parentID: null,
@@ -694,6 +696,7 @@ void main() {
 
         expect(plugin.lastGetSessionsWorktree, equals("/moved/a"));
         expect(sessions.single.id, equals("s-live"));
+        expect(sessions.single.projectID, equals("/projects/a"));
       });
 
       test("getCommands resolves the project id to the live directory", () async {
