@@ -387,10 +387,9 @@ class OrchestratorSession {
       Log.d("subscribing to plugin event stream...");
       _plugin.events
           .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
+          .asyncMap<void>(_processPluginEvent)
           .listen(
-            (event) {
-              unawaited(_processPluginEvent(event));
-            },
+            (_) {},
             onError: (Object e, StackTrace st) {
               Log.w("plugin event stream error: $e");
               unawaited(

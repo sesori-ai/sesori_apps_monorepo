@@ -657,20 +657,29 @@ void main() {
     });
 
     test("a broken history replay surfaces as a typed failure, not an empty thread", () async {
+      final failingPlugin = AcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        processFactory: _throwReplayProcess,
+      );
+      addTearDown(failingPlugin.dispose);
       // Prime the directory so the replay needs no warm-up enumeration (and
       // therefore no main-client connection).
-      plugin.primeSessionDirectory(sessionId: "s-x", directory: cwd);
+      failingPlugin.primeSessionDirectory(sessionId: "s-x", directory: cwd);
 
-      final loading = plugin.getSessionMessages("s-x");
-      final init = await waitForFrame("initialize");
-      answered.add((fake(), init["id"]));
-      fake().emit({
-        "jsonrpc": "2.0",
-        "id": init["id"],
-        "error": {"code": -32603, "message": "agent exploded"},
-      });
-
-      await expectLater(loading, throwsA(isA<PluginOperationException>()));
+      try {
+        await failingPlugin.getSessionMessages("s-x");
+        fail("Expected history replay to fail");
+      } on PluginOperationException catch (_, stackTrace) {
+        expect(
+          stackTrace.toString(),
+          contains("_throwReplayProcess"),
+          reason: "the typed wrapper must retain the original replay failure stack",
+        );
+      }
     });
 
     test("an agent without loadSession serves an empty thread, not a failure", () async {
@@ -754,6 +763,10 @@ void main() {
       expect(openedQuestions.map((q) => q.sessionID).toSet(), {"s-opened"});
     });
   });
+}
+
+Future<AcpProcessHandle> _throwReplayProcess(AcpLaunchSpec _) async {
+  throw StateError("replay process failed to start");
 }
 
 /// [AcpPlugin] that captures the approval registry built at connect so tests

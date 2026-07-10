@@ -177,9 +177,7 @@ class DebugServer {
           // summary from repository data; everything else maps 1:1.
           .asyncMap<SesoriSseEvent?>(
             (event) async => event is BridgeSseProjectUpdated
-                ? _mapper.buildProjectsSummaryEvent(
-                    projects: await _sessionRepository.getProjectActivitySummaries(),
-                  )
+                ? _buildProjectsSummary()
                 : _mapper.map(event),
           )
           .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
@@ -237,6 +235,35 @@ class DebugServer {
           Log.d("fan-out cleanup: client close failed (ignored): $e");
         }
       }
+    }
+  }
+
+  Future<SesoriSseEvent?> _buildProjectsSummary() async {
+    try {
+      return _mapper.buildProjectsSummaryEvent(
+        projects: await _sessionRepository.getProjectActivitySummaries(),
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("debug SSE projects-summary rebuild failed", error, stackTrace);
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: error,
+              stackTrace: stackTrace,
+              uniqueIdentifier: "bridge.debug_server.projects_summary",
+              fatal: false,
+              reason: "debug SSE projects-summary rebuild failed",
+              information: const [],
+            )
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w(
+                "debug SSE projects-summary failure report failed",
+                reportError,
+                reportStackTrace,
+              );
+            }),
+      );
+      return null;
     }
   }
 

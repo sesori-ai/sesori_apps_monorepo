@@ -1187,15 +1187,18 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       collector.modelId = eventMapper.modelForSession(sessionId);
       collector.providerId = eventMapper.providerForSession(sessionId);
       return collector.build();
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       // A broken replay (connect/init/auth/load failure) must stay
       // distinguishable from a genuinely empty thread: surface it as a typed
       // failure (the bridge router maps it to a 502 and the phone renders a
       // retry state) instead of swallowing it into an empty list.
-      throw PluginOperationException(
-        "session/load history replay",
-        message: "history replay for $sessionId failed",
-        cause: error,
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          "session/load history replay",
+          message: "history replay for $sessionId failed",
+          cause: error,
+        ),
+        stackTrace,
       );
     } finally {
       try {
