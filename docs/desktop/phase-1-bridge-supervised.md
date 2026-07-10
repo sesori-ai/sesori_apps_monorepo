@@ -947,21 +947,26 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   is still reported via its exit code), and upgrade-handler isolation (a
   mid-handshake disconnect can't crash the control server).
 
-## PR 1.16 — Coalesce supervised provisioning download progress (MT-1 finding)
+## PR 1.16 — Address MT-1 supervised findings
 - **Goal:** Prevent per-download-chunk `provision_progress` frames from flooding
   the GUI control channel while preserving the bridge's local typed progress
-  stream and standalone stderr rendering unchanged.
+  stream and standalone stderr rendering unchanged. Keep release-track startup
+  diagnostics truthful when the shared update policy suppresses auto-updates.
 - **Risk:** Low. **Size:** S.
 - **Regression guide:** touches only the supervised provision-message choke
   point. Check: (1) known-size downloads send the first update, each integer
   percentage advance, and 100%; (2) unknown-size downloads remain observable;
   (3) resolving/notice/verifying/extracting/ready/failed remain immediate and
   ordered; (4) channel-down sends stay best-effort; (5) runner consumption,
-  `ProvisionReady.binaryPath`, and standalone formatting are untouched.
+  `ProvisionReady.binaryPath`, and standalone formatting are untouched; (6) the
+  internal release-track warning agrees with the existing update-policy result,
+  without changing reconciliation or background-update behavior.
 - **Acceptance:** a known-size download emits at most about 101 control frames
   instead of one per network chunk; null/non-positive totals emit at 512 KiB
   intervals; every phase and terminal event is delivered immediately; focused
-  notifier tests and the full bridge analyze/test gates pass.
+  notifier tests and the full bridge analyze/test gates pass. An internal-track
+  supervised run reports that auto-updates are disabled instead of claiming
+  they are enabled.
 - **Aristotle:** plan ☑ · impl ☑ (PR raised on branch
   `test-manual-phase-1`).
 - **Findings:** MT-1 check 12 downloaded the 55,170,827-byte OpenCode archive and
@@ -976,7 +981,12 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   shared DTO change, or client-side debounce was added. A manual rerun against
   the PR binary emitted 101 download frames in this run, plus one each for
   `verifying`, `extracting`, and `ready`; the standalone rerun still rendered
-  its download bar and all three phase transitions.
+  its download bar and all three phase transitions. MT-1 check 14 then exposed
+  a contradictory diagnostic: supervised mode correctly suppresses updates but
+  still logged `pre-release auto-updates enabled` on the internal track. The
+  runner now resolves `shouldSkipUpdates` once before logging and uses that same
+  value for both the message and the existing reconciliation gate; update policy
+  is unchanged.
 - **Deltas:** PR 1.13's documented one-frame-per-source-event implementation is
   intentionally narrowed at the wire seam. The runner still feeds every local
   event to the notifier and standalone stderr remains byte-identical; only
@@ -1023,4 +1033,7 @@ which is not in the repo, so it fails on a fresh checkout); have a logged-in
   returned 401; restarting with a freshly persisted token made check 11 pass
   (server unregister, `bridge_id` removal, exit 0). Keep this harness-only
   limitation in mind for the remaining checks; the production GUI is the
-  refresh authority. **Deltas:** MT-1 remains open until every row passes.
+  refresh authority. Check 14 exposed a misleading internal-track message that
+  claimed auto-updates were enabled during supervised suppression; PR 1.16 now
+  reports the shared policy result truthfully. The standalone-reconciliation
+  half remains pending. **Deltas:** MT-1 remains open until every row passes.
