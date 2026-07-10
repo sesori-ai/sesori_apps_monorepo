@@ -156,7 +156,12 @@ class ControlChannelServer {
     }
 
     try {
-      await socket?.close();
+      // Bounded: a wedged peer that never completes the WS close handshake
+      // must not block teardown — the forced server close below rips the
+      // underlying connection regardless.
+      await socket?.close().timeout(const Duration(seconds: 2));
+    } on TimeoutException {
+      logw("Helper control socket close timed out; forcing server teardown");
     } on Object catch (error, stackTrace) {
       // Best-effort teardown: the socket may already be dead.
       logw("Error closing the helper control socket", error, stackTrace);
