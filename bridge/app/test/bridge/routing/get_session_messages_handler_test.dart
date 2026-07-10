@@ -14,7 +14,9 @@ void main() {
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetSessionMessagesHandler(plugin);
+      handler = GetSessionMessagesHandler(
+        sessionRepository: FakeSessionRepository(plugin: plugin),
+      );
     });
 
     tearDown(() => plugin.close());

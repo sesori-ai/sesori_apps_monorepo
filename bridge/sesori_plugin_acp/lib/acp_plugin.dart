@@ -5,6 +5,7 @@
 // session/load history replay, and a concrete AcpPlugin. Concrete harnesses
 // (e.g. cursor_plugin) consume these and layer on their own quirks.
 export "src/acp_approval_registry.dart";
+export "src/acp_command_tracker.dart";
 export "src/acp_event_mapper.dart";
 export "src/acp_plugin.dart";
 export "src/acp_process_factory.dart";

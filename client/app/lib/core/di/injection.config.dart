@@ -10,6 +10,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:device_info_plus/device_info_plus.dart' as _i833;
+import 'package:firebase_analytics/firebase_analytics.dart' as _i398;
 import 'package:firebase_crashlytics/firebase_crashlytics.dart' as _i141;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as _i163;
@@ -27,6 +28,9 @@ import 'package:sesori_mobile/capabilities/voice/voice_transcription_service.dar
     as _i1038;
 import 'package:sesori_mobile/capabilities/voice/wake_lock_service.dart'
     as _i511;
+import 'package:sesori_mobile/core/analytics/analytics_reporter.dart' as _i199;
+import 'package:sesori_mobile/core/analytics/firebase_analytics_reporter.dart'
+    as _i330;
 import 'package:sesori_mobile/core/di/register_module.dart' as _i124;
 import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
     as _i875;
@@ -76,8 +80,16 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i141.FirebaseCrashlytics>(
       () => registerModule.firebaseCrashlytics,
     );
+    gh.lazySingleton<_i398.FirebaseAnalytics>(
+      () => registerModule.firebaseAnalytics,
+    );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
     gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
+    gh.lazySingleton<_i199.AnalyticsReporter>(
+      () => _i330.FirebaseAnalyticsReporter(
+        analytics: gh<_i398.FirebaseAnalytics>(),
+      ),
+    );
     gh.lazySingleton<_i948.LocalNotificationClient>(
       () => _i636.FlutterLocalNotificationClient(
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
