@@ -1,12 +1,13 @@
 # Cursor / ACP Backend — Deferred Follow-ups
 
-> Status: **not scoped, not started**. This document tracks improvements that
-> were consciously deferred during (and at merge time of) the review of PR #332
-> (`feat(bridge): add Cursor backend via ACP`). Each item is something a reviewer
-> (human or bot) raised and we agreed was real, but out of scope for that PR —
-> either because it needs a bridge-side change beyond aligning the plugin,
-> because it needs a real protocol trace before it can be done safely, or because
-> the finding landed as the PR merged (Themes H and I, and C5, are these last).
+> Status: **in progress — resolved themes are marked per section**. This
+> document tracks improvements that were consciously deferred during (and at
+> merge time of) the review of PR #332 (`feat(bridge): add Cursor backend via
+> ACP`). Each item is something a reviewer (human or bot) raised and we agreed
+> was real, but out of scope for that PR — either because it needs a
+> bridge-side change beyond aligning the plugin, because it needs a real
+> protocol trace before it can be done safely, or because the finding landed as
+> the PR merged (Themes H and I, and C5, are these last).
 >
 > When you pick one up, **re-verify the claim against current code first** —
 > file/line references were accurate at review time and may have drifted. Every
@@ -42,17 +43,17 @@ than observed Cursor bugs. That is called out per item.
 
 ## Priority (suggested)
 
-| #  | Theme                                                | Why it matters                                                  | Rough cost |
+| #  | Theme                                                | Why it matters                                                  | Status |
 |----|------------------------------------------------------|----------------------------------------------------------------|------------|
-| H  | Resume-load & per-session turn robustness            | **User-facing:** stuck conversations, dropped queued prompts, replay leak | Medium     |
-| A  | Bridge↔plugin stored-directory / attribution seam    | Real worktree flows on restart; one hook resolves three threads | Medium     |
-| B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | Medium     |
-| C  | ACP protocol completeness in the mapper / parsers    | Correctness for the next ACP backend                            | Medium     |
-| G  | Concurrent multi-session turn attribution            | Wrong-conversation routing of `sessionId`-less requests         | Medium     |
-| I  | Lossy `session.updated` payload on title changes     | List row loses time/summary/defaults until refresh             | Small–Med  |
-| E  | Typed ACP/Cursor boundary DTOs                        | Enabler / safety net for C and F                                | Large      |
-| F  | `getSessionMessages` richer failure contract         | "Broken replay" vs "empty thread" on the phone                  | Small–Med  |
-| D  | Cursor decisions needing a trace / product call      | Small, but blocked on evidence                                  | Small      |
+| H  | Resume-load & per-session turn robustness            | **User-facing:** stuck conversations, dropped queued prompts, replay leak | **Resolved** |
+| A  | Bridge↔plugin stored-directory / attribution seam    | Real worktree flows on restart; one hook resolves three threads | Open (Medium) |
+| B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | Open (Medium) |
+| C  | ACP protocol completeness in the mapper / parsers    | Correctness for the next ACP backend                            | Open (Medium) |
+| G  | Concurrent multi-session turn attribution            | Wrong-conversation routing of `sessionId`-less requests         | **Resolved** |
+| I  | Lossy `session.updated` payload on title changes     | List row loses time/summary/defaults until refresh             | Open (Small–Med) |
+| E  | Typed ACP/Cursor boundary DTOs                        | Enabler / safety net for C and F                                | Blocked on traces (Large) |
+| F  | `getSessionMessages` richer failure contract         | "Broken replay" vs "empty thread" on the phone                  | Open (Small–Med) |
+| D  | Cursor decisions needing a trace / product call      | Small, but blocked on evidence                                  | Blocked on evidence |
 
 ---
 
@@ -201,73 +202,68 @@ ground). Theme E (typed DTOs) is the safety net that makes these less error-pron
 
 ---
 
-## Theme G — Concurrent multi-session turn attribution
+## Theme G — Concurrent multi-session turn attribution ✅ Resolved
 
-`_dispatchPrompt` records the in-flight turn in a single process-wide
-`_activeTurnSessionId`, and server-originated requests that arrive without their
-own `sessionId` (Cursor's `cursor/create_plan`, some question requests) are
-attributed to it. With two sessions prompting concurrently on one agent process,
-the last dispatch wins: a `sessionId`-less request raised for session A after
-session B's prompt was dispatched is attributed to B, so the phone shows and
-answers it in the *wrong* conversation while A stays blocked. A precise fix needs
-request→session correlation (or serialization of `sessionId`-less turns), not a
-single last-writer field — a design change, so it is tracked here rather than
-patched inline. Not observed with Cursor single-session use; it needs two
-concurrent in-flight prompts on one process to bite.
+**Resolved.** The single last-writer `_activeTurnSessionId` field was replaced
+with dispatch-ordered in-flight turn tracking in `AcpPlugin`. A
+`sessionId`-less server request (Cursor's `cursor/create_plan`, some question
+requests) now resolves:
+
+- **precisely** when exactly one turn is in flight — the common case, and the
+  exact scenario from the review thread (A's request arriving after B's turn
+  already completed now routes to A, not B);
+- to the **most recent dispatch, with a logged warning**, when several turns
+  are in flight — ACP carries no request→turn correlation, so this residual
+  ambiguity is inherent to the protocol and now explicitly diagnosed instead
+  of silent;
+- to the **last dispatched turn's session** when none is in flight (unchanged
+  boundary behaviour).
+
+The base `AcpApprovalRegistry` wiring also gained the same
+`activeSessionResolver` Cursor already used, so a spec-violating
+`sessionId`-less permission request on any ACP harness resolves instead of
+auto-cancelling. Per-session turn serialization (Theme H) removed the
+same-session overlap half of the problem; covered by
+`acp_turn_serialization_test.dart`.
 Source: [#332 r3545348052](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545348052)
-
-**Affected surfaces.** `acp_plugin.dart` (`_activeTurnSessionId`,
-`_dispatchPrompt`, turn lifecycle), `acp_approval_registry.dart`
-(server-request → session attribution).
 
 ---
 
-## Theme H — Resume-load & per-session turn robustness
+## Theme H — Resume-load & per-session turn robustness ✅ Resolved
 
-Robustness gaps in the ACP plugin's own turn lifecycle (`_ensureResident`,
-`_dispatchPrompt`, `_residentSessions`, `_activeSessions`, replay suppression).
-Unlike Theme G (cross-session `sessionId`-less attribution), these bite *within*
-a single session's resume/prompt flow. Two are user-facing bugs, so this theme
-outranks pure spec-completeness. All three landed as review comments at merge.
+**Resolved** — all three items, designed together with Theme G as one
+turn-lifecycle rework in `acp_plugin.dart`, covered by
+`acp_turn_serialization_test.dart` plus the updated resume tests.
 
-- **H1 — do not cache failed resume loads as resident.** `_ensureResident`'s
-  `finally` adds the session to `_residentSessions` even when `session/load`
-  fails for a transient reason (timeout, RPC hiccup). The immediate
-  `session/prompt` then runs against a session the fresh ACP process may never
-  have loaded, and every retry skips `session/load` because the session is now
-  cached resident — so the conversation stays unrecoverable until the agent
-  respawns. Mark resident only after a successful load (or a specifically
-  memoized *unsupported* case), not after all failures. The current
-  mark-on-failure was deliberate (avoid a re-load loop), so the fix must keep
-  that guarantee for the genuinely-unsupported case while still retrying
-  transient ones. **User-facing (High).**
+- **H1 — failed resume loads are no longer cached as resident.**
+  `_ensureResident` marks a session resident only after a *successful*
+  `session/load` (or when the agent lacks the capability entirely). A
+  permanently unsupported load (`-32601`/`-32602` from an agent that
+  advertised `loadSession` anyway) is memoized as resident, preserving the
+  original no-reload-loop guarantee; transient failures (timeout, RPC hiccup)
+  leave the session non-resident. Residency is ensured at *dispatch time*
+  inside each serialized turn, so even a turn already queued when the load
+  failed retries the load itself before prompting.
   Source: [#332 r3545873646](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873646)
 
-- **H2 — serialize prompts per session.** `_dispatchPrompt` detaches the
-  `session/prompt` future, so `sendPrompt` returns as soon as the frame is
-  written. The mobile detail queue then drains the next queued message
-  immediately, producing overlapping `session/prompt` requests for one session;
-  agents that reject concurrent turns drop/error the second, and the Set-based
-  `_activeSessions` lets the first completion mark the session idle while another
-  turn is still running. Keep a per-session prompt chain (or reject-while-busy)
-  before dispatching another prompt for the same session. **User-facing (High).**
+- **H2 — prompts are serialized per session.** Each session owns a turn chain
+  (`_SessionTurnState`): a prompt enqueues, marks the session busy
+  immediately, and dispatches `session/prompt` only after the previous turn's
+  future settles, so agents never see overlapping turns for one session. The
+  session reports idle only when its *last* queued turn finishes (the old
+  Set-based early-idle is gone), turn model/mode selection is applied inside
+  the serialized turn (a queued prompt can no longer flip Cursor's
+  process-global selection under the still-running previous turn), and
+  `abortSession` drops queued-but-undispatched turns via a generation bump.
   Source: [#332 r3545873662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873662)
 
-- **H3 — ref-count replay suppression across concurrent loads.** When two
-  prompts for the same prior-run session enter `_ensureResident` before the first
-  `session/load` finishes, both share one `_suppressedSessions` entry. The first
-  load to finish removes suppression while the second replay can still be
-  streaming, so the remaining historical `session/update` chunks are delivered as
-  live transcript deltas. Coalesce per-session resume loads, or ref-count the
-  suppression before removing it.
+- **H3 — resume loads no longer race each other's suppression window.**
+  Resume loads run inside the session's serialized turn chain, so one
+  session's loads can never overlap — each `session/load` owns its whole
+  replay-suppression window (no early unsuppress mid-replay) — and the replay
+  quiet-window counters are per-session so two sessions resuming concurrently
+  don't reset each other's drain.
   Source: [#332 r3545873652](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873652)
-
-**Affected surfaces.** `acp_plugin.dart` (`_ensureResident`, `_dispatchPrompt`,
-`_residentSessions`, `_activeSessions`, `_suppressedSessions`).
-
-**Design note.** H2 and Theme G are both ACP-concurrency: a per-session turn
-chain (H2) also gives a natural home for tracking the active turn precisely
-(Theme G). Design them together.
 
 ---
 
