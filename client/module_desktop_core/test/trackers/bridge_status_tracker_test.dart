@@ -53,6 +53,7 @@ void main() {
   });
 
   test("unknown enum values from a newer helper are stored untouched", () {
+    tracker.markHelperConnected();
     tracker.applyStatus(
       status: const ControlStatus(
         relay: ControlRelayConnectionState.unknown,
@@ -63,6 +64,47 @@ void main() {
 
     expect(tracker.status.relay, ControlRelayConnectionState.unknown);
     expect(tracker.status.plugin, ControlPluginHealthState.unknown);
+  });
+
+  test("a stale status frame processed after disconnect is ignored", () {
+    tracker.markHelperConnected();
+    tracker.markHelperDisconnected();
+
+    tracker.applyStatus(
+      status: const ControlStatus(
+        relay: ControlRelayConnectionState.connected,
+        plugin: ControlPluginHealthState.healthy,
+        activeSessionCount: 5,
+      ),
+    );
+
+    expect(tracker.status.helperOnline, isFalse);
+    expect(tracker.status.relay, ControlRelayConnectionState.disconnected);
+    expect(tracker.status.activeSessionCount, 0);
+  });
+
+  test("a late registered frame is still recorded while offline", () {
+    tracker.handleRegistered(bridgeId: "bridge-late");
+
+    expect(tracker.status.bridgeId, "bridge-late");
+  });
+
+  test("writes after dispose are ignored instead of throwing", () {
+    final BridgeStatusTracker disposed = BridgeStatusTracker()..dispose();
+
+    expect(disposed.markHelperConnected, returnsNormally);
+    expect(disposed.markHelperDisconnected, returnsNormally);
+    expect(
+      () => disposed.applyStatus(
+        status: const ControlStatus(
+          relay: ControlRelayConnectionState.connected,
+          plugin: ControlPluginHealthState.healthy,
+          activeSessionCount: 1,
+        ),
+      ),
+      returnsNormally,
+    );
+    expect(() => disposed.handleRegistered(bridgeId: "x"), returnsNormally);
   });
 
   test("the stream pushes every write to subscribers", () async {

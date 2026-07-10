@@ -21,6 +21,9 @@ class BridgePromptTracker {
   /// Records an incoming `prompt_request`; a resend with an id already
   /// pending replaces the original (the helper resends after a reconnect).
   void addPrompt({required ControlPromptRequest prompt}) {
+    if (_prompts.isClosed) {
+      return;
+    }
     _prompts.add([
       for (final ControlPromptRequest pending in prompts)
         if (pending.id != prompt.id) pending,
@@ -30,7 +33,7 @@ class BridgePromptTracker {
 
   /// Drops a prompt once it has been answered (or the helper withdrew it).
   void removePrompt({required String id}) {
-    if (!prompts.any((prompt) => prompt.id == id)) {
+    if (_prompts.isClosed || !prompts.any((prompt) => prompt.id == id)) {
       return;
     }
     _prompts.add([
@@ -41,7 +44,7 @@ class BridgePromptTracker {
 
   /// Helper disconnected: pending prompts are unanswerable — drop them all.
   void clear() {
-    if (prompts.isEmpty) {
+    if (_prompts.isClosed || prompts.isEmpty) {
       return;
     }
     _prompts.add(const <ControlPromptRequest>[]);

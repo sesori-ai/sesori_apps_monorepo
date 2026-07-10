@@ -75,4 +75,12 @@ void main() {
 
     expect(tracker.prompts, isEmpty);
   });
+
+  test("writes after dispose are ignored instead of throwing", () {
+    final BridgePromptTracker disposed = BridgePromptTracker()..dispose();
+
+    expect(() => disposed.addPrompt(prompt: _replacePrompt), returnsNormally);
+    expect(() => disposed.removePrompt(id: "p1"), returnsNormally);
+    expect(disposed.clear, returnsNormally);
+  });
 }
