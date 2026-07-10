@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/prompt_part_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
@@ -708,6 +709,14 @@ class _NoopSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async =>
+      const <MessageWithParts>[];
+
+  @override
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async =>
+      const <ProjectActivitySummary>[];
+
+  @override
   Future<Session> createSession({
     required String directory,
     required String? parentSessionId,
@@ -848,6 +857,30 @@ class FakeSessionRepository implements SessionRepository {
   }) : _plugin = plugin,
        _sessionDao = sessionDao ?? FakeSessionDao(),
        _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository();
+
+  @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+    final pluginMessages = await _plugin.getSessionMessages(sessionId);
+    return pluginMessages.toSharedMessageWithParts();
+  }
+
+  @override
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => [
+    for (final summary in _plugin.getActiveSessionsSummary())
+      ProjectActivitySummary(
+        id: summary.id,
+        activeSessions: [
+          for (final active in summary.activeSessions)
+            ActiveSession(
+              id: active.id,
+              mainAgentRunning: active.mainAgentRunning,
+              awaitingInput: active.awaitingInput,
+              isRetrying: active.isRetrying,
+              childSessionIds: active.childSessionIds,
+            ),
+        ],
+      ),
+  ];
 
   @override
   Future<Session> createSession({

@@ -34,17 +34,17 @@ class AcpReplayCollector {
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
         final t = acpContentText(update["content"]);
-        if (t != null) _assistant().text.write(t);
+        if (t != null) _assistant(messageId: _chunkMessageId(update)).text.write(t);
       case "agent_thought_chunk":
         final t = acpContentText(update["content"]);
-        if (t != null) _assistant().reasoning.write(t);
+        if (t != null) _assistant(messageId: _chunkMessageId(update)).reasoning.write(t);
       case "user_message_chunk":
         final t = acpContentText(update["content"]);
-        if (t != null) _user().text.write(t);
+        if (t != null) _user(messageId: _chunkMessageId(update)).text.write(t);
       case "tool_call":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
-        _assistant().tools[id] = _ToolDraft(
+        _assistantForTool().tools[id] = _ToolDraft(
           tool: acpToolName(update),
           title: _toolTitle(update),
           status: acpToolStatus(update["status"]),
@@ -59,7 +59,7 @@ class AcpReplayCollector {
           // carry only the update). Seed a tool draft from the update payload so
           // the card still renders, mirroring the live mapper which emits a tool
           // part unconditionally.
-          _assistant().tools[id] = _ToolDraft(
+          _assistantForTool().tools[id] = _ToolDraft(
             tool: acpToolName(update),
             title: _toolTitle(update),
             status: acpToolStatus(update["status"]),
@@ -162,14 +162,46 @@ class AcpReplayCollector {
     );
   }
 
-  _Draft _assistant() => _ensureRole("assistant");
-  _Draft _user() => _ensureRole("user");
+  _Draft _assistant({String? messageId}) => _ensureRole("assistant", messageId: messageId);
+  _Draft _user({String? messageId}) => _ensureRole("user", messageId: messageId);
 
-  _Draft _ensureRole(String role) {
-    if (_drafts.isNotEmpty && _drafts.last.role == role) return _drafts.last;
-    final draft = _Draft(role: role, id: "$sessionId-h${_seq++}-$role");
+  // Tool calls carry no messageId (they are not ContentChunks) and attach to
+  // the current assistant message even when its content chunks are stamped.
+  _Draft _assistantForTool() {
+    if (_drafts.isNotEmpty && _drafts.last.role == "assistant") {
+      return _drafts.last;
+    }
+    return _ensureRole("assistant");
+  }
+
+  /// The draft the next chunk belongs to. ACP v1: chunks of one message share
+  /// a `messageId`, and a change starts a new message — so the last draft is
+  /// reused only when both the role AND the message id match. An id-less
+  /// content chunk continues only an id-less draft; tool attachments use
+  /// [_assistantForTool] because ACP does not stamp them. Comparison is against
+  /// the last draft only, matching the spec's sequential semantics.
+  _Draft _ensureRole(String role, {String? messageId}) {
+    if (_drafts.isNotEmpty && _drafts.last.role == role) {
+      final last = _drafts.last;
+      if (last.acpMessageId == messageId) {
+        return last;
+      }
+    }
+    final draft = _Draft(
+      role: role,
+      id: messageId != null && messageId.isNotEmpty
+          ? "$sessionId-m$messageId-$role"
+          : "$sessionId-h${_seq++}-$role",
+      acpMessageId: messageId,
+    );
     _drafts.add(draft);
     return draft;
+  }
+
+  /// The chunk's ACP `messageId`, when present and well-formed.
+  static String? _chunkMessageId(Map<String, dynamic> update) {
+    final id = update["messageId"];
+    return id is String && id.isNotEmpty ? id : null;
   }
 
   _ToolDraft? _findTool(String toolId) {
@@ -193,10 +225,13 @@ class AcpReplayCollector {
 }
 
 class _Draft {
-  _Draft({required this.role, required this.id});
+  _Draft({required this.role, required this.id, required this.acpMessageId});
 
   final String role;
   final String id;
+
+  /// The ACP `messageId` this draft groups, when the agent stamped one.
+  String? acpMessageId;
   final StringBuffer text = StringBuffer();
   final StringBuffer reasoning = StringBuffer();
   final Map<String, _ToolDraft> tools = {};

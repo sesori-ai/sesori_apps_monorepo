@@ -36,7 +36,7 @@ void main() {
       )!;
       expect(
         manifest.downloadUrlFor(asset: asset),
-        equals("https://github.com/anomalyco/opencode/releases/download/v1.17.9/opencode-darwin-arm64.zip"),
+        equals("https://github.com/anomalyco/opencode/releases/download/v1.17.18/opencode-darwin-arm64.zip"),
       );
     });
 

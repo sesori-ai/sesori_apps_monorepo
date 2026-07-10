@@ -30,7 +30,7 @@ class OpenCodeRuntimeManifest implements RuntimeManifest {
   static final SemanticVersion _minPathVersion = SemanticVersion.parse(value: "1.0.0");
 
   /// The exact OpenCode version the managed runtime installs.
-  static final SemanticVersion _bundledVersion = SemanticVersion.parse(value: "1.17.9");
+  static final SemanticVersion _bundledVersion = SemanticVersion.parse(value: "1.17.18");
 
   static const String _releaseBaseUrl = "https://github.com/anomalyco/opencode/releases/download";
 
@@ -43,13 +43,13 @@ class OpenCodeRuntimeManifest implements RuntimeManifest {
       PlatformArch.arm64: RuntimeAsset(
         assetName: "opencode-darwin-arm64.zip",
         format: ArchiveFormat.zip,
-        sha256: "913d813a88ca4f6209b9c48e548bd376eef4d1e74c2bb113aa91aa96c784d332",
+        sha256: "24327f89c103526c0518fc9b797767f318ab85ef3cee8636e722d6138f33aa3d",
         archiveBinaryName: "opencode",
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "opencode-darwin-x64.zip",
         format: ArchiveFormat.zip,
-        sha256: "8174a53ab3f8bbcc633c6e7d914258f1572e133bd008882c489cb4dbac60115d",
+        sha256: "cebf209aad2c0bd998fbac3f8dd1b45eef35da1af18cd698e78b111b73c5fbb0",
         archiveBinaryName: "opencode",
       ),
     },
@@ -57,13 +57,13 @@ class OpenCodeRuntimeManifest implements RuntimeManifest {
       PlatformArch.arm64: RuntimeAsset(
         assetName: "opencode-linux-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "8cc511f9794e575e5d3c4c2654930d05670186df649c26b50889ac73c65dde21",
+        sha256: "db9b53eae485da969a0a855bca465f9901dd84676384f724f320e3ccc5a9b107",
         archiveBinaryName: "opencode",
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "opencode-linux-x64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "85aeac95258d409d16ca34f1cfcd74c78d9d1a70b0a4154128b588e1405384f9",
+        sha256: "e149d32ee5667c0cd5fb84d0bf8393b312e93782eeb4d74d29bbb0392de7133c",
         archiveBinaryName: "opencode",
       ),
     },
@@ -71,13 +71,13 @@ class OpenCodeRuntimeManifest implements RuntimeManifest {
       PlatformArch.arm64: RuntimeAsset(
         assetName: "opencode-windows-arm64.zip",
         format: ArchiveFormat.zip,
-        sha256: "0c58626e572a227d3b93ef8ec545d95b85a266232d8d38395600d693b05c7463",
+        sha256: "fcfbd7f82242f47ec7e98bc8819eeebe716654e9bce1fb1bd7f364e887cb95ab",
         archiveBinaryName: "opencode.exe",
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "opencode-windows-x64.zip",
         format: ArchiveFormat.zip,
-        sha256: "d1a97aa05e5795dbb8591b9732d9eafb7723de7952b884d05986a51fd31294c7",
+        sha256: "7d489fd9b314e25bccf9c5dd2f17ef2774902c7b7db9aa34f46b0aab4715c70c",
         archiveBinaryName: "opencode.exe",
       ),
     },

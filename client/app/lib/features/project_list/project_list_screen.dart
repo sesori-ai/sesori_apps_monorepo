@@ -10,6 +10,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:share_plus/share_plus.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
+import "../../core/analytics/analytics_event.dart";
+import "../../core/analytics/analytics_reporter.dart";
 import "../../core/bridge_install.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
@@ -143,10 +145,15 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
       );
     }
-    final isOnboarding =
-        (state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges) ||
-        (state is ProjectListLoaded && state.projects.isEmpty);
-    return isOnboarding ? const _NeedHelpMenu() : null;
+    // The two onboarding surfaces get the same pill but report distinct
+    // analytics surfaces, so help-seeking is attributable to the funnel step.
+    if (state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges) {
+      return const _NeedHelpMenu(surface: OnboardingSurface.connectSetup);
+    }
+    if (state is ProjectListLoaded && state.projects.isEmpty) {
+      return const _NeedHelpMenu(surface: OnboardingSurface.connectedEmpty);
+    }
+    return null;
   }
 
   @override

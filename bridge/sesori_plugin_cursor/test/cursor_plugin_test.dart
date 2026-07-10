@@ -55,6 +55,43 @@ void main() {
       expect(CursorModelProbe.findModelConfig(none), isNull);
       expect(CursorModelProbe.findConfig(none, "mode"), isNull);
     });
+
+    test("options flattens grouped select options", () {
+      // ACP allows the option list to be grouped ({group, name, options}); a
+      // group entry has no value of its own, so returning it unflattened would
+      // drop every nested model from the catalog.
+      final grouped = AcpNewSessionResult.fromJson({
+        "sessionId": "s",
+        "configOptions": [
+          {
+            "id": "model-picker",
+            "category": "model",
+            "currentValue": "gpt-5.4",
+            "options": [
+              {
+                "group": "openai",
+                "name": "OpenAI",
+                "options": [
+                  {"value": "gpt-5.4", "name": "GPT-5.4"},
+                ],
+              },
+              {
+                "group": "anthropic",
+                "name": "Anthropic",
+                "options": [
+                  {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
+                  {"value": "opus-4.8", "name": "Opus 4.8"},
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      final config = CursorModelProbe.findModelConfig(grouped)!;
+      final options = CursorModelProbe.options(config);
+      expect(options.map((o) => o["value"]), ["gpt-5.4", "sonnet-4.6", "opus-4.8"]);
+      expect(CursorModelProbe.hasOption(options, "opus-4.8"), isTrue);
+    });
   });
 
   group("CursorPlugin", () {
@@ -117,6 +154,16 @@ void main() {
 
     test("id is cursor", () {
       expect(plugin.id, "cursor");
+    });
+
+    test("the default binary is the official Cursor CLI name", () {
+      // cursor.com/docs/cli: the CLI installs as `agent`, and `agent acp` is
+      // the documented ACP server mode. Legacy installs that only ship
+      // `cursor-agent` override via --cursor-bin.
+      expect(CursorBinary.defaultBinary, "agent");
+      final spec = CursorBinary.launchSpec(cwd: "/repo");
+      expect(spec.command, "agent");
+      expect(spec.args, ["acp"]);
     });
 
     test("captureSessionConfig populates providers, mode variants, and agents", () async {
@@ -508,6 +555,40 @@ void main() {
         "authMethods": <Object?>[],
       });
       expect((await providers).providers, isEmpty);
+    });
+
+    test("a grouped model catalog surfaces every nested model", () async {
+      plugin.captureSessionConfig({
+        "sessionId": "s1",
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "gpt-5.4",
+            "options": [
+              {
+                "group": "openai",
+                "name": "OpenAI",
+                "options": [
+                  {"value": "gpt-5.4", "name": "GPT-5.4"},
+                ],
+              },
+              {
+                "group": "anthropic",
+                "name": "Anthropic",
+                "options": [
+                  {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
+                ],
+              },
+            ],
+          },
+        ],
+      }, fromNewSession: true);
+
+      final providers = await plugin.getProviders(projectId: "/repo");
+      final provider = providers.providers.single;
+      expect(provider.models.map((m) => m.id), ["gpt-5.4", "sonnet-4.6"]);
+      expect(provider.defaultModelID, "gpt-5.4");
     });
   });
 }

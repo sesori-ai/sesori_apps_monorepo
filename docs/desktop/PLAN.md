@@ -9,7 +9,7 @@
 ## Current pointer
 
 - **Last completed phase:** Phase 2 — PR 2.2 Desktop platform adapters — PR raised on branch `desktop-phase-2.2-platform-adapters`, stacked on PR 2.1 (#405, branch `desktop-impl-plan-review`)
-- **Next up:** Phase 2 — PR 2.3 Login reuse (browser-poll OAuth). **Phase 1's MT-1 manual checkpoint (user-run) remains OPEN** — the user explicitly directed Phase 2 to proceed (as stacked PRs, merged one by one) while MT-1 stays open; MT-1 must still be run before Phase 1 is called done.
+- **Next up:** Phase 2 — PR 2.3 Login reuse (browser-poll OAuth). Phase 1's MT-1 manual checkpoint is complete; its findings/fixes merged in PR #421.
 - **Branch:** one feature branch per PR; Phase 2 is being raised as **stacked branches** (each PR's base = the previous PR's branch, retargeted to `main` as predecessors merge)
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -367,6 +367,7 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | RelayClient live re-auth on token push | RESOLVED in PR 1.5 (identity gate fixed post-merge) | TBD | ADR A12; Orchestrator subscribes to `AccessTokenProvider.tokenStream` and re-auths only when the emitted token's **auth identity** (JWT `userId` claim) differs from the one `RelayClient.lastAuthedToken` authenticated with (funnels into the existing reconnect path). PR 1.5's original string-inequality gate flapped the relay on every routine same-user rotation (standalone `TokenManager` emits each refresh; a near-expiry pull during session-metadata generation dropped all phones mid-flight) — the relay validates the JWT once at connect and never re-checks, so same-identity rotation keeps the socket. Unparseable tokens re-auth conservatively. Service cache writes are ordered by issue-sequence (newest-issued wins, push outranks in-flight pulls); a signed-out `token_response` invalidates the cache and defers reconnect, and a refresh failure with no safe cached token also defers. Connection-level tests added. |
 | Standalone `TokenManager` keeps in-memory token after logout deletes the store | OPEN | TBD | Pre-existing (predates PR 1.5): `TokenManager.accessToken` returns its seeded in-memory token even after the on-disk store is deleted, so a standalone relay reconnect can re-auth with it. Supervised mode is already safe (control-channel service invalidates on sign-out). Needs a storage-aware validity / logout-invalidation path inside `TokenManager` / the `auth/` subsystem. |
 | Desktop relay client / `ConnectionService` deferral | OPEN — deferred to Phase 4 | TBD | ADR A21; lean v1 control/status must not resolve relay transport. PR 4.7 owns desktop relay prerequisites and accessory-UI connection acceptance. |
+| Dev control-host harness retirement | OPEN → PR 2.15 | TBD | Keep `bridge/app/tool/dev_control_host.dart` while the real GUI control host/supervisor is built and needs an independent bridge-side diagnostic. Once PR 2.15 E2E covers handshake/token/restart/logout/provisioning, delete the harness unless a concrete unique diagnostic remains; if retained, document that boundary so it does not become a drifting duplicate GUI/token authority. |
 | `core/widgets` not pure leaf UI | OPEN | TBD | `connection_overlay.dart` imports app DI/routing/go_router; PR 4.1 must refactor + declare deps first |
 | CI secrets (Dev ID, notarization key, EdDSA appcast, GPG) | OPEN | TBD | PR 3.0b |
 | Flutter multi-window viability (v2 popover) | OPEN | TBD | de-risk with a spike before Phase 5 popover |
@@ -401,7 +402,8 @@ them). Only the user checks an MT box.
 - ☑ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
 - ☑ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
 - ☑ 1.15 Dev control-host harness for manual supervised testing (`tool/`) — Low / S
-- ☐ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
+- ☑ 1.16 Address MT-1 supervised findings (provision traffic + update status) — Low / S
+- ☑ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
 
 ### Phase 2 — Desktop shell + supervisor → `phase-2-desktop-shell.md`
 - ☑ 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes — Med / M
