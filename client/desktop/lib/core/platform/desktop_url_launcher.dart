@@ -16,7 +16,7 @@ class DesktopUrlLauncher implements UrlLauncher {
       // launchUrl throws (rather than returning false) when no browser is
       // configured, e.g. a Linux box without xdg-open. Callers only see the
       // boolean, so log the cause before degrading to "could not open".
-      logw("Failed to open $url in the system browser", error, stackTrace);
+      logw("Failed to open ${url.toString()} in the system browser", error, stackTrace);
       return false;
     }
   }
