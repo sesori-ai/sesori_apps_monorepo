@@ -602,7 +602,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // A fresh session has an empty chain, so this dispatches immediately;
       // the selection is applied inside the turn like every other prompt.
       _enqueueTurn(
-        client: client,
         sessionId: session.sessionId,
         parts: parts,
         model: model,
@@ -629,9 +628,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    final client = await _connectedClient();
+    // Acceptance gate: an unreachable agent fails the send itself; the turn
+    // re-resolves the client at dispatch time (see [_runTurn]).
+    await _connectedClient();
     _enqueueTurn(
-      client: client,
       sessionId: sessionId,
       parts: parts,
       model: model,
@@ -649,9 +649,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required ({String providerID, String modelID})? model,
   }) async {
     final body = arguments.isEmpty ? "/$command" : "/$command $arguments";
-    final client = await _connectedClient();
+    // Acceptance gate — see [sendPrompt].
+    await _connectedClient();
     _enqueueTurn(
-      client: client,
       sessionId: sessionId,
       parts: [PluginPromptPart.text(text: body)],
       model: model,
@@ -747,7 +747,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// `session/prompt` requests for one session are rejected or dropped by ACP
   /// agents, so turns must never interleave per session.
   void _enqueueTurn({
-    required AcpStdioClient client,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required ({String providerID, String modelID})? model,
@@ -775,7 +774,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // failed turn cannot poison the chain for the turns queued behind it.
     state.tail = state.tail.then(
       (_) => _runTurn(
-        client: client,
         sessionId: sessionId,
         state: state,
         expectedGeneration: expectedGeneration,
@@ -786,17 +784,20 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     );
   }
 
-  /// Runs one serialized turn: makes the session resident, applies the turn's
-  /// model/mode selection, dispatches `session/prompt`, and settles the queue
-  /// accounting. Residency and selection run here — inside the chain — so a
-  /// queued turn retries a transiently failed resume-load itself, and a
-  /// selection applied at enqueue time can't flip a process-global selection
-  /// (Cursor's) under the previous, still-running turn. The abort generation
-  /// is re-checked after every await: an abort landing mid-load/mid-selection
-  /// must still drop the not-yet-dispatched turn instead of starting a fresh
-  /// agent run right after the cancel.
+  /// Runs one serialized turn: resolves the live client, makes the session
+  /// resident, applies the turn's model/mode selection, dispatches
+  /// `session/prompt`, and settles the queue accounting. All of it runs here —
+  /// inside the chain — so a turn queued behind an in-flight prompt survives
+  /// an agent respawn (the client captured at enqueue time may have exited;
+  /// re-resolving spawns a replacement and the dispatch-time resume-load makes
+  /// the session resident in it), a queued turn retries a transiently failed
+  /// resume-load itself, and a selection applied at enqueue time can't flip a
+  /// process-global selection (Cursor's) under the previous, still-running
+  /// turn. The abort generation is re-checked after every await: an abort
+  /// landing mid-connect/mid-load/mid-selection must still drop the
+  /// not-yet-dispatched turn instead of starting a fresh agent run right
+  /// after the cancel.
   Future<void> _runTurn({
-    required AcpStdioClient client,
     required String sessionId,
     required _SessionTurnState state,
     required int expectedGeneration,
@@ -806,6 +807,20 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   }) async {
     // Aborted turns were never dispatched, so no per-turn error event — just
     // settle the accounting (idle emission when the count reaches 0).
+    if (state.generation != expectedGeneration) {
+      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+      return;
+    }
+    final AcpStdioClient client;
+    try {
+      client = await _connectedClient();
+    } on Object catch (error, stack) {
+      // The send was already accepted, so a dead/unrespawnable agent must
+      // surface as a failed turn, not a silent drop.
+      Log.w("[$id] could not reach the agent for a queued turn on $sessionId", error, stack);
+      _finishTurn(sessionId: sessionId, state: state, failed: true, refused: false);
+      return;
+    }
     if (state.generation != expectedGeneration) {
       _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
       return;

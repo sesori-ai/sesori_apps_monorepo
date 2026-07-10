@@ -405,6 +405,131 @@ void main() {
       respondTo(secondPrompt, {"stopReason": "end_turn"});
     });
 
+    test("a queued turn survives an agent respawn by resolving the live client", () async {
+      // Two processes: the first dies mid-turn, the queued turn must dispatch
+      // on the respawned replacement instead of failing against the captured
+      // dead client.
+      final fakes = [FakeAcpProcess(), FakeAcpProcess()];
+      final spawned = <FakeAcpProcess>[];
+      final respawning = AcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        processFactory: (_) async {
+          final next = fakes.removeAt(0);
+          spawned.add(next);
+          return next;
+        },
+      );
+      addTearDown(() async {
+        await respawning.dispose();
+        for (final f in spawned) {
+          await f.close();
+        }
+        for (final f in fakes) {
+          await f.close();
+        }
+      });
+      final events = <BridgeSseEvent>[];
+      respawning.events.listen(events.add);
+
+      List<Map<String, dynamic>> framesOn(FakeAcpProcess fake, String method) =>
+          fake.written.where((f) => f["method"] == method).toList(growable: false);
+      Future<Map<String, dynamic>> waitOn(FakeAcpProcess fake, String method, int count) async {
+        for (var i = 0; i < 400; i++) {
+          final matches = framesOn(fake, method);
+          if (matches.length >= count) return matches[count - 1];
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+        throw StateError("expected $count '$method' frame(s)");
+      }
+
+      final connecting = respawning.ensureConnected();
+      final first = spawned.isEmpty ? fakes.first : spawned.first;
+      final init1 = await waitOn(first, "initialize", 1);
+      first.emit({
+        "jsonrpc": "2.0",
+        "id": init1["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": <Object?>[],
+        },
+      });
+      expect(await connecting, isTrue);
+
+      final creating = respawning.createSession(
+        directory: cwd,
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final newFrame = await waitOn(first, "session/new", 1);
+      first.emit({
+        "jsonrpc": "2.0",
+        "id": newFrame["id"],
+        "result": {"sessionId": "s1"},
+      });
+      await creating;
+
+      Future<void> send(String text) => respawning.sendPrompt(
+        sessionId: "s1",
+        parts: [PluginPromptPart.text(text: text)],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      await send("first");
+      await waitOn(first, "session/prompt", 1);
+      await send("queued");
+
+      // The agent dies mid-turn; the lifecycle wrapper resets the connection.
+      first.exit(1);
+      await respawning.resetConnectionAfterExit();
+
+      // The queued turn re-resolves the client, spawning the replacement and
+      // completing its handshake before dispatching.
+      final second = await () async {
+        for (var i = 0; i < 400; i++) {
+          if (spawned.length > 1) return spawned[1];
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+        throw StateError("the queued turn never respawned the agent");
+      }();
+      final init2 = await waitOn(second, "initialize", 1);
+      second.emit({
+        "jsonrpc": "2.0",
+        "id": init2["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": <Object?>[],
+        },
+      });
+
+      final queuedPrompt = await waitOn(second, "session/prompt", 1);
+      expect((queuedPrompt["params"] as Map)["sessionId"], "s1");
+      second.emit({
+        "jsonrpc": "2.0",
+        "id": queuedPrompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+
+      // The interrupted first turn surfaced as an error; the queued turn
+      // completed and the session settled idle.
+      expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
+      expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      expect(respawning.getActiveSessionsSummary(), isEmpty);
+    });
+
     test("sessionId-less server requests attribute to the unambiguous in-flight turn", () async {
       await connect();
       final s1 = await createSession(cwd, "s1");
