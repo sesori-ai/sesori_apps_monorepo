@@ -113,7 +113,7 @@ class AuthGateSignedIn implements AuthGateState {
   const AuthGateSignedIn({required this.user});
   
 
- final  AuthUser user;
+ final  AuthUser? user;
 
 /// Create a copy of AuthGateState
 /// with the given fields replaced by the non-null parameter values.
@@ -145,11 +145,11 @@ abstract mixin class $AuthGateSignedInCopyWith<$Res> implements $AuthGateStateCo
   factory $AuthGateSignedInCopyWith(AuthGateSignedIn value, $Res Function(AuthGateSignedIn) _then) = _$AuthGateSignedInCopyWithImpl;
 @useResult
 $Res call({
- AuthUser user
+ AuthUser? user
 });
 
 
-$AuthUserCopyWith<$Res> get user;
+$AuthUserCopyWith<$Res>? get user;
 
 }
 /// @nodoc
@@ -162,10 +162,10 @@ class _$AuthGateSignedInCopyWithImpl<$Res>
 
 /// Create a copy of AuthGateState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? user = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? user = freezed,}) {
   return _then(AuthGateSignedIn(
-user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
-as AuthUser,
+user: freezed == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
+as AuthUser?,
   ));
 }
 
@@ -173,9 +173,12 @@ as AuthUser,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$AuthUserCopyWith<$Res> get user {
-  
-  return $AuthUserCopyWith<$Res>(_self.user, (value) {
+$AuthUserCopyWith<$Res>? get user {
+    if (_self.user == null) {
+    return null;
+  }
+
+  return $AuthUserCopyWith<$Res>(_self.user!, (value) {
     return _then(_self.copyWith(user: value));
   });
 }
