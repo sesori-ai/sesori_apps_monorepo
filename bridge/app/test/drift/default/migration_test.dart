@@ -15,6 +15,7 @@ import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
 import 'generated/schema_v7.dart' as v7;
 import 'generated/schema_v8.dart' as v8;
+import 'generated/schema_v9.dart' as v9;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -876,6 +877,96 @@ void main() {
       );
     },
   );
+
+  test('migration v8 → v9 structural validation', () async {
+    final connection = await verifier.startAt(8);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(db, 9);
+    await db.close();
+  });
+
+  test(
+    'migration v8 → v9 preserves rows, defaults title to null, and creates empty tombstones',
+    () async {
+      const oldProjectsTableData = [
+        v8.ProjectsTableData(
+          projectId: 'project-1',
+          path: 'project-1',
+          hidden: 0,
+          baseBranch: 'main',
+          worktreeCounter: 2,
+          displayName: null,
+          openedAt: 1700000000000,
+        ),
+      ];
+      const oldSessionsTableData = [
+        v8.SessionsTableData(
+          sessionId: 'session-1',
+          projectId: 'project-1',
+          worktreePath: '/tmp/worktrees/session-1',
+          branchName: 'feat/one',
+          isDedicated: 1,
+          archivedAt: null,
+          baseBranch: 'main',
+          baseCommit: 'abc123',
+          lastAgent: null,
+          lastAgentModel: null,
+          createdAt: 1700000000000,
+          lastActivityAt: 1700000005000,
+          lastSeenAt: 1700000006000,
+          lastUserMessageAt: 1700000004000,
+          pluginId: 'opencode',
+        ),
+      ];
+
+      await verifier.testWithDataIntegrity(
+        oldVersion: 8,
+        newVersion: 9,
+        createOld: v8.DatabaseAtV8.new,
+        createNew: v9.DatabaseAtV9.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insertAll(oldDb.projectsTable, oldProjectsTableData);
+          batch.insertAll(oldDb.sessionsTable, oldSessionsTableData);
+        },
+        validateItems: (newDb) async {
+          // Every pre-existing row survives; the new title column defaults to
+          // null (no bridge-known title until a rename or title event).
+          expect(
+            await newDb.select(newDb.sessionsTable).get(),
+            const [
+              v9.SessionsTableData(
+                sessionId: 'session-1',
+                projectId: 'project-1',
+                worktreePath: '/tmp/worktrees/session-1',
+                branchName: 'feat/one',
+                isDedicated: 1,
+                archivedAt: null,
+                baseBranch: 'main',
+                baseCommit: 'abc123',
+                lastAgent: null,
+                lastAgentModel: null,
+                createdAt: 1700000000000,
+                lastActivityAt: 1700000005000,
+                lastSeenAt: 1700000006000,
+                lastUserMessageAt: 1700000004000,
+                pluginId: 'opencode',
+                title: null,
+              ),
+            ],
+          );
+          // The tombstone table exists and starts empty.
+          expect(await newDb.select(newDb.deletedSessionsTable).get(), isEmpty);
+          // The session→project FK survives the migration.
+          expect(
+            await newDb.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+        },
+      );
+    },
+  );
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
@@ -886,7 +977,7 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    8,
+    9,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

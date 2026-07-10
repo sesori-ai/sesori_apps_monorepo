@@ -205,6 +205,43 @@ void main() {
       expect(await sessionDao.getSession(sessionId: "sess-delete"), isNull);
     });
 
+    test("deleteSession records a pluginId-scoped tombstone with the row removal", () async {
+      await projectsDao.insertProjectsIfMissing(projectIds: ["proj-tomb"]);
+      await sessionDao.insertSession(
+        pluginId: "opencode",
+        sessionId: "sess-tomb",
+        projectId: "proj-tomb",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      await service.deleteSession(sessionId: "sess-tomb");
+
+      expect(await sessionDao.getSession(sessionId: "sess-tomb"), isNull);
+      expect(
+        await sessionDao.getTombstonedSessionIds(pluginId: "opencode"),
+        contains("sess-tomb"),
+      );
+      // Scoped: another plugin's enumeration never sees this tombstone.
+      expect(
+        await sessionDao.getTombstonedSessionIds(pluginId: "codex"),
+        isNot(contains("sess-tomb")),
+      );
+
+      // Idempotent: a re-delete of an already-gone session keeps the tombstone.
+      await service.deleteSession(sessionId: "sess-tomb");
+      expect(
+        await sessionDao.getTombstonedSessionIds(pluginId: "opencode"),
+        contains("sess-tomb"),
+      );
+    });
+
     test("archiveSession sets archivedAt on an existing stored session", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["proj-archive"]);
       await sessionDao.insertSession(

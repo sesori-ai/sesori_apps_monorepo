@@ -3,6 +3,10 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
 
+/// Prepares raw plugin session events for delivery: first syncs stored state
+/// the backend won't hold (the bridge's title copy for derived-plugin
+/// sessions), then overlays the stored enrichment onto the wire payload —
+/// so the payload phones receive and the next REST enumeration agree.
 class SessionEventEnrichmentService {
   final SessionRepository _sessionRepository;
   final FailureReporter _failureReporter;
@@ -20,7 +24,7 @@ class SessionEventEnrichmentService {
           info: (await _sessionRepository.enrichSessionJson(sessionJson: info)).toJson(),
         ),
         BridgeSseSessionUpdated(:final info) => BridgeSseSessionUpdated(
-          info: (await _sessionRepository.enrichSessionJson(sessionJson: info)).toJson(),
+          info: (await _captureTitleAndEnrich(info: info)).toJson(),
         ),
         BridgeSseSessionsUpdated(:final sessionID, :final projectID) => BridgeSseSessionsUpdated(
           sessionID: sessionID,
@@ -45,5 +49,18 @@ class SessionEventEnrichmentService {
       }
       return event;
     }
+  }
+
+  /// A `session.updated` from a derived backend is its own rename signal (ACP's
+  /// `session_info_update` — where an explicit null deliberately clears the
+  /// title — and codex's `thread/name/updated`). Persist the title BEFORE
+  /// enriching, so the stored-wins overlay serves the new value both on this
+  /// very event and on every later enumeration. `session.created` events are
+  /// deliberately not captured: their null title means "unknown", not
+  /// "cleared".
+  Future<Session> _captureTitleAndEnrich({required Map<String, dynamic> info}) async {
+    final session = Session.fromJson(info);
+    await _sessionRepository.recordSessionTitle(sessionId: session.id, title: session.title);
+    return _sessionRepository.enrichSession(session: session);
   }
 }

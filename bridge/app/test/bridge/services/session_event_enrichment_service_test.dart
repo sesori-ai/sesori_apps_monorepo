@@ -130,5 +130,114 @@ void main() {
       expect(result, isA<BridgeSseSessionsUpdated>());
       expect((result as BridgeSseSessionsUpdated).projectID, "p1");
     });
+
+    group("derived-plugin title capture", () {
+      late _FakeDerivedPlugin derivedPlugin;
+      late SessionEventEnrichmentService derivedService;
+
+      setUp(() {
+        derivedPlugin = _FakeDerivedPlugin();
+        derivedService = SessionEventEnrichmentService(
+          sessionRepository: SessionRepository(
+            plugin: derivedPlugin,
+            sessionDao: db.sessionDao,
+            pullRequestRepository: PullRequestRepository(
+              pullRequestDao: db.pullRequestDao,
+              projectsDao: db.projectsDao,
+            ),
+            unseenCalculator: const SessionUnseenCalculator(),
+          ),
+          failureReporter: LogFailureReporter(),
+        );
+      });
+
+      Future<void> insertStored({required String? title}) async {
+        await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+        await db.sessionDao.insertSession(
+          pluginId: "codex",
+          sessionId: "s1",
+          projectId: "/repo",
+          isDedicated: false,
+          createdAt: 10,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+        );
+        await db.sessionDao.setTitle(sessionId: "s1", title: title);
+      }
+
+      Map<String, dynamic> sessionInfo({required String? title}) => {
+        "id": "s1",
+        "projectID": "/repo",
+        "directory": "/repo",
+        "parentID": null,
+        "title": title,
+        "time": null,
+        "summary": null,
+        "pullRequest": null,
+      };
+
+      test("a session.updated persists its title before enriching", () async {
+        await insertStored(title: "Old title");
+
+        final result = await derivedService.enrich(
+          BridgeSseSessionUpdated(info: sessionInfo(title: "Backend rename")),
+        );
+
+        // The wire payload carries the NEW title (captured before the
+        // stored-wins overlay), and the stored copy now matches it.
+        expect((result as BridgeSseSessionUpdated).info["title"], "Backend rename");
+        final stored = await db.sessionDao.getSession(sessionId: "s1");
+        expect(stored?.title, "Backend rename");
+      });
+
+      test("an explicit null title on session.updated clears the stored copy", () async {
+        await insertStored(title: "Old title");
+
+        final result = await derivedService.enrich(
+          BridgeSseSessionUpdated(info: sessionInfo(title: null)),
+        );
+
+        expect((result as BridgeSseSessionUpdated).info["title"], isNull);
+        final stored = await db.sessionDao.getSession(sessionId: "s1");
+        expect(stored?.title, isNull);
+      });
+
+      test("session.created does not capture titles (null means unknown, not cleared)", () async {
+        await insertStored(title: "Kept title");
+
+        final result = await derivedService.enrich(
+          BridgeSseSessionCreated(info: sessionInfo(title: null)),
+        );
+
+        final stored = await db.sessionDao.getSession(sessionId: "s1");
+        expect(stored?.title, "Kept title");
+        // The stored-wins overlay even restores the title onto the payload.
+        expect((result as BridgeSseSessionCreated).info["title"], "Kept title");
+      });
+    });
   });
+}
+
+/// Minimal derive-style plugin for the title-capture tests: only the members
+/// the enrichment path touches are real.
+class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
+  @override
+  String get id => "codex";
+
+  @override
+  String get launchDirectory => "/repo";
+
+  @override
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async =>
+      const [];
+
+  @override
+  void primeSessionDirectory({required String sessionId, required String directory}) {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

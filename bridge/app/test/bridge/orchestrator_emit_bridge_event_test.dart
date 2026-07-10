@@ -2028,6 +2028,9 @@ class _NoopSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
+  Future<void> recordSessionTitle({required String sessionId, required String? title}) async {}
+
+  @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
 
   @override
@@ -2155,6 +2158,10 @@ class _NoopSessionRepository implements SessionRepository {
 class _DelayingSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
+
+  @override
+  Future<void> recordSessionTitle({required String sessionId, required String? title}) =>
+      _base.recordSessionTitle(sessionId: sessionId, title: title);
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) =>

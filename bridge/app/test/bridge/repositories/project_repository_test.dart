@@ -222,6 +222,21 @@ void main() {
       expect(await repo.getProjects(), isEmpty);
     });
 
+    test("getProjects ignores tombstoned sessions in project derivation", () async {
+      // The backend has no session deletion, so it keeps enumerating the
+      // deleted session — its project must not resurrect from it.
+      plugin.sessions = [
+        _session("/tmp/proj/alpha", id: "kept", created: 1, updated: 1),
+        _session("/tmp/proj/deleted-only", id: "gone", created: 1, updated: 1),
+      ];
+      await db.sessionDao.insertSessionTombstone(sessionId: "gone", pluginId: "codex", deletedAt: 1);
+
+      final result = await repo.getProjects();
+
+      expect(result.map((p) => p.id), contains("/tmp/proj/alpha"));
+      expect(result.map((p) => p.id), isNot(contains("/tmp/proj/deleted-only")));
+    });
+
     test("openProject records an opened folder so an empty project survives the listing", () async {
       final opened = await repo.openProject(path: "/tmp/proj/empty");
 

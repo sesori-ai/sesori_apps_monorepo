@@ -50,8 +50,9 @@ class QuestionRepository {
         return pluginQuestions.map((q) => q.toSharedPendingQuestion()).toList();
 
       case final BridgeDerivedProjectsPluginApi plugin:
-        final (sessionProjectPaths, ownScopedQuestions) = await (
+        final (sessionProjectPaths, tombstoned, ownScopedQuestions) = await (
           _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+          _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
           plugin.getProjectQuestions(projectId: projectId),
         ).wait;
         final allSessions = await plugin.listAllSessions(
@@ -67,10 +68,11 @@ class QuestionRepository {
         // plugin enumeration, so a question raised in a fresh worktree session
         // (attributed to this project by its row, but not yet in the backend's
         // on-disk enumeration and scoped to its worktree cwd by the plugin's
-        // own query) still surfaces here.
+        // own query) still surfaces here. Tombstoned (deleted) sessions are
+        // excluded — a backend without session deletion still enumerates them.
         final sessionIds = _derivedSessionBuilder.buildSessionIds(
           projectId: projectId,
-          sessions: allSessions,
+          sessions: allSessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
           projectPathBySessionId: {
             for (final row in sessionProjectPaths) row.sessionId: row.projectPath,
           },

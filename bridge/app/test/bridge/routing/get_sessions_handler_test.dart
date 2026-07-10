@@ -441,6 +441,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 
@@ -515,6 +516,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 
@@ -580,6 +582,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
       sessionDao.setSession(
@@ -599,6 +602,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 
@@ -646,6 +650,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 
@@ -690,6 +695,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 

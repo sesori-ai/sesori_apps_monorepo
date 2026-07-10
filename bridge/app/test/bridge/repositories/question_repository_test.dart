@@ -77,6 +77,30 @@ void main() {
       expect(plugin.queriedSessionIds, contains("w1"));
     });
 
+    test("getProjectQuestions skips tombstoned sessions", () async {
+      const parent = "/tmp/proj/alpha";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      // The backend still enumerates the deleted session (no session/delete):
+      // its questions must not surface — and must not be queried at all.
+      await db.sessionDao.insertSessionTombstone(sessionId: "gone", pluginId: "codex", deletedAt: 1);
+
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: parent,
+        allSessions: [_session(parent, id: "s1"), _session(parent, id: "gone")],
+        questionsBySession: {
+          "gone": const [
+            PluginPendingQuestion(id: "q-gone", sessionID: "gone", displaySessionId: null, questions: []),
+          ],
+        },
+      );
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+
+      final questions = await repo.getProjectQuestions(projectId: parent);
+
+      expect(questions.map((q) => q.id), isNot(contains("q-gone")));
+      expect(plugin.queriedSessionIds, isNot(contains("gone")));
+    });
+
     test("getProjectQuestions surfaces a question from a session only the plugin's live scoping knows", () async {
       const parent = "/tmp/proj/alpha";
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);

@@ -105,6 +105,30 @@ void main() {
       expect(operationLog, equals(["pluginDelete"]));
     });
 
+    test("a delete records a tombstone even for a rowless session", () async {
+      // No stored row (e.g. a backend-only session never persisted): the
+      // delete must still tombstone it, or a backend without session deletion
+      // resurrects it on the next enumeration.
+      final response = await handler.handle(
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "ghost",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response, isA<SuccessEmptyResponse>());
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: "opencode"),
+        contains("ghost"),
+      );
+    });
+
     test("2) deleteWorktree=true on clean worktree: safety check then plugin then worktree", () async {
       await _insertSession(
         db: db,

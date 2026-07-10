@@ -111,8 +111,19 @@ class SessionPersistenceService {
     });
   }
 
+  /// Removes the stored row AND records a delete tombstone in one
+  /// transaction. The tombstone keeps a backend without session deletion
+  /// (Cursor) from resurrecting the session through its next enumeration —
+  /// written even for rowless sessions, which are still enumerable.
   Future<void> deleteSession({required String sessionId}) async {
-    await _sessionDao.deleteSession(sessionId: sessionId);
+    await _db.transaction(() async {
+      await _sessionDao.insertSessionTombstone(
+        sessionId: sessionId,
+        pluginId: _pluginId,
+        deletedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await _sessionDao.deleteSession(sessionId: sessionId);
+    });
   }
 
   Future<void> archiveSession({

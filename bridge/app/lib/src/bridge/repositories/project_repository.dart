@@ -210,9 +210,10 @@ class ProjectRepository {
   /// Builds the full bridge-derived project set from the plugin's sessions, the
   /// bridge's stored project rows, and the stored session→project attribution.
   Future<List<Project>> _deriveProjects(BridgeDerivedProjectsPluginApi plugin) async {
-    final (storedProjects, sessionProjectPaths) = await (
+    final (storedProjects, sessionProjectPaths, tombstoned) = await (
       _projectsDao.getAllProjects(),
       _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+      _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
     ).wait;
     // The bridge's rows tell a directory-scoped backend where to look: every
     // stored project path plus every dedicated-worktree path it has a session
@@ -224,7 +225,9 @@ class ProjectRepository {
       },
     );
     return _derivedProjectBuilder.build(
-      sessions: sessions,
+      // A backend without session deletion keeps enumerating deleted sessions
+      // forever — the tombstones keep them out of project derivation.
+      sessions: sessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
       storedProjects: storedProjects,
       projectPathBySessionId: {
         for (final row in sessionProjectPaths) row.sessionId: row.projectPath,

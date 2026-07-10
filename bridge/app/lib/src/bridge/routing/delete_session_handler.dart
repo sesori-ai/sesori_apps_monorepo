@@ -85,9 +85,10 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
       }
     }
 
-    if (sessionDto != null) {
-      await _sessionPersistenceService.deleteSession(sessionId: sessionId);
-    }
+    // Unconditional (not gated on a stored row): the persistence delete also
+    // records the tombstone, and a rowless-but-enumerable backend session
+    // still needs one or it reappears from the next enumeration.
+    await _sessionPersistenceService.deleteSession(sessionId: sessionId);
 
     return const SuccessEmptyResponse();
   }

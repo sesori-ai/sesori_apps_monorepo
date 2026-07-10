@@ -10,6 +10,7 @@ import "../api/database/tables/pull_requests_table.dart";
 import "daos/projects_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
+import "tables/deleted_sessions_table.dart";
 import "tables/projects_table.dart";
 import "tables/session_table.dart";
 
@@ -19,14 +20,14 @@ part "database.g.dart";
 ///
 /// New tables and DAOs should be registered here as the persistence layer grows.
 @DriftDatabase(
-  tables: [ProjectsTable, SessionTable, PullRequestsTable],
+  tables: [ProjectsTable, SessionTable, DeletedSessionsTable, PullRequestsTable],
   daos: [ProjectsDao, SessionDao, PullRequestDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -156,6 +157,15 @@ class AppDatabase extends _$AppDatabase {
             },
           ),
         );
+      },
+      from8To9: (m, schema) async {
+        // Bridge-owned title for derive-plugin sessions (their backends don't
+        // persist renames). Nullable, no backfill: null = no bridge-known
+        // title, so the backend's enumeration title keeps serving.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.title);
+        // Tombstones for deleted derive-plugin sessions, so a backend without
+        // session deletion can't resurrect them through enumeration.
+        await m.createTable(schema.deletedSessionsTable);
       },
     ),
     beforeOpen: (details) async {

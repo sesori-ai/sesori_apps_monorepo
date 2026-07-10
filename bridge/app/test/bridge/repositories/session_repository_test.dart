@@ -953,6 +953,94 @@ void main() {
       expect(byId["/tmp/proj/beta"]!.activeSessions.single.awaitingInput, isTrue);
     });
 
+    test("renameSession persists the title for a derived plugin; enumeration serves it stored-wins", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        // The backend keeps reporting its own auto-generated title — a rename
+        // never reaches it (ACP has no rename RPC).
+        allSessions: [
+          const PluginSession(
+            id: "s1",
+            projectID: parent,
+            directory: parent,
+            parentID: null,
+            title: "Backend auto-title",
+            time: PluginSessionTime(created: 1, updated: 1, archived: null),
+            summary: null,
+          ),
+        ],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      await db.sessionDao.insertSession(
+        sessionId: "s1",
+        projectId: parent,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: "codex",
+      );
+
+      final renamed = await repository.renameSession(sessionId: "s1", title: "My rename");
+      expect(renamed.title, "My rename");
+
+      // The next enumeration keeps serving the rename, not the backend's
+      // auto-title: the stored copy wins for derived plugins.
+      final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
+      expect(sessions.single.title, "My rename");
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "My rename");
+    });
+
+    test("tombstoned sessions are filtered from enumeration and resolution", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        // The backend has no session deletion, so it keeps enumerating the
+        // deleted session forever.
+        allSessions: [pluginSession(parent, id: "deleted-s"), pluginSession(parent, id: "kept-s")],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "deleted-s",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
+
+      final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
+      expect(sessions.map((s) => s.id), ["kept-s"]);
+
+      expect(await repository.findProjectIdForSession(sessionId: "deleted-s"), isNull);
+      expect(await repository.findProjectIdForSession(sessionId: "kept-s"), parent);
+    });
+
     test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1129,6 +1217,20 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   @override
   void primeSessionDirectory({required String sessionId, required String directory}) {
     primedDirectories.add((sessionId: sessionId, directory: directory));
+  }
+
+  /// Echo-only rename, mirroring the ACP contract (no backend rename RPC).
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    return PluginSession(
+      id: sessionId,
+      projectID: launchDirectory,
+      directory: launchDirectory,
+      parentID: null,
+      title: title,
+      time: null,
+      summary: null,
+    );
   }
 
   @override

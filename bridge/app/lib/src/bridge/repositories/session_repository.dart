@@ -87,6 +87,7 @@ class SessionRepository {
 
       case final BridgeDerivedProjectsPluginApi plugin:
         final sessionProjectPaths = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);
+        final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
         final allSessions = await plugin.listAllSessions(
           knownDirectories: _knownDirectories(
             sessionProjectPaths: sessionProjectPaths,
@@ -95,7 +96,9 @@ class SessionRepository {
         );
         final scoped = _derivedSessionBuilder.build(
           projectId: projectId,
-          sessions: allSessions,
+          // A backend without session deletion keeps enumerating deleted
+          // sessions forever — the tombstones filter them out.
+          sessions: allSessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
           projectPathBySessionId: {
             for (final row in sessionProjectPaths) row.sessionId: row.projectPath,
           },
@@ -176,6 +179,10 @@ class SessionRepository {
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
     final updated = await _plugin.renameSession(sessionId: sessionId, title: title);
+    // A derived backend doesn't persist renames (ACP has no rename RPC — the
+    // plugin only echoes the title), so the bridge keeps the authoritative
+    // copy; the enrichment overlay then serves it on every read.
+    await recordSessionTitle(sessionId: sessionId, title: title);
     return enrichPluginSession(pluginSession: updated);
   }
 
@@ -239,6 +246,15 @@ class SessionRepository {
     await _primeDerivedSessionDirectory(sessionId: sessionId);
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
     return pluginMessages.toSharedMessageWithParts();
+  }
+
+  /// Persists the bridge's title copy for a derived-plugin session (null
+  /// clears it — ACP's `session_info_update` documents null as a deliberate
+  /// clear). No-op for native plugins, whose backends persist their own
+  /// titles (a stored copy would go stale), and for rowless sessions.
+  Future<void> recordSessionTitle({required String sessionId, required String? title}) async {
+    if (_plugin is! BridgeDerivedProjectsPluginApi) return;
+    await _sessionDao.setTitle(sessionId: sessionId, title: title);
   }
 
   /// Feeds a derived plugin the bridge's stored session→directory attribution
@@ -326,6 +342,10 @@ class SessionRepository {
 
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
+        // A deleted session must not resolve, even though a backend without
+        // session deletion still enumerates it.
+        final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+        if (tombstoned.contains(sessionId)) return null;
         // No stored row means the bridge did not create this session (every
         // bridge-created session — worktree ones included — is persisted with
         // its owning project and was handled above), so its own cwd IS its

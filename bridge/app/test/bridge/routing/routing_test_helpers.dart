@@ -454,6 +454,7 @@ class FakeSessionDao {
       lastSeenAt: null,
       lastUserMessageAt: null,
       pluginId: pluginId,
+      title: null,
     );
   }
 
@@ -709,6 +710,9 @@ class _NoopSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
+  Future<void> recordSessionTitle({required String sessionId, required String? title}) async {}
+
+  @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async =>
       const <MessageWithParts>[];
 
@@ -862,6 +866,14 @@ class FakeSessionRepository implements SessionRepository {
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
     return pluginMessages.toSharedMessageWithParts();
+  }
+
+  /// Recorded recordSessionTitle calls (sessionId → title).
+  final List<({String sessionId, String? title})> recordedTitles = [];
+
+  @override
+  Future<void> recordSessionTitle({required String sessionId, required String? title}) async {
+    recordedTitles.add((sessionId: sessionId, title: title));
   }
 
   @override
