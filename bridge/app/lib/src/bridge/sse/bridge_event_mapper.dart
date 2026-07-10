@@ -7,16 +7,14 @@ import "../plugin_to_shared_mapping.dart";
 
 /// Maps [BridgeSseEvent]s from the plugin to [SesoriSseEvent]s for relay delivery.
 ///
-/// Handles all event type conversions and builds the projects summary event.
+/// Handles all event type conversions and builds the projects summary event
+/// from already-fetched summary data (the orchestrator owns fetching it).
 class BridgeEventMapper {
-  final BridgePluginApi _plugin;
   final FailureReporter _failureReporter;
 
   BridgeEventMapper({
-    required BridgePluginApi plugin,
     required FailureReporter failureReporter,
-  }) : _plugin = plugin,
-       _failureReporter = failureReporter;
+  }) : _failureReporter = failureReporter;
 
   /// Maps a [BridgeSseEvent] to a [SesoriSseEvent], or null if unmappable.
   SesoriSseEvent? map(BridgeSseEvent event) {
@@ -131,10 +129,11 @@ class BridgeEventMapper {
             displaySessionId: displaySessionId,
           ),
         BridgeSseTodoUpdated(:final sessionID) => SesoriSseEvent.todoUpdated(sessionID: sessionID),
-        // BridgeSseProjectUpdated is emitted on both activity changes and project
-        // metadata changes. We always send the full projectsSummary so the mobile
-        // client receives updated activity data in real time.
-        BridgeSseProjectUpdated() => buildProjectsSummaryEvent(),
+        // BridgeSseProjectUpdated triggers a full projects-summary rebuild, but
+        // the summary needs repository data (the bridge's session→project
+        // attribution) — the orchestrator fetches it and builds the event via
+        // [buildProjectsSummaryEvent] before reaching this mapper.
+        BridgeSseProjectUpdated() => null,
         BridgeSseVcsBranchUpdated() => const SesoriSseEvent.vcsBranchUpdated(),
         BridgeSseFileEdited(:final file) => SesoriSseEvent.fileEdited(file: file),
         BridgeSseFileWatcherUpdated(:final file, :final event) => SesoriSseEvent.fileWatcherUpdated(
@@ -180,46 +179,10 @@ class BridgeEventMapper {
     }
   }
 
-  /// Builds a projects summary event from the current active sessions.
-  SesoriSseEvent? buildProjectsSummaryEvent() {
-    try {
-      final summary = _plugin.getActiveSessionsSummary();
-      return SesoriSseEvent.projectsSummary(
-        projects: summary
-            .map(
-              (e) => ProjectActivitySummary(
-                id: e.id,
-                activeSessions: e.activeSessions
-                    .map(
-                      (a) => ActiveSession(
-                        id: a.id,
-                        mainAgentRunning: a.mainAgentRunning,
-                        awaitingInput: a.awaitingInput,
-                        isRetrying: a.isRetrying,
-                        childSessionIds: a.childSessionIds,
-                      ),
-                    )
-                    .toList(),
-              ),
-            )
-            .toList(),
-      );
-    } catch (e, st) {
-      Log.e("[sse-mapper] error building projects summary: $e\n$st");
-      unawaited(
-        _failureReporter
-            .recordFailure(
-              error: e,
-              stackTrace: st,
-              uniqueIdentifier: "sse_projects_summary",
-              fatal: false,
-              reason: "Failed to build projects summary event",
-              information: const [],
-            )
-            .catchError((_) {}),
-      );
-      return null;
-    }
+  /// Builds a projects summary event from already-remapped summary data
+  /// (see `SessionRepository.getProjectActivitySummaries`).
+  SesoriSseEvent buildProjectsSummaryEvent({required List<ProjectActivitySummary> projects}) {
+    return SesoriSseEvent.projectsSummary(projects: projects);
   }
 
   /// Attempts to parse an SSE event from a JSON payload.

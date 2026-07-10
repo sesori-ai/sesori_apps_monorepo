@@ -4,17 +4,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
-import "../routing/routing_test_helpers.dart";
 
 void main() {
   group("BridgeEventMapper", () {
     late BridgeEventMapper mapper;
-    late FakeBridgePlugin plugin;
 
     setUp(() {
-      plugin = FakeBridgePlugin();
       mapper = BridgeEventMapper(
-        plugin: plugin,
         failureReporter: FakeFailureReporter(),
       );
     });
@@ -358,37 +354,33 @@ void main() {
       expect(event.part.state?.output, equals("short"));
     });
 
-    test("map() returns null and reports failure when buildProjectsSummaryEvent() throws", () async {
-      final capturingReporter = CapturingFailureReporter();
-      final throwingMapper = BridgeEventMapper(
-        plugin: _ThrowingActiveSessionsPlugin(),
-        failureReporter: capturingReporter,
-      );
-
-      final result = throwingMapper.map(const BridgeSseProjectUpdated());
+    test("map() drops BridgeSseProjectUpdated (the orchestrator builds the summary)", () {
+      final result = mapper.map(const BridgeSseProjectUpdated());
 
       expect(result, isNull);
-      expect(capturingReporter.recordedIdentifiers, contains("sse_projects_summary"));
     });
 
-    test("buildProjectsSummaryEvent() returns null and reports failure when plugin throws", () {
-      final capturingReporter = CapturingFailureReporter();
-      final throwingMapper = BridgeEventMapper(
-        plugin: _ThrowingActiveSessionsPlugin(),
-        failureReporter: capturingReporter,
+    test("buildProjectsSummaryEvent() wraps already-remapped summary data", () {
+      final result = mapper.buildProjectsSummaryEvent(
+        projects: const [
+          ProjectActivitySummary(
+            id: "/repo",
+            activeSessions: [
+              ActiveSession(
+                id: "s1",
+                mainAgentRunning: true,
+                awaitingInput: false,
+                isRetrying: false,
+                childSessionIds: [],
+              ),
+            ],
+          ),
+        ],
       );
 
-      final result = throwingMapper.buildProjectsSummaryEvent();
-
-      expect(result, isNull);
-      expect(capturingReporter.recordedIdentifiers, contains("sse_projects_summary"));
+      final event = result as SesoriProjectsSummary;
+      expect(event.projects.single.id, "/repo");
+      expect(event.projects.single.activeSessions.single.id, "s1");
     });
   });
-}
-
-class _ThrowingActiveSessionsPlugin extends FakeBridgePlugin {
-  @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
-    throw StateError("summary mapping failed");
-  }
 }

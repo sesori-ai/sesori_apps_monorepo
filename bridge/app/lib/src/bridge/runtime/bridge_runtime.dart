@@ -65,6 +65,9 @@ class BridgeRuntime {
   // outlive any single OrchestratorSession (e.g. across a restart/reconnect).
   final SessionUnseenService _sessionUnseenService;
   final SessionViewTracker _sessionViewTracker;
+  // Shared with the DebugServer so it mirrors the orchestrator's
+  // projects-summary pipeline on the same instance.
+  final SessionRepository _sessionRepository;
   final OrchestratorSession session;
 
   BridgeRuntime({
@@ -75,6 +78,7 @@ class BridgeRuntime {
     required BridgeRestartService restartService,
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
+    required SessionRepository sessionRepository,
     required this.session,
   }) : _database = database,
        _plugin = plugin,
@@ -82,7 +86,8 @@ class BridgeRuntime {
        _sessionEventEnrichmentService = sessionEventEnrichmentService,
        _restartService = restartService,
        _sessionUnseenService = sessionUnseenService,
-       _sessionViewTracker = sessionViewTracker;
+       _sessionViewTracker = sessionViewTracker,
+       _sessionRepository = sessionRepository;
 
   static BridgeRuntime create({
     required BridgeConfig config,
@@ -190,6 +195,7 @@ class BridgeRuntime {
       restartService: restartService,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
+      sessionRepository: sessionRepository,
       session: Orchestrator(
         config: config,
         client: relayClient,
@@ -267,6 +273,7 @@ class BridgeRuntime {
       port: port,
       failureReporter: _failureReporter,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
+      sessionRepository: _sessionRepository,
       restartService: _restartService,
       restartHandoff: session.handleRestartHandoff,
     );

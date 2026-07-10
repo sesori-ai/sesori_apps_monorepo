@@ -229,6 +229,7 @@ class OrchestratorSession {
   final PrSyncService _prSyncService;
   final SessionUnseenService _sessionUnseenService;
   final SessionViewTracker _sessionViewTracker;
+  final SessionRepository _sessionRepository;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
   final BridgeRestartService _restartService;
@@ -305,6 +306,7 @@ class OrchestratorSession {
        _prSyncService = prSyncService,
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
+       _sessionRepository = sessionRepository,
        _sessionAbortService = sessionAbortService,
        _restartService = restartService,
        _statusNotifier = statusNotifier,
@@ -342,7 +344,6 @@ class OrchestratorSession {
          restartService: restartService,
        ),
        _mapper = BridgeEventMapper(
-         plugin: plugin,
          failureReporter: failureReporter,
        ),
        _sessionEventEnrichmentService = sessionEventEnrichmentService;
@@ -375,7 +376,7 @@ class OrchestratorSession {
       _completionListener.start();
       _maintenanceListener.start();
 
-      final startupSummary = _mapper.buildProjectsSummaryEvent();
+      final startupSummary = await _buildProjectsSummary();
       if (startupSummary != null) {
         _completionListener.handleSseEvent(startupSummary);
         if (startupSummary is SesoriProjectsSummary) {
@@ -386,10 +387,9 @@ class OrchestratorSession {
       Log.d("subscribing to plugin event stream...");
       _plugin.events
           .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
+          .asyncMap<void>(_processPluginEvent)
           .listen(
-            (event) {
-              unawaited(_processPluginEvent(event));
-            },
+            (_) {},
             onError: (Object e, StackTrace st) {
               Log.w("plugin event stream error: $e");
               unawaited(
@@ -643,7 +643,12 @@ class OrchestratorSession {
   Future<void> _processPluginEvent(BridgeSseEvent event) async {
     try {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
-      final sesoriEvent = _mapper.map(event);
+      // A project update means "activity changed" — rebuild the full summary
+      // (repository data: the bridge's session→project attribution), which the
+      // pure mapper cannot fetch itself.
+      final sesoriEvent = event is BridgeSseProjectUpdated
+          ? await _buildProjectsSummary()
+          : _mapper.map(event);
       if (sesoriEvent != null) {
         Log.v(
           "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
@@ -675,6 +680,40 @@ class OrchestratorSession {
             )
             .catchError((_) {}),
       );
+    }
+  }
+
+  /// Builds the projects-summary SSE event: fetches the activity summary with
+  /// the bridge's session→project attribution applied (so a derived plugin's
+  /// worktree session badges land on the stored parent project) and wraps it
+  /// via the pure mapper. Failures are recorded and yield null so the SSE
+  /// pipeline keeps flowing — the summary refreshes on the next trigger.
+  Future<SesoriSseEvent?> _buildProjectsSummary() async {
+    try {
+      return _mapper.buildProjectsSummaryEvent(
+        projects: await _sessionRepository.getProjectActivitySummaries(),
+      );
+    } catch (e, st) {
+      Log.e("[sse] error building projects summary: $e\n$st");
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "sse_projects_summary",
+              fatal: false,
+              reason: "Failed to build projects summary event",
+              information: const [],
+            )
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w(
+                "[sse] projects-summary failure report failed",
+                reportError,
+                reportStackTrace,
+              );
+            }),
+      );
+      return null;
     }
   }
 
@@ -1103,7 +1142,7 @@ class OrchestratorSession {
         Log.v("SseSubscribe: path=${subscribe.path}");
         try {
           _sseManager.subscribePath(connID, subscribe.path, _client);
-          final projSummary = _mapper.buildProjectsSummaryEvent();
+          final projSummary = await _buildProjectsSummary();
           if (projSummary != null) {
             _sseManager.enqueueEvent(projSummary);
             _completionListener.handleSseEvent(projSummary);
