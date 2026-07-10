@@ -710,10 +710,13 @@ class _NoopSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
-  Future<void> recordSessionTitle({required String sessionId, required String? title}) async {}
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
   Future<void> deleteSession({required String sessionId}) async {}
+
+  @override
+  Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async =>
@@ -871,16 +874,20 @@ class FakeSessionRepository implements SessionRepository {
     return pluginMessages.toSharedMessageWithParts();
   }
 
-  /// Recorded recordSessionTitle calls (sessionId → title).
+  /// Recorded setSessionTitleIfStored calls (sessionId → title).
   final List<({String sessionId, String? title})> recordedTitles = [];
 
   @override
-  Future<void> recordSessionTitle({required String sessionId, required String? title}) async {
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
     recordedTitles.add((sessionId: sessionId, title: title));
+    return true;
   }
 
   @override
   Future<void> deleteSession({required String sessionId}) async {}
+
+  @override
+  Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => [

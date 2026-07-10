@@ -182,7 +182,7 @@ class SessionRepository {
     // A derived backend doesn't persist renames (ACP has no rename RPC — the
     // plugin only echoes the title), so the bridge keeps the authoritative
     // copy; the enrichment overlay then serves it on every read.
-    await recordSessionTitle(sessionId: sessionId, title: title);
+    await setSessionTitleIfStored(sessionId: sessionId, title: title);
     return enrichPluginSession(pluginSession: updated);
   }
 
@@ -252,9 +252,15 @@ class SessionRepository {
   /// clears it — ACP's `session_info_update` documents null as a deliberate
   /// clear). No-op for native plugins, whose backends persist their own
   /// titles (a stored copy would go stale), and for rowless sessions.
-  Future<void> recordSessionTitle({required String sessionId, required String? title}) async {
-    if (_plugin is! BridgeDerivedProjectsPluginApi) return;
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
+    if (_plugin is! BridgeDerivedProjectsPluginApi) return true;
+    if (await _sessionDao.getSession(sessionId: sessionId) == null) return false;
     await _sessionDao.setTitle(sessionId: sessionId, title: title);
+    return true;
+  }
+
+  Future<bool> isSessionTombstoned({required String sessionId}) {
+    return _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: _plugin.id);
   }
 
   /// Records a delete tombstone and removes the stored row atomically. The

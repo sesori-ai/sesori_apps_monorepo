@@ -30,7 +30,7 @@ class DeletedSessionsTable extends Table {
   bool get withoutRowId => true;
 
   @override
-  Set<Column>? get primaryKey => {sessionId};
+  Set<Column>? get primaryKey => {pluginId, sessionId};
 }
 
 @freezed

@@ -29,6 +29,7 @@ import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -67,6 +68,7 @@ void main() {
         ),
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
       final orchestrator = Orchestrator(
         config: const BridgeConfig(
           relayURL: "ws://127.0.0.1:9999",
@@ -173,8 +175,10 @@ void main() {
         ),
         sessionEventEnrichmentService: SessionEventEnrichmentService(
           sessionRepository: sessionRepository,
+          sessionTitleService: sessionTitleService,
           failureReporter: FakeFailureReporter(),
         ),
+        sessionTitleService: sessionTitleService,
         restartService: buildTestRestartService(),
         statusNotifier: null,
       );
@@ -315,8 +319,10 @@ class _TestHarness {
         plugin: plugin,
       ),
     );
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionTitleService: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -389,6 +395,7 @@ class _TestHarness {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

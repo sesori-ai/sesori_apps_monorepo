@@ -92,6 +92,9 @@ void main() {
             PluginPendingQuestion(id: "q-gone", sessionID: "gone", displaySessionId: null, questions: []),
           ],
         },
+        ownProjectQuestions: const [
+          PluginPendingQuestion(id: "q-gone", sessionID: "gone", displaySessionId: null, questions: []),
+        ],
       );
       final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
 

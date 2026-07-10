@@ -27,6 +27,7 @@ import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -290,6 +291,7 @@ class _RegistrationHarness {
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
 
     final orchestrator = Orchestrator(
@@ -395,8 +397,10 @@ class _RegistrationHarness {
       ),
       sessionEventEnrichmentService: SessionEventEnrichmentService(
         sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
         failureReporter: FakeFailureReporter(),
       ),
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

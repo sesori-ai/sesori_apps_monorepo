@@ -15,6 +15,7 @@ import "../services/project_initialization_service.dart";
 import "../services/session_archive_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_persistence_service.dart";
+import "../services/session_title_service.dart";
 import "../services/session_unseen_service.dart";
 import "../services/worktree_service.dart";
 import "abort_session_handler.dart";
@@ -82,6 +83,7 @@ class RequestRouter {
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required SessionUnseenService sessionUnseenService,
+    required SessionTitleService sessionTitleService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required BridgeRestartService restartService,
@@ -102,9 +104,10 @@ class RequestRouter {
          agentRepository: agentRepository,
          permissionRepository: permissionRepository,
          questionRepository: questionRepository,
-         sessionPersistenceService: sessionPersistenceService,
-         sessionUnseenService: sessionUnseenService,
-         worktreeService: worktreeService,
+          sessionPersistenceService: sessionPersistenceService,
+          sessionUnseenService: sessionUnseenService,
+          sessionTitleService: sessionTitleService,
+          worktreeService: worktreeService,
          sessionDiffsHandler: sessionDiffsHandler,
          restartService: restartService,
        );
@@ -128,6 +131,7 @@ class RequestRouter {
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required SessionUnseenService sessionUnseenService,
+    required SessionTitleService sessionTitleService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required BridgeRestartService restartService,
@@ -159,6 +163,7 @@ class RequestRouter {
         plugin: plugin,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
       ),
       sendPromptHandler,
       abortSessionHandler,

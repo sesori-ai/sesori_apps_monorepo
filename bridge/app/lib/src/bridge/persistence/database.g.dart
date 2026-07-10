@@ -1168,7 +1168,7 @@ class $DeletedSessionsTableTable extends DeletedSessionsTable
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {sessionId};
+  Set<GeneratedColumn> get $primaryKey => {pluginId, sessionId};
   @override
   DeletedSessionDto map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';

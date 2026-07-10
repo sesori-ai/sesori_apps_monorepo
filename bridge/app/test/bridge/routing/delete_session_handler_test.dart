@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -29,18 +30,20 @@ void main() {
       operationLog = [];
       plugin = _TrackingFakeBridgePlugin(operationLog: operationLog);
       worktreeService = _FakeWorktreeService(database: db, operationLog: operationLog);
+      final sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
       handler = DeleteSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,
-        sessionRepository: SessionRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          pullRequestRepository: PullRequestRepository(
-            pullRequestDao: db.pullRequestDao,
-            projectsDao: db.projectsDao,
-          ),
-          unseenCalculator: const SessionUnseenCalculator(),
-        ),
+        sessionRepository: sessionRepository,
+        sessionTitleService: SessionTitleService(sessionRepository: sessionRepository),
       );
     });
 

@@ -35,6 +35,7 @@ import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -106,8 +107,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionTitleService: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -180,6 +183,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -263,8 +267,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionTitleService: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
     final projectRepository = ProjectRepository(
@@ -362,6 +368,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -459,8 +466,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionTitleService: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
     // Wired exactly like the supervised composition root: the notifier
@@ -538,6 +547,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: statusNotifier,
     );
@@ -669,8 +679,10 @@ void main() {
       ),
     );
 
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionTitleService: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -743,6 +755,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -871,8 +884,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionTitleService: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -945,6 +960,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -1020,8 +1036,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionTitleService: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -1094,6 +1112,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -1194,8 +1213,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionTitleService: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -1268,6 +1289,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -2028,10 +2050,13 @@ class _NoopSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
-  Future<void> recordSessionTitle({required String sessionId, required String? title}) async {}
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
   Future<void> deleteSession({required String sessionId}) async {}
+
+  @override
+  Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
@@ -2163,11 +2188,15 @@ class _DelayingSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
-  Future<void> recordSessionTitle({required String sessionId, required String? title}) =>
-      _base.recordSessionTitle(sessionId: sessionId, title: title);
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) =>
+      _base.setSessionTitleIfStored(sessionId: sessionId, title: title);
 
   @override
   Future<void> deleteSession({required String sessionId}) => _base.deleteSession(sessionId: sessionId);
+
+  @override
+  Future<bool> isSessionTombstoned({required String sessionId}) =>
+      _base.isSessionTombstoned(sessionId: sessionId);
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) =>

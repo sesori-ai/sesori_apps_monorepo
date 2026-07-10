@@ -4,20 +4,24 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../metadata_service.dart";
 import "../models/session_metadata.dart" as bridge_metadata;
 import "../repositories/session_repository.dart";
+import "session_title_service.dart";
 import "worktree_service.dart";
 
 class SessionCreationService {
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
+  final SessionTitleService _sessionTitleService;
 
   SessionCreationService({
     required MetadataService metadataService,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
+    required SessionTitleService sessionTitleService,
   }) : _metadataService = metadataService,
        _worktreeService = worktreeService,
-       _sessionRepository = sessionRepository;
+       _sessionRepository = sessionRepository,
+       _sessionTitleService = sessionTitleService;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
     final normalizedCommand = request.command?.normalize();
@@ -60,6 +64,7 @@ class SessionCreationService {
             )
           : null,
     );
+    await _sessionTitleService.applyPendingTitle(sessionId: created.id);
     await _maybeSendCommand(
       session: created,
       command: normalizedCommand,

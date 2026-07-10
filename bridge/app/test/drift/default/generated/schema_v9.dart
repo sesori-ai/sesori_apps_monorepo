@@ -1268,7 +1268,7 @@ class DeletedSessionsTable extends Table
   String get actualTableName => $name;
   static const String $name = 'deleted_sessions_table';
   @override
-  Set<GeneratedColumn> get $primaryKey => {sessionId};
+  Set<GeneratedColumn> get $primaryKey => {pluginId, sessionId};
   @override
   DeletedSessionsTableData map(
     Map<String, dynamic> data, {
@@ -1299,7 +1299,9 @@ class DeletedSessionsTable extends Table
   @override
   bool get withoutRowId => true;
   @override
-  List<String> get customConstraints => const ['PRIMARY KEY(session_id)'];
+  List<String> get customConstraints => const [
+    'PRIMARY KEY(plugin_id, session_id)',
+  ];
   @override
   bool get dontWriteConstraints => true;
 }

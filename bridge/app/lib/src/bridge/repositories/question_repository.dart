@@ -80,7 +80,8 @@ class QuestionRepository {
 
         final questionsByKey = <String, PendingQuestion>{
           for (final question in ownScopedQuestions)
-            "${question.sessionID}:${question.id}": question.toSharedPendingQuestion(),
+            if (!tombstoned.contains(question.sessionID))
+              "${question.sessionID}:${question.id}": question.toSharedPendingQuestion(),
         };
         for (final sessionId in sessionIds) {
           final pluginQuestions = await plugin.getPendingQuestions(sessionId: sessionId);

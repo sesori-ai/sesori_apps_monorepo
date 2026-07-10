@@ -925,7 +925,7 @@ final class Schema9 extends i0.VersionedSchema {
       entityName: 'deleted_sessions_table',
       withoutRowId: true,
       isStrict: false,
-      tableConstraints: ['PRIMARY KEY(session_id)'],
+      tableConstraints: ['PRIMARY KEY(plugin_id, session_id)'],
       columns: [_column_4, _column_30, _column_32],
       attachedDatabase: database,
     ),

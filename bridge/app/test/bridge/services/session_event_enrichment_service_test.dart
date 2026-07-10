@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -33,6 +34,7 @@ void main() {
       );
       service = SessionEventEnrichmentService(
         sessionRepository: repository,
+        sessionTitleService: SessionTitleService(sessionRepository: repository),
         failureReporter: LogFailureReporter(),
       );
     });
@@ -100,7 +102,7 @@ void main() {
       );
 
       expect(result, isA<BridgeSseSessionCreated>());
-      final info = (result as BridgeSseSessionCreated).info;
+      final info = (result! as BridgeSseSessionCreated).info;
       expect(info["pullRequest"], isNotNull);
     });
 
@@ -128,25 +130,51 @@ void main() {
       );
 
       expect(result, isA<BridgeSseSessionsUpdated>());
-      expect((result as BridgeSseSessionsUpdated).projectID, "p1");
+      expect((result! as BridgeSseSessionsUpdated).projectID, "p1");
+    });
+
+    test("drops created and updated events for a tombstoned session", () async {
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone",
+        pluginId: plugin.id,
+        deletedAt: 1,
+      );
+      const info = {
+        "id": "gone",
+        "projectID": "p1",
+        "directory": "/repo",
+        "parentID": null,
+        "title": "Deleted",
+        "time": null,
+        "summary": null,
+        "pullRequest": null,
+      };
+
+      expect(await service.enrich(const BridgeSseSessionCreated(info: info)), isNull);
+      expect(await service.enrich(const BridgeSseSessionUpdated(info: info)), isNull);
     });
 
     group("derived-plugin title capture", () {
       late _FakeDerivedPlugin derivedPlugin;
+      late SessionRepository derivedRepository;
+      late SessionTitleService derivedTitleService;
       late SessionEventEnrichmentService derivedService;
 
       setUp(() {
         derivedPlugin = _FakeDerivedPlugin();
-        derivedService = SessionEventEnrichmentService(
-          sessionRepository: SessionRepository(
-            plugin: derivedPlugin,
-            sessionDao: db.sessionDao,
-            pullRequestRepository: PullRequestRepository(
-              pullRequestDao: db.pullRequestDao,
-              projectsDao: db.projectsDao,
-            ),
-            unseenCalculator: const SessionUnseenCalculator(),
+        derivedRepository = SessionRepository(
+          plugin: derivedPlugin,
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
           ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+        derivedTitleService = SessionTitleService(sessionRepository: derivedRepository);
+        derivedService = SessionEventEnrichmentService(
+          sessionRepository: derivedRepository,
+          sessionTitleService: derivedTitleService,
           failureReporter: LogFailureReporter(),
         );
       });
@@ -189,7 +217,7 @@ void main() {
 
         // The wire payload carries the NEW title (captured before the
         // stored-wins overlay), and the stored copy now matches it.
-        expect((result as BridgeSseSessionUpdated).info["title"], "Backend rename");
+        expect((result! as BridgeSseSessionUpdated).info["title"], "Backend rename");
         final stored = await db.sessionDao.getSession(sessionId: "s1");
         expect(stored?.title, "Backend rename");
       });
@@ -201,9 +229,34 @@ void main() {
           BridgeSseSessionUpdated(info: sessionInfo(title: null)),
         );
 
-        expect((result as BridgeSseSessionUpdated).info["title"], isNull);
+        expect((result! as BridgeSseSessionUpdated).info["title"], isNull);
         final stored = await db.sessionDao.getSession(sessionId: "s1");
         expect(stored?.title, isNull);
+      });
+
+      test("a title update before row insertion is applied when the row arrives", () async {
+        final result = await derivedService.enrich(
+          BridgeSseSessionUpdated(info: sessionInfo(title: "Early title")),
+        );
+        expect((result! as BridgeSseSessionUpdated).info["title"], "Early title");
+        expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
+
+        await derivedRepository.insertStoredSession(
+          sessionId: "s1",
+          projectId: "/repo",
+          isDedicated: false,
+          createdAt: 10,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          agent: null,
+          agentModel: null,
+        );
+        await derivedTitleService.applyPendingTitle(sessionId: "s1");
+
+        final stored = await db.sessionDao.getSession(sessionId: "s1");
+        expect(stored?.title, "Early title");
       });
 
       test("session.created does not capture titles (null means unknown, not cleared)", () async {
@@ -216,7 +269,7 @@ void main() {
         final stored = await db.sessionDao.getSession(sessionId: "s1");
         expect(stored?.title, "Kept title");
         // The stored-wins overlay even restores the title onto the payload.
-        expect((result as BridgeSseSessionCreated).info["title"], "Kept title");
+        expect((result! as BridgeSseSessionCreated).info["title"], "Kept title");
       });
     });
   });

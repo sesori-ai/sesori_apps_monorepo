@@ -118,7 +118,7 @@ never touches another's rows (CONSIDERATIONS §2).
   authoritative for their own titles — nothing is stored or overlaid.
   Source: [#332 r3536171429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536171429)
 
-- **B2 — session-delete tombstone.** `SessionPersistenceService.deleteSession`
+- **B2 — session-delete tombstone.** `SessionRepository.deleteSession`
   records a tombstone with the row removal in one transaction (written even
   for rowless-but-enumerable sessions — the delete handler no longer gates on
   a stored row), and every derived enumeration path filters tombstoned ids

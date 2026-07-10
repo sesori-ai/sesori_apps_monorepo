@@ -55,6 +55,12 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return {for (final row in rows) row.sessionId};
   }
 
+  Future<bool> isSessionTombstoned({required String sessionId, required String pluginId}) async {
+    final query = select(deletedSessionsTable)
+      ..where((t) => t.pluginId.equals(pluginId) & t.sessionId.equals(sessionId));
+    return await query.getSingleOrNull() != null;
+  }
+
   /// Inserts a session row with full worktree state. If a placeholder row
   /// already exists for this id (e.g. a `session.created` SSE event raced ahead
   /// of the `/session/create` flow and inserted an unseen-tracking placeholder

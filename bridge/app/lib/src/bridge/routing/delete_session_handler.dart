@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/tables/session_table.dart";
 import "../repositories/session_repository.dart";
+import "../services/session_title_service.dart";
 import "../services/worktree_service.dart";
 import "request_handler.dart";
 import "worktree_cleanup.dart";
@@ -14,14 +15,17 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
   final BridgePluginApi _plugin;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
+  final SessionTitleService _sessionTitleService;
 
   DeleteSessionHandler({
     required BridgePluginApi plugin,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
+    required SessionTitleService sessionTitleService,
   }) : _plugin = plugin,
        _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
+       _sessionTitleService = sessionTitleService,
        super(
          HttpMethod.delete,
          "/session/delete",
@@ -84,7 +88,7 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
     // Unconditional (not gated on a stored row): the repository delete also
     // records the tombstone, and a rowless-but-enumerable backend session
     // still needs one or it reappears from the next enumeration.
-    await _sessionRepository.deleteSession(sessionId: sessionId);
+    await _sessionTitleService.deleteSession(sessionId: sessionId);
 
     return const SuccessEmptyResponse();
   }

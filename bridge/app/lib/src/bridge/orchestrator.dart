@@ -42,6 +42,7 @@ import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
 import "services/session_persistence_service.dart";
 import "services/session_prompt_service.dart";
+import "services/session_title_service.dart";
 import "services/session_unseen_service.dart";
 import "services/session_view_tracker.dart";
 import "services/worktree_service.dart";
@@ -77,6 +78,7 @@ class Orchestrator {
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final SessionTitleService _sessionTitleService;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
 
@@ -107,6 +109,7 @@ class Orchestrator {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required SessionTitleService sessionTitleService,
     required BridgeRestartService restartService,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
     // Standalone has no control channel, so this is null there.
@@ -136,6 +139,7 @@ class Orchestrator {
        _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
        _sessionEventEnrichmentService = sessionEventEnrichmentService,
+       _sessionTitleService = sessionTitleService,
        _restartService = restartService,
        _statusNotifier = statusNotifier;
 
@@ -147,6 +151,7 @@ class Orchestrator {
       metadataService: _metadataService,
       worktreeService: _worktreeService,
       sessionRepository: _sessionRepository,
+      sessionTitleService: _sessionTitleService,
     );
     final sessionArchiveService = SessionArchiveService(
       worktreeService: _worktreeService,
@@ -193,6 +198,7 @@ class Orchestrator {
       sessionArchiveService: sessionArchiveService,
       sessionAbortService: sessionAbortService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
+      sessionTitleService: _sessionTitleService,
       restartService: _restartService,
       statusNotifier: _statusNotifier,
     );
@@ -289,6 +295,7 @@ class OrchestratorSession {
     required SessionArchiveService sessionArchiveService,
     required SessionAbortService sessionAbortService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required SessionTitleService sessionTitleService,
     required BridgeRestartService restartService,
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
@@ -335,7 +342,8 @@ class OrchestratorSession {
           permissionRepository: permissionRepository,
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
-         sessionUnseenService: sessionUnseenService,
+          sessionUnseenService: sessionUnseenService,
+          sessionTitleService: sessionTitleService,
          worktreeService: worktreeService,
          sessionDiffsHandler: GetSessionDiffsHandler(
            sessionRepository: sessionRepository,
@@ -386,7 +394,9 @@ class OrchestratorSession {
 
       Log.d("subscribing to plugin event stream...");
       _plugin.events
-          .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
+          .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
+          .where((event) => event != null)
+          .cast<BridgeSseEvent>()
           .asyncMap<void>(_processPluginEvent)
           .listen(
             (_) {},

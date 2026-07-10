@@ -344,6 +344,7 @@
         "without_rowid": true,
         "constraints": [],
         "explicit_pk": [
+          "plugin_id",
           "session_id"
         ]
       }
@@ -535,7 +536,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"deleted_sessions_table\" (\"session_id\" TEXT NOT NULL, \"plugin_id\" TEXT NOT NULL, \"deleted_at\" INTEGER NOT NULL, PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"deleted_sessions_table\" (\"session_id\" TEXT NOT NULL, \"plugin_id\" TEXT NOT NULL, \"deleted_at\" INTEGER NOT NULL, PRIMARY KEY (\"plugin_id\", \"session_id\")) WITHOUT ROWID;"
         }
       ]
     },

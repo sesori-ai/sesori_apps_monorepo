@@ -29,6 +29,7 @@ import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -362,6 +363,7 @@ class _ReauthHarness {
       ),
       viewTracker: sessionViewTracker,
     );
+    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
     // One registration service feeds both the orchestrator and the relay client's
     // bridge-id provider, mirroring production — so the auth message reflects the
@@ -447,8 +449,10 @@ class _ReauthHarness {
       ),
       sessionEventEnrichmentService: SessionEventEnrichmentService(
         sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
         failureReporter: FakeFailureReporter(),
       ),
+      sessionTitleService: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

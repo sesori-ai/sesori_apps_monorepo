@@ -27,6 +27,7 @@ import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -108,10 +109,12 @@ void main() {
         sessionRepository: sessionRepository,
         processRunner: FakeProcessRunner(),
       );
+      final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
       final sessionCreationService = SessionCreationService(
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
       );
       final sessionArchiveService = SessionArchiveService(
         worktreeService: worktreeService,
@@ -143,6 +146,7 @@ void main() {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
+        sessionTitleService: sessionTitleService,
         permissionRepository: permissionRepository,
         questionRepository: questionRepository,
         sessionPersistenceService: sessionPersistenceService,
@@ -480,6 +484,7 @@ void main() {
         ),
         processRunner: FakeProcessRunner(),
       );
+      final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
 
       router = RequestRouter(
         plugin: plugin,
@@ -494,6 +499,7 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
+          sessionTitleService: sessionTitleService,
         ),
         sessionArchiveService: SessionArchiveService(
           worktreeService: worktreeService,
@@ -514,6 +520,7 @@ void main() {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
+        sessionTitleService: sessionTitleService,
         permissionRepository: permissionRepository,
         questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao),
         sessionPersistenceService: sessionPersistenceService,

@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
+import "session_title_service.dart";
 
 /// Prepares raw plugin session events for delivery: first syncs stored state
 /// the backend won't hold (the bridge's title copy for derived-plugin
@@ -9,16 +10,26 @@ import "../repositories/session_repository.dart";
 /// so the payload phones receive and the next REST enumeration agree.
 class SessionEventEnrichmentService {
   final SessionRepository _sessionRepository;
+  final SessionTitleService _sessionTitleService;
   final FailureReporter _failureReporter;
 
   SessionEventEnrichmentService({
     required SessionRepository sessionRepository,
+    required SessionTitleService sessionTitleService,
     required FailureReporter failureReporter,
   }) : _sessionRepository = sessionRepository,
+       _sessionTitleService = sessionTitleService,
        _failureReporter = failureReporter;
 
-  Future<BridgeSseEvent> enrich(BridgeSseEvent event) async {
+  Future<BridgeSseEvent?> enrich(BridgeSseEvent event) async {
     try {
+      final sessionId = switch (event) {
+        BridgeSseSessionCreated(:final info) || BridgeSseSessionUpdated(:final info) => info["id"],
+        _ => null,
+      };
+      if (sessionId is String && await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) {
+        return null;
+      }
       return switch (event) {
         BridgeSseSessionCreated(:final info) => BridgeSseSessionCreated(
           info: (await _sessionRepository.enrichSessionJson(sessionJson: info)).toJson(),
@@ -60,7 +71,7 @@ class SessionEventEnrichmentService {
   /// "cleared".
   Future<Session> _captureTitleAndEnrich({required Map<String, dynamic> info}) async {
     final session = Session.fromJson(info);
-    await _sessionRepository.recordSessionTitle(sessionId: session.id, title: session.title);
+    await _sessionTitleService.captureTitle(sessionId: session.id, title: session.title);
     return _sessionRepository.enrichSession(session: session);
   }
 }
