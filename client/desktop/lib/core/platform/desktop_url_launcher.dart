@@ -9,7 +9,15 @@ import "package:url_launcher/url_launcher.dart";
 @LazySingleton(as: UrlLauncher)
 class DesktopUrlLauncher implements UrlLauncher {
   @override
-  Future<bool> launch(Uri url) {
-    return launchUrl(url, mode: LaunchMode.externalApplication);
+  Future<bool> launch(Uri url) async {
+    try {
+      return await launchUrl(url, mode: LaunchMode.externalApplication);
+    } on Object catch (error, stackTrace) {
+      // launchUrl throws (rather than returning false) when no browser is
+      // configured, e.g. a Linux box without xdg-open. Callers only see the
+      // boolean, so log the cause before degrading to "could not open".
+      logw("Failed to open $url in the system browser", error, stackTrace);
+      return false;
+    }
   }
 }
