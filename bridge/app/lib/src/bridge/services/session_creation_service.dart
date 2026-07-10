@@ -26,7 +26,7 @@ class SessionCreationService {
     final metadata = await _generateMetadata(firstText: firstText);
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
     final created = await _sessionRepository.createSession(
-      directory: _resolveDirectory(request: request, worktreeResult: worktreeResult),
+      directory: await _resolveDirectory(request: request, worktreeResult: worktreeResult),
       parentSessionId: null,
       parts: _buildPromptParts(
         parts: request.parts,
@@ -139,14 +139,19 @@ class SessionCreationService {
     return parts;
   }
 
-  String _resolveDirectory({required CreateSessionRequest request, required WorktreeResult? worktreeResult}) {
-    if (!request.dedicatedWorktree) {
-      return request.projectId;
-    }
+  /// The working directory the new session runs in: the dedicated worktree
+  /// when one was created, otherwise the project's live directory. The
+  /// request's projectId is the stable identifier — it may point where the
+  /// folder used to be, so it is never used as a directory directly.
+  Future<String> _resolveDirectory({
+    required CreateSessionRequest request,
+    required WorktreeResult? worktreeResult,
+  }) async {
     return switch (worktreeResult) {
       WorktreeSuccess(:final path) => path,
+      // The fallback carries the live project directory it fell back to.
       WorktreeFallback(:final originalPath) => originalPath,
-      null => request.projectId,
+      null => _sessionRepository.resolveProjectDirectory(projectId: request.projectId),
     };
   }
 
@@ -225,7 +230,7 @@ class SessionCreationService {
     if (dedicatedWorktree) {
       return (worktreePath: null, branchName: null, baseBranch: null, baseCommit: null);
     }
-    final baseBranchAndCommit = await _worktreeService.resolveBaseBranchAndCommit(projectPath: projectId);
+    final baseBranchAndCommit = await _worktreeService.resolveBaseBranchAndCommit(projectId: projectId);
     return (
       worktreePath: null,
       branchName: null,

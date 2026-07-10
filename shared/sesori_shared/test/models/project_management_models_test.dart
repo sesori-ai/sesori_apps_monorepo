@@ -2,6 +2,31 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("Project", () {
+    test("JSON roundtrip carries the live path alongside the stable id", () {
+      const original = Project(
+        id: "/projects/a",
+        name: "A",
+        path: "/moved/a",
+        time: ProjectTime(created: 1, updated: 2, initialized: null),
+      );
+      final restored = Project.fromJson(original.toJson());
+
+      expect(restored, equals(original));
+      expect(restored.path, equals("/moved/a"));
+    });
+
+    test("fromJson without a path (older bridge) decodes to empty string", () {
+      final project = Project.fromJson({
+        "id": "/projects/a",
+        "name": "A",
+        "time": null,
+      });
+
+      expect(project.path, isEmpty);
+    });
+  });
+
   group("ProjectPathRequest", () {
     test("JSON roundtrip with valid path", () {
       const original = ProjectPathRequest(path: "/Users/dev/my-project");

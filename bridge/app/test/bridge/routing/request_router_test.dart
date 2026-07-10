@@ -52,6 +52,7 @@ void main() {
       final sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
         unseenCalculator: const SessionUnseenCalculator(),
       );
@@ -83,10 +84,13 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       );
-      final agentRepository = AgentRepository(plugin: plugin);
-      final providerRepository = ProviderRepository(plugin: plugin);
+      final agentRepository = AgentRepository(plugin: plugin,
+        projectsDao: db.projectsDao);
+      final providerRepository = ProviderRepository(plugin: plugin,
+        projectsDao: db.projectsDao);
       final permissionRepository = PermissionRepository(plugin: plugin);
-      final questionRepository = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final questionRepository = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -448,8 +452,10 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       );
-      final agentRepository = AgentRepository(plugin: plugin);
-      final providerRepository = ProviderRepository(plugin: plugin);
+      final agentRepository = AgentRepository(plugin: plugin,
+        projectsDao: db.projectsDao);
+      final providerRepository = ProviderRepository(plugin: plugin,
+        projectsDao: db.projectsDao);
       final permissionRepository = PermissionRepository(plugin: plugin);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
@@ -472,6 +478,7 @@ void main() {
         sessionRepository: SessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
           pullRequestRepository: PullRequestRepository(
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
@@ -515,7 +522,8 @@ void main() {
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         permissionRepository: permissionRepository,
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao),
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,

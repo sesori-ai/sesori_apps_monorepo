@@ -824,6 +824,9 @@ class _NoopSessionRepository implements SessionRepository {
     pullRequest: null,
     promptDefaults: null,
   );
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -1128,4 +1131,7 @@ class FakeSessionRepository implements SessionRepository {
     pullRequest: null,
     promptDefaults: null,
   );
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }

@@ -89,11 +89,23 @@ class WorktreeRepository {
     return _projectsDao.incrementAndGetWorktreeCounter(projectId: projectId);
   }
 
+  /// The live directory for [projectId] — where git operations for the
+  /// project must run. Falls back to the id when no path was recorded.
+  Future<String> resolveProjectPath({required String projectId}) {
+    return _projectsDao.getResolvedPath(projectId: projectId);
+  }
+
+  /// Resolves the branch and commit that new worktrees should be based on.
+  ///
+  /// [projectId] keys the stored base-branch override; [projectPath] is the
+  /// live directory the git queries run in. They differ once a project's
+  /// folder has moved since it was first opened.
   Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
+    required String projectId,
     required String projectPath,
   }) async {
     try {
-      final storedBranch = await _projectsDao.getBaseBranch(projectId: projectPath);
+      final storedBranch = await _projectsDao.getBaseBranch(projectId: projectId);
       final baseBranch = await _resolveBaseBranch(
         projectPath: projectPath,
         storedBranch: storedBranch,

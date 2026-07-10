@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart"
     show AgentModel, CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionVariant;
 
 import "../api/database/tables/pull_requests_table.dart";
+import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
 import "derived_session_builder.dart";
@@ -21,16 +22,19 @@ class SessionRepository {
 
   final BridgePluginApi _plugin;
   final SessionDao _sessionDao;
+  final ProjectsDao _projectsDao;
   final PullRequestRepository _pullRequestRepository;
   final SessionUnseenCalculator _unseenCalculator;
 
   SessionRepository({
     required BridgePluginApi plugin,
     required SessionDao sessionDao,
+    required ProjectsDao projectsDao,
     required PullRequestRepository pullRequestRepository,
     required SessionUnseenCalculator unseenCalculator,
   }) : _plugin = plugin,
        _sessionDao = sessionDao,
+       _projectsDao = projectsDao,
        _pullRequestRepository = pullRequestRepository,
        _unseenCalculator = unseenCalculator;
 
@@ -64,7 +68,10 @@ class SessionRepository {
   }) async {
     switch (_plugin) {
       case final NativeProjectsPluginApi plugin:
-        return plugin.getSessions(projectId, start: start, limit: limit);
+        // The plugin scopes sessions by directory, so hand it the project's
+        // live directory — the id may point where the folder used to be.
+        final directory = await _projectsDao.getResolvedPath(projectId: projectId);
+        return plugin.getSessions(directory, start: start, limit: limit);
 
       case final BridgeDerivedProjectsPluginApi plugin:
         final sessionProjectPaths = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);
@@ -163,7 +170,11 @@ class SessionRepository {
   Future<CommandListResponse> getCommands({required String? projectId}) async {
     final normalizedProjectId = projectId?.trim();
     final commands = await _plugin.getCommands(
-      projectId: normalizedProjectId == null || normalizedProjectId.isEmpty ? null : normalizedProjectId,
+      // The plugin reads commands from the project's directory, so resolve
+      // the id to the live path. Null/blank keeps the plugin's own fallback.
+      projectId: normalizedProjectId == null || normalizedProjectId.isEmpty
+          ? null
+          : await _projectsDao.getResolvedPath(projectId: normalizedProjectId),
     );
     return CommandListResponse(
       items: commands.map((command) => command.toSharedCommandInfo()).toList(growable: false),
@@ -242,7 +253,7 @@ class SessionRepository {
         // folder is still discoverable by a directory-scoped backend.
         final (sessionProjectPaths, storedProjects) = await (
           _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
-          _sessionDao.attachedDatabase.projectsDao.getAllProjects(),
+          _projectsDao.getAllProjects(),
         ).wait;
         final sessions = await plugin.listAllSessions(
           knownDirectories: {
@@ -359,6 +370,12 @@ class SessionRepository {
     return sessions.isNotEmpty;
   }
 
+  /// The project's live directory for [projectId], suitable as a git/CLI
+  /// working directory. Falls back to the id when no path was recorded.
+  Future<String> resolveProjectDirectory({required String projectId}) {
+    return _projectsDao.getResolvedPath(projectId: projectId);
+  }
+
   Future<String?> getProjectPath({required String projectId}) async {
     switch (_plugin) {
       case BridgeDerivedProjectsPluginApi():
@@ -368,12 +385,17 @@ class SessionRepository {
         return trimmed.isEmpty ? null : normalizeProjectDirectory(directory: trimmed);
 
       case final NativeProjectsPluginApi plugin:
+        final directory = await _projectsDao.getResolvedPath(projectId: projectId);
+        if (directory.trim().isEmpty) {
+          return null;
+        }
         try {
-          final project = await plugin.getProject(projectId);
-          if (project.id.trim().isEmpty) {
-            return null;
-          }
-          return project.id;
+          // Probe the plugin so an unreachable backend yields null (callers
+          // fall back rather than running git tooling blind), then hand back
+          // the live directory — not the plugin's id, which may point where
+          // the folder used to be.
+          await plugin.getProject(directory);
+          return directory;
         } catch (e) {
           Log.w("[SessionRepository] getProjectPath failed for $projectId: $e");
           return null;

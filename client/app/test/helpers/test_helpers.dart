@@ -356,13 +356,10 @@ void registerAllFallbackValues() {
 // ---------------------------------------------------------------------------
 
 /// Returns a realistic [Project] instance.
-Project testProject({String? path, String? name}) {
-  const projectPathField =
-      "work"
-      "tree";
+Project testProject({String? id, String? path, String? name}) {
   return Project.fromJson({
-    "id": "project-1",
-    projectPathField: path ?? "/home/user/my-project",
+    "id": id ?? "project-1",
+    "path": path ?? "/home/user/my-project",
     "name": name,
     "time": {
       "created": 1700000000000,

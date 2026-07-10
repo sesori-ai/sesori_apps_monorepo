@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_question_mapper.dart";
@@ -14,10 +15,12 @@ class QuestionRepository {
 
   final BridgePluginApi _plugin;
   final SessionDao _sessionDao;
+  final ProjectsDao _projectsDao;
 
-  QuestionRepository({required BridgePluginApi plugin, required SessionDao sessionDao})
+  QuestionRepository({required BridgePluginApi plugin, required SessionDao sessionDao, required ProjectsDao projectsDao})
     : _plugin = plugin,
-      _sessionDao = sessionDao;
+      _sessionDao = sessionDao,
+      _projectsDao = projectsDao;
 
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
@@ -46,7 +49,10 @@ class QuestionRepository {
   Future<List<PendingQuestion>> getProjectQuestions({required String projectId}) async {
     switch (_plugin) {
       case final NativeProjectsPluginApi plugin:
-        final pluginQuestions = await plugin.getProjectQuestions(projectId: projectId);
+        // The plugin scopes questions by directory, so hand it the project's
+        // live directory rather than the (possibly moved-away-from) id.
+        final directory = await _projectsDao.getResolvedPath(projectId: projectId);
+        final pluginQuestions = await plugin.getProjectQuestions(projectId: directory);
         return pluginQuestions.map((q) => q.toSharedPendingQuestion()).toList();
 
       case final BridgeDerivedProjectsPluginApi plugin:

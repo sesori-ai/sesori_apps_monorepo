@@ -11,6 +11,11 @@ const _maxWorktreeCreationAttempts = 3;
 const _branchPrefix = "session-";
 const _worktreeDir = ".worktrees";
 
+/// Orchestrates worktree lifecycle for sessions. Callers hand in the stable
+/// project IDENTIFIER; this service resolves it to the project's live
+/// directory before every git operation (a moved folder keeps its identity
+/// but git must run where the folder actually is), while database writes
+/// (worktree counter, base-branch override) stay keyed on the identifier.
 class WorktreeService {
   final WorktreeRepository _worktreeRepository;
 
@@ -48,31 +53,34 @@ class WorktreeService {
       }
     }
 
-    if (!await _worktreeRepository.isGitInitialized(projectPath: projectId)) {
-      Log.w("WorktreeService: not a git repository: $projectId");
+    final projectPath = await _worktreeRepository.resolveProjectPath(projectId: projectId);
+
+    if (!await _worktreeRepository.isGitInitialized(projectPath: projectPath)) {
+      Log.w("WorktreeService: not a git repository: $projectPath");
       return WorktreeFallback(
-        originalPath: projectId,
+        originalPath: projectPath,
         reason: "not a git repository",
       );
     }
 
-    if (!await _worktreeRepository.hasAtLeastOneCommit(projectPath: projectId)) {
-      Log.w("WorktreeService: repository has no commits: $projectId");
+    if (!await _worktreeRepository.hasAtLeastOneCommit(projectPath: projectPath)) {
+      Log.w("WorktreeService: repository has no commits: $projectPath");
       return WorktreeFallback(
-        originalPath: projectId,
+        originalPath: projectPath,
         reason: "repository has no commits",
       );
     }
 
     final baseBranchAndCommit = await _worktreeRepository.resolveBaseBranchAndCommit(
-      projectPath: projectId,
+      projectId: projectId,
+      projectPath: projectPath,
     );
     if (baseBranchAndCommit == null) {
       Log.w(
-        "WorktreeService: failed to resolve base branch/commit for: $projectId",
+        "WorktreeService: failed to resolve base branch/commit for: $projectPath",
       );
       return WorktreeFallback(
-        originalPath: projectId,
+        originalPath: projectPath,
         reason: "failed to resolve base branch/commit",
       );
     }
@@ -90,16 +98,16 @@ class WorktreeService {
       } else {
         final suffix =
             await _worktreeRepository.branchExists(
-              projectPath: projectId,
+              projectPath: projectPath,
               branchName: preferredBranch,
             )
             ? "-${_randomSuffix()}"
             : "";
         final branchName = "$preferredBranch$suffix";
         final worktreeName = "$preferredWorktree$suffix";
-        final worktreePath = "$projectId/$_worktreeDir/$worktreeName";
+        final worktreePath = "$projectPath/$_worktreeDir/$worktreeName";
         final created = await _worktreeRepository.createWorktree(
-          projectPath: projectId,
+          projectPath: projectPath,
           worktreePath: worktreePath,
           branchName: branchName,
           startPoint: startPoint,
@@ -116,21 +124,22 @@ class WorktreeService {
     }
 
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
+      // The counter is durable per-project state, keyed on the identifier.
       final counter = await _worktreeRepository.incrementAndGetWorktreeCounter(
         projectId: projectId,
       );
       final branchName = "$_branchPrefix${counter.toString().padLeft(3, '0')}";
-      final worktreePath = "$projectId/$_worktreeDir/$branchName";
+      final worktreePath = "$projectPath/$_worktreeDir/$branchName";
 
       if (await _worktreeRepository.branchExists(
-        projectPath: projectId,
+        projectPath: projectPath,
         branchName: branchName,
       )) {
         continue;
       }
 
       final created = await _worktreeRepository.createWorktree(
-        projectPath: projectId,
+        projectPath: projectPath,
         worktreePath: worktreePath,
         branchName: branchName,
         startPoint: startPoint,
@@ -147,18 +156,21 @@ class WorktreeService {
     }
 
     Log.w(
-      "WorktreeService: failed to create worktree after 3 attempts for: $projectId",
+      "WorktreeService: failed to create worktree after 3 attempts for: $projectPath",
     );
     return WorktreeFallback(
-      originalPath: projectId,
+      originalPath: projectPath,
       reason: "failed to create worktree after 3 attempts",
     );
   }
 
   Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
-    required String projectPath,
+    required String projectId,
   }) async {
-    return _worktreeRepository.resolveBaseBranchAndCommit(projectPath: projectPath);
+    return _worktreeRepository.resolveBaseBranchAndCommit(
+      projectId: projectId,
+      projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
+    );
   }
 
   Future<WorktreeSafetyResult> checkWorktreeSafety({
@@ -173,10 +185,10 @@ class WorktreeService {
 
   Future<bool> removeWorktree({
     required String projectId,
-    required String projectPath,
     required String worktreePath,
     required bool force,
   }) async {
+    final projectPath = await _worktreeRepository.resolveProjectPath(projectId: projectId);
     if (!_worktreeRepository.isValidWorktreePath(
       projectPath: projectPath,
       worktreePath: worktreePath,
@@ -192,24 +204,25 @@ class WorktreeService {
   }
 
   Future<bool> deleteBranch({
-    required String projectPath,
+    required String projectId,
     required String branchName,
     required bool force,
   }) async {
     return _worktreeRepository.deleteBranch(
-      projectPath: projectPath,
+      projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
       branchName: branchName,
       force: force,
     );
   }
 
   Future<bool> restoreWorktree({
-    required String projectPath,
+    required String projectId,
     required String worktreePath,
     required String branchName,
     required String baseBranch,
     required String? baseCommit,
   }) async {
+    final projectPath = await _worktreeRepository.resolveProjectPath(projectId: projectId);
     if (!_worktreeRepository.isValidWorktreePath(
       projectPath: projectPath,
       worktreePath: worktreePath,

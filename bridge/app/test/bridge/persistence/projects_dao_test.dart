@@ -206,6 +206,79 @@ void main() {
       });
     });
 
+    group("recordOpenedProject", () {
+      test("creates a row with the opened path and openedAt", () async {
+        await dao.recordOpenedProject(projectId: "/projects/a", path: "/projects/a", openedAt: 111);
+
+        final row = await dao.getProject(projectId: "/projects/a");
+        expect(row, isNotNull);
+        expect(row!.path, equals("/projects/a"));
+        expect(row.openedAt, equals(111));
+      });
+
+      test("updates path and openedAt when re-opening a moved folder", () async {
+        await dao.recordOpenedProject(projectId: "/projects/a", path: "/projects/a", openedAt: 111);
+
+        await dao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", openedAt: 222);
+
+        final row = await dao.getProject(projectId: "/projects/a");
+        expect(row!.path, equals("/moved/a"));
+        expect(row.openedAt, equals(222));
+      });
+
+      test("preserves hidden, baseBranch, displayName and worktreeCounter on conflict", () async {
+        await dao.hideProject(projectId: "/projects/a");
+        await dao.setBaseBranch(projectId: "/projects/a", baseBranch: "develop");
+        await dao.setDisplayName(projectId: "/projects/a", displayName: "My App");
+        await dao.incrementAndGetWorktreeCounter(projectId: "/projects/a");
+
+        await dao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", openedAt: 333);
+
+        final row = await dao.getProject(projectId: "/projects/a");
+        expect(row!.hidden, isTrue);
+        expect(row.baseBranch, equals("develop"));
+        expect(row.displayName, equals("My App"));
+        expect(row.worktreeCounter, equals(1));
+        expect(row.path, equals("/moved/a"));
+        expect(row.openedAt, equals(333));
+      });
+    });
+
+    group("getResolvedPath", () {
+      test("returns the id when no row exists", () async {
+        final path = await dao.getResolvedPath(projectId: "/projects/a");
+        expect(path, equals("/projects/a"));
+      });
+
+      test("returns the id when the row's path mirrors it", () async {
+        await dao.insertProjectsIfMissing(projectIds: ["/projects/a"]);
+
+        final path = await dao.getResolvedPath(projectId: "/projects/a");
+        expect(path, equals("/projects/a"));
+      });
+
+      test("returns the recorded path when a moved folder was re-opened", () async {
+        await dao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", openedAt: 1);
+
+        final path = await dao.getResolvedPath(projectId: "/projects/a");
+        expect(path, equals("/moved/a"));
+      });
+
+      test("other writers do not clobber a recorded path", () async {
+        await dao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", openedAt: 1);
+
+        await dao.hideProject(projectId: "/projects/a");
+        await dao.unhideProject(projectId: "/projects/a");
+        await dao.setBaseBranch(projectId: "/projects/a", baseBranch: "main");
+        await dao.setDisplayName(projectId: "/projects/a", displayName: "My App");
+        await dao.incrementAndGetWorktreeCounter(projectId: "/projects/a");
+        await dao.insertProjectsIfMissing(projectIds: ["/projects/a"]);
+
+        final path = await dao.getResolvedPath(projectId: "/projects/a");
+        expect(path, equals("/moved/a"));
+      });
+    });
+
     group("insertProjectsIfMissing", () {
       test("insertProjectsIfMissing inserts all missing projects in one batch", () async {
         await dao.insertProjectsIfMissing(projectIds: ["p1", "p2", "p3"]);

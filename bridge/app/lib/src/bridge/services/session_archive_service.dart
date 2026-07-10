@@ -179,7 +179,7 @@ class SessionArchiveService {
           storedBaseBranch: sessionDto.baseBranch,
         );
         await _worktreeService.restoreWorktree(
-          projectPath: projectId,
+          projectId: projectId,
           worktreePath: worktreePath,
           branchName: branchName,
           baseBranch: restoreBaseBranch,
@@ -204,7 +204,7 @@ class SessionArchiveService {
     if (storedBaseBranch case final baseBranch?) {
       return baseBranch;
     }
-    final resolved = await _worktreeService.resolveBaseBranchAndCommit(projectPath: projectId);
+    final resolved = await _worktreeService.resolveBaseBranchAndCommit(projectId: projectId);
     if (resolved == null) {
       throw SessionInitializationException();
     }

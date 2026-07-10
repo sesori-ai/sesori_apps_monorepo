@@ -83,6 +83,39 @@ void main() {
       expect(worktreeAddCall.arguments, contains("session-001"));
     });
 
+    test("moved project: git runs in the recorded live directory, counter stays keyed on the id", () async {
+      // The folder moved from _projectId to /moved/project and was re-opened
+      // there; every git operation must run where the folder actually is.
+      await projectsDao.recordOpenedProject(projectId: _projectId, path: "/moved/project", openedAt: 1);
+      // git rev-parse HEAD → success
+      processRunner.enqueue(result: _ok());
+      // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
+      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git rev-parse main → base commit SHA
+      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
+      // git rev-parse origin/main → no remote tracking branch
+      processRunner.enqueue(result: _fail(exitCode: 128));
+      // git branch --list session-001 → empty (branch does not exist)
+      processRunner.enqueue(result: _ok(stdout: ""));
+      // git worktree add → success
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.path, equals("/moved/project/.worktrees/session-001"));
+      for (final invocation in processRunner.invocations) {
+        expect(invocation.workingDirectory, equals("/moved/project"));
+      }
+      // The worktree counter is durable per-project state on the id-keyed row.
+      final row = await projectsDao.getProject(projectId: _projectId);
+      expect(row!.worktreeCounter, equals(1));
+    });
+
     test("parent session: reuses parent worktree when mapping exists", () async {
       // Insert a mapping for the parent session.
       await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
@@ -807,7 +840,6 @@ void main() {
 
       final result = await service.removeWorktree(
         projectId: _projectId,
-        projectPath: _projectId,
         worktreePath: "$_projectId/.worktrees/session-001",
         force: false,
       );
@@ -834,7 +866,6 @@ void main() {
 
       final result = await service.removeWorktree(
         projectId: _projectId,
-        projectPath: _projectId,
         worktreePath: "$_projectId/.worktrees/session-001",
         force: true,
       );
@@ -859,7 +890,6 @@ void main() {
 
       final result = await service.removeWorktree(
         projectId: _projectId,
-        projectPath: _projectId,
         worktreePath: "$_projectId/.worktrees/session-001",
         force: false,
       );
@@ -873,7 +903,7 @@ void main() {
       processRunner.enqueue(result: _ok());
 
       final result = await service.deleteBranch(
-        projectPath: _projectId,
+        projectId: _projectId,
         branchName: "session-001",
         force: false,
       );
@@ -891,7 +921,7 @@ void main() {
       processRunner.enqueue(result: _ok());
 
       final result = await service.deleteBranch(
-        projectPath: _projectId,
+        projectId: _projectId,
         branchName: "session-001",
         force: true,
       );
@@ -911,7 +941,7 @@ void main() {
       processRunner.enqueue(result: _ok());
 
       final result = await service.restoreWorktree(
-        projectPath: _projectId,
+        projectId: _projectId,
         worktreePath: "$_projectId/.worktrees/session-001",
         branchName: "session-001",
         baseBranch: "main",
@@ -939,7 +969,7 @@ void main() {
       processRunner.enqueue(result: _ok());
 
       final result = await service.restoreWorktree(
-        projectPath: _projectId,
+        projectId: _projectId,
         worktreePath: "$_projectId/.worktrees/session-001",
         branchName: "session-001",
         baseBranch: "main",

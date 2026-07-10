@@ -23,6 +23,7 @@ void main() {
         sessionRepository: SessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
           pullRequestRepository: PullRequestRepository(
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,

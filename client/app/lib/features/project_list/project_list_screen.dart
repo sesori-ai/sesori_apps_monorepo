@@ -30,6 +30,11 @@ part "widgets/bridge_offline_view.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";
 
+/// The user-facing directory of [project]: its live path on disk, falling
+/// back to the id for payloads from older bridges that don't send a path
+/// (there the id is the directory).
+String _projectDisplayPath(Project project) => project.path.isEmpty ? project.id : project.path;
+
 class ProjectListScreen extends StatelessWidget {
   const ProjectListScreen({super.key});
 
@@ -83,7 +88,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final loc = context.loc;
     // Same display-name resolution as _ProjectTile, so the sheet is titled
     // by the project it acts on.
-    final lastSegment = project.id.split("/").last;
+    final lastSegment = _projectDisplayPath(project).split("/").last;
     final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
 
     showPregoBottomSheet<void>(
