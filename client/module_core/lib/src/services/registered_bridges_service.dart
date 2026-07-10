@@ -158,7 +158,7 @@ class RegisteredBridgesService {
           // write, so reporting the bridges here would still leak the old
           // account's answer to the caller. Retire the result to match.
           if (generation != _authGeneration) return const [];
-          final sorted = _sortedByRecency(bridges: data);
+          final sorted = List<BridgeSummary>.unmodifiable(_sortedByRecency(bridges: data));
           _cachedBridges = sorted;
           return sorted;
         case ErrorResponse(:final error):
@@ -193,6 +193,7 @@ class RegisteredBridgesService {
     switch (status) {
       // A live E2E connection proves a bridge exists — latch without a lookup.
       case ConnectionConnected():
+        _cachedBridges = null;
         unawaited(_latch());
       // Parked offline: (re)resolve so a consumer of [isRegistered] alone — the
       // overlay — gets the right answer. Coalesced, and a no-op once latched.

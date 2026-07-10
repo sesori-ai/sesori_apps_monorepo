@@ -167,6 +167,37 @@ void main() {
       verify(() => bridgeRepository.getRegisteredBridges()).called(1);
     });
 
+    test("returns an immutable cached bridge list", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary()]),
+      );
+      final service = build();
+
+      await service.getRegisteredBridges();
+      final cached = await service.getRegisteredBridges();
+
+      expect(cached.clear, throwsUnsupportedError);
+    });
+
+    test("a live bridge connection invalidates the cached bridge list", () async {
+      final oldBridge = testBridgeSummary(id: "old", name: "old-macbook");
+      final newBridge = testBridgeSummary(id: "new", name: "new-macbook");
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([oldBridge]),
+      );
+      final service = build();
+
+      expect((await service.getRegisteredBridges()).map((b) => b.id), ["old"]);
+      statusSubject.add(_connected);
+      await _settle();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([newBridge]),
+      );
+
+      expect((await service.getRegisteredBridges()).map((b) => b.id), ["new"]);
+      verify(() => bridgeRepository.getRegisteredBridges()).called(2);
+    });
+
     test("logout clears the cached bridge list", () async {
       final oldBridge = testBridgeSummary(id: "old", name: "old-macbook");
       final newBridge = testBridgeSummary(id: "new", name: "new-macbook");
