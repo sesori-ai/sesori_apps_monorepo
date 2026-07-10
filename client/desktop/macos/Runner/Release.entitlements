@@ -2,8 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Not sandboxed by design (ADR A2): the app supervises the sesori-bridge
+	     helper, which spawns git/opencode/ps and reads arbitrary project
+	     directories — impossible under App Sandbox. Distribution is Developer
+	     ID (not MAS); PR 3.0a finalizes the hardened-runtime entitlements. -->
 	<key>com.apple.security.app-sandbox</key>
-	<true/>
+	<false/>
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.security.network.server</key>
