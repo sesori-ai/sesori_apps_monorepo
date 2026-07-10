@@ -15,6 +15,7 @@ dependencies:
   device_info_plus: ^13.2.0
   flutter:
     sdk: flutter
+  flutter_bloc: ^9.1.1
   flutter_secure_storage: ^10.3.1
   get_it: ^9.2.1
   http: ^1.6.0
@@ -36,6 +37,7 @@ dependencies:
 dev_dependencies:
   no_slop_linter:
     path: "../../shared/no_slop_linter"
+  bloc_test: ^10.0.0
   build_runner: any
   flutter_test:
     sdk: flutter

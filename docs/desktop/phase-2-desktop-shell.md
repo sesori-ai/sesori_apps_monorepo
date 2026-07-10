@@ -235,6 +235,42 @@ Findings log · Plan-deltas.
   through `module_core` interfaces only (no `module_auth` import outside DI).
 - **Acceptance:** can log in via the system browser; auth state observed via
   interfaces; no import of bridge internals.
+- **Aristotle:** plan ☑ (approved with 3 mechanical completions — deps +
+  barrel exports — folded in) · impl ☑ (PR raised on branch
+  `desktop-phase-2.3-login`).
+- **Findings:** Two units. (1) **`AuthGateCubit`** (`module_desktop_core`
+  Layer 4, first real code in the module — §6 row added): restores the local
+  session at startup (`hasLocallyValidSession` → `restoreLocalSession`,
+  local-only like mobile's splash; failures logged and degrade to the live
+  stream), then maps `AuthSession.authStateStream` → checking/signedOut/
+  signedIn(user). Mid-login `authenticating` deliberately does NOT flip the
+  gate (the login surface owns its progress UI), and later `initial`
+  emissions can't regress it. `signOut()` = `logoutCurrentDevice()` (the
+  device-local terminal step PR 2.13's coordinated flow keeps). `SplashCubit`
+  was deliberately not reused: it is one-shot and emits mobile `AppRoute`s;
+  the desktop gate needs live flips (sign-out → login without navigation
+  infra). module_desktop_core gains `bloc`/`freezed_annotation`/
+  `sesori_dart_core`/`sesori_shared` deps — the planned graph edges' first
+  use. 8 cubit tests (mocktail + BehaviorSubject fake). (2) **Shell login
+  surface** (plain Material for now — Prego adoption deferred to the window-
+  contents slice): `AuthGate`/`AuthGateView` root gate; `LoginScreen`/
+  `LoginView` reusing module_core's `LoginCubit` unmodified (GitHub + Google
+  buttons, exhaustive per-state status incl. timeout + failed(reason)); no
+  success navigation — the gate flips reactively off `authStateStream`;
+  `HomePlaceholder` shows the signed-in account + sign-out. Screen/View split
+  so tests drive views with stubbed cubits (8 widget tests + DI smoke test
+  updated: full 4-phase DI with an in-memory SecureStorage override — the
+  plugin has no platform channel under flutter_test). `module_auth`/
+  `module_core` untouched (zero diffs). Desktop clientType labels verified in
+  2.2. Analyze/tests green across all modules; `flutter build macos` OK.
+- **Deltas:** Apple sign-in omitted (mobile's flow is native-iOS-only;
+  browser-Apple is untested server-side from our clients — revisit with the
+  window-contents slice if wanted). Email login omitted (not part of the
+  browser-poll goal). Note: docs referencing an `AuthRedirectService` in
+  module_core are drift — no such class exists; startup routing lives in
+  `SplashCubit` (mobile) and now `AuthGateCubit` (desktop). Real-browser
+  login end-to-end is user-verified at MT-2 item 1 (automated coverage stops
+  at the cubit/DI seam).
 
 ## PR 2.4 — Control status/prompt trackers baseline (no relay client yet)
 - **Goal:** Add `BridgeStatusTracker` and `BridgePromptTracker` in

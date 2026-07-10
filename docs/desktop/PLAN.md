@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 2 — PR 2.2 Desktop platform adapters — PR raised on branch `desktop-phase-2.2-platform-adapters`, stacked on PR 2.1 (#405, branch `desktop-impl-plan-review`)
-- **Next up:** Phase 2 — PR 2.3 Login reuse (browser-poll OAuth). **Phase 1's MT-1 manual checkpoint (user-run) remains OPEN** — the user explicitly directed Phase 2 to proceed (as stacked PRs, merged one by one) while MT-1 stays open; MT-1 must still be run before Phase 1 is called done.
+- **Last completed phase:** Phase 2 — PR 2.3 Login reuse (browser-poll OAuth) — PR raised on branch `desktop-phase-2.3-login`, stacked on PR 2.2 (#408) → PR 2.1 (#405)
+- **Next up:** Phase 2 — PR 2.4 Control status/prompt trackers baseline. **Phase 1's MT-1 manual checkpoint (user-run) remains OPEN** — the user explicitly directed Phase 2 to proceed (as stacked PRs, merged one by one) while MT-1 stays open; MT-1 must still be run before Phase 1 is called done.
 - **Branch:** one feature branch per PR; Phase 2 is being raised as **stacked branches** (each PR's base = the previous PR's branch, retargeted to `main` as predecessors merge)
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -312,6 +312,7 @@ internal `new`).
 | `DesktopUpdateService` | `module_desktop_core` Layer 3 | update-apply policy using lower-layer repositories/APIs only: perform the repository-owned expected-stop operation, stage/apply through `AppUpdateRepository`, relaunch, and restore last-on through desktop-instance repository semantics |
 | `ControlMessageDispatcher` | `module_desktop_core` Layer 4 | subscribes to `ControlChannelServer`'s inbound stream and writes **down** into Layer-2 trackers / token seam: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; prompts → `BridgePromptTracker`. It depends only downward; it does NOT touch the cubit/UI. |
 | `BridgeControlCubit` | `module_desktop_core` Layer 4 | toggle on/off (→ service), expose status + prompts (← trackers) for tray + window |
+| `AuthGateCubit` | `module_desktop_core` Layer 4 | desktop sign-in gate: restores the local session at startup, maps `AuthSession.authStateStream` → checking/signedOut/signedIn for the window (later tray/logout/spawn-gating); device-local `signOut()` |
 | `SystemTray` / `WindowHost` / `LaunchAtLogin` / `AppUpdater` | `module_desktop_core` Layer 0 capability interfaces; `client/desktop` impls | wrap `tray_manager` / `window_manager` / `launch_at_startup` / `auto_updater`; adapters stay dumb |
 | desktop `SecureStorage` / `UrlLauncher` / `FailureReporter` impls | `client/desktop` Layer 0 adapters | platform adapters for `module_core` seams |
 
@@ -406,7 +407,7 @@ them). Only the user checks an MT box.
 ### Phase 2 — Desktop shell + supervisor → `phase-2-desktop-shell.md`
 - ☑ 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes — Med / M
 - ☑ 2.2 Desktop platform adapters (module_core + module_desktop_core prerequisites) — Low-Med / S-M
-- ☐ 2.3 Login reuse (`AuthManager` browser-poll OAuth) — Med / M
+- ☑ 2.3 Login reuse (`AuthManager` browser-poll OAuth) — Med / M
 - ☐ 2.4 Control status/prompt trackers baseline (no relay client yet) — Low-Med / S-M
 - ☐ 2.5a Re-export `AuthTokenProvider` from `module_core` (seam) — Low / S
 - ☐ 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder — Med / M
