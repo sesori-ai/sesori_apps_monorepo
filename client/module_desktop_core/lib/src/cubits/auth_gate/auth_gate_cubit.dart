@@ -23,8 +23,10 @@ class AuthGateCubit extends Cubit<AuthGateState> {
   StreamSubscription<AuthState>? _subscription;
 
   Future<void> _restoreAndSubscribe() async {
+    bool hasLocalSession = false;
     try {
-      if (await _authSession.hasLocallyValidSession()) {
+      hasLocalSession = await _authSession.hasLocallyValidSession();
+      if (hasLocalSession) {
         await _authSession.restoreLocalSession();
       }
     } on Object catch (error, stackTrace) {
@@ -36,7 +38,26 @@ class AuthGateCubit extends Cubit<AuthGateState> {
       return;
     }
     _subscription = _authSession.authStateStream.listen(_onAuthState);
-    _onAuthState(_authSession.currentState);
+
+    final AuthState current = _authSession.currentState;
+    if (hasLocalSession && current is AuthInitial) {
+      // Valid tokens but no cached user record (a prior best-effort user
+      // save failed), so the local restore could not emit: the session is
+      // still signed in — forcing a re-login would discard working
+      // credentials. Gate on the tokens (mobile's startup posture) and
+      // recover the account details in the background; the auth stream
+      // upgrades the state to a full signedIn(user) when it completes.
+      emit(const AuthGateState.signedIn(user: null));
+      try {
+        await _authSession.restoreSession();
+      } on Object catch (error, stackTrace) {
+        // Stay provisionally signed in; a hard auth failure reaches the gate
+        // through the auth-state stream instead.
+        logw("Background session restore failed", error, stackTrace);
+      }
+      return;
+    }
+    _onAuthState(current);
   }
 
   /// Device-local sign-out (clears local tokens only; other devices stay

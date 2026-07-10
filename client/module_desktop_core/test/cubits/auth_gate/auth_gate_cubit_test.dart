@@ -78,6 +78,31 @@ void main() {
     expect(cubit.state, const AuthGateState.signedOut());
   });
 
+  test("valid tokens with a missing cached user stay signed in and recover in the background", () async {
+    when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => true);
+    // Local restore cannot emit: the user record is missing.
+    when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
+    when(() => authSession.restoreSession()).thenAnswer((_) async {
+      authStates.add(const AuthState.authenticated(user: _user));
+      return true;
+    });
+
+    final AuthGateCubit cubit = await pumpCubit();
+
+    expect(cubit.state, const AuthGateState.signedIn(user: _user));
+    verify(() => authSession.restoreSession()).called(1);
+  });
+
+  test("a failed background restore stays provisionally signed in", () async {
+    when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => true);
+    when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
+    when(() => authSession.restoreSession()).thenThrow(StateError("offline"));
+
+    final AuthGateCubit cubit = await pumpCubit();
+
+    expect(cubit.state, const AuthGateState.signedIn(user: null));
+  });
+
   test("a failed restore degrades to the live stream state instead of throwing", () async {
     when(() => authSession.hasLocallyValidSession()).thenThrow(StateError("storage unavailable"));
 

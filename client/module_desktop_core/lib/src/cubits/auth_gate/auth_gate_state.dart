@@ -12,5 +12,8 @@ sealed class AuthGateState with _$AuthGateState {
 
   const factory AuthGateState.signedOut() = AuthGateSignedOut;
 
-  const factory AuthGateState.signedIn({required AuthUser user}) = AuthGateSignedIn;
+  /// [user] is null when locally stored tokens are valid but the cached user
+  /// record is missing (a prior best-effort user save failed) — the session
+  /// is still signed in; the account details arrive via a background restore.
+  const factory AuthGateState.signedIn({required AuthUser? user}) = AuthGateSignedIn;
 }
