@@ -132,7 +132,8 @@ void main() {
   });
 
   test("a restore outliving the sign-out fence is re-cleared when it settles", () async {
-    when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => true);
+    bool tokensStored = true;
+    when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => tokensStored);
     when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
     final Completer<bool> hungRestore = Completer<bool>();
     when(() => authSession.restoreSession()).thenAnswer(
@@ -144,6 +145,7 @@ void main() {
       }),
     );
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {
+      tokensStored = false;
       authStates.add(const AuthState.unauthenticated());
     });
     final AuthGateCubit cubit = AuthGateCubit(
@@ -158,12 +160,46 @@ void main() {
     expect(cubit.state, const AuthGateState.signedOut());
 
     // The hung /auth/me finally lands and re-emits authenticated — the
-    // chained re-clear must flip it back to signed out.
+    // chained re-clear must flip it back to signed out (no fresh tokens
+    // exist, so this is the stale session).
     hungRestore.complete(true);
     await pumpEventQueue();
 
     expect(cubit.state, const AuthGateState.signedOut());
     verify(() => authSession.logoutCurrentDevice()).called(2);
+  });
+
+  test("the delayed re-clear never wipes a fresh sign-in that landed meanwhile", () async {
+    bool tokensStored = true;
+    when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => tokensStored);
+    when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
+    final Completer<bool> hungRestore = Completer<bool>();
+    when(() => authSession.restoreSession()).thenAnswer((_) => hungRestore.future);
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {
+      tokensStored = false;
+      authStates.add(const AuthState.unauthenticated());
+    });
+    final AuthGateCubit cubit = AuthGateCubit(
+      authSession,
+      signOutRestoreFence: const Duration(milliseconds: 20),
+    );
+    addTearDown(cubit.close);
+    await pumpEventQueue();
+    await cubit.signOut();
+    expect(cubit.state, const AuthGateState.signedOut());
+
+    // The user signs back in BEFORE the hung restore settles: fresh tokens
+    // are saved and the stream re-authenticates.
+    tokensStored = true;
+    authStates.add(const AuthState.authenticated(user: _user));
+    await pumpEventQueue();
+    hungRestore.complete(false);
+    await pumpEventQueue();
+
+    // The delayed clear detected the fresh session and skipped — the new
+    // sign-in survives and logout ran only once.
+    expect(cubit.state, const AuthGateState.signedIn(user: _user));
+    verify(() => authSession.logoutCurrentDevice()).called(1);
   });
 
   test("an unconfirmed background restore stays provisionally signed in", () async {
