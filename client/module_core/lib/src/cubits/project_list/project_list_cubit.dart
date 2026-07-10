@@ -498,6 +498,30 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     return error is NonSuccessCodeError && error.errorCode == 403;
   }
 
+  /// The current loaded state's registered bridges, or empty outside a loaded
+  /// state.
+  List<BridgeSummary> get _loadedBridges => switch (state) {
+    ProjectListLoaded(:final bridges) => bridges,
+    ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const [],
+  };
+
+  /// Enriches an empty loaded list with the account's registered bridges so
+  /// the connected-but-empty body can name the machine it is connected to.
+  /// Mirrors the bridge-disconnected enrichment: the empty state shows
+  /// immediately and the machine row lands in a follow-up emit once the fetch
+  /// resolves; a failed fetch (empty list) leaves the row hidden. No
+  /// registered-bridges gate is needed here — a loaded state means a bridge is
+  /// connected, so the account has one by definition.
+  Future<void> _enrichLoadedEmptyWithBridges() async {
+    final bridges = await _registeredBridgesService.getRegisteredBridges();
+    if (isClosed || bridges.isEmpty) return;
+    // Projects may have arrived while the fetch was in flight — that state
+    // owns the screen and has no machine row to enrich.
+    if (state case final ProjectListLoaded loaded when loaded.projects.isEmpty) {
+      emit(loaded.copyWith(bridges: bridges));
+    }
+  }
+
   Future<bool> _fetchProjects({bool silent = false}) async {
     // Captured BEFORE the fetch so the seed can't overwrite a live update that
     // arrives while the request is in flight.
@@ -519,8 +543,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
             projects: projects,
             activityById: _sseEventRepository.currentProjectActivity,
             unseenByProjectId: _unseenByProjectId(projects),
+            // Carrying the previous machine identity over keeps the row from
+            // flickering out and back across a refresh of a still-empty list.
+            bridges: projects.isEmpty ? _loadedBridges : const [],
           ),
         );
+        if (projects.isEmpty) unawaited(_enrichLoadedEmptyWithBridges());
         return true;
 
       case ErrorResponse(:final error):

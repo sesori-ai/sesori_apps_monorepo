@@ -78,7 +78,7 @@ String toString() {
 
 
 class ProjectListLoaded implements ProjectListState {
-  const ProjectListLoaded({required final  List<Project> projects, required final  Map<String, int> activityById, final  Map<String, bool> unseenByProjectId = const {}, this.isRefreshing = false}): _projects = projects,_activityById = activityById,_unseenByProjectId = unseenByProjectId;
+  const ProjectListLoaded({required final  List<Project> projects, required final  Map<String, int> activityById, final  Map<String, bool> unseenByProjectId = const {}, this.isRefreshing = false, final  List<BridgeSummary> bridges = const <BridgeSummary>[]}): _projects = projects,_activityById = activityById,_unseenByProjectId = unseenByProjectId,_bridges = bridges;
   
 
  final  List<Project> _projects;
@@ -109,6 +109,25 @@ class ProjectListLoaded implements ProjectListState {
 }
 
 @JsonKey() final  bool isRefreshing;
+/// The account's registered bridges (most recently seen first), so the
+/// connected-but-empty body can name the machine it is connected to.
+/// Populated only while [projects] is empty — the only surface that shows
+/// the machine identity. Emitted empty first and enriched by a follow-up
+/// emit once the fetch resolves; stays empty when the fetch fails, which
+/// hides the machine-name row.
+ final  List<BridgeSummary> _bridges;
+/// The account's registered bridges (most recently seen first), so the
+/// connected-but-empty body can name the machine it is connected to.
+/// Populated only while [projects] is empty — the only surface that shows
+/// the machine identity. Emitted empty first and enriched by a follow-up
+/// emit once the fetch resolves; stays empty when the fetch fails, which
+/// hides the machine-name row.
+@JsonKey() List<BridgeSummary> get bridges {
+  if (_bridges is EqualUnmodifiableListView) return _bridges;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_bridges);
+}
+
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
@@ -120,16 +139,16 @@ $ProjectListLoadedCopyWith<ProjectListLoaded> get copyWith => _$ProjectListLoade
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other._projects, _projects)&&const DeepCollectionEquality().equals(other._activityById, _activityById)&&const DeepCollectionEquality().equals(other._unseenByProjectId, _unseenByProjectId)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other._projects, _projects)&&const DeepCollectionEquality().equals(other._activityById, _activityById)&&const DeepCollectionEquality().equals(other._unseenByProjectId, _unseenByProjectId)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other._bridges, _bridges));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_activityById),const DeepCollectionEquality().hash(_unseenByProjectId),isRefreshing);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_activityById),const DeepCollectionEquality().hash(_unseenByProjectId),isRefreshing,const DeepCollectionEquality().hash(_bridges));
 
 @override
 String toString() {
-  return 'ProjectListState.loaded(projects: $projects, activityById: $activityById, unseenByProjectId: $unseenByProjectId, isRefreshing: $isRefreshing)';
+  return 'ProjectListState.loaded(projects: $projects, activityById: $activityById, unseenByProjectId: $unseenByProjectId, isRefreshing: $isRefreshing, bridges: $bridges)';
 }
 
 
@@ -140,7 +159,7 @@ abstract mixin class $ProjectListLoadedCopyWith<$Res> implements $ProjectListSta
   factory $ProjectListLoadedCopyWith(ProjectListLoaded value, $Res Function(ProjectListLoaded) _then) = _$ProjectListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<Project> projects, Map<String, int> activityById, Map<String, bool> unseenByProjectId, bool isRefreshing
+ List<Project> projects, Map<String, int> activityById, Map<String, bool> unseenByProjectId, bool isRefreshing, List<BridgeSummary> bridges
 });
 
 
@@ -157,13 +176,14 @@ class _$ProjectListLoadedCopyWithImpl<$Res>
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? activityById = null,Object? unseenByProjectId = null,Object? isRefreshing = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? activityById = null,Object? unseenByProjectId = null,Object? isRefreshing = null,Object? bridges = null,}) {
   return _then(ProjectListLoaded(
 projects: null == projects ? _self._projects : projects // ignore: cast_nullable_to_non_nullable
 as List<Project>,activityById: null == activityById ? _self._activityById : activityById // ignore: cast_nullable_to_non_nullable
 as Map<String, int>,unseenByProjectId: null == unseenByProjectId ? _self._unseenByProjectId : unseenByProjectId // ignore: cast_nullable_to_non_nullable
 as Map<String, bool>,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,bridges: null == bridges ? _self._bridges : bridges // ignore: cast_nullable_to_non_nullable
+as List<BridgeSummary>,
   ));
 }
 
@@ -244,15 +264,17 @@ class ProjectListBridgeDisconnected implements ProjectListState {
   
 
  final  bool hasRegisteredBridges;
-/// The account's registered bridges (most recently seen first) as resolved
-/// when this state was emitted, so the UI can name the machine it is
-/// trying to reach. Empty when the lookup failed (e.g. the phone itself is
-/// offline) — the UI hides the machine identity in that case.
+/// The account's registered bridges (most recently seen first), so the UI
+/// can name the machine it is trying to reach. Emitted empty first and
+/// enriched by a follow-up emit once the fetch resolves; stays empty when
+/// the fetch fails (e.g. the phone itself is offline) — the UI hides the
+/// machine identity in that case.
  final  List<BridgeSummary> _bridges;
-/// The account's registered bridges (most recently seen first) as resolved
-/// when this state was emitted, so the UI can name the machine it is
-/// trying to reach. Empty when the lookup failed (e.g. the phone itself is
-/// offline) — the UI hides the machine identity in that case.
+/// The account's registered bridges (most recently seen first), so the UI
+/// can name the machine it is trying to reach. Emitted empty first and
+/// enriched by a follow-up emit once the fetch resolves; stays empty when
+/// the fetch fails (e.g. the phone itself is offline) — the UI hides the
+/// machine identity in that case.
 @JsonKey() List<BridgeSummary> get bridges {
   if (_bridges is EqualUnmodifiableListView) return _bridges;
   // ignore: implicit_dynamic_type

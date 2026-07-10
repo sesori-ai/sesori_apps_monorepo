@@ -15,11 +15,17 @@ part of "../project_list_screen.dart";
 // ===========================================================================
 
 /// The "connected, no projects" empty state: the connection graphic in its
-/// "on" state with a success-colored "Connected" caption sitting high in the
-/// body, and — anchored to the bottom — the no-projects message with the
-/// add-project call to action, which opens the existing Add Project sheet.
+/// "on" state with a success-colored "Connected" caption and the machine name
+/// of the connected bridge sitting high in the body, and — anchored to the
+/// bottom — the no-projects message with the add-project call to action,
+/// which opens the existing Add Project sheet.
 class _ConnectedEmptyView extends StatelessWidget {
-  const _ConnectedEmptyView();
+  const _ConnectedEmptyView({required this.bridges});
+
+  /// The account's registered bridges, most recently seen first. The first
+  /// entry names the machine the app is connected to; empty while the lookup
+  /// is in flight or when it failed, which hides the machine row.
+  final List<BridgeSummary> bridges;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +64,10 @@ class _ConnectedEmptyView extends StatelessWidget {
           style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSuccessPrimary),
           textAlign: TextAlign.center,
         ),
+        if (bridges.isNotEmpty) ...[
+          const SizedBox(height: PregoSpacing.xxs),
+          Center(child: _MachineNameRow(name: bridges.first.name)),
+        ],
         const Spacer(),
         Center(
           child: ConstrainedBox(

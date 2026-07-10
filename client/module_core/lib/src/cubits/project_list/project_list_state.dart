@@ -18,6 +18,14 @@ sealed class ProjectListState with _$ProjectListState {
     /// `SesoriSessionUnseenChanged` updates, the latter taking precedence.
     @Default({}) Map<String, bool> unseenByProjectId,
     @Default(false) bool isRefreshing,
+
+    /// The account's registered bridges (most recently seen first), so the
+    /// connected-but-empty body can name the machine it is connected to.
+    /// Populated only while [projects] is empty — the only surface that shows
+    /// the machine identity. Emitted empty first and enriched by a follow-up
+    /// emit once the fetch resolves; stays empty when the fetch fails, which
+    /// hides the machine-name row.
+    @Default(<BridgeSummary>[]) List<BridgeSummary> bridges,
   }) = ProjectListLoaded;
 
   const factory ProjectListState.failed({required RemoteFailureReason reason}) = ProjectListFailed;

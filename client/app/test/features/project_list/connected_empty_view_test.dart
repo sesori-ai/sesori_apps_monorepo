@@ -30,9 +30,20 @@ const _connectionConfig = ServerConnectionConfig(
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
 const _connectedStatus = ConnectionStatus.connected(config: _connectionConfig, health: _health);
 
+BridgeSummary _bridge({required String name, DateTime? lastSeenAt}) {
+  return BridgeSummary(
+    id: "bridge-1",
+    name: name,
+    platform: "macos",
+    addedAt: DateTime.utc(2026, 1, 1),
+    lastSeenAt: lastSeenAt,
+  );
+}
+
 void main() {
   late MockProjectService mockProjectService;
   late MockConnectionService mockConnectionService;
+  late MockRegisteredBridgesService mockRegisteredBridgesService;
   late MockAnalyticsReporter mockAnalyticsReporter;
   late StubConnectionOverlayCubit overlayCubit;
   late BehaviorSubject<ConnectionStatus> statusController;
@@ -42,6 +53,7 @@ void main() {
   setUp(() {
     mockProjectService = MockProjectService();
     mockConnectionService = MockConnectionService();
+    mockRegisteredBridgesService = MockRegisteredBridgesService();
     mockAnalyticsReporter = MockAnalyticsReporter();
     overlayCubit = StubConnectionOverlayCubit();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(_connectedStatus);
@@ -51,6 +63,9 @@ void main() {
     when(() => mockProjectService.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(const Projects(data: [])),
     );
+    // Default: the machine-identity fetch resolves empty (the fail-soft error
+    // shape), hiding the machine row; tests that show it override this.
+    when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
     when(
       () => mockAnalyticsReporter.logEvent(event: any(named: "event")),
     ).thenAnswer((_) async {});
@@ -60,7 +75,7 @@ void main() {
     getIt.registerLazySingleton<SseEventRepository>(MockSseEventRepository.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);
     getIt.registerLazySingleton<SessionUnseenTracker>(FakeSessionUnseenTracker.new);
-    getIt.registerLazySingleton<RegisteredBridgesService>(MockRegisteredBridgesService.new);
+    getIt.registerLazySingleton<RegisteredBridgesService>(() => mockRegisteredBridgesService);
     getIt.registerLazySingleton<FailureReporter>(MockFailureReporter.new);
     getIt.registerLazySingleton<AnalyticsReporter>(() => mockAnalyticsReporter);
   });
@@ -110,6 +125,28 @@ void main() {
     expect(find.text("Need help?"), findsNothing);
     expect(find.bySemanticsLabel("Copy command"), findsNothing);
     expect(find.text("Why is this needed?"), findsNothing);
+  });
+
+  group("machine-name row", () {
+    testWidgets("names the most recently seen registered bridge under the caption", (tester) async {
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
+        (_) async => [_bridge(name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1))],
+      );
+
+      await pumpConnectedEmpty(tester);
+
+      expect(find.text("Macbook-Pro.local"), findsOneWidget);
+      expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
+    });
+
+    testWidgets("is hidden when the registered bridges could not be fetched", (tester) async {
+      await pumpConnectedEmpty(tester);
+
+      expect(find.byIcon(TablerRegular.device_laptop), findsNothing);
+      // The empty state itself still renders in full.
+      expect(find.textContaining("Connected"), findsOneWidget);
+      expect(find.text("Add a new project to get started"), findsOneWidget);
+    });
   });
 
   testWidgets("tapping the CTA opens the Add Project sheet", (tester) async {

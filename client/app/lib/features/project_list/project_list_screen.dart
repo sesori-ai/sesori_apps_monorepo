@@ -261,16 +261,16 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
           ),
         ),
       ],
-      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => [
+      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId, :final bridges) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         if (projects.isEmpty)
           // Same shape as the disconnected bodies above: the empty state joins
           // the page scroll rather than nesting one of its own.
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: SafeArea(
               top: false,
-              child: _ConnectedEmptyView(),
+              child: _ConnectedEmptyView(bridges: bridges),
             ),
           )
         else ...[
