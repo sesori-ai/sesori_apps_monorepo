@@ -655,7 +655,7 @@ void _writeSemanticColorClass(
   buf.writeln("/// Usage via `context.prego`:");
   buf.writeln("/// ```dart");
   buf.writeln("/// Container(");
-  buf.writeln("///   color: context.prego.colors.bgPrimary,");
+  buf.writeln("///   color: context.prego.colors.bgSurface1,");
   buf.writeln("///   child: Text(");
   buf.writeln("///     'Hello',");
   buf.writeln("///     style: TextStyle(color: context.prego.colors.textPrimary),");

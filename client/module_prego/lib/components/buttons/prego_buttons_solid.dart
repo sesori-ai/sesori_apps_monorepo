@@ -505,13 +505,13 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
       if (isPressed) return colors.bgDestructivePressedAlt;
       if (isHovered) return colors.bgDestructiveHoverAlt;
       // Default and loading: bg-primary (white).
-      return colors.bgPrimary;
+      return colors.bgSurface1;
     }
 
     // Regular secondary: bgSecondary at rest. Hover darkening is handled by
     // the PregoTappable overlay (bgPrimaryHover = rgba(0,0,0,0.16) composited
     // on top of bgSecondary).
-    if (_isFocused) return colors.bgPrimary;
+    if (_isFocused) return colors.bgSurface1;
     return colors.bgSecondary;
   }
 
@@ -522,7 +522,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
     required bool isPressed,
   }) {
     // Focused tertiary uses bg-primary (white) as a base.
-    if (_isFocused) return colors.bgPrimary;
+    if (_isFocused) return colors.bgSurface1;
 
     if (_isDestructive) {
       // Destructive tertiary: pressed and hover use opaque bg colours directly
@@ -610,7 +610,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
       if (!_isFocused) return null;
       return [
         BoxShadow(color: focusRingColor, blurRadius: 0, spreadRadius: 4),
-        BoxShadow(color: colors.bgPrimary, blurRadius: 0, spreadRadius: 2),
+        BoxShadow(color: colors.bgSurface1, blurRadius: 0, spreadRadius: 2),
       ];
     }
 
@@ -618,7 +618,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
     if (_isFocused) {
       return [
         BoxShadow(color: focusRingColor, blurRadius: 0, spreadRadius: 4),
-        BoxShadow(color: colors.bgPrimary, blurRadius: 0, spreadRadius: 2),
+        BoxShadow(color: colors.bgSurface1, blurRadius: 0, spreadRadius: 2),
         BoxShadow(color: colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
       ];
     }

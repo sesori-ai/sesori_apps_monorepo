@@ -4,7 +4,7 @@ Extracts design token variables (colors, spacing, radius, dimensions) from the F
 
 ## Prerequisites
 
-- Access to the VESPR Figma Design System file (file key: `DTKWZawsS3zfA7TPA4OlGr`)
+- Access to the PREGO Design System Figma file (file key: `DTKWZawsS3zfA7TPA4OlGr`)
 - Figma Desktop app (for plugin console access)
 
 ## Step 1: Export variables from Figma
@@ -109,6 +109,17 @@ This reads `scripts/figma_tokens/figma_tokens.json` and generates:
 |---|---|
 | `lib/theme/primitives/prego_color_primitives.g.dart` | Mode-invariant base palette (`PregoColorPrimitives`) |
 | `lib/theme/primitives/prego_colors.g.dart` | Dark/Light semantic tokens (`PregoColorsDark`, `PregoColorsLight`, `PregoColors`) |
+| `lib/theme/primitives/prego_spacing_primitives.g.dart` | Numeric spacing scale (`PregoSpacingPrimitives`) |
+| `lib/theme/primitives/prego_spacing.g.dart` | Semantic spacing + container tokens (`PregoSpacing`) |
+| `lib/theme/primitives/prego_radius.g.dart` | Border radius tokens (`PregoRadius`) |
+| `lib/theme/primitives/prego_widths.g.dart` | Width tokens (`PregoWidths`) |
+
+Then format the generated files so they match the repo style (the generator emits
+long single-line expressions that `dart format` wraps at the configured page width):
+
+```bash
+dart format lib/theme/primitives/*.g.dart
+```
 
 ## Expected JSON structure
 

@@ -190,7 +190,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = widget.backgroundColor ?? context.prego.colors.bgPrimary;
+    final backgroundColor = widget.backgroundColor ?? context.prego.colors.bgSurface1;
     final topPad = MediaQuery.paddingOf(context).top;
     final extendBehind = widget.extendBodyBehindBar;
     final inline = widget.inlineTitle;

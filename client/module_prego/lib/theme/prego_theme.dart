@@ -11,7 +11,7 @@
 ///   @override
 ///   Widget build(BuildContext context) {
 ///     return Scaffold(
-///       backgroundColor: context.prego.colors.bgPrimary,
+///       backgroundColor: context.prego.colors.bgSurface1,
 ///       body: Padding(
 ///         padding: EdgeInsets.all(context.prego.spacing.lg),
 ///         child: Text(

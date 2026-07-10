@@ -17,7 +17,7 @@ import "primitives/prego_widths.g.dart";
 /// ```dart
 /// final design = context.prego;
 /// Container(
-///   color: design.colors.bgPrimary,
+///   color: design.colors.bgSurface1,
 ///   padding: EdgeInsets.all(design.spacing.md),
 ///   decoration: BoxDecoration(
 ///     borderRadius: BorderRadius.circular(design.radius.lg),
@@ -164,6 +164,8 @@ final class PregoRadiusAccessor {
   double get x3l => PregoRadius.x3l;
   double get x4l => PregoRadius.x4l;
   double get x5l => PregoRadius.x5l;
+  double get x6l => PregoRadius.x6l;
+  double get x8l => PregoRadius.x8l;
   double get full => PregoRadius.full;
 }
 

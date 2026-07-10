@@ -48,7 +48,7 @@ class SessionTile extends StatelessWidget {
         return false;
       },
       background: ColoredBox(
-        color: context.prego.colors.bgPrimary,
+        color: context.prego.colors.bgSurface1,
         child: Align(
           alignment: Alignment.centerLeft,
           child: Padding(

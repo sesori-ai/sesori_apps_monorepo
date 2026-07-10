@@ -112,8 +112,8 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Border/border-inside-reversed-top
   static const Color borderInsideReversedTop = Color(0xFF303236);
 
-  /// Figma: Colors/Border/border-primary → Gray/500
-  static const Color borderPrimary = PregoColorPrimitives.gray500;
+  /// Figma: Colors/Border/border-primary → Alpha White/900
+  static const Color borderPrimary = PregoColorPrimitives.alphaWhite900;
 
   /// Figma: Colors/Border/border-reversed → Base/black
   static const Color borderReversed = PregoColorPrimitives.baseBlack;
@@ -264,12 +264,6 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Background/bg-gray_pressed → Alpha White/600
   static const Color bgGrayPressed = PregoColorPrimitives.alphaWhite600;
 
-  /// Figma: Colors/Background/bg-overlay → Gray/500
-  static const Color bgOverlay = PregoColorPrimitives.gray500;
-
-  /// Figma: Colors/Background/bg-primary → Gray/950
-  static const Color bgPrimary = PregoColorPrimitives.gray950;
-
   /// Figma: Colors/Background/bg-primary-solid → Background/bg-secondary
   static const Color bgPrimarySolid = PregoColorsDark.bgSecondary;
 
@@ -282,8 +276,8 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Background/bg-secondary-solid → Gray (dark mode)/600
   static const Color bgSecondarySolid = Color(0xFF656A71);
 
-  /// Figma: Colors/Background/bg-secondary_alt → Background/bg-primary
-  static const Color bgSecondaryAlt = PregoColorsDark.bgPrimary;
+  /// Figma: Colors/Background/bg-secondary_alt → Background/bg-surface 1
+  static const Color bgSecondaryAlt = PregoColorsDark.bgSurface1;
 
   /// Figma: Colors/Background/bg-secondary_hover → Gray (dark mode)/800
   static const Color bgSecondaryHover = Color(0xFF303236);
@@ -300,14 +294,29 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Background/bg-success-solid → Success/600
   static const Color bgSuccessSolid = PregoColorPrimitives.success600;
 
-  /// Figma: Colors/Background/bg-surface_1 → Gray/900
-  static const Color bgSurface1 = PregoColorPrimitives.gray900;
+  /// Figma: Colors/Background/bg-surface 1 → Gray/950
+  static const Color bgSurface1 = PregoColorPrimitives.gray950;
 
-  /// Figma: Colors/Background/bg-surface_2 → Gray/700
-  static const Color bgSurface2 = PregoColorPrimitives.gray700;
+  /// Figma: Colors/Background/bg-surface_2 → Gray/900
+  static const Color bgSurface2 = PregoColorPrimitives.gray900;
 
-  /// Figma: Colors/Background/bg-surface_3 → Gray/600
-  static const Color bgSurface3 = PregoColorPrimitives.gray600;
+  /// Figma: Colors/Background/bg-surface_3 → Gray/800
+  static const Color bgSurface3 = PregoColorPrimitives.gray800;
+
+  /// Figma: Colors/Background/bg-surface_4 → Gray/700
+  static const Color bgSurface4 = PregoColorPrimitives.gray700;
+
+  /// Figma: Colors/Background/bg-surface_5 → Gray/600
+  static const Color bgSurface5 = PregoColorPrimitives.gray600;
+
+  /// Figma: Colors/Background/bg-surface_6 → Gray/500
+  static const Color bgSurface6 = PregoColorPrimitives.gray500;
+
+  /// Figma: Colors/Background/bg-surface_7 → Gray/525
+  static const Color bgSurface7 = PregoColorPrimitives.gray525;
+
+  /// Figma: Colors/Background/bg-surface_8 → Gray/450
+  static const Color bgSurface8 = PregoColorPrimitives.gray450;
 
   /// Figma: Colors/Background/bg-tertiary → Gray (dark mode)/800
   static const Color bgTertiary = Color(0xFF303236);
@@ -352,6 +361,9 @@ abstract final class PregoColorsDark {
 
   /// Figma: Colors/Effects/Shadows/shadow-3xl_02 → Base/transparent white
   static const Color shadow3xl02 = PregoColorPrimitives.baseTransparentWhite;
+
+  /// Figma: Colors/Effects/Shadows/shadow-cards → Alpha Black/300
+  static const Color shadowCards = PregoColorPrimitives.alphaBlack300;
 
   /// Figma: Colors/Effects/Shadows/shadow-inversed → Alpha Black/200
   static const Color shadowInversed = PregoColorPrimitives.alphaBlack200;
@@ -405,8 +417,8 @@ abstract final class PregoColorsDark {
   /// Figma: Component colors/Components/Buttons/button-destructive-primary-icon_hover → Error/200
   static const Color buttonDestructivePrimaryIconHover = PregoColorPrimitives.error200;
 
-  /// Figma: Component colors/Components/Buttons/button-glass- primary-background → Alpha White/900
-  static const Color buttonGlassPrimaryBackground = PregoColorPrimitives.alphaWhite900;
+  /// Figma: Component colors/Components/Buttons/button-glass- primary-background → Alpha White/800
+  static const Color buttonGlassPrimaryBackground = PregoColorPrimitives.alphaWhite800;
 
   /// Figma: Component colors/Components/Buttons/button-glass- primary-hover → Alpha White/800
   static const Color buttonGlassPrimaryHover = PregoColorPrimitives.alphaWhite800;
@@ -699,11 +711,11 @@ abstract final class PregoColorsLight {
   /// Figma: Colors/Text/text-primary_on-white → Base/white
   static const Color textPrimaryOnWhite = PregoColorPrimitives.baseWhite;
 
-  /// Figma: Colors/Text/text-quaternary (500) → Gray (light mode)/400
-  static const Color textQuaternary = Color(0xFFA4A7AE);
+  /// Figma: Colors/Text/text-quaternary (500) → Gray/425
+  static const Color textQuaternary = PregoColorPrimitives.gray425;
 
-  /// Figma: Colors/Text/text-secondary (600) → Gray/500
-  static const Color textSecondary = PregoColorPrimitives.gray500;
+  /// Figma: Colors/Text/text-secondary (600) → Gray/525
+  static const Color textSecondary = PregoColorPrimitives.gray525;
 
   /// Figma: Colors/Text/text-secondary_hover → Gray (light mode)/800
   static const Color textSecondaryHover = Color(0xFF252B37);
@@ -714,8 +726,8 @@ abstract final class PregoColorsLight {
   /// Figma: Colors/Text/text-success-primary (600) → Success/600
   static const Color textSuccessPrimary = PregoColorPrimitives.success600;
 
-  /// Figma: Colors/Text/text-tertiary (450) → Gray/525
-  static const Color textTertiary = PregoColorPrimitives.gray525;
+  /// Figma: Colors/Text/text-tertiary (450) → Gray/450
+  static const Color textTertiary = PregoColorPrimitives.gray450;
 
   /// Figma: Colors/Text/text-tertiary_hover → Gray/700
   static const Color textTertiaryHover = PregoColorPrimitives.gray700;
@@ -906,12 +918,6 @@ abstract final class PregoColorsLight {
   /// Figma: Colors/Background/bg-gray_pressed → Alpha Black/200
   static const Color bgGrayPressed = PregoColorPrimitives.alphaBlack200;
 
-  /// Figma: Colors/Background/bg-overlay → Base/white
-  static const Color bgOverlay = PregoColorPrimitives.baseWhite;
-
-  /// Figma: Colors/Background/bg-primary → Gray/300
-  static const Color bgPrimary = PregoColorPrimitives.gray300;
-
   /// Figma: Colors/Background/bg-primary-solid → Gray/950
   static const Color bgPrimarySolid = PregoColorPrimitives.gray950;
 
@@ -942,14 +948,29 @@ abstract final class PregoColorsLight {
   /// Figma: Colors/Background/bg-success-solid → Success/600
   static const Color bgSuccessSolid = PregoColorPrimitives.success600;
 
-  /// Figma: Colors/Background/bg-surface_1 → Gray/200
+  /// Figma: Colors/Background/bg-surface 1 → Gray/200
   static const Color bgSurface1 = PregoColorPrimitives.gray200;
 
-  /// Figma: Colors/Background/bg-surface_2 → Gray/100
-  static const Color bgSurface2 = PregoColorPrimitives.gray100;
+  /// Figma: Colors/Background/bg-surface_2 → Gray/50
+  static const Color bgSurface2 = PregoColorPrimitives.gray50;
 
-  /// Figma: Colors/Background/bg-surface_3 → Gray/50
-  static const Color bgSurface3 = PregoColorPrimitives.gray50;
+  /// Figma: Colors/Background/bg-surface_3 → Base/white
+  static const Color bgSurface3 = PregoColorPrimitives.baseWhite;
+
+  /// Figma: Colors/Background/bg-surface_4 → Base/white
+  static const Color bgSurface4 = PregoColorPrimitives.baseWhite;
+
+  /// Figma: Colors/Background/bg-surface_5 → Base/white
+  static const Color bgSurface5 = PregoColorPrimitives.baseWhite;
+
+  /// Figma: Colors/Background/bg-surface_6 → Base/white
+  static const Color bgSurface6 = PregoColorPrimitives.baseWhite;
+
+  /// Figma: Colors/Background/bg-surface_7 → Base/white
+  static const Color bgSurface7 = PregoColorPrimitives.baseWhite;
+
+  /// Figma: Colors/Background/bg-surface_8 → Base/white
+  static const Color bgSurface8 = PregoColorPrimitives.baseWhite;
 
   /// Figma: Colors/Background/bg-tertiary → Gray/100
   static const Color bgTertiary = PregoColorPrimitives.gray100;
@@ -994,6 +1015,9 @@ abstract final class PregoColorsLight {
 
   /// Figma: Colors/Effects/Shadows/shadow-3xl_02
   static const Color shadow3xl02 = Color(0x0A0A0D12);
+
+  /// Figma: Colors/Effects/Shadows/shadow-cards
+  static const Color shadowCards = Color(0x00FFFFFF);
 
   /// Figma: Colors/Effects/Shadows/shadow-inversed
   static const Color shadowInversed = Color(0x0AFFFFFF);
@@ -1047,8 +1071,8 @@ abstract final class PregoColorsLight {
   /// Figma: Component colors/Components/Buttons/button-destructive-primary-icon_hover → Error/200
   static const Color buttonDestructivePrimaryIconHover = PregoColorPrimitives.error200;
 
-  /// Figma: Component colors/Components/Buttons/button-glass- primary-background → Alpha White/400
-  static const Color buttonGlassPrimaryBackground = PregoColorPrimitives.alphaWhite400;
+  /// Figma: Component colors/Components/Buttons/button-glass- primary-background → Alpha Black/25
+  static const Color buttonGlassPrimaryBackground = PregoColorPrimitives.alphaBlack25;
 
   /// Figma: Component colors/Components/Buttons/button-glass- primary-hover → Alpha Black/25
   static const Color buttonGlassPrimaryHover = PregoColorPrimitives.alphaBlack25;
@@ -1300,7 +1324,7 @@ abstract final class PregoColorsLight {
 /// Usage via `context.prego`:
 /// ```dart
 /// Container(
-///   color: context.prego.colors.bgPrimary,
+///   color: context.prego.colors.bgSurface1,
 ///   child: Text(
 ///     'Hello',
 ///     style: TextStyle(color: context.prego.colors.textPrimary),
@@ -1398,8 +1422,6 @@ final class PregoColors {
     bgErrorSolidHover: PregoColorsDark.bgErrorSolidHover,
     bgGrayHover: PregoColorsDark.bgGrayHover,
     bgGrayPressed: PregoColorsDark.bgGrayPressed,
-    bgOverlay: PregoColorsDark.bgOverlay,
-    bgPrimary: PregoColorsDark.bgPrimary,
     bgPrimarySolid: PregoColorsDark.bgPrimarySolid,
     bgQuaternary: PregoColorsDark.bgQuaternary,
     bgSecondary: PregoColorsDark.bgSecondary,
@@ -1413,6 +1435,11 @@ final class PregoColors {
     bgSurface1: PregoColorsDark.bgSurface1,
     bgSurface2: PregoColorsDark.bgSurface2,
     bgSurface3: PregoColorsDark.bgSurface3,
+    bgSurface4: PregoColorsDark.bgSurface4,
+    bgSurface5: PregoColorsDark.bgSurface5,
+    bgSurface6: PregoColorsDark.bgSurface6,
+    bgSurface7: PregoColorsDark.bgSurface7,
+    bgSurface8: PregoColorsDark.bgSurface8,
     bgTertiary: PregoColorsDark.bgTertiary,
     bgWarningPrimary: PregoColorsDark.bgWarningPrimary,
     bgWarningSecondary: PregoColorsDark.bgWarningSecondary,
@@ -1427,6 +1454,7 @@ final class PregoColors {
     shadow2xl02: PregoColorsDark.shadow2xl02,
     shadow3xl01: PregoColorsDark.shadow3xl01,
     shadow3xl02: PregoColorsDark.shadow3xl02,
+    shadowCards: PregoColorsDark.shadowCards,
     shadowInversed: PregoColorsDark.shadowInversed,
     shadowLg01: PregoColorsDark.shadowLg01,
     shadowLg02: PregoColorsDark.shadowLg02,
@@ -1610,8 +1638,6 @@ final class PregoColors {
     required this.bgErrorSolidHover,
     required this.bgGrayHover,
     required this.bgGrayPressed,
-    required this.bgOverlay,
-    required this.bgPrimary,
     required this.bgPrimarySolid,
     required this.bgQuaternary,
     required this.bgSecondary,
@@ -1625,6 +1651,11 @@ final class PregoColors {
     required this.bgSurface1,
     required this.bgSurface2,
     required this.bgSurface3,
+    required this.bgSurface4,
+    required this.bgSurface5,
+    required this.bgSurface6,
+    required this.bgSurface7,
+    required this.bgSurface8,
     required this.bgTertiary,
     required this.bgWarningPrimary,
     required this.bgWarningSecondary,
@@ -1639,6 +1670,7 @@ final class PregoColors {
     required this.shadow2xl02,
     required this.shadow3xl01,
     required this.shadow3xl02,
+    required this.shadowCards,
     required this.shadowInversed,
     required this.shadowLg01,
     required this.shadowLg02,
@@ -1991,12 +2023,6 @@ final class PregoColors {
   /// Figma: Colors/Background/bg-gray_pressed
   final Color bgGrayPressed;
 
-  /// Figma: Colors/Background/bg-overlay
-  final Color bgOverlay;
-
-  /// Figma: Colors/Background/bg-primary
-  final Color bgPrimary;
-
   /// Figma: Colors/Background/bg-primary-solid
   final Color bgPrimarySolid;
 
@@ -2027,7 +2053,7 @@ final class PregoColors {
   /// Figma: Colors/Background/bg-success-solid
   final Color bgSuccessSolid;
 
-  /// Figma: Colors/Background/bg-surface_1
+  /// Figma: Colors/Background/bg-surface 1
   final Color bgSurface1;
 
   /// Figma: Colors/Background/bg-surface_2
@@ -2035,6 +2061,21 @@ final class PregoColors {
 
   /// Figma: Colors/Background/bg-surface_3
   final Color bgSurface3;
+
+  /// Figma: Colors/Background/bg-surface_4
+  final Color bgSurface4;
+
+  /// Figma: Colors/Background/bg-surface_5
+  final Color bgSurface5;
+
+  /// Figma: Colors/Background/bg-surface_6
+  final Color bgSurface6;
+
+  /// Figma: Colors/Background/bg-surface_7
+  final Color bgSurface7;
+
+  /// Figma: Colors/Background/bg-surface_8
+  final Color bgSurface8;
 
   /// Figma: Colors/Background/bg-tertiary
   final Color bgTertiary;
@@ -2079,6 +2120,9 @@ final class PregoColors {
 
   /// Figma: Colors/Effects/Shadows/shadow-3xl_02
   final Color shadow3xl02;
+
+  /// Figma: Colors/Effects/Shadows/shadow-cards
+  final Color shadowCards;
 
   /// Figma: Colors/Effects/Shadows/shadow-inversed
   final Color shadowInversed;
@@ -2464,8 +2508,6 @@ final class PregoColors {
     bgErrorSolidHover: PregoColorsLight.bgErrorSolidHover,
     bgGrayHover: PregoColorsLight.bgGrayHover,
     bgGrayPressed: PregoColorsLight.bgGrayPressed,
-    bgOverlay: PregoColorsLight.bgOverlay,
-    bgPrimary: PregoColorsLight.bgPrimary,
     bgPrimarySolid: PregoColorsLight.bgPrimarySolid,
     bgQuaternary: PregoColorsLight.bgQuaternary,
     bgSecondary: PregoColorsLight.bgSecondary,
@@ -2479,6 +2521,11 @@ final class PregoColors {
     bgSurface1: PregoColorsLight.bgSurface1,
     bgSurface2: PregoColorsLight.bgSurface2,
     bgSurface3: PregoColorsLight.bgSurface3,
+    bgSurface4: PregoColorsLight.bgSurface4,
+    bgSurface5: PregoColorsLight.bgSurface5,
+    bgSurface6: PregoColorsLight.bgSurface6,
+    bgSurface7: PregoColorsLight.bgSurface7,
+    bgSurface8: PregoColorsLight.bgSurface8,
     bgTertiary: PregoColorsLight.bgTertiary,
     bgWarningPrimary: PregoColorsLight.bgWarningPrimary,
     bgWarningSecondary: PregoColorsLight.bgWarningSecondary,
@@ -2493,6 +2540,7 @@ final class PregoColors {
     shadow2xl02: PregoColorsLight.shadow2xl02,
     shadow3xl01: PregoColorsLight.shadow3xl01,
     shadow3xl02: PregoColorsLight.shadow3xl02,
+    shadowCards: PregoColorsLight.shadowCards,
     shadowInversed: PregoColorsLight.shadowInversed,
     shadowLg01: PregoColorsLight.shadowLg01,
     shadowLg02: PregoColorsLight.shadowLg02,
@@ -2676,8 +2724,6 @@ final class PregoColors {
     bgErrorSolidHover: lerpColorNonNull(a.bgErrorSolidHover, b.bgErrorSolidHover, t),
     bgGrayHover: lerpColorNonNull(a.bgGrayHover, b.bgGrayHover, t),
     bgGrayPressed: lerpColorNonNull(a.bgGrayPressed, b.bgGrayPressed, t),
-    bgOverlay: lerpColorNonNull(a.bgOverlay, b.bgOverlay, t),
-    bgPrimary: lerpColorNonNull(a.bgPrimary, b.bgPrimary, t),
     bgPrimarySolid: lerpColorNonNull(a.bgPrimarySolid, b.bgPrimarySolid, t),
     bgQuaternary: lerpColorNonNull(a.bgQuaternary, b.bgQuaternary, t),
     bgSecondary: lerpColorNonNull(a.bgSecondary, b.bgSecondary, t),
@@ -2691,6 +2737,11 @@ final class PregoColors {
     bgSurface1: lerpColorNonNull(a.bgSurface1, b.bgSurface1, t),
     bgSurface2: lerpColorNonNull(a.bgSurface2, b.bgSurface2, t),
     bgSurface3: lerpColorNonNull(a.bgSurface3, b.bgSurface3, t),
+    bgSurface4: lerpColorNonNull(a.bgSurface4, b.bgSurface4, t),
+    bgSurface5: lerpColorNonNull(a.bgSurface5, b.bgSurface5, t),
+    bgSurface6: lerpColorNonNull(a.bgSurface6, b.bgSurface6, t),
+    bgSurface7: lerpColorNonNull(a.bgSurface7, b.bgSurface7, t),
+    bgSurface8: lerpColorNonNull(a.bgSurface8, b.bgSurface8, t),
     bgTertiary: lerpColorNonNull(a.bgTertiary, b.bgTertiary, t),
     bgWarningPrimary: lerpColorNonNull(a.bgWarningPrimary, b.bgWarningPrimary, t),
     bgWarningSecondary: lerpColorNonNull(a.bgWarningSecondary, b.bgWarningSecondary, t),
@@ -2705,6 +2756,7 @@ final class PregoColors {
     shadow2xl02: lerpColorNonNull(a.shadow2xl02, b.shadow2xl02, t),
     shadow3xl01: lerpColorNonNull(a.shadow3xl01, b.shadow3xl01, t),
     shadow3xl02: lerpColorNonNull(a.shadow3xl02, b.shadow3xl02, t),
+    shadowCards: lerpColorNonNull(a.shadowCards, b.shadowCards, t),
     shadowInversed: lerpColorNonNull(a.shadowInversed, b.shadowInversed, t),
     shadowLg01: lerpColorNonNull(a.shadowLg01, b.shadowLg01, t),
     shadowLg02: lerpColorNonNull(a.shadowLg02, b.shadowLg02, t),

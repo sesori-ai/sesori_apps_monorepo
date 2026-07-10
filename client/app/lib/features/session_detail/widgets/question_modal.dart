@@ -368,7 +368,7 @@ class _OptionTile extends StatelessWidget {
       child: Material(
         // bgPrimary so the card reads as raised against the sheet's
         // bgSecondary surface (bgSecondary here would vanish into it).
-        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgPrimary,
+        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -444,7 +444,7 @@ class _CustomAnswerTile extends StatelessWidget {
       child: Material(
         // bgPrimary so the card reads as raised against the sheet's
         // bgSecondary surface (bgSecondary here would vanish into it).
-        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgPrimary,
+        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),

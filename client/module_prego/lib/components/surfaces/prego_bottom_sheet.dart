@@ -133,7 +133,7 @@ class PregoBottomSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: surface,
         borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(PregoRadius.x6l),
+          top: Radius.circular(PregoRadius.x8l),
         ),
       ),
       child: ConstrainedBox(
