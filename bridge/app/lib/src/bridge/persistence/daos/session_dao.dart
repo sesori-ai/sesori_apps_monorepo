@@ -26,7 +26,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   /// No-op for rowless sessions.
   Future<void> setTitle({required String sessionId, required String? title}) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
-      SessionTableCompanion(title: Value(title)),
+      SessionTableCompanion(title: Value(title), hasTitle: const Value(true)),
     );
   }
 

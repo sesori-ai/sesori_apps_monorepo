@@ -458,6 +458,7 @@ void main() {
         "title": "Fix the parser",
       }));
       final updated = events.whereType<BridgeSseSessionUpdated>().single;
+      expect(updated.titleChanged, isTrue);
       final session = shared.Session.fromJson(updated.info);
       expect(session.id, "s1");
       expect(session.title, "Fix the parser");
@@ -515,7 +516,9 @@ void main() {
         "sessionUpdate": "session_info_update",
         "updatedAt": DateTime.fromMillisecondsSinceEpoch(3000, isUtc: true).toIso8601String(),
       }));
-      final session = shared.Session.fromJson(events.whereType<BridgeSseSessionUpdated>().single.info);
+      final updated = events.whereType<BridgeSseSessionUpdated>().single;
+      expect(updated.titleChanged, isFalse);
+      final session = shared.Session.fromJson(updated.info);
       expect(session.title, "Existing title");
       expect(session.time?.updated, 3000);
     });

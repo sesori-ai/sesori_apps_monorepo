@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
 import "../services/session_persistence_service.dart";
+import "../services/session_title_service.dart";
 import "../services/session_unseen_service.dart";
 import "request_handler.dart";
 
@@ -16,6 +17,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
   final SessionPersistenceService _sessionPersistenceService;
+  final SessionTitleService _sessionTitleService;
   final SessionUnseenService _sessionUnseenService;
   final Duration _prRefreshTimeout;
 
@@ -23,11 +25,13 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required SessionPersistenceService sessionPersistenceService,
+    required SessionTitleService sessionTitleService,
     required SessionUnseenService sessionUnseenService,
     Duration prRefreshTimeout = const Duration(seconds: 5),
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _sessionPersistenceService = sessionPersistenceService,
+       _sessionTitleService = sessionTitleService,
        _sessionUnseenService = sessionUnseenService,
        _prRefreshTimeout = prRefreshTimeout,
        super(
@@ -71,6 +75,9 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
         projectId: projectId,
         sessions: sessions,
       );
+      for (final session in sessions) {
+        await _sessionTitleService.applyPendingTitle(sessionId: session.id);
+      }
     } on Object catch (e, st) {
       Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
     }

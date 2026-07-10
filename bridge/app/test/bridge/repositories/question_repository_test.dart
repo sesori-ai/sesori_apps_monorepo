@@ -219,6 +219,36 @@ void main() {
       expect(questions, isEmpty);
       expect(plugin.queriedSessionIds, isNot(contains("s2")));
     });
+
+    test("getPendingQuestions skips a tombstoned derived session", () async {
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+        questionsBySession: {
+          "gone": const [
+            PluginPendingQuestion(
+              id: "q-gone",
+              sessionID: "gone",
+              displaySessionId: null,
+              questions: [],
+            ),
+          ],
+        },
+      );
+      final repository = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      expect(await repository.getPendingQuestions(sessionId: "gone"), isEmpty);
+      expect(plugin.queriedSessionIds, isNot(contains("gone")));
+    });
   });
 }
 

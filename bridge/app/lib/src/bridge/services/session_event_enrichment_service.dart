@@ -23,19 +23,17 @@ class SessionEventEnrichmentService {
 
   Future<BridgeSseEvent?> enrich(BridgeSseEvent event) async {
     try {
-      final sessionId = switch (event) {
-        BridgeSseSessionCreated(:final info) || BridgeSseSessionUpdated(:final info) => info["id"],
-        _ => null,
-      };
-      if (sessionId is String && await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) {
+      final sessionId = _sessionId(event);
+      if (sessionId != null && await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) {
         return null;
       }
       return switch (event) {
         BridgeSseSessionCreated(:final info) => BridgeSseSessionCreated(
           info: (await _sessionRepository.enrichSessionJson(sessionJson: info)).toJson(),
         ),
-        BridgeSseSessionUpdated(:final info) => BridgeSseSessionUpdated(
-          info: (await _captureTitleAndEnrich(info: info)).toJson(),
+        BridgeSseSessionUpdated(:final info, :final titleChanged) => BridgeSseSessionUpdated(
+          info: (await _captureTitleAndEnrich(info: info, titleChanged: titleChanged)).toJson(),
+          titleChanged: titleChanged,
         ),
         BridgeSseSessionsUpdated(:final sessionID, :final projectID) => BridgeSseSessionsUpdated(
           sessionID: sessionID,
@@ -69,9 +67,65 @@ class SessionEventEnrichmentService {
   /// very event and on every later enumeration. `session.created` events are
   /// deliberately not captured: their null title means "unknown", not
   /// "cleared".
-  Future<Session> _captureTitleAndEnrich({required Map<String, dynamic> info}) async {
+  Future<Session> _captureTitleAndEnrich({
+    required Map<String, dynamic> info,
+    required bool titleChanged,
+  }) async {
     final session = Session.fromJson(info);
-    await _sessionTitleService.captureTitle(sessionId: session.id, title: session.title);
+    if (titleChanged) {
+      await _sessionTitleService.captureTitle(sessionId: session.id, title: session.title);
+    }
     return _sessionRepository.enrichSession(session: session);
+  }
+
+  String? _sessionId(BridgeSseEvent event) {
+    return switch (event) {
+      BridgeSseSessionCreated(:final info) ||
+      BridgeSseSessionUpdated(:final info) ||
+      BridgeSseSessionDeleted(:final info) => info["id"] is String ? info["id"] as String : null,
+      BridgeSseMessageUpdated(:final info) =>
+        info["sessionID"] is String ? info["sessionID"] as String : null,
+      BridgeSseMessagePartUpdated(:final part) => part.sessionID,
+      BridgeSseSessionsUpdated(:final sessionID) ||
+      BridgeSseSessionDiff(:final sessionID) ||
+      BridgeSseSessionCompacted(:final sessionID) ||
+      BridgeSseSessionStatus(:final sessionID) ||
+      BridgeSseSessionIdle(:final sessionID) ||
+      BridgeSseCommandExecuted(:final sessionID) ||
+      BridgeSseMessageRemoved(:final sessionID) ||
+      BridgeSseMessagePartDelta(:final sessionID) ||
+      BridgeSseMessagePartRemoved(:final sessionID) ||
+      BridgeSsePermissionAsked(:final sessionID) ||
+      BridgeSsePermissionReplied(:final sessionID) ||
+      BridgeSseQuestionAsked(:final sessionID) ||
+      BridgeSseQuestionReplied(:final sessionID) ||
+      BridgeSseQuestionRejected(:final sessionID) ||
+      BridgeSseTodoUpdated(:final sessionID) => sessionID,
+      BridgeSseSessionError(:final sessionID) => sessionID,
+      BridgeSseServerConnected() ||
+      BridgeSseServerHeartbeat() ||
+      BridgeSseServerInstanceDisposed() ||
+      BridgeSseGlobalDisposed() ||
+      BridgeSsePtyCreated() ||
+      BridgeSsePtyUpdated() ||
+      BridgeSsePtyExited() ||
+      BridgeSsePtyDeleted() ||
+      BridgeSsePermissionUpdated() ||
+      BridgeSseProjectUpdated() ||
+      BridgeSseVcsBranchUpdated() ||
+      BridgeSseFileEdited() ||
+      BridgeSseFileWatcherUpdated() ||
+      BridgeSseLspUpdated() ||
+      BridgeSseLspClientDiagnostics() ||
+      BridgeSseMcpToolsChanged() ||
+      BridgeSseMcpBrowserOpenFailed() ||
+      BridgeSseInstallationUpdated() ||
+      BridgeSseInstallationUpdateAvailable() ||
+      BridgeSseWorkspaceReady() ||
+      BridgeSseWorkspaceFailed() ||
+      BridgeSseTuiToastShow() ||
+      BridgeSseWorktreeReady() ||
+      BridgeSseWorktreeFailed() => null,
+    };
   }
 }

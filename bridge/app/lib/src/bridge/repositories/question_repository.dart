@@ -26,6 +26,11 @@ class QuestionRepository {
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingQuestion>> getPendingQuestions({required String sessionId}) async {
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      if (await _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: plugin.id)) {
+        return const [];
+      }
+    }
     final pluginQuestions = await _plugin.getPendingQuestions(sessionId: sessionId);
     return pluginQuestions.map((q) => q.toSharedPendingQuestion()).toList();
   }

@@ -160,9 +160,9 @@ class AppDatabase extends _$AppDatabase {
       },
       from8To9: (m, schema) async {
         // Bridge-owned title for derive-plugin sessions (their backends don't
-        // persist renames). Nullable, no backfill: null = no bridge-known
-        // title, so the backend's enumeration title keeps serving.
+        // persist renames). Existing rows have no bridge-known title.
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.title);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.hasTitle);
         // Tombstones for deleted derive-plugin sessions, so a backend without
         // session deletion can't resurrect them through enumeration.
         await m.createTable(schema.deletedSessionsTable);

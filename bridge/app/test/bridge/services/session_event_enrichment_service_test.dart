@@ -153,6 +153,30 @@ void main() {
 
       expect(await service.enrich(const BridgeSseSessionCreated(info: info)), isNull);
       expect(await service.enrich(const BridgeSseSessionUpdated(info: info)), isNull);
+      expect(
+        await service.enrich(
+          const BridgeSsePermissionAsked(
+            requestID: "p1",
+            sessionID: "gone",
+            displaySessionId: "gone",
+            tool: "shell",
+            description: "Run command",
+          ),
+        ),
+        isNull,
+      );
+      expect(
+        await service.enrich(
+          const BridgeSseMessagePartDelta(
+            sessionID: "gone",
+            messageID: "m1",
+            partID: "p1",
+            field: "text",
+            delta: "late",
+          ),
+        ),
+        isNull,
+      );
     });
 
     group("derived-plugin title capture", () {
@@ -214,7 +238,10 @@ void main() {
         await insertStored(title: "Old title");
 
         final result = await derivedService.enrich(
-          BridgeSseSessionUpdated(info: sessionInfo(title: "Backend rename")),
+          BridgeSseSessionUpdated(
+            info: sessionInfo(title: "Backend rename"),
+            titleChanged: true,
+          ),
         );
 
         // The wire payload carries the NEW title (captured before the
@@ -228,7 +255,7 @@ void main() {
         await insertStored(title: "Old title");
 
         final result = await derivedService.enrich(
-          BridgeSseSessionUpdated(info: sessionInfo(title: null)),
+          BridgeSseSessionUpdated(info: sessionInfo(title: null), titleChanged: true),
         );
 
         expect((result! as BridgeSseSessionUpdated).info["title"], isNull);
@@ -238,7 +265,10 @@ void main() {
 
       test("a title update before row insertion is applied when the row arrives", () async {
         final result = await derivedService.enrich(
-          BridgeSseSessionUpdated(info: sessionInfo(title: "Early title")),
+          BridgeSseSessionUpdated(
+            info: sessionInfo(title: "Early title"),
+            titleChanged: true,
+          ),
         );
         expect((result! as BridgeSseSessionUpdated).info["title"], "Early title");
         expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
@@ -259,6 +289,17 @@ void main() {
 
         final stored = await db.sessionDao.getSession(sessionId: "s1");
         expect(stored?.title, "Early title");
+      });
+
+      test("a snapshot-only session.updated does not replace the stored title", () async {
+        await insertStored(title: "User rename");
+
+        final result = await derivedService.enrich(
+          BridgeSseSessionUpdated(info: sessionInfo(title: "Cached backend title")),
+        );
+
+        expect((result! as BridgeSseSessionUpdated).info["title"], "User rename");
+        expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "User rename");
       });
 
       test("session.created does not capture titles (null means unknown, not cleared)", () async {

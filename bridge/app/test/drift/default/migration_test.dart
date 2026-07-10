@@ -953,6 +953,7 @@ void main() {
                 lastUserMessageAt: 1700000004000,
                 pluginId: 'opencode',
                 title: null,
+                hasTitle: 0,
               ),
             ],
           );

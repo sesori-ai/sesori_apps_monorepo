@@ -245,7 +245,10 @@ class AcpEventMapper {
         // update carries nothing the client can render.
         if (!update.containsKey("title") && eventUpdatedMs == null) return const [];
         return [
-          BridgeSseSessionUpdated(info: _sessionUpdate(sessionId).toJson()),
+          BridgeSseSessionUpdated(
+            info: _sessionUpdate(sessionId).toJson(),
+            titleChanged: update.containsKey("title"),
+          ),
         ];
     }
 

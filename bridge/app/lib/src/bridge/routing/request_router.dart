@@ -150,6 +150,7 @@ class RequestRouter {
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionTitleService: sessionTitleService,
         sessionUnseenService: sessionUnseenService,
       ),
       CreateSessionHandler(sessionCreationService: sessionCreationService),

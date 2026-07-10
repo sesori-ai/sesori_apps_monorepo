@@ -455,6 +455,7 @@ class FakeSessionDao {
       lastUserMessageAt: null,
       pluginId: pluginId,
       title: null,
+      hasTitle: false,
     );
   }
 
