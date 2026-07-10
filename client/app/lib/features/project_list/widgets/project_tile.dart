@@ -18,7 +18,10 @@ class _ProjectTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final lastSegment = project.id.split("/").last;
+    // Display the live directory; the id is a stable handle that may point
+    // where the folder used to be before a move.
+    final displayPath = _projectDisplayPath(project);
+    final lastSegment = _projectDirectoryBasename(project);
     final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
     final updatedAt = project.time?.updated;
     final isActive = activeSessions > 0;
@@ -45,7 +48,7 @@ class _ProjectTile extends StatelessWidget {
         crossAxisAlignment: .start,
         children: [
           Text(
-            project.id,
+            displayPath,
             style: prego.textTheme.textXs.regular,
             maxLines: 1,
             overflow: .ellipsis,

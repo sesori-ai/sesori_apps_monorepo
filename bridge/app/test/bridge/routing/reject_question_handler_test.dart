@@ -16,7 +16,8 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
       handler = RejectQuestionHandler(
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao),
       );
     });
 

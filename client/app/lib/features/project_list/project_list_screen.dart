@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:share_plus/share_plus.dart";
@@ -31,6 +32,18 @@ part "onboarding/why_bridge_info_sheet.dart";
 part "widgets/bridge_offline_view.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";
+
+/// The user-facing directory of [project]: its live path on disk, falling
+/// back to the id for payloads from older bridges that don't send a path
+/// (there the id is the directory).
+String _projectDisplayPath(Project project) => project.path.isEmpty ? project.id : project.path;
+
+/// The last segment of [project]'s directory, used as the display-name
+/// fallback when the project has no stored name. The directory comes from the
+/// bridge's host platform, not the phone's, so both separator styles must
+/// parse — the platform-local basename would return a Windows path unchanged.
+String _projectDirectoryBasename(Project project) =>
+    p.posix.basename(_projectDisplayPath(project).replaceAll(r"\", "/"));
 
 class ProjectListScreen extends StatelessWidget {
   const ProjectListScreen({super.key});
@@ -85,7 +98,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final loc = context.loc;
     // Same display-name resolution as _ProjectTile, so the sheet is titled
     // by the project it acts on.
-    final lastSegment = project.id.split("/").last;
+    final lastSegment = _projectDirectoryBasename(project);
     final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
 
     showPregoBottomSheet<void>(

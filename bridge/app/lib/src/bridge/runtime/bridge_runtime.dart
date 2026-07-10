@@ -48,6 +48,7 @@ import "../repositories/session_unseen_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
 import "../services/project_initialization_service.dart";
+import "../services/session_creation_service.dart";
 import "../services/session_event_enrichment_service.dart";
 import "../services/session_persistence_service.dart";
 import "../services/session_unseen_service.dart";
@@ -115,6 +116,7 @@ class BridgeRuntime {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: unseenCalculator,
     );
@@ -184,8 +186,25 @@ class BridgeRuntime {
       bridgeVersion: appVersion,
       filesystemAccessOk: filesystemAccessOk,
     );
-    final providerRepository = ProviderRepository(plugin: plugin);
-    final agentRepository = AgentRepository(plugin: plugin);
+    final providerRepository = ProviderRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final agentRepository = AgentRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        plugin: plugin,
+        gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+      ),
+    );
+    final sessionCreationService = SessionCreationService(
+      metadataService: MetadataService(
+        client: httpClient,
+        baseUrl: config.authBackendURL,
+        tokenRefresher: tokenRefresher,
+      ),
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+    );
 
     return BridgeRuntime(
       database: database,
@@ -200,11 +219,7 @@ class BridgeRuntime {
         config: config,
         client: relayClient,
         plugin: plugin,
-        metadataService: MetadataService(
-          client: httpClient,
-          baseUrl: config.authBackendURL,
-          tokenRefresher: tokenRefresher,
-        ),
+        sessionCreationService: sessionCreationService,
         pushDispatcher: pushDispatcher,
         completionListener: CompletionPushListener(
           tracker: pushTracker,
@@ -240,21 +255,18 @@ class BridgeRuntime {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         permissionRepository: PermissionRepository(plugin: plugin),
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+        questionRepository: QuestionRepository(
+          plugin: plugin,
+          sessionDao: database.sessionDao,
+          projectsDao: database.projectsDao,
+        ),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           db: database,
           pluginId: plugin.id,
         ),
-        worktreeService: WorktreeService(
-          worktreeRepository: WorktreeRepository(
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            plugin: plugin,
-            gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
-          ),
-        ),
+        worktreeService: worktreeService,
         sessionEventEnrichmentService: sessionEventEnrichmentService,
         restartService: restartService,
         statusNotifier: statusNotifier,

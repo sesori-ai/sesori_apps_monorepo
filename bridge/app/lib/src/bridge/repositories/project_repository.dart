@@ -11,6 +11,7 @@ import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "derived_project_builder.dart";
 import "mappers/plugin_project_mapper.dart";
+import "models/project_not_found_exception.dart";
 import "session_unseen_calculator.dart";
 
 /// Project data aggregator with two paths chosen by the plugin's sealed
@@ -83,19 +84,29 @@ class ProjectRepository {
         await _projectsDao.insertProjectsIfMissing(
           projectIds: [for (final p in pluginProjects) p.id],
         );
+        final storedProjects = await _projectsDao.getAllProjects();
+        // Overlay each project's live directory: the recorded path where one
+        // exists (a moved folder re-opened at a new location), the stable id
+        // otherwise. directoryMissing is computed against the live directory —
+        // the id may legitimately point at a location the project moved away
+        // from.
+        final pathById = {
+          for (final stored in storedProjects)
+            if (stored.path.isNotEmpty) stored.projectId: stored.path,
+        };
         final hiddenIds = await _projectsDao.getHiddenProjectIds();
         final visible = pluginProjects.where((p) => !hiddenIds.contains(p.id)).toList(growable: false);
         final unseenById = await unseenByProjectId(
           projectIds: [for (final p in visible) p.id],
         );
-        final projects = visible
-            .map(
-              (p) => p.toSharedProject(
-                hasUnseenChanges: unseenById[p.id] ?? false,
-                directoryMissing: _directoryMissing(p.id),
-              ),
-            )
-            .toList();
+        final projects = visible.map((p) {
+          final path = pathById[p.id] ?? p.id;
+          return p.toSharedProject(
+            path: path,
+            hasUnseenChanges: unseenById[p.id] ?? false,
+            directoryMissing: _directoryMissing(path),
+          );
+        }).toList();
         projects.sort(
           (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
         );
@@ -137,14 +148,21 @@ class ProjectRepository {
   /// bridge-derived plugin the id IS the canonical directory and the plugin has
   /// no `getProject`, so we resolve it from the derived set (or a placeholder).
   Future<Project> getProject({required String projectId}) async {
+    final path = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (path == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
-        return _findDerivedProject(plugin, normalizeProjectDirectory(directory: projectId));
+        return _findDerivedProject(plugin, normalizeProjectDirectory(directory: path));
       case final NativeProjectsPluginApi plugin:
-        final pluginProject = await plugin.getProject(projectId);
+        // The backend needs the live directory — the id may point at a
+        // location the folder has since moved away from.
+        final pluginProject = await plugin.getProject(path);
         return pluginProject.toSharedProject(
+          path: path,
           hasUnseenChanges: await projectHasUnseenChanges(projectId: pluginProject.id),
-          directoryMissing: _directoryMissing(pluginProject.id),
+          directoryMissing: _directoryMissing(path),
         );
     }
   }
@@ -159,35 +177,56 @@ class ProjectRepository {
         final canonical = normalizeProjectDirectory(directory: path);
         await _projectsDao.recordOpenedProject(
           projectId: canonical,
+          path: canonical,
           openedAt: DateTime.now().millisecondsSinceEpoch,
         );
         await _projectsDao.unhideProject(projectId: canonical);
         return _findDerivedProject(plugin, canonical);
 
       case final NativeProjectsPluginApi plugin:
-        final pluginProject = await plugin.getProject(path);
+        // The backend resolves the opened directory to its canonical project:
+        // for a git-backed backend a moved folder keeps its identity, so the
+        // reported id can differ from the opened path. Persist the opened
+        // path as the project's live directory so every later operation runs
+        // where the folder actually is, and key it on the stable id so
+        // hidden/rename/base-branch state survives the move.
+        final openedPath = normalizeProjectDirectory(directory: path);
+        final pluginProject = await plugin.getProject(openedPath);
+        await _projectsDao.recordOpenedProject(
+          projectId: pluginProject.id,
+          path: openedPath,
+          openedAt: DateTime.now().millisecondsSinceEpoch,
+        );
         await _projectsDao.unhideProject(projectId: pluginProject.id);
         return pluginProject.toSharedProject(
+          path: openedPath,
           hasUnseenChanges: await projectHasUnseenChanges(projectId: pluginProject.id),
-          directoryMissing: _directoryMissing(pluginProject.id),
+          directoryMissing: _directoryMissing(openedPath),
         );
     }
   }
 
   Future<Project> renameProject({required String projectId, required String name}) async {
+    final path = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (path == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
         // codex has no backend to store a project name, so persist a display-name
         // override that _deriveProjects applies on the next listing.
-        final canonical = normalizeProjectDirectory(directory: projectId);
+        final canonical = normalizeProjectDirectory(directory: path);
         await _projectsDao.setDisplayName(projectId: canonical, displayName: name);
         return _findDerivedProject(plugin, canonical);
 
       case final NativeProjectsPluginApi plugin:
-        final updated = await plugin.renameProject(projectId: projectId, name: name);
+        // The backend looks the project up by directory, so hand it the live
+        // path rather than the (possibly moved-away-from) id.
+        final updated = await plugin.renameProject(projectId: path, name: name);
         return updated.toSharedProject(
+          path: path,
           hasUnseenChanges: await projectHasUnseenChanges(projectId: updated.id),
-          directoryMissing: _directoryMissing(updated.id),
+          directoryMissing: _directoryMissing(path),
         );
     }
   }
@@ -257,6 +296,7 @@ class ProjectRepository {
     return Project(
       id: canonicalId,
       name: displayName != null && displayName.isNotEmpty ? displayName : (base.isEmpty ? canonicalId : base),
+      path: canonicalId,
       time: null,
       hasUnseenChanges: hasUnseenChanges,
       directoryMissing: directoryMissing,

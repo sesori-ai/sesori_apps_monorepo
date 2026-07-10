@@ -20,13 +20,17 @@ class SessionCreationService {
        _sessionRepository = sessionRepository;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
+    // Validate the opaque project handle before metadata generation or any
+    // plugin/git side effect. The stored path is authoritative; unknown ids
+    // must not be treated as directories.
+    final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
     final normalizedCommand = request.command?.normalize();
     final agentModel = request.model;
     final firstText = _extractFirstText(parts: request.parts);
     final metadata = await _generateMetadata(firstText: firstText);
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
     final created = await _sessionRepository.createSession(
-      directory: _resolveDirectory(request: request, worktreeResult: worktreeResult),
+      directory: _resolveDirectory(projectDirectory: projectDirectory, worktreeResult: worktreeResult),
       parentSessionId: null,
       parts: _buildPromptParts(
         parts: request.parts,
@@ -72,7 +76,13 @@ class SessionCreationService {
       model: request.model,
     );
     final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
-    return _sessionRepository.enrichSession(session: finalSession);
+    // The plugin only knows the directory the session was created in, so for
+    // a moved project it echoes the live path (or its own internal id) as the
+    // session's projectID. Re-key the response to the stable identifier the
+    // phone and the bridge key on — mirroring project-scoped session fetches.
+    return _sessionRepository.enrichSession(
+      session: finalSession.copyWith(projectID: request.projectId),
+    );
   }
 
   String? _extractFirstText({required List<PromptPart> parts}) {
@@ -139,14 +149,19 @@ class SessionCreationService {
     return parts;
   }
 
-  String _resolveDirectory({required CreateSessionRequest request, required WorktreeResult? worktreeResult}) {
-    if (!request.dedicatedWorktree) {
-      return request.projectId;
-    }
+  /// The working directory the new session runs in: the dedicated worktree
+  /// when one was created, otherwise the project's live directory. The
+  /// request's projectId is the stable identifier — it may point where the
+  /// folder used to be, so it is never used as a directory directly.
+  String _resolveDirectory({
+    required String projectDirectory,
+    required WorktreeResult? worktreeResult,
+  }) {
     return switch (worktreeResult) {
       WorktreeSuccess(:final path) => path,
+      // The fallback carries the live project directory it fell back to.
       WorktreeFallback(:final originalPath) => originalPath,
-      null => request.projectId,
+      null => projectDirectory,
     };
   }
 
@@ -225,7 +240,7 @@ class SessionCreationService {
     if (dedicatedWorktree) {
       return (worktreePath: null, branchName: null, baseBranch: null, baseCommit: null);
     }
-    final baseBranchAndCommit = await _worktreeService.resolveBaseBranchAndCommit(projectPath: projectId);
+    final baseBranchAndCommit = await _worktreeService.resolveBaseBranchAndCommit(projectId: projectId);
     return (
       worktreePath: null,
       branchName: null,

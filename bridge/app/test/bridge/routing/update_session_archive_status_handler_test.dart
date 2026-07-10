@@ -36,6 +36,7 @@ void main() {
       final sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -445,7 +446,7 @@ void main() {
       );
 
       expect(worktreeService.restoreCallCount, equals(1));
-      expect(worktreeService.lastRestoreProjectPath, equals("/repo"));
+      expect(worktreeService.lastRestoreProjectId, equals("/repo"));
       expect(worktreeService.lastRestoreWorktreePath, equals(deletedWorktreePath));
       expect(worktreeService.lastRestoreBranchName, equals("session-001"));
       expect(worktreeService.lastRestoreBaseBranch, equals("develop"));
@@ -1079,13 +1080,13 @@ class _FakeWorktreeService extends WorktreeService {
 
   String? lastCheckWorktreePath;
   String? lastCheckExpectedBranch;
-  String? lastRemoveProjectPath;
+  String? lastRemoveProjectId;
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
-  String? lastDeleteBranchProjectPath;
+  String? lastDeleteBranchProjectId;
   String? lastDeleteBranchName;
   bool? lastDeleteBranchForce;
-  String? lastRestoreProjectPath;
+  String? lastRestoreProjectId;
   String? lastRestoreWorktreePath;
   String? lastRestoreBranchName;
   String? lastRestoreBaseBranch;
@@ -1118,12 +1119,11 @@ class _FakeWorktreeService extends WorktreeService {
   @override
   Future<bool> removeWorktree({
     required String projectId,
-    required String projectPath,
     required String worktreePath,
     required bool force,
   }) async {
     removeCallCount++;
-    lastRemoveProjectPath = projectPath;
+    lastRemoveProjectId = projectId;
     lastRemoveWorktreePath = worktreePath;
     lastRemoveForce = force;
     return removeResult;
@@ -1131,12 +1131,12 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<bool> deleteBranch({
-    required String projectPath,
+    required String projectId,
     required String branchName,
     required bool force,
   }) async {
     deleteBranchCallCount++;
-    lastDeleteBranchProjectPath = projectPath;
+    lastDeleteBranchProjectId = projectId;
     lastDeleteBranchName = branchName;
     lastDeleteBranchForce = force;
     return deleteBranchResult;
@@ -1144,14 +1144,14 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<bool> restoreWorktree({
-    required String projectPath,
+    required String projectId,
     required String worktreePath,
     required String branchName,
     required String baseBranch,
     required String? baseCommit,
   }) async {
     restoreCallCount++;
-    lastRestoreProjectPath = projectPath;
+    lastRestoreProjectId = projectId;
     lastRestoreWorktreePath = worktreePath;
     lastRestoreBranchName = branchName;
     lastRestoreBaseBranch = baseBranch;
@@ -1161,7 +1161,7 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
-    required String projectPath,
+    required String projectId,
   }) async {
     return resolveBaseBranchAndCommitResult;
   }

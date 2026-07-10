@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -46,14 +47,16 @@ void main() {
     late CreateSessionHandler handler;
     late AppDatabase db;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo", "/tmp"]);
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
       sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -217,7 +220,7 @@ void main() {
       expect(result.id, equals("simple-1"));
       expect(worktreeService.prepareCallCount, equals(0));
       expect(worktreeService.resolveBaseBranchAndCommitCallCount, equals(1));
-      expect(worktreeService.lastResolveBaseBranchProjectPath, equals("/repo"));
+      expect(worktreeService.lastResolveBaseBranchProjectId, equals("/repo"));
       expect(plugin.lastCreateSessionDirectory, equals("/repo"));
       expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
 
@@ -230,6 +233,53 @@ void main() {
       expect(dbSession.baseBranch, equals("main"));
       expect(dbSession.baseCommit, equals("abc123def456"));
       expect(dbSession.createdAt, greaterThan(0));
+    });
+
+    test("moved project: session cwd is the live directory, stored attribution keeps the id", () async {
+      // The folder moved from /repo to /moved/repo and was re-opened there.
+      await db.projectsDao.recordOpenedProject(projectId: "/repo", path: "/moved/repo", openedAt: 1);
+      plugin.createSessionResult = const PluginSession(
+        id: "moved-1",
+        projectID: "p1",
+        directory: "/moved/repo",
+        parentID: null,
+        title: "Moved",
+        time: null,
+        summary: null,
+      );
+      worktreeService.resolveBaseBranchAndCommitResult = (
+        baseBranch: "main",
+        baseCommit: "abc123def456",
+        startPoint: "main",
+      );
+
+      final result = await handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Start")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(result.id, equals("moved-1"));
+      // The backend gets the live directory as the session cwd...
+      expect(plugin.lastCreateSessionDirectory, equals("/moved/repo"));
+      // ...while the base-branch lookup and the stored session→project
+      // attribution stay keyed on the stable identifier.
+      expect(worktreeService.lastResolveBaseBranchProjectId, equals("/repo"));
+      final dbSession = await db.sessionDao.getSession(sessionId: "moved-1");
+      expect(dbSession!.projectId, equals("/repo"));
+      // The response is re-keyed to the stable id too — the plugin can only
+      // echo the directory it created the session in.
+      expect(result.projectID, equals("/repo"));
     });
 
     test(
@@ -346,6 +396,7 @@ void main() {
       final localRepository = SessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -418,9 +469,10 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
-      // A native plugin's reported projectID is authoritative — enrichment
-      // adopts the stored row's attribution only for bridge-derived plugins.
-      expect(result.projectID, equals("p1"));
+      // The created session belongs to the requested project by construction,
+      // so the response is re-keyed to the request's stable projectId — the
+      // plugin can only echo the directory it created the session in.
+      expect(result.projectID, equals("/repo"));
       expect(result.directory, equals("/repo"));
       expect(result.parentID, equals("parent-1"));
       expect(result.title, equals("Created"));
@@ -825,6 +877,7 @@ void main() {
           sessionRepository: SessionRepository(
             plugin: orderedPlugin,
             sessionDao: db.sessionDao,
+            projectsDao: db.projectsDao,
             pullRequestRepository: PullRequestRepository(
               pullRequestDao: db.pullRequestDao,
               projectsDao: db.projectsDao,
@@ -900,39 +953,29 @@ void main() {
       expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
     });
 
-    test("creates session for first-time project (no prior projects_table row)", () async {
-      plugin.createSessionResult = const PluginSession(
-        id: "new-sess-1",
-        projectID: "brand-new-proj",
-        directory: "brand-new-proj",
-        parentID: null,
-        title: "New Session",
-        time: null,
-        summary: null,
-      );
-
-      final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
-        body: const CreateSessionRequest(
-          projectId: "brand-new-proj",
-          dedicatedWorktree: false,
-          parts: [PromptPart.text(text: "Hello")],
-          variant: null,
-          agent: null,
-          model: null,
-          command: null,
+    test("rejects session creation for an unknown project id before plugin side effects", () async {
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/session/create"),
+          body: const CreateSessionRequest(
+            projectId: "brand-new-proj",
+            dedicatedWorktree: false,
+            parts: [PromptPart.text(text: "Hello")],
+            variant: null,
+            agent: null,
+            model: null,
+            command: null,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<ProjectNotFoundException>()),
       );
 
-      expect(result.id, equals("new-sess-1"));
-
-      final dbSession = await db.sessionDao.getSession(sessionId: "new-sess-1");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.projectId, equals("brand-new-proj"));
-      expect(dbSession.sessionId, equals("new-sess-1"));
+      expect(plugin.lastCreateSessionDirectory, isNull);
+      expect(await db.projectsDao.getProject(projectId: "brand-new-proj"), isNull);
+      expect(await db.sessionDao.getSession(sessionId: "new-sess-1"), isNull);
     });
 
     test("no command — sendCommand not called", () async {
@@ -1021,6 +1064,7 @@ void main() {
           sessionRepository: SessionRepository(
             plugin: throwingPlugin,
             sessionDao: db.sessionDao,
+            projectsDao: db.projectsDao,
             pullRequestRepository: PullRequestRepository(
               pullRequestDao: db.pullRequestDao,
               projectsDao: db.projectsDao,
@@ -1056,7 +1100,7 @@ class _FakeWorktreeService extends WorktreeService {
   String? lastPrepareProjectId;
   String? lastPrepareParentSessionId;
   String? lastPreparePreferredBranchName;
-  String? lastResolveBaseBranchProjectPath;
+  String? lastResolveBaseBranchProjectId;
   int prepareCallCount = 0;
   int resolveBaseBranchAndCommitCallCount = 0;
   WorktreeResult prepareResult = WorktreeFallback(
@@ -1093,10 +1137,10 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
-    required String projectPath,
+    required String projectId,
   }) async {
     resolveBaseBranchAndCommitCallCount++;
-    lastResolveBaseBranchProjectPath = projectPath;
+    lastResolveBaseBranchProjectId = projectId;
     return resolveBaseBranchAndCommitResult;
   }
 }

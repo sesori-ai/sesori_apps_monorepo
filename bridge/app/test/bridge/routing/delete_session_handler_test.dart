@@ -36,6 +36,7 @@ void main() {
         sessionRepository: SessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
           pullRequestRepository: PullRequestRepository(
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
@@ -133,7 +134,7 @@ void main() {
       expect(worktreeService.lastCheckWorktreePath, equals("/repo/.worktrees/session-002"));
       expect(worktreeService.lastCheckExpectedBranch, equals("session-002"));
       expect(worktreeService.removeCallCount, equals(1));
-      expect(worktreeService.lastRemoveProjectPath, equals("/repo"));
+      expect(worktreeService.lastRemoveProjectId, equals("/repo"));
       expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-002"));
       expect(worktreeService.lastRemoveForce, isFalse);
       expect(worktreeService.deleteBranchCallCount, equals(0));
@@ -168,7 +169,7 @@ void main() {
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(1));
-      expect(worktreeService.lastDeleteBranchProjectPath, equals("/repo"));
+      expect(worktreeService.lastDeleteBranchProjectId, equals("/repo"));
       expect(worktreeService.lastDeleteBranchName, equals("session-003"));
       expect(worktreeService.lastDeleteBranchForce, isFalse);
       expect(plugin.lastDeleteSessionId, equals("s3"));
@@ -460,10 +461,10 @@ class _FakeWorktreeService extends WorktreeService {
 
   String? lastCheckWorktreePath;
   String? lastCheckExpectedBranch;
-  String? lastRemoveProjectPath;
+  String? lastRemoveProjectId;
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
-  String? lastDeleteBranchProjectPath;
+  String? lastDeleteBranchProjectId;
   String? lastDeleteBranchName;
   bool? lastDeleteBranchForce;
 
@@ -495,13 +496,12 @@ class _FakeWorktreeService extends WorktreeService {
   @override
   Future<bool> removeWorktree({
     required String projectId,
-    required String projectPath,
     required String worktreePath,
     required bool force,
   }) async {
     removeCallCount++;
     operationLog.add("removeWorktree");
-    lastRemoveProjectPath = projectPath;
+    lastRemoveProjectId = projectId;
     lastRemoveWorktreePath = worktreePath;
     lastRemoveForce = force;
     return removeResult;
@@ -509,13 +509,13 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<bool> deleteBranch({
-    required String projectPath,
+    required String projectId,
     required String branchName,
     required bool force,
   }) async {
     deleteBranchCallCount++;
     operationLog.add("deleteBranch");
-    lastDeleteBranchProjectPath = projectPath;
+    lastDeleteBranchProjectId = projectId;
     lastDeleteBranchName = branchName;
     lastDeleteBranchForce = force;
     return deleteBranchResult;

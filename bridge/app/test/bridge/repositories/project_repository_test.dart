@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -105,6 +106,75 @@ void main() {
       expect(hiddenIds, isNot(contains("p-open")));
     });
 
+    group("moved project (stable id, new live path)", () {
+      test("openProject keys the row on the canonical id and stores the opened path", () async {
+        // OpenCode-style backend: the folder moved from /projects/a to
+        // /moved/a, and the backend keeps reporting the pinned original
+        // worktree as the project id.
+        plugin.projectResult = const PluginProject(id: "/projects/a", name: "A");
+        await db.projectsDao.hideProject(projectId: "/projects/a");
+        await db.projectsDao.setBaseBranch(projectId: "/projects/a", baseBranch: "develop");
+
+        final result = await repo.openProject(path: "/moved/a");
+
+        expect(result.id, equals("/projects/a"));
+        expect(result.path, equals("/moved/a"));
+        final row = await db.projectsDao.getProject(projectId: "/projects/a");
+        expect(row!.path, equals("/moved/a"), reason: "the live path is recorded on the canonical row");
+        expect(row.hidden, isFalse, reason: "re-opening unhides the canonical row");
+        expect(row.baseBranch, equals("develop"), reason: "durable state survives the move — the row key never changed");
+      });
+
+      test("getProjects surfaces a re-opened moved project at its new path", () async {
+        // Regression: remapping the id to the opened directory (instead of
+        // storing a path) made the next list refresh drop the project — the
+        // plugin list still reported the old id, which stayed hidden.
+        plugin.projectResult = const PluginProject(id: "/projects/a", name: "A");
+        plugin.projectsResult = const [
+          PluginProject(id: "/projects/a", name: "A", time: PluginProjectTime(created: 0, updated: 1)),
+        ];
+        await db.projectsDao.hideProject(projectId: "/projects/a");
+        await repo.openProject(path: "/moved/a");
+
+        final result = await repo.getProjects();
+
+        expect(result, hasLength(1));
+        expect(result.single.id, equals("/projects/a"));
+        expect(result.single.path, equals("/moved/a"));
+      });
+
+      test("getProjects computes directoryMissing against the live path, not the id", () async {
+        plugin.projectResult = const PluginProject(id: "/projects/a", name: "A");
+        plugin.projectsResult = const [PluginProject(id: "/projects/a", name: "A")];
+        final repoWithMissing = ProjectRepository(
+          plugin: plugin,
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+          // The original location is gone; the folder lives at /moved/a now.
+          filesystemApi: FakeFilesystemApi(missingPaths: {"/projects/a"}),
+        );
+        await repoWithMissing.openProject(path: "/moved/a");
+
+        final result = await repoWithMissing.getProjects();
+
+        expect(result.single.directoryMissing, isFalse);
+      });
+
+      test("getProject and renameProject hand the plugin the live path", () async {
+        plugin.projectResult = const PluginProject(id: "/projects/a", name: "A");
+        await db.projectsDao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", openedAt: 1);
+
+        final fetched = await repo.getProject(projectId: "/projects/a");
+        expect(plugin.lastGetProjectId, equals("/moved/a"));
+        expect(fetched.path, equals("/moved/a"));
+
+        final renamed = await repo.renameProject(projectId: "/projects/a", name: "Renamed");
+        expect(plugin.lastRenameProjectId, equals("/moved/a"));
+        expect(renamed.path, equals("/moved/a"));
+      });
+    });
+
     test("hideProject persists hidden project id", () async {
       await repo.hideProject(projectId: "p-hidden");
 
@@ -148,6 +218,7 @@ void main() {
 
     test("getProject flags a since-deleted directory as missing", () async {
       plugin.projectResult = const PluginProject(id: "/gone", name: "Gone");
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/gone"]);
       final repoWithMissing = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -238,6 +309,7 @@ void main() {
 
     test("renameProject persists a display-name override applied on the next listing", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", created: 1, updated: 1)];
+      await repo.getProjects();
 
       final renamed = await repo.renameProject(projectId: "/tmp/proj/alpha", name: "Renamed Alpha");
 
@@ -248,6 +320,7 @@ void main() {
 
     test("getProject resolves a derived project without calling the plugin's guarded getProject", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
+      await repo.getProjects();
 
       // The mixin's getProject throws; routing through the repository must
       // resolve from the derived set instead of surfacing that as an error.
@@ -257,15 +330,17 @@ void main() {
       expect(project.name, "alpha");
     });
 
-    test("getProject honours a stored display name for a project with no sessions or opened row", () async {
-      // A rename on a project that isn't otherwise in the derived set (no
-      // sessions, never opened) still persists a display-name override; the
-      // placeholder must return that name rather than the directory basename.
-      final renamed = await repo.renameProject(projectId: "/tmp/proj/ghost", name: "Ghost Renamed");
+    test("getProject and renameProject reject an unknown derived project id", () async {
+      await expectLater(
+        () => repo.renameProject(projectId: "/tmp/proj/ghost", name: "Ghost Renamed"),
+        throwsA(isA<ProjectNotFoundException>()),
+      );
+      await expectLater(
+        () => repo.getProject(projectId: "/tmp/proj/ghost"),
+        throwsA(isA<ProjectNotFoundException>()),
+      );
 
-      expect(renamed.name, "Ghost Renamed");
-      final resolved = await repo.getProject(projectId: "/tmp/proj/ghost");
-      expect(resolved.name, "Ghost Renamed");
+      expect(await db.projectsDao.getProject(projectId: "/tmp/proj/ghost"), isNull);
     });
 
     test("a session in a dedicated worktree folds into its parent project, not its own card", () async {
@@ -346,6 +421,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Object? getProjectsError;
   PluginProject projectResult = const PluginProject(id: "project-id");
   String? lastGetProjectId;
+  String? lastRenameProjectId;
 
   @override
   Future<List<PluginProject>> getProjects() async {
@@ -377,7 +453,10 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<PluginSession> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
 
   @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) => throw UnimplementedError();
+  Future<PluginProject> renameProject({required String projectId, required String name}) async {
+    lastRenameProjectId = projectId;
+    return projectResult;
+  }
 
   @override
   Future<void> deleteSession(String sessionId) => throw UnimplementedError();

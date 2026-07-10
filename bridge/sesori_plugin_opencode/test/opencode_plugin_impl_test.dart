@@ -80,6 +80,55 @@ void main() {
       expect(child.parentID, isNull);
     });
 
+    test("getProjects seeds sandbox aliases so moved-location sessions canonicalize without a lookup", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      // A restarted plugin serving a previously-moved project: the backend's
+      // project list already records the live location as a sandbox, and no
+      // per-directory project lookup has happened yet.
+      server.addSandbox(projectKey: "p1", sandbox: "/moved/repo");
+      server.extraSessions.add({
+        "id": "s-moved",
+        "slug": "moved-session",
+        "projectID": "p1",
+        "directory": "/moved/repo",
+        "title": "Moved Session",
+        "time": {"created": 100, "updated": 200},
+      });
+
+      await plugin.getProjects();
+
+      final sessions = await plugin.getSessions("/moved/repo");
+      final moved = sessions.firstWhere((session) => session.id == "s-moved");
+      expect(moved.projectID, equals("/repo"));
+    });
+
+    test("getProject at a moved live directory registers an alias that canonicalizes session mapping", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      // The folder moved: /repo is still the project's root worktree, and the
+      // backend records the live location as a sandbox.
+      server.addSandbox(projectKey: "p1", sandbox: "/moved/repo");
+      server.extraSessions.add({
+        "id": "s-moved",
+        "slug": "moved-session",
+        "projectID": "p1",
+        "directory": "/moved/repo",
+        "title": "Moved Session",
+        "time": {"created": 100, "updated": 200},
+      });
+
+      // Prime the tracker's canonical worktrees, then look the project up by
+      // its live directory — the plugin keeps reporting the stable id and
+      // learns the live-directory alias as a side effect.
+      await plugin.getProjects();
+      final project = await plugin.getProject("/moved/repo");
+      expect(project.id, equals("/repo"));
+
+      final sessions = await plugin.getSessions("/moved/repo");
+      final moved = sessions.firstWhere((session) => session.id == "s-moved");
+      // Without the alias this would fall back to the requested directory.
+      expect(moved.projectID, equals("/repo"));
+    });
+
     test("getCommands delegates through service and includes the synthetic compact command", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
@@ -683,6 +732,17 @@ class _FakeOpenCodeServer {
   String? lastCommandDirectoryHeader;
   String? lastCreatedSessionParentId;
 
+  /// Extra sessions appended to the `GET /session` response, so tests can
+  /// stage sessions in directories the fixed fixtures don't cover.
+  final List<Map<String, dynamic>> extraSessions = [];
+
+  /// Records [sandbox] as an additional directory that resolves to
+  /// [projectKey]'s project — how the backend represents a moved folder's
+  /// live location.
+  void addSandbox({required String projectKey, required String sandbox}) {
+    (_projects[projectKey]!["sandboxes"] as List).add(sandbox);
+  }
+
   final Map<String, Map<String, dynamic>> _sessions = {
     "s-root": {
       "id": "s-root",
@@ -723,7 +783,12 @@ class _FakeOpenCodeServer {
 
       if (request.method == "GET" && path == "/project/current") {
         final dir = request.headers.value("x-opencode-directory");
-        final project = _projects.values.where((p) => p["worktree"] == dir).firstOrNull;
+        // Like the real backend, a directory resolves to a project either as
+        // its root worktree or as a recorded sandbox (e.g. a moved folder's
+        // new location).
+        final project = _projects.values
+            .where((p) => p["worktree"] == dir || ((p["sandboxes"] as List?)?.contains(dir) ?? false))
+            .firstOrNull;
         if (project == null) {
           request.response.statusCode = HttpStatus.notFound;
           await request.response.close();
@@ -782,6 +847,7 @@ class _FakeOpenCodeServer {
             "title": "Child Session",
             "time": {"created": 110, "updated": 210},
           },
+          ...extraSessions,
         ]);
         return;
       }

@@ -273,12 +273,9 @@ void registerAllFallbackValues() {
 }
 
 Project testProject({String? id, String? path, String? name}) {
-  const projectPathField =
-      "work"
-      "tree";
   return Project.fromJson({
     "id": id ?? "project-1",
-    projectPathField: path ?? "/home/user/my-project",
+    "path": path ?? "/home/user/my-project",
     "name": name,
     "time": {
       "created": 1700000000000,

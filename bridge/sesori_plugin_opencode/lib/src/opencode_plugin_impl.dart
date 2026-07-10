@@ -207,9 +207,18 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   @override
   Future<List<PluginProject>> getProjects() async {
     final projects = await _call(_service.getProjects);
-    final changed = _service.tracker.updateProjectWorktrees(
+    var changed = _service.tracker.updateProjectWorktrees(
       worktrees: projects.map((p) => p.worktree).toSet(),
     );
+    // Each sandbox is a directory the backend resolves to the project — for a
+    // moved folder, its live location. Registering the aliases here keeps
+    // sessions under those locations groupable from the very first project
+    // list of a plugin run, before any per-directory project lookup happens.
+    for (final project in projects) {
+      for (final sandbox in project.sandboxes) {
+        changed = _service.tracker.registerWorktreeAlias(directory: sandbox, worktree: project.worktree) || changed;
+      }
+    }
     if (changed) _emitProjectsSummary();
     return projects.map(_pluginModelMapper.mapProject).toList();
   }
@@ -523,6 +532,15 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         directory: projectId,
       ),
     );
+    // A moved folder re-opened at a new location resolves to a project whose
+    // root worktree is still the original path. Teach the tracker the alias
+    // so sessions running under the live location group under the canonical
+    // project — activity summaries and event projectIDs both key off it.
+    final changed = _service.tracker.registerWorktreeAlias(
+      directory: projectId,
+      worktree: project.worktree,
+    );
+    if (changed) _emitProjectsSummary();
     return _pluginModelMapper.mapProject(project);
   }
 

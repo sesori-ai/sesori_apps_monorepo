@@ -56,8 +56,6 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     final start = body.start;
     final limit = body.limit;
 
-    await _sessionPersistenceService.ensureProject(projectId: projectId);
-
     // Captured BEFORE the fetch so the vanished-session reconcile only removes
     // rows that already existed when the snapshot was taken — a session created
     // concurrently (row inserted after this point) is kept.

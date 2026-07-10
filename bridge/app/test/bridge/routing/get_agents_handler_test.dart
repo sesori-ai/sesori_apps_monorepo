@@ -1,11 +1,13 @@
 import "dart:io" as io;
 
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -13,10 +15,13 @@ void main() {
     late FakeBridgePlugin plugin;
     late AgentRepository repository;
     late GetAgentsHandler handler;
+    late AppDatabase db;
 
     setUp(() {
+      db = createTestDatabase();
+      addTearDown(db.close);
       plugin = FakeBridgePlugin();
-      repository = AgentRepository(plugin: plugin);
+      repository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
       handler = GetAgentsHandler(repository);
     });
 

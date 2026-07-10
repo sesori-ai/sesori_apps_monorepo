@@ -19,6 +19,7 @@ Map<String, dynamic> _$ProjectsToJson(_Projects instance) => <String, dynamic>{
 _Project _$ProjectFromJson(Map json) => _Project(
   id: json['id'] as String,
   name: json['name'] as String?,
+  path: json['path'] as String? ?? "",
   time: json['time'] == null
       ? null
       : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
@@ -29,6 +30,7 @@ _Project _$ProjectFromJson(Map json) => _Project(
 Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
   'id': instance.id,
   'name': ?instance.name,
+  'path': instance.path,
   'time': ?instance.time?.toJson(),
   'hasUnseenChanges': instance.hasUnseenChanges,
   'directoryMissing': instance.directoryMissing,

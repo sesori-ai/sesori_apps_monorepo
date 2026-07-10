@@ -16,13 +16,15 @@ void main() {
     late AppDatabase db;
     late GetCommandsHandler handler;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       plugin = FakeBridgePlugin();
       handler = GetCommandsHandler(
         sessionRepository: SessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
           pullRequestRepository: PullRequestRepository(
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
