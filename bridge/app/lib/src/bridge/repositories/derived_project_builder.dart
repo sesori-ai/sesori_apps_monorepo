@@ -70,6 +70,8 @@ class DerivedProjectBuilder {
         Project(
           id: accumulator.id,
           name: override != null && override.isNotEmpty ? override : _basename(accumulator.id),
+          // A derived project's id IS its normalized live directory.
+          path: accumulator.id,
           time: ProjectTime(
             created: accumulator.created ?? accumulator.openedAt ?? 0,
             updated: accumulator.updated ?? accumulator.openedAt ?? 0,

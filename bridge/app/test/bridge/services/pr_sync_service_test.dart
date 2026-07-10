@@ -549,4 +549,7 @@ class _FakeSessionRepository implements SessionRepository {
     pullRequest: null,
     promptDefaults: null,
   );
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }

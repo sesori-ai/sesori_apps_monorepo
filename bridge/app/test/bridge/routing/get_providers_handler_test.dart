@@ -1,19 +1,25 @@
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_providers_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("GetProvidersHandler", () {
     late FakeBridgePlugin plugin;
     late GetProvidersHandler handler;
+    late AppDatabase db;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
-      handler = GetProvidersHandler(ProviderRepository(plugin: plugin));
+      db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
+      addTearDown(db.close);
+      handler = GetProvidersHandler(ProviderRepository(plugin: plugin, projectsDao: db.projectsDao));
     });
 
     tearDown(() => plugin.close());

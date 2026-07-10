@@ -28,22 +28,6 @@ void main() {
 
     tearDown(() => db.close());
 
-    test("ensureProject inserts row if missing, preserves existing fields", () async {
-      await service.ensureProject(projectId: "p1");
-
-      var projects = await db.select(db.projectsTable).get();
-      expect(projects, hasLength(1));
-      expect(projects.single.projectId, equals("p1"));
-      expect(projects.single.hidden, isFalse);
-
-      await projectsDao.hideProject(projectId: "p1");
-      await service.ensureProject(projectId: "p1");
-
-      projects = await db.select(db.projectsTable).get();
-      expect(projects, hasLength(1));
-      expect(projects.single.hidden, isTrue);
-    });
-
     test("persistSessionsForProject inserts project + all sessions in a transaction", () async {
       final sessions = List<Session>.generate(
         5,

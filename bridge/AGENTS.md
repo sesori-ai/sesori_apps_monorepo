@@ -103,6 +103,12 @@ One API class wraps one external binary/tool. Use separate classes for separate 
 
 DAOs execute raw queries and return raw data. No decision-making logic, no selection algorithms, no business rules. All mapping and selection logic belongs in the Repository layer.
 
+When a durable entity has separate identity and location fields, do not infer
+the location from an unknown identifier. Non-null persisted fields are
+authoritative; a missing row remains missing (`null`) and the repository or
+service decides whether to return 404, rather than manufacturing a path from
+the id.
+
 ### No Default-Constructed Dependencies
 
 Constructor parameters for injected dependencies (services, runners, checkers) must be `required` with no default values. Never do `ProcessRunner? processRunner` with `?? ProcessRunner()` — if a test forgets to pass the dependency, it silently uses a real implementation instead of failing fast. This ties into the class-cohesion rules in root: if defaults tempt you to avoid threading a dependency, you likely have pass-through parameters or a peer-as-child problem higher up.

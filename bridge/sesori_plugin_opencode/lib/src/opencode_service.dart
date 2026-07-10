@@ -513,11 +513,12 @@ class OpenCodeService {
   /// abort cold start — [ActiveSessionTracker.coldStart] succeeds
   /// independently.
   Future<void> _hydratePendingInput() async {
-    // Hydrate the OpenCode server's cwd instance AND every known project
-    // worktree: an unscoped query only covers the cwd, and the cwd may not
-    // itself be a listed worktree. Overlapping results are de-duplicated by the
-    // tracker when grouping by session.
-    final directories = <String?>{null, ...tracker.projectWorktrees};
+    // Hydrate the OpenCode server's cwd instance AND every directory sessions
+    // may run under (project worktrees plus moved-location aliases): an
+    // unscoped query only covers the cwd, and the cwd may not itself be a
+    // listed worktree. Overlapping results are de-duplicated by the tracker
+    // when grouping by session.
+    final directories = <String?>{null, ...tracker.sessionDiscoveryDirectories};
     await (
       _hydratePendingQuestions(directories),
       _hydratePendingPermissions(directories),

@@ -84,6 +84,7 @@ class AdaptiveSessionRouterTestHarness {
     ).thenAnswer((_) async => ApiResponse.success(const <BridgeSummary>[]));
 
     when(() => registeredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
+    when(() => registeredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
     when(
       () => projectService.listSessions(

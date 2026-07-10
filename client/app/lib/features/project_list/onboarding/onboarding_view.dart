@@ -134,9 +134,8 @@ class _ConnectBridgeChecklist extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
           child: _InstallCommandBoxes(
             surface: OnboardingSurface.connectSetup,
-            stepHeader: _OnboardingStepLabel(
-              number: 1,
-              title: loc.projectsOnboardingInstallStepTitle,
+            stepHeader: _InfoLabel(
+              title: "1. ${loc.projectsOnboardingInstallStepTitle}",
               info: loc.projectsOnboardingInstallStepInfo,
             ),
           ),
@@ -148,9 +147,8 @@ class _ConnectBridgeChecklist extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _OnboardingStepLabel(
-                number: 2,
-                title: loc.projectsOnboardingStartStepTitle,
+              _InfoLabel(
+                title: "2. ${loc.projectsOnboardingStartStepTitle}",
                 info: loc.projectsOnboardingStartStepInfo,
               ),
               const SizedBox(height: PregoSpacing.md),
@@ -178,9 +176,10 @@ class _ConnectBridgeChecklist extends StatelessWidget {
   }
 }
 
-/// The "Why is this needed?" explainer button: a compact secondary pill that
-/// opens the [_WhyBridgeInfoSheet] bottom sheet. Centred so the stretch parent
-/// doesn't force it full-width. Shared by both empty Projects states.
+/// The "Why is this needed?" explainer button: a compact tertiary (ghost)
+/// pill that opens the [_WhyBridgeInfoSheet] bottom sheet. Centred so the
+/// stretch parent doesn't force it full-width. Shared by both empty Projects
+/// states and the bridge-offline recovery view.
 class _WhyBridgeButton extends StatelessWidget {
   const _WhyBridgeButton({required this.surface});
 
@@ -195,7 +194,7 @@ class _WhyBridgeButton extends StatelessWidget {
         fullWidth: false,
         leadingIcon: TablerRegular.info_circle,
         label: loc.projectsOnboardingPcStatusWhy,
-        hierarchy: PregoButtonsSolidHierarchy.secondary,
+        hierarchy: PregoButtonsSolidHierarchy.tertiary,
         size: PregoButtonsSolidSize.sm,
         onPressed: () {
           unawaited(
@@ -214,14 +213,13 @@ class _WhyBridgeButton extends StatelessWidget {
   }
 }
 
-/// A numbered connect-onboarding step title with a trailing "ⓘ" info popover —
-/// e.g. "1. Install the bridge ⓘ". Tapping the icon opens a [PregoInfoPopover]
-/// (glass on iOS, flat/`cue` on Android) anchored to it, showing [info]. Used
-/// above the install- and start-command boxes.
-class _OnboardingStepLabel extends StatelessWidget {
-  const _OnboardingStepLabel({required this.number, required this.title, required this.info});
+/// A command-box label with a trailing "ⓘ" info popover — e.g. "1. Install the
+/// bridge ⓘ" on the connect onboarding or "Start your bridge ⓘ" on the
+/// bridge-offline view. Tapping the icon opens a [PregoInfoPopover] (glass on
+/// iOS, flat/`cue` on Android) anchored to it, showing [info].
+class _InfoLabel extends StatelessWidget {
+  const _InfoLabel({required this.title, required this.info});
 
-  final int number;
   final String title;
   final String info;
 
@@ -233,7 +231,7 @@ class _OnboardingStepLabel extends StatelessWidget {
       children: [
         Flexible(
           child: Text(
-            "$number. $title",
+            title,
             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
           ),
         ),
@@ -701,8 +699,8 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
 }
 
 /// The rounded, bordered chrome shared by the install-command box and the
-/// bridge-offline "Run the bridge" box, so both command boxes read as the same
-/// component. Clips [child] to the radius and paints the border on top.
+/// bridge-offline "Start your bridge" box, so both command boxes read as the
+/// same component. Clips [child] to the radius and paints the border on top.
 class _CommandBoxFrame extends StatelessWidget {
   const _CommandBoxFrame({required this.child});
 
@@ -726,7 +724,7 @@ class _CommandBoxFrame extends StatelessWidget {
 }
 
 /// The command display plus copy/share actions, shared by the install-command
-/// box and the bridge-offline "Run the bridge" box. Shows [command] on a single
+/// box and the bridge-offline "Start your bridge" box. Shows [command] on a single
 /// monospace line that fades out at the trailing edge — so an over-long command
 /// reads as continuing off-screen rather than hard-clipping — with copy and
 /// native-share buttons. [topDivider] draws the hairline separating this row

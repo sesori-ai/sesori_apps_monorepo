@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -25,6 +26,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -73,6 +75,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -178,6 +181,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -226,6 +230,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -311,6 +316,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -354,6 +360,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -400,6 +407,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -441,6 +449,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -483,6 +492,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -532,6 +542,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -595,6 +606,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -630,6 +642,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -659,6 +672,8 @@ void main() {
       final result = await repository.findProjectIdForSession(sessionId: "s-target");
 
       expect(result, equals("/repo-b"));
+      expect(await db.projectsDao.getProject(projectId: "/repo-a"), isNotNull);
+      expect(await db.projectsDao.getProject(projectId: "/repo-b"), isNotNull);
     });
 
     test("createSession passes variant directly to plugin", () async {
@@ -668,6 +683,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -691,6 +707,117 @@ void main() {
       }
     });
 
+    group("moved project (stable id, new live path)", () {
+      test("getSessionsForProject hands the plugin the live directory and re-keys sessions to the id", () async {
+        final db = createTestDatabase();
+        addTearDown(db.close);
+        await db.projectsDao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", openedAt: 1);
+        plugin.sessionsByWorktree = {
+          "/moved/a": const [
+            PluginSession(
+              id: "s-live",
+              // The plugin can only echo the directory it was asked about —
+              // it has no notion of the bridge's stable identifier.
+              projectID: "/moved/a",
+              directory: "/moved/a",
+              parentID: null,
+              title: "Session",
+              time: null,
+              summary: null,
+            ),
+          ],
+        };
+
+        final repository = SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+
+        final sessions = await repository.getSessionsForProject(
+          projectId: "/projects/a",
+          start: null,
+          limit: null,
+        );
+
+        expect(plugin.lastGetSessionsWorktree, equals("/moved/a"));
+        expect(sessions.single.id, equals("s-live"));
+        expect(sessions.single.projectID, equals("/projects/a"));
+      });
+
+      test("getCommands resolves the project id to the live directory", () async {
+        final db = createTestDatabase();
+        addTearDown(db.close);
+        await db.projectsDao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", openedAt: 1);
+
+        final repository = SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+
+        await repository.getCommands(projectId: "/projects/a");
+        expect(plugin.lastGetCommandsProjectId, equals("/moved/a"));
+
+        // Null/blank keeps the plugin's own fallback untouched.
+        await repository.getCommands(projectId: "  ");
+        expect(plugin.lastGetCommandsProjectId, isNull);
+      });
+
+      test("getProjectPath returns the live directory, probing the plugin for availability", () async {
+        final db = createTestDatabase();
+        addTearDown(db.close);
+        await db.projectsDao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", openedAt: 1);
+
+        final repository = SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+
+        final path = await repository.getProjectPath(projectId: "/projects/a");
+
+        expect(path, equals("/moved/a"));
+        expect(plugin.lastGetProjectDirectory, equals("/moved/a"));
+      });
+
+      test("resolveProjectDirectory rejects an unknown project id", () async {
+        final db = createTestDatabase();
+        addTearDown(db.close);
+
+        final repository = SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+
+        await expectLater(
+          () => repository.resolveProjectDirectory(projectId: "/projects/a"),
+          throwsA(isA<ProjectNotFoundException>()),
+        );
+      });
+    });
+
     test("sendPrompt and sendCommand pass variant directly to plugin", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -698,6 +825,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -778,6 +906,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -820,6 +949,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -846,6 +976,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -871,6 +1002,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -893,6 +1025,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -949,6 +1082,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -1024,6 +1158,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -1069,6 +1204,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -1099,12 +1235,14 @@ void main() {
       final derived = SessionRepository(
         plugin: _FakeDerivedPlugin(launchDirectory: "/tmp/proj/alpha", allSessions: const []),
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: pullRequestRepository,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final native = SessionRepository(
         plugin: _FakeBridgePlugin(),
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: pullRequestRepository,
         unseenCalculator: const SessionUnseenCalculator(),
       );
@@ -1129,6 +1267,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -1162,6 +1301,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastCreateSessionVariant;
   String? lastSendPromptVariant;
   String? lastSendCommandVariant;
+  String? lastGetSessionsWorktree;
+  String? lastGetCommandsProjectId;
+  String? lastGetProjectDirectory;
 
   @override
   String get id => "fake";
@@ -1174,7 +1316,20 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async {
+    lastGetSessionsWorktree = worktree;
     return sessionsByWorktree[worktree] ?? sessionsResult;
+  }
+
+  @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    lastGetCommandsProjectId = projectId;
+    return const [];
+  }
+
+  @override
+  Future<PluginProject> getProject(String projectId) async {
+    lastGetProjectDirectory = projectId;
+    return PluginProject(id: projectId);
   }
 
   @override

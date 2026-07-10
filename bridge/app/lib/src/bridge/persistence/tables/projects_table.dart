@@ -9,9 +9,8 @@ part "projects_table.freezed.dart";
 class ProjectsTable extends Table {
   TextColumn get projectId => text()();
 
-  /// The project's directory on disk. Every shipped plugin uses the directory
-  /// path as the project id today, so inserts stamp the id here too; keeping
-  /// it as its own column lets ids stop being paths without a schema change.
+  /// The project's live directory on disk. This may differ from [projectId]
+  /// after a folder move; the id remains the stable bridge/client handle.
   TextColumn get path => text()();
   BoolColumn get hidden => boolean().withDefault(const Constant(false))();
   TextColumn get baseBranch => text().nullable()();

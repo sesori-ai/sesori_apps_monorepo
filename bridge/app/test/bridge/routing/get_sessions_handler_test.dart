@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
@@ -82,6 +84,40 @@ void main() {
       );
     });
 
+    test("returns 404 for an unknown project without creating state or calling the plugin", () async {
+      final realRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final realHandler = GetSessionsHandler(
+        sessionRepository: realRepository,
+        prSyncService: prSyncService,
+        sessionPersistenceService: sessionPersistenceService,
+        sessionUnseenService: unseenService,
+      );
+
+      final response = await realHandler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode(const SessionListRequest(projectId: "/unknown", start: null, limit: null).toJson()),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(404));
+      expect(await db.projectsDao.getProject(projectId: "/unknown"), isNull);
+      expect(plugin.lastGetSessionsWorktree, isNull);
+    });
+
     test("forwards projectId to plugin.getSessions", () async {
       await handler.handle(
         makeRequest("POST", "/sessions"),
@@ -105,7 +141,7 @@ void main() {
       expect(plugin.lastGetSessionsLimit, equals(20));
     });
 
-    test("ensures project exists before calling SessionRepository", () async {
+    test("persists the project and sessions after a successful repository fetch", () async {
       plugin.sessionsResult = [
         const PluginSession(
           id: "s1",
@@ -787,6 +823,7 @@ void main() {
         sessionRepository: SessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
           pullRequestRepository: PullRequestRepository(
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,

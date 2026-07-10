@@ -631,7 +631,6 @@ class FakePrSyncService extends PrSyncService {
 }
 
 class FakeSessionPersistenceService extends SessionPersistenceService {
-  final List<String> ensuredProjectIds = <String>[];
   final List<({String projectId, List<Session> sessions})> persistedCalls =
       <({String projectId, List<Session> sessions})>[];
 
@@ -648,11 +647,6 @@ class FakeSessionPersistenceService extends SessionPersistenceService {
   static SessionDao _unsupportedSessionDao() => throw UnimplementedError();
 
   static AppDatabase _unsupportedDatabase() => throw UnimplementedError();
-
-  @override
-  Future<void> ensureProject({required String projectId}) async {
-    ensuredProjectIds.add(projectId);
-  }
 
   @override
   Future<void> persistSessionsForProject({
@@ -843,6 +837,9 @@ class _NoopSessionRepository implements SessionRepository {
     pullRequest: null,
     promptDefaults: null,
   );
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -1186,4 +1183,7 @@ class FakeSessionRepository implements SessionRepository {
     pullRequest: null,
     promptDefaults: null,
   );
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }

@@ -25,6 +25,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
@@ -288,6 +289,7 @@ class _RegistrationHarness {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -307,7 +309,30 @@ class _RegistrationHarness {
         bridgeIdProvider: registrationService,
       ),
       plugin: plugin,
-      metadataService: FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: FakeMetadataService(),
+        worktreeService: WorktreeService(
+          worktreeRepository: WorktreeRepository(
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            gitApi: GitCliApi(
+              processRunner: FakeProcessRunner((
+                String executable,
+                List<String> arguments, {
+                Map<String, String>? environment,
+                String? workingDirectory,
+                Duration timeout = const Duration(seconds: 15),
+              }) async {
+                return ProcessResult(0, 127, "", "command not found");
+              }),
+              gitPathExists: ({required String gitPath}) => true,
+            ),
+            plugin: plugin,
+          ),
+        ),
+        sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -366,10 +391,10 @@ class _RegistrationHarness {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: PermissionRepository(plugin: plugin),
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
       sessionPersistenceService: SessionPersistenceService(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,

@@ -18,7 +18,6 @@ import "../push/push_dispatcher.dart";
 import "../server/services/bridge_restart_service.dart";
 import "foundation/process_runner.dart";
 import "key_exchange.dart";
-import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
@@ -55,7 +54,7 @@ class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePluginApi _plugin;
-  final MetadataService _metadataService;
+  final SessionCreationService _sessionCreationService;
   final PushDispatcher _pushDispatcher;
   final CompletionPushListener _completionListener;
   final MaintenancePushListener _maintenanceListener;
@@ -86,7 +85,7 @@ class Orchestrator {
     required this.config,
     required RelayClient client,
     required BridgePluginApi plugin,
-    required MetadataService metadataService,
+    required SessionCreationService sessionCreationService,
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
@@ -116,7 +115,7 @@ class Orchestrator {
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _plugin = plugin,
-       _metadataService = metadataService,
+       _sessionCreationService = sessionCreationService,
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
@@ -147,12 +146,6 @@ class Orchestrator {
   OrchestratorSession create() {
     final roomKey = _generateRoomKey();
     final bytesSentController = StreamController<int>.broadcast();
-    final sessionCreationService = SessionCreationService(
-      metadataService: _metadataService,
-      worktreeService: _worktreeService,
-      sessionRepository: _sessionRepository,
-      sessionTitleService: _sessionTitleService,
-    );
     final sessionArchiveService = SessionArchiveService(
       worktreeService: _worktreeService,
       sessionRepository: _sessionRepository,
@@ -194,7 +187,7 @@ class Orchestrator {
       questionRepository: _questionRepository,
       sessionPersistenceService: _sessionPersistenceService,
       worktreeService: _worktreeService,
-      sessionCreationService: sessionCreationService,
+      sessionCreationService: _sessionCreationService,
       sessionArchiveService: sessionArchiveService,
       sessionAbortService: sessionAbortService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,

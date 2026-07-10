@@ -33,6 +33,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
@@ -74,6 +75,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -123,7 +125,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -176,10 +183,10 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -259,6 +266,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -308,7 +316,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
+      ),
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
@@ -361,10 +374,10 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -433,6 +446,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -493,7 +507,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -540,10 +559,10 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -609,6 +628,7 @@ void main() {
     final baseSessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -695,7 +715,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
+      ),
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
@@ -748,10 +773,10 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -851,6 +876,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -900,7 +926,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
+      ),
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
@@ -953,10 +984,10 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1003,6 +1034,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -1052,7 +1084,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -1105,10 +1142,10 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1180,6 +1217,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -1229,7 +1267,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionTitleService: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -1282,10 +1325,10 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -2181,6 +2224,9 @@ class _NoopSessionRepository implements SessionRepository {
     pullRequest: null,
     promptDefaults: null,
   );
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
 class _DelayingSessionRepository implements SessionRepository {
@@ -2405,4 +2451,7 @@ class _DelayingSessionRepository implements SessionRepository {
   Future<Session> renameSession({required String sessionId, required String title}) {
     return _base.renameSession(sessionId: sessionId, title: title);
   }
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) => _base.resolveProjectDirectory(projectId: projectId);
 }

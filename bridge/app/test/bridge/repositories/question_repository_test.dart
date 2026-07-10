@@ -68,7 +68,8 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -96,7 +97,11 @@ void main() {
           PluginPendingQuestion(id: "q-gone", sessionID: "gone", displaySessionId: null, questions: []),
         ],
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -126,7 +131,8 @@ void main() {
           PluginPendingQuestion(id: "q-fresh", sessionID: "s-fresh", displaySessionId: null, questions: []),
         ],
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -152,7 +158,8 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -178,7 +185,8 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -203,7 +211,8 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 

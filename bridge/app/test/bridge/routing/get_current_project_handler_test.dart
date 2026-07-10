@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -16,9 +18,10 @@ void main() {
     late AppDatabase db;
     late GetCurrentProjectHandler handler;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/project"]);
       handler = GetCurrentProjectHandler(
         projectRepository: ProjectRepository(
           plugin: plugin,
@@ -93,6 +96,23 @@ void main() {
       expect(response.name, equals("My Project"));
       expect(response.time?.created, equals(11));
       expect(response.time?.updated, equals(22));
+    });
+
+    test("returns 404 for an unknown project id without creating a row", () async {
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/project/current",
+          body: jsonEncode(const ProjectIdRequest(projectId: "/unknown").toJson()),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(404));
+      expect(await db.projectsDao.getProject(projectId: "/unknown"), isNull);
+      expect(plugin.lastGetCurrentProjectProjectId, isNot(equals("/unknown")));
     });
   });
 }

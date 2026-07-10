@@ -16,9 +16,10 @@ void main() {
     late AppDatabase db;
     late RenameProjectHandler handler;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       handler = RenameProjectHandler(
         ProjectRepository(
           plugin: plugin,

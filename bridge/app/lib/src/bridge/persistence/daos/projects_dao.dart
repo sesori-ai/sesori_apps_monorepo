@@ -9,9 +9,13 @@ part "projects_dao.g.dart";
 class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin {
   ProjectsDao(super.attachedDatabase);
 
-  // Every insert below stamps the project id as the row's `path`: the id has
-  // always been the project's directory path for every shipped plugin. If ids
-  // ever stop being paths, insert sites must take an explicit path instead.
+  // `path` is the project's live directory; `projectId` is its stable
+  // identifier (for every shipped plugin: the directory the project was FIRST
+  // opened at). They diverge when a folder is moved on disk and re-opened —
+  // [recordOpenedProject] is the only writer that stores a meaningful path.
+  // Every other insert below stamps the project id as the row's `path` purely
+  // as the new-row default (correct until a move is recorded); none of their
+  // conflict clauses touch `path`, so an existing recorded path is preserved.
 
   /// Returns every stored project row. Used by the bridge-derived project path
   /// to read paths, display-name overrides, and opened-folder timestamps.
@@ -24,15 +28,26 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     return (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
   }
 
-  /// Records [projectId] as an explicitly-opened folder by stamping [openedAt],
-  /// creating the row if missing. Updates only openedAt on conflict, preserving
+  /// The live directory stored for [projectId], or null when the bridge has no
+  /// recorded project with that id. `path` is non-nullable in the schema, so a
+  /// present row is authoritative — never infer a directory from the id.
+  Future<String?> getResolvedPath({required String projectId}) async {
+    final row = await getProject(projectId: projectId);
+    return row?.path;
+  }
+
+  /// Records [projectId] as an explicitly-opened folder by stamping [openedAt]
+  /// and the live directory [path] it was opened at, creating the row if
+  /// missing. Updates only openedAt + path on conflict, preserving
   /// hidden/baseBranch/displayName/worktreeCounter. Lets a folder with no
-  /// sessions yet resurface with a fresh time when the user re-opens it.
-  Future<void> recordOpenedProject({required String projectId, required int openedAt}) async {
+  /// sessions yet resurface with a fresh time when the user re-opens it, and
+  /// refreshes the stored path when a moved folder is re-opened at its new
+  /// location.
+  Future<void> recordOpenedProject({required String projectId, required String path, required int openedAt}) async {
     await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, openedAt: Value(openedAt)),
+      ProjectsTableCompanion.insert(projectId: projectId, path: path, openedAt: Value(openedAt)),
       onConflict: DoUpdate(
-        (old) => ProjectsTableCompanion(openedAt: Value(openedAt)),
+        (old) => ProjectsTableCompanion(openedAt: Value(openedAt), path: Value(path)),
         target: [projectsTable.projectId],
       ),
     );

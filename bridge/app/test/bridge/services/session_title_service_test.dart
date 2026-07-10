@@ -19,6 +19,7 @@ void main() {
       repository = SessionRepository(
         plugin: _FakeDerivedPlugin(),
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,

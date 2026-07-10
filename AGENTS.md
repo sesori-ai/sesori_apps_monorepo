@@ -62,6 +62,7 @@ Each layer has a specific responsibility and a dedicated directory. Dependencies
 - A Service MUST NOT call an API directly — it goes through a Repository
 - A Consumer (cubit, handler) MUST NOT import from `api/` — it goes through repositories/services
 - Within a layer: NO cross-dependency between same-level classes (unless base classes/abstractions designed for reuse within that layer)
+- Never infer a live location from an unknown durable-entity identifier. When identity and location are separate, a missing persistence row stays missing; trust a non-null stored location and let the owning repository/service surface the unknown entity explicitly.
 - Helper, use-case, and supporting classes around a Service MUST NOT depend back on that owning Service. If you split service logic into a collaborator, make it a standalone dependency with its own injected inputs, not a `part` file, extension, or pseudo-helper that calls back into the service.
 - Do NOT extract non-trivial business logic into top-level/global functions just to satisfy file-size limits. If the extracted logic is more than a tiny pure helper, split it into a named collaborator class with explicit dependencies and a clear ownership boundary so it can be tested in isolation.
 - Do NOT extract a class only because the file is long. An extracted collaborator must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as cohesive private methods even when the file is near the line limit. Ask this before splitting: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, the extraction is forbidden.
@@ -545,6 +546,7 @@ Do not skip either step. The reviewers exist because violations compound — one
 - Treat user feedback in **PR comments** and in the **live chat** as guidance for future code, not just the current patch.
 - When the user pushes back on a coding practice, architecture choice, testing shape, utility placement, or workflow decision, proactively update the closest relevant `AGENTS.md` file so the same mistake is less likely to recur.
 - Prefer updating both the **repo-root `AGENTS.md`** for general guidance and the **workspace/module `AGENTS.md`** for domain-specific guidance when the feedback is scoped.
+- For UI review comments from bots, do not assume a changed shared component is an unintended regression just because the PR title names one screen. First check whether the design changed across all consumers; if the design source or user intent says the shared visual changed globally, decline the bot comment instead of preserving old styling on non-focused screens.
 - Do this proactively after the lesson is clear; do not wait for the user to ask a second time.
 - Assume the user reviews **committed and pushed code**, not your uncommitted local workspace. If you are expecting PR feedback to reflect your latest work, proactively commit and push first.
 - Never rely on users reviewing uncommitted changes. Remote PR state is the review source of truth unless the user explicitly says otherwise.
