@@ -108,8 +108,30 @@ class AuthGateCubit extends Cubit<AuthGateState> {
         // authenticated when it finally lands, so re-run the local logout
         // after it settles: sign-out always wins eventually.
         logw("Background session restore still pending at sign-out; re-clearing when it settles");
-        unawaited(pending.whenComplete(_clearSessionBestEffort));
+        unawaited(pending.whenComplete(_clearStaleSessionAfterLateRestore));
       }
+    }
+    await _clearSessionBestEffort();
+  }
+
+  /// Runs when a restore that outlived the sign-out fence finally settles.
+  ///
+  /// The stale restore only re-emits state (it never saves tokens), while a
+  /// fresh login that happened meanwhile DOES save tokens — so a locally
+  /// valid session at this point belongs to a new sign-in and must survive;
+  /// anything else is the stale session the user already signed out of.
+  Future<void> _clearStaleSessionAfterLateRestore() async {
+    try {
+      if (await _authSession.hasLocallyValidSession()) {
+        logd("Skipping the delayed session clear: a new sign-in landed meanwhile");
+        return;
+      }
+    } on Object catch (error, stackTrace) {
+      // Can't tell whether a new sign-in landed — do NOT risk wiping fresh
+      // credentials; worst case the stale signed-in surface persists until
+      // the user signs out again.
+      logw("Could not verify the session before the delayed clear; skipping it", error, stackTrace);
+      return;
     }
     await _clearSessionBestEffort();
   }
