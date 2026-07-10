@@ -131,6 +131,41 @@ void main() {
     expect(cubit.state, const AuthGateState.signedOut());
   });
 
+  test("a restore outliving the sign-out fence is re-cleared when it settles", () async {
+    when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => true);
+    when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
+    final Completer<bool> hungRestore = Completer<bool>();
+    when(() => authSession.restoreSession()).thenAnswer(
+      (_) => hungRestore.future.then((confirmed) {
+        if (confirmed) {
+          authStates.add(const AuthState.authenticated(user: _user));
+        }
+        return confirmed;
+      }),
+    );
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {
+      authStates.add(const AuthState.unauthenticated());
+    });
+    final AuthGateCubit cubit = AuthGateCubit(
+      authSession,
+      signOutRestoreFence: const Duration(milliseconds: 20),
+    );
+    addTearDown(cubit.close);
+    await pumpEventQueue();
+
+    // The fence times out on the hung restore and the sign-out proceeds.
+    await cubit.signOut();
+    expect(cubit.state, const AuthGateState.signedOut());
+
+    // The hung /auth/me finally lands and re-emits authenticated — the
+    // chained re-clear must flip it back to signed out.
+    hungRestore.complete(true);
+    await pumpEventQueue();
+
+    expect(cubit.state, const AuthGateState.signedOut());
+    verify(() => authSession.logoutCurrentDevice()).called(2);
+  });
+
   test("an unconfirmed background restore stays provisionally signed in", () async {
     when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => true);
     when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);

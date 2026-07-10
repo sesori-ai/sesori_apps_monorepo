@@ -12,6 +12,7 @@ dependencies:
   freezed_annotation: ^3.1.0
   get_it: ^9.2.1
   injectable: ^3.0.0
+  meta: ^1.18.0
   sesori_dart_core:
     path: ../module_core
   sesori_shared:
