@@ -40,7 +40,9 @@ class LoginView extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 360),
           child: BlocBuilder<LoginCubit, LoginState>(
             builder: (context, state) {
-              final bool isBusy = state is LoginAuthenticating || state is LoginPolling;
+              // LoginSuccess counts as busy: the auth gate flips a moment
+              // later, and re-enabled buttons would flash + allow a dup tap.
+              final bool isBusy = state is LoginAuthenticating || state is LoginPolling || state is LoginSuccess;
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
