@@ -363,6 +363,42 @@ Findings log · Plan-deltas.
   structured auth-required response; prompts/status surface via trackers; no
   dispatcher→cubit dependency and no same-level dispatcher↔service edge; no direct
   `module_auth` import in non-DI source.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch
+  `desktop-phase-2.5-control-server`).
+- **Findings:** Two units. (1) **`ControlChannelServer`** (Layer 0
+  `foundation/`, `Server` suffix per ADR A5): dart:io loopback host, ephemeral
+  port, fresh 32-byte `Random.secure` secret per `start()`; upgrade auth = 401
+  on bad/missing bearer, 400 on non-upgrade, 409 on a concurrent second helper;
+  a dropped socket is cleared so the helper's auto-reconnect is accepted.
+  **Transport events are a single ordered stream** —
+  `Stream<ControlChannelEvent>` (sealed
+  connected/disconnected/frame) fed from one socket's callbacks — so a
+  consumer can never observe a frame on the wrong side of its
+  connect/disconnect (this also closes the review race found on PR 2.4's
+  tracker guards, which remain as defense-in-depth); a derived
+  `helperConnectionStream` `ValueStream<bool>` stays as a snapshot
+  convenience. (2) **`ControlMessageDispatcher`** (Layer 4 `control/`):
+  single subscriber of `events`; decodes each frame once (undecodable →
+  warn+skip); routes token_request → `AuthTokenProvider` (2.5a re-export;
+  provider throw → logged null = structured auth-required), status/registered
+  → `BridgeStatusTracker`, prompt_request → `BridgePromptTracker`;
+  provision_progress/restart are debug-ignored (no consumer yet / exit codes
+  are authoritative); GUI-direction variants arriving inbound are ignored,
+  never commands. Sends are best-effort (typed
+  `ControlHelperNotConnectedException` caught + logged — the helper re-pulls
+  after reconnecting). 23 new tests (11 server incl. true-order stream, 12
+  dispatcher over real loopback sockets + real trackers). **Real-bridge wire
+  verification** (regression guide): built the CLI and drove it with a
+  throwaway driver — secret handshake ✓, `helperOnline` ✓, token_request →
+  null answered ✓, real `loginNeeded` prompt landed in the tracker ✓, exit
+  **87** ✓, disconnect reset + prompt clear ✓. Full wire contract confirmed
+  against the shipped Phase-1 bridge.
+- **Deltas:** the server's inbound API is the ordered `events` stream rather
+  than the sketched separate inbound-stream + connection-stream pair
+  (ordering correctness; §6 wording "inbound-as-stream + send" still holds).
+  GUI→helper send paths beyond `token_response` are explicitly deferred (§8
+  row): prompt answers land with their consumer (2.7/2.9), unregister with
+  2.13, token_update push when first needed.
 
 ## PR 2.6 — `BridgeProcessService`: spawn/kill/path + expected-stop boundary + helper log capture
 - **Goal:** Spawn the bridge binary (path resolution dev + packaged) passing
@@ -500,6 +536,11 @@ Findings log · Plan-deltas.
   GNOME-without-AppIndicator the windowed fallback engages (no unreachable
   hidden app); toggle starts/stops the bridge; status updates live; `SystemTray`
   has no dependency on desktop-core services, trackers, or cubits.
+  **Carried from PR 2.5 (deferral):** the GUI→helper `prompt_response` send
+  path does not exist yet (2.5 landed inbound-to-tracker only, and a cubit
+  must not call the Layer-4 dispatcher) — this PR (or 2.7's Take-over slice,
+  whichever lands the first prompt answer) designs the answer sender seam at
+  its plan review and removes the §8 "GUI→helper send paths" row when done.
 
 ## PR 2.10 — `WindowHost` single window + v1 window contents
 - **Goal:** `window_manager` single window (show/hide/focus). v1 window contents:

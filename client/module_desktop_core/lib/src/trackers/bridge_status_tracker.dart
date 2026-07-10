@@ -40,10 +40,10 @@ class BridgeStatusTracker {
 
   /// A `status` push from the helper.
   ///
-  /// Ignored while no helper is online: the connection events and the message
-  /// stream have no cross-stream ordering guarantee, so a buffered status
-  /// frame can be processed after the disconnect reset — applying it would
-  /// leave stale relay/plugin values on an offline snapshot.
+  /// Ignored while no helper is online. The dispatcher consumes one ordered
+  /// event stream, so live frames cannot be dropped by this guard — it is
+  /// defense-in-depth against an out-of-order writer applying a stale frame
+  /// onto an offline snapshot.
   void applyStatus({required ControlStatus status}) {
     if (_status.isClosed || !this.status.helperOnline) {
       return;
