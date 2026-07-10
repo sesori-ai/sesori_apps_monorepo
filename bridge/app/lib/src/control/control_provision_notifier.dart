@@ -83,11 +83,7 @@ class ControlProvisionNotifier {
     _lastObservedDownloadBytes = receivedBytes;
 
     if (effectiveTotalBytes != null) {
-      final boundedReceivedBytes = receivedBytes <= 0
-          ? 0
-          : receivedBytes >= effectiveTotalBytes
-          ? effectiveTotalBytes
-          : receivedBytes;
+      final boundedReceivedBytes = receivedBytes.clamp(0, effectiveTotalBytes);
       final percent = boundedReceivedBytes * 100 ~/ effectiveTotalBytes;
       final lastPercent = _lastSentDownloadPercent;
       if (lastPercent != null && percent <= lastPercent) {
