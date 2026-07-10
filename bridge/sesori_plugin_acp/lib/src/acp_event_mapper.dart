@@ -93,7 +93,10 @@ class AcpEventMapper {
       final prior = snapshot.createdMs;
       snapshot.createdMs = prior == null || createdMs < prior ? createdMs : prior;
     }
-    if (updatedMs != null) snapshot.updatedMs = updatedMs;
+    if (updatedMs != null) {
+      final prior = snapshot.updatedMs;
+      snapshot.updatedMs = prior == null || updatedMs > prior ? updatedMs : prior;
+    }
   }
 
   /// Per-session project directory (an ACP project id *is* its `cwd`). The
@@ -210,9 +213,9 @@ class AcpEventMapper {
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "available_commands_update":
         // The advertised commands themselves are tracked by AcpCommandTracker
-        // (served via getCommands); the refresh event tells the phone to
-        // re-fetch.
-        return const [BridgeSseProjectUpdated()];
+        // (served via getCommands); this makes the matching client session
+        // re-fetch its snapshot so the new command list becomes visible.
+        return [BridgeSseSessionsUpdated(projectID: projectForSession(sessionId))];
       case "session_info_update":
         // The notification may carry `updatedAt` (ISO 8601 or epoch) — keep
         // the snapshot's recency fresh even when no title change is emitted.
@@ -225,21 +228,19 @@ class AcpEventMapper {
             updatedMs: eventUpdatedMs,
           );
         }
-        // The agent's auto-generated title for the thread. Surfaced as a
-        // session update so the mobile session list / app bar live-update.
-        // Only emit when the update actually carries a `title` field: absent =
-        // some other metadata changed (no title change), while an explicit null
-        // or empty clears the title (ACP v1 documents `title` as nullable, null
-        // clears) — forward that clear rather than dropping it, else the phone
-        // keeps the stale title until a full refresh.
-        if (!update.containsKey("title")) return const [];
-        final rawTitle = update["title"];
-        final title = rawTitle is String && rawTitle.isNotEmpty ? rawTitle : null;
-        // Keep the snapshot's title in sync (including a clear) so a later
-        // emission doesn't resurrect the old title.
-        _sessionSnapshots.putIfAbsent(sessionId, _SessionSnapshot.new).title = title;
+        // The agent's auto-generated title for the thread. An explicit null or
+        // empty title clears it; absent leaves the cached title unchanged.
+        if (update.containsKey("title")) {
+          final rawTitle = update["title"];
+          _sessionSnapshots.putIfAbsent(sessionId, _SessionSnapshot.new).title =
+              rawTitle is String && rawTitle.isNotEmpty ? rawTitle : null;
+        }
+        // Session lists must receive timestamp-only metadata updates to retain
+        // their activity ordering. With neither a title nor timestamp, this
+        // update carries nothing the client can render.
+        if (!update.containsKey("title") && eventUpdatedMs == null) return const [];
         return [
-          BridgeSseSessionUpdated(info: _sessionUpdate(sessionId, title).toJson()),
+          BridgeSseSessionUpdated(info: _sessionUpdate(sessionId).toJson()),
         ];
     }
 
@@ -320,16 +321,16 @@ class AcpEventMapper {
       title: update["title"] is String ? update["title"] as String? : null,
       status: acpToolStatus(update["status"]),
       output: acpToolOutputText(update),
+      isFileMutation: _isFileMutation(update),
+      diffEmitted: false,
     );
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
-    return [
+    final events = <BridgeSseEvent>[
       _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
-      // An agent may report the whole mutation as one complete initial
-      // `tool_call` (no follow-up update), so the diff signal must fire here
-      // too, mirroring `_toolCallUpdate`.
-      if (_isFileMutation(update)) BridgeSseSessionDiff(sessionID: sessionId),
     ];
+    _appendCompletedMutationDiff(events: events, sessionId: sessionId, state: state);
+    return events;
   }
 
   List<BridgeSseEvent> _toolCallUpdate({
@@ -358,6 +359,8 @@ class AcpEventMapper {
           : prior?.title,
       status: update.containsKey("status") ? acpToolStatus(update["status"]) : (prior?.status ?? PluginToolStatus.pending),
       output: newOutput ?? prior?.output,
+      isFileMutation: (prior?.isFileMutation ?? false) || _isFileMutation(update),
+      diffEmitted: prior?.diffEmitted ?? false,
     );
     final events = <BridgeSseEvent>[
       // ACP events can be reordered (reconnect / resume / replay), so a
@@ -372,9 +375,7 @@ class AcpEventMapper {
     // onto the terminal state; bounded by the [beginTurn] / [forgetSession]
     // clears.
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
-    if (_isFileMutation(update)) {
-      events.add(BridgeSseSessionDiff(sessionID: sessionId));
-    }
+    _appendCompletedMutationDiff(events: events, sessionId: sessionId, state: state);
     return events;
   }
 
@@ -440,7 +441,7 @@ class AcpEventMapper {
   /// stored bridge row exists to enrich from (creation race, never-persisted
   /// historical session). Times come from the plugin-fed snapshot (see
   /// [setSessionSnapshot]); with no snapshot at all, time stays null.
-  shared.Session _sessionUpdate(String id, String? title) {
+  shared.Session _sessionUpdate(String id) {
     final project = projectForSession(id);
     final snapshot = _sessionSnapshots[id];
     final created = snapshot?.createdMs;
@@ -450,7 +451,7 @@ class AcpEventMapper {
       projectID: project,
       directory: project,
       parentID: null,
-      title: title,
+      title: snapshot?.title,
       time: created == null && updated == null
           ? null
           : shared.SessionTime(
@@ -536,6 +537,25 @@ class AcpEventMapper {
     return false;
   }
 
+  void _appendCompletedMutationDiff({
+    required List<BridgeSseEvent> events,
+    required String sessionId,
+    required _LiveTool state,
+  }) {
+    if (!state.isFileMutation || state.diffEmitted || !_isTerminalToolStatus(state.status)) {
+      return;
+    }
+    state.diffEmitted = true;
+    events.add(BridgeSseSessionDiff(sessionID: sessionId));
+  }
+
+  bool _isTerminalToolStatus(PluginToolStatus status) {
+    return switch (status) {
+      PluginToolStatus.completed || PluginToolStatus.error => true,
+      PluginToolStatus.pending || PluginToolStatus.running || PluginToolStatus.unknown => false,
+    };
+  }
+
   Map<String, dynamic>? _asMap(Object? value) {
     if (value is Map) return value.cast<String, dynamic>();
     return null;
@@ -544,8 +564,8 @@ class AcpEventMapper {
 
 enum _ChunkRole { user, assistant }
 
-/// Last-known metadata for one session (title, times), merged into the
-/// `session.updated` payload a `session_info_update` emits.
+/// Last-known metadata for one session, merged into the `session.updated`
+/// payload a `session_info_update` emits.
 class _SessionSnapshot {
   String? title;
   int? createdMs;
@@ -560,10 +580,14 @@ class _LiveTool {
     required this.title,
     required this.status,
     required this.output,
+    required this.isFileMutation,
+    required this.diffEmitted,
   });
 
   final String tool;
   final String? title;
   final PluginToolStatus status;
   final String? output;
+  final bool isFileMutation;
+  bool diffEmitted;
 }

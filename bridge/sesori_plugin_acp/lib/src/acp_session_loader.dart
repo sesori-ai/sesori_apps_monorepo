@@ -169,17 +169,14 @@ class AcpReplayCollector {
 
   /// The draft the next chunk belongs to. ACP v1: chunks of one message share
   /// a `messageId`, and a change starts a new message — so the last draft is
-  /// reused only when both the role AND the message id match (a chunk without
-  /// an id, tool attachment included, always continues the current same-role
-  /// message). Comparison is against the last draft only, matching the spec's
-  /// sequential "a change indicates a new message" semantics.
+  /// reused only when both the role AND the message id match. An id-less chunk
+  /// (tool attachment included) continues the current same-role message, but
+  /// an explicit id never merges into an id-less draft. Comparison is against
+  /// the last draft only, matching the spec's sequential semantics.
   _Draft _ensureRole(String role, {String? messageId}) {
     if (_drafts.isNotEmpty && _drafts.last.role == role) {
       final last = _drafts.last;
-      if (messageId == null || last.acpMessageId == null || last.acpMessageId == messageId) {
-        // Adopt the id when the running draft was started by id-less chunks:
-        // agents may stamp ids only on some chunk kinds of one message.
-        last.acpMessageId ??= messageId;
+      if (messageId == null || last.acpMessageId == messageId) {
         return last;
       }
     }
@@ -227,7 +224,6 @@ class _Draft {
   final String id;
 
   /// The ACP `messageId` this draft groups, when the agent stamped one.
-  /// Adopted late when the first stamped chunk arrives mid-message.
   String? acpMessageId;
   final StringBuffer text = StringBuffer();
   final StringBuffer reasoning = StringBuffer();

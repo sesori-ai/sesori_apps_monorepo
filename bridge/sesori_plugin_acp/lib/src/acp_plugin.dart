@@ -243,7 +243,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           _commandTracker.consume(notification);
           if (notification.method == AcpMethods.sessionUpdate) {
             final sid = notification.params["sessionId"];
-            if (sid is String && _suppressedSessions.contains(sid)) {
+            final update = notification.params["update"];
+            final isCommandUpdate =
+                update is Map && update["sessionUpdate"] == "available_commands_update";
+            if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
               // Replay from an in-flight resume-load — drop so old history does
               // not re-stream into the live conversation.
               _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;

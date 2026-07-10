@@ -292,6 +292,30 @@ void main() {
       expect(nonMutating.whereType<BridgeSseSessionDiff>(), isEmpty);
     });
 
+    test("a mutating tool emits its diff when a later status-only update completes it", () {
+      final initial = mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tc-progress-edit",
+        "kind": "edit",
+        "status": "in_progress",
+      }));
+      expect(initial.whereType<BridgeSseSessionDiff>(), isEmpty);
+
+      final completed = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-progress-edit",
+        "status": "completed",
+      }));
+      expect(completed.whereType<BridgeSseSessionDiff>(), hasLength(1));
+
+      final late = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-progress-edit",
+        "rawOutput": {"stdout": "done"},
+      }));
+      expect(late.whereType<BridgeSseSessionDiff>(), isEmpty);
+    });
+
     test("a diff content entry marks the tool call as a file mutation", () {
       // Spec-compliant agents can report an edit purely through the standard
       // tool content shape (type: "diff") with no mutating kind.
@@ -346,14 +370,15 @@ void main() {
       expect(late.whereType<BridgeSseMessagePartDelta>().single.messageID, firstId);
     });
 
-    test("plan maps to a todo update, commands to a project update", () {
+    test("plan maps to a todo update, commands mark their project sessions stale", () {
       expect(
         mapper.map(update({"sessionUpdate": "plan", "entries": const <Object?>[]})).single,
         isA<BridgeSseTodoUpdated>(),
       );
+      mapper.setSessionProject("s1", "/repo/other");
       expect(
         mapper.map(update({"sessionUpdate": "available_commands_update"})).single,
-        isA<BridgeSseProjectUpdated>(),
+        isA<BridgeSseSessionsUpdated>().having((event) => event.projectID, "projectID", "/repo/other"),
       );
     });
 
@@ -465,7 +490,23 @@ void main() {
       expect(session.title, isNull);
     });
 
-    test("session_info_update without a title key emits nothing", () {
+    test("timestamp-only session_info_update preserves the cached title and emits a session update", () {
+      mapper.setSessionSnapshot(
+        sessionId: "s1",
+        title: "Existing title",
+        createdMs: 1000,
+        updatedMs: 2000,
+      );
+      final events = mapper.map(update({
+        "sessionUpdate": "session_info_update",
+        "updatedAt": DateTime.fromMillisecondsSinceEpoch(3000, isUtc: true).toIso8601String(),
+      }));
+      final session = shared.Session.fromJson(events.whereType<BridgeSseSessionUpdated>().single.info);
+      expect(session.title, "Existing title");
+      expect(session.time?.updated, 3000);
+    });
+
+    test("session_info_update without a title or timestamp emits nothing", () {
       final events = mapper.map(update({
         "sessionUpdate": "session_info_update",
         "_meta": {"tags": <String>[]},
@@ -515,9 +556,10 @@ void main() {
 
     test("snapshot keeps the earliest created and the latest updated", () {
       mapper.setSessionSnapshot(sessionId: "s1", title: null, createdMs: 3000, updatedMs: 3000);
-      // A later enumeration reports an older last-activity time as created —
-      // it must not drag creation forward; updated advances.
+      // An enumeration may report a stale last-activity time. It must not
+      // drag either timestamp backwards.
       mapper.setSessionSnapshot(sessionId: "s1", title: null, createdMs: 1000, updatedMs: 4000);
+      mapper.setSessionSnapshot(sessionId: "s1", title: null, createdMs: 5000, updatedMs: 3500);
       final events = mapper.map(update({
         "sessionUpdate": "session_info_update",
         "title": "T",
