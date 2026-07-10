@@ -259,6 +259,41 @@ void main() {
         );
       });
 
+      test("coldStart discovers active sessions running at a sandboxed live location", () async {
+        // The status/session queries are scoped per OpenCode instance, so a
+        // busy session at the moved location only surfaces when the sandbox
+        // directory itself is queried — and it must group under the canonical
+        // worktree.
+        final tracker = await _coldStartedTracker(
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>["/moved/repo"],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
+          sessions: [_session("s1", "/moved/repo")],
+          statuses: {"s1": const SessionStatusBusy()},
+        );
+
+        final pairs = tracker.buildSummary().map((item) => (item.id, item.activeSessions.length)).toSet();
+        expect(pairs, equals({("/repo", 1)}));
+      });
+
+      test("reset clears seeded aliases", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        tracker.reset();
+
+        expect(tracker.resolveProjectWorktree(directory: "/moved/repo"), isNull);
+      });
+
       test("coldStart replaces previously-seeded aliases", () async {
         final tracker = await _coldStartedTracker(
           projects: [

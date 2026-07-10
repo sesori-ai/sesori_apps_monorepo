@@ -2231,7 +2231,7 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   Set<String> worktreesForHydration = const {};
 
   @override
-  Set<String> get projectWorktrees => worktreesForHydration;
+  Set<String> get sessionDiscoveryDirectories => worktreesForHydration;
 
   @override
   void populatePendingQuestions({required List<QuestionRequest> questions}) {
