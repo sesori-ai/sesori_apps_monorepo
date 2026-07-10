@@ -1,15 +1,15 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/mappers/plugin_message_mapper.dart";
+import "../repositories/session_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/messages` — returns all messages for a session.
 class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, MessageWithPartsResponse> {
-  final BridgePluginApi _plugin;
+  final SessionRepository _sessionRepository;
 
-  GetSessionMessagesHandler(this._plugin)
-    : super(
+  GetSessionMessagesHandler({required SessionRepository sessionRepository})
+    : _sessionRepository = sessionRepository,
+      super(
         HttpMethod.post,
         "/session/messages",
         fromJson: SessionIdRequest.fromJson,
@@ -28,10 +28,8 @@ class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, Mes
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    final pluginMessages = await _plugin.getSessionMessages(sessionId);
-
     return MessageWithPartsResponse(
-      messages: pluginMessages.toSharedMessageWithParts(),
+      messages: await _sessionRepository.getSessionMessages(sessionId: sessionId),
     );
   }
 }

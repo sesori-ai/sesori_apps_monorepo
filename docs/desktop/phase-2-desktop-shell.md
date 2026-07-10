@@ -353,16 +353,19 @@ Findings log · Plan-deltas.
   compatibility with the already-shipped bridge side. Check: (1) wire behaviour
   matches PR 1.1–1.5 exactly — secret as `Authorization: Bearer` on the WS
   **upgrade request**, id-correlated `token_response`, non-null-only
-  `token_update`, null token for signed-out; verify against a **real locally
+  `token_update`, null token for signed-out, and `token_request.forceRefresh`
+  forwarded to `AuthTokenProvider.getFreshAccessToken(forceRefresh:)` so a 401
+  retry receives a genuinely rotated token; verify against a **real locally
   built bridge**, not only the fake helper; (2) unknown/undecodable inbound
   frames warn+skip (forward compat); (3) port is ephemeral (bind :0) — no fixed
   port that could collide; (4) mobile untouched.
 - **Acceptance:** a fake helper connects with the secret, requests + receives a
   token; loopback-only bind; per-spawn secret rotated; bad secret rejected; only
   one authenticated helper is accepted per spawn; null/unavailable token returns a
-  structured auth-required response; prompts/status surface via trackers; no
-  dispatcher→cubit dependency and no same-level dispatcher↔service edge; no direct
-  `module_auth` import in non-DI source.
+  structured auth-required response; forced token requests invoke a real auth
+  refresh and return the newly persisted access token; prompts/status surface
+  via trackers; no dispatcher→cubit dependency and no same-level
+  dispatcher↔service edge; no direct `module_auth` import in non-DI source.
 - **Aristotle:** plan ☑ · impl ☑ (PR raised on branch
   `desktop-phase-2.5-control-server`).
 - **Findings:** Two units. (1) **`ControlChannelServer`** (Layer 0
@@ -379,8 +382,9 @@ Findings log · Plan-deltas.
   `helperConnectionStream` `ValueStream<bool>` stays as a snapshot
   convenience. (2) **`ControlMessageDispatcher`** (Layer 4 `control/`):
   single subscriber of `events`; decodes each frame once (undecodable →
-  warn+skip); routes token_request → `AuthTokenProvider` (2.5a re-export;
-  provider throw → logged null = structured auth-required), status/registered
+  warn+skip); routes token_request → `AuthTokenProvider` (2.5a re-export),
+  forwarding `forceRefresh` so a 401 retry reaches the real auth-refresh seam
+  (provider throw → logged null = structured auth-required), status/registered
   → `BridgeStatusTracker`, prompt_request → `BridgePromptTracker`;
   provision_progress/restart are debug-ignored (no consumer yet / exit codes
   are authoritative); GUI-direction variants arriving inbound are ignored,
@@ -392,7 +396,9 @@ Findings log · Plan-deltas.
   throwaway driver — secret handshake ✓, `helperOnline` ✓, token_request →
   null answered ✓, real `loginNeeded` prompt landed in the tracker ✓, exit
   **87** ✓, disconnect reset + prompt clear ✓. Full wire contract confirmed
-  against the shipped Phase-1 bridge.
+  against the shipped Phase-1 bridge. Dispatcher tests additionally pin
+  forced-refresh forwarding and the rotated token response; MT-1 records why
+  the dev harness itself cannot mint a genuinely fresh token.
 - **Deltas:** the server's inbound API is the ordered `events` stream rather
   than the sketched separate inbound-stream + connection-stream pair
   (ordering correctness; §6 wording "inbound-as-stream + send" still holds).
@@ -705,6 +711,10 @@ Findings log · Plan-deltas.
   `token_update` push send path (its goal already exercises token push/pull;
   the bridge is correct pull-only until then) and strikes that sub-item from
   the §8 "GUI→helper send paths" row.
+  With those flows covered by the real GUI host plus E2E suite, remove the
+  PR-1.15 `dev_control_host.dart` pseudo-GUI unless a concrete bridge-isolation
+  diagnostic remains unavailable elsewhere; any retained scope must be
+  documented so its token/protocol behavior cannot silently drift from the GUI.
 
 ## PR 2.16 — First-run provisioning progress UI + degraded state
 - **Goal:** Render `RuntimeProvisionProgress` (download bar/status) from the
