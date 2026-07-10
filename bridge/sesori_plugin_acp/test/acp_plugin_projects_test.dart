@@ -51,13 +51,16 @@ void main() {
     // instead of re-answering the first one.
     final answered = <(FakeAcpProcess, Object?)>{};
 
+    // Polls with a small real delay: a serialized turn's dispatch can sit
+    // behind the resume-load replay drain (~250ms of wall-clock quiet time),
+    // which zero-duration pumps never outlast.
     Future<Map<String, dynamic>> waitForFrame(String method) async {
-      for (var i = 0; i < 50; i++) {
+      for (var i = 0; i < 400; i++) {
         final matches = fake()
             .written
             .where((f) => f["method"] == method && !answered.contains((fake(), f["id"])));
         if (matches.isNotEmpty) return matches.last;
-        await pump();
+        await Future<void>.delayed(const Duration(milliseconds: 5));
       }
       throw StateError("agent never wrote a '$method' frame");
     }

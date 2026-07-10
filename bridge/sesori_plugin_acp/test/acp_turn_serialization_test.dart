@@ -1,7 +1,35 @@
+import "dart:async";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
+
+/// An [AcpPlugin] whose [applyTurnSelection] blocks on a test-controlled gate,
+/// so a test can land an abort while a turn is mid-selection.
+class _GatedSelectionPlugin extends AcpPlugin {
+  _GatedSelectionPlugin({
+    required super.id,
+    required super.agentDisplayName,
+    required super.launchSpec,
+    required super.launchDirectory,
+    required super.eventMapper,
+    required AcpProcessFactory super.processFactory,
+  });
+
+  Completer<void>? selectionGate;
+
+  @override
+  Future<void> applyTurnSelection({
+    required AcpStdioClient client,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+  }) async {
+    final gate = selectionGate;
+    if (gate != null) await gate.future;
+  }
+}
 
 /// Turn-lifecycle robustness:
 ///
@@ -46,11 +74,14 @@ void main() {
     List<Map<String, dynamic>> frames(String method) =>
         fake.written.where((f) => f["method"] == method).toList(growable: false);
 
+    // Polls with a small real delay: a serialized turn's dispatch can sit
+    // behind the resume-load replay drain (~250ms of wall-clock quiet time),
+    // which zero-duration pumps never outlast.
     Future<Map<String, dynamic>> waitForFrameCount(String method, int count) async {
-      for (var i = 0; i < 80; i++) {
+      for (var i = 0; i < 400; i++) {
         final matches = frames(method);
         if (matches.length >= count) return matches[count - 1];
-        await pump();
+        await Future<void>.delayed(const Duration(milliseconds: 5));
       }
       throw StateError("agent never wrote $count '$method' frame(s)");
     }
@@ -166,6 +197,116 @@ void main() {
       expect(idleCount(), 1, reason: "queue accounting settles to idle");
       expect(emitted.whereType<BridgeSseSessionError>(), isEmpty);
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+    });
+
+    test("an abort landing during turn selection still drops the turn", () async {
+      final gated = _GatedSelectionPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        processFactory: (_) async => fake,
+      );
+      addTearDown(gated.dispose);
+      final gatedEvents = <BridgeSseEvent>[];
+      gated.events.listen(gatedEvents.add);
+
+      final connecting = gated.ensureConnected();
+      final init = await waitForFrame("initialize");
+      respondTo(init, {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      expect(await connecting, isTrue);
+
+      final creating = gated.createSession(
+        directory: cwd,
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      respondTo(await waitForFrame("session/new"), {"sessionId": "s1"});
+      await creating;
+
+      // Hold the turn in selection, abort, then release the gate: the prompt
+      // must never dispatch (an abort right before dispatch must not start a
+      // fresh agent run).
+      final gate = Completer<void>();
+      gated.selectionGate = gate;
+      await gated.sendPrompt(
+        sessionId: "s1",
+        parts: const [PluginPromptPart.text(text: "hi")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      for (var i = 0; i < 5; i++) {
+        await pump();
+      }
+      await gated.abortSession(sessionId: "s1");
+      gate.complete();
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+
+      expect(frames("session/prompt"), isEmpty);
+      expect(gatedEvents.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      expect(gated.getActiveSessionsSummary(), isEmpty);
+    });
+
+    test("deleting a session mid-turn does not resurrect it as idle", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+
+      await sendPrompt(sessionId, "hi");
+      final promptFrame = await waitForFrame("session/prompt");
+
+      await plugin.deleteSession(sessionId);
+      expect(frames("session/cancel"), hasLength(1));
+
+      // The cancelled prompt settles after the delete: its accounting must not
+      // re-create the deleted session's status entry or emit idle for it.
+      respondTo(promptFrame, {"stopReason": "cancelled"});
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+      expect(await plugin.getSessionStatuses(), isEmpty);
+      expect(emitted.whereType<BridgeSseSessionIdle>(), isEmpty);
+    });
+
+    test("a queued turn retries a transiently failed resume-load at dispatch", () async {
+      await connect(loadSession: true);
+
+      // Two prompts queued up front. The first turn's load fails transiently
+      // and its prompt errors; the SECOND queued turn must retry the load at
+      // its own dispatch — not inherit the failure.
+      final sendingA = sendPrompt("old-1", "a");
+      final sendingB = sendPrompt("old-1", "b");
+      await Future.wait([sendingA, sendingB]);
+
+      final firstLoad = await waitForFrame("session/load");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstLoad["id"],
+        "error": {"code": -32000, "message": "transient"},
+      });
+      final firstPrompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstPrompt["id"],
+        "error": {"code": -32000, "message": "session not found"},
+      });
+
+      final secondLoad = await waitForFrameCount("session/load", 2);
+      respondTo(secondLoad, const {});
+      final secondPrompt = await waitForFrameCount("session/prompt", 2);
+      respondTo(secondPrompt, {"stopReason": "end_turn"});
+      await pump();
+      expect(frames("session/load"), hasLength(2));
     });
 
     test("a transiently failed resume-load is retried on the next turn", () async {

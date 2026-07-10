@@ -129,11 +129,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// a turn or the agent rejects it ("session not found").
   final Set<String> _residentSessions = {};
 
-  /// In-flight resume loads, coalesced per session so concurrent turns share
-  /// one `session/load` — and therefore one replay-suppression window, whose
-  /// removal cannot race another load's still-streaming replay.
-  final Map<String, Future<void>> _residentLoads = {};
-
   /// Sessions whose `session/update` notifications are currently dropped — a
   /// resume `session/load` is in flight and its history replay must not leak
   /// into the live stream.
@@ -635,7 +630,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required ({String providerID, String modelID})? model,
   }) async {
     final client = await _connectedClient();
-    await _ensureResident(client, sessionId);
     _enqueueTurn(
       client: client,
       sessionId: sessionId,
@@ -656,7 +650,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   }) async {
     final body = arguments.isEmpty ? "/$command" : "/$command $arguments";
     final client = await _connectedClient();
-    await _ensureResident(client, sessionId);
     _enqueueTurn(
       client: client,
       sessionId: sessionId,
@@ -674,21 +667,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// Ensures [sessionId] is resident in the agent process before a turn. A
   /// session created/resumed this run is already resident; one from a prior
   /// bridge run is re-loaded via `session/load` (its history replay suppressed
-  /// so it does not re-stream into the live conversation). Concurrent callers
-  /// coalesce onto one in-flight load per session, so a single load owns the
-  /// whole suppression window. Never throws for load failures — the turn
-  /// proceeds and surfaces any error itself.
-  Future<void> _ensureResident(AcpStdioClient client, String sessionId) {
-    if (_residentSessions.contains(sessionId)) return Future<void>.value();
-    return _residentLoads.putIfAbsent(
-      sessionId,
-      // Block body on purpose: Map.remove returns the stored value — this very
-      // future — and an arrow body would hand it back to whenComplete, which
-      // awaits a returned future, deadlocking the load on itself.
-      () => _loadResident(client, sessionId).whenComplete(() {
-        _residentLoads.remove(sessionId);
-      }),
-    );
+  /// so it does not re-stream into the live conversation). Called only from
+  /// inside a session's serialized turn, so per-session loads never overlap —
+  /// each load owns its whole suppression window. Never throws for load
+  /// failures — the turn proceeds and surfaces any error itself.
+  Future<void> _ensureResident(AcpStdioClient client, String sessionId) async {
+    if (_residentSessions.contains(sessionId)) return;
+    await _loadResident(client, sessionId);
   }
 
   /// Performs the resume `session/load` for [_ensureResident]. Marks the
@@ -801,11 +786,15 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     );
   }
 
-  /// Runs one serialized turn: applies the turn's model/mode selection,
-  /// dispatches `session/prompt`, and settles the queue accounting. Selection
-  /// is applied here — inside the chain — because applying it at enqueue time
-  /// would flip a process-global selection (Cursor's) under the previous,
-  /// still-running turn.
+  /// Runs one serialized turn: makes the session resident, applies the turn's
+  /// model/mode selection, dispatches `session/prompt`, and settles the queue
+  /// accounting. Residency and selection run here — inside the chain — so a
+  /// queued turn retries a transiently failed resume-load itself, and a
+  /// selection applied at enqueue time can't flip a process-global selection
+  /// (Cursor's) under the previous, still-running turn. The abort generation
+  /// is re-checked after every await: an abort landing mid-load/mid-selection
+  /// must still drop the not-yet-dispatched turn instead of starting a fresh
+  /// agent run right after the cancel.
   Future<void> _runTurn({
     required AcpStdioClient client,
     required String sessionId,
@@ -815,9 +804,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
   }) async {
+    // Aborted turns were never dispatched, so no per-turn error event — just
+    // settle the accounting (idle emission when the count reaches 0).
     if (state.generation != expectedGeneration) {
-      // Aborted while queued: never dispatched, so no per-turn error event —
-      // just settle the accounting (idle emission when the count reaches 0).
+      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+      return;
+    }
+    await _ensureResident(client, sessionId);
+    if (state.generation != expectedGeneration) {
       _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
       return;
     }
@@ -832,6 +826,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // Selection is best-effort (the Cursor override is already fail-soft):
       // the turn proceeds on the agent's current settings.
       Log.w("[$id] applyTurnSelection for $sessionId failed; prompting with current settings", error, stack);
+    }
+    if (state.generation != expectedGeneration) {
+      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+      return;
     }
     eventMapper.beginTurn(sessionId);
     _inFlightTurnSessions.add(sessionId);
@@ -872,6 +870,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   }) {
     _inFlightTurnSessions.remove(sessionId);
     if (state.pending > 0) state.pending--;
+    // A session deleted mid-turn already dropped this state object from
+    // [_turnStates]; its detached accounting above must still settle, but it
+    // must not resurrect the deleted session's status entry or emit
+    // idle/error events for it.
+    if (!identical(_turnStates[sessionId], state)) return;
     if (state.pending == 0) {
       _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
       _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));

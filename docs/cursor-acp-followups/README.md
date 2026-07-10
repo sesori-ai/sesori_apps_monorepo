@@ -241,7 +241,9 @@ turn-lifecycle rework in `acp_plugin.dart`, covered by
   permanently unsupported load (`-32601`/`-32602` from an agent that
   advertised `loadSession` anyway) is memoized as resident, preserving the
   original no-reload-loop guarantee; transient failures (timeout, RPC hiccup)
-  leave the session non-resident so the next turn retries the load.
+  leave the session non-resident. Residency is ensured at *dispatch time*
+  inside each serialized turn, so even a turn already queued when the load
+  failed retries the load itself before prompting.
   Source: [#332 r3545873646](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873646)
 
 - **H2 — prompts are serialized per session.** Each session owns a turn chain
@@ -255,11 +257,12 @@ turn-lifecycle rework in `acp_plugin.dart`, covered by
   `abortSession` drops queued-but-undispatched turns via a generation bump.
   Source: [#332 r3545873662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873662)
 
-- **H3 — concurrent resume loads coalesce.** Concurrent `_ensureResident`
-  calls for one session share a single in-flight `session/load` future, so
-  exactly one load owns the whole replay-suppression window (no early
-  unsuppress mid-replay), and the replay quiet-window counters are per-session
-  so two sessions resuming concurrently don't reset each other's drain.
+- **H3 — resume loads no longer race each other's suppression window.**
+  Resume loads run inside the session's serialized turn chain, so one
+  session's loads can never overlap — each `session/load` owns its whole
+  replay-suppression window (no early unsuppress mid-replay) — and the replay
+  quiet-window counters are per-session so two sessions resuming concurrently
+  don't reset each other's drain.
   Source: [#332 r3545873652](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873652)
 
 ---
