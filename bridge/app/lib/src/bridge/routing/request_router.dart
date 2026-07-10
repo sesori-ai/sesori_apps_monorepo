@@ -141,7 +141,7 @@ class RequestRouter {
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(sessionRepository: sessionRepository),
       GetSessionHandler(sessionRepository),
-      GetSessionMessagesHandler(plugin),
+      GetSessionMessagesHandler(sessionRepository: sessionRepository),
       GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,

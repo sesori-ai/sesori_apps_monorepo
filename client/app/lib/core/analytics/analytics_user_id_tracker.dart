@@ -39,9 +39,10 @@ class AnalyticsUserIdTracker {
           // No clear user identity in these states — leave the ID unchanged.
           break;
       }
-    } on Object catch (_) {
+    } on Object catch (error, stackTrace) {
       // Best-effort: analytics failures must not crash the app or propagate
-      // as unhandled async errors.
+      // as unhandled async errors — but leave a trace.
+      logw("Failed to sync analytics user ID", error, stackTrace);
     }
   }
 

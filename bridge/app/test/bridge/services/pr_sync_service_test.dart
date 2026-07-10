@@ -401,6 +401,12 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
 
+  @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
+
+  @override
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const [];
+
   final Map<String, List<StoredSession>> sessionsByProject;
 
   _FakeSessionRepository({required this.sessionsByProject});

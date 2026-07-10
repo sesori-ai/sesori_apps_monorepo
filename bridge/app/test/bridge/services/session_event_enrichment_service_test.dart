@@ -103,5 +103,32 @@ void main() {
       final info = (result as BridgeSseSessionCreated).info;
       expect(info["pullRequest"], isNotNull);
     });
+
+    test("routes a session refresh through its stored owning project", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        pluginId: "opencode",
+        sessionId: "s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: "/tmp/worktree",
+        branchName: "feature/one",
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      final result = await service.enrich(
+        const BridgeSseSessionsUpdated(
+          sessionID: "s1",
+          projectID: "/tmp/worktree",
+        ),
+      );
+
+      expect(result, isA<BridgeSseSessionsUpdated>());
+      expect((result as BridgeSseSessionsUpdated).projectID, "p1");
+    });
   });
 }
