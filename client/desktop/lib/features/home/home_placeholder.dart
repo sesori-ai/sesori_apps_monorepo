@@ -3,10 +3,9 @@ import "dart:async";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 /// Signed-in placeholder: bridge supervision controls land here with the
-/// tray/window slices of Phase 2.
+/// tray/window slices.
 class HomePlaceholder extends StatelessWidget {
   const HomePlaceholder({required this.user, super.key});
 
@@ -18,7 +17,8 @@ class HomePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String account = user.providerUsername ?? user.providerUserId;
+    final String? username = user.providerUsername?.trim();
+    final String account = (username == null || username.isEmpty) ? user.providerUserId : username;
     return Scaffold(
       body: Center(
         child: Column(

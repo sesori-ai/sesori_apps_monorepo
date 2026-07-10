@@ -53,6 +53,13 @@ void main() {
     expect(find.textContaining("browser"), findsOneWidget);
   });
 
+  testWidgets("success keeps the buttons disabled until the gate flips", (WidgetTester tester) async {
+    await pumpLogin(tester, state: const LoginState.success());
+
+    final FilledButton github = tester.widget(find.widgetWithText(FilledButton, "Continue with GitHub"));
+    expect(github.onPressed, isNull);
+  });
+
   testWidgets("timeout renders a retry message", (WidgetTester tester) async {
     await pumpLogin(tester, state: const LoginState.timeout());
 
