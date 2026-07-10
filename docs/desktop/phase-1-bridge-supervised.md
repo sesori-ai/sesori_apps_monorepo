@@ -1036,4 +1036,9 @@ which is not in the repo, so it fails on a fresh checkout); have a logged-in
   refresh authority. Check 14 exposed a misleading internal-track message that
   claimed auto-updates were enabled during supervised suppression; PR 1.16 now
   reports the shared policy result truthfully. The standalone-reconciliation
-  half remains pending. **Deltas:** MT-1 remains open until every row passes.
+  behavior then passed with a synthetic `.lib.rollback`: supervised mode left it
+  untouched, while standalone removed it during startup reconciliation and also
+  applied `v1.5.0-internal.213`. Check 13 passed across macOS and Windows: the
+  displaced Mac reported `takenOver`, stayed quiet for the two-minute backoff,
+  Windows and the phone remained usable, and Mac reclaimed the relay after the
+  winner stopped. **Deltas:** MT-1 remains open until every row passes.
