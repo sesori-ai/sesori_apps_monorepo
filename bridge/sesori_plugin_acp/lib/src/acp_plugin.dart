@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "acp_approval_registry.dart";
+import "acp_command_tracker.dart";
 import "acp_event_mapper.dart";
 import "acp_process_factory.dart";
 import "acp_protocol.dart";
@@ -60,6 +61,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   final AcpProcessFactory? _processFactory;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
 
+  /// Snapshot of the agent's advertised slash commands, fed by the
+  /// notification listener and served by [getCommands].
+  final AcpCommandTracker _commandTracker = AcpCommandTracker();
+
   /// sessionId -> the canonical directory the session lives in. Populated on
   /// create and on every `session/list` hit, so a turn/history load runs in
   /// the session's own `cwd` (not the launch directory), events attribute to
@@ -89,19 +94,39 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   Stream<void> get onConnected => _connected.stream;
 
   final Map<String, PluginSessionStatus> _sessionStatuses = {};
-  final Set<String> _activeSessions = {};
 
-  /// The session whose turn was most recently dispatched. Used to attribute a
-  /// mid-turn server request that carries no `sessionId` of its own (see
-  /// [AcpApprovalRegistry.resolveSessionId]). Kept as last-known rather than
-  /// cleared at turn end so a request landing on the turn boundary still
-  /// resolves to the right conversation.
-  String? _activeTurnSessionId;
+  /// Per-session turn-queue state. ACP agents run one turn per session at a
+  /// time, so turns are serialized behind each session's chain here; all
+  /// decisions live on this class — the state object only holds fields.
+  final Map<String, _SessionTurnState> _turnStates = {};
 
-  /// The session whose turn was most recently dispatched, or null before the
-  /// first turn. Exposed so an approval registry can resolve a sessionId-less
-  /// server request to the active conversation.
-  String? get activeTurnSessionId => _activeTurnSessionId;
+  /// Sessions with a `session/prompt` currently in flight, in dispatch order.
+  /// Per-session serialization guarantees a session appears at most once.
+  final List<String> _inFlightTurnSessions = [];
+
+  /// The most recently dispatched turn's session. Retained past turn end so a
+  /// server request landing on the turn boundary still resolves to the right
+  /// conversation.
+  String? _lastTurnSessionId;
+
+  /// The session to attribute a mid-turn server request that carries no
+  /// `sessionId` of its own (see [AcpApprovalRegistry.resolveSessionId]).
+  ///
+  /// Precise when exactly one turn is in flight. With concurrent turns on
+  /// multiple sessions ACP gives no request→turn correlation, so the most
+  /// recent dispatch is used and the ambiguity is logged. With no turn in
+  /// flight, the last dispatched turn's session is returned (boundary case).
+  String? get activeTurnSessionId {
+    if (_inFlightTurnSessions.length == 1) return _inFlightTurnSessions.single;
+    if (_inFlightTurnSessions.isNotEmpty) {
+      Log.w(
+        "[$id] ${_inFlightTurnSessions.length} turns in flight; attributing "
+        "sessionId-less server request to the most recent dispatch",
+      );
+      return _inFlightTurnSessions.last;
+    }
+    return _lastTurnSessionId;
+  }
 
   /// Sessions resident in the live agent process (created via `session/new` or
   /// resumed via `session/load` this run). ACP agents hold sessions in memory
@@ -113,7 +138,12 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// resume `session/load` is in flight and its history replay must not leak
   /// into the live stream.
   final Set<String> _suppressedSessions = {};
-  int _suppressedReplayCount = 0;
+
+  /// Per-session count of dropped replay notifications, read by the resume
+  /// load's drain to detect when the replay stream has gone quiet. Keyed per
+  /// session so two sessions resuming concurrently don't reset each other's
+  /// quiet-window detection.
+  final Map<String, int> _suppressedReplayCounts = {};
 
   /// Whether this connection's agent rejected an *unfiltered* `session/list`
   /// (the ACP spec's global enumeration — `cwd` is only a filter). Remembered
@@ -135,9 +165,15 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   Map<String, dynamic>? get initializeCapabilityMeta => null;
 
   /// Builds the approval registry. Override to return a harness-specific
-  /// subclass (e.g. one that also handles `cursor/ask_question`).
+  /// subclass (e.g. one that also handles `cursor/ask_question`). The base
+  /// registry resolves sessionId-less server requests to the active turn's
+  /// session (see [activeTurnSessionId]), same as the Cursor subclass.
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
-    return AcpApprovalRegistry.forClient(client: client, emit: _eventBuffer.add);
+    return AcpApprovalRegistry.forClient(
+      client: client,
+      emit: _eventBuffer.add,
+      activeSessionResolver: () => activeTurnSessionId,
+    );
   }
 
   /// Captures the model/mode catalog from a `session/new` or `session/load`
@@ -202,12 +238,18 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       try {
         await client.connect();
         _notificationSubscription = client.notifications.listen((notification) {
+          // The command snapshot consumes every notification — including a
+          // suppressed resume replay, whose advertised commands are current.
+          _commandTracker.consume(notification);
           if (notification.method == AcpMethods.sessionUpdate) {
             final sid = notification.params["sessionId"];
-            if (sid is String && _suppressedSessions.contains(sid)) {
+            final update = notification.params["update"];
+            final isCommandUpdate =
+                update is Map && update["sessionUpdate"] == "available_commands_update";
+            if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
               // Replay from an in-flight resume-load — drop so old history does
               // not re-stream into the live conversation.
-              _suppressedReplayCount++;
+              _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
               return;
             }
           }
@@ -296,6 +338,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     _initResult = null;
     _residentSessions.clear();
     _bareSessionListUnsupported = false;
+    _commandTracker.clear();
     // Let subclasses drop any process-global state cached against the dead agent
     // (e.g. Cursor's applied model/mode) so it is re-applied on the next turn.
     onConnectionReset();
@@ -504,10 +547,18 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final directory = normalizeProjectDirectory(directory: hasCwd ? rawCwd : fallbackDirectory);
     final id = info.sessionId;
     // Remember the session's directory so a later turn/history load uses its
-    // own cwd and events/activity attribute to the right project.
+    // own cwd and events/activity attribute to the right project. The
+    // title/time snapshot keeps `session_info_update` emissions full-fidelity
+    // (the mobile list replaces the whole session on session.updated).
     if (id.isNotEmpty) {
       _sessionDirectories[id] = directory;
       eventMapper.setSessionProject(id, directory);
+      eventMapper.setSessionSnapshot(
+        sessionId: id,
+        title: info.title,
+        createdMs: info.updatedAtMs,
+        updatedMs: info.updatedAtMs,
+      );
     }
     final ts = info.updatedAtMs;
     return PluginSession(
@@ -523,7 +574,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async =>
-      const [];
+      // Served from the `available_commands_update` snapshot — ACP advertises
+      // commands via that notification, not a request endpoint.
+      _commandTracker.commands;
 
   @override
   Future<PluginSession> createSession({
@@ -550,31 +603,49 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     if (session.sessionId.isEmpty) {
       throw StateError("session/new response missing sessionId");
     }
+    final createdAt = DateTime.now().millisecondsSinceEpoch;
     _sessionDirectories[session.sessionId] = canonicalDirectory;
     eventMapper.setSessionProject(session.sessionId, canonicalDirectory);
+    // Seed the snapshot so a title event during the creation race (before the
+    // bridge has a stored row to enrich from) still carries a sane time.
+    eventMapper.setSessionSnapshot(
+      sessionId: session.sessionId,
+      title: null,
+      createdMs: createdAt,
+      updatedMs: createdAt,
+    );
     // A session/new response is the authoritative source of the backend's
     // new-session default model/mode.
     captureSessionConfig(session.raw, sessionId: session.sessionId, fromNewSession: true);
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
-    await applyTurnSelection(
-      client: client,
-      sessionId: session.sessionId,
-      model: model,
-      variant: variant,
-    );
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
-    if (parts.isNotEmpty) {
-      _dispatchPrompt(client, session.sessionId, parts);
+    if (parts.isEmpty) {
+      // No first turn to carry the selection: apply it now so the session's
+      // model/mode are in place for whichever turn comes first later.
+      await applyTurnSelection(
+        client: client,
+        sessionId: session.sessionId,
+        model: model,
+        variant: variant,
+      );
+    } else {
+      // A fresh session has an empty chain, so this dispatches immediately;
+      // the selection is applied inside the turn like every other prompt.
+      _enqueueTurn(
+        sessionId: session.sessionId,
+        parts: parts,
+        model: model,
+        variant: variant,
+      );
     }
-    final now = DateTime.now().millisecondsSinceEpoch;
     return PluginSession(
       id: session.sessionId,
       projectID: canonicalDirectory,
       directory: canonicalDirectory,
       parentID: parentSessionId,
       title: null,
-      time: PluginSessionTime(created: now, updated: now, archived: null),
+      time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
       summary: null,
     );
   }
@@ -587,15 +658,15 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    final client = await _connectedClient();
-    await _ensureResident(client, sessionId);
-    await applyTurnSelection(
-      client: client,
+    // Acceptance gate: an unreachable agent fails the send itself; the turn
+    // re-resolves the client at dispatch time (see [_runTurn]).
+    await _connectedClient();
+    _enqueueTurn(
       sessionId: sessionId,
+      parts: parts,
       model: model,
       variant: variant,
     );
-    _dispatchPrompt(client, sessionId, parts);
   }
 
   @override
@@ -608,15 +679,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required ({String providerID, String modelID})? model,
   }) async {
     final body = arguments.isEmpty ? "/$command" : "/$command $arguments";
-    final client = await _connectedClient();
-    await _ensureResident(client, sessionId);
-    await applyTurnSelection(
-      client: client,
+    // Acceptance gate — see [sendPrompt].
+    await _connectedClient();
+    _enqueueTurn(
       sessionId: sessionId,
+      parts: [PluginPromptPart.text(text: body)],
       model: model,
       variant: variant,
     );
-    _dispatchPrompt(client, sessionId, [PluginPromptPart.text(text: body)]);
   }
 
   /// The directory a session should be loaded/operated in — its own canonical
@@ -624,15 +694,43 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   String _directoryForSession(String sessionId) =>
       _sessionDirectories[sessionId] ?? launchDirectory;
 
+  @override
+  void primeSessionDirectory({required String sessionId, required String directory}) {
+    if (sessionId.isEmpty || directory.trim().isEmpty) return;
+    final canonical = normalizeProjectDirectory(directory: directory);
+    // Remember the directory for internal warm-up scans regardless — the hint
+    // set widens future enumerations even when this session is already known.
+    _hintedDirectories.add(canonical);
+    // A hint, not an override: a directory learned from the agent itself
+    // (enumeration hit, session/new) stays authoritative.
+    if (_sessionDirectories.containsKey(sessionId)) return;
+    _sessionDirectories[sessionId] = canonical;
+    eventMapper.setSessionProject(sessionId, canonical);
+  }
+
   /// Ensures [sessionId] is resident in the agent process before a turn. A
   /// session created/resumed this run is already resident; one from a prior
   /// bridge run is re-loaded via `session/load` (its history replay suppressed
-  /// so it does not re-stream into the live conversation). Best-effort: on a
-  /// failed/unsupported load the session is still marked resident so the turn
-  /// proceeds and surfaces any error itself, rather than looping.
+  /// so it does not re-stream into the live conversation). Called only from
+  /// inside a session's serialized turn, so per-session loads never overlap —
+  /// each load owns its whole suppression window. Never throws for load
+  /// failures — the turn proceeds and surfaces any error itself.
   Future<void> _ensureResident(AcpStdioClient client, String sessionId) async {
     if (_residentSessions.contains(sessionId)) return;
-    if (!(_initResult?.agentCapabilities.loadSession ?? false)) {
+    await _loadResident(client, sessionId);
+  }
+
+  /// Performs the resume `session/load` for [_ensureResident]. Marks the
+  /// session resident only on success — or on a *permanently unsupported*
+  /// load (the no-reload-loop guarantee) — so a transiently failed load
+  /// (timeout, RPC hiccup) is retried on the next turn instead of leaving the
+  /// conversation unrecoverable until the agent respawns.
+  Future<void> _loadResident(AcpStdioClient client, String sessionId) async {
+    final loadSupported = _initResult?.agentCapabilities.loadSession ?? false;
+    final resumeSupported = _initResult?.agentCapabilities.resumeSession ?? false;
+    if (!loadSupported && !resumeSupported) {
+      // No way to re-activate a prior-run session — memoize residency so
+      // turns proceed without re-checking.
       _residentSessions.add(sessionId);
       return;
     }
@@ -646,7 +744,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     if (!_sessionDirectories.containsKey(sessionId)) {
       await listAllSessions(knownDirectories: const {});
     }
+    if (!loadSupported) {
+      // Resume-only agent: `session/resume` re-activates the session with NO
+      // history replay, so no suppression window is needed.
+      await _resumeResident(client, sessionId);
+      return;
+    }
     _suppressedSessions.add(sessionId);
+    _suppressedReplayCounts.remove(sessionId);
     try {
       final raw = await client.request(
         method: AcpMethods.sessionLoad,
@@ -664,70 +769,230 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         sessionId: sessionId,
       );
       // Keep suppressing until the (post-response) replay stream goes quiet.
-      await _drainReplay(() => _suppressedReplayCount);
-    } catch (error, stack) {
-      Log.w("[$id] resume-load of $sessionId failed; proceeding", error, stack);
+      await _drainReplay(() => _suppressedReplayCounts[sessionId] ?? 0);
+      _residentSessions.add(sessionId);
+    } on AcpRpcException catch (error, stack) {
+      if (error.code == -32601 || error.code == -32602) {
+        // The agent advertised loadSession but rejects the RPC/shape — a retry
+        // cannot succeed, so memoize residency to avoid a load loop and let
+        // the prompt surface any real error itself.
+        Log.w("[$id] session/load unsupported (code ${error.code}); proceeding without resume-load", error, stack);
+        _residentSessions.add(sessionId);
+      } else {
+        // Transient agent error: stay non-resident so the next turn retries
+        // the load instead of prompting a session the agent never loaded.
+        Log.w("[$id] resume-load of $sessionId failed; will retry on next turn", error, stack);
+      }
+    } on Object catch (error, stack) {
+      // Timeout / process blip: same retry-on-next-turn policy as above.
+      Log.w("[$id] resume-load of $sessionId failed; will retry on next turn", error, stack);
     } finally {
       _suppressedSessions.remove(sessionId);
-      _residentSessions.add(sessionId);
+      _suppressedReplayCounts.remove(sessionId);
     }
   }
 
-  /// Sends a prompt turn fire-and-forget: marks the session busy now, streams
-  /// events via the notification listener, and flips to idle when the
-  /// `session/prompt` future resolves (ACP carries no turn-complete event).
-  void _dispatchPrompt(
-    AcpStdioClient client,
-    String sessionId,
-    List<PluginPromptPart> parts,
-  ) {
+  /// Re-activates [sessionId] via `session/resume` for an agent that
+  /// advertises `sessionCapabilities.resume` but not `loadSession`. Without
+  /// this, the session would be marked resident with no RPC at all and the
+  /// next `session/prompt` after a bridge restart would hit a session the
+  /// fresh agent process never loaded. Same residency policy as the load
+  /// path: resident on success or on a permanently unsupported RPC; transient
+  /// failures retry on the next turn.
+  Future<void> _resumeResident(AcpStdioClient client, String sessionId) async {
+    try {
+      final raw = await client.request(
+        method: AcpMethods.sessionResume,
+        params: {
+          "sessionId": sessionId,
+          "cwd": _directoryForSession(sessionId),
+          "mcpServers": const <Object?>[],
+        },
+        timeout: const Duration(minutes: 2),
+      );
+      // The resume result carries the modes/configOptions catalog (and this
+      // session's current selection) — capture it, but never as the
+      // new-session default.
+      captureSessionConfig(
+        raw is Map ? raw.cast<String, dynamic>() : const {},
+        sessionId: sessionId,
+      );
+      _residentSessions.add(sessionId);
+    } on AcpRpcException catch (error, stack) {
+      if (error.code == -32601 || error.code == -32602) {
+        Log.w("[$id] session/resume unsupported (code ${error.code}); proceeding without resume", error, stack);
+        _residentSessions.add(sessionId);
+      } else {
+        Log.w("[$id] session/resume of $sessionId failed; will retry on next turn", error, stack);
+      }
+    } on Object catch (error, stack) {
+      Log.w("[$id] session/resume of $sessionId failed; will retry on next turn", error, stack);
+    }
+  }
+
+  /// Queues a prompt turn on [sessionId]'s serialization chain: marks the
+  /// session busy now (the user's send is accepted), dispatches once the
+  /// session's previous turn finishes, and flips to idle when the last queued
+  /// turn resolves (ACP carries no turn-complete event). Overlapping
+  /// `session/prompt` requests for one session are rejected or dropped by ACP
+  /// agents, so turns must never interleave per session.
+  void _enqueueTurn({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+  }) {
     final blocks = parts
         .map(_promptPartToContentBlock)
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
     if (blocks.isEmpty) return;
 
-    // Remember the session whose turn is now in flight. Server requests that
-    // arrive mid-turn without their own sessionId (e.g. Cursor's
-    // `cursor/create_plan`) are attributed to it via [activeTurnSessionId].
-    _activeTurnSessionId = sessionId;
-    eventMapper.beginTurn(sessionId);
-    _sessionStatuses[sessionId] = const PluginSessionStatus.busy();
-    _eventBuffer.add(
-      BridgeSseSessionStatus(
-        sessionID: sessionId,
-        status: const shared.SessionStatus.busy().toJson(),
+    final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
+    state.pending++;
+    if (state.pending == 1) {
+      _sessionStatuses[sessionId] = const PluginSessionStatus.busy();
+      _eventBuffer.add(
+        BridgeSseSessionStatus(
+          sessionID: sessionId,
+          status: const shared.SessionStatus.busy().toJson(),
+        ),
+      );
+    }
+    final expectedGeneration = state.generation;
+    // Each link isolates its own failure (_runTurn never throws), so one
+    // failed turn cannot poison the chain for the turns queued behind it.
+    state.tail = state.tail.then(
+      (_) => _runTurn(
+        sessionId: sessionId,
+        state: state,
+        expectedGeneration: expectedGeneration,
+        blocks: blocks,
+        model: model,
+        variant: variant,
       ),
-    );
-
-    final future = client.request(
-      method: AcpMethods.sessionPrompt,
-      params: {"sessionId": sessionId, "prompt": blocks},
-      timeout: const Duration(minutes: 30),
-    );
-    _activeSessions.add(sessionId);
-    unawaited(
-      future.then((raw) {
-        final result = AcpPromptResult.fromJson(
-          (raw as Map?)?.cast<String, dynamic>() ?? const {},
-        );
-        _onTurnEnd(sessionId, result.stopReason);
-      }).catchError((Object error, StackTrace stack) {
-        // The frame was already accepted (the phone's send returned success),
-        // so a later rejection (auth expiry, stale session, bad payload) would
-        // otherwise stop the run with no signal. Log and surface it as a
-        // session error, not a silent idle.
-        Log.w("[$id] session/prompt for $sessionId failed after dispatch", error, stack);
-        _onTurnEnd(sessionId, AcpStopReason.unknown, failed: true);
-      }),
     );
   }
 
-  void _onTurnEnd(String sessionId, AcpStopReason reason, {bool failed = false}) {
-    _activeSessions.remove(sessionId);
-    _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
-    _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
-    if (failed || reason == AcpStopReason.refusal) {
+  /// Runs one serialized turn: resolves the live client, makes the session
+  /// resident, applies the turn's model/mode selection, dispatches
+  /// `session/prompt`, and settles the queue accounting. All of it runs here —
+  /// inside the chain — so a turn queued behind an in-flight prompt survives
+  /// an agent respawn (the client captured at enqueue time may have exited;
+  /// re-resolving spawns a replacement and the dispatch-time resume-load makes
+  /// the session resident in it), a queued turn retries a transiently failed
+  /// resume-load itself, and a selection applied at enqueue time can't flip a
+  /// process-global selection (Cursor's) under the previous, still-running
+  /// turn. The abort generation is re-checked after every await: an abort
+  /// landing mid-connect/mid-load/mid-selection must still drop the
+  /// not-yet-dispatched turn instead of starting a fresh agent run right
+  /// after the cancel.
+  Future<void> _runTurn({
+    required String sessionId,
+    required _SessionTurnState state,
+    required int expectedGeneration,
+    required List<Map<String, dynamic>> blocks,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+  }) async {
+    // Aborted turns were never dispatched, so no per-turn error event — just
+    // settle the accounting (idle emission when the count reaches 0).
+    if (state.generation != expectedGeneration) {
+      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+      return;
+    }
+    final AcpStdioClient client;
+    try {
+      client = await _connectedClient();
+    } on Object catch (error, stack) {
+      // An abort that landed while the reconnect was in flight already
+      // discarded this turn — settle it silently instead of surfacing a
+      // session error for a prompt the user cancelled.
+      if (state.generation != expectedGeneration) {
+        Log.d("[$id] queued turn on $sessionId aborted during reconnect: $error");
+        _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+        return;
+      }
+      // The send was already accepted, so a dead/unrespawnable agent must
+      // surface as a failed turn, not a silent drop.
+      Log.w("[$id] could not reach the agent for a queued turn on $sessionId", error, stack);
+      _finishTurn(sessionId: sessionId, state: state, failed: true, refused: false);
+      return;
+    }
+    if (state.generation != expectedGeneration) {
+      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+      return;
+    }
+    await _ensureResident(client, sessionId);
+    if (state.generation != expectedGeneration) {
+      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+      return;
+    }
+    try {
+      await applyTurnSelection(
+        client: client,
+        sessionId: sessionId,
+        model: model,
+        variant: variant,
+      );
+    } on Object catch (error, stack) {
+      // Selection is best-effort (the Cursor override is already fail-soft):
+      // the turn proceeds on the agent's current settings.
+      Log.w("[$id] applyTurnSelection for $sessionId failed; prompting with current settings", error, stack);
+    }
+    if (state.generation != expectedGeneration) {
+      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+      return;
+    }
+    eventMapper.beginTurn(sessionId);
+    _inFlightTurnSessions.add(sessionId);
+    _lastTurnSessionId = sessionId;
+    try {
+      final raw = await client.request(
+        method: AcpMethods.sessionPrompt,
+        params: {"sessionId": sessionId, "prompt": blocks},
+        timeout: const Duration(minutes: 30),
+      );
+      final result = AcpPromptResult.fromJson(
+        (raw as Map?)?.cast<String, dynamic>() ?? const {},
+      );
+      _finishTurn(
+        sessionId: sessionId,
+        state: state,
+        failed: false,
+        refused: result.stopReason == AcpStopReason.refusal,
+      );
+    } on Object catch (error, stack) {
+      // The frame was already accepted (the phone's send returned success),
+      // so a later rejection (auth expiry, stale session, bad payload) would
+      // otherwise stop the run with no signal. Log and surface it as a
+      // session error, not a silent idle.
+      Log.w("[$id] session/prompt for $sessionId failed after dispatch", error, stack);
+      _finishTurn(sessionId: sessionId, state: state, failed: true, refused: false);
+    }
+  }
+
+  /// Settles one finished (or dropped) turn: removes the in-flight marker,
+  /// decrements the session's pending count, emits idle when the last queued
+  /// turn is done, and surfaces a session error for a failed/refused turn.
+  void _finishTurn({
+    required String sessionId,
+    required _SessionTurnState state,
+    required bool failed,
+    required bool refused,
+  }) {
+    _inFlightTurnSessions.remove(sessionId);
+    if (state.pending > 0) state.pending--;
+    // A session deleted mid-turn already dropped this state object from
+    // [_turnStates]; its detached accounting above must still settle, but it
+    // must not resurrect the deleted session's status entry or emit
+    // idle/error events for it.
+    if (!identical(_turnStates[sessionId], state)) return;
+    if (state.pending == 0) {
+      _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
+      _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+    }
+    if (failed || refused) {
       _eventBuffer.add(BridgeSseSessionError(sessionID: sessionId));
     }
   }
@@ -767,6 +1032,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   @override
   Future<void> abortSession({required String sessionId}) async {
+    // Aborting means "stop this conversation now": drop the queued-but-
+    // undispatched turns first so they don't dispatch after the cancel. The
+    // in-flight turn (if any) ends via the agent's cancellation, which
+    // resolves its `session/prompt` future and settles the accounting.
+    _turnStates[sessionId]?.generation++;
     final client = _client;
     if (client == null) return;
     client.notify(
@@ -800,10 +1070,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   @override
   Future<void> deleteSession(String sessionId) async {
-    if (_activeSessions.contains(sessionId)) {
+    if ((_turnStates[sessionId]?.pending ?? 0) > 0) {
       await abortSession(sessionId: sessionId);
     }
-    _activeSessions.remove(sessionId);
+    // The state object is dropped here; a still-settling cancelled turn holds
+    // its own reference, so its accounting completes harmlessly off-map.
+    _turnStates.remove(sessionId);
+    _inFlightTurnSessions.remove(sessionId);
+    if (_lastTurnSessionId == sessionId) _lastTurnSessionId = null;
     _sessionStatuses.remove(sessionId);
     _residentSessions.remove(sessionId);
     _sessionDirectories.remove(sessionId);
@@ -863,14 +1137,28 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     try {
       await replayClient.connect();
       final replayInit = await _initialize(replayClient);
-      if (!replayClient.isConnected || !replayInit.agentCapabilities.loadSession) {
+      if (!replayInit.agentCapabilities.loadSession) {
+        // History is genuinely unavailable on this agent — an empty thread,
+        // not a failure: the session must stay usable for new prompts.
         return const [];
       }
+      if (!replayClient.isConnected) {
+        // The replay agent died right after the handshake — a failure, not an
+        // empty thread (wrapped into the typed failure below).
+        throw StateError("replay agent exited during initialization");
+      }
       var received = 0;
+      BridgeSseSessionsUpdated? deferredCommandRefresh;
       sub = replayClient.notifications.listen((notification) {
         if (notification.method == AcpMethods.sessionUpdate) {
           received++;
           collector.consume(notification.params);
+          final update = notification.params["update"];
+          if (update is Map && update["sessionUpdate"] == "available_commands_update") {
+            _commandTracker.consume(notification);
+            final refreshes = eventMapper.map(notification).whereType<BridgeSseSessionsUpdated>();
+            if (refreshes.isNotEmpty) deferredCommandRefresh = refreshes.last;
+          }
         }
       });
       final raw = await replayClient.request(
@@ -894,15 +1182,24 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // AFTER it. Drain until the replay stream goes quiet so multi-turn history
       // is captured in full, bounded so a chatty agent can't hang the request.
       await _drainReplay(() => received);
+      final commandRefresh = deferredCommandRefresh;
+      if (commandRefresh != null) _eventBuffer.add(commandRefresh);
       collector.modelId = eventMapper.modelForSession(sessionId);
       collector.providerId = eventMapper.providerForSession(sessionId);
       return collector.build();
-    } on Object catch (error, stack) {
-      // A broken replay (connect/init/auth/load failure) returns no messages;
-      // the phone can't tell that from a truly empty thread, so at least log
-      // it rather than silently swallowing the failure.
-      Log.w("[$id] history replay for $sessionId failed; returning no messages", error, stack);
-      return const [];
+    } on Object catch (error, stackTrace) {
+      // A broken replay (connect/init/auth/load failure) must stay
+      // distinguishable from a genuinely empty thread: surface it as a typed
+      // failure (the bridge router maps it to a 502 and the phone renders a
+      // retry state) instead of swallowing it into an empty list.
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          "session/load history replay",
+          message: "history replay for $sessionId failed",
+          cause: error,
+        ),
+        stackTrace,
+      );
     } finally {
       try {
         await sub?.cancel();
@@ -1115,7 +1412,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // live in different opened directories, not just the launch CWD.
     final byProject = <String, List<PluginActiveSession>>{};
     for (final sessionId in _sessionStatuses.keys) {
-      final running = _activeSessions.contains(sessionId);
+      // A session with any unfinished turn (running or queued behind one)
+      // counts as running, so it stays active until its last turn settles.
+      final running = (_turnStates[sessionId]?.pending ?? 0) > 0;
       final awaiting = registry?.hasPendingInput(sessionId) ?? false;
       if (!running && !awaiting) continue;
       (byProject[_directoryForSession(sessionId)] ??= []).add(
@@ -1173,4 +1472,20 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       Log.w("[$id] failed to close connected stream", e, st);
     }
   }
+}
+
+/// Mutable per-session turn-queue fields. [AcpPlugin] owns all the logic —
+/// this only carries the chain tail the session's turns serialize behind, the
+/// count of unfinished turns, and the abort generation used to drop
+/// queued-but-undispatched turns.
+class _SessionTurnState {
+  /// Completion of the session's most recently queued turn.
+  Future<void> tail = Future<void>.value();
+
+  /// Turns enqueued but not yet finished (including the running one).
+  int pending = 0;
+
+  /// Bumped by abort/delete; a queued turn dispatches only if the generation
+  /// it captured at enqueue time is still current.
+  int generation = 0;
 }

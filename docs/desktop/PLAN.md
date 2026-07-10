@@ -9,7 +9,7 @@
 ## Current pointer
 
 - **Last completed phase:** Phase 2 — PR 2.5a Re-export `AuthTokenProvider` from `module_core` — PR raised on branch `desktop-phase-2.5a-token-provider-reexport`, stacked on PR 2.4 (#410) → 2.3 (#409) → 2.2 (#408) → 2.1 (#405)
-- **Next up:** Phase 2 — PR 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder. **Phase 1's MT-1 manual checkpoint (user-run) remains OPEN** — the user explicitly directed Phase 2 to proceed (as stacked PRs, merged one by one) while MT-1 stays open; MT-1 must still be run before Phase 1 is called done.
+- **Next up:** Phase 2 — PR 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder. Phase 1's MT-1 manual checkpoint is complete; its findings/fixes merged in PR #421.
 - **Branch:** one feature branch per PR; Phase 2 is being raised as **stacked branches** (each PR's base = the previous PR's branch, retargeted to `main` as predecessors merge)
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -369,6 +369,7 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | Client `AuthManager` lacks logout/rejection awareness in its async flows | OPEN | TBD | Pre-existing, platform-wide, two symptoms of one root (no logout generation/barrier in `module_auth`): (1) `_doRefreshAndPersist` returns null on ANY failure (offline and revoked look identical) and never emits `unauthenticated`, so a revoked-but-locally-unexpired session is never reactively signed out; (2) in-flight async flows can persist tokens/user AFTER `logoutCurrentDevice()` cleared them (`restoreSession`'s `getFreshAccessToken` refresh re-saves post-logout). Consequence on desktop: `AuthGateCubit` keeps a provisional `signedIn` on token-only sessions, and its delayed post-fence re-clear is deliberately UNCONDITIONAL — a fresh sign-in completing inside that pathological window is bounced once (visible, recoverable) because no local check can distinguish it from the stale restore's own re-persisted tokens. Fix belongs in `module_auth`: a logout generation checked before any persist/emit, plus distinguishing `/auth/refresh` 4xx-rejection from transport failure (emit `unauthenticated` on rejection). Surfaced by PR 2.3 review rounds; recommend a small dedicated module_auth PR (mobile-shared, needs mobile regression pass). |
 | Standalone `TokenManager` keeps in-memory token after logout deletes the store | OPEN | TBD | Pre-existing (predates PR 1.5): `TokenManager.accessToken` returns its seeded in-memory token even after the on-disk store is deleted, so a standalone relay reconnect can re-auth with it. Supervised mode is already safe (control-channel service invalidates on sign-out). Needs a storage-aware validity / logout-invalidation path inside `TokenManager` / the `auth/` subsystem. |
 | Desktop relay client / `ConnectionService` deferral | OPEN — deferred to Phase 4 | TBD | ADR A21; lean v1 control/status must not resolve relay transport. PR 4.7 owns desktop relay prerequisites and accessory-UI connection acceptance. |
+| Dev control-host harness retirement | OPEN → PR 2.15 | TBD | Keep `bridge/app/tool/dev_control_host.dart` while the real GUI control host/supervisor is built and needs an independent bridge-side diagnostic. Once PR 2.15 E2E covers handshake/token/restart/logout/provisioning, delete the harness unless a concrete unique diagnostic remains; if retained, document that boundary so it does not become a drifting duplicate GUI/token authority. |
 | `core/widgets` not pure leaf UI | OPEN | TBD | `connection_overlay.dart` imports app DI/routing/go_router; PR 4.1 must refactor + declare deps first |
 | CI secrets (Dev ID, notarization key, EdDSA appcast, GPG) | OPEN | TBD | PR 3.0b |
 | Flutter multi-window viability (v2 popover) | OPEN | TBD | de-risk with a spike before Phase 5 popover |
@@ -403,7 +404,8 @@ them). Only the user checks an MT box.
 - ☑ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
 - ☑ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
 - ☑ 1.15 Dev control-host harness for manual supervised testing (`tool/`) — Low / S
-- ☐ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
+- ☑ 1.16 Address MT-1 supervised findings (provision traffic + update status) — Low / S
+- ☑ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
 
 ### Phase 2 — Desktop shell + supervisor → `phase-2-desktop-shell.md`
 - ☑ 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes — Med / M
