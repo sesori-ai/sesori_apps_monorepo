@@ -113,7 +113,7 @@ Future<void> bootstrapSesoriApp({
       // syncs the hashed user ID with Firebase Analytics. Do not remove.
       AnalyticsUserIdTracker(
         authSession: getIt<AuthSession>(),
-        analytics: FirebaseAnalytics.instance,
+        analytics: getIt<FirebaseAnalytics>(),
       );
     }
     unawaited(
