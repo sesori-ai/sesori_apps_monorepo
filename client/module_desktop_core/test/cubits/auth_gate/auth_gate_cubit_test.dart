@@ -170,9 +170,9 @@ void main() {
   });
 
   test("the delayed re-clear is unconditional — a sign-in inside the window is bounced once", () async {
-    // Deliberate correctness-first trade (see the plan's risk register): the
-    // stale restore's own token refresh can re-persist tokens post-logout,
-    // so no local check can tell it apart from a fresh sign-in. The re-clear
+    // Deliberate correctness-first trade: the stale restore's own token
+    // refresh can re-persist tokens post-logout, so no local check can tell
+    // it apart from a fresh sign-in. The re-clear
     // therefore always runs; a fresh sign-in completing inside this
     // pathological window is signed out once more (visible, recoverable)
     // instead of ever leaving a sign-out silently undone.
