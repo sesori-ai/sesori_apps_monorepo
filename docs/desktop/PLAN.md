@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 2 — PR 2.3 Login reuse (browser-poll OAuth) — PR raised on branch `desktop-phase-2.3-login`, stacked on PR 2.2 (#408) → PR 2.1 (#405)
-- **Next up:** Phase 2 — PR 2.4 Control status/prompt trackers baseline. **Phase 1's MT-1 manual checkpoint (user-run) remains OPEN** — the user explicitly directed Phase 2 to proceed (as stacked PRs, merged one by one) while MT-1 stays open; MT-1 must still be run before Phase 1 is called done.
+- **Last completed phase:** Phase 2 — PR 2.4 Control status/prompt trackers baseline — PR raised on branch `desktop-phase-2.4-trackers`, stacked on PR 2.3 (#409) → PR 2.2 (#408) → PR 2.1 (#405)
+- **Next up:** Phase 2 — PR 2.5a Re-export `AuthTokenProvider` from `module_core`. **Phase 1's MT-1 manual checkpoint (user-run) remains OPEN** — the user explicitly directed Phase 2 to proceed (as stacked PRs, merged one by one) while MT-1 stays open; MT-1 must still be run before Phase 1 is called done.
 - **Branch:** one feature branch per PR; Phase 2 is being raised as **stacked branches** (each PR's base = the previous PR's branch, retargeted to `main` as predecessors merge)
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -408,7 +408,7 @@ them). Only the user checks an MT box.
 - ☑ 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes — Med / M
 - ☑ 2.2 Desktop platform adapters (module_core + module_desktop_core prerequisites) — Low-Med / S-M
 - ☑ 2.3 Login reuse (`AuthManager` browser-poll OAuth) — Med / M
-- ☐ 2.4 Control status/prompt trackers baseline (no relay client yet) — Low-Med / S-M
+- ☑ 2.4 Control status/prompt trackers baseline (no relay client yet) — Low-Med / S-M
 - ☐ 2.5a Re-export `AuthTokenProvider` from `module_core` (seam) — Low / S
 - ☐ 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder — Med / M
 - ☐ 2.6 `BridgeProcessService`: spawn/kill/path + expected-stop boundary + helper log capture — High / M

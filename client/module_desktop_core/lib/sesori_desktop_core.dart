@@ -5,3 +5,6 @@ library;
 export "src/cubits/auth_gate/auth_gate_cubit.dart";
 export "src/cubits/auth_gate/auth_gate_state.dart";
 export "src/di/injection.dart";
+export "src/trackers/bridge_control_status.dart";
+export "src/trackers/bridge_prompt_tracker.dart";
+export "src/trackers/bridge_status_tracker.dart";
