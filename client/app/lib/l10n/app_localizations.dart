@@ -367,17 +367,11 @@ abstract class AppLocalizations {
   /// **'Start your bridge'**
   String get projectsBridgeOfflineStartBridge;
 
-  /// Popover text explaining the 'Start your bridge' command on the bridge-offline Projects screen, opened from the info icon next to that label.
+  /// Popover text explaining the 'Start your bridge' command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers.
   ///
   /// In en, this message translates to:
-  /// **'Start the bridge\n\nLeave it running while you use Sesori from your phone.'**
+  /// **'Leave it running while you use Sesori from your phone.'**
   String get projectsBridgeOfflineStartBridgeInfo;
-
-  /// Accessibility label for the machine-name row on the bridge-offline Projects screen when it opens a menu listing every machine with a registered bridge.
-  ///
-  /// In en, this message translates to:
-  /// **'Show registered machines'**
-  String get projectsBridgeOfflineMachinesSemantics;
 
   /// No description provided for @connectionLostTitle.
   ///

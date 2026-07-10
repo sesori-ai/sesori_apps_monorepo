@@ -141,13 +141,9 @@
   "@projectsBridgeOfflineStartBridge": {
     "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon."
   },
-  "projectsBridgeOfflineStartBridgeInfo": "Start the bridge\n\nLeave it running while you use Sesori from your phone.",
+  "projectsBridgeOfflineStartBridgeInfo": "Leave it running while you use Sesori from your phone.",
   "@projectsBridgeOfflineStartBridgeInfo": {
-    "description": "Popover text explaining the 'Start your bridge' command on the bridge-offline Projects screen, opened from the info icon next to that label."
-  },
-  "projectsBridgeOfflineMachinesSemantics": "Show registered machines",
-  "@projectsBridgeOfflineMachinesSemantics": {
-    "description": "Accessibility label for the machine-name row on the bridge-offline Projects screen when it opens a menu listing every machine with a registered bridge."
+    "description": "Popover text explaining the 'Start your bridge' command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers."
   },
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",

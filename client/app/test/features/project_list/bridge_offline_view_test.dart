@@ -123,8 +123,6 @@ void main() {
       await pumpScreen(tester);
 
       expect(find.text("Macbook-Pro.local"), findsOneWidget);
-      // A single machine is a plain label — no menu affordance.
-      expect(find.bySemanticsLabel(RegExp("Show registered machines")), findsNothing);
     });
 
     testWidgets("is hidden when the registered bridges could not be fetched", (tester) async {
@@ -136,42 +134,25 @@ void main() {
       expect(find.text("Start your bridge"), findsOneWidget);
     });
 
-    testWidgets("with several machines, tapping the row lists them all", (tester) async {
+    testWidgets("is a static label: only the most recent machine, tapping does nothing", (tester) async {
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
         (_) async => [
           _bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1)),
           _bridge(id: "b", name: "work-desktop", platform: "linux"),
-          _bridge(id: "c", name: "lab-box", platform: "freebsd"),
         ],
       );
 
       await pumpScreen(tester);
 
-      // The row names the most recent machine and carries the menu affordance.
+      // One bridge at a time: stale extra registrations are never listed.
       expect(find.text("Macbook-Pro.local"), findsOneWidget);
       expect(find.text("work-desktop"), findsNothing);
 
-      await tester.tap(find.bySemanticsLabel(RegExp("Show registered machines")));
+      // Not tappable — no menu or sheet opens off the row.
+      await tester.tap(find.text("Macbook-Pro.local"));
       await tester.pumpAndSettle();
-
-      // Menu open: every registered machine is listed with its platform —
-      // known ids prettified, unknown ones (freebsd) shown raw.
-      expect(find.text("Macbook-Pro.local"), findsNWidgets(2));
-      expect(find.text("work-desktop"), findsOneWidget);
-      expect(find.text("lab-box"), findsOneWidget);
-      expect(find.text("macOS"), findsOneWidget);
-      expect(find.text("Linux"), findsOneWidget);
-      expect(find.text("freebsd"), findsOneWidget);
-
-      // The selected marker sits on the machine the row names (the most
-      // recently seen one), not on any other entry.
-      final checkIcon = find.byIcon(Icons.check);
-      expect(checkIcon, findsOneWidget);
-      final markedTile = find.ancestor(of: checkIcon, matching: find.byType(InkWell)).first;
-      expect(
-        find.descendant(of: markedTile, matching: find.text("Macbook-Pro.local")),
-        findsOneWidget,
-      );
+      expect(find.text("Macbook-Pro.local"), findsOneWidget);
+      expect(find.text("work-desktop"), findsNothing);
     });
   });
 
@@ -183,7 +164,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text("Start the bridge\n\nLeave it running while you use Sesori from your phone."),
+      find.text("Leave it running while you use Sesori from your phone."),
       findsOneWidget,
     );
   });

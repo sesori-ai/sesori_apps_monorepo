@@ -18,9 +18,10 @@ part of "../project_list_screen.dart";
 class _BridgeOfflineView extends StatefulWidget {
   const _BridgeOfflineView({required this.bridges});
 
-  /// The account's registered bridges, most recently seen first. Names the
-  /// machine the app is trying to reach; empty when the lookup failed (e.g.
-  /// the phone itself is offline), which hides the machine row.
+  /// The account's registered bridges, most recently seen first. The first
+  /// entry names the machine the app is trying to reach; empty when the
+  /// lookup failed (e.g. the phone itself is offline), which hides the
+  /// machine row.
   final List<BridgeSummary> bridges;
 
   @override
@@ -87,7 +88,7 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
           ),
           if (widget.bridges.isNotEmpty) ...[
             const SizedBox(height: PregoSpacing.xxs),
-            Center(child: _MachineNameRow(bridges: widget.bridges)),
+            Center(child: _MachineNameRow(name: widget.bridges.first.name)),
           ],
           const SizedBox(height: PregoSpacing.x5l),
           PregoButtonsSolid(
@@ -168,31 +169,18 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
 }
 
 /// The machine identity row under the "Disconnected" caption: a laptop glyph
-/// and the most recently seen registered bridge's machine name (the hostname
-/// the bridge registered with the auth server). With more than one registered
-/// bridge a trailing chevron opens a flat anchored menu listing every machine,
-/// so the user can tell which computers this account knows about; with a
-/// single bridge the row is a plain, non-tappable label.
+/// and the machine name of the bridge being reached (the hostname the bridge
+/// registered with the auth server). A static, non-interactive label — the
+/// account runs a single bridge at a time, so there is nothing to act on
+/// here.
 class _MachineNameRow extends StatelessWidget {
-  const _MachineNameRow({required this.bridges});
+  const _MachineNameRow({required this.name});
 
-  /// Most recently seen first (as sorted by `RegisteredBridgesService`); the
-  /// first entry is the one named in the row. Never empty — the host omits
-  /// the row entirely when no bridges are known.
-  final List<BridgeSummary> bridges;
+  /// The registered bridge's machine name.
+  final String name;
 
-  /// Human-readable label for a bridge's reported platform id. Falls back to
-  /// the raw value for platforms this app version doesn't know yet.
-  static String _platformLabel({required String platform}) {
-    return switch (platform) {
-      "macos" => "macOS",
-      "windows" => "Windows",
-      "linux" => "Linux",
-      _ => platform,
-    };
-  }
-
-  Widget _buildRow(BuildContext context) {
+  @override
+  Widget build(BuildContext context) {
     final prego = context.prego;
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -206,62 +194,12 @@ class _MachineNameRow extends StatelessWidget {
         ),
         Flexible(
           child: Text(
-            bridges.first.name,
+            name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
           ),
         ),
-        if (bridges.length > 1)
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: Center(
-              child: Icon(TablerRegular.chevron_down, size: 12, color: prego.colors.textSecondary),
-            ),
-          ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (bridges.length == 1) return _buildRow(context);
-
-    // Several machines registered: the row becomes the trigger of a flat
-    // anchored menu listing all of them, most recently seen first, with the
-    // named (most recent) one marked selected. Purely informational — tapping
-    // an entry only dismisses the menu. Flat on every platform so the popup
-    // matches its flat text trigger instead of morphing in as glass.
-    return PregoAnchorMenu(
-      flat: true,
-      menuWidth: 260,
-      // MergeSemantics folds the machine name, the button role, and the tap
-      // action into a single node, so screen readers announce which machine
-      // the row names and can activate the menu from that same node — the
-      // bare nested GestureDetector would otherwise surface as a second,
-      // unlabelled tappable node.
-      triggerBuilder: (context, toggle) => MergeSemantics(
-        child: Semantics(
-          button: true,
-          label: context.loc.projectsBridgeOfflineMachinesSemantics,
-          onTap: toggle,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: toggle,
-            child: _buildRow(context),
-          ),
-        ),
-      ),
-      entries: [
-        for (final (index, bridge) in bridges.indexed)
-          PregoMenuItem(
-            leadingIcon: TablerRegular.device_laptop,
-            title: bridge.name,
-            subtitle: _platformLabel(platform: bridge.platform),
-            isSelected: index == 0,
-            onTap: () {},
-          ),
       ],
     );
   }
