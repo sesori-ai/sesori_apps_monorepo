@@ -694,6 +694,20 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   String _directoryForSession(String sessionId) =>
       _sessionDirectories[sessionId] ?? launchDirectory;
 
+  @override
+  void primeSessionDirectory({required String sessionId, required String directory}) {
+    if (sessionId.isEmpty || directory.trim().isEmpty) return;
+    final canonical = normalizeProjectDirectory(directory: directory);
+    // Remember the directory for internal warm-up scans regardless — the hint
+    // set widens future enumerations even when this session is already known.
+    _hintedDirectories.add(canonical);
+    // A hint, not an override: a directory learned from the agent itself
+    // (enumeration hit, session/new) stays authoritative.
+    if (_sessionDirectories.containsKey(sessionId)) return;
+    _sessionDirectories[sessionId] = canonical;
+    eventMapper.setSessionProject(sessionId, canonical);
+  }
+
   /// Ensures [sessionId] is resident in the agent process before a turn. A
   /// session created/resumed this run is already resident; one from a prior
   /// bridge run is re-loaded via `session/load` (its history replay suppressed
@@ -1123,8 +1137,15 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     try {
       await replayClient.connect();
       final replayInit = await _initialize(replayClient);
-      if (!replayClient.isConnected || !replayInit.agentCapabilities.loadSession) {
+      if (!replayInit.agentCapabilities.loadSession) {
+        // History is genuinely unavailable on this agent — an empty thread,
+        // not a failure: the session must stay usable for new prompts.
         return const [];
+      }
+      if (!replayClient.isConnected) {
+        // The replay agent died right after the handshake — a failure, not an
+        // empty thread (wrapped into the typed failure below).
+        throw StateError("replay agent exited during initialization");
       }
       var received = 0;
       BridgeSseSessionsUpdated? deferredCommandRefresh;
@@ -1166,12 +1187,16 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       collector.modelId = eventMapper.modelForSession(sessionId);
       collector.providerId = eventMapper.providerForSession(sessionId);
       return collector.build();
-    } on Object catch (error, stack) {
-      // A broken replay (connect/init/auth/load failure) returns no messages;
-      // the phone can't tell that from a truly empty thread, so at least log
-      // it rather than silently swallowing the failure.
-      Log.w("[$id] history replay for $sessionId failed; returning no messages", error, stack);
-      return const [];
+    } on Object catch (error) {
+      // A broken replay (connect/init/auth/load failure) must stay
+      // distinguishable from a genuinely empty thread: surface it as a typed
+      // failure (the bridge router maps it to a 502 and the phone renders a
+      // retry state) instead of swallowing it into an empty list.
+      throw PluginOperationException(
+        "session/load history replay",
+        message: "history replay for $sessionId failed",
+        cause: error,
+      );
     } finally {
       try {
         await sub?.cancel();

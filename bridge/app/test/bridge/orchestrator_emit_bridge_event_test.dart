@@ -2004,6 +2004,12 @@ class _NoopSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
+
+  @override
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const [];
+
+  @override
   Future<Session> createSession({
     required String directory,
     required String? parentSessionId,
@@ -2125,6 +2131,14 @@ class _NoopSessionRepository implements SessionRepository {
 class _DelayingSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
+
+  @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) =>
+      _base.getSessionMessages(sessionId: sessionId);
+
+  @override
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() =>
+      _base.getProjectActivitySummaries();
 
   final SessionRepository _base;
   final Map<String, Future<void>> _delaySessionIds;

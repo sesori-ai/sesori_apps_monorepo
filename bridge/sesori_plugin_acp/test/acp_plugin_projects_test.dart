@@ -594,6 +594,98 @@ void main() {
       await respond("session/prompt", {"stopReason": "end_turn"});
     });
 
+    test("a primed directory is used for the resume-load without any enumeration", () async {
+      await connect(sessionCapabilities: true);
+      const stored = "/Users/x/kustos";
+
+      // The bridge feeds its stored attribution (worktree/project path) before
+      // the prompt — no warm-up enumeration is needed for the load to run in
+      // the session's own cwd.
+      plugin.primeSessionDirectory(sessionId: "cold-s", directory: stored);
+
+      final sending = plugin.sendPrompt(
+        sessionId: "cold-s",
+        parts: const [PluginPromptPart.text(text: "resume me")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      expect((loadFrame["params"] as Map)["cwd"], stored);
+      expect(
+        fake().written.where((f) => f["method"] == "session/list"),
+        isEmpty,
+        reason: "a primed directory removes the need for the warm-up enumeration",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
+    });
+
+    test("a prime does not override an agent-reported directory", () async {
+      await connect(sessionCapabilities: true);
+      const opened = "/Users/x/kustos";
+
+      // The agent itself reported the session's cwd via enumeration…
+      final listing = plugin.getSessions(opened);
+      await respond("session/list", {
+        "sessions": [
+          {"sessionId": "old-s", "cwd": opened, "title": "Prior"},
+        ],
+      });
+      await listing;
+
+      // …so a later (hypothetically stale) bridge prime must not replace it.
+      plugin.primeSessionDirectory(sessionId: "old-s", directory: "/somewhere/stale");
+
+      final sending = plugin.sendPrompt(
+        sessionId: "old-s",
+        parts: const [PluginPromptPart.text(text: "again")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      expect(
+        (loadFrame["params"] as Map)["cwd"],
+        opened,
+        reason: "the agent-reported cwd stays authoritative over a bridge hint",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
+    });
+
+    test("a broken history replay surfaces as a typed failure, not an empty thread", () async {
+      // Prime the directory so the replay needs no warm-up enumeration (and
+      // therefore no main-client connection).
+      plugin.primeSessionDirectory(sessionId: "s-x", directory: cwd);
+
+      final loading = plugin.getSessionMessages("s-x");
+      final init = await waitForFrame("initialize");
+      answered.add((fake(), init["id"]));
+      fake().emit({
+        "jsonrpc": "2.0",
+        "id": init["id"],
+        "error": {"code": -32603, "message": "agent exploded"},
+      });
+
+      await expectLater(loading, throwsA(isA<PluginOperationException>()));
+    });
+
+    test("an agent without loadSession serves an empty thread, not a failure", () async {
+      plugin.primeSessionDirectory(sessionId: "s-x", directory: cwd);
+
+      final loading = plugin.getSessionMessages("s-x");
+      await respond("initialize", {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+
+      expect(await loading, isEmpty, reason: "no history capability = empty thread; the session stays usable");
+    });
+
     test("catalog probe scans the launch directory and every extra directory", () async {
       await connect(sessionCapabilities: true);
       const opened = "/Users/x/kustos";
