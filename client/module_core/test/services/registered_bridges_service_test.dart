@@ -130,6 +130,84 @@ void main() {
     });
   });
 
+  group("getRegisteredBridges", () {
+    test("returns the fetched bridges most recently seen first and latches the store", () async {
+      final seenEarlier = testBridgeSummary(id: "a", name: "old-laptop", lastSeenAt: DateTime.utc(2026, 6, 1));
+      final seenLatest = testBridgeSummary(id: "b", name: "new-laptop", lastSeenAt: DateTime.utc(2026, 7, 1));
+      final neverSeenNewer = testBridgeSummary(id: "c", name: "fresh-desktop", addedAt: DateTime.utc(2026, 5, 2));
+      final neverSeenOlder = testBridgeSummary(id: "d", name: "stale-desktop", addedAt: DateTime.utc(2026, 5, 1));
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([neverSeenOlder, seenEarlier, neverSeenNewer, seenLatest]),
+      );
+      final service = build();
+
+      final bridges = await service.getRegisteredBridges();
+
+      expect(bridges.map((b) => b.id), ["b", "a", "c", "d"]);
+      expect(service.isRegistered.value, isTrue);
+      verify(() => store.markRegistered()).called(1);
+    });
+
+    test("an empty result returns an empty list without latching", () async {
+      final service = build();
+
+      expect(await service.getRegisteredBridges(), isEmpty);
+      expect(service.isRegistered.value, isFalse);
+      verifyNever(() => store.markRegistered());
+    });
+
+    test("an error response fails soft to an empty list", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.error(ApiError.generic()),
+      );
+      final service = build();
+
+      expect(await service.getRegisteredBridges(), isEmpty);
+      verifyNever(() => store.markRegistered());
+    });
+
+    test("an unexpected throw fails soft to an empty list", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => throw Exception("network blew up"),
+      );
+      final service = build();
+
+      expect(await service.getRegisteredBridges(), isEmpty);
+    });
+
+    test("concurrent callers are coalesced into a single network fetch", () async {
+      final gate = Completer<ApiResponse<List<BridgeSummary>>>();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => gate.future);
+      final service = build();
+
+      final a = service.getRegisteredBridges();
+      final b = service.getRegisteredBridges();
+      gate.complete(ApiResponse.success([testBridgeSummary()]));
+
+      final results = await Future.wait([a, b]);
+      expect(results[0], hasLength(1));
+      expect(results[1], hasLength(1));
+      verify(() => bridgeRepository.getRegisteredBridges()).called(1);
+    });
+
+    test("a logout during the fetch retires the result instead of leaking it", () async {
+      final gate = Completer<ApiResponse<List<BridgeSummary>>>();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => gate.future);
+      final service = build();
+      await _settle();
+
+      final pending = service.getRegisteredBridges();
+      await _settle();
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+      gate.complete(ApiResponse.success([testBridgeSummary()]));
+
+      expect(await pending, isEmpty);
+      expect(service.isRegistered.value, isFalse);
+      verifyNever(() => store.markRegistered());
+    });
+  });
+
   group("reactive latch", () {
     test("seeds the stream from a persisted store latch at construction (no network)", () async {
       when(() => store.hasRegisteredBridges()).thenAnswer((_) async => true);

@@ -343,11 +343,11 @@ abstract class AppLocalizations {
   /// **'More information'**
   String get projectsOnboardingStepInfoSemantics;
 
-  /// No description provided for @projectsBridgeOfflineTitle.
+  /// Status caption under the connection graphic on the bridge-offline Projects screen, rendered with a trailing crossed-circle icon.
   ///
   /// In en, this message translates to:
-  /// **'Bridge disconnected'**
-  String get projectsBridgeOfflineTitle;
+  /// **'Disconnected'**
+  String get projectsBridgeOfflineDisconnected;
 
   /// No description provided for @projectsBridgeOfflineReconnect.
   ///
@@ -361,11 +361,23 @@ abstract class AppLocalizations {
   /// **'Install commands'**
   String get projectsBridgeOfflineInstallCommands;
 
-  /// Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge.
+  /// Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon.
   ///
   /// In en, this message translates to:
-  /// **'Run the bridge'**
-  String get projectsBridgeOfflineRunBridge;
+  /// **'Start your bridge'**
+  String get projectsBridgeOfflineStartBridge;
+
+  /// Popover text explaining the 'Start your bridge' command on the bridge-offline Projects screen, opened from the info icon next to that label.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the bridge\n\nLeave it running while you use Sesori from your phone.'**
+  String get projectsBridgeOfflineStartBridgeInfo;
+
+  /// Accessibility label for the machine-name row on the bridge-offline Projects screen when it opens a menu listing every machine with a registered bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Show registered machines'**
+  String get projectsBridgeOfflineMachinesSemantics;
 
   /// No description provided for @connectionLostTitle.
   ///

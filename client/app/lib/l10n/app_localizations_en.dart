@@ -145,7 +145,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingStepInfoSemantics => 'More information';
 
   @override
-  String get projectsBridgeOfflineTitle => 'Bridge disconnected';
+  String get projectsBridgeOfflineDisconnected => 'Disconnected';
 
   @override
   String get projectsBridgeOfflineReconnect => 'Reconnect';
@@ -154,7 +154,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override
-  String get projectsBridgeOfflineRunBridge => 'Run the bridge';
+  String get projectsBridgeOfflineStartBridge => 'Start your bridge';
+
+  @override
+  String get projectsBridgeOfflineStartBridgeInfo =>
+      'Start the bridge\n\nLeave it running while you use Sesori from your phone.';
+
+  @override
+  String get projectsBridgeOfflineMachinesSemantics => 'Show registered machines';
 
   @override
   String get connectionLostTitle => 'Connection Lost';

@@ -72,6 +72,7 @@ void main() {
       when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
       // Default: a fresh account with no registered bridge (setup onboarding).
       when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -516,6 +517,9 @@ void main() {
             isFalse,
           ),
         ],
+        // The setup onboarding has no machine row, so the bridge list is never
+        // fetched for a bridge-less account.
+        verify: (_) => verifyNever(() => mockRegisteredBridgesService.getRegisteredBridges()),
       );
 
       blocTest<ProjectListCubit, ProjectListState>(
@@ -526,12 +530,66 @@ void main() {
           when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
           return buildCubit();
         },
+        // The bridge fetch failed (empty list) while the boolean latch still
+        // answers positively — the turn-on view must be picked regardless, just
+        // without a machine name (no enrichment emit for an empty list).
         expect: () => [
-          isA<ProjectListBridgeDisconnected>().having(
-            (s) => s.hasRegisteredBridges,
-            "hasRegisteredBridges",
-            isTrue,
-          ),
+          isA<ProjectListBridgeDisconnected>()
+              .having((s) => s.hasRegisteredBridges, "hasRegisteredBridges", isTrue)
+              .having((s) => s.bridges, "bridges", isEmpty),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "the fetched machine identity enriches the disconnected state in a follow-up emit",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
+          when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
+            (_) async => [testBridgeSummary(name: "Macbook-Pro.local")],
+          );
+          return buildCubit();
+        },
+        // The recovery view shows immediately off the latch; the machine names
+        // land as a second emit once the fetch resolves.
+        expect: () => [
+          isA<ProjectListBridgeDisconnected>()
+              .having((s) => s.hasRegisteredBridges, "hasRegisteredBridges", isTrue)
+              .having((s) => s.bridges, "bridges", isEmpty),
+          isA<ProjectListBridgeDisconnected>()
+              .having((s) => s.hasRegisteredBridges, "hasRegisteredBridges", isTrue)
+              .having((s) => s.bridges.map((b) => b.name), "bridge names", ["Macbook-Pro.local"]),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "connection recovery during the bridge fetch suppresses the stale enrichment emit",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
+          pendingLookupGate = Completer<bool>();
+          when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
+            (_) => pendingLookupGate.future.then((_) => [testBridgeSummary(name: "Macbook-Pro.local")]),
+          );
+          addTearDown(() {
+            if (!pendingLookupGate.isCompleted) pendingLookupGate.complete(true);
+          });
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero); // bridge fetch now in flight
+          // The bridge connects while the fetch is pending. Mutate currentStatus
+          // directly (no stream event) so only the post-fetch guard is exercised.
+          when(() => mockConnectionService.currentStatus).thenReturn(_connectedStatus);
+          pendingLookupGate.complete(true);
+          await Future<void>.delayed(Duration.zero);
+        },
+        // Only the immediate name-less state; no enrichment over the recovered
+        // connection — the connected transition owns the next state.
+        expect: () => [
+          isA<ProjectListBridgeDisconnected>().having((s) => s.bridges, "bridges", isEmpty),
         ],
       );
 

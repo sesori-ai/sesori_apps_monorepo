@@ -60,6 +60,7 @@ void main() {
 
   Future<void> pumpScreen(WidgetTester tester, {required bool hasRegisteredBridges}) async {
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => hasRegisteredBridges);
+    when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
     // A phone-width viewport, deliberately short so both bodies overflow it.
     // Overflow is the precondition for the behaviour under test: a body that
     // fits leaves the page with no scroll extent, and a large title with
@@ -105,15 +106,19 @@ void main() {
 
   testWidgets("the bridge-offline body scrolls the page, collapsing the large title", (tester) async {
     await pumpScreen(tester, hasRegisteredBridges: true);
-    expect(find.text("Bridge disconnected"), findsOneWidget);
+    expect(find.text("Disconnected"), findsOneWidget);
     // A single scroll view for the whole page — the body no longer nests one.
     expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsNothing);
 
-    // Collapsed, the view fits the viewport and there is nothing to scroll.
-    // Expanding the install commands overflows it, which is when the title must
-    // travel with the content.
+    // Expanding the install commands (the disclosure at the end of the body)
+    // grows the body past the viewport, which is when the title must travel
+    // with the content. The button may itself sit below the short viewport, so
+    // scroll it into view first, then return to the top for a clean baseline.
+    await tester.scrollUntilVisible(find.text("Install commands", skipOffstage: false), 100);
     await tester.tap(find.text("Install commands"));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, 600), warnIfMissed: false);
     await tester.pumpAndSettle();
 
     final titleBefore = tester.getTopLeft(largeTitle("Projects")).dy;
