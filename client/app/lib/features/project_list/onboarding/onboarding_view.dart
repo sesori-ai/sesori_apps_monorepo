@@ -307,7 +307,7 @@ class _NeedHelpMenu extends StatelessWidget {
       triggerBuilder: (context, toggle) => PregoButtonsSolid(
         leadingIcon: TablerRegular.help,
         label: loc.projectsOnboardingNeedHelp,
-        hierarchy: PregoButtonsSolidHierarchy.tertiary,
+        hierarchy: PregoButtonsSolidHierarchy.secondary,
         size: PregoButtonsSolidSize.xl,
         onPressed: () {
           // While the popup is up its barrier covers the trigger, so a pill
