@@ -196,16 +196,19 @@ Findings log · Plan-deltas.
   compatibility with the already-shipped bridge side. Check: (1) wire behaviour
   matches PR 1.1–1.5 exactly — secret as `Authorization: Bearer` on the WS
   **upgrade request**, id-correlated `token_response`, non-null-only
-  `token_update`, null token for signed-out; verify against a **real locally
+  `token_update`, null token for signed-out, and `token_request.forceRefresh`
+  forwarded to `AuthTokenProvider.getFreshAccessToken(forceRefresh:)` so a 401
+  retry receives a genuinely rotated token; verify against a **real locally
   built bridge**, not only the fake helper; (2) unknown/undecodable inbound
   frames warn+skip (forward compat); (3) port is ephemeral (bind :0) — no fixed
   port that could collide; (4) mobile untouched.
 - **Acceptance:** a fake helper connects with the secret, requests + receives a
   token; loopback-only bind; per-spawn secret rotated; bad secret rejected; only
   one authenticated helper is accepted per spawn; null/unavailable token returns a
-  structured auth-required response; prompts/status surface via trackers; no
-  dispatcher→cubit dependency and no same-level dispatcher↔service edge; no direct
-  `module_auth` import in non-DI source.
+  structured auth-required response; forced token requests invoke a real auth
+  refresh and return the newly persisted access token; prompts/status surface
+  via trackers; no dispatcher→cubit dependency and no same-level
+  dispatcher↔service edge; no direct `module_auth` import in non-DI source.
 
 ## PR 2.6 — `BridgeProcessService`: spawn/kill/path + expected-stop boundary + helper log capture
 - **Goal:** Spawn the bridge binary (path resolution dev + packaged) passing
@@ -496,6 +499,10 @@ Findings log · Plan-deltas.
 - **Acceptance:** the full happy path passes as an automated/scripted test using
   local fakes; the helper proves it can authenticate to the fake relay with the
   GUI-supplied token before restart/logout; failures are deterministic in CI.
+  With those flows covered by the real GUI host plus E2E suite, remove the
+  PR-1.15 `dev_control_host.dart` pseudo-GUI unless a concrete bridge-isolation
+  diagnostic remains unavailable elsewhere; any retained scope must be
+  documented so its token/protocol behavior cannot silently drift from the GUI.
 
 ## PR 2.16 — First-run provisioning progress UI + degraded state
 - **Goal:** Render `RuntimeProvisionProgress` (download bar/status) from the
