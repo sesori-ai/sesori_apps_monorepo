@@ -973,7 +973,10 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   null/non-positive totals by 512 KiB. Phase/terminal events bypass coalescing,
   and selected buckets are recorded before the best-effort send so a down
   channel cannot restore per-chunk retry/log spam. No timer, new collaborator,
-  shared DTO change, or client-side debounce was added.
+  shared DTO change, or client-side debounce was added. A manual rerun against
+  the PR binary emitted exactly 101 download frames plus one each for
+  `verifying`, `extracting`, and `ready`; the standalone rerun still rendered
+  its download bar and all three phase transitions.
 - **Deltas:** PR 1.13's documented one-frame-per-source-event implementation is
   intentionally narrowed at the wire seam. The runner still feeds every local
   event to the notifier and standalone stderr remains byte-identical; only
@@ -1011,12 +1014,12 @@ which is not in the repo, so it fails on a fresh checkout); have a logged-in
 | 13 | No takeover war (1.14) | run a second bridge for the same account on another machine/VM (same-machine is blocked by the single-live mutex) | displaced bridge logs takeover + goes quiet (long backoff); no 1s flip-flop; phone stays usable on the winner |
 | 14 | Self-update suppressed (1.8) | run supervised from a managed install | no reconcile/update attempt in logs; standalone still reconciles |
 
-- **Aristotle:** n/a (no code). **Findings:** Check 12's supervised half reached
-  download/verifying/extracting/ready; its excessive per-chunk wire traffic is
-  fixed by PR 1.16. The standalone-stderr half remains pending. A long-running
-  harness session also outlived its startup access token: because the dev host
-  cannot mint a genuinely fresh token, the first unregister retry returned 401;
-  restarting with a freshly persisted token made check 11 pass (server
-  unregister, `bridge_id` removal, exit 0). Keep this harness-only limitation in
-  mind for the remaining checks; the production GUI is the refresh authority.
-  **Deltas:** MT-1 remains open until every row passes.
+- **Aristotle:** n/a (no code). **Findings:** Check 12 passed both ways:
+  supervised download/verifying/extracting/ready delivery (coalesced to exactly
+  101 download frames by PR 1.16) and standalone stderr download/phase output.
+  A long-running harness session also outlived its startup access token: because
+  the dev host cannot mint a genuinely fresh token, the first unregister retry
+  returned 401; restarting with a freshly persisted token made check 11 pass
+  (server unregister, `bridge_id` removal, exit 0). Keep this harness-only
+  limitation in mind for the remaining checks; the production GUI is the
+  refresh authority. **Deltas:** MT-1 remains open until every row passes.
