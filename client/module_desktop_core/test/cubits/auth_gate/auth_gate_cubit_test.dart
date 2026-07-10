@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -87,10 +89,27 @@ void main() {
       return true;
     });
 
+    final AuthGateCubit cubit = AuthGateCubit(authSession);
+    addTearDown(cubit.close);
+    final List<AuthGateState> emitted = <AuthGateState>[];
+    final StreamSubscription<AuthGateState> subscription = cubit.stream.listen(emitted.add);
+    addTearDown(subscription.cancel);
+    await pumpEventQueue();
+
+    // No signedOut flash for a returning user: provisional signedIn(null)
+    // first, then the recovered account.
+    expect(emitted, const [AuthGateState.signedIn(user: null), AuthGateState.signedIn(user: _user)]);
+    verify(() => authSession.restoreSession()).called(1);
+  });
+
+  test("an unconfirmed background restore stays provisionally signed in", () async {
+    when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => true);
+    when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
+    when(() => authSession.restoreSession()).thenAnswer((_) async => false);
+
     final AuthGateCubit cubit = await pumpCubit();
 
-    expect(cubit.state, const AuthGateState.signedIn(user: _user));
-    verify(() => authSession.restoreSession()).called(1);
+    expect(cubit.state, const AuthGateState.signedIn(user: null));
   });
 
   test("a failed background restore stays provisionally signed in", () async {
