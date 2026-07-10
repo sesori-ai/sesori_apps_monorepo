@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.16 Address MT-1 supervised findings — PR raised as #421 on branch `test-manual-phase-1` (PR 1.15 merged as #390)
-- **Next up:** Phase 1 — MT-1 manual checkpoint: bridge supervised mode end-to-end (user-run; see phase doc). This is the last ☐ before Phase 2 and is **user-run** — per resume rule 5, present its checklist and let the user run it; do not implement anything.
+- **Last completed phase:** Phase 1 — MT-1 bridge supervised mode end-to-end manual checkpoint complete (PR 1.16 findings/fixes raised as #421)
+- **Next up:** Phase 2 — PR 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -403,7 +403,7 @@ them). Only the user checks an MT box.
 - ☑ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
 - ☑ 1.15 Dev control-host harness for manual supervised testing (`tool/`) — Low / S
 - ☑ 1.16 Address MT-1 supervised findings (provision traffic + update status) — Low / S
-- ☐ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
+- ☑ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
 
 ### Phase 2 — Desktop shell + supervisor → `phase-2-desktop-shell.md`
 - ☐ 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes — Med / M

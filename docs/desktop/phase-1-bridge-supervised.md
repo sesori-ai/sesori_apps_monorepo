@@ -1041,4 +1041,8 @@ which is not in the repo, so it fails on a fresh checkout); have a logged-in
   applied `v1.5.0-internal.213`. Check 13 passed across macOS and Windows: the
   displaced Mac reported `takenOver`, stayed quiet for the two-minute backoff,
   Windows and the phone remained usable, and Mac reclaimed the relay after the
-  winner stopped. **Deltas:** MT-1 remains open until every row passes.
+  winner stopped. The user accepted check 4's manual same-token push/no-loop
+  evidence together with the existing automated same-identity rotation and
+  changed-identity re-auth coverage; genuine GUI-driven forced refresh is now an
+  explicit PR 2.5 acceptance item. **Deltas:** MT-1 complete; Phase 1 is done and
+  the plan advances to PR 2.1.
