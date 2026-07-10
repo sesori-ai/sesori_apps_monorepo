@@ -80,6 +80,28 @@ void main() {
       expect(child.parentID, isNull);
     });
 
+    test("getProjects seeds sandbox aliases so moved-location sessions canonicalize without a lookup", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      // A restarted plugin serving a previously-moved project: the backend's
+      // project list already records the live location as a sandbox, and no
+      // per-directory project lookup has happened yet.
+      server.addSandbox(projectKey: "p1", sandbox: "/moved/repo");
+      server.extraSessions.add({
+        "id": "s-moved",
+        "slug": "moved-session",
+        "projectID": "p1",
+        "directory": "/moved/repo",
+        "title": "Moved Session",
+        "time": {"created": 100, "updated": 200},
+      });
+
+      await plugin.getProjects();
+
+      final sessions = await plugin.getSessions("/moved/repo");
+      final moved = sessions.firstWhere((session) => session.id == "s-moved");
+      expect(moved.projectID, equals("/repo"));
+    });
+
     test("getProject at a moved live directory registers an alias that canonicalizes session mapping", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       // The folder moved: /repo is still the project's root worktree, and the

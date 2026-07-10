@@ -42,6 +42,17 @@ class ActiveSessionTracker {
       ..clear()
       ..addAll(projects.map((p) => p.worktree));
 
+    // Each sandbox is a directory the backend has resolved to the project —
+    // for a moved folder, its live location. Seeding the aliases up front
+    // keeps sessions under those locations groupable from the first summary,
+    // without waiting for a per-directory project lookup.
+    _worktreeAliases.clear();
+    for (final project in projects) {
+      for (final sandbox in project.sandboxes) {
+        _putWorktreeAlias(directory: sandbox, worktree: project.worktree);
+      }
+    }
+
     _sessionWorktrees.clear();
     _sessionDirectories.clear();
     _sessionParentIds.clear();
@@ -298,6 +309,15 @@ class ActiveSessionTracker {
   /// requested directory with the backend's canonical project root. Returns
   /// `true` when the alias changed the activity summary.
   bool registerWorktreeAlias({required String directory, required String worktree}) {
+    if (!_putWorktreeAlias(directory: directory, worktree: worktree)) {
+      return false;
+    }
+    return _resummarizeAfterWorktreeKnowledgeChange();
+  }
+
+  /// Stores the alias when it is meaningful and new: self-aliases and empty
+  /// worktrees carry no information. Returns whether the alias map changed.
+  bool _putWorktreeAlias({required String directory, required String worktree}) {
     final normalizedDirectory = _normalizePath(directory);
     if (worktree.isEmpty || normalizedDirectory == _normalizePath(worktree)) {
       return false;
@@ -306,7 +326,7 @@ class ActiveSessionTracker {
       return false;
     }
     _worktreeAliases[normalizedDirectory] = worktree;
-    return _resummarizeAfterWorktreeKnowledgeChange();
+    return true;
   }
 
   /// Re-resolves worktrees for active sessions that lack one — new knowledge

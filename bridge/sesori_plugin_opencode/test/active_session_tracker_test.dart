@@ -235,6 +235,51 @@ void main() {
         final pairs = tracker.buildSummary().map((item) => (item.id, item.activeSessions.length)).toSet();
         expect(pairs, equals({("/repo", 1)}));
       });
+
+      test("coldStart seeds aliases from the backend's sandboxes", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>["/moved/repo"],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
+        );
+
+        expect(tracker.resolveProjectWorktree(directory: "/moved/repo"), equals("/repo"));
+        expect(
+          tracker.resolveProjectWorktree(directory: "/moved/repo/.worktrees/session-001"),
+          equals("/repo"),
+        );
+      });
+
+      test("coldStart replaces previously-seeded aliases", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
+        );
+        tracker.registerWorktreeAlias(directory: "/stale/location", worktree: "/repo");
+
+        await tracker.coldStart();
+
+        expect(tracker.resolveProjectWorktree(directory: "/stale/location"), isNull);
+      });
     });
 
     group("getActiveStatuses", () {
