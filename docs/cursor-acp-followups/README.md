@@ -53,7 +53,7 @@ than observed Cursor bugs. That is called out per item.
 | I  | Lossy `session.updated` payload on title changes     | List row loses time/summary/defaults until refresh             | **Resolved** |
 | E  | Typed ACP/Cursor boundary DTOs                        | Enabler / safety net for C and F                                | Blocked on traces (Large) |
 | F  | `getSessionMessages` richer failure contract         | "Broken replay" vs "empty thread" on the phone                  | Open (Small–Med) |
-| D  | Cursor decisions needing a trace / product call      | Small, but blocked on evidence                                  | Blocked on evidence |
+| D  | Cursor decisions needing a trace / product call      | Small, but blocked on evidence                                  | D2 resolved; D1 blocked on a trace |
 
 ---
 
@@ -277,25 +277,27 @@ Source: [#332 r3545873668](https://github.com/sesori-ai/sesori_apps_monorepo/pul
 
 ## Theme D — Cursor decisions needing a trace or product call
 
-Small changes, blocked on evidence rather than effort.
-
-- **D1 — plan-mode rejection routing.** For `cursor/create_plan`, the modal's
-  standard Reject button calls `rejectQuestion`, which sends a JSON-RPC error;
-  Cursor may expect a normal `{accepted: false}` response instead, so plan-mode
-  turns could abort unexpectedly. Needs a real trace of Cursor's plan-response
-  contract before changing — altering it blind risks breaking the accept path.
+- **D1 — plan-mode rejection routing. STILL OPEN (blocked on evidence).** For
+  `cursor/create_plan`, the modal's standard Reject button calls
+  `rejectQuestion`, which sends a JSON-RPC error; Cursor may expect a normal
+  `{accepted: false}` response instead, so plan-mode turns could abort
+  unexpectedly. Needs a real trace of Cursor's plan-response contract before
+  changing — altering it blind risks breaking the accept path. This is the one
+  remaining item in this document that requires a live `agent acp` trace.
   Source: [#332 r3536293286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536293286)
 
-- **D2 — default binary name (`cursor-agent` vs `agent`).** The PR was
-  live-verified end-to-end against `cursor-agent`, and `--cursor-bin` overrides
-  the default. Whether the current Cursor CLI installs `agent` or `cursor-agent`
-  on PATH is a product/naming call for the maintainer before flipping the
-  default.
+- **D2 — default binary name. ✅ Resolved (product call made).** The official
+  Cursor CLI docs (cursor.com/docs/cli) install and document the binary as
+  `agent` — including `agent acp`, the exact ACP server mode this plugin
+  drives — so the default flipped from the legacy `cursor-agent` to `agent`.
+  Availability/update guidance is derived from the configured path, and legacy
+  installs that only ship `cursor-agent` keep working via
+  `--cursor-bin cursor-agent`.
   Source: [#332 r3536171386](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536171386)
 
 ---
 
-## Theme E — Typed ACP/Cursor boundary DTOs
+## Theme E — Typed ACP/Cursor boundary DTOs — STILL OPEN (deliberately deferred)
 
 Core ACP parsing is raw `Map`/`List` today. Replacing it with typed/freezed
 boundary DTOs would restore compile-time safety in a central bridge flow —

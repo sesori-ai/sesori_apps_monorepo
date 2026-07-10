@@ -11,8 +11,8 @@ import "../cursor_plugin_impl.dart";
 
 /// Builds the [CursorPlugin] (the live [BridgePluginApi]) for a resolved
 /// binary. The production default constructs the real plugin wired to the
-/// host-backed process factory; tests inject a fake to avoid spawning
-/// `cursor-agent`.
+/// host-backed process factory; tests inject a fake to avoid spawning the
+/// Cursor CLI.
 typedef CursorPluginFactory =
     CursorPlugin Function({
       required String binaryPath,
@@ -37,10 +37,10 @@ CursorPlugin _defaultBuildPlugin({
 
 /// The const Cursor plugin descriptor.
 ///
-/// Cursor drives a `cursor-agent acp` stdio subprocess over the generic ACP
+/// Cursor drives an `agent acp` stdio subprocess over the generic ACP
 /// machinery, so it needs no managed-runtime supervisor (no listening port to
 /// reclaim, no ownership file). It declares its CLI surface, probes the
-/// `cursor-agent` binary for availability, and on [start] spawns the agent
+/// Cursor CLI binary for availability, and on [start] spawns the agent
 /// through the [PluginHost] process seam and returns an [AcpBridgePlugin].
 ///
 /// The optional constructor parameters are test seams; the registered instance
@@ -58,14 +58,14 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   final Duration _connectBudget;
   final Duration _versionProbeTimeout;
 
-  /// Minimum `cursor-agent` build the bridge supports. Earlier builds (e.g.
+  /// Minimum Cursor CLI build the bridge supports. Earlier builds (e.g.
   /// `2026.05.28`) advertise the `acp` model picker and `session/load` but
   /// silently no-op model switching and history replay, so the experience is
   /// broken in ways the user can't see. `2026.06.15` is the verified-good
   /// build where both work end-to-end.
   static const String minVersion = "2026.06.15";
 
-  /// CLI option naming the `cursor-agent` binary (path or PATH name). Declared
+  /// CLI option naming the Cursor CLI binary (path or PATH name). Declared
   /// as the bare local name — the bridge's [PluginCliOptionsMapper] namespaces
   /// it to the public `--cursor-bin` flag.
   static const String binOption = "bin";
@@ -77,7 +77,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   static const List<PluginOption> cliOptions = [
     PluginValueOption(
       name: binOption,
-      help: "Path to the cursor-agent binary",
+      help: "Path to the Cursor CLI binary (agent)",
       defaultsTo: CursorBinary.defaultBinary,
       allowedValues: null,
       valueHelp: "path",
@@ -85,7 +85,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
     ),
     PluginValueOption(
       name: apiEndpointOption,
-      help: "Override the Cursor API endpoint (passed to cursor-agent as -e <endpoint>)",
+      help: "Override the Cursor API endpoint (passed to the Cursor CLI as -e <endpoint>)",
       defaultsTo: null,
       allowedValues: null,
       valueHelp: "url",
@@ -102,7 +102,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   @override
   List<PluginOption> get options => cliOptions;
 
-  /// Confirms the `cursor-agent` CLI is installed and runnable before the
+  /// Confirms the Cursor CLI is installed and runnable before the
   /// bridge commits to startup. Runs `<bin> --version`: exit 0 within
   /// [versionProbeTimeout] is available; a failed launch (not installed / not
   /// on PATH), a non-zero exit, or a timeout are unavailable. Never throws.
@@ -164,7 +164,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
     final parsed = _CalVer.tryParse(version);
     final minimum = _CalVer.tryParse(minVersion);
     if (parsed != null && minimum != null && parsed.compareTo(minimum) < 0) {
-      Log.w("[cursor] cursor-agent $version is below the supported minimum $minVersion");
+      Log.w("[cursor] Cursor CLI $version is below the supported minimum $minVersion");
       return PluginUnavailable(
         message: _outdatedMessage(executablePath: executablePath, version: version),
       );
@@ -175,29 +175,30 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
 
   String _notInstalledMessage({required String executablePath}) {
     return [
-      "Cursor was not found — the Sesori bridge needs the cursor-agent CLI to run.",
+      "Cursor was not found — the Sesori bridge needs the Cursor CLI ($executablePath) to run.",
       "",
       "Verify it is installed:  $executablePath --version",
       "Install the Cursor CLI:  curl https://cursor.com/install -fsS | bash",
+      "Legacy installs that only ship `cursor-agent` can use --cursor-bin cursor-agent.",
     ].join("\n");
   }
 
   String _notWorkingMessage({required String executablePath}) {
     return [
-      'cursor-agent is installed but did not respond to "$executablePath --version".',
+      'The Cursor CLI is installed but did not respond to "$executablePath --version".',
       "",
       "Re-check your install:   $executablePath --version",
-      "Update the Cursor CLI:   cursor-agent update",
+      "Update the Cursor CLI:   $executablePath update",
     ].join("\n");
   }
 
   String _outdatedMessage({required String executablePath, required String version}) {
-    final headline = "cursor-agent $version is too old for the Sesori bridge — "
+    final headline = "Cursor CLI $version is too old for the Sesori bridge — "
         "model switching and chat history need $minVersion or newer.";
     return [
       headline,
       "",
-      "Update the Cursor CLI:   cursor-agent update",
+      "Update the Cursor CLI:   $executablePath update",
       "Then re-check:           $executablePath --version",
     ].join("\n");
   }
@@ -275,7 +276,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   }
 }
 
-/// A cursor-agent calendar version (`YYYY.MM.DD`, the leading component of a
+/// A Cursor CLI calendar version (`YYYY.MM.DD`, the leading component of a
 /// build string like `2026.06.15-18-00-12-6f5a2cf`). Parsed once into a typed
 /// [Comparable] rather than comparing version strings ad hoc.
 class _CalVer implements Comparable<_CalVer> {
@@ -285,7 +286,7 @@ class _CalVer implements Comparable<_CalVer> {
   final int month;
   final int day;
 
-  /// Parses the leading `YYYY.MM.DD` from a cursor-agent version/build string,
+  /// Parses the leading `YYYY.MM.DD` from a Cursor CLI version/build string,
   /// or null if it does not start with that shape (caller fails open).
   static _CalVer? tryParse(String raw) {
     final match = RegExp(r"^\s*(\d{4})\.(\d{1,2})\.(\d{1,2})").firstMatch(raw);

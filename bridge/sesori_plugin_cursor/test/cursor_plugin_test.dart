@@ -156,6 +156,16 @@ void main() {
       expect(plugin.id, "cursor");
     });
 
+    test("the default binary is the official Cursor CLI name", () {
+      // cursor.com/docs/cli: the CLI installs as `agent`, and `agent acp` is
+      // the documented ACP server mode. Legacy installs that only ship
+      // `cursor-agent` override via --cursor-bin.
+      expect(CursorBinary.defaultBinary, "agent");
+      final spec = CursorBinary.launchSpec(cwd: "/repo");
+      expect(spec.command, "agent");
+      expect(spec.args, ["acp"]);
+    });
+
     test("captureSessionConfig populates providers, mode variants, and agents", () async {
       plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
 
