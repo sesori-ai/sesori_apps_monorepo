@@ -95,7 +95,9 @@ void main() {
     });
 
     test("maps stale project sessions to sessions.updated", () {
-      final result = mapper.map(const BridgeSseSessionsUpdated(projectID: "p1"));
+      final result = mapper.map(
+        const BridgeSseSessionsUpdated(sessionID: "s1", projectID: "p1"),
+      );
 
       expect(result, isA<SesoriSessionsUpdated>());
       expect((result! as SesoriSessionsUpdated).projectID, "p1");

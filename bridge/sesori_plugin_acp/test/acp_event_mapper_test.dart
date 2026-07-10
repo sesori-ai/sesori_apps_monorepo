@@ -330,6 +330,18 @@ void main() {
       expect(events.whereType<BridgeSseSessionDiff>(), hasLength(1));
     });
 
+    test("diff content emits a session diff when status is omitted", () {
+      final events = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-statusless-diff",
+        "content": [
+          {"type": "diff", "path": "/repo/a.dart", "oldText": "a", "newText": "b"},
+        ],
+      }));
+
+      expect(events.whereType<BridgeSseSessionDiff>(), hasLength(1));
+    });
+
     test("chunks group by ACP messageId when present", () {
       mapper.beginTurn("s1");
       final first = mapper.map(update({
@@ -378,7 +390,9 @@ void main() {
       mapper.setSessionProject("s1", "/repo/other");
       expect(
         mapper.map(update({"sessionUpdate": "available_commands_update"})).single,
-        isA<BridgeSseSessionsUpdated>().having((event) => event.projectID, "projectID", "/repo/other"),
+        isA<BridgeSseSessionsUpdated>()
+            .having((event) => event.sessionID, "sessionID", "s1")
+            .having((event) => event.projectID, "projectID", "/repo/other"),
       );
     });
 

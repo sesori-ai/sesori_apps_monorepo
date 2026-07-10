@@ -164,4 +164,94 @@ void main() {
       expect(await plugin.getCommands(projectId: cwd), isEmpty);
     });
   });
+
+  test("history replay advertises commands and emits a session refresh", () async {
+    final live = FakeAcpProcess();
+    final replay = FakeAcpProcess();
+    final processes = [live, replay];
+    final emitted = <BridgeSseEvent>[];
+    final plugin = AcpPlugin(
+      id: "acp",
+      agentDisplayName: "ACP",
+      launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+      launchDirectory: "/repo",
+      eventMapper: AcpEventMapper(launchDirectory: "/repo", agentId: "acp"),
+      processFactory: (_) async => processes.removeAt(0),
+    );
+    plugin.events.listen(emitted.add);
+
+    Future<Map<String, dynamic>> waitForFrame(FakeAcpProcess process, String method) async {
+      for (var i = 0; i < 100; i++) {
+        final matches = process.written.where((frame) => frame["method"] == method);
+        if (matches.isNotEmpty) return matches.last;
+        await Future<void>.delayed(Duration.zero);
+      }
+      throw StateError("agent never wrote a '$method' frame");
+    }
+
+    try {
+      final connecting = plugin.ensureConnected();
+      final liveInit = await waitForFrame(live, "initialize");
+      live.emit({
+        "jsonrpc": "2.0",
+        "id": liveInit["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": {"loadSession": true},
+          "authMethods": <Object?>[],
+        },
+      });
+      expect(await connecting, isTrue);
+
+      final creating = plugin.createSession(
+        directory: "/repo/worktree",
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final sessionNew = await waitForFrame(live, "session/new");
+      live.emit({"jsonrpc": "2.0", "id": sessionNew["id"], "result": {"sessionId": "s1"}});
+      await creating;
+
+      final messages = plugin.getSessionMessages("s1");
+      final replayInit = await waitForFrame(replay, "initialize");
+      replay.emit({
+        "jsonrpc": "2.0",
+        "id": replayInit["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": {"loadSession": true},
+          "authMethods": <Object?>[],
+        },
+      });
+      final load = await waitForFrame(replay, "session/load");
+      replay.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "from_replay"},
+            ],
+          },
+        },
+      });
+      replay.emit({"jsonrpc": "2.0", "id": load["id"], "result": const <String, dynamic>{}});
+      await messages;
+
+      expect((await plugin.getCommands(projectId: "/repo")).single.name, "from_replay");
+      expect(
+        emitted.whereType<BridgeSseSessionsUpdated>().single.sessionID,
+        "s1",
+      );
+    } finally {
+      await plugin.dispose();
+      await live.close();
+      await replay.close();
+    }
+  });
 }

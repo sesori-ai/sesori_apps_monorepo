@@ -215,7 +215,12 @@ class AcpEventMapper {
         // The advertised commands themselves are tracked by AcpCommandTracker
         // (served via getCommands); this makes the matching client session
         // re-fetch its snapshot so the new command list becomes visible.
-        return [BridgeSseSessionsUpdated(projectID: projectForSession(sessionId))];
+        return [
+          BridgeSseSessionsUpdated(
+            sessionID: sessionId,
+            projectID: projectForSession(sessionId),
+          ),
+        ];
       case "session_info_update":
         // The notification may carry `updatedAt` (ISO 8601 or epoch) — keep
         // the snapshot's recency fresh even when no title change is emitted.
@@ -329,7 +334,12 @@ class AcpEventMapper {
       _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
-    _appendCompletedMutationDiff(events: events, sessionId: sessionId, state: state);
+    _appendCompletedMutationDiff(
+      events: events,
+      sessionId: sessionId,
+      state: state,
+      mutationAvailable: _hasDiffContent(update),
+    );
     return events;
   }
 
@@ -375,7 +385,12 @@ class AcpEventMapper {
     // onto the terminal state; bounded by the [beginTurn] / [forgetSession]
     // clears.
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
-    _appendCompletedMutationDiff(events: events, sessionId: sessionId, state: state);
+    _appendCompletedMutationDiff(
+      events: events,
+      sessionId: sessionId,
+      state: state,
+      mutationAvailable: _hasDiffContent(update),
+    );
     return events;
   }
 
@@ -528,6 +543,10 @@ class AcpEventMapper {
   bool _isFileMutation(Map<String, dynamic> update) {
     final kind = update["kind"];
     if (kind == "edit" || kind == "delete" || kind == "move") return true;
+    return _hasDiffContent(update);
+  }
+
+  bool _hasDiffContent(Map<String, dynamic> update) {
     final content = update["content"];
     if (content is List) {
       for (final entry in content) {
@@ -541,8 +560,12 @@ class AcpEventMapper {
     required List<BridgeSseEvent> events,
     required String sessionId,
     required _LiveTool state,
+    required bool mutationAvailable,
   }) {
-    if (!state.isFileMutation || state.diffEmitted || !_isTerminalToolStatus(state.status)) {
+    if (!state.isFileMutation || state.diffEmitted) {
+      return;
+    }
+    if (!mutationAvailable && !_isTerminalToolStatus(state.status)) {
       return;
     }
     state.diffEmitted = true;
