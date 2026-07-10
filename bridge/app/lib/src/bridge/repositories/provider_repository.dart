@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart" show ProviderListResponse;
 
 import "../persistence/daos/projects_dao.dart";
 import "mappers/plugin_provider_mapper.dart";
+import "models/project_not_found_exception.dart";
 
 /// Wraps [BridgePluginApi.getProviders] and maps plugin models to shared types.
 class ProviderRepository {
@@ -17,6 +18,9 @@ class ProviderRepository {
     // The plugin reads provider config from the project's directory, so
     // resolve the id to the live path first.
     final directory = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (directory == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
     final result = await _plugin.getProviders(projectId: directory);
     final providers = result.providers.map((p) => p.toSharedProviderInfo()).toList();
     return ProviderListResponse(items: providers, connectedOnly: true);

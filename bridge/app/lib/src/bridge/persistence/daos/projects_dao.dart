@@ -28,17 +28,12 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     return (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
   }
 
-  /// The live directory for [projectId]: the stored row's non-empty `path`,
-  /// or [projectId] itself when no row (or no recorded path) exists — every
-  /// shipped plugin's id is the directory the project was first opened at, so
-  /// it stays correct until a move is recorded by [recordOpenedProject].
-  Future<String> getResolvedPath({required String projectId}) async {
+  /// The live directory stored for [projectId], or null when the bridge has no
+  /// recorded project with that id. `path` is non-nullable in the schema, so a
+  /// present row is authoritative — never infer a directory from the id.
+  Future<String?> getResolvedPath({required String projectId}) async {
     final row = await getProject(projectId: projectId);
-    final path = row?.path;
-    if (path == null || path.isEmpty) {
-      return projectId;
-    }
-    return path;
+    return row?.path;
   }
 
   /// Records [projectId] as an explicitly-opened folder by stamping [openedAt]

@@ -5,6 +5,7 @@ import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
 import "../worktree_types.dart";
+import "models/project_not_found_exception.dart";
 
 const _worktreeDir = ".worktrees";
 
@@ -90,9 +91,13 @@ class WorktreeRepository {
   }
 
   /// The live directory for [projectId] — where git operations for the
-  /// project must run. Falls back to the id when no path was recorded.
-  Future<String> resolveProjectPath({required String projectId}) {
-    return _projectsDao.getResolvedPath(projectId: projectId);
+  /// project must run. Unknown ids are rejected: an id is not a directory.
+  Future<String> resolveProjectPath({required String projectId}) async {
+    final path = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (path == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
+    return path;
   }
 
   /// Resolves the branch and commit that new worktrees should be based on.

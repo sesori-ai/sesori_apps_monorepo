@@ -23,10 +23,11 @@ void main() {
     late SessionDao sessionDao;
     late WorktreeService service;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
       projectsDao = db.projectsDao;
       sessionDao = db.sessionDao;
+      await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]);
       processRunner = _FakeProcessRunner();
       gitDirectoryExists = true;
       final fakePlugin = _FakeBridgePluginApi();
@@ -811,8 +812,9 @@ void main() {
     late _FakeBridgePluginApi plugin;
     late WorktreeService service;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [_projectId]);
       processRunner = _FakeProcessRunner();
       plugin = _FakeBridgePluginApi();
       service = WorktreeService(

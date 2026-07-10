@@ -14,9 +14,10 @@ void main() {
     late GetProvidersHandler handler;
     late AppDatabase db;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       addTearDown(db.close);
       handler = GetProvidersHandler(ProviderRepository(plugin: plugin, projectsDao: db.projectsDao));
     });

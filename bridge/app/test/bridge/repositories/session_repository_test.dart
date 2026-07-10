@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -623,6 +624,8 @@ void main() {
       final result = await repository.findProjectIdForSession(sessionId: "s-target");
 
       expect(result, equals("/repo-b"));
+      expect(await db.projectsDao.getProject(projectId: "/repo-a"), isNotNull);
+      expect(await db.projectsDao.getProject(projectId: "/repo-b"), isNotNull);
     });
 
     test("createSession passes variant directly to plugin", () async {
@@ -745,7 +748,7 @@ void main() {
         expect(plugin.lastGetProjectDirectory, equals("/moved/a"));
       });
 
-      test("resolveProjectDirectory falls back to the id when no path was recorded", () async {
+      test("resolveProjectDirectory rejects an unknown project id", () async {
         final db = createTestDatabase();
         addTearDown(db.close);
 
@@ -760,9 +763,10 @@ void main() {
           unseenCalculator: const SessionUnseenCalculator(),
         );
 
-        final directory = await repository.resolveProjectDirectory(projectId: "/projects/a");
-
-        expect(directory, equals("/projects/a"));
+        await expectLater(
+          () => repository.resolveProjectDirectory(projectId: "/projects/a"),
+          throwsA(isA<ProjectNotFoundException>()),
+        );
       });
     });
 

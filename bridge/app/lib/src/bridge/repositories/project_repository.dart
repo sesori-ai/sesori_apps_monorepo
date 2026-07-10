@@ -11,6 +11,7 @@ import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "derived_project_builder.dart";
 import "mappers/plugin_project_mapper.dart";
+import "models/project_not_found_exception.dart";
 import "session_unseen_calculator.dart";
 
 /// Project data aggregator with two paths chosen by the plugin's sealed
@@ -147,13 +148,16 @@ class ProjectRepository {
   /// bridge-derived plugin the id IS the canonical directory and the plugin has
   /// no `getProject`, so we resolve it from the derived set (or a placeholder).
   Future<Project> getProject({required String projectId}) async {
+    final path = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (path == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
-        return _findDerivedProject(plugin, normalizeProjectDirectory(directory: projectId));
+        return _findDerivedProject(plugin, normalizeProjectDirectory(directory: path));
       case final NativeProjectsPluginApi plugin:
         // The backend needs the live directory — the id may point at a
         // location the folder has since moved away from.
-        final path = await _projectsDao.getResolvedPath(projectId: projectId);
         final pluginProject = await plugin.getProject(path);
         return pluginProject.toSharedProject(
           path: path,
@@ -203,18 +207,21 @@ class ProjectRepository {
   }
 
   Future<Project> renameProject({required String projectId, required String name}) async {
+    final path = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (path == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
         // codex has no backend to store a project name, so persist a display-name
         // override that _deriveProjects applies on the next listing.
-        final canonical = normalizeProjectDirectory(directory: projectId);
+        final canonical = normalizeProjectDirectory(directory: path);
         await _projectsDao.setDisplayName(projectId: canonical, displayName: name);
         return _findDerivedProject(plugin, canonical);
 
       case final NativeProjectsPluginApi plugin:
         // The backend looks the project up by directory, so hand it the live
         // path rather than the (possibly moved-away-from) id.
-        final path = await _projectsDao.getResolvedPath(projectId: projectId);
         final updated = await plugin.renameProject(projectId: path, name: name);
         return updated.toSharedProject(
           path: path,

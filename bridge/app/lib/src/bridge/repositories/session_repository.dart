@@ -13,6 +13,7 @@ import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_session_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
 import "mappers/pull_request_mapper.dart";
+import "models/project_not_found_exception.dart";
 import "models/stored_session.dart";
 import "pull_request_repository.dart";
 import "session_unseen_calculator.dart";
@@ -70,7 +71,7 @@ class SessionRepository {
       case final NativeProjectsPluginApi plugin:
         // The plugin scopes sessions by directory, so hand it the project's
         // live directory — the id may point where the folder used to be.
-        final directory = await _projectsDao.getResolvedPath(projectId: projectId);
+        final directory = await resolveProjectDirectory(projectId: projectId);
         final sessions = await plugin.getSessions(directory, start: start, limit: limit);
         // Sessions fetched for a project belong to it by construction. Re-key
         // them to the stable id: when the lookup went through a moved folder's
@@ -181,7 +182,7 @@ class SessionRepository {
       // the id to the live path. Null/blank keeps the plugin's own fallback.
       projectId: normalizedProjectId == null || normalizedProjectId.isEmpty
           ? null
-          : await _projectsDao.getResolvedPath(projectId: normalizedProjectId),
+          : await resolveProjectDirectory(projectId: normalizedProjectId),
     );
     return CommandListResponse(
       items: commands.map((command) => command.toSharedCommandInfo()).toList(growable: false),
@@ -277,6 +278,11 @@ class SessionRepository {
 
       case final NativeProjectsPluginApi plugin:
         final projects = await plugin.getProjects();
+        // The plugin's authoritative list makes these known projects. Persist
+        // them before probing sessions so id→path resolution never guesses.
+        await _projectsDao.insertProjectsIfMissing(
+          projectIds: [for (final project in projects) project.id],
+        );
         for (final project in projects) {
           final projectId = project.id;
           if (await _getPluginSession(projectId: projectId, sessionId: sessionId) != null) {
@@ -377,10 +383,14 @@ class SessionRepository {
     return sessions.isNotEmpty;
   }
 
-  /// The project's live directory for [projectId], suitable as a git/CLI
-  /// working directory. Falls back to the id when no path was recorded.
-  Future<String> resolveProjectDirectory({required String projectId}) {
-    return _projectsDao.getResolvedPath(projectId: projectId);
+  /// The project's recorded live directory, suitable as a git/CLI working
+  /// directory. Unknown ids are rejected: an id is not a directory.
+  Future<String> resolveProjectDirectory({required String projectId}) async {
+    final path = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (path == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
+    return path;
   }
 
   Future<String?> getProjectPath({required String projectId}) async {
@@ -392,10 +402,7 @@ class SessionRepository {
         return trimmed.isEmpty ? null : normalizeProjectDirectory(directory: trimmed);
 
       case final NativeProjectsPluginApi plugin:
-        final directory = await _projectsDao.getResolvedPath(projectId: projectId);
-        if (directory.trim().isEmpty) {
-          return null;
-        }
+        final directory = await resolveProjectDirectory(projectId: projectId);
         try {
           // Probe the plugin so an unreachable backend yields null (callers
           // fall back rather than running git tooling blind), then hand back

@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_project_questions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -11,14 +12,19 @@ void main() {
   group("GetProjectQuestionsHandler", () {
     late FakeBridgePlugin plugin;
     late GetProjectQuestionsHandler handler;
+    late AppDatabase db;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
-      final db = createTestDatabase();
+      db = createTestDatabase();
       addTearDown(db.close);
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/project"]);
       handler = GetProjectQuestionsHandler(
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao),
+        questionRepository: QuestionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+        ),
       );
     });
 

@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -217,6 +218,7 @@ void main() {
 
     test("getProject flags a since-deleted directory as missing", () async {
       plugin.projectResult = const PluginProject(id: "/gone", name: "Gone");
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/gone"]);
       final repoWithMissing = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -307,6 +309,7 @@ void main() {
 
     test("renameProject persists a display-name override applied on the next listing", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", created: 1, updated: 1)];
+      await repo.getProjects();
 
       final renamed = await repo.renameProject(projectId: "/tmp/proj/alpha", name: "Renamed Alpha");
 
@@ -317,6 +320,7 @@ void main() {
 
     test("getProject resolves a derived project without calling the plugin's guarded getProject", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
+      await repo.getProjects();
 
       // The mixin's getProject throws; routing through the repository must
       // resolve from the derived set instead of surfacing that as an error.
@@ -326,15 +330,17 @@ void main() {
       expect(project.name, "alpha");
     });
 
-    test("getProject honours a stored display name for a project with no sessions or opened row", () async {
-      // A rename on a project that isn't otherwise in the derived set (no
-      // sessions, never opened) still persists a display-name override; the
-      // placeholder must return that name rather than the directory basename.
-      final renamed = await repo.renameProject(projectId: "/tmp/proj/ghost", name: "Ghost Renamed");
+    test("getProject and renameProject reject an unknown derived project id", () async {
+      await expectLater(
+        () => repo.renameProject(projectId: "/tmp/proj/ghost", name: "Ghost Renamed"),
+        throwsA(isA<ProjectNotFoundException>()),
+      );
+      await expectLater(
+        () => repo.getProject(projectId: "/tmp/proj/ghost"),
+        throwsA(isA<ProjectNotFoundException>()),
+      );
 
-      expect(renamed.name, "Ghost Renamed");
-      final resolved = await repo.getProject(projectId: "/tmp/proj/ghost");
-      expect(resolved.name, "Ghost Renamed");
+      expect(await db.projectsDao.getProject(projectId: "/tmp/proj/ghost"), isNull);
     });
 
     test("a session in a dedicated worktree folds into its parent project, not its own card", () async {

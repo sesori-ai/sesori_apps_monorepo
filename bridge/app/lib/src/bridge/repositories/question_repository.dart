@@ -5,6 +5,7 @@ import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_question_mapper.dart";
+import "models/project_not_found_exception.dart";
 
 /// Layer 2 repository wrapping [BridgePluginApi] for question operations.
 ///
@@ -52,6 +53,9 @@ class QuestionRepository {
         // The plugin scopes questions by directory, so hand it the project's
         // live directory rather than the (possibly moved-away-from) id.
         final directory = await _projectsDao.getResolvedPath(projectId: projectId);
+        if (directory == null) {
+          throw ProjectNotFoundException(projectId: projectId);
+        }
         final pluginQuestions = await plugin.getProjectQuestions(projectId: directory);
         return pluginQuestions.map((q) => q.toSharedPendingQuestion()).toList();
 

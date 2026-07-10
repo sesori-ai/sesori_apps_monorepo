@@ -629,7 +629,6 @@ class FakePrSyncService extends PrSyncService {
 }
 
 class FakeSessionPersistenceService extends SessionPersistenceService {
-  final List<String> ensuredProjectIds = <String>[];
   final List<({String projectId, List<Session> sessions})> persistedCalls =
       <({String projectId, List<Session> sessions})>[];
 
@@ -646,11 +645,6 @@ class FakeSessionPersistenceService extends SessionPersistenceService {
   static SessionDao _unsupportedSessionDao() => throw UnimplementedError();
 
   static AppDatabase _unsupportedDatabase() => throw UnimplementedError();
-
-  @override
-  Future<void> ensureProject({required String projectId}) async {
-    ensuredProjectIds.add(projectId);
-  }
 
   @override
   Future<void> persistSessionsForProject({

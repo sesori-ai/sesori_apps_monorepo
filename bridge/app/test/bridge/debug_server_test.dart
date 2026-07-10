@@ -215,6 +215,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
       harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
       debugServer = harness.debugServer;
       await debugServer.start();

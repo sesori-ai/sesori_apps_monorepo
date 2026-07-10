@@ -20,13 +20,17 @@ class SessionCreationService {
        _sessionRepository = sessionRepository;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
+    // Validate the opaque project handle before metadata generation or any
+    // plugin/git side effect. The stored path is authoritative; unknown ids
+    // must not be treated as directories.
+    final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
     final normalizedCommand = request.command?.normalize();
     final agentModel = request.model;
     final firstText = _extractFirstText(parts: request.parts);
     final metadata = await _generateMetadata(firstText: firstText);
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
     final created = await _sessionRepository.createSession(
-      directory: await _resolveDirectory(request: request, worktreeResult: worktreeResult),
+      directory: _resolveDirectory(projectDirectory: projectDirectory, worktreeResult: worktreeResult),
       parentSessionId: null,
       parts: _buildPromptParts(
         parts: request.parts,
@@ -149,15 +153,15 @@ class SessionCreationService {
   /// when one was created, otherwise the project's live directory. The
   /// request's projectId is the stable identifier — it may point where the
   /// folder used to be, so it is never used as a directory directly.
-  Future<String> _resolveDirectory({
-    required CreateSessionRequest request,
+  String _resolveDirectory({
+    required String projectDirectory,
     required WorktreeResult? worktreeResult,
-  }) async {
+  }) {
     return switch (worktreeResult) {
       WorktreeSuccess(:final path) => path,
       // The fallback carries the live project directory it fell back to.
       WorktreeFallback(:final originalPath) => originalPath,
-      null => _sessionRepository.resolveProjectDirectory(projectId: request.projectId),
+      null => projectDirectory,
     };
   }
 

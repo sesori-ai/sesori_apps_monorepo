@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -46,8 +47,9 @@ void main() {
     late CreateSessionHandler handler;
     late AppDatabase db;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo", "/tmp"]);
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
@@ -951,39 +953,29 @@ void main() {
       expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
     });
 
-    test("creates session for first-time project (no prior projects_table row)", () async {
-      plugin.createSessionResult = const PluginSession(
-        id: "new-sess-1",
-        projectID: "brand-new-proj",
-        directory: "brand-new-proj",
-        parentID: null,
-        title: "New Session",
-        time: null,
-        summary: null,
-      );
-
-      final result = await handler.handle(
-        makeRequest("POST", "/session/create"),
-        body: const CreateSessionRequest(
-          projectId: "brand-new-proj",
-          dedicatedWorktree: false,
-          parts: [PromptPart.text(text: "Hello")],
-          variant: null,
-          agent: null,
-          model: null,
-          command: null,
+    test("rejects session creation for an unknown project id before plugin side effects", () async {
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/session/create"),
+          body: const CreateSessionRequest(
+            projectId: "brand-new-proj",
+            dedicatedWorktree: false,
+            parts: [PromptPart.text(text: "Hello")],
+            variant: null,
+            agent: null,
+            model: null,
+            command: null,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+        throwsA(isA<ProjectNotFoundException>()),
       );
 
-      expect(result.id, equals("new-sess-1"));
-
-      final dbSession = await db.sessionDao.getSession(sessionId: "new-sess-1");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.projectId, equals("brand-new-proj"));
-      expect(dbSession.sessionId, equals("new-sess-1"));
+      expect(plugin.lastCreateSessionDirectory, isNull);
+      expect(await db.projectsDao.getProject(projectId: "brand-new-proj"), isNull);
+      expect(await db.sessionDao.getSession(sessionId: "new-sess-1"), isNull);
     });
 
     test("no command — sendCommand not called", () async {

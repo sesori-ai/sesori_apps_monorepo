@@ -15,9 +15,10 @@ void main() {
     late PostAgentsHandler handler;
     late AppDatabase db;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       addTearDown(db.close);
       repository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
       handler = PostAgentsHandler(repository);

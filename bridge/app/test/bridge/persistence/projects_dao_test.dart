@@ -245,12 +245,12 @@ void main() {
     });
 
     group("getResolvedPath", () {
-      test("returns the id when no row exists", () async {
+      test("returns null when no row exists", () async {
         final path = await dao.getResolvedPath(projectId: "/projects/a");
-        expect(path, equals("/projects/a"));
+        expect(path, isNull);
       });
 
-      test("returns the id when the row's path mirrors it", () async {
+      test("returns the stored non-null path", () async {
         await dao.insertProjectsIfMissing(projectIds: ["/projects/a"]);
 
         final path = await dao.getResolvedPath(projectId: "/projects/a");
