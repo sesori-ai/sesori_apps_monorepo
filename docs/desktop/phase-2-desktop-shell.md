@@ -481,6 +481,11 @@ Findings log · Plan-deltas.
 - **Acceptance:** each exit class drives the correct action; give-up after N rapid
   crashes surfaces an error with recent helper log lines; exit policy does not
   live in a Layer-2 tracker.
+  **Carried from PR 2.5 (deferral, shared with PR 2.9):** if this PR's
+  Take-over slice is the first to answer a helper prompt, it designs the
+  GUI→helper `prompt_response` sender seam at its plan review (2.5 landed
+  inbound-to-tracker only; a cubit must not call the Layer-4 dispatcher) and
+  strikes that sub-item from the §8 "GUI→helper send paths" row.
 - **Carried from PR 1.12 (deferral):** map exit 88 (`SupervisedExitCode.bridgeContention`,
   ADR A25) to an "another Sesori bridge is running on this machine" state instead
   of the crash backoff — the incumbent bridge kept the machine and respawning
@@ -536,11 +541,13 @@ Findings log · Plan-deltas.
   GNOME-without-AppIndicator the windowed fallback engages (no unreachable
   hidden app); toggle starts/stops the bridge; status updates live; `SystemTray`
   has no dependency on desktop-core services, trackers, or cubits.
-  **Carried from PR 2.5 (deferral):** the GUI→helper `prompt_response` send
-  path does not exist yet (2.5 landed inbound-to-tracker only, and a cubit
-  must not call the Layer-4 dispatcher) — this PR (or 2.7's Take-over slice,
-  whichever lands the first prompt answer) designs the answer sender seam at
-  its plan review and removes the §8 "GUI→helper send paths" row when done.
+  **Carried from PR 2.5 (deferral, shared with PR 2.7):** the GUI→helper
+  `prompt_response` send path does not exist yet (2.5 landed
+  inbound-to-tracker only, and a cubit must not call the Layer-4 dispatcher) —
+  this PR (or 2.7's Take-over slice, whichever lands the first prompt answer)
+  designs the answer sender seam at its plan review and strikes that sub-item
+  from the §8 "GUI→helper send paths" row (the row itself stays until all its
+  sub-items are owned/landed).
 
 ## PR 2.10 — `WindowHost` single window + v1 window contents
 - **Goal:** `window_manager` single window (show/hide/focus). v1 window contents:
@@ -694,6 +701,10 @@ Findings log · Plan-deltas.
 - **Acceptance:** the full happy path passes as an automated/scripted test using
   local fakes; the helper proves it can authenticate to the fake relay with the
   GUI-supplied token before restart/logout; failures are deterministic in CI.
+  **Carried from PR 2.5 (deferral):** this PR owns the GUI→helper
+  `token_update` push send path (its goal already exercises token push/pull;
+  the bridge is correct pull-only until then) and strikes that sub-item from
+  the §8 "GUI→helper send paths" row.
 
 ## PR 2.16 — First-run provisioning progress UI + degraded state
 - **Goal:** Render `RuntimeProvisionProgress` (download bar/status) from the

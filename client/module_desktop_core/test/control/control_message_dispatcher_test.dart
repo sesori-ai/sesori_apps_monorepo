@@ -165,6 +165,29 @@ void main() {
     expect(statusTracker.status.bridgeId, "still-alive");
   });
 
+  test("a token reply is dropped when its requesting connection is gone", () async {
+    final Completer<String?> slowRefresh = Completer<String?>();
+    when(() => tokenProvider.getFreshAccessToken(forceRefresh: false)).thenAnswer((_) => slowRefresh.future);
+    final WebSocket first = await connectHelper();
+    sendFromHelper(first, const ControlMessage.tokenRequest(id: "stale-1"));
+    // Give the dispatcher time to start the (blocked) refresh.
+    await pumpEventQueue();
+
+    await first.close();
+    await statusTracker.statusStream.firstWhere((status) => !status.helperOnline);
+    final WebSocket second = await connectHelper();
+    final List<Object?> received = <Object?>[];
+    final StreamSubscription<Object?> subscription = second.listen(received.add);
+    addTearDown(subscription.cancel);
+
+    // The refresh started for the FIRST connection completes only now.
+    slowRefresh.complete("stale-bearer");
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    // The stale bearer must never cross onto the new connection.
+    expect(received, isEmpty);
+  });
+
   test("helper connect/disconnect drive the trackers and clear prompts", () async {
     final WebSocket helper = await connectHelper();
     sendFromHelper(

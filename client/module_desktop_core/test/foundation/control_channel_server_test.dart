@@ -121,6 +121,36 @@ void main() {
     expect(server.helperConnectionStream.value, isTrue);
   });
 
+  test("two concurrent authenticated upgrades leave exactly one active helper", () async {
+    final List<WebSocket> connected = <WebSocket>[];
+    // Fire both connects in the same event-loop turn so their upgrades race.
+    final List<Object?> results = await Future.wait(<Future<Object?>>[
+      connectHelper(server).then<Object?>((socket) {
+        connected.add(socket);
+        return socket;
+      }).catchError((Object error) => error),
+      connectHelper(server).then<Object?>((socket) {
+        connected.add(socket);
+        return socket;
+      }).catchError((Object error) => error),
+    ]);
+    for (final WebSocket socket in connected) {
+      addTearDown(socket.close);
+    }
+
+    // Either the loser was 409'd pre-upgrade, or it was closed post-upgrade
+    // by the slot re-validation — both ways exactly one helper survives.
+    if (connected.length == 2) {
+      final List<Future<Object?>> dones = connected.map((socket) => socket.done).toList();
+      await Future.any(dones);
+    } else {
+      expect(results.whereType<WebSocketException>(), hasLength(1));
+    }
+    expect(server.helperConnectionStream.value, isTrue);
+    final int openCount = connected.where((socket) => socket.readyState == WebSocket.open).length;
+    expect(openCount, 1);
+  });
+
   test("stop closes the server and reports the helper disconnected", () async {
     final WebSocket helper = await connectHelper(server);
     addTearDown(helper.close);

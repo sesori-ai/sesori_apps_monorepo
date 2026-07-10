@@ -34,6 +34,10 @@ class ControlMessageDispatcher {
 
   StreamSubscription<ControlChannelEvent>? _eventSubscription;
 
+  /// Bumped on every connect/disconnect: an async token reply is bound to the
+  /// connection its request arrived on and dropped when that changes.
+  int _connectionEpoch = 0;
+
   void start() {
     if (_eventSubscription != null) {
       throw StateError("ControlMessageDispatcher is already started");
@@ -46,8 +50,10 @@ class ControlMessageDispatcher {
   void _onEvent(ControlChannelEvent event) {
     switch (event) {
       case ControlChannelConnected():
+        _connectionEpoch++;
         _statusTracker.markHelperConnected();
       case ControlChannelDisconnected():
+        _connectionEpoch++;
         _statusTracker.markHelperDisconnected();
         // Prompts are per-connection: a dropped helper resolves its own
         // pending asks as unanswerable, so ours are stale.
@@ -91,6 +97,7 @@ class ControlMessageDispatcher {
   }
 
   Future<void> _respondToken({required ControlTokenRequest request}) async {
+    final int epoch = _connectionEpoch;
     String? accessToken;
     try {
       accessToken = await _tokenProvider.getFreshAccessToken(forceRefresh: request.forceRefresh);
@@ -100,12 +107,21 @@ class ControlMessageDispatcher {
       logw("Token refresh for the helper failed; answering signed-out", error, stackTrace);
       accessToken = null;
     }
+    if (_eventSubscription == null || epoch != _connectionEpoch) {
+      // The requesting connection is gone (helper dropped/respawned, or the
+      // dispatcher was disposed). Token ids are process-local on the helper
+      // side, so a stale bearer reply must never cross onto a different
+      // connection; the new helper simply re-pulls.
+      logd("Dropping a token response for a connection that no longer exists");
+      return;
+    }
     _send(message: ControlMessage.tokenResponse(id: request.id, accessToken: accessToken));
   }
 
   void _send({required ControlMessage message}) {
+    final String encoded = jsonEncode(message.toJson());
     try {
-      _server.send(jsonEncode(message.toJson()));
+      _server.send(encoded);
     } on Object catch (error, stackTrace) {
       // Best-effort: the helper may have dropped mid-round-trip; it re-pulls
       // after reconnecting.

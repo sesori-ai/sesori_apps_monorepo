@@ -58,6 +58,11 @@ class ControlChannelServer {
   HttpServer? _server;
   WebSocket? _socket;
   String? _secret;
+  bool _startPending = false;
+
+  /// Bumped by every [stop]: an in-flight `start()` bind or WS upgrade from a
+  /// previous generation detects it was superseded and discards its result.
+  int _generation = 0;
   final StreamController<ControlChannelEvent> _events = StreamController<ControlChannelEvent>.broadcast();
   final BehaviorSubject<bool> _helperConnected = BehaviorSubject.seeded(false);
 
@@ -88,16 +93,27 @@ class ControlChannelServer {
 
   /// Mints a fresh secret and starts listening on an ephemeral loopback port.
   Future<void> start() async {
-    if (_server != null) {
+    if (_server != null || _startPending) {
       throw StateError("Control channel server is already running");
     }
+    _startPending = true;
+    final int generation = _generation;
     _secret = _generateSecret();
-    final HttpServer server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    _server = server;
-    server.listen(
-      (request) => unawaited(_handleUpgradeRequest(request)),
-      onError: (Object error, StackTrace stackTrace) => logw("Control channel server error", error, stackTrace),
-    );
+    try {
+      final HttpServer server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      if (generation != _generation) {
+        // stop()/dispose() superseded this start while the bind was pending.
+        await server.close(force: true);
+        return;
+      }
+      _server = server;
+      server.listen(
+        (request) => unawaited(_handleUpgradeRequest(request)),
+        onError: (Object error, StackTrace stackTrace) => logw("Control channel server error", error, stackTrace),
+      );
+    } finally {
+      _startPending = false;
+    }
   }
 
   /// Sends a text frame to the connected helper.
@@ -106,19 +122,38 @@ class ControlChannelServer {
   /// callers decide whether that is an error or a best-effort drop.
   void send(String text) {
     final WebSocket? socket = _socket;
-    if (socket == null) {
+    if (socket == null || socket.readyState != WebSocket.open) {
       throw const ControlHelperNotConnectedException();
     }
-    socket.add(text);
+    try {
+      socket.add(text);
+    } on Object {
+      // A concurrently-closing socket surfaces here; map it to the documented
+      // contract so callers handle a single exception type.
+      throw const ControlHelperNotConnectedException();
+    }
   }
 
   /// Stops the server and drops the helper socket + secret.
   Future<void> stop() async {
+    // Invalidate any in-flight start bind or WS upgrade first, then null the
+    // secret — combined with the null-secret rejection in the upgrade
+    // handler, nothing can authenticate during or after teardown.
+    _generation++;
     final WebSocket? socket = _socket;
     _socket = null;
     final HttpServer? server = _server;
     _server = null;
     _secret = null;
+
+    // Report the disconnect before the async closes so consumers can never
+    // act on a "connected" snapshot of a server that is already gone; frames
+    // from the dropped socket are discarded by the identity check in its
+    // listener.
+    if (!_helperConnected.isClosed && _helperConnected.value) {
+      _helperConnected.add(false);
+      _events.add(const ControlChannelDisconnected());
+    }
 
     try {
       await socket?.close();
@@ -126,11 +161,11 @@ class ControlChannelServer {
       // Best-effort teardown: the socket may already be dead.
       logw("Error closing the helper control socket", error, stackTrace);
     }
-    await server?.close(force: true);
-
-    if (!_helperConnected.isClosed && _helperConnected.value) {
-      _helperConnected.add(false);
-      _events.add(const ControlChannelDisconnected());
+    try {
+      await server?.close(force: true);
+    } on Object catch (error, stackTrace) {
+      // Best-effort teardown: the listener may already be gone.
+      logw("Error closing the control channel server", error, stackTrace);
     }
   }
 
@@ -145,8 +180,12 @@ class ControlChannelServer {
     // Isolate each request: a mid-handshake disconnect or a bad client must
     // never crash the host server.
     try {
+      // The null check matters: during teardown `_secret` is null, and
+      // interpolation would otherwise turn the expected header into the
+      // guessable literal "Bearer null".
+      final String? secret = _secret;
       final String? authorization = request.headers.value(HttpHeaders.authorizationHeader);
-      if (authorization != "Bearer $_secret") {
+      if (secret == null || authorization != "Bearer $secret") {
         logw("Rejecting control upgrade: bad or missing Authorization header");
         request.response.statusCode = HttpStatus.unauthorized;
         await request.response.close();
@@ -165,12 +204,26 @@ class ControlChannelServer {
         return;
       }
 
+      final int generation = _generation;
       final WebSocket socket = await WebSocketTransformer.upgrade(request);
+      // Revalidate after the await: the server may have stopped meanwhile
+      // (generation bumped), or a concurrent upgrade may have won the single
+      // helper slot — in both cases this socket must not be installed.
+      if (generation != _generation || _socket != null) {
+        logw("Discarding a control upgrade that lost the helper slot");
+        await socket.close(WebSocketStatus.policyViolation, "superseded");
+        return;
+      }
       _socket = socket;
       _helperConnected.add(true);
       _events.add(const ControlChannelConnected());
       socket.listen(
         (Object? data) {
+          if (!identical(_socket, socket)) {
+            // Buffered frames from a socket that is no longer the active
+            // helper (dropped/superseded) must not leak into the pipeline.
+            return;
+          }
           if (data is String) {
             _events.add(ControlChannelFrame(text: data));
           } else {
