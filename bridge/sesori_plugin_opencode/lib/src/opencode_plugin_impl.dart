@@ -523,6 +523,15 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         directory: projectId,
       ),
     );
+    // A moved folder re-opened at a new location resolves to a project whose
+    // root worktree is still the original path. Teach the tracker the alias
+    // so sessions running under the live location group under the canonical
+    // project — activity summaries and event projectIDs both key off it.
+    final changed = _service.tracker.registerWorktreeAlias(
+      directory: projectId,
+      worktree: project.worktree,
+    );
+    if (changed) _emitProjectsSummary();
     return _pluginModelMapper.mapProject(project);
   }
 

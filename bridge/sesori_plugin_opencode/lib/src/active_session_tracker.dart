@@ -12,6 +12,13 @@ class ActiveSessionTracker {
   final OpenCodeRepository _repository;
 
   final Set<String> _projectWorktrees = {};
+
+  /// Directories the backend resolves to a project rooted elsewhere, keyed by
+  /// normalized directory → canonical worktree. A moved folder re-opened at a
+  /// new location keeps its original worktree as the backend's project root,
+  /// so sessions running under the live location would otherwise never match
+  /// a known worktree. Learned from project lookups by directory.
+  final Map<String, String> _worktreeAliases = {};
   final Map<String, String> _sessionWorktrees = {};
   final Map<String, String> _sessionDirectories = {}; // directory where the session is located
   final Map<String, SessionStatus> _sessionStatuses = {};
@@ -277,8 +284,36 @@ class ActiveSessionTracker {
     _projectWorktrees
       ..clear()
       ..addAll(worktrees);
+    return _resummarizeAfterWorktreeKnowledgeChange();
+  }
 
-    // Re-resolve worktrees for active sessions that don't have one yet.
+  /// Records that the backend resolves [directory] to the project rooted at
+  /// [worktree] — a moved folder re-opened at a new location keeps its
+  /// original worktree as the backend's project root. With the alias in
+  /// place, sessions running under [directory] resolve to [worktree] like any
+  /// other session of that project, so activity summaries and event
+  /// projectIDs group under the canonical project.
+  ///
+  /// Called from [OpenCodePlugin.getProject], the one lookup that pairs a
+  /// requested directory with the backend's canonical project root. Returns
+  /// `true` when the alias changed the activity summary.
+  bool registerWorktreeAlias({required String directory, required String worktree}) {
+    final normalizedDirectory = _normalizePath(directory);
+    if (worktree.isEmpty || normalizedDirectory == _normalizePath(worktree)) {
+      return false;
+    }
+    if (_worktreeAliases[normalizedDirectory] == worktree) {
+      return false;
+    }
+    _worktreeAliases[normalizedDirectory] = worktree;
+    return _resummarizeAfterWorktreeKnowledgeChange();
+  }
+
+  /// Re-resolves worktrees for active sessions that lack one — new knowledge
+  /// (a fresh project list, a new directory alias) can make a previously
+  /// unresolvable session directory groupable. Returns `true` when the
+  /// activity summary changed as a result.
+  bool _resummarizeAfterWorktreeKnowledgeChange() {
     for (final sessionId in _sessionStatuses.keys.toList()) {
       if (_sessionWorktrees.containsKey(sessionId)) continue;
       final directory = _sessionDirectories[sessionId];
@@ -535,7 +570,21 @@ class ActiveSessionTracker {
         }
       }
     }
-    return bestMatch;
+    if (bestMatch != null) {
+      return bestMatch;
+    }
+    // No known worktree contains the directory — it may be the live location
+    // of a moved project. An alias maps the directory (and anything under it)
+    // back to the project's canonical worktree.
+    String? bestAliasRoot;
+    for (final aliasRoot in _worktreeAliases.keys) {
+      if (normalizedDirectory == aliasRoot || normalizedDirectory.startsWith("$aliasRoot/")) {
+        if (bestAliasRoot == null || aliasRoot.length > bestAliasRoot.length) {
+          bestAliasRoot = aliasRoot;
+        }
+      }
+    }
+    return bestAliasRoot == null ? null : _worktreeAliases[bestAliasRoot];
   }
 
   String _normalizePath(String path) => path.replaceAll(r"\", "/");

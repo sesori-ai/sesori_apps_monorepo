@@ -173,6 +173,70 @@ void main() {
       });
     });
 
+    group("worktree aliases (moved project live directory)", () {
+      test("an aliased directory and its subdirectories resolve to the canonical worktree", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.updateProjectWorktrees(worktrees: {"/repo"});
+
+        tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        expect(tracker.resolveProjectWorktree(directory: "/moved/repo"), equals("/repo"));
+        expect(
+          tracker.resolveProjectWorktree(directory: "/moved/repo/.worktrees/session-001"),
+          equals("/repo"),
+        );
+      });
+
+      test("a canonical worktree match takes precedence over an alias", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.updateProjectWorktrees(worktrees: {"/moved/repo"});
+
+        tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        expect(tracker.resolveProjectWorktree(directory: "/moved/repo"), equals("/moved/repo"));
+      });
+
+      test("self-aliases and empty worktrees are ignored", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+
+        expect(tracker.registerWorktreeAlias(directory: "/repo", worktree: "/repo"), isFalse);
+        expect(tracker.registerWorktreeAlias(directory: "/repo", worktree: ""), isFalse);
+        expect(tracker.resolveProjectWorktree(directory: "/repo"), isNull);
+      });
+
+      test("registering an alias re-groups an already-active session under the canonical project", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.updateProjectWorktrees(worktrees: {"/repo"});
+
+        // A session running at the moved project's live location: no known
+        // worktree contains it, so the summary can't group it yet.
+        tracker.handleEvent(_sessionCreated("s1", "/moved/repo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+        expect(tracker.buildSummary(), isEmpty);
+
+        final changed = tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        expect(changed, isTrue, reason: "the summary regained a session — callers must re-emit");
+        final pairs = tracker.buildSummary().map((item) => (item.id, item.activeSessions.length)).toSet();
+        expect(pairs, equals({("/repo", 1)}));
+
+        // Re-registering the same alias changes nothing.
+        expect(tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo"), isFalse);
+      });
+
+      test("sessions created after the alias is known group under the canonical project", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.updateProjectWorktrees(worktrees: {"/repo"});
+        tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        tracker.handleEvent(_sessionCreated("s1", "/moved/repo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        final pairs = tracker.buildSummary().map((item) => (item.id, item.activeSessions.length)).toSet();
+        expect(pairs, equals({("/repo", 1)}));
+      });
+    });
+
     group("getActiveStatuses", () {
       test("empty tracker returns empty map", () {
         final tracker = ActiveSessionTracker(_fakeRepository());
