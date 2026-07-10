@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 2 — PR 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI — PR raised on branch `desktop-impl-plan-review` (PR 1.15 merged as #390)
-- **Next up:** Phase 2 — PR 2.2 Desktop platform adapters. **Phase 1's MT-1 manual checkpoint (user-run) remains OPEN** — the user explicitly directed Phase 2 to proceed (as stacked PRs, merged one by one) while MT-1 stays open; MT-1 must still be run before Phase 1 is called done.
+- **Last completed phase:** Phase 2 — PR 2.2 Desktop platform adapters — PR raised on branch `desktop-phase-2.2-platform-adapters`, stacked on PR 2.1 (#405, branch `desktop-impl-plan-review`)
+- **Next up:** Phase 2 — PR 2.3 Login reuse (browser-poll OAuth). **Phase 1's MT-1 manual checkpoint (user-run) remains OPEN** — the user explicitly directed Phase 2 to proceed (as stacked PRs, merged one by one) while MT-1 stays open; MT-1 must still be run before Phase 1 is called done.
 - **Branch:** one feature branch per PR; Phase 2 is being raised as **stacked branches** (each PR's base = the previous PR's branch, retargeted to `main` as predecessors merge)
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -405,7 +405,7 @@ them). Only the user checks an MT box.
 
 ### Phase 2 — Desktop shell + supervisor → `phase-2-desktop-shell.md`
 - ☑ 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes — Med / M
-- ☐ 2.2 Desktop platform adapters (module_core + module_desktop_core prerequisites) — Low-Med / S-M
+- ☑ 2.2 Desktop platform adapters (module_core + module_desktop_core prerequisites) — Low-Med / S-M
 - ☐ 2.3 Login reuse (`AuthManager` browser-poll OAuth) — Med / M
 - ☐ 2.4 Control status/prompt trackers baseline (no relay client yet) — Low-Med / S-M
 - ☐ 2.5a Re-export `AuthTokenProvider` from `module_core` (seam) — Low / S

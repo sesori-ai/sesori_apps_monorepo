@@ -180,6 +180,44 @@ Findings log · Plan-deltas.
   missing-registration errors, but the cubit itself is not registered in DI;
   desktop-core adapters used by this PR resolve through DI; no relay
   `ConnectionService` resolution is required before Phase 4.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `desktop-phase-2.2-platform-adapters`).
+- **Findings:** The minimal phase-1 set is exactly five registrations —
+  `http.Client`, `SecureStorage`, `UrlLauncher`, `LifecycleSource`,
+  `OAuthDeviceDescriptorProvider` (plus `DeviceInfoPlugin`/`FlutterSecureStorage`
+  providers in the shell's `RegisterModule`). Verified by tracing LoginCubit's
+  transitive DI closure: it touches NONE of `FailureReporter`/
+  `ConnectionService`/`RelayCryptoService`/`DeepLinkSource`/`RouteSource`/
+  `RouteDispatcher`/`PushMessagingSource`/`LocalNotificationClient`, so the
+  goal's "a no-op `FailureReporter` may still land here" clause resolved to NOT
+  NEEDED — nothing eagerly requires it (deferred to the PR that first resolves
+  it). Adapters (all in `client/desktop/lib/core/platform/`, `Desktop*` names):
+  `DesktopSecureStorageAdapter` (flutter_secure_storage — macOS Keychain with
+  the same "Sesori" service label as mobile; differing bundle ids keep the
+  products' keychain items isolated; Windows Credential Manager; Linux
+  libsecret), `DesktopUrlLauncher` (system browser, ADR A11),
+  `DesktopLifecycleObserver` (`@Singleton` — eager, mirrors mobile's documented
+  WidgetsBinding-observer-at-startup reason), and
+  `DesktopOAuthDeviceDescriptorProvider` — sends **`app_macos` /
+  `app_windows` / `app_linux`** clientTypes (auth-server enum verified; the
+  confirmation interstitial then labels "macOS desktop"/"Windows desktop"/
+  "Linux desktop"), device name = computerName (macOS/Windows) /
+  `Platform.localHostname` (Linux), never throws (degrades to fallback names,
+  `logw` with error args), clamped to the server schema limits (120/40). The
+  shell's `configureDesktopDependencies()` gained `@InjectableInit` +
+  `getIt.init()` as phase 1. `desktop-ci.yml` Linux apt deps gained
+  `libsecret-1-dev` (flutter_secure_storage_linux compile requirement). DI
+  acceptance asserted by test: full 4-phase bootstrap then
+  `LoginCubit(getIt(), getIt(), getIt(), getIt())` constructs, and
+  `getIt.isRegistered<LoginCubit>()` is false. Lockfile unchanged (all four
+  plugin packages already resolved by mobile at the same versions). Verified:
+  analyze + tests green across all 6 modules (desktop now 6 tests);
+  `flutter build macos` OK; Windows/Linux legs on the PR's CI.
+- **Deltas:** none structural. Naming uses the `Desktop*` adapter prefix
+  (mobile uses `Flutter*`/`App*`) to keep the two products' adapters
+  distinguishable in cross-package searches. A Linux distro without a secret
+  service fails loudly at first secure-storage use (libsecret
+  `PlatformException`) — surfaced, not corrupted; revisit copy in Phase 3
+  packaging if support tickets appear.
 
 ## PR 2.3 — Login reuse (browser-poll OAuth)
 - **Goal:** Wire login via `configureAuthDependencies` + exported interfaces
