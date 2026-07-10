@@ -194,7 +194,10 @@ class _WhyBridgeButton extends StatelessWidget {
         fullWidth: false,
         leadingIcon: TablerRegular.info_circle,
         label: loc.projectsOnboardingPcStatusWhy,
-        hierarchy: PregoButtonsSolidHierarchy.tertiary,
+        hierarchy: switch (surface) {
+          OnboardingSurface.bridgeOffline => PregoButtonsSolidHierarchy.tertiary,
+          OnboardingSurface.connectedEmpty || OnboardingSurface.connectSetup => PregoButtonsSolidHierarchy.secondary,
+        },
         size: PregoButtonsSolidSize.sm,
         onPressed: () {
           unawaited(

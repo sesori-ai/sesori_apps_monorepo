@@ -57,6 +57,9 @@ class RegisteredBridgesService {
   /// [getRegisteredBridges] callers onto a single network request.
   Future<List<BridgeSummary>>? _activeFetch;
 
+  /// Last successful bridge-list result, sorted in display order.
+  List<BridgeSummary>? _cachedBridges;
+
   /// Auth generation, bumped on every logout. A lookup or connection-driven
   /// latch captures this when it starts; if a logout bumps it while the
   /// operation is in flight, the operation must not write the old account's
@@ -133,6 +136,8 @@ class RegisteredBridgesService {
   /// throw (network timeout, deserialization) — rather than an ErrorResponse —
   /// would otherwise surface as an uncaught async error.
   Future<List<BridgeSummary>> getRegisteredBridges() {
+    final cached = _cachedBridges;
+    if (cached != null) return Future.value(cached);
     return _activeFetch ??= _fetchRegisteredBridges().whenComplete(() => _activeFetch = null);
   }
 
@@ -153,7 +158,9 @@ class RegisteredBridgesService {
           // write, so reporting the bridges here would still leak the old
           // account's answer to the caller. Retire the result to match.
           if (generation != _authGeneration) return const [];
-          return _sortedByRecency(bridges: data);
+          final sorted = _sortedByRecency(bridges: data);
+          _cachedBridges = sorted;
+          return sorted;
         case ErrorResponse(:final error):
           logw("Failed to fetch registered bridges: ${error.toString()}");
           return const [];
@@ -171,7 +178,11 @@ class RegisteredBridgesService {
     return [...bridges]..sort((a, b) {
       final aSeen = a.lastSeenAt;
       final bSeen = b.lastSeenAt;
-      if (aSeen != null && bSeen != null) return bSeen.compareTo(aSeen);
+      if (aSeen != null && bSeen != null) {
+        final seenCompare = bSeen.compareTo(aSeen);
+        if (seenCompare != 0) return seenCompare;
+        return b.addedAt.compareTo(a.addedAt);
+      }
       if (aSeen != null) return -1;
       if (bSeen != null) return 1;
       return b.addedAt.compareTo(a.addedAt);
@@ -226,6 +237,7 @@ class RegisteredBridgesService {
   }
 
   void _reset() {
+    _cachedBridges = null;
     if (!_isRegistered.isClosed && _isRegistered.value) _isRegistered.add(false);
   }
 

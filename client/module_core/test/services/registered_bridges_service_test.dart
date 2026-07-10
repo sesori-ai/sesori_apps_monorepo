@@ -134,18 +134,56 @@ void main() {
     test("returns the fetched bridges most recently seen first and latches the store", () async {
       final seenEarlier = testBridgeSummary(id: "a", name: "old-laptop", lastSeenAt: DateTime.utc(2026, 6, 1));
       final seenLatest = testBridgeSummary(id: "b", name: "new-laptop", lastSeenAt: DateTime.utc(2026, 7, 1));
+      final seenSameTimeNewer = testBridgeSummary(
+        id: "e",
+        name: "newest-tied-laptop",
+        addedAt: DateTime.utc(2026, 5, 3),
+        lastSeenAt: DateTime.utc(2026, 6, 1),
+      );
       final neverSeenNewer = testBridgeSummary(id: "c", name: "fresh-desktop", addedAt: DateTime.utc(2026, 5, 2));
       final neverSeenOlder = testBridgeSummary(id: "d", name: "stale-desktop", addedAt: DateTime.utc(2026, 5, 1));
       when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
-        (_) async => ApiResponse.success([neverSeenOlder, seenEarlier, neverSeenNewer, seenLatest]),
+        (_) async => ApiResponse.success([neverSeenOlder, seenEarlier, seenSameTimeNewer, neverSeenNewer, seenLatest]),
       );
       final service = build();
 
       final bridges = await service.getRegisteredBridges();
 
-      expect(bridges.map((b) => b.id), ["b", "a", "c", "d"]);
+      expect(bridges.map((b) => b.id), ["b", "e", "a", "c", "d"]);
       expect(service.isRegistered.value, isTrue);
       verify(() => store.markRegistered()).called(1);
+    });
+
+    test("reuses a bridge list fetched while resolving the registered latch", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary()]),
+      );
+      final service = build();
+
+      expect(await service.hasRegisteredBridges(), isTrue);
+      final bridges = await service.getRegisteredBridges();
+
+      expect(bridges, hasLength(1));
+      verify(() => bridgeRepository.getRegisteredBridges()).called(1);
+    });
+
+    test("logout clears the cached bridge list", () async {
+      final oldBridge = testBridgeSummary(id: "old", name: "old-macbook");
+      final newBridge = testBridgeSummary(id: "new", name: "new-macbook");
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([oldBridge]),
+      );
+      final service = build();
+
+      expect((await service.getRegisteredBridges()).map((b) => b.id), ["old"]);
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([newBridge]),
+      );
+
+      expect((await service.getRegisteredBridges()).map((b) => b.id), ["new"]);
+      verify(() => bridgeRepository.getRegisteredBridges()).called(2);
     });
 
     test("an empty result returns an empty list without latching", () async {
