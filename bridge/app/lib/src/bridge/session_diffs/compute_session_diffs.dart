@@ -63,7 +63,19 @@ Future<List<FileDiff>> computeSessionDiffs({
     throw const GitDiffQueryException(message: "git diff --numstat failed");
   }
 
-  final statusEntries = parseNameStatus(decodeOutput(nameStatusResult.stdout));
+  final untrackedResult = await _runGit(
+    processRunner: processRunner,
+    worktreePath: worktreePath,
+    arguments: ["ls-files", "--others", "--exclude-standard"],
+  );
+  if (untrackedResult.exitCode != 0) {
+    throw const GitDiffQueryException(message: "git ls-files --others failed");
+  }
+
+  final statusEntries = mergeTrackedAndUntrackedEntries(
+    trackedEntries: parseNameStatus(decodeOutput(nameStatusResult.stdout)),
+    untrackedPaths: parseUntrackedPaths(decodeOutput(untrackedResult.stdout)),
+  );
   final statsByFile = parseNumstat(decodeOutput(numstatResult.stdout));
   final diffs = <FileDiff>[];
 
@@ -117,6 +129,9 @@ Future<List<FileDiff>> computeSessionDiffs({
 
     final before = contentOrEmpty(beforeResult);
     final after = contentOrEmpty(afterResult);
+    final lineCounts = counts.additions == 0 && counts.deletions == 0 && after.isNotEmpty
+        ? (additions: _countLines(after), deletions: 0)
+        : counts;
     if (before.length + after.length > maxFileContentBytes) {
       diffs.add(
         FileDiff.skipped(
@@ -133,14 +148,19 @@ Future<List<FileDiff>> computeSessionDiffs({
         file: entry.file,
         before: before,
         after: after,
-        additions: counts.additions,
-        deletions: counts.deletions,
+        additions: lineCounts.additions,
+        deletions: lineCounts.deletions,
         status: entry.status,
       ),
     );
   }
 
   return diffs;
+}
+
+int _countLines(String content) {
+  if (content.isEmpty) return 0;
+  return "\n".allMatches(content).length + (content.endsWith("\n") ? 0 : 1);
 }
 
 /// Parses stdout that should contain exactly one non-empty SHA line.

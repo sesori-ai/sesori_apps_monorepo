@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -13,14 +15,24 @@ void main() {
 
   group("DiffCubit", () {
     late MockSessionRepository mockSessionRepository;
+    late MockConnectionService mockConnectionService;
+    late StreamController<SesoriSessionEvent> sessionEvents;
     const sessionId = "session-1";
 
     setUp(() {
       mockSessionRepository = MockSessionRepository();
+      mockConnectionService = MockConnectionService();
+      sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
+      when(() => mockConnectionService.sessionEvents(sessionId)).thenAnswer((_) => sessionEvents.stream);
+    });
+
+    tearDown(() async {
+      await sessionEvents.close();
     });
 
     DiffCubit buildCubit() => DiffCubit(
       sessionRepository: mockSessionRepository,
+      connectionService: mockConnectionService,
       sessionId: sessionId,
     );
 
@@ -155,6 +167,40 @@ void main() {
       expect: () => [
         isA<DiffStateLoading>(),
         isA<DiffStateLoaded>().having((s) => s.files.length, "files after retry", 1),
+      ],
+    );
+
+    // -------------------------------------------------------------------------
+    // 7. session.diff SSE → silent refresh
+    // -------------------------------------------------------------------------
+
+    blocTest<DiffCubit, DiffState>(
+      "session.diff SSE: silently re-fetches diffs",
+      build: () {
+        when(
+          () => mockSessionRepository.getSessionDiffs(sessionId: sessionId),
+        ).thenAnswer((_) async => ApiResponse.success(SessionDiffsResponse(diffs: [testFileDiff()])));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(
+          () => mockSessionRepository.getSessionDiffs(sessionId: sessionId),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionDiffsResponse(
+              diffs: [
+                testFileDiff(file: "lib/src/new.dart"),
+              ],
+            ),
+          ),
+        );
+        sessionEvents.add(const SesoriSessionDiff(sessionID: sessionId));
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<DiffStateLoaded>().having((s) => s.files.single.file, "refreshed file", "lib/src/new.dart"),
       ],
     );
   });
