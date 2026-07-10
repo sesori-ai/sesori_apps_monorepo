@@ -37,27 +37,40 @@ class AuthGateCubit extends Cubit<AuthGateState> {
     if (isClosed) {
       return;
     }
-    _subscription = _authSession.authStateStream.listen(_onAuthState);
 
     final AuthState current = _authSession.currentState;
-    if (hasLocalSession && current is AuthInitial) {
+    final bool tokenOnlySession = hasLocalSession && current is AuthInitial;
+    if (tokenOnlySession) {
       // Valid tokens but no cached user record (a prior best-effort user
       // save failed), so the local restore could not emit: the session is
       // still signed in — forcing a re-login would discard working
-      // credentials. Gate on the tokens (mobile's startup posture) and
-      // recover the account details in the background; the auth stream
-      // upgrades the state to a full signedIn(user) when it completes.
+      // credentials. Gate on the tokens (mobile's startup posture) BEFORE
+      // subscribing, so a replayed `initial` from the stream can never flash
+      // the login view for a returning user.
       emit(const AuthGateState.signedIn(user: null));
-      try {
-        await _authSession.restoreSession();
-      } on Object catch (error, stackTrace) {
-        // Stay provisionally signed in; a hard auth failure reaches the gate
-        // through the auth-state stream instead.
-        logw("Background session restore failed", error, stackTrace);
-      }
+    }
+
+    _subscription = _authSession.authStateStream.listen(_onAuthState);
+
+    if (!tokenOnlySession) {
+      _onAuthState(current);
       return;
     }
-    _onAuthState(current);
+
+    // Recover the account details in the background; the auth stream upgrades
+    // the state to a full signedIn(user) when it completes.
+    try {
+      final bool restored = await _authSession.restoreSession();
+      if (!restored) {
+        // Deliberately stay provisionally signed in: an unreachable auth
+        // server must not log the user out; genuinely dead credentials
+        // surface as an unauthenticated stream event on first real use.
+        logw("Background session restore could not confirm the user; staying provisionally signed in");
+      }
+    } on Object catch (error, stackTrace) {
+      // Same posture as the unconfirmed case above.
+      logw("Background session restore failed", error, stackTrace);
+    }
   }
 
   /// Device-local sign-out (clears local tokens only; other devices stay
