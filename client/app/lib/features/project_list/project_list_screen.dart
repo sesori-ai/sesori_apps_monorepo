@@ -146,9 +146,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   }
 
   /// The scaffold's bottom-right floating action for the current [state]: the
-  /// add-project FAB once projects exist, the "Need help?" support menu on the
-  /// onboarding and recovery surfaces (never-registered setup, connected-but-
-  /// empty, and bridge-offline), and nothing otherwise.
+  /// add-project FAB once projects exist, the onboarding "Need help?" support
+  /// menu on the never-registered setup surface, and nothing otherwise — the
+  /// connected-but-empty state anchors its own add-project call to action at
+  /// the bottom ([_ConnectedEmptyView]), so a floating pill would collide.
   Widget? _floatingAction({required BuildContext context, required ProjectListState state}) {
     if (state is ProjectListLoaded && state.projects.isNotEmpty) {
       return PregoButtonsIconGlass(
@@ -164,9 +165,6 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       return _NeedHelpMenu(
         surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
       );
-    }
-    if (state is ProjectListLoaded && state.projects.isEmpty) {
-      return const _NeedHelpMenu(surface: OnboardingSurface.connectedEmpty);
     }
     return null;
   }
@@ -220,8 +218,8 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   /// The top-nav connection banner for [state], or `null` when it should be
   /// suppressed.
   ///
-  /// A non-empty loaded list always hosts it. The empty onboarding list
-  /// normally owns the screen full-screen (its checklist would contradict an
+  /// A non-empty loaded list always hosts it. The empty list normally owns
+  /// the screen full-screen (its "Connected" caption would contradict an
   /// offline banner, and a bridge-offline empty list transitions to the
   /// dedicated offline flow instead) — but a terminal `ConnectionLost` keeps
   /// the list loaded-empty with no other recovery surface, so surface the
@@ -266,13 +264,13 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         if (projects.isEmpty)
-          // Same shape as the disconnected bodies above: the onboarding joins
+          // Same shape as the disconnected bodies above: the empty state joins
           // the page scroll rather than nesting one of its own.
           const SliverFillRemaining(
             hasScrollBody: false,
             child: SafeArea(
               top: false,
-              child: _OnboardingChecklist(),
+              child: _ConnectedEmptyView(),
             ),
           )
         else ...[

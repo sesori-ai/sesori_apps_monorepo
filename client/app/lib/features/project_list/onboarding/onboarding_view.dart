@@ -6,22 +6,20 @@ part of "../project_list_screen.dart";
 // The two empty Projects states have their own bodies now that they diverge:
 // * disconnected — the connect-your-computer onboarding (connection graphic in
 //   its "off" state): install + start the bridge. See [_ConnectBridgeChecklist].
-// * connected, no projects — the phone/PC status body with the graphic in its
-//   "on" state. See [_OnboardingChecklist].
+// * connected, no projects — the graphic in its "on" state with a "Connected"
+//   caption and an add-project call to action. See [_ConnectedEmptyView].
 //
 // Both are bodies, not pages: [ProjectListScreen] hosts them in its own page
 // scroll — with the pull-to-refresh and the collapsing large title that come
 // with it — rather than each nesting a scroll view of its own.
 // ===========================================================================
 
-/// The "connected, no projects" empty state: the phone/PC status lines, the
-/// connection graphic in its "on" state, and the per-platform install command
-/// boxes. Shown once a bridge is connected but no projects exist yet. The
-/// "Need help?" support menu ([_NeedHelpMenu]) is not part of this scroll flow —
-/// it rides the scaffold's floating-action slot, pinned to the bottom-right
-/// corner above the home indicator.
-class _OnboardingChecklist extends StatelessWidget {
-  const _OnboardingChecklist();
+/// The "connected, no projects" empty state: the connection graphic in its
+/// "on" state with a success-colored "Connected" caption sitting high in the
+/// body, and — anchored to the bottom — the no-projects message with the
+/// add-project call to action, which opens the existing Add Project sheet.
+class _ConnectedEmptyView extends StatelessWidget {
+  const _ConnectedEmptyView();
 
   @override
   Widget build(BuildContext context) {
@@ -31,17 +29,19 @@ class _OnboardingChecklist extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // 64px gap from the title area keeps the graphic in the upper portion
+        // of the screen (Figma gap-7xl), clear of the bottom CTA group.
+        const SizedBox(height: PregoSpacing.x7l),
+        const Center(
+          child: ExcludeSemantics(child: ConnectionGraphic.connectionOn()),
+        ),
+        const SizedBox(height: PregoSpacing.lg),
         Text.rich(
           TextSpan(
             children: [
-              TextSpan(text: loc.projectsOnboardingPhoneStatusStep),
-              const TextSpan(text: " "),
-              // "Phone connected" + check icon read as a single success-colored
-              // unit confirming the connection.
-              TextSpan(
-                text: loc.projectsOnboardingPhoneStatusConnected,
-                style: TextStyle(color: prego.colors.textSuccessPrimary),
-              ),
+              // "Connected" + check icon read as a single success-colored unit
+              // confirming the connection.
+              TextSpan(text: loc.projectsEmptyConnected),
               WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
                 child: Padding(
@@ -55,39 +55,35 @@ class _OnboardingChecklist extends StatelessWidget {
               ),
             ],
           ),
-          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSuccessPrimary),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: PregoSpacing.x4l),
-        const Center(
-          child: ExcludeSemantics(child: ConnectionGraphic.connectionOn()),
-        ),
-        const SizedBox(height: PregoSpacing.lg),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: loc.projectsOnboardingPcStatusStep),
-              const TextSpan(text: " "),
-              TextSpan(
-                text: loc.projectsOnboardingPcStatusRun,
-                style: TextStyle(color: prego.colors.textSecondary),
-              ),
-            ],
+        const Spacer(),
+        Center(
+          child: ConstrainedBox(
+            // Figma caps the message at 224px so it wraps into a compact
+            // two-line block instead of a full-width single line.
+            constraints: const BoxConstraints(maxWidth: 224),
+            child: Text(
+              loc.projectsEmptyMessage,
+              textAlign: TextAlign.center,
+              style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+            ),
           ),
-          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
-          textAlign: TextAlign.center,
         ),
-        const SizedBox(height: PregoSpacing.lg),
-        const _WhyBridgeButton(surface: OnboardingSurface.connectedEmpty),
-        // 40px gap from the header group to the install boxes (Figma gap-5xl).
-        const SizedBox(height: PregoSpacing.x5l),
-        const Padding(
-          padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.x3l),
-          child: _InstallCommandBoxes(surface: OnboardingSurface.connectedEmpty),
+        const SizedBox(height: PregoSpacing.xl),
+        Center(
+          child: PregoButtonsSolid(
+            fullWidth: false,
+            leadingIcon: TablerRegular.folder_plus,
+            label: loc.projectsEmptyAddProject,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            size: PregoButtonsSolidSize.xl,
+            onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+          ),
         ),
-        // Bottom breathing room so the last install box can be scrolled clear of
-        // the "Need help?" button pinned in the bottom-right corner.
-        const SizedBox(height: PregoSpacing.x6l),
+        // 24px above the home-indicator inset the hosting SafeArea applies.
+        const SizedBox(height: PregoSpacing.x3l),
       ],
     );
   }

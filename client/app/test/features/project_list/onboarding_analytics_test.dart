@@ -19,7 +19,8 @@ import "../../helpers/test_helpers.dart";
 // End-to-end analytics guard for the Projects onboarding/recovery surfaces:
 // every AnalyticsEvent union case is fired through a real widget tap, and the
 // surface parameter tracks which body hosted it — the connect-your-computer
-// setup, the connected-but-empty checklist, or the bridge-offline view.
+// setup or the bridge-offline view. (The connected-but-empty state carries no
+// onboarding widgets anymore, so it fires no onboarding events.)
 //
 // Pumps the real [ProjectListScreen] (its cubit is built from getIt, so every
 // dependency is registered as a mock below) driven into each state through
@@ -106,16 +107,6 @@ void main() {
     addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
   }
 
-  /// Connected relay with zero projects → the connected-but-empty onboarding.
-  Future<void> pumpConnectedEmpty(WidgetTester tester) async {
-    when(() => mockProjectService.listProjects()).thenAnswer(
-      (_) async => ApiResponse.success(const Projects(data: [])),
-    );
-    when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
-    await pumpScreen(tester);
-    expect(find.text("Need help?"), findsOneWidget);
-  }
-
   /// Bridge offline with no bridge ever registered → the connect-your-computer
   /// setup onboarding.
   Future<void> pumpConnectSetup(WidgetTester tester) async {
@@ -144,22 +135,22 @@ void main() {
     verify(() => mockAnalyticsReporter.logEvent(event: event)).called(1);
   }
 
-  group("connected-but-empty onboarding", () {
+  group("connect-your-computer setup onboarding", () {
     testWidgets("tapping the Need help pill logs the menu-open event", (tester) async {
-      await pumpConnectedEmpty(tester);
+      await pumpConnectSetup(tester);
 
       await tester.tap(find.text("Need help?"));
       await tester.pumpAndSettle();
 
       verifyLogged(
-        const AnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectedEmpty),
+        const AnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
       );
       // The popup actually opened alongside the event.
       expect(find.text("Email"), findsOneWidget);
     });
 
     testWidgets("tapping a support channel logs the channel event and launches the link", (tester) async {
-      await pumpConnectedEmpty(tester);
+      await pumpConnectSetup(tester);
 
       await tester.tap(find.text("Need help?"));
       await tester.pumpAndSettle();
@@ -170,7 +161,7 @@ void main() {
       verifyLogged(
         const AnalyticsEvent.supportLinkOpened(
           channel: SupportChannel.email,
-          surface: OnboardingSurface.connectedEmpty,
+          surface: OnboardingSurface.connectSetup,
         ),
       );
       final launched = verify(() => mockUrlLauncher.launch(captureAny())).captured.single as Uri;
@@ -178,7 +169,7 @@ void main() {
     });
 
     testWidgets("each support channel reports its own analytics channel value", (tester) async {
-      await pumpConnectedEmpty(tester);
+      await pumpConnectSetup(tester);
 
       const channelByLabel = {
         "Discord": SupportChannel.discord,
@@ -193,103 +184,13 @@ void main() {
         verifyLogged(
           AnalyticsEvent.supportLinkOpened(
             channel: entry.value,
-            surface: OnboardingSurface.connectedEmpty,
+            surface: OnboardingSurface.connectSetup,
           ),
         );
       }
     });
 
     testWidgets("opening the why-bridge explainer logs its event", (tester) async {
-      await pumpConnectedEmpty(tester);
-
-      await tester.tap(find.text("Why is this needed?"));
-      await tester.pumpAndSettle();
-
-      verifyLogged(
-        const AnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.connectedEmpty),
-      );
-      // The sheet actually opened alongside the event (button + sheet title).
-      expect(find.text("Why is this needed?"), findsNWidgets(2));
-    });
-
-    testWidgets("copying the default install command logs curl on unix", (tester) async {
-      await pumpConnectedEmpty(tester);
-
-      await tester.tap(find.bySemanticsLabel("Copy command"));
-      await tester.pumpAndSettle();
-
-      verifyLogged(
-        const AnalyticsEvent.installCommandCopied(
-          method: BridgeInstallMethod.curl,
-          os: BridgeInstallOs.unix,
-          surface: OnboardingSurface.connectedEmpty,
-        ),
-      );
-    });
-
-    testWidgets("copying after switching to the Windows group logs powershell", (tester) async {
-      await pumpConnectedEmpty(tester);
-
-      await tester.tap(find.text("Windows PowerShell"));
-      await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel("Copy command"));
-      await tester.pumpAndSettle();
-
-      verifyLogged(
-        const AnalyticsEvent.installCommandCopied(
-          method: BridgeInstallMethod.powershell,
-          os: BridgeInstallOs.windows,
-          surface: OnboardingSurface.connectedEmpty,
-        ),
-      );
-    });
-
-    testWidgets("copying a method tab logs that method under the selected group", (tester) async {
-      await pumpConnectedEmpty(tester);
-
-      await tester.tap(find.text("npm"));
-      await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel("Copy command"));
-      await tester.pumpAndSettle();
-
-      verifyLogged(
-        const AnalyticsEvent.installCommandCopied(
-          method: BridgeInstallMethod.npm,
-          os: BridgeInstallOs.unix,
-          surface: OnboardingSurface.connectedEmpty,
-        ),
-      );
-    });
-
-    testWidgets("sharing the install command logs the shared event", (tester) async {
-      await pumpConnectedEmpty(tester);
-
-      await tester.tap(find.bySemanticsLabel("Share command"));
-      await tester.pumpAndSettle();
-
-      verifyLogged(
-        const AnalyticsEvent.installCommandShared(
-          method: BridgeInstallMethod.curl,
-          os: BridgeInstallOs.unix,
-          surface: OnboardingSurface.connectedEmpty,
-        ),
-      );
-    });
-  });
-
-  group("connect-your-computer setup onboarding", () {
-    testWidgets("tapping the Need help pill logs the connect-setup surface", (tester) async {
-      await pumpConnectSetup(tester);
-
-      await tester.tap(find.text("Need help?"));
-      await tester.pumpAndSettle();
-
-      verifyLogged(
-        const AnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
-      );
-    });
-
-    testWidgets("opening the why-bridge explainer logs the connect-setup surface", (tester) async {
       await pumpConnectSetup(tester);
 
       await tester.tap(find.text("Why is this needed?"));
@@ -298,13 +199,79 @@ void main() {
       verifyLogged(
         const AnalyticsEvent.whyBridgeOpened(surface: OnboardingSurface.connectSetup),
       );
+      // The sheet actually opened alongside the event (button + sheet title).
+      expect(find.text("Why is this needed?"), findsNWidgets(2));
+    });
+
+    // Two command rows on this surface: the install box (step 1) first, the
+    // run box (step 2) below it — hence copy/share at index 0 vs 1.
+    testWidgets("copying the default install command logs curl on unix", (tester) async {
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.bySemanticsLabel("Copy command").at(0));
+      await tester.pumpAndSettle();
+
+      verifyLogged(
+        const AnalyticsEvent.installCommandCopied(
+          method: BridgeInstallMethod.curl,
+          os: BridgeInstallOs.unix,
+          surface: OnboardingSurface.connectSetup,
+        ),
+      );
+    });
+
+    testWidgets("copying after switching to the Windows group logs powershell", (tester) async {
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.text("Windows PowerShell"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel("Copy command").at(0));
+      await tester.pumpAndSettle();
+
+      verifyLogged(
+        const AnalyticsEvent.installCommandCopied(
+          method: BridgeInstallMethod.powershell,
+          os: BridgeInstallOs.windows,
+          surface: OnboardingSurface.connectSetup,
+        ),
+      );
+    });
+
+    testWidgets("copying a method tab logs that method under the selected group", (tester) async {
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.text("npm"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel("Copy command").at(0));
+      await tester.pumpAndSettle();
+
+      verifyLogged(
+        const AnalyticsEvent.installCommandCopied(
+          method: BridgeInstallMethod.npm,
+          os: BridgeInstallOs.unix,
+          surface: OnboardingSurface.connectSetup,
+        ),
+      );
+    });
+
+    testWidgets("sharing the install command logs the shared event", (tester) async {
+      await pumpConnectSetup(tester);
+
+      await tester.tap(find.bySemanticsLabel("Share command").at(0));
+      await tester.pumpAndSettle();
+
+      verifyLogged(
+        const AnalyticsEvent.installCommandShared(
+          method: BridgeInstallMethod.curl,
+          os: BridgeInstallOs.unix,
+          surface: OnboardingSurface.connectSetup,
+        ),
+      );
     });
 
     testWidgets("copying the step-2 run command logs the run event", (tester) async {
       await pumpConnectSetup(tester);
 
-      // Two command rows on this surface: the install box (step 1) first, the
-      // run box (step 2) below it.
       await tester.tap(find.bySemanticsLabel("Copy command").at(1));
       await tester.pumpAndSettle();
 

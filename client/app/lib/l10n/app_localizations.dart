@@ -145,12 +145,6 @@ abstract class AppLocalizations {
   /// **'Loading projects'**
   String get projectListLoadingSemantics;
 
-  /// No description provided for @projectListEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No projects found'**
-  String get projectListEmpty;
-
   /// No description provided for @projectListUpdated.
   ///
   /// In en, this message translates to:
@@ -193,29 +187,23 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 active session} other{{count} active sessions}}'**
   String projectListActiveSessions(int count);
 
-  /// Leading label for the phone-connection status line above the onboarding hero, e.g. 'Step 1: Phone connected'.
+  /// Status caption under the connection graphic on the connected-but-empty Projects screen, rendered in the success color with a check icon.
   ///
   /// In en, this message translates to:
-  /// **'Step 1:'**
-  String get projectsOnboardingPhoneStatusStep;
+  /// **'Connected'**
+  String get projectsEmptyConnected;
 
-  /// Success portion of the phone-connection status line, rendered in the success color with a check icon.
+  /// Message above the add-project button on the connected-but-empty Projects screen.
   ///
   /// In en, this message translates to:
-  /// **'Phone connected'**
-  String get projectsOnboardingPhoneStatusConnected;
+  /// **'You don\'t have any projects created or opened yet.'**
+  String get projectsEmptyMessage;
 
-  /// Leading label for the PC status line below the onboarding hero, e.g. 'Step 2: Run Sesori on your PC'.
+  /// Label of the button on the connected-but-empty Projects screen that opens the Add Project sheet.
   ///
   /// In en, this message translates to:
-  /// **'Step 2:'**
-  String get projectsOnboardingPcStatusStep;
-
-  /// Secondary portion of the PC status line, rendered in the secondary text color.
-  ///
-  /// In en, this message translates to:
-  /// **'Run Sesori on your PC'**
-  String get projectsOnboardingPcStatusRun;
+  /// **'Add a new project to get started'**
+  String get projectsEmptyAddProject;
 
   /// Label for the button below the PC status line that opens the bridge explainer bottom sheet; also used as that sheet's title.
   ///
