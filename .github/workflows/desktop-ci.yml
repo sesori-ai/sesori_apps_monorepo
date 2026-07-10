@@ -22,14 +22,30 @@ concurrency:
 
 permissions:
   contents: read
+  # dorny/paths-filter reads the PR's changed files via the REST API.
+  pull-requests: read
 
 jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
       desktop: ${{ steps.filter.outputs.desktop }}
+      flutter-version: ${{ steps.flutter-version.outputs.version }}
     steps:
       - uses: actions/checkout@v6
+
+      # Read once here and share via job output so the analyze/build jobs
+      # can't silently diverge on version-parsing logic.
+      - name: Read Flutter version from .tool-versions
+        id: flutter-version
+        shell: bash
+        run: |
+          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
+          if [ -z "$FLUTTER_VERSION" ]; then
+            echo "Unable to find a Flutter version in .tool-versions" >&2
+            exit 1
+          fi
+          echo "version=$FLUTTER_VERSION" >> "$GITHUB_OUTPUT"
 
       # The desktop-relevant set: the two desktop packages, the shared client
       # packages the desktop build consumes (a shared change can break the
@@ -70,19 +86,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Read Flutter version from .tool-versions
-        shell: bash
-        run: |
-          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
-          if [ -z "$FLUTTER_VERSION" ]; then
-            echo "Unable to find a Flutter version in .tool-versions" >&2
-            exit 1
-          fi
-          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
-
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ needs.changes.outputs.flutter-version }}
           channel: stable
           cache: true
 
@@ -123,19 +129,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Read Flutter version from .tool-versions
-        shell: bash
-        run: |
-          FLUTTER_VERSION=$(awk '$1 == "flutter" { print $2 }' .tool-versions | sed 's/-stable$//')
-          if [ -z "$FLUTTER_VERSION" ]; then
-            echo "Unable to find a Flutter version in .tool-versions" >&2
-            exit 1
-          fi
-          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
-
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ needs.changes.outputs.flutter-version }}
           channel: stable
           cache: true
 
