@@ -808,11 +808,13 @@ void main() {
   group("WorktreeService lifecycle methods", () {
     late _FakeProcessRunner processRunner;
     late AppDatabase db;
+    late _FakeBridgePluginApi plugin;
     late WorktreeService service;
 
     setUp(() {
       db = createTestDatabase();
       processRunner = _FakeProcessRunner();
+      plugin = _FakeBridgePluginApi();
       service = WorktreeService(
         worktreeRepository: WorktreeRepository(
           projectsDao: db.projectsDao,
@@ -821,7 +823,7 @@ void main() {
             processRunner: processRunner,
             gitPathExists: ({required String gitPath}) => true,
           ),
-          plugin: _FakeBridgePluginApi(),
+          plugin: plugin,
         ),
       );
     });
@@ -857,6 +859,29 @@ void main() {
     });
 
     // removeWorktree (force: true)
+
+    test("removeWorktree for a moved project: git and workspace cleanup target the live directory", () async {
+      await db.projectsDao.recordOpenedProject(projectId: _projectId, path: "/moved/project", openedAt: 1);
+      // git worktree prune
+      processRunner.enqueue(result: _ok());
+      // git worktree remove <path>
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.removeWorktree(
+        projectId: _projectId,
+        worktreePath: "/moved/project/.worktrees/session-001",
+        force: false,
+      );
+
+      expect(result, isTrue);
+      for (final invocation in processRunner.invocations) {
+        expect(invocation.workingDirectory, equals("/moved/project"));
+      }
+      // The backend resolves the workspace by directory, so best-effort
+      // cleanup must point at the live project root too.
+      expect(plugin.lastDeleteWorkspaceProjectId, equals("/moved/project"));
+      expect(plugin.lastDeleteWorkspaceWorktreePath, equals("/moved/project/.worktrees/session-001"));
+    });
 
     test("removeWorktree(force: true): calls prune then remove with --force", () async {
       // git worktree prune
@@ -1060,11 +1085,17 @@ class _FakeBridgePluginApi implements NativeProjectsPluginApi {
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
 
+  String? lastDeleteWorkspaceProjectId;
+  String? lastDeleteWorkspaceWorktreePath;
+
   @override
   Future<void> deleteWorkspace({
     required String projectId,
     required String worktreePath,
-  }) async {}
+  }) async {
+    lastDeleteWorkspaceProjectId = projectId;
+    lastDeleteWorkspaceWorktreePath = worktreePath;
+  }
 
   @override
   Future<List<PluginProject>> getProjects() async => [];

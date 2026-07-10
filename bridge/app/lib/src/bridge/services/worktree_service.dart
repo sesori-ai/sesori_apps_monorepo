@@ -196,7 +196,6 @@ class WorktreeService {
       return false;
     }
     return _worktreeRepository.removeWorktree(
-      projectId: projectId,
       projectPath: projectPath,
       worktreePath: worktreePath,
       force: force,

@@ -165,7 +165,6 @@ class WorktreeRepository {
   }
 
   Future<bool> removeWorktree({
-    required String projectId,
     required String projectPath,
     required String worktreePath,
     required bool force,
@@ -180,9 +179,11 @@ class WorktreeRepository {
     );
 
     if (removed) {
+      // The backend resolves the workspace by directory, so it gets the live
+      // project path — the same root the worktree was just removed under.
       _plugin
           .deleteWorkspace(
-            projectId: projectId,
+            projectId: projectPath,
             worktreePath: worktreePath,
           )
           .catchError(

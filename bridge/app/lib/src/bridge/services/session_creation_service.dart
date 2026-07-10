@@ -72,7 +72,13 @@ class SessionCreationService {
       model: request.model,
     );
     final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
-    return _sessionRepository.enrichSession(session: finalSession);
+    // The plugin only knows the directory the session was created in, so for
+    // a moved project it echoes the live path (or its own internal id) as the
+    // session's projectID. Re-key the response to the stable identifier the
+    // phone and the bridge key on — mirroring project-scoped session fetches.
+    return _sessionRepository.enrichSession(
+      session: finalSession.copyWith(projectID: request.projectId),
+    );
   }
 
   String? _extractFirstText({required List<PromptPart> parts}) {

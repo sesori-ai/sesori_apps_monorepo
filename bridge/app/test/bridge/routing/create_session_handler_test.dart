@@ -275,6 +275,9 @@ void main() {
       expect(worktreeService.lastResolveBaseBranchProjectId, equals("/repo"));
       final dbSession = await db.sessionDao.getSession(sessionId: "moved-1");
       expect(dbSession!.projectId, equals("/repo"));
+      // The response is re-keyed to the stable id too — the plugin can only
+      // echo the directory it created the session in.
+      expect(result.projectID, equals("/repo"));
     });
 
     test(
@@ -464,9 +467,10 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
-      // A native plugin's reported projectID is authoritative — enrichment
-      // adopts the stored row's attribution only for bridge-derived plugins.
-      expect(result.projectID, equals("p1"));
+      // The created session belongs to the requested project by construction,
+      // so the response is re-keyed to the request's stable projectId — the
+      // plugin can only echo the directory it created the session in.
+      expect(result.projectID, equals("/repo"));
       expect(result.directory, equals("/repo"));
       expect(result.parentID, equals("parent-1"));
       expect(result.title, equals("Created"));
