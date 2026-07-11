@@ -46,7 +46,6 @@ sealed class ProjectTime with _$ProjectTime {
   const factory ProjectTime({
     required int created,
     required int updated,
-    required int? initialized,
   }) = _ProjectTime;
 
   factory ProjectTime.fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);

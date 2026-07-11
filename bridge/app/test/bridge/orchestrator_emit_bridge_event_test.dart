@@ -32,6 +32,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
@@ -61,7 +62,7 @@ import "../helpers/test_helpers.dart";
 import "routing/get_session_diffs_handler_test_helpers.dart";
 
 void main() {
-  test("pr sync stream enqueues sessions.updated SSE event for subscribers", () async {
+  test("activity and PR streams are emitted as SSE only by the orchestrator", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final plugin = _NoopPlugin();
@@ -113,6 +114,10 @@ void main() {
       failureReporter: FakeFailureReporter(),
     );
 
+    final projectActivityService = ProjectActivityService(
+      projectRepository: projectRepository,
+      now: () => 1234,
+    );
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -174,6 +179,7 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: projectActivityService,
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
@@ -182,7 +188,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -220,6 +230,14 @@ void main() {
     );
     bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
     await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    await projectActivityService.openProject(path: "project-activity");
+    final projectUpdated = await _waitForEventType(
+      messages: messages,
+      roomKey: roomKey,
+      expectedType: "project.updated",
+    );
+    expect(projectUpdated, isTrue);
 
     fakePrSyncService.emitProjectChange(projectId: "project-123");
 
@@ -361,6 +379,10 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
@@ -369,7 +391,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -542,6 +568,10 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
@@ -550,7 +580,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -752,6 +786,10 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
@@ -760,7 +798,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -959,6 +1001,10 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
@@ -967,7 +1013,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1113,6 +1163,10 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
@@ -1121,7 +1175,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1292,6 +1350,10 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
@@ -1300,7 +1362,11 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1760,8 +1826,7 @@ class _RecordingControlChannelClient implements ControlChannelClient {
   Stream<String> get inbound => const Stream<String>.empty();
 
   @override
-  Stream<ControlChannelConnectionState> get connectionState =>
-      const Stream<ControlChannelConnectionState>.empty();
+  Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();
 
   @override
   void send(String frame) => sentFrames.add(frame);
@@ -1887,7 +1952,7 @@ class _NoopPlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
+  Future<PluginProject> getProject(String projectId) async => PluginProject(id: projectId);
 
   @override
   Future<bool> healthCheck() async => true;
@@ -2404,5 +2469,6 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<String> resolveProjectDirectory({required String projectId}) => _base.resolveProjectDirectory(projectId: projectId);
+  Future<String> resolveProjectDirectory({required String projectId}) =>
+      _base.resolveProjectDirectory(projectId: projectId);
 }

@@ -87,7 +87,7 @@ void main() {
     test("moved project: git runs in the recorded live directory, counter stays keyed on the id", () async {
       // The folder moved from _projectId to /moved/project and was re-opened
       // there; every git operation must run where the folder actually is.
-      await projectsDao.recordOpenedProject(projectId: _projectId, path: "/moved/project", openedAt: 1);
+      await projectsDao.recordOpenedProject(projectId: _projectId, path: "/moved/project", createdAt: 1, updatedAt: 1);
       // git rev-parse HEAD → success
       processRunner.enqueue(result: _ok());
       // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
@@ -863,7 +863,12 @@ void main() {
     // removeWorktree (force: true)
 
     test("removeWorktree for a moved project: git and workspace cleanup target the live directory", () async {
-      await db.projectsDao.recordOpenedProject(projectId: _projectId, path: "/moved/project", openedAt: 1);
+      await db.projectsDao.recordOpenedProject(
+        projectId: _projectId,
+        path: "/moved/project",
+        createdAt: 1,
+        updatedAt: 1,
+      );
       // git worktree prune
       processRunner.enqueue(result: _ok());
       // git worktree remove <path>

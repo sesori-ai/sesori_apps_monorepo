@@ -6,9 +6,8 @@ part of 'database.dart';
 mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   String get projectId;
 
-  /// The project's directory on disk. Every shipped plugin uses the directory
-  /// path as the project id today, so inserts stamp the id here too; keeping
-  /// it as its own column lets ids stop being paths without a schema change.
+  /// The project's live directory on disk. This may differ from [projectId]
+  /// after a folder move; the id remains the stable bridge/client handle.
   String get path;
   bool get hidden;
   String? get baseBranch;
@@ -19,11 +18,17 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   /// null means fall back to the directory basename.
   String? get displayName;
 
-  /// Wall-clock ms when this project row was recorded — the folder was opened
-  /// or the project was first discovered. Lets a folder with no sessions yet
-  /// survive a refresh, and doubles as the project's time until a session
-  /// supplies one. Stamped at insert time; re-opening a folder bumps it.
-  int get openedAt;
+  /// Wall-clock ms when this project row was first recorded — the folder was
+  /// opened or the project was first discovered. Stamped at insert time and
+  /// never advanced by later opens; it is the authoritative project creation
+  /// time for REST responses.
+  int get createdAt;
+
+  /// Wall-clock ms of the last recorded activity for this project. Advanced by
+  /// the project-activity service from plugin activity, session evidence, and
+  /// user-facing events. The repository writes exact values supplied by the
+  /// service and performs no min/max itself.
+  int get updatedAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -37,7 +42,8 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
     }
-    map['opened_at'] = Variable<int>(openedAt);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
     return map;
   }
 }
@@ -115,12 +121,24 @@ class $ProjectsTableTable extends ProjectsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _openedAtMeta = const VerificationMeta(
-    'openedAt',
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
   );
   @override
-  late final GeneratedColumn<int> openedAt = GeneratedColumn<int>(
-    'opened_at',
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now().millisecondsSinceEpoch,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
     aliasedName,
     false,
     type: DriftSqlType.int,
@@ -135,7 +153,8 @@ class $ProjectsTableTable extends ProjectsTable
     baseBranch,
     worktreeCounter,
     displayName,
-    openedAt,
+    createdAt,
+    updatedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -195,10 +214,16 @@ class $ProjectsTableTable extends ProjectsTable
         ),
       );
     }
-    if (data.containsKey('opened_at')) {
+    if (data.containsKey('created_at')) {
       context.handle(
-        _openedAtMeta,
-        openedAt.isAcceptableOrUnknown(data['opened_at']!, _openedAtMeta),
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
     return context;
@@ -234,9 +259,13 @@ class $ProjectsTableTable extends ProjectsTable
         DriftSqlType.string,
         data['${effectivePrefix}display_name'],
       ),
-      openedAt: attachedDatabase.typeMapping.read(
+      createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
-        data['${effectivePrefix}opened_at'],
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
       )!,
     );
   }
@@ -257,7 +286,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   final Value<String?> baseBranch;
   final Value<int> worktreeCounter;
   final Value<String?> displayName;
-  final Value<int> openedAt;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
   const ProjectsTableCompanion({
     this.projectId = const Value.absent(),
     this.path = const Value.absent(),
@@ -265,7 +295,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
-    this.openedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
   });
   ProjectsTableCompanion.insert({
     required String projectId,
@@ -274,7 +305,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
-    this.openedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
   }) : projectId = Value(projectId),
        path = Value(path);
   static Insertable<ProjectDto> custom({
@@ -284,7 +316,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     Expression<String>? baseBranch,
     Expression<int>? worktreeCounter,
     Expression<String>? displayName,
-    Expression<int>? openedAt,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
   }) {
     return RawValuesInsertable({
       if (projectId != null) 'project_id': projectId,
@@ -293,7 +326,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       if (baseBranch != null) 'base_branch': baseBranch,
       if (worktreeCounter != null) 'worktree_counter': worktreeCounter,
       if (displayName != null) 'display_name': displayName,
-      if (openedAt != null) 'opened_at': openedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
 
@@ -304,7 +338,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     Value<String?>? baseBranch,
     Value<int>? worktreeCounter,
     Value<String?>? displayName,
-    Value<int>? openedAt,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
   }) {
     return ProjectsTableCompanion(
       projectId: projectId ?? this.projectId,
@@ -313,7 +348,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       baseBranch: baseBranch ?? this.baseBranch,
       worktreeCounter: worktreeCounter ?? this.worktreeCounter,
       displayName: displayName ?? this.displayName,
-      openedAt: openedAt ?? this.openedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -338,8 +374,11 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     if (displayName.present) {
       map['display_name'] = Variable<String>(displayName.value);
     }
-    if (openedAt.present) {
-      map['opened_at'] = Variable<int>(openedAt.value);
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
     }
     return map;
   }
@@ -353,7 +392,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
           ..write('baseBranch: $baseBranch, ')
           ..write('worktreeCounter: $worktreeCounter, ')
           ..write('displayName: $displayName, ')
-          ..write('openedAt: $openedAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -1595,7 +1635,8 @@ typedef $$ProjectsTableTableCreateCompanionBuilder =
       Value<String?> baseBranch,
       Value<int> worktreeCounter,
       Value<String?> displayName,
-      Value<int> openedAt,
+      Value<int> createdAt,
+      Value<int> updatedAt,
     });
 typedef $$ProjectsTableTableUpdateCompanionBuilder =
     ProjectsTableCompanion Function({
@@ -1605,7 +1646,8 @@ typedef $$ProjectsTableTableUpdateCompanionBuilder =
       Value<String?> baseBranch,
       Value<int> worktreeCounter,
       Value<String?> displayName,
-      Value<int> openedAt,
+      Value<int> createdAt,
+      Value<int> updatedAt,
     });
 
 final class $$ProjectsTableTableReferences
@@ -1703,8 +1745,13 @@ class $$ProjectsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get openedAt => $composableBuilder(
-    column: $table.openedAt,
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1798,8 +1845,13 @@ class $$ProjectsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get openedAt => $composableBuilder(
-    column: $table.openedAt,
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -1837,8 +1889,11 @@ class $$ProjectsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get openedAt =>
-      $composableBuilder(column: $table.openedAt, builder: (column) => column);
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   Expression<T> sessionTableRefs<T extends Object>(
     Expression<T> Function($$SessionTableTableAnnotationComposer a) f,
@@ -1929,7 +1984,8 @@ class $$ProjectsTableTableTableManager
                 Value<String?> baseBranch = const Value.absent(),
                 Value<int> worktreeCounter = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
-                Value<int> openedAt = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
               }) => ProjectsTableCompanion(
                 projectId: projectId,
                 path: path,
@@ -1937,7 +1993,8 @@ class $$ProjectsTableTableTableManager
                 baseBranch: baseBranch,
                 worktreeCounter: worktreeCounter,
                 displayName: displayName,
-                openedAt: openedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
               ),
           createCompanionCallback:
               ({
@@ -1947,7 +2004,8 @@ class $$ProjectsTableTableTableManager
                 Value<String?> baseBranch = const Value.absent(),
                 Value<int> worktreeCounter = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
-                Value<int> openedAt = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
               }) => ProjectsTableCompanion.insert(
                 projectId: projectId,
                 path: path,
@@ -1955,7 +2013,8 @@ class $$ProjectsTableTableTableManager
                 baseBranch: baseBranch,
                 worktreeCounter: worktreeCounter,
                 displayName: displayName,
-                openedAt: openedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

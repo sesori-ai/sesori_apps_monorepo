@@ -45,7 +45,7 @@ void main() {
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
-    getIt.registerLazySingleton<SseEventRepository>(MockSseEventRepository.new);
+    getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);
     getIt.registerLazySingleton<SessionUnseenTracker>(FakeSessionUnseenTracker.new);
     getIt.registerLazySingleton<RegisteredBridgesService>(() => mockRegisteredBridgesService);
@@ -95,8 +95,7 @@ void main() {
 
   /// The alpha the large title is painted with: 1 while fully shown, 0 once it
   /// has collapsed into the bar.
-  double largeTitleAlpha(WidgetTester tester, String title) =>
-      tester.widget<Text>(largeTitle(title)).style!.color!.a;
+  double largeTitleAlpha(WidgetTester tester, String title) => tester.widget<Text>(largeTitle(title)).style!.color!.a;
 
   /// Drags the page up past [PregoTopNavigation.collapseDistance].
   Future<void> scrollPageUp(WidgetTester tester) async {

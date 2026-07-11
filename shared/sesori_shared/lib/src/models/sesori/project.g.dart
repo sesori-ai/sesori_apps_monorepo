@@ -39,15 +39,10 @@ Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
 _ProjectTime _$ProjectTimeFromJson(Map json) => _ProjectTime(
   created: (json['created'] as num).toInt(),
   updated: (json['updated'] as num).toInt(),
-  initialized: (json['initialized'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$ProjectTimeToJson(_ProjectTime instance) =>
-    <String, dynamic>{
-      'created': instance.created,
-      'updated': instance.updated,
-      'initialized': ?instance.initialized,
-    };
+    <String, dynamic>{'created': instance.created, 'updated': instance.updated};
 
 _ProjectIdRequest _$ProjectIdRequestFromJson(Map json) =>
     _ProjectIdRequest(projectId: json['projectId'] as String);

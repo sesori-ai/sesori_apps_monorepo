@@ -356,7 +356,7 @@ $ProjectTimeCopyWith<$Res>? get time {
 /// @nodoc
 mixin _$ProjectTime {
 
- int get created; int get updated; int? get initialized;
+ int get created; int get updated;
 /// Create a copy of ProjectTime
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -369,16 +369,16 @@ $ProjectTimeCopyWith<ProjectTime> get copyWith => _$ProjectTimeCopyWithImpl<Proj
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.initialized, initialized) || other.initialized == initialized));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,initialized);
+int get hashCode => Object.hash(runtimeType,created,updated);
 
 @override
 String toString() {
-  return 'ProjectTime(created: $created, updated: $updated, initialized: $initialized)';
+  return 'ProjectTime(created: $created, updated: $updated)';
 }
 
 
@@ -389,7 +389,7 @@ abstract mixin class $ProjectTimeCopyWith<$Res>  {
   factory $ProjectTimeCopyWith(ProjectTime value, $Res Function(ProjectTime) _then) = _$ProjectTimeCopyWithImpl;
 @useResult
 $Res call({
- int created, int updated, int? initialized
+ int created, int updated
 });
 
 
@@ -406,12 +406,11 @@ class _$ProjectTimeCopyWithImpl<$Res>
 
 /// Create a copy of ProjectTime
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? created = null,Object? updated = null,Object? initialized = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? created = null,Object? updated = null,}) {
   return _then(_self.copyWith(
 created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
 as int,updated: null == updated ? _self.updated : updated // ignore: cast_nullable_to_non_nullable
-as int,initialized: freezed == initialized ? _self.initialized : initialized // ignore: cast_nullable_to_non_nullable
-as int?,
+as int,
   ));
 }
 
@@ -423,12 +422,11 @@ as int?,
 @JsonSerializable()
 
 class _ProjectTime implements ProjectTime {
-  const _ProjectTime({required this.created, required this.updated, required this.initialized});
+  const _ProjectTime({required this.created, required this.updated});
   factory _ProjectTime.fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);
 
 @override final  int created;
 @override final  int updated;
-@override final  int? initialized;
 
 /// Create a copy of ProjectTime
 /// with the given fields replaced by the non-null parameter values.
@@ -443,16 +441,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.initialized, initialized) || other.initialized == initialized));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,initialized);
+int get hashCode => Object.hash(runtimeType,created,updated);
 
 @override
 String toString() {
-  return 'ProjectTime(created: $created, updated: $updated, initialized: $initialized)';
+  return 'ProjectTime(created: $created, updated: $updated)';
 }
 
 
@@ -463,7 +461,7 @@ abstract mixin class _$ProjectTimeCopyWith<$Res> implements $ProjectTimeCopyWith
   factory _$ProjectTimeCopyWith(_ProjectTime value, $Res Function(_ProjectTime) _then) = __$ProjectTimeCopyWithImpl;
 @override @useResult
 $Res call({
- int created, int updated, int? initialized
+ int created, int updated
 });
 
 
@@ -480,12 +478,11 @@ class __$ProjectTimeCopyWithImpl<$Res>
 
 /// Create a copy of ProjectTime
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? created = null,Object? updated = null,Object? initialized = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? created = null,Object? updated = null,}) {
   return _then(_ProjectTime(
 created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
 as int,updated: null == updated ? _self.updated : updated // ignore: cast_nullable_to_non_nullable
-as int,initialized: freezed == initialized ? _self.initialized : initialized // ignore: cast_nullable_to_non_nullable
-as int?,
+as int,
   ));
 }
 

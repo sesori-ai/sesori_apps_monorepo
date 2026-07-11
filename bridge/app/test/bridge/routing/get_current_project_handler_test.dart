@@ -22,6 +22,7 @@ void main() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/project"]);
+      await db.projectsDao.setActivity(projectId: "/tmp/project", createdAt: 101, updatedAt: 202);
       handler = GetCurrentProjectHandler(
         projectRepository: ProjectRepository(
           plugin: plugin,
@@ -79,7 +80,7 @@ void main() {
       plugin.currentProjectResult = const PluginProject(
         id: "p1",
         name: "My Project",
-        time: PluginProjectTime(created: 11, updated: 22),
+        activity: PluginProjectActivity(createdAt: 11, updatedAt: 22),
       );
 
       final response = await handler.handle(
@@ -94,8 +95,8 @@ void main() {
 
       expect(response.id, equals("p1"));
       expect(response.name, equals("My Project"));
-      expect(response.time?.created, equals(11));
-      expect(response.time?.updated, equals(22));
+      expect(response.time?.created, equals(101));
+      expect(response.time?.updated, equals(202));
     });
 
     test("returns 404 for an unknown project id without creating a row", () async {

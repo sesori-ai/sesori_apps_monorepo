@@ -55,6 +55,7 @@ void main() {
       final real = projects.firstWhere((p) => p.id == "/repo");
       expect(real.id, equals("/repo"));
       expect(real.name, equals("Main Repo"));
+      expect(real.activity, const PluginProjectActivity(createdAt: 100, updatedAt: 200));
 
       final virtual = projects.firstWhere((p) => p.id == "/virtual");
       expect(virtual.name, equals("virtual"));
@@ -122,6 +123,7 @@ void main() {
       await plugin.getProjects();
       final project = await plugin.getProject("/moved/repo");
       expect(project.id, equals("/repo"));
+      expect(project.activity, isNull);
 
       final sessions = await plugin.getSessions("/moved/repo");
       final moved = sessions.firstWhere((session) => session.id == "s-moved");
@@ -561,6 +563,7 @@ void main() {
         // PluginProject.id is always the worktree path, not the OpenCode UUID
         expect(project.id, equals("/repo"));
         expect(project.name, equals("Renamed Repo"));
+        expect(project.activity, isNull);
         expect(
           server.requestLog,
           equals(["GET /project/current", "PATCH /project/p1"]),
@@ -759,7 +762,9 @@ class _FakeOpenCodeServer {
       "id": "p1",
       "worktree": "/repo",
       "name": "Main Repo",
-      "time": {"created": 0, "updated": 0},
+      // Reproduces OpenCode's raw project timestamp being refreshed at server
+      // startup even though the latest real session activity is much older.
+      "time": {"created": 0, "updated": 999999},
       "sandboxes": <String>[],
     },
   };
@@ -958,6 +963,13 @@ class _FakeOpenCodeServer {
 
       if (request.method == "GET" && path == "/experimental/session") {
         await _sendJson(request.response, [
+          {
+            "id": "s-root",
+            "slug": "root-session",
+            "projectID": "p1",
+            "directory": "/repo",
+            "time": {"created": 100, "updated": 200},
+          },
           {
             "id": "g-1",
             "slug": "virtual-session",

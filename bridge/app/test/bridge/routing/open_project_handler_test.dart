@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/open_project_handler.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -20,6 +21,7 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late ProjectRepository projectRepository;
+    late ProjectActivityService projectActivityService;
     late OpenProjectHandler handler;
     late Directory tempDir;
     late File tempFile;
@@ -36,16 +38,21 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
       );
+      projectActivityService = ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => 1234,
+      );
       handler = OpenProjectHandler(
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
         ),
-        projectRepository: projectRepository,
+        projectActivityService: projectActivityService,
       );
     });
 
     tearDown(() async {
+      await projectActivityService.dispose();
       await plugin.close();
       await db.close();
       if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
@@ -184,10 +191,10 @@ void main() {
       expect(result.name, equals("My Project"));
     });
 
-    test("maps ProjectTime when plugin returns time", () async {
+    test("maps ProjectTime from the persisted open timestamp", () async {
       plugin.currentProjectResult = PluginProject(
         id: tempDir.path,
-        time: const PluginProjectTime(created: 1000, updated: 2000),
+        activity: const PluginProjectActivity(createdAt: 1000, updatedAt: 2000),
       );
 
       final result = await handler.handle(
@@ -198,11 +205,10 @@ void main() {
         fragment: null,
       );
 
-      expect(result.time?.created, equals(1000));
-      expect(result.time?.updated, equals(2000));
+      expect(result.time, const ProjectTime(created: 1234, updated: 1234));
     });
 
-    test("time is null when plugin returns no time", () async {
+    test("time is non-null when plugin returns no activity", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path);
 
       final result = await handler.handle(
@@ -213,7 +219,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.time, isNull);
+      expect(result.time, const ProjectTime(created: 1234, updated: 1234));
     });
 
     // ── Plugin error propagation ─────────────────────────────────────────────

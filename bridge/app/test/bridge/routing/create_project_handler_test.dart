@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_project_handler.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -24,6 +25,7 @@ void main() {
     late _FakeBridgePluginForCreateProject plugin;
     late AppDatabase db;
     late CreateProjectHandler handler;
+    late ProjectActivityService projectActivityService;
     late Directory tempDir;
 
     setUp(() async {
@@ -32,6 +34,16 @@ void main() {
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+      );
+      projectActivityService = ProjectActivityService(
+        projectRepository: ProjectRepository(
+          plugin: plugin,
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
+        ),
+        now: () => 1234,
       );
       handler = CreateProjectHandler(
         projectInitializationService: ProjectInitializationService(
@@ -47,18 +59,13 @@ void main() {
           ),
           filesystemRepository: filesystemRepository,
         ),
-        projectRepository: ProjectRepository(
-          plugin: plugin,
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
+        projectActivityService: projectActivityService,
       );
       tempDir = await Directory.systemTemp.createTemp("create-project-handler-test-");
     });
 
     tearDown(() async {
+      await projectActivityService.dispose();
       await plugin.close();
       await db.close();
       if (tempDir.existsSync()) {
@@ -75,7 +82,7 @@ void main() {
       plugin.currentProjectResult = const PluginProject(
         id: "p-1",
         name: "New Project",
-        time: PluginProjectTime(created: 10, updated: 20),
+        activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
       );
 
       final result = await handler.handle(
@@ -91,8 +98,7 @@ void main() {
       expect(plugin.lastGetCurrentProjectProjectId, equals(path));
       expect(result.id, equals("p-1"));
       expect(result.name, equals("New Project"));
-      expect(result.time?.created, equals(10));
-      expect(result.time?.updated, equals(20));
+      expect(result.time, const ProjectTime(created: 1234, updated: 1234));
     });
 
     test(".gitignore is created with .worktrees/ entry after git init", () async {
@@ -100,7 +106,7 @@ void main() {
       plugin.currentProjectResult = const PluginProject(
         id: "p-2",
         name: "Project With Gitignore",
-        time: PluginProjectTime(created: 30, updated: 40),
+        activity: PluginProjectActivity(createdAt: 30, updatedAt: 40),
       );
 
       final result = await handler.handle(

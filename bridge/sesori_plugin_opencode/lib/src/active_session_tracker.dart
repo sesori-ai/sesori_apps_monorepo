@@ -40,7 +40,7 @@ class ActiveSessionTracker {
 
     _projectWorktrees
       ..clear()
-      ..addAll(projects.map((p) => p.worktree));
+      ..addAll(projects.map((p) => p.project.id));
 
     // Each sandbox is a directory the backend has resolved to the project —
     // for a moved folder, its live location. Seeding the aliases up front
@@ -49,7 +49,7 @@ class ActiveSessionTracker {
     _worktreeAliases.clear();
     for (final project in projects) {
       for (final sandbox in project.sandboxes) {
-        _putWorktreeAlias(directory: sandbox, worktree: project.worktree);
+        _putWorktreeAlias(directory: sandbox, worktree: project.project.id);
       }
     }
 
@@ -292,7 +292,7 @@ class ActiveSessionTracker {
   /// Replaces the set of known project worktrees and re-resolves worktree
   /// mappings for any active sessions that currently lack one.
   ///
-  /// Called from [OpenCodePlugin.getProjects] to keep the tracker's worktree
+  /// Called from [OpenCodeService.getProjects] to keep the tracker's worktree
   /// knowledge in sync with the latest project list. This is important because
   /// [coldStart] may run before all projects are known (e.g. fresh OpenCode
   /// install), and new projects discovered later would otherwise be invisible
@@ -311,9 +311,9 @@ class ActiveSessionTracker {
   /// other session of that project, so activity summaries and event
   /// projectIDs group under the canonical project.
   ///
-  /// Called from [OpenCodePlugin.getProject], the one lookup that pairs a
-  /// requested directory with the backend's canonical project root. Returns
-  /// `true` when the alias changed the activity summary.
+  /// Called when project listing or lookup pairs a requested directory with the
+  /// backend's canonical project root. Returns `true` when the alias changed the
+  /// activity summary.
   bool registerWorktreeAlias({required String directory, required String worktree}) {
     if (!_putWorktreeAlias(directory: directory, worktree: worktree)) {
       return false;

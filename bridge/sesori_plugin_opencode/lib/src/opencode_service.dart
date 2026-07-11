@@ -11,6 +11,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginCommandSource,
         PluginMessageWithParts,
         PluginPermissionReply,
+        PluginProject,
         PluginPromptPart,
         PluginProvidersResult,
         PluginSession,
@@ -40,7 +41,7 @@ class OpenCodeService {
   final ActiveSessionTracker tracker;
   final Duration _commandDispatchFastFailWindow;
 
-  /// Signals that an out-of-band parent-ID resolution changed the activity
+  /// Signals that service-owned tracker bookkeeping changed the activity
   /// summary and the consumer (the plugin) should re-emit it. Broadcast so the
   /// single plugin subscriber can attach in its constructor; the service never
   /// emits SSE events itself (the plugin owns that decision).
@@ -64,8 +65,25 @@ class OpenCodeService {
     Duration commandDispatchFastFailWindow = const Duration(seconds: 1),
   }) : _commandDispatchFastFailWindow = commandDispatchFastFailWindow;
 
-  Future<List<Project>> getProjects() {
-    return repository.getProjects();
+  Future<List<PluginProject>> getProjects() async {
+    final projects = await repository.getProjects();
+    var summaryChanged = tracker.updateProjectWorktrees(
+      worktrees: projects.map((project) => project.project.id).toSet(),
+    );
+    for (final project in projects) {
+      for (final sandbox in project.sandboxes) {
+        summaryChanged =
+            tracker.registerWorktreeAlias(
+              directory: sandbox,
+              worktree: project.project.id,
+            ) ||
+            summaryChanged;
+      }
+    }
+    if (summaryChanged && !_summaryInvalidations.isClosed) {
+      _summaryInvalidations.add(null);
+    }
+    return projects.map((project) => project.project).toList();
   }
 
   Future<PluginProvidersResult> getProviders({required String projectId}) {
@@ -438,8 +456,8 @@ class OpenCodeService {
     return tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId);
   }
 
-  /// Fires when an out-of-band parent-ID resolution updates the activity
-  /// summary grouping. The plugin subscribes and re-emits the summary.
+  /// Fires when service-owned tracker updates change activity-summary grouping.
+  /// The plugin subscribes and re-emits the summary.
   Stream<void> get summaryInvalidations => _summaryInvalidations.stream;
 
   bool handleSseEvent(SseEventData event, String? directory) {
