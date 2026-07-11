@@ -47,11 +47,23 @@ class PermissionRepository {
     required PermissionReply reply,
   }) async {
     if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
-      if (await _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: plugin.id)) {
+      final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) {
         throw PluginOperationException.notFound(
           "replyToPermission",
           message: "session $sessionId was deleted",
         );
+      }
+      final pending = await plugin.getPendingPermissions(sessionId: sessionId);
+      for (final permission in pending) {
+        if (permission.id != requestId) continue;
+        if (permission.displaySessionId case final displaySessionId? when tombstoned.contains(displaySessionId)) {
+          throw PluginOperationException.notFound(
+            "replyToPermission",
+            message: "display session $displaySessionId was deleted",
+          );
+        }
+        break;
       }
     }
     return _plugin.replyToPermission(

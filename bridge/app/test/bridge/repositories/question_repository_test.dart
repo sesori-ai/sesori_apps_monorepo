@@ -305,6 +305,43 @@ void main() {
       expect(questions.map((question) => question.id), ["visible"]);
     });
 
+    test("question mutations reject a tombstoned displayed root", () async {
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone-root",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+        questionsBySession: {
+          "live-child": const [
+            PluginPendingQuestion(
+              id: "q-stale",
+              sessionID: "live-child",
+              displaySessionId: "gone-root",
+              questions: [],
+            ),
+          ],
+        },
+      );
+      final repository = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      await expectLater(
+        repository.replyToQuestion(questionId: "q-stale", sessionId: "live-child", answers: const []),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      await expectLater(
+        repository.rejectQuestion(questionId: "q-stale", sessionId: "live-child"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(plugin.questionMutationCalls, isZero);
+    });
+
     test("getProjectQuestions filters display tombstones from both aggregation paths", () async {
       const parent = "/repo";
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
@@ -377,6 +414,7 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
   /// view, which can know sessions that `listAllSessions` (disk) does not yet.
   final List<PluginPendingQuestion> ownProjectQuestions;
   final List<String> queriedSessionIds = [];
+  int questionMutationCalls = 0;
 
   @override
   String get id => "codex";
@@ -392,6 +430,20 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => ownProjectQuestions;
+
+  @override
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String sessionId,
+    required List<List<String>> answers,
+  }) async {
+    questionMutationCalls++;
+  }
+
+  @override
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
+    questionMutationCalls++;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

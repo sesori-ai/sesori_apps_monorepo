@@ -701,6 +701,18 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}
 }
 
+Session _deletedSession(String sessionId) => Session(
+  id: sessionId,
+  projectID: "",
+  directory: "",
+  parentID: null,
+  title: null,
+  time: null,
+  summary: null,
+  pullRequest: null,
+  promptDefaults: null,
+);
+
 class _NoopSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
@@ -709,7 +721,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
-  Future<void> deleteSession({required String sessionId}) async {}
+  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
@@ -882,7 +894,7 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<void> deleteSession({required String sessionId}) async {}
+  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;

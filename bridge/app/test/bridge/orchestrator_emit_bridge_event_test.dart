@@ -253,6 +253,14 @@ void main() {
     );
     expect(found, isTrue);
 
+    await sessionTitleService.deleteSession(sessionId: "rowless-session");
+    final deleted = await _waitForEventType(
+      messages: messages,
+      roomKey: roomKey,
+      expectedType: "session.deleted",
+    );
+    expect(deleted, isTrue);
+
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
     await plugin.close();
@@ -2153,6 +2161,18 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}
 }
 
+Session _deletedSession(String sessionId) => Session(
+  id: sessionId,
+  projectID: "",
+  directory: "",
+  parentID: null,
+  title: null,
+  time: null,
+  summary: null,
+  pullRequest: null,
+  promptDefaults: null,
+);
+
 class _NoopSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
@@ -2161,7 +2181,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
-  Future<void> deleteSession({required String sessionId}) async {}
+  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
@@ -2303,7 +2323,7 @@ class _DelayingSessionRepository implements SessionRepository {
       _base.setSessionTitleIfStored(sessionId: sessionId, title: title);
 
   @override
-  Future<void> deleteSession({required String sessionId}) => _base.deleteSession(sessionId: sessionId);
+  Future<Session> deleteSession({required String sessionId}) => _base.deleteSession(sessionId: sessionId);
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) => _base.isSessionTombstoned(sessionId: sessionId);

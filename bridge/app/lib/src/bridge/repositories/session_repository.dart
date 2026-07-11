@@ -293,7 +293,21 @@ class SessionRepository {
   /// Deletes the backend session, then records its tombstone and removes the
   /// stored row atomically. The tombstone is written even for rowless sessions
   /// because a backend without session deletion may still enumerate them.
-  Future<void> deleteSession({required String sessionId}) async {
+  Future<Session> deleteSession({required String sessionId}) async {
+    final stored = await _sessionDao.getSession(sessionId: sessionId);
+    final projectId = stored?.projectId ?? "";
+    final deletionSnapshot = Session(
+      id: sessionId,
+      projectID: projectId,
+      directory: stored?.worktreePath ?? projectId,
+      parentID: null,
+      title: stored?.title,
+      time: null,
+      summary: null,
+      pullRequest: null,
+      promptDefaults: null,
+      hasWorktree: stored?.worktreePath != null,
+    );
     try {
       await _plugin.deleteSession(sessionId);
     } on PluginOperationException catch (error) {
@@ -307,6 +321,7 @@ class SessionRepository {
       );
       await _sessionDao.deleteSession(sessionId: sessionId);
     });
+    return deletionSnapshot;
   }
 
   /// Feeds a derived plugin the bridge's stored session→directory attribution

@@ -125,7 +125,11 @@ class QuestionRepository {
     required String sessionId,
     required List<ReplyAnswer> answers,
   }) async {
-    await _throwIfTombstoned(sessionId: sessionId, operation: "replyToQuestion");
+    await _throwIfMutationTargetTombstoned(
+      questionId: questionId,
+      sessionId: sessionId,
+      operation: "replyToQuestion",
+    );
     return _plugin.replyToQuestion(
       questionId: questionId,
       sessionId: sessionId,
@@ -138,7 +142,11 @@ class QuestionRepository {
     required String? sessionId,
   }) async {
     if (sessionId != null) {
-      await _throwIfTombstoned(sessionId: sessionId, operation: "rejectQuestion");
+      await _throwIfMutationTargetTombstoned(
+        questionId: questionId,
+        sessionId: sessionId,
+        operation: "rejectQuestion",
+      );
     }
     return _plugin.rejectQuestion(
       questionId: questionId,
@@ -146,13 +154,29 @@ class QuestionRepository {
     );
   }
 
-  Future<void> _throwIfTombstoned({required String sessionId, required String operation}) async {
+  Future<void> _throwIfMutationTargetTombstoned({
+    required String questionId,
+    required String sessionId,
+    required String operation,
+  }) async {
     if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
-      if (await _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: plugin.id)) {
+      final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) {
         throw PluginOperationException.notFound(
           operation,
           message: "session $sessionId was deleted",
         );
+      }
+      final pending = await plugin.getPendingQuestions(sessionId: sessionId);
+      for (final question in pending) {
+        if (question.id != questionId) continue;
+        if (question.displaySessionId case final displaySessionId? when tombstoned.contains(displaySessionId)) {
+          throw PluginOperationException.notFound(
+            operation,
+            message: "display session $displaySessionId was deleted",
+          );
+        }
+        break;
       }
     }
   }

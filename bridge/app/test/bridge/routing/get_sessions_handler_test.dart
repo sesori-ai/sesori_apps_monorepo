@@ -1165,6 +1165,9 @@ class _TrackingSessionMutationDispatcher implements SessionMutationDispatcher {
   _TrackingSessionMutationDispatcher({this.onApply});
 
   @override
+  Stream<Session> get deletedSessions => const Stream.empty();
+
+  @override
   Future<void> applyPendingTitle({required String sessionId}) async {
     if (failSessionIds.contains(sessionId)) throw StateError("title write failed");
     appliedSessionIds.add(sessionId);
@@ -1176,6 +1179,9 @@ class _TrackingSessionMutationDispatcher implements SessionMutationDispatcher {
 
   @override
   Future<void> deleteSession({required String sessionId}) async {}
+
+  @override
+  Future<void> dispose() async {}
 
   @override
   Future<Session> renameSession({required String sessionId, required String title}) => throw UnimplementedError();

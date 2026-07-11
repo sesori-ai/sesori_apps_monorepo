@@ -7,10 +7,13 @@ import "../repositories/session_repository.dart";
 /// Serializes bridge-owned session mutations that share pending-title state.
 class SessionMutationDispatcher {
   final SessionRepository _sessionRepository;
+  final StreamController<Session> _deletedSessionsController = StreamController<Session>.broadcast(sync: true);
   final Map<String, String?> _pendingTitles = {};
   Future<void> _tail = Future<void>.value();
 
   SessionMutationDispatcher({required SessionRepository sessionRepository}) : _sessionRepository = sessionRepository;
+
+  Stream<Session> get deletedSessions => _deletedSessionsController.stream;
 
   Future<void> captureTitle({required String sessionId, required String? title}) {
     return _serialized(() async {
@@ -39,10 +42,13 @@ class SessionMutationDispatcher {
 
   Future<void> deleteSession({required String sessionId}) {
     return _serialized(() async {
-      await _sessionRepository.deleteSession(sessionId: sessionId);
+      final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);
       _pendingTitles.remove(sessionId);
+      _deletedSessionsController.add(deleted);
     });
   }
+
+  Future<void> dispose() => _deletedSessionsController.close();
 
   Future<void> _captureTitle({required String sessionId, required String? title}) async {
     if (await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) return;

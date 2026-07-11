@@ -412,7 +412,12 @@ class OrchestratorSession {
         }
       }
       Log.d("subscribing to plugin event stream...");
-      _plugin.events
+      MergeStream<BridgeSseEvent>([
+            _plugin.events,
+            _sessionMutationDispatcher.deletedSessions.map(
+              (session) => BridgeSseSessionDeleted(info: session.toJson()),
+            ),
+          ])
           .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
           .where((event) => event != null)
           .cast<BridgeSseEvent>()
@@ -568,6 +573,7 @@ class OrchestratorSession {
       );
       await _subscriptions.cancel();
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
+      await _sessionMutationDispatcher.dispose();
       await _projectActivityService.dispose();
       Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
       await _sessionAbortService.dispose();

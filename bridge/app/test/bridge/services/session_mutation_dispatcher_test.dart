@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -33,7 +34,10 @@ void main() {
       dispatcher = SessionMutationDispatcher(sessionRepository: repository);
     });
 
-    tearDown(() => db.close());
+    tearDown(() async {
+      await dispatcher.dispose();
+      await db.close();
+    });
 
     Future<void> insertSession() async {
       await repository.insertStoredSession(
@@ -80,8 +84,17 @@ void main() {
     });
 
     test("deletion discards a pending title", () async {
+      final deletionEvent = expectLater(
+        dispatcher.deletedSessions,
+        emits(
+          isA<Session>()
+              .having((session) => session.id, "id", "s1")
+              .having((session) => session.projectID, "projectID", ""),
+        ),
+      );
       await dispatcher.captureTitle(sessionId: "s1", title: "stale");
       await dispatcher.deleteSession(sessionId: "s1");
+      await deletionEvent;
       await insertSession();
 
       await dispatcher.applyPendingTitle(sessionId: "s1");

@@ -160,11 +160,44 @@ void main() {
 
       expect(response.data.map((permission) => permission.id), ["visible"]);
     });
+
+    test("permission replies reject a tombstoned displayed root", () async {
+      final derivedPlugin = _DerivedPermissionPlugin()
+        ..permissions = const [
+          PluginPendingPermission(
+            id: "permission-stale",
+            sessionID: "live-child",
+            displaySessionId: "gone-root",
+            tool: "shell",
+            description: "stale",
+          ),
+        ];
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone-root",
+        pluginId: derivedPlugin.id,
+        deletedAt: 1,
+      );
+      final repository = PermissionRepository(
+        plugin: derivedPlugin,
+        sessionDao: db.sessionDao,
+      );
+
+      await expectLater(
+        repository.replyToPermission(
+          requestId: "permission-stale",
+          sessionId: "live-child",
+          reply: PermissionReply.once,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(derivedPlugin.permissionReplyCalls, isZero);
+    });
   });
 }
 
 class _DerivedPermissionPlugin implements BridgeDerivedProjectsPluginApi {
   int pendingPermissionCalls = 0;
+  int permissionReplyCalls = 0;
   List<PluginPendingPermission> permissions = const [];
 
   @override
@@ -177,6 +210,15 @@ class _DerivedPermissionPlugin implements BridgeDerivedProjectsPluginApi {
   Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async {
     pendingPermissionCalls++;
     return permissions;
+  }
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) async {
+    permissionReplyCalls++;
   }
 
   @override
