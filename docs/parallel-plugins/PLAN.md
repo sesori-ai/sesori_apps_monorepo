@@ -161,10 +161,10 @@ and transition cost before selecting the identity shape.
 
 Projects remain one cross-plugin entity per directory with shared hide, name,
 and base-branch metadata. The existing separation between project identity and
-live path keeps open the option of stronger Sesori-owned identity later.
+live path leaves open the option of stronger Sesori-owned identity later.
 
 Catalog entities are durable and therefore carry an owner/identity from the first
-catalog migration, even while it always identifies the current local account.
+catalog migration, even though it currently only identifies the current local account.
 The exact representation is deferred, but ownership should be included in the
 same migration unless current persistence constraints make doing so concretely
 unsafe. It must not be silently postponed into an avoidable teams migration.
