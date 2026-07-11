@@ -848,6 +848,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         .toList(growable: false);
     if (blocks.isEmpty) return;
 
+    eventMapper
+        .mapSentPrompt(sessionId: sessionId, parts: parts)
+        .forEach(_eventBuffer.add);
+
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
     state.pending++;
     if (state.pending == 1) {

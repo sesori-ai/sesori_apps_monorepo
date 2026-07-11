@@ -46,6 +46,7 @@ than observed Cursor bugs. That is called out per item.
 | #  | Theme                                                | Why it matters                                                  | Status |
 |----|------------------------------------------------------|----------------------------------------------------------------|------------|
 | H  | Resume-load & per-session turn robustness            | **User-facing:** stuck conversations, dropped queued prompts, replay leak | **Resolved** |
+| J  | Live user messages and id-less envelope ordering     | **User-facing:** missing prompts and chronologically misplaced replies | **Resolved** |
 | A  | Bridge↔plugin stored-directory / attribution seam    | Real worktree flows on restart; one hook resolves three threads | **Resolved** |
 | B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | **Resolved** |
 | C  | ACP protocol completeness in the mapper / parsers    | Correctness for the next ACP backend                            | **Resolved** |
@@ -54,6 +55,21 @@ than observed Cursor bugs. That is called out per item.
 | E  | Typed ACP/Cursor boundary DTOs                        | Enabler / safety net for C and F                                | Blocked on traces (Large) |
 | F  | `getSessionMessages` richer failure contract         | "Broken replay" vs "empty thread" on the phone                  | **Resolved** |
 | D  | Cursor decisions needing a trace / product call      | Small, but blocked on evidence                                  | D2 resolved; D1 blocked on a trace |
+
+---
+
+## Theme J — Live user messages and id-less envelope ordering ✅ Resolved
+
+**Resolved.** `AcpPlugin` now emits each accepted prompt as the canonical live
+user message instead of waiting for an unreliable agent echo. The live mapper
+ignores duplicate `user_message_chunk` echoes; `session/load` replay continues
+to reconstruct persisted user messages independently.
+
+When an agent omits ACP `messageId` (Cursor's current behavior), a first-seen
+tool now closes preceding assistant text so later text opens a new envelope
+below the tool. `AcpReplayCollector` applies the same id-less boundary rule,
+preserving text → tool → text chronology after reload. Explicit ACP
+`messageId` grouping remains unchanged.
 
 ---
 

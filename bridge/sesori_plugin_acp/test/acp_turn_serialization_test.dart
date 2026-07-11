@@ -131,6 +131,25 @@ void main() {
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
 
+    test("an accepted prompt is emitted immediately as a user message", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await sendPrompt(sessionId, "visible immediately");
+      await pump();
+
+      final message = emitted.whereType<BridgeSseMessageUpdated>().single;
+      expect(message.info["role"], "user");
+      expect(
+        emitted.whereType<BridgeSseMessagePartUpdated>().single.part.text,
+        "visible immediately",
+      );
+
+      final prompt = await waitForFrame("session/prompt");
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a second prompt on one session dispatches only after the first turn completes", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");

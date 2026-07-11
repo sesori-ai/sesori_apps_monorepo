@@ -132,6 +132,9 @@ class AcpEventMapper {
     _sessionSnapshots.remove(sessionId);
     _turnSeq.remove(sessionId);
     _startedParts.remove(sessionId);
+    _sentUserSeq.remove(sessionId);
+    _idlessAssistantSeq.remove(sessionId);
+    _openIdlessAssistant.remove(sessionId);
     // Exact per-session removal — session ids are opaque agent strings that may
     // themselves contain ':', so a prefix match on a composite key could wipe a
     // different session's tools.
@@ -153,6 +156,16 @@ class AcpEventMapper {
   /// grow without bound across a long-running session.
   final Map<String, Set<String>> _startedParts = {};
 
+  /// Sequence for user messages accepted by this plugin. These are emitted
+  /// locally because ACP agents do not reliably echo `user_message_chunk`.
+  final Map<String, int> _sentUserSeq = {};
+
+  /// Fallback assistant-envelope sequence when ACP omits `messageId`.
+  final Map<String, int> _idlessAssistantSeq = {};
+
+  /// Sessions whose current id-less assistant envelope has received content.
+  final Set<String> _openIdlessAssistant = {};
+
   /// Advance the turn counter for [sessionId]. Call before `session/prompt`
   /// so the next batch of streamed chunks groups under a fresh message id.
   void beginTurn(String sessionId) {
@@ -160,6 +173,8 @@ class AcpEventMapper {
     // The new turn uses fresh (turn-numbered) part ids, so the prior turn's are
     // dead weight — drop them to bound memory in long sessions.
     _startedParts.remove(sessionId);
+    _idlessAssistantSeq.remove(sessionId);
+    _openIdlessAssistant.remove(sessionId);
     // Tool state is retained across a turn (so a reordered late `tool_call_update`
     // still merges onto its terminal state instead of blanking the card), and
     // cleared here at the turn boundary to keep it bounded.
@@ -167,6 +182,37 @@ class AcpEventMapper {
   }
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
+
+  /// Maps an accepted outbound prompt to its canonical live user message.
+  List<BridgeSseEvent> mapSentPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+  }) {
+    final textParts = parts
+        .whereType<PluginPromptPartText>()
+        .where((part) => part.text.isNotEmpty)
+        .toList();
+    if (textParts.isEmpty) return const [];
+
+    final sequence = (_sentUserSeq[sessionId] ?? 0) + 1;
+    _sentUserSeq[sessionId] = sequence;
+    final messageId = "$sessionId-sent-$sequence-user";
+    return [
+      BridgeSseMessageUpdated(
+        info: _messageFor(_ChunkRole.user, messageId, sessionId).toJson(),
+      ),
+      for (var index = 0; index < textParts.length; index++)
+        BridgeSseMessagePartUpdated(
+          part: _part(
+            partId: "$messageId-text-$index",
+            messageId: messageId,
+            sessionId: sessionId,
+            type: PluginMessagePartType.text,
+            text: textParts[index].text,
+          ),
+        ),
+    ];
+  }
 
   /// Maps a single notification to zero or more bridge events.
   List<BridgeSseEvent> map(AcpNotification notification) {
@@ -198,13 +244,10 @@ class AcpEventMapper {
           partType: PluginMessagePartType.reasoning,
         );
       case "user_message_chunk":
-        return _textChunk(
-          sessionId: sessionId,
-          update: update,
-          role: _ChunkRole.user,
-          partSuffix: "text",
-          partType: PluginMessagePartType.text,
-        );
+        // This plugin emits the accepted prompt itself. A live user chunk is
+        // the agent echoing that same prompt and would render it twice. Replay
+        // is reconstructed separately by AcpReplayCollector.
+        return const [];
       case "tool_call":
         return _toolCall(sessionId: sessionId, update: update);
       case "tool_call_update":
@@ -279,9 +322,13 @@ class AcpEventMapper {
     // user chunk into an assistant envelope. Absent (Cursor today) → the
     // synthesized per-turn id.
     final acpMessageId = update["messageId"];
-    final messageId = acpMessageId is String && acpMessageId.isNotEmpty
+    final hasAcpMessageId = acpMessageId is String && acpMessageId.isNotEmpty;
+    final fallbackSuffix = role == _ChunkRole.assistant
+        ? "-a${_idlessAssistantSeq[sessionId] ?? 0}"
+        : "";
+    final messageId = hasAcpMessageId
         ? "$sessionId-m$acpMessageId-${role.name}"
-        : "$sessionId-t${_turn(sessionId)}-${role.name}";
+        : "$sessionId-t${_turn(sessionId)}-${role.name}$fallbackSuffix";
     final partId = "$messageId-$partSuffix";
 
     final events = <BridgeSseEvent>[];
@@ -311,6 +358,9 @@ class AcpEventMapper {
         delta: text,
       ),
     );
+    if (role == _ChunkRole.assistant && !hasAcpMessageId) {
+      _openIdlessAssistant.add(sessionId);
+    }
     return events;
   }
 
@@ -320,6 +370,9 @@ class AcpEventMapper {
   }) {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
+    if (_liveTools[sessionId]?[toolCallId] == null) {
+      _closeIdlessAssistantEnvelope(sessionId);
+    }
     final messageId = "$sessionId-tool-$toolCallId";
     final state = _LiveTool(
       // Fail-soft like the tool name and `_toolCallUpdate`'s title: a non-string
@@ -359,6 +412,9 @@ class AcpEventMapper {
     // which would blank an existing tool card. Mirrors the replay collector,
     // which already merges — keeping live and history renderings consistent.
     final prior = _liveTools[sessionId]?[toolCallId];
+    if (prior == null) {
+      _closeIdlessAssistantEnvelope(sessionId);
+    }
     // Only re-resolve the tool identifier when `kind` is explicitly present; a
     // title-only update must NOT overwrite the canonical id (e.g. "edit") with
     // the title text (`title` lives separately in PluginToolState.title). This
@@ -395,6 +451,12 @@ class AcpEventMapper {
       mutationAvailable: _hasDiffContent(update),
     );
     return events;
+  }
+
+  void _closeIdlessAssistantEnvelope(String sessionId) {
+    if (!_openIdlessAssistant.remove(sessionId)) return;
+    _idlessAssistantSeq[sessionId] =
+        (_idlessAssistantSeq[sessionId] ?? 0) + 1;
   }
 
   BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {
