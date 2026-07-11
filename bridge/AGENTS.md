@@ -138,6 +138,8 @@ Do not extract a bridge collaborator only to make a file shorter. The extracted 
 
 Name a coordinator for the full invariant it owns. A class that orders title updates against session deletion is a session-mutation dispatcher, not a title service; names that mention only one field hide lifecycle responsibilities and invite misplaced callers.
 
+Keep bridge review fixes proportional. Do not add cross-repository locks, new lifecycle machinery, or broad routing changes for a rare timing window unless a realistic bridge/client flow demonstrates meaningful user impact that simpler existing semantics cannot handle.
+
 In the push subsystem, `PushDispatcher` owns only outbound push sends. `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
 
 ### Backend Quirks Live In The Plugin
