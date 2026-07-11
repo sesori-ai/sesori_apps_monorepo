@@ -661,6 +661,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
+    eventMapper
+        .mapSentPrompt(sessionId: sessionId, parts: parts)
+        .forEach(_eventBuffer.add);
     _enqueueTurn(
       sessionId: sessionId,
       parts: parts,
