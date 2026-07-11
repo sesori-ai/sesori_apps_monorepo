@@ -401,9 +401,10 @@ class OpenCodeRepository {
     Map<String, List<GlobalSession>> sessionsByDirectory,
     Iterable<String> worktrees,
   ) {
+    final nonEmptyWorktrees = worktrees.where((worktree) => worktree.isNotEmpty);
     final result = <GlobalSession>[];
     for (final entry in sessionsByDirectory.entries) {
-      if (worktrees.any((worktree) => _isDirectoryUnderWorktree(entry.key, worktree))) {
+      if (nonEmptyWorktrees.any((worktree) => _isDirectoryUnderWorktree(entry.key, worktree))) {
         result.addAll(entry.value);
       }
     }

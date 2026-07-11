@@ -785,7 +785,7 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
-            sandboxes: <String>["/moved/repo", "/second/repo"],
+            sandboxes: <String>["/moved/repo", "/second/repo", ""],
             id: "my-project",
             worktree: "/repo",
             time: ProjectTime(created: 1000, updated: 1000, initialized: null),
@@ -862,16 +862,38 @@ void main() {
             permission: null,
             revert: null,
           ),
+          const GlobalSession(
+            slug: "unrelated",
+            title: "unrelated",
+            version: "v",
+            project: null,
+            id: "unrelated-session",
+            projectID: "global",
+            directory: "/unrelated/repo",
+            time: GlobalSessionTime(created: 100, updated: 99000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ],
       );
       final repository = OpenCodeRepository(api);
 
       final projects = await repository.getProjects();
 
-      expect(projects, hasLength(1));
-      expect(projects.single.project.id, equals("/repo"));
+      expect(projects, hasLength(2));
+      final canonical = projects.singleWhere((project) => project.project.id == "/repo");
       expect(
-        projects.single.project.activity,
+        canonical.project.activity,
         equals(const PluginProjectActivity(createdAt: 500, updatedAt: 12000)),
       );
     });
