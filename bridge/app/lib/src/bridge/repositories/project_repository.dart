@@ -327,9 +327,10 @@ class ProjectRepository {
           storedActivities: _mapActivities(storedProjects),
         );
       case final BridgeDerivedProjectsPluginApi plugin:
-        final (storedProjects, sessionProjectPaths) = await (
+        final (storedProjects, sessionProjectPaths, tombstoned) = await (
           _projectsDao.getAllProjects(),
           _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+          _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
         ).wait;
         final sessions = await plugin.listAllSessions(
           knownDirectories: {
@@ -342,6 +343,7 @@ class ProjectRepository {
         };
         final grouped = <String, List<PluginSessionTime>>{};
         for (final session in sessions) {
+          if (tombstoned.contains(session.id)) continue;
           final time = session.time;
           if (time == null) continue;
           final projectPath = pathBySessionId[session.id] ?? session.directory;
@@ -382,9 +384,10 @@ class ProjectRepository {
   Future<List<Project>> _deriveProjects(
     BridgeDerivedProjectsPluginApi plugin,
   ) async {
-    final (storedProjects, sessionProjectPaths) = await (
+    final (storedProjects, sessionProjectPaths, tombstoned) = await (
       _projectsDao.getAllProjects(),
       _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+      _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
     ).wait;
     final sessions = await plugin.listAllSessions(
       knownDirectories: {
@@ -393,7 +396,9 @@ class ProjectRepository {
       },
     );
     return _derivedProjectBuilder.build(
-      sessions: sessions,
+      // A backend without session deletion keeps enumerating deleted sessions
+      // forever — the tombstones keep them out of project derivation.
+      sessions: sessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
       storedProjects: storedProjects,
       projectPathBySessionId: {
         for (final row in sessionProjectPaths) row.sessionId: row.projectPath,

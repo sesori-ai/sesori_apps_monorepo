@@ -15,6 +15,7 @@ import "../services/project_activity_service.dart";
 import "../services/project_initialization_service.dart";
 import "../services/session_archive_service.dart";
 import "../services/session_creation_service.dart";
+import "../services/session_mutation_dispatcher.dart";
 import "../services/session_persistence_service.dart";
 import "../services/session_unseen_service.dart";
 import "../services/worktree_service.dart";
@@ -84,6 +85,7 @@ class RequestRouter {
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required SessionUnseenService sessionUnseenService,
+    required SessionMutationDispatcher sessionMutationDispatcher,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required BridgeRestartService restartService,
@@ -107,6 +109,7 @@ class RequestRouter {
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
          sessionUnseenService: sessionUnseenService,
+         sessionMutationDispatcher: sessionMutationDispatcher,
          worktreeService: worktreeService,
          sessionDiffsHandler: sessionDiffsHandler,
          restartService: restartService,
@@ -132,6 +135,7 @@ class RequestRouter {
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required SessionUnseenService sessionUnseenService,
+    required SessionMutationDispatcher sessionMutationDispatcher,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required BridgeRestartService restartService,
@@ -150,20 +154,20 @@ class RequestRouter {
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionMutationDispatcher: sessionMutationDispatcher,
         sessionUnseenService: sessionUnseenService,
       ),
       CreateSessionHandler(sessionCreationService: sessionCreationService),
-      RenameSessionHandler(sessionRepository: sessionRepository),
+      RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher),
       MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
       UpdateSessionArchiveStatusHandler(
         sessionArchiveService: sessionArchiveService,
         sessionUnseenService: sessionUnseenService,
       ),
       DeleteSessionHandler(
-        plugin: plugin,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionPersistenceService: sessionPersistenceService,
+        sessionMutationDispatcher: sessionMutationDispatcher,
       ),
       sendPromptHandler,
       abortSessionHandler,

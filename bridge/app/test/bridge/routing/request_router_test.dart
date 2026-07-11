@@ -26,6 +26,7 @@ import "package:sesori_bridge/src/bridge/services/project_initialization_service
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -90,7 +91,7 @@ void main() {
       );
       final agentRepository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
       final providerRepository = ProviderRepository(plugin: plugin, projectsDao: db.projectsDao);
-      final permissionRepository = PermissionRepository(plugin: plugin);
+      final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
       final questionRepository = QuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -117,6 +118,7 @@ void main() {
         sessionRepository: sessionRepository,
         processRunner: FakeProcessRunner(),
       );
+      final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
       final projectActivityService = ProjectActivityService(
         projectRepository: projectRepository,
         now: () => DateTime.now().millisecondsSinceEpoch,
@@ -125,6 +127,7 @@ void main() {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionMutationDispatcher,
       );
       final sessionArchiveService = SessionArchiveService(
         worktreeService: worktreeService,
@@ -157,6 +160,7 @@ void main() {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
+        sessionMutationDispatcher: sessionMutationDispatcher,
         permissionRepository: permissionRepository,
         questionRepository: questionRepository,
         sessionPersistenceService: sessionPersistenceService,
@@ -464,7 +468,7 @@ void main() {
       );
       final agentRepository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
       final providerRepository = ProviderRepository(plugin: plugin, projectsDao: db.projectsDao);
-      final permissionRepository = PermissionRepository(plugin: plugin);
+      final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -495,6 +499,7 @@ void main() {
         ),
         processRunner: FakeProcessRunner(),
       );
+      final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
       final projectActivityService = ProjectActivityService(
         projectRepository: projectRepository,
         now: () => DateTime.now().millisecondsSinceEpoch,
@@ -513,6 +518,7 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
+          sessionMutationDispatcher: sessionMutationDispatcher,
         ),
         sessionArchiveService: SessionArchiveService(
           worktreeService: worktreeService,
@@ -534,6 +540,7 @@ void main() {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
+        sessionMutationDispatcher: sessionMutationDispatcher,
         permissionRepository: permissionRepository,
         questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
         sessionPersistenceService: sessionPersistenceService,

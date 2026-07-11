@@ -419,6 +419,13 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   /// No default — every insert stamps the active plugin's id explicitly; the
   /// v7→v8 migration backfills pre-existing rows itself.
   String get pluginId;
+
+  /// The bridge's last-known title for a derived-plugin session (from a
+  /// rename or a title-bearing `session.updated` event). Derived backends
+  /// (ACP, codex) don't persist renames, so this stored copy wins over the
+  /// backend's enumeration title. Null for native plugins (their backend is
+  /// authoritative) and for sessions with no bridge-known title.
+  String? get title;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -459,6 +466,9 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
       map['last_user_message_at'] = Variable<int>(lastUserMessageAt);
     }
     map['plugin_id'] = Variable<String>(pluginId);
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
     return map;
   }
 }
@@ -638,6 +648,15 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
@@ -655,6 +674,7 @@ class $SessionTableTable extends SessionTable
     lastSeenAt,
     lastUserMessageAt,
     pluginId,
+    title,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -777,6 +797,12 @@ class $SessionTableTable extends SessionTable
     } else if (isInserting) {
       context.missing(_pluginIdMeta);
     }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
     return context;
   }
 
@@ -848,6 +874,10 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.string,
         data['${effectivePrefix}plugin_id'],
       )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      ),
     );
   }
 
@@ -880,6 +910,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<int?> lastSeenAt;
   final Value<int?> lastUserMessageAt;
   final Value<String> pluginId;
+  final Value<String?> title;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -896,6 +927,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.lastSeenAt = const Value.absent(),
     this.lastUserMessageAt = const Value.absent(),
     this.pluginId = const Value.absent(),
+    this.title = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
@@ -913,6 +945,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.lastSeenAt = const Value.absent(),
     this.lastUserMessageAt = const Value.absent(),
     required String pluginId,
+    this.title = const Value.absent(),
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
        isDedicated = Value(isDedicated),
@@ -934,6 +967,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<int>? lastSeenAt,
     Expression<int>? lastUserMessageAt,
     Expression<String>? pluginId,
+    Expression<String>? title,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -951,6 +985,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (lastUserMessageAt != null) 'last_user_message_at': lastUserMessageAt,
       if (pluginId != null) 'plugin_id': pluginId,
+      if (title != null) 'title': title,
     });
   }
 
@@ -970,6 +1005,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<int?>? lastSeenAt,
     Value<int?>? lastUserMessageAt,
     Value<String>? pluginId,
+    Value<String?>? title,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -987,6 +1023,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       lastUserMessageAt: lastUserMessageAt ?? this.lastUserMessageAt,
       pluginId: pluginId ?? this.pluginId,
+      title: title ?? this.title,
     );
   }
 
@@ -1042,6 +1079,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (pluginId.present) {
       map['plugin_id'] = Variable<String>(pluginId.value);
     }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
     return map;
   }
 
@@ -1062,7 +1102,247 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('lastActivityAt: $lastActivityAt, ')
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('lastUserMessageAt: $lastUserMessageAt, ')
-          ..write('pluginId: $pluginId')
+          ..write('pluginId: $pluginId, ')
+          ..write('title: $title')
+          ..write(')'))
+        .toString();
+  }
+}
+
+mixin $DeletedSessionsTableTableToColumns
+    implements Insertable<DeletedSessionDto> {
+  /// Current owner of this durable local entity. Local mode has one owner;
+  /// carrying it in the key keeps future identity scoping possible.
+  String get ownerIdentity;
+  String get sessionId;
+
+  /// The id of the plugin that owned the session. Scoping keeps one plugin's
+  /// tombstones from ever touching another plugin's sessions.
+  String get pluginId;
+  int get deletedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['owner_identity'] = Variable<String>(ownerIdentity);
+    map['session_id'] = Variable<String>(sessionId);
+    map['plugin_id'] = Variable<String>(pluginId);
+    map['deleted_at'] = Variable<int>(deletedAt);
+    return map;
+  }
+}
+
+class $DeletedSessionsTableTable extends DeletedSessionsTable
+    with TableInfo<$DeletedSessionsTableTable, DeletedSessionDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeletedSessionsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ownerIdentityMeta = const VerificationMeta(
+    'ownerIdentity',
+  );
+  @override
+  late final GeneratedColumn<String> ownerIdentity = GeneratedColumn<String>(
+    'owner_identity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant("local"),
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pluginIdMeta = const VerificationMeta(
+    'pluginId',
+  );
+  @override
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    ownerIdentity,
+    sessionId,
+    pluginId,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'deleted_sessions_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeletedSessionDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('owner_identity')) {
+      context.handle(
+        _ownerIdentityMeta,
+        ownerIdentity.isAcceptableOrUnknown(
+          data['owner_identity']!,
+          _ownerIdentityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('plugin_id')) {
+      context.handle(
+        _pluginIdMeta,
+        pluginId.isAcceptableOrUnknown(data['plugin_id']!, _pluginIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pluginIdMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deletedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {ownerIdentity, pluginId, sessionId};
+  @override
+  DeletedSessionDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeletedSessionDto(
+      ownerIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_identity'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      pluginId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plugin_id'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeletedSessionsTableTable createAlias(String alias) {
+    return $DeletedSessionsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class DeletedSessionsTableCompanion extends UpdateCompanion<DeletedSessionDto> {
+  final Value<String> ownerIdentity;
+  final Value<String> sessionId;
+  final Value<String> pluginId;
+  final Value<int> deletedAt;
+  const DeletedSessionsTableCompanion({
+    this.ownerIdentity = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.pluginId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+  });
+  DeletedSessionsTableCompanion.insert({
+    this.ownerIdentity = const Value.absent(),
+    required String sessionId,
+    required String pluginId,
+    required int deletedAt,
+  }) : sessionId = Value(sessionId),
+       pluginId = Value(pluginId),
+       deletedAt = Value(deletedAt);
+  static Insertable<DeletedSessionDto> custom({
+    Expression<String>? ownerIdentity,
+    Expression<String>? sessionId,
+    Expression<String>? pluginId,
+    Expression<int>? deletedAt,
+  }) {
+    return RawValuesInsertable({
+      if (ownerIdentity != null) 'owner_identity': ownerIdentity,
+      if (sessionId != null) 'session_id': sessionId,
+      if (pluginId != null) 'plugin_id': pluginId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+    });
+  }
+
+  DeletedSessionsTableCompanion copyWith({
+    Value<String>? ownerIdentity,
+    Value<String>? sessionId,
+    Value<String>? pluginId,
+    Value<int>? deletedAt,
+  }) {
+    return DeletedSessionsTableCompanion(
+      ownerIdentity: ownerIdentity ?? this.ownerIdentity,
+      sessionId: sessionId ?? this.sessionId,
+      pluginId: pluginId ?? this.pluginId,
+      deletedAt: deletedAt ?? this.deletedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (ownerIdentity.present) {
+      map['owner_identity'] = Variable<String>(ownerIdentity.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletedSessionsTableCompanion(')
+          ..write('ownerIdentity: $ownerIdentity, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('pluginId: $pluginId, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -1592,6 +1872,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ProjectsTableTable projectsTable = $ProjectsTableTable(this);
   late final $SessionTableTable sessionTable = $SessionTableTable(this);
+  late final $DeletedSessionsTableTable deletedSessionsTable =
+      $DeletedSessionsTableTable(this);
   late final $PullRequestsTableTable pullRequestsTable =
       $PullRequestsTableTable(this);
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
@@ -1606,6 +1888,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     projectsTable,
     sessionTable,
+    deletedSessionsTable,
     pullRequestsTable,
   ];
   @override
@@ -2119,6 +2402,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<int?> lastSeenAt,
       Value<int?> lastUserMessageAt,
       required String pluginId,
+      Value<String?> title,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -2137,6 +2421,7 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<int?> lastSeenAt,
       Value<int?> lastUserMessageAt,
       Value<String> pluginId,
+      Value<String?> title,
     });
 
 final class $$SessionTableTableReferences
@@ -2239,6 +2524,11 @@ class $$SessionTableTableFilterComposer
 
   ColumnFilters<String> get pluginId => $composableBuilder(
     column: $table.pluginId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2345,6 +2635,11 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ProjectsTableTableOrderingComposer get projectId {
     final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2441,6 +2736,9 @@ class $$SessionTableTableAnnotationComposer
   GeneratedColumn<String> get pluginId =>
       $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
   $$ProjectsTableTableAnnotationComposer get projectId {
     final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -2508,6 +2806,7 @@ class $$SessionTableTableTableManager
                 Value<int?> lastSeenAt = const Value.absent(),
                 Value<int?> lastUserMessageAt = const Value.absent(),
                 Value<String> pluginId = const Value.absent(),
+                Value<String?> title = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 projectId: projectId,
@@ -2524,6 +2823,7 @@ class $$SessionTableTableTableManager
                 lastSeenAt: lastSeenAt,
                 lastUserMessageAt: lastUserMessageAt,
                 pluginId: pluginId,
+                title: title,
               ),
           createCompanionCallback:
               ({
@@ -2542,6 +2842,7 @@ class $$SessionTableTableTableManager
                 Value<int?> lastSeenAt = const Value.absent(),
                 Value<int?> lastUserMessageAt = const Value.absent(),
                 required String pluginId,
+                Value<String?> title = const Value.absent(),
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 projectId: projectId,
@@ -2558,6 +2859,7 @@ class $$SessionTableTableTableManager
                 lastSeenAt: lastSeenAt,
                 lastUserMessageAt: lastUserMessageAt,
                 pluginId: pluginId,
+                title: title,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -2625,6 +2927,199 @@ typedef $$SessionTableTableProcessedTableManager =
       (SessionDto, $$SessionTableTableReferences),
       SessionDto,
       PrefetchHooks Function({bool projectId})
+    >;
+typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
+    DeletedSessionsTableCompanion Function({
+      Value<String> ownerIdentity,
+      required String sessionId,
+      required String pluginId,
+      required int deletedAt,
+    });
+typedef $$DeletedSessionsTableTableUpdateCompanionBuilder =
+    DeletedSessionsTableCompanion Function({
+      Value<String> ownerIdentity,
+      Value<String> sessionId,
+      Value<String> pluginId,
+      Value<int> deletedAt,
+    });
+
+class $$DeletedSessionsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
+  $$DeletedSessionsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get ownerIdentity => $composableBuilder(
+    column: $table.ownerIdentity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeletedSessionsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
+  $$DeletedSessionsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get ownerIdentity => $composableBuilder(
+    column: $table.ownerIdentity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeletedSessionsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
+  $$DeletedSessionsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get ownerIdentity => $composableBuilder(
+    column: $table.ownerIdentity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
+
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$DeletedSessionsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeletedSessionsTableTable,
+          DeletedSessionDto,
+          $$DeletedSessionsTableTableFilterComposer,
+          $$DeletedSessionsTableTableOrderingComposer,
+          $$DeletedSessionsTableTableAnnotationComposer,
+          $$DeletedSessionsTableTableCreateCompanionBuilder,
+          $$DeletedSessionsTableTableUpdateCompanionBuilder,
+          (
+            DeletedSessionDto,
+            BaseReferences<
+              _$AppDatabase,
+              $DeletedSessionsTableTable,
+              DeletedSessionDto
+            >,
+          ),
+          DeletedSessionDto,
+          PrefetchHooks Function()
+        > {
+  $$DeletedSessionsTableTableTableManager(
+    _$AppDatabase db,
+    $DeletedSessionsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeletedSessionsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeletedSessionsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DeletedSessionsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> ownerIdentity = const Value.absent(),
+                Value<String> sessionId = const Value.absent(),
+                Value<String> pluginId = const Value.absent(),
+                Value<int> deletedAt = const Value.absent(),
+              }) => DeletedSessionsTableCompanion(
+                ownerIdentity: ownerIdentity,
+                sessionId: sessionId,
+                pluginId: pluginId,
+                deletedAt: deletedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> ownerIdentity = const Value.absent(),
+                required String sessionId,
+                required String pluginId,
+                required int deletedAt,
+              }) => DeletedSessionsTableCompanion.insert(
+                ownerIdentity: ownerIdentity,
+                sessionId: sessionId,
+                pluginId: pluginId,
+                deletedAt: deletedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeletedSessionsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeletedSessionsTableTable,
+      DeletedSessionDto,
+      $$DeletedSessionsTableTableFilterComposer,
+      $$DeletedSessionsTableTableOrderingComposer,
+      $$DeletedSessionsTableTableAnnotationComposer,
+      $$DeletedSessionsTableTableCreateCompanionBuilder,
+      $$DeletedSessionsTableTableUpdateCompanionBuilder,
+      (
+        DeletedSessionDto,
+        BaseReferences<
+          _$AppDatabase,
+          $DeletedSessionsTableTable,
+          DeletedSessionDto
+        >,
+      ),
+      DeletedSessionDto,
+      PrefetchHooks Function()
     >;
 typedef $$PullRequestsTableTableCreateCompanionBuilder =
     PullRequestsTableCompanion Function({
@@ -3090,6 +3585,8 @@ class $AppDatabaseManager {
       $$ProjectsTableTableTableManager(_db, _db.projectsTable);
   $$SessionTableTableTableManager get sessionTable =>
       $$SessionTableTableTableManager(_db, _db.sessionTable);
+  $$DeletedSessionsTableTableTableManager get deletedSessionsTable =>
+      $$DeletedSessionsTableTableTableManager(_db, _db.deletedSessionsTable);
   $$PullRequestsTableTableTableManager get pullRequestsTable =>
       $$PullRequestsTableTableTableManager(_db, _db.pullRequestsTable);
 }

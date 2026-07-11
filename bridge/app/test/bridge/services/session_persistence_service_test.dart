@@ -167,28 +167,6 @@ void main() {
       expect(rows, isEmpty);
     });
 
-    test("deleteSession removes an existing stored session", () async {
-      await projectsDao.insertProjectsIfMissing(projectIds: ["proj-delete"]);
-      await sessionDao.insertSession(
-        pluginId: "opencode",
-        sessionId: "sess-delete",
-        projectId: "proj-delete",
-        isDedicated: true,
-        createdAt: 1,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-
-      await service.deleteSession(sessionId: "sess-delete");
-
-      expect(await sessionDao.getSession(sessionId: "sess-delete"), isNull);
-    });
-
     test("archiveSession sets archivedAt on an existing stored session", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["proj-archive"]);
       await sessionDao.insertSession(

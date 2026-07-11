@@ -30,6 +30,7 @@ import "package:sesori_bridge/src/bridge/services/project_activity_service.dart"
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -70,6 +71,7 @@ void main() {
         ),
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
       final projectRepository = ProjectRepository(
         plugin: plugin,
         projectsDao: database.projectsDao,
@@ -108,6 +110,7 @@ void main() {
             ),
           ),
           sessionRepository: sessionRepository,
+          sessionMutationDispatcher: sessionTitleService,
         ),
         pushDispatcher: pushSubsystem.dispatcher,
         completionListener: pushSubsystem.completionListener,
@@ -168,7 +171,7 @@ void main() {
         ),
         providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
         agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
-        permissionRepository: PermissionRepository(plugin: plugin),
+        permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
         questionRepository: QuestionRepository(
           plugin: plugin,
           sessionDao: database.sessionDao,
@@ -201,8 +204,10 @@ void main() {
         ),
         sessionEventEnrichmentService: SessionEventEnrichmentService(
           sessionRepository: sessionRepository,
+          sessionMutationDispatcher: sessionTitleService,
           failureReporter: FakeFailureReporter(),
         ),
+        sessionMutationDispatcher: sessionTitleService,
         restartService: buildTestRestartService(),
         statusNotifier: null,
       );
@@ -336,7 +341,7 @@ class _TestHarness {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -362,8 +367,10 @@ class _TestHarness {
         plugin: plugin,
       ),
     );
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -386,6 +393,7 @@ class _TestHarness {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -451,6 +459,7 @@ class _TestHarness {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

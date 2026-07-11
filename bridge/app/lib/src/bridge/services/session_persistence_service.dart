@@ -104,10 +104,6 @@ class SessionPersistenceService {
     });
   }
 
-  Future<void> deleteSession({required String sessionId}) async {
-    await _sessionDao.deleteSession(sessionId: sessionId);
-  }
-
   Future<void> archiveSession({
     required String sessionId,
     required int archivedAt,

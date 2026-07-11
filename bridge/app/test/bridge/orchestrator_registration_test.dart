@@ -28,6 +28,7 @@ import "package:sesori_bridge/src/bridge/services/project_activity_service.dart"
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -293,6 +294,7 @@ class _RegistrationHarness {
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
     final projectRepository = ProjectRepository(
       plugin: plugin,
@@ -337,6 +339,7 @@ class _RegistrationHarness {
           ),
         ),
         sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionMutationDispatcher,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -390,7 +393,7 @@ class _RegistrationHarness {
       ),
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
-      permissionRepository: PermissionRepository(plugin: plugin),
+      permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
       questionRepository: QuestionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
@@ -423,8 +426,10 @@ class _RegistrationHarness {
       ),
       sessionEventEnrichmentService: SessionEventEnrichmentService(
         sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionMutationDispatcher,
         failureReporter: FakeFailureReporter(),
       ),
+      sessionMutationDispatcher: sessionMutationDispatcher,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

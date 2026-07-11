@@ -12,6 +12,11 @@ Sesori today is "monitor + answer one assistant from your phone." The destinatio
 
 **This biases design; it does not licence building the future early.** When two designs both satisfy the layer rules, prefer the one that doesn't foreclose a direction below — but **never add abstraction/generalization for these before a concrete present need**. YAGNI and the cohesion/ownership rules still win.
 
+Do not add persisted sentinels, presence flags, or tri-state fields solely to
+preserve a hypothetical backend distinction. Require a concrete wire trace,
+shipped behavior, or explicit product requirement before making that state
+durable; otherwise use the simpler observable semantics.
+
 **Directional invariants (don't weld these doors shut):**
 
 - **Plugin boundary is sacred** — no backend specifics leak past `BridgePluginApi` into `shared/`, the relay protocol, or the client; our own harness is *just a plugin*; differing abilities are optional, declared capabilities.
@@ -465,6 +470,10 @@ The bridge uses Drift (SQLite) for local persistence. Schema changes require a s
    - Data integrity test: insert data at old version, migrate, verify data at new version
 8. **Verify**: `make test && make analyze` from `bridge/`.
 
+When `main` already contains schema version N, a conflicting feature branch
+must move its pending schema changes to N+1 after merging `main`. Never rewrite
+or combine new work into the already-merged N migration or schema snapshot.
+
 ### Important Rules
 
 - Never edit `*.steps.dart` beyond the migration callback bodies.
@@ -555,6 +564,7 @@ Do not skip either step. The reviewers exist because violations compound — one
 - When the user pushes back on a coding practice, architecture choice, testing shape, utility placement, or workflow decision, proactively update the closest relevant `AGENTS.md` file so the same mistake is less likely to recur.
 - Prefer updating both the **repo-root `AGENTS.md`** for general guidance and the **workspace/module `AGENTS.md`** for domain-specific guidance when the feedback is scoped.
 - For UI review comments from bots, do not assume a changed shared component is an unintended regression just because the PR title names one screen. First check whether the design changed across all consumers; if the design source or user intent says the shared visual changed globally, decline the bot comment instead of preserving old styling on non-focused screens.
+- Do not broaden a PR to eliminate rare or speculative edge cases merely because a reviewer can describe them. Require a plausible user flow and meaningful consequence; decline fixes that need broad locking, new abstractions, or large refactors without concrete evidence proportional to that cost.
 - Do this proactively after the lesson is clear; do not wait for the user to ask a second time.
 - Assume the user reviews **committed and pushed code**, not your uncommitted local workspace. If you are expecting PR feedback to reflect your latest work, proactively commit and push first.
 - Never rely on users reviewing uncommitted changes. Remote PR state is the review source of truth unless the user explicitly says otherwise.

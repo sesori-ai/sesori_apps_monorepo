@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../persistence/daos/session_dao.dart";
 import "mappers/plugin_permission_mapper.dart";
 
 /// Layer 2 repository wrapping [plugin_interface.BridgePlugin] for permission operations.
@@ -14,25 +15,69 @@ import "mappers/plugin_permission_mapper.dart";
 /// decoupled.
 class PermissionRepository {
   final BridgePluginApi _plugin;
+  final SessionDao _sessionDao;
 
-  PermissionRepository({required BridgePluginApi plugin}) : _plugin = plugin;
+  PermissionRepository({required BridgePluginApi plugin, required SessionDao sessionDao})
+    : _plugin = plugin,
+      _sessionDao = sessionDao;
 
   /// Pending permissions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingPermission>> getPendingPermissions({required String sessionId}) async {
+    Set<String>? tombstoned;
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) return const [];
+    }
     final pluginPermissions = await _plugin.getPendingPermissions(sessionId: sessionId);
-    return pluginPermissions.map((p) => p.toSharedPendingPermission()).toList();
+    return [
+      for (final permission in pluginPermissions)
+        if (tombstoned == null || _isVisible(permission, tombstoned)) permission.toSharedPendingPermission(),
+    ];
+  }
+
+  static bool _isVisible(PluginPendingPermission permission, Set<String> tombstoned) {
+    return !tombstoned.contains(permission.sessionID) &&
+        (permission.displaySessionId == null || !tombstoned.contains(permission.displaySessionId));
   }
 
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
     required PermissionReply reply,
-  }) => _plugin.replyToPermission(
-    requestId: requestId,
-    sessionId: sessionId,
-    reply: _toPluginReply(reply),
-  );
+  }) async {
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) {
+        throw PluginOperationException.notFound(
+          "replyToPermission",
+          message: "session $sessionId was deleted",
+        );
+      }
+      final pending = await plugin.getPendingPermissions(sessionId: sessionId);
+      for (final permission in pending) {
+        if (permission.id != requestId) continue;
+        if (tombstoned.contains(permission.sessionID)) {
+          throw PluginOperationException.notFound(
+            "replyToPermission",
+            message: "session ${permission.sessionID} was deleted",
+          );
+        }
+        if (permission.displaySessionId case final displaySessionId? when tombstoned.contains(displaySessionId)) {
+          throw PluginOperationException.notFound(
+            "replyToPermission",
+            message: "display session $displaySessionId was deleted",
+          );
+        }
+        break;
+      }
+    }
+    return _plugin.replyToPermission(
+      requestId: requestId,
+      sessionId: sessionId,
+      reply: _toPluginReply(reply),
+    );
+  }
 
   static PluginPermissionReply _toPluginReply(PermissionReply reply) => switch (reply) {
     .once => .once,

@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -68,6 +69,7 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
+          sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
         ),
       );
     });
@@ -408,6 +410,7 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: localRepository,
+          sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: localRepository),
         ),
       );
       worktreeService.prepareResult = WorktreeSuccess(
@@ -870,20 +873,22 @@ void main() {
           time: null,
           summary: null,
         );
+      final orderedRepository = SessionRepository(
+        plugin: orderedPlugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
-          sessionRepository: SessionRepository(
-            plugin: orderedPlugin,
-            sessionDao: db.sessionDao,
-            projectsDao: db.projectsDao,
-            pullRequestRepository: PullRequestRepository(
-              pullRequestDao: db.pullRequestDao,
-              projectsDao: db.projectsDao,
-            ),
-            unseenCalculator: const SessionUnseenCalculator(),
-          ),
+          sessionRepository: orderedRepository,
+          sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: orderedRepository),
         ),
       );
 
@@ -1057,20 +1062,22 @@ void main() {
         time: null,
         summary: null,
       );
+      final throwingRepository = SessionRepository(
+        plugin: throwingPlugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
-          sessionRepository: SessionRepository(
-            plugin: throwingPlugin,
-            sessionDao: db.sessionDao,
-            projectsDao: db.projectsDao,
-            pullRequestRepository: PullRequestRepository(
-              pullRequestDao: db.pullRequestDao,
-              projectsDao: db.projectsDao,
-            ),
-            unseenCalculator: const SessionUnseenCalculator(),
-          ),
+          sessionRepository: throwingRepository,
+          sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: throwingRepository),
         ),
       );
 

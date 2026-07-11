@@ -402,6 +402,25 @@ class _FakeSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
+
+  @override
+  Future<Session> deleteSession({required String sessionId}) async => Session(
+    id: sessionId,
+    projectID: "",
+    directory: "",
+    parentID: null,
+    title: null,
+    time: null,
+    summary: null,
+    pullRequest: null,
+    promptDefaults: null,
+  );
+
+  @override
+  Future<bool> isSessionTombstoned({required String sessionId}) async => false;
+
+  @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
 
   @override

@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -34,6 +35,7 @@ void main() {
       );
       service = SessionEventEnrichmentService(
         sessionRepository: repository,
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: repository),
         failureReporter: LogFailureReporter(),
       );
     });
@@ -46,6 +48,7 @@ void main() {
     test("falls back to original event when enrichment fails", () async {
       const event = BridgeSseSessionUpdated(
         info: {"id": "s1", "projectID": 42},
+        titleChanged: false,
       );
 
       final result = await service.enrich(event);
@@ -101,7 +104,7 @@ void main() {
       );
 
       expect(result, isA<BridgeSseSessionCreated>());
-      final info = (result as BridgeSseSessionCreated).info;
+      final info = (result! as BridgeSseSessionCreated).info;
       expect(info["pullRequest"], isNotNull);
     });
 
@@ -129,7 +132,229 @@ void main() {
       );
 
       expect(result, isA<BridgeSseSessionsUpdated>());
-      expect((result as BridgeSseSessionsUpdated).projectID, "p1");
+      expect((result! as BridgeSseSessionsUpdated).projectID, "p1");
+    });
+
+    test("drops created and updated events for a tombstoned session", () async {
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone",
+        pluginId: plugin.id,
+        deletedAt: 1,
+      );
+      const info = {
+        "id": "gone",
+        "projectID": "p1",
+        "directory": "/repo",
+        "parentID": null,
+        "title": "Deleted",
+        "time": null,
+        "summary": null,
+        "pullRequest": null,
+      };
+
+      expect(await service.enrich(const BridgeSseSessionCreated(info: info)), isNull);
+      expect(await service.enrich(const BridgeSseSessionUpdated(info: info, titleChanged: false)), isNull);
+      expect(
+        await service.enrich(
+          const BridgeSsePermissionAsked(
+            requestID: "p1",
+            sessionID: "gone",
+            displaySessionId: "gone",
+            tool: "shell",
+            description: "Run command",
+          ),
+        ),
+        isNull,
+      );
+      expect(
+        await service.enrich(
+          const BridgeSsePermissionAsked(
+            requestID: "child-prompt",
+            sessionID: "child",
+            displaySessionId: "gone",
+            tool: "shell",
+            description: "Run command",
+          ),
+        ),
+        isNull,
+      );
+      const deleted = BridgeSseSessionDeleted(info: info);
+      expect(await service.enrich(deleted), same(deleted));
+      expect(
+        await service.enrich(
+          const BridgeSseMessagePartDelta(
+            sessionID: "gone",
+            messageID: "m1",
+            partID: "p1",
+            field: "text",
+            delta: "late",
+          ),
+        ),
+        isNull,
+      );
+    });
+
+    group("derived-plugin title capture", () {
+      late _FakeDerivedPlugin derivedPlugin;
+      late SessionRepository derivedRepository;
+      late SessionMutationDispatcher derivedTitleService;
+      late SessionEventEnrichmentService derivedService;
+
+      setUp(() {
+        derivedPlugin = _FakeDerivedPlugin();
+        derivedRepository = SessionRepository(
+          plugin: derivedPlugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+        derivedTitleService = SessionMutationDispatcher(sessionRepository: derivedRepository);
+        derivedService = SessionEventEnrichmentService(
+          sessionRepository: derivedRepository,
+          sessionMutationDispatcher: derivedTitleService,
+          failureReporter: LogFailureReporter(),
+        );
+      });
+
+      Future<void> insertStored({required String? title}) async {
+        await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+        await db.sessionDao.insertSession(
+          pluginId: "codex",
+          sessionId: "s1",
+          projectId: "/repo",
+          isDedicated: false,
+          createdAt: 10,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+        );
+        await db.sessionDao.setTitle(sessionId: "s1", title: title);
+      }
+
+      Map<String, dynamic> sessionInfo({required String? title}) => {
+        "id": "s1",
+        "projectID": "/repo",
+        "directory": "/repo",
+        "parentID": null,
+        "title": title,
+        "time": null,
+        "summary": null,
+        "pullRequest": null,
+      };
+
+      test("a session.updated persists its title before enriching", () async {
+        await insertStored(title: "Old title");
+
+        final result = await derivedService.enrich(
+          BridgeSseSessionUpdated(
+            info: sessionInfo(title: "Backend rename"),
+            titleChanged: true,
+          ),
+        );
+
+        // The wire payload carries the NEW title (captured before the
+        // stored-wins overlay), and the stored copy now matches it.
+        expect((result! as BridgeSseSessionUpdated).info["title"], "Backend rename");
+        final stored = await db.sessionDao.getSession(sessionId: "s1");
+        expect(stored?.title, "Backend rename");
+      });
+
+      test("a null title removes the stored copy and restores backend fallback", () async {
+        await insertStored(title: "Old title");
+
+        final result = await derivedService.enrich(
+          BridgeSseSessionUpdated(info: sessionInfo(title: null), titleChanged: true),
+        );
+
+        expect((result! as BridgeSseSessionUpdated).info["title"], isNull);
+        final stored = await db.sessionDao.getSession(sessionId: "s1");
+        expect(stored?.title, isNull);
+        final refreshed = await derivedRepository.enrichSession(
+          session: Session.fromJson(sessionInfo(title: "Backend auto-title")),
+        );
+        expect(refreshed.title, "Backend auto-title");
+      });
+
+      test("a title update before row insertion is applied when the row arrives", () async {
+        final result = await derivedService.enrich(
+          BridgeSseSessionUpdated(
+            info: sessionInfo(title: "Early title"),
+            titleChanged: true,
+          ),
+        );
+        expect((result! as BridgeSseSessionUpdated).info["title"], "Early title");
+        expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
+
+        await derivedRepository.insertStoredSession(
+          sessionId: "s1",
+          projectId: "/repo",
+          isDedicated: false,
+          createdAt: 10,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          agent: null,
+          agentModel: null,
+        );
+        await derivedTitleService.applyPendingTitle(sessionId: "s1");
+
+        final stored = await db.sessionDao.getSession(sessionId: "s1");
+        expect(stored?.title, "Early title");
+      });
+
+      test("a snapshot-only session.updated does not replace the stored title", () async {
+        await insertStored(title: "User rename");
+
+        final result = await derivedService.enrich(
+          BridgeSseSessionUpdated(
+            info: sessionInfo(title: "Cached backend title"),
+            titleChanged: false,
+          ),
+        );
+
+        expect((result! as BridgeSseSessionUpdated).info["title"], "User rename");
+        expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "User rename");
+      });
+
+      test("session.created does not capture titles (null means unknown, not cleared)", () async {
+        await insertStored(title: "Kept title");
+
+        final result = await derivedService.enrich(
+          BridgeSseSessionCreated(info: sessionInfo(title: null)),
+        );
+
+        final stored = await db.sessionDao.getSession(sessionId: "s1");
+        expect(stored?.title, "Kept title");
+        // The stored-wins overlay even restores the title onto the payload.
+        expect((result! as BridgeSseSessionCreated).info["title"], "Kept title");
+      });
     });
   });
+}
+
+/// Minimal derive-style plugin for the title-capture tests: only the members
+/// the enrichment path touches are real.
+class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
+  @override
+  String get id => "codex";
+
+  @override
+  String get launchDirectory => "/repo";
+
+  @override
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async => const [];
+
+  @override
+  void primeSessionDirectory({required String sessionId, required String directory}) {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

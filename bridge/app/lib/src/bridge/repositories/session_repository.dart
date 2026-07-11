@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         Log,
         NativeProjectsPluginApi,
         PluginActiveSession,
+        PluginOperationException,
         PluginSession,
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
@@ -102,6 +103,7 @@ class SessionRepository {
 
       case final BridgeDerivedProjectsPluginApi plugin:
         final sessionProjectPaths = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);
+        final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
         final allSessions = await plugin.listAllSessions(
           knownDirectories: _knownDirectories(
             sessionProjectPaths: sessionProjectPaths,
@@ -110,7 +112,9 @@ class SessionRepository {
         );
         final scoped = _derivedSessionBuilder.build(
           projectId: projectId,
-          sessions: allSessions,
+          // A backend without session deletion keeps enumerating deleted
+          // sessions forever — the tombstones filter them out.
+          sessions: allSessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
           projectPathBySessionId: {
             for (final row in sessionProjectPaths) row.sessionId: row.projectPath,
           },
@@ -190,8 +194,11 @@ class SessionRepository {
   }
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "renameSession");
+    }
     final updated = await _plugin.renameSession(sessionId: sessionId, title: title);
-    return enrichPluginSession(pluginSession: updated);
+    return updated.toSharedSession();
   }
 
   Future<CommandListResponse> getCommands({required String? projectId}) async {
@@ -216,6 +223,9 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "sendCommand");
+    }
     await _primeDerivedSessionDirectory(sessionId: sessionId);
     return _plugin.sendCommand(
       sessionId: sessionId,
@@ -237,6 +247,9 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "sendPrompt");
+    }
     await _primeDerivedSessionDirectory(sessionId: sessionId);
     return _plugin.sendPrompt(
       sessionId: sessionId,
@@ -255,9 +268,68 @@ class SessionRepository {
   /// be the FIRST plugin call for a stored worktree session, and a
   /// directory-scoped backend would otherwise replay in its launch directory.
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "getSessionMessages");
+    }
     await _primeDerivedSessionDirectory(sessionId: sessionId);
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
     return pluginMessages.toSharedMessageWithParts();
+  }
+
+  /// Persists the bridge's title copy for a derived-plugin session. Null
+  /// removes the copy, so later reads fall back to the backend title. No-op for native plugins, whose backends persist their own
+  /// titles (a stored copy would go stale), and for rowless sessions.
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
+    if (_plugin is! BridgeDerivedProjectsPluginApi) return true;
+    if (await _sessionDao.getSession(sessionId: sessionId) == null) return false;
+    await _sessionDao.setTitle(sessionId: sessionId, title: title);
+    return true;
+  }
+
+  Future<bool> isSessionTombstoned({required String sessionId}) {
+    return _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: _plugin.id);
+  }
+
+  /// Deletes the backend session, then records its tombstone and removes the
+  /// stored row atomically. The tombstone is written even for rowless sessions
+  /// because a backend without session deletion may still enumerate them.
+  Future<Session> deleteSession({required String sessionId}) async {
+    final stored = await _sessionDao.getSession(sessionId: sessionId);
+    var projectId = stored?.projectId;
+    if (projectId == null) {
+      try {
+        projectId = await findProjectIdForSession(sessionId: sessionId);
+      } catch (error, stackTrace) {
+        Log.w("failed to resolve project for rowless session deletion $sessionId", error, stackTrace);
+      }
+    }
+    projectId ??= "";
+    final deletionSnapshot = Session(
+      id: sessionId,
+      projectID: projectId,
+      directory: stored?.worktreePath ?? projectId,
+      parentID: null,
+      title: stored?.title,
+      time: null,
+      summary: null,
+      pullRequest: null,
+      promptDefaults: null,
+      hasWorktree: stored?.worktreePath != null,
+    );
+    try {
+      await _plugin.deleteSession(sessionId);
+    } on PluginOperationException catch (error) {
+      if (!error.isNotFound) rethrow;
+    }
+    await _sessionDao.transaction(() async {
+      await _sessionDao.insertSessionTombstone(
+        sessionId: sessionId,
+        pluginId: _plugin.id,
+        deletedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await _sessionDao.deleteSession(sessionId: sessionId);
+    });
+    return deletionSnapshot;
   }
 
   /// Feeds a derived plugin the bridge's stored session→directory attribution
@@ -345,6 +417,10 @@ class SessionRepository {
 
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
+        // A deleted session must not resolve, even though a backend without
+        // session deletion still enumerates it.
+        final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+        if (tombstoned.contains(sessionId)) return null;
         // No stored row means the bridge did not create this session (every
         // bridge-created session — worktree ones included — is persisted with
         // its owning project and was handled above), so its own cwd IS its
@@ -386,11 +462,17 @@ class SessionRepository {
     }
   }
 
-  Future<void> notifySessionArchived({required String sessionId}) {
+  Future<void> notifySessionArchived({required String sessionId}) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "archiveSession");
+    }
     return _plugin.archiveSession(sessionId: sessionId);
   }
 
-  Future<void> abortSession({required String sessionId}) {
+  Future<void> abortSession({required String sessionId}) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "abortSession");
+    }
     return _plugin.abortSession(sessionId: sessionId);
   }
 
@@ -450,8 +532,27 @@ class SessionRepository {
   }
 
   Future<List<Session>> getChildSessions({required String sessionId}) async {
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) {
+        throw PluginOperationException.notFound(
+          "getChildSessions",
+          message: "session $sessionId was deleted",
+        );
+      }
+      final pluginSessions = await plugin.getChildSessions(sessionId);
+      return pluginSessions.where((session) => !tombstoned.contains(session.id)).toSharedSessions();
+    }
     final pluginSessions = await _plugin.getChildSessions(sessionId);
     return pluginSessions.toSharedSessions();
+  }
+
+  Future<void> _throwIfTombstoned({required String sessionId, required String operation}) async {
+    if (!await isSessionTombstoned(sessionId: sessionId)) return;
+    throw PluginOperationException.notFound(
+      operation,
+      message: "session $sessionId was deleted",
+    );
   }
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {

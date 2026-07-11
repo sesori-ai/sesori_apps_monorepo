@@ -47,7 +47,7 @@ than observed Cursor bugs. That is called out per item.
 |----|------------------------------------------------------|----------------------------------------------------------------|------------|
 | H  | Resume-load & per-session turn robustness            | **User-facing:** stuck conversations, dropped queued prompts, replay leak | **Resolved** |
 | A  | Bridge↔plugin stored-directory / attribution seam    | Real worktree flows on restart; one hook resolves three threads | **Resolved** |
-| B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | Open (Medium) |
+| B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | **Resolved** |
 | C  | ACP protocol completeness in the mapper / parsers    | Correctness for the next ACP backend                            | **Resolved** |
 | G  | Concurrent multi-session turn attribution            | Wrong-conversation routing of `sessionId`-less requests         | **Resolved** |
 | I  | Lossy `session.updated` payload on title changes     | List row loses time/summary/defaults until refresh             | **Resolved** |
@@ -98,32 +98,37 @@ with the parallel-plugins direction in `parallel-plugins/CONSIDERATIONS.md`.
 
 ---
 
-## Theme B — Durable derive-plugin session state the backend won't persist
+## Theme B — Durable derive-plugin session state the backend won't persist ✅ Resolved
 
-The bridge must hold session state that a derived backend does not. Both items
-are Drift schema migrations plus reconciliation-path changes; both must keep the
-existing `plugin_id` scoping so one plugin's reconcile never touches another's
-rows (CONSIDERATIONS §2).
+**Resolved** — schema v10 (`title` column on `sessions_table` + a new
+`deleted_sessions_table`), migrated with structural + data-integrity tests per
+the Drift workflow, and `plugin_id`-scoped throughout so one plugin's state
+never touches another's rows (CONSIDERATIONS §2).
 
-- **B1 — ACP session title persistence.** Both explicit `PATCH /session/title`
-  and the post-create generated title flow through `renameSession`, which only
-  echoes the title in its immediate response. The bridge session table has no
-  title column and no ACP rename is performed, so the next `/session`
-  enumeration loses the title. Options: a bridge-side title-override column, or
-  report rename unsupported (which breaks the app's optimistic rename UX). Today
-  the mobile DB is authoritative, consistent with `renameSession`'s best-effort
-  contract.
+- **B1 — session title persistence.** The bridge now keeps the authoritative
+  title copy for derived-plugin sessions: `renameSession` persists the title
+  (covering both the explicit `PATCH /session/title` and the bridge's
+  post-create generated title), and a title-bearing `session.updated` from the
+  backend itself (ACP's `session_info_update` and codex's
+  `thread/name/updated`) is captured into the stored row *before* enrichment.
+  A null title removes the stored copy rather than adding durable tri-state
+  semantics. Reads overlay non-null stored titles for derived
+  plugins, so a rename survives enumeration even though the backend keeps
+  reporting its own auto-title, while the backend's newer auto-titles still
+  flow through the event capture. Native backends (OpenCode) stay fully
+  authoritative for their own titles — nothing is stored or overlaid.
   Source: [#332 r3536171429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536171429)
 
-- **B2 — session-delete tombstone.** Cursor does not advertise `session/delete`,
-  so a deleted session reappears from `session/list`. A capability-guarded call
-  wouldn't stop it. The robust fix is a bridge-side tombstone so a deleted
-  derive-plugin session is filtered from enumeration after its row is removed.
+- **B2 — session-delete tombstone.** `SessionRepository.deleteSession`
+  records a tombstone with the row removal in one transaction (written even
+  for rowless-but-enumerable sessions — the delete handler no longer gates on
+  a stored row), and every derived enumeration path filters tombstoned ids
+  right after `listAllSessions`: session lists, project derivation, rowless
+  session resolution, and project-question scoping. Because the filter runs
+  upstream, `persistSessionsForProject` never re-inserts a tombstoned
+  placeholder row. Tombstones are permanent (session ids are UUIDs, never
+  reused) and bounded by actual deletions.
   Source: [#332 r3536293271](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536293271)
-
-**Affected surfaces.** Bridge persistence (new column/table + migration +
-migration tests — see the Drift workflow in root `AGENTS.md`), `SessionDao` /
-reconcile paths, `SessionRepository`, derived-session enumeration filtering.
 
 ---
 

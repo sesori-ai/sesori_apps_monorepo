@@ -30,6 +30,7 @@ import "package:sesori_bridge/src/bridge/services/project_activity_service.dart"
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -365,6 +366,7 @@ class _ReauthHarness {
       ),
       viewTracker: sessionViewTracker,
     );
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
     final projectRepository = ProjectRepository(
       plugin: plugin,
@@ -405,6 +407,7 @@ class _ReauthHarness {
           ),
         ),
         sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -448,7 +451,7 @@ class _ReauthHarness {
       ),
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
-      permissionRepository: PermissionRepository(plugin: plugin),
+      permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
       questionRepository: QuestionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
@@ -473,8 +476,10 @@ class _ReauthHarness {
       ),
       sessionEventEnrichmentService: SessionEventEnrichmentService(
         sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
         failureReporter: FakeFailureReporter(),
       ),
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

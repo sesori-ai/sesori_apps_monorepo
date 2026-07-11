@@ -8,7 +8,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -30,25 +30,20 @@ void main() {
       operationLog = [];
       plugin = _TrackingFakeBridgePlugin(operationLog: operationLog);
       worktreeService = _FakeWorktreeService(database: db, operationLog: operationLog);
-      handler = DeleteSessionHandler(
+      final sessionRepository = SessionRepository(
         plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      handler = DeleteSessionHandler(
         worktreeService: worktreeService,
-        sessionRepository: SessionRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          projectsDao: db.projectsDao,
-          pullRequestRepository: PullRequestRepository(
-            pullRequestDao: db.pullRequestDao,
-            projectsDao: db.projectsDao,
-          ),
-          unseenCalculator: const SessionUnseenCalculator(),
-        ),
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
-          pluginId: "opencode",
-        ),
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
       );
     });
 
@@ -104,6 +99,30 @@ void main() {
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
       expect(operationLog, equals(["pluginDelete"]));
+    });
+
+    test("a delete records a tombstone even for a rowless session", () async {
+      // No stored row (e.g. a backend-only session never persisted): the
+      // delete must still tombstone it, or a backend without session deletion
+      // resurrects it on the next enumeration.
+      final response = await handler.handle(
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "ghost",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response, isA<SuccessEmptyResponse>());
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
+        contains("ghost"),
+      );
     });
 
     test("2) deleteWorktree=true on clean worktree: safety check then plugin then worktree", () async {

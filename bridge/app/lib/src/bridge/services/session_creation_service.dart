@@ -4,20 +4,24 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../metadata_service.dart";
 import "../models/session_metadata.dart" as bridge_metadata;
 import "../repositories/session_repository.dart";
+import "session_mutation_dispatcher.dart";
 import "worktree_service.dart";
 
 class SessionCreationService {
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
+  final SessionMutationDispatcher _sessionMutationDispatcher;
 
   SessionCreationService({
     required MetadataService metadataService,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
+    required SessionMutationDispatcher sessionMutationDispatcher,
   }) : _metadataService = metadataService,
        _worktreeService = worktreeService,
-       _sessionRepository = sessionRepository;
+       _sessionRepository = sessionRepository,
+       _sessionMutationDispatcher = sessionMutationDispatcher;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
     // Validate the opaque project handle before metadata generation or any
@@ -64,6 +68,7 @@ class SessionCreationService {
             )
           : null,
     );
+    await _sessionMutationDispatcher.applyPendingTitle(sessionId: created.id);
     await _maybeSendCommand(
       session: created,
       command: normalizedCommand,
@@ -171,7 +176,7 @@ class SessionCreationService {
   }) async {
     if (metadata?.title case final title?) {
       try {
-        return await _sessionRepository.renameSession(sessionId: session.id, title: title);
+        return await _sessionMutationDispatcher.renameSession(sessionId: session.id, title: title);
       } catch (e) {
         Log.w("Failed to rename session ${session.id}: $e");
       }

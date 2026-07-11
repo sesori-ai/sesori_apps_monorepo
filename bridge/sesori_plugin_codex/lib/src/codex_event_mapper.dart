@@ -127,6 +127,7 @@ class CodexEventMapper {
               id: threadId,
               title: params["threadName"] as String?,
             ).toJson(),
+            titleChanged: true,
           ),
         ];
 

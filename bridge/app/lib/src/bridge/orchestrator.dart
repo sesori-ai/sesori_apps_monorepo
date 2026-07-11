@@ -40,6 +40,7 @@ import "services/session_abort_service.dart";
 import "services/session_archive_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
+import "services/session_mutation_dispatcher.dart";
 import "services/session_persistence_service.dart";
 import "services/session_prompt_service.dart";
 import "services/session_unseen_service.dart";
@@ -78,6 +79,7 @@ class Orchestrator {
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final SessionMutationDispatcher _sessionMutationDispatcher;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
 
@@ -109,6 +111,7 @@ class Orchestrator {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
     // Standalone has no control channel, so this is null there.
@@ -139,6 +142,7 @@ class Orchestrator {
        _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
        _sessionEventEnrichmentService = sessionEventEnrichmentService,
+       _sessionMutationDispatcher = sessionMutationDispatcher,
        _restartService = restartService,
        _statusNotifier = statusNotifier;
 
@@ -192,6 +196,7 @@ class Orchestrator {
       sessionArchiveService: sessionArchiveService,
       sessionAbortService: sessionAbortService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
+      sessionMutationDispatcher: _sessionMutationDispatcher,
       restartService: _restartService,
       statusNotifier: _statusNotifier,
     );
@@ -230,6 +235,7 @@ class OrchestratorSession {
   final SessionViewTracker _sessionViewTracker;
   final SessionRepository _sessionRepository;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionAbortService _sessionAbortService;
   final ProjectActivityService _projectActivityService;
   final BridgeRestartService _restartService;
@@ -290,6 +296,7 @@ class OrchestratorSession {
     required SessionArchiveService sessionArchiveService,
     required SessionAbortService sessionAbortService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
@@ -308,6 +315,7 @@ class OrchestratorSession {
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
        _sessionRepository = sessionRepository,
+       _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
        _restartService = restartService,
@@ -339,6 +347,7 @@ class OrchestratorSession {
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
          sessionUnseenService: sessionUnseenService,
+         sessionMutationDispatcher: sessionMutationDispatcher,
          worktreeService: worktreeService,
          sessionDiffsHandler: GetSessionDiffsHandler(
            sessionRepository: sessionRepository,
@@ -403,8 +412,15 @@ class OrchestratorSession {
         }
       }
       Log.d("subscribing to plugin event stream...");
-      _plugin.events
-          .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
+      MergeStream<BridgeSseEvent>([
+            _plugin.events,
+            _sessionMutationDispatcher.deletedSessions.map(
+              (session) => BridgeSseSessionDeleted(info: session.toJson()),
+            ),
+          ])
+          .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
+          .where((event) => event != null)
+          .cast<BridgeSseEvent>()
           .asyncMap<void>(_processPluginEvent)
           .listen(
             (_) {},
@@ -557,6 +573,7 @@ class OrchestratorSession {
       );
       await _subscriptions.cancel();
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
+      await _sessionMutationDispatcher.dispose();
       await _projectActivityService.dispose();
       Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
       await _sessionAbortService.dispose();
@@ -769,6 +786,7 @@ class OrchestratorSession {
           parentId: info.parentID,
           occurredAt: info.time?.created,
         );
+        await _sessionMutationDispatcher.applyPendingTitle(sessionId: info.id);
       case SesoriSessionDeleted(:final info):
         await _sessionUnseenService.recordSessionDeleted(sessionId: info.id, projectId: info.projectID);
       case SesoriMessageUpdated(:final info):
