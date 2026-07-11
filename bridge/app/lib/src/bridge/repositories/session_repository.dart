@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         Log,
         NativeProjectsPluginApi,
         PluginActiveSession,
+        PluginOperationException,
         PluginSession,
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
@@ -193,6 +194,12 @@ class SessionRepository {
   }
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi && await isSessionTombstoned(sessionId: sessionId)) {
+      throw PluginOperationException.notFound(
+        "renameSession",
+        message: "session $sessionId was deleted",
+      );
+    }
     final updated = await _plugin.renameSession(sessionId: sessionId, title: title);
     return updated.toSharedSession();
   }

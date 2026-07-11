@@ -235,6 +235,7 @@ class OrchestratorSession {
   final SessionViewTracker _sessionViewTracker;
   final SessionRepository _sessionRepository;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final SessionTitleService _sessionTitleService;
   final SessionAbortService _sessionAbortService;
   final ProjectActivityService _projectActivityService;
   final BridgeRestartService _restartService;
@@ -314,6 +315,7 @@ class OrchestratorSession {
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
        _sessionRepository = sessionRepository,
+       _sessionTitleService = sessionTitleService,
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
        _restartService = restartService,
@@ -344,8 +346,8 @@ class OrchestratorSession {
          permissionRepository: permissionRepository,
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
-          sessionUnseenService: sessionUnseenService,
-          sessionTitleService: sessionTitleService,
+         sessionUnseenService: sessionUnseenService,
+         sessionTitleService: sessionTitleService,
          worktreeService: worktreeService,
          sessionDiffsHandler: GetSessionDiffsHandler(
            sessionRepository: sessionRepository,
@@ -778,6 +780,7 @@ class OrchestratorSession {
           parentId: info.parentID,
           occurredAt: info.time?.created,
         );
+        await _sessionTitleService.applyPendingTitle(sessionId: info.id);
       case SesoriSessionDeleted(:final info):
         await _sessionUnseenService.recordSessionDeleted(sessionId: info.id, projectId: info.projectID);
       case SesoriMessageUpdated(:final info):

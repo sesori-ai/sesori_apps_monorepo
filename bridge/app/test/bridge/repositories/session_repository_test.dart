@@ -1210,6 +1210,36 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "My rename");
     });
 
+    test("renameSession rejects a tombstoned session before plugin access", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone",
+        pluginId: plugin.id,
+        deletedAt: 1,
+      );
+
+      await expectLater(
+        repository.renameSession(sessionId: "gone", title: "Resurrected"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(plugin.lastRenameSessionId, isNull);
+    });
+
     test("tombstoned sessions are filtered from enumeration and resolution", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1419,6 +1449,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   final String launchDirectory;
 
   List<PluginSession> allSessions;
+  String? lastRenameSessionId;
 
   /// The hint set received on the most recent [listAllSessions] call.
   Set<String>? receivedKnownDirectories;
@@ -1447,6 +1478,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   /// Echo-only rename, mirroring the ACP contract (no backend rename RPC).
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    lastRenameSessionId = sessionId;
     return PluginSession(
       id: sessionId,
       projectID: launchDirectory,

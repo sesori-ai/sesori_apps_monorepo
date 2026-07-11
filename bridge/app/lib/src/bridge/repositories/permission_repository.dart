@@ -24,13 +24,21 @@ class PermissionRepository {
   /// Pending permissions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingPermission>> getPendingPermissions({required String sessionId}) async {
+    Set<String>? tombstoned;
     if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
-      if (await _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: plugin.id)) {
-        return const [];
-      }
+      tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) return const [];
     }
     final pluginPermissions = await _plugin.getPendingPermissions(sessionId: sessionId);
-    return pluginPermissions.map((p) => p.toSharedPendingPermission()).toList();
+    return [
+      for (final permission in pluginPermissions)
+        if (tombstoned == null || _isVisible(permission, tombstoned)) permission.toSharedPendingPermission(),
+    ];
+  }
+
+  static bool _isVisible(PluginPendingPermission permission, Set<String> tombstoned) {
+    return !tombstoned.contains(permission.sessionID) &&
+        (permission.displaySessionId == null || !tombstoned.contains(permission.displaySessionId));
   }
 
   Future<void> replyToPermission({

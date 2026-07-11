@@ -18,21 +18,27 @@ class QuestionRepository {
   final SessionDao _sessionDao;
   final ProjectsDao _projectsDao;
 
-  QuestionRepository({required BridgePluginApi plugin, required SessionDao sessionDao, required ProjectsDao projectsDao})
-    : _plugin = plugin,
-      _sessionDao = sessionDao,
-      _projectsDao = projectsDao;
+  QuestionRepository({
+    required BridgePluginApi plugin,
+    required SessionDao sessionDao,
+    required ProjectsDao projectsDao,
+  }) : _plugin = plugin,
+       _sessionDao = sessionDao,
+       _projectsDao = projectsDao;
 
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingQuestion>> getPendingQuestions({required String sessionId}) async {
+    Set<String>? tombstoned;
     if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
-      if (await _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: plugin.id)) {
-        return const [];
-      }
+      tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) return const [];
     }
     final pluginQuestions = await _plugin.getPendingQuestions(sessionId: sessionId);
-    return pluginQuestions.map((q) => q.toSharedPendingQuestion()).toList();
+    return [
+      for (final question in pluginQuestions)
+        if (tombstoned == null || _isVisible(question, tombstoned)) question.toSharedPendingQuestion(),
+    ];
   }
 
   /// All pending questions for [projectId].
@@ -95,17 +101,23 @@ class QuestionRepository {
 
         final questionsByKey = <String, PendingQuestion>{
           for (final question in ownScopedQuestions)
-            if (!tombstoned.contains(question.sessionID))
+            if (_isVisible(question, tombstoned))
               "${question.sessionID}:${question.id}": question.toSharedPendingQuestion(),
         };
         for (final sessionId in sessionIds) {
           final pluginQuestions = await plugin.getPendingQuestions(sessionId: sessionId);
           for (final question in pluginQuestions) {
+            if (!_isVisible(question, tombstoned)) continue;
             questionsByKey["${question.sessionID}:${question.id}"] = question.toSharedPendingQuestion();
           }
         }
         return questionsByKey.values.toList();
     }
+  }
+
+  static bool _isVisible(PluginPendingQuestion question, Set<String> tombstoned) {
+    return !tombstoned.contains(question.sessionID) &&
+        (question.displaySessionId == null || !tombstoned.contains(question.displaySessionId));
   }
 
   Future<void> replyToQuestion({

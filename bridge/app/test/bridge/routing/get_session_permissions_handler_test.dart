@@ -101,11 +101,62 @@ void main() {
       expect(response.data, isEmpty);
       expect(derivedPlugin.pendingPermissionCalls, isZero);
     });
+
+    test("filters permissions for tombstoned child and displayed sessions", () async {
+      final derivedPlugin = _DerivedPermissionPlugin()
+        ..permissions = const [
+          PluginPendingPermission(
+            id: "deleted-child",
+            sessionID: "gone-child",
+            displaySessionId: "root",
+            tool: "shell",
+            description: "child",
+          ),
+          PluginPendingPermission(
+            id: "deleted-root",
+            sessionID: "live-child",
+            displaySessionId: "gone-root",
+            tool: "shell",
+            description: "root",
+          ),
+          PluginPendingPermission(
+            id: "visible",
+            sessionID: "live-child",
+            displaySessionId: "root",
+            tool: "shell",
+            description: "visible",
+          ),
+        ];
+      for (final sessionId in ["gone-child", "gone-root"]) {
+        await db.sessionDao.insertSessionTombstone(
+          sessionId: sessionId,
+          pluginId: derivedPlugin.id,
+          deletedAt: 1,
+        );
+      }
+      final derivedHandler = GetSessionPermissionsHandler(
+        permissionRepository: PermissionRepository(
+          plugin: derivedPlugin,
+          sessionDao: db.sessionDao,
+        ),
+      );
+
+      final response = await derivedHandler.handle(
+        makeRequest("POST", "/session/permissions"),
+        body: const SessionIdRequest(sessionId: "root"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.data.map((permission) => permission.id), ["visible"]);
+    });
   });
 }
 
 class _DerivedPermissionPlugin implements BridgeDerivedProjectsPluginApi {
   int pendingPermissionCalls = 0;
+  List<PluginPendingPermission> permissions = const [];
 
   @override
   String get id => "codex";
@@ -116,7 +167,7 @@ class _DerivedPermissionPlugin implements BridgeDerivedProjectsPluginApi {
   @override
   Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async {
     pendingPermissionCalls++;
-    return const [];
+    return permissions;
   }
 
   @override
