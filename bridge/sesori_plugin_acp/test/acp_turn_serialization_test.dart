@@ -150,6 +150,32 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("an initial create prompt is left to history replay", () async {
+      await connect();
+      emitted.clear();
+
+      final creating = plugin.createSession(
+        directory: cwd,
+        parentSessionId: null,
+        parts: [
+          const PluginPromptPart.text(text: "[SYSTEM CONTEXT — IMPORTANT] internal"),
+          const PluginPromptPart.text(text: "visible prompt"),
+        ],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final frame = await waitForFrame("session/new");
+      respondTo(frame, {"sessionId": "s1"});
+      await creating;
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+
+      final prompt = await waitForFrame("session/prompt");
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a second prompt on one session dispatches only after the first turn completes", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");

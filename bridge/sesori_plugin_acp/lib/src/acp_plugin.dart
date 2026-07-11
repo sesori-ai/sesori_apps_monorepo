@@ -637,6 +637,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         parts: parts,
         model: model,
         variant: variant,
+        emitSentPrompt: false,
       );
     }
     return PluginSession(
@@ -666,6 +667,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       parts: parts,
       model: model,
       variant: variant,
+      emitSentPrompt: true,
     );
   }
 
@@ -686,6 +688,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       parts: [PluginPromptPart.text(text: body)],
       model: model,
       variant: variant,
+      emitSentPrompt: true,
     );
   }
 
@@ -841,6 +844,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required List<PluginPromptPart> parts,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
+    required bool emitSentPrompt,
   }) {
     final blocks = parts
         .map(_promptPartToContentBlock)
@@ -848,9 +852,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         .toList(growable: false);
     if (blocks.isEmpty) return;
 
-    eventMapper
-        .mapSentPrompt(sessionId: sessionId, parts: parts)
-        .forEach(_eventBuffer.add);
+    if (emitSentPrompt) {
+      eventMapper
+          .mapSentPrompt(sessionId: sessionId, parts: parts)
+          .forEach(_eventBuffer.add);
+    }
 
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
     state.pending++;
