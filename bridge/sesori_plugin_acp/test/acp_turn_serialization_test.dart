@@ -176,6 +176,27 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("command arguments are not emitted as a user message", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await plugin.sendCommand(
+        sessionId: sessionId,
+        command: "review",
+        arguments: "[SYSTEM CONTEXT — IMPORTANT] internal\n\nuser arguments",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+
+      final prompt = await waitForFrame("session/prompt");
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a second prompt on one session dispatches only after the first turn completes", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
