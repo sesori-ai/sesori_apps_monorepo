@@ -6,6 +6,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
+import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/models/sse_event.dart";
 import "../logging/logging.dart";
 import "models/session_activity_info.dart";
@@ -14,7 +15,8 @@ import "models/session_activity_info.dart";
 class SseEventTracker with Disposable {
   final ConnectionService _connectionService;
   final FailureReporter _failureReporter;
-  late final StreamSubscription<SseEvent> _subscription;
+  late final StreamSubscription<SseEvent> _eventSubscription;
+  late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
 
   final BehaviorSubject<Map<String, int>> _projectActivity = BehaviorSubject.seeded(const {});
 
@@ -36,7 +38,8 @@ class SseEventTracker with Disposable {
     required FailureReporter failureReporter,
   }) : _connectionService = connectionService,
        _failureReporter = failureReporter {
-    _subscription = _connectionService.events.listen(_handleEvent);
+    _eventSubscription = _connectionService.events.listen(_handleEvent);
+    _connectionStatusSubscription = _connectionService.status.listen(_handleConnectionStatus);
   }
 
   /// Map of project ID -> active session count.
@@ -67,6 +70,17 @@ class SseEventTracker with Disposable {
 
   /// The latest project timestamp update map, synchronously available.
   Map<String, int> get currentProjectTimestampUpdates => _projectTimestampUpdates.value;
+
+  void _handleConnectionStatus(ConnectionStatus status) {
+    switch (status) {
+      case ConnectionDisconnected():
+        if (_projectTimestampUpdates.value.isNotEmpty) {
+          _projectTimestampUpdates.add(const {});
+        }
+      case ConnectionConnected() || ConnectionReconnecting() || ConnectionLost() || ConnectionBridgeOffline():
+        break;
+    }
+  }
 
   void _handleEvent(SseEvent event) {
     try {
@@ -173,7 +187,10 @@ class SseEventTracker with Disposable {
   @override
   Future<void> onDispose() async {
     try {
-      await _subscription.cancel();
+      await Future.wait([
+        _eventSubscription.cancel(),
+        _connectionStatusSubscription.cancel(),
+      ]);
     } finally {
       await Future.wait([
         _projectActivity.close(),

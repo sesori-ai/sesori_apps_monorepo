@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -18,6 +19,7 @@ void main() {
     late MockConnectionService mockConnectionService;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
+    late BehaviorSubject<ConnectionStatus> statusController;
     late bool throwOnEventCancel;
 
     setUp(() {
@@ -31,7 +33,9 @@ void main() {
           }
         },
       );
+      statusController = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
+      when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -46,6 +50,7 @@ void main() {
 
     tearDown(() async {
       await eventController.close();
+      await statusController.close();
     });
 
     // -------------------------------------------------------------------------
@@ -510,6 +515,24 @@ void main() {
       expect(tracker.currentProjectTimestampUpdates, {"project-1": 400, "project-2": 300});
 
       await subscription.cancel();
+      await tracker.onDispose();
+    });
+
+    test("projectTimestampUpdates clears on explicit disconnect", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectUpdated(projectID: "project-1", updatedAt: 400),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(tracker.currentProjectTimestampUpdates, {"project-1": 400});
+
+      statusController.add(const ConnectionStatus.disconnected());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(tracker.currentProjectTimestampUpdates, isEmpty);
       await tracker.onDispose();
     });
 
