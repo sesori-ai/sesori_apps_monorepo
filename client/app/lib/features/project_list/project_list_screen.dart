@@ -54,7 +54,7 @@ class ProjectListScreen extends StatelessWidget {
       create: (_) => ProjectListCubit(
         getIt<ProjectService>(),
         getIt<ConnectionService>(),
-        getIt<SseEventRepository>(),
+        getIt<SseEventTracker>(),
         getIt<RouteSource>(),
         sessionUnseenTracker: getIt<SessionUnseenTracker>(),
         registeredBridgesService: getIt<RegisteredBridgesService>(),

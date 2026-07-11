@@ -47,7 +47,7 @@ void main() {
   group("ProjectListCubit", () {
     late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
-    late MockSseEventRepository mockSseEventRepository;
+    late MockSseEventTracker mockSseEventTracker;
     late MockRouteSource mockRouteSource;
     late MockRegisteredBridgesService mockRegisteredBridgesService;
     late FakeSessionUnseenTracker fakeSessionUnseenTracker;
@@ -57,7 +57,7 @@ void main() {
     setUp(() {
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
-      mockSseEventRepository = MockSseEventRepository();
+      mockSseEventTracker = MockSseEventTracker();
       mockRouteSource = MockRouteSource();
       mockRegisteredBridgesService = MockRegisteredBridgesService();
       fakeSessionUnseenTracker = FakeSessionUnseenTracker();
@@ -95,7 +95,7 @@ void main() {
     ProjectListCubit buildCubit() => ProjectListCubit(
       mockProjectService,
       mockConnectionService,
-      mockSseEventRepository,
+      mockSseEventTracker,
       mockRouteSource,
       sessionUnseenTracker: fakeSessionUnseenTracker,
       registeredBridgesService: mockRegisteredBridgesService,
@@ -1221,7 +1221,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        mockSseEventRepository.emitProjectActivity({_projectId: 3});
+        mockSseEventTracker.emitProjectActivity({_projectId: 3});
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1,
@@ -1242,7 +1242,7 @@ void main() {
         return buildCubit();
       },
       act: (cubit) async {
-        mockSseEventRepository.emitProjectActivity({_projectId: 2});
+        mockSseEventTracker.emitProjectActivity({_projectId: 2});
         await Future<void>.delayed(Duration.zero);
       },
       expect: () => <ProjectListState>[],
@@ -1255,7 +1255,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "_fetchProjects: seeds activityById from repository at load time",
       build: () {
-        mockSseEventRepository.emitProjectActivity({_projectId: 2});
+        mockSseEventTracker.emitProjectActivity({_projectId: 2});
         when(
           () => mockProjectService.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
@@ -1273,7 +1273,7 @@ void main() {
     blocTest<ProjectListCubit, ProjectListState>(
       "projectActivity update: activity clears when repository emits empty map",
       build: () {
-        mockSseEventRepository.emitProjectActivity({_projectId: 1});
+        mockSseEventTracker.emitProjectActivity({_projectId: 1});
         when(
           () => mockProjectService.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
@@ -1281,12 +1281,206 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        mockSseEventRepository.emitProjectActivity(const {});
+        mockSseEventTracker.emitProjectActivity(const {});
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1,
       expect: () => [
         isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", isEmpty),
+      ],
+    );
+
+    // =========================================================================
+    // Project timestamp updates (no fetch)
+    // =========================================================================
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "projectTimestampUpdates: updates matching project timestamp and re-sorts",
+      build: () {
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            Projects(
+              data: [
+                testProject(id: "A", name: "Alpha"),
+                testProject(id: "B", name: "Bravo"),
+                testProject(id: "C", name: "Charlie"),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        mockSseEventTracker.emitProjectTimestampUpdate({"B": 9999999999999});
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects.map((p) => p.id).toList(),
+          "projects order",
+          ["B", "A", "C"],
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockProjectService.listProjects()).called(1);
+      },
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "projectTimestampUpdates: ignores unknown project IDs",
+      build: () {
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            Projects(data: [testProject(id: "A", name: "Alpha")]),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        mockSseEventTracker.emitProjectTimestampUpdate({"unknown": 9999999999999});
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => <ProjectListState>[],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "projectTimestampUpdates: ignores projects with null time",
+      build: () {
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Projects(
+              data: [
+                Project(id: "A", name: "Alpha", path: "/A", time: null),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        mockSseEventTracker.emitProjectTimestampUpdate({"A": 9999999999999});
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => <ProjectListState>[],
+      verify: (_) {
+        verify(() => mockProjectService.listProjects()).called(1);
+      },
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "projectTimestampUpdates: ignored when state is not ProjectListLoaded",
+      build: () {
+        final completer = Completer<ApiResponse<Projects>>();
+        when(() => mockProjectService.listProjects()).thenAnswer((_) => completer.future);
+        return buildCubit();
+      },
+      act: (cubit) async {
+        mockSseEventTracker.emitProjectTimestampUpdate({"A": 9999999999999});
+        await Future<void>.delayed(Duration.zero);
+      },
+      expect: () => <ProjectListState>[],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "projectTimestampUpdates: sorts by updated desc then effective name then id",
+      build: () {
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Projects(
+              data: [
+                Project(
+                  id: "B",
+                  name: "Bravo",
+                  time: ProjectTime(created: 1000, updated: 2000),
+                  path: "/B",
+                ),
+                Project(
+                  id: "a",
+                  name: "alpha",
+                  time: ProjectTime(created: 1000, updated: 3000),
+                  path: "/a",
+                ),
+                Project(
+                  id: "A",
+                  name: "Alpha",
+                  time: ProjectTime(created: 1000, updated: 3000),
+                  path: "/A",
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        mockSseEventTracker.emitProjectTimestampUpdate({"B": 3000});
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects.map((p) => p.id).toList(),
+          "projects order",
+          ["A", "a", "B"],
+        ),
+      ],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "REST project list is sorted by updated desc then effective name then id",
+      build: () {
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Projects(
+              data: [
+                Project(id: "null", name: "First", path: "/null", time: null),
+                Project(
+                  id: "B",
+                  name: "bravo",
+                  path: "/B",
+                  time: ProjectTime(created: 1000, updated: 2000),
+                ),
+                Project(
+                  id: "a",
+                  name: "alpha",
+                  path: "/a",
+                  time: ProjectTime(created: 1000, updated: 3000),
+                ),
+                Project(
+                  id: "A",
+                  name: "Alpha",
+                  path: "/A",
+                  time: ProjectTime(created: 1000, updated: 3000),
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects.map((p) => p.id).toList(),
+          "projects order",
+          ["A", "a", "B", "null"],
+        ),
       ],
     );
 
@@ -1307,7 +1501,7 @@ void main() {
           async.elapse(Duration.zero);
           final baseline = fetchCount;
 
-          mockSseEventRepository.emitProjectActivity({_projectId: 1});
+          mockSseEventTracker.emitProjectActivity({_projectId: 1});
           async.elapse(Duration.zero);
           expect(fetchCount, baseline, reason: "throttle hasn't fired yet");
 
@@ -1330,7 +1524,7 @@ void main() {
           final baseline = fetchCount;
 
           for (var i = 0; i < 5; i++) {
-            mockSseEventRepository.emitProjectActivity({_projectId: i});
+            mockSseEventTracker.emitProjectActivity({_projectId: i});
             async.elapse(const Duration(seconds: 1));
           }
           expect(fetchCount, baseline, reason: "still within window");
@@ -1352,7 +1546,7 @@ void main() {
           async.elapse(Duration.zero);
           expect(fetchCount, 1, reason: "only manual load");
 
-          mockSseEventRepository.emitProjectActivity({_projectId: 1});
+          mockSseEventTracker.emitProjectActivity({_projectId: 1});
           async.elapse(const Duration(seconds: 60));
 
           expect(fetchCount, 1, reason: "no auto-refresh when page not visible");
@@ -1396,11 +1590,11 @@ void main() {
           async.elapse(Duration.zero);
           final baseline = fetchCount;
 
-          mockSseEventRepository.emitProjectActivity({_projectId: 1});
+          mockSseEventTracker.emitProjectActivity({_projectId: 1});
           async.elapse(refreshThrottleDuration);
           expect(fetchCount, baseline + 1, reason: "first window");
 
-          mockSseEventRepository.emitProjectActivity({_projectId: 2});
+          mockSseEventTracker.emitProjectActivity({_projectId: 2});
           async.elapse(refreshThrottleDuration);
           expect(fetchCount, baseline + 2, reason: "second window");
           cubit.close();

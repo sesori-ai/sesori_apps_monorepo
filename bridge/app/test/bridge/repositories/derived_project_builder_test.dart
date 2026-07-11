@@ -23,12 +23,18 @@ void main() {
     );
   }
 
-  ProjectDto storedProject(String path, {String? displayName, int openedAt = 1}) {
-    return ProjectDto(projectId: path, path: path, displayName: displayName, openedAt: openedAt);
+  ProjectDto storedProject(String path, {String? displayName, int createdAt = 1, int updatedAt = 1}) {
+    return ProjectDto(
+      projectId: path,
+      path: path,
+      displayName: displayName,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
   }
 
   group("DerivedProjectBuilder", () {
-    test("groups sessions in the same directory into one project, folding times", () {
+    test("groups sessions in the same directory without folding their times", () {
       final projects = builder.build(
         sessions: [
           session("/tmp/projects/alpha", id: "s1", created: 100, updated: 200),
@@ -40,11 +46,11 @@ void main() {
 
       expect(projects, hasLength(1));
       final project = projects.single;
-      expect(project.id, "/tmp/projects/alpha");
-      expect(project.name, "alpha");
-      // earliest created, latest updated across the project's sessions.
-      expect(project.time?.created, 50);
-      expect(project.time?.updated, 300);
+      expect(project.project.id, "/tmp/projects/alpha");
+      expect(project.project.name, "alpha");
+      expect(project.project.time, isNull);
+      expect(project.sessionActivities.map((time) => time.created), [100, 50]);
+      expect(project.sessionActivities.map((time) => time.updated), [200, 300]);
     });
 
     test("separate directories produce separate projects", () {
@@ -57,7 +63,7 @@ void main() {
         projectPathBySessionId: const {},
       );
 
-      expect(projects.map((p) => p.id), containsAll(["/tmp/projects/alpha", "/tmp/projects/beta"]));
+      expect(projects.map((p) => p.project.id), containsAll(["/tmp/projects/alpha", "/tmp/projects/beta"]));
       expect(projects, hasLength(2));
     });
 
@@ -73,7 +79,7 @@ void main() {
       );
 
       expect(projects, hasLength(1));
-      expect(projects.single.id, "/tmp/projects/alpha");
+      expect(projects.single.project.id, "/tmp/projects/alpha");
     });
 
     test("a session with a stored project attribution groups under that project, not its own cwd", () {
@@ -91,9 +97,8 @@ void main() {
       // Both sessions collapse to the parent — no separate worktree project card.
       expect(projects, hasLength(1));
       final project = projects.single;
-      expect(project.id, "/tmp/projects/alpha");
-      // The worktree session's later timestamp folds into the parent.
-      expect(project.time?.updated, 200);
+      expect(project.project.id, "/tmp/projects/alpha");
+      expect(project.sessionActivities.map((time) => time.updated), [100, 200]);
     });
 
     test("a stored display-name override wins over the basename", () {
@@ -105,36 +110,36 @@ void main() {
         projectPathBySessionId: const {},
       );
 
-      expect(projects.single.name, "My Alpha");
+      expect(projects.single.project.name, "My Alpha");
     });
 
-    test("a stored folder with no sessions is listed with its openedAt time", () {
+    test("a stored folder with no sessions is listed without activity evidence", () {
       final projects = builder.build(
         sessions: const [],
         storedProjects: [
-          storedProject("/tmp/projects/empty", openedAt: 4242),
+          storedProject("/tmp/projects/empty", createdAt: 4242, updatedAt: 4242),
         ],
         projectPathBySessionId: const {},
       );
 
       expect(projects, hasLength(1));
-      expect(projects.single.id, "/tmp/projects/empty");
-      expect(projects.single.name, "empty");
-      expect(projects.single.time?.created, 4242);
-      expect(projects.single.time?.updated, 4242);
+      expect(projects.single.project.id, "/tmp/projects/empty");
+      expect(projects.single.project.name, "empty");
+      expect(projects.single.project.time, isNull);
+      expect(projects.single.sessionActivities, isEmpty);
     });
 
-    test("session timestamps win over the opened-folder timestamp", () {
+    test("session timestamps remain raw evidence beside stored projects", () {
       final projects = builder.build(
         sessions: [session("/tmp/projects/alpha", created: 100, updated: 900)],
         storedProjects: [
-          storedProject("/tmp/projects/alpha", openedAt: 1),
+          storedProject("/tmp/projects/alpha", createdAt: 1, updatedAt: 1),
         ],
         projectPathBySessionId: const {},
       );
 
-      expect(projects.single.time?.created, 100);
-      expect(projects.single.time?.updated, 900);
+      expect(projects.single.sessionActivities.single.created, 100);
+      expect(projects.single.sessionActivities.single.updated, 900);
     });
   });
 }

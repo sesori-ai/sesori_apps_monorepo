@@ -150,6 +150,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   Object? throwOnArchiveSessionError;
   Completer<void>? archiveSessionCompleter;
   Completer<void>? sendCommandCompleter;
+  int getProjectsCallCount = 0;
 
   // ── BridgePlugin implementation ──────────────────────────────────────────
 
@@ -167,6 +168,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginProject>> getProjects() async {
+    getProjectsCallCount++;
     if (throwOnGetProjectsError case final error?) {
       throw error;
     }
@@ -703,12 +705,10 @@ class _NoopSessionRepository implements SessionRepository {
   bool get sessionListIsAuthoritative => true;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async =>
-      const <MessageWithParts>[];
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const <MessageWithParts>[];
 
   @override
-  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async =>
-      const <ProjectActivitySummary>[];
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const <ProjectActivitySummary>[];
 
   @override
   Future<Session> createSession({

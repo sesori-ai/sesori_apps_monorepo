@@ -9,13 +9,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
-import "../../capabilities/sse/sse_event_repository.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
 import "../../services/registered_bridges_service.dart";
 import "../../services/session_unseen_tracker.dart";
+import "../../services/sse_event_tracker.dart";
 import "add_project_outcome.dart";
 import "project_list_state.dart";
 
@@ -30,7 +30,7 @@ const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
-  final SseEventRepository _sseEventRepository;
+  final SseEventTracker _sseEventTracker;
   final SessionUnseenTracker _sessionUnseenTracker;
   final RegisteredBridgesService _registeredBridgesService;
   final FailureReporter _failureReporter;
@@ -40,14 +40,14 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   ProjectListCubit(
     ProjectService projectService,
     ConnectionService connectionService,
-    SseEventRepository sseEventRepository,
+    SseEventTracker sseEventTracker,
     RouteSource routeSource, {
     required SessionUnseenTracker sessionUnseenTracker,
     required RegisteredBridgesService registeredBridgesService,
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
        _connectionService = connectionService,
-       _sseEventRepository = sseEventRepository,
+       _sseEventTracker = sseEventTracker,
        _sessionUnseenTracker = sessionUnseenTracker,
        _registeredBridgesService = registeredBridgesService,
        _failureReporter = failureReporter,
@@ -56,7 +56,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
     // 1. Immediate activity badge updates (no API call).
     _subscriptions.add(
-      _sseEventRepository.projectActivity.listen(_onActivityUpdated),
+      _sseEventTracker.projectActivity.listen(_onActivityUpdated),
+    );
+
+    // 1a. Immediate project timestamp updates from SSE events (no API call).
+    _subscriptions.add(
+      _sseEventTracker.projectTimestampUpdates.listen(_onProjectTimestampUpdated),
     );
 
     // 1b. Immediate unseen (bold) updates (no API call).
@@ -71,7 +76,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       routeSource.currentRouteStream
           .switchMap((route) {
             if (route != AppRouteDef.projects) return const Stream<void>.empty();
-            return _sseEventRepository.projectActivity.throttleTime(
+            return _sseEventTracker.projectActivity.throttleTime(
               refreshThrottleDuration,
               trailing: true,
               leading: false,
@@ -148,10 +153,82 @@ class ProjectListCubit extends Cubit<ProjectListState> {
               reason: "Failed to handle project activity update",
               information: [activityById.toString()],
             )
-            .catchError((_) {}),
+            .catchError((Object error, StackTrace stackTrace) {
+              loge("Failed to report project activity update error", error, stackTrace);
+            }),
       );
     }
   }
+
+  void _onProjectTimestampUpdated(Map<String, int> timestampByProjectId) {
+    try {
+      if (isClosed) return;
+      if (state case final ProjectListLoaded loaded) {
+        final updates = timestampByProjectId;
+        if (updates.isEmpty) return;
+
+        var changed = false;
+        final updatedProjects = loaded.projects.map((project) {
+          final updated = updates[project.id];
+          final time = project.time;
+          if (updated == null || time == null) return project;
+          if (time.updated == updated) return project;
+          changed = true;
+          return project.copyWith(time: time.copyWith(updated: updated));
+        }).toList();
+
+        if (!changed) return;
+
+        final sortedProjects = _sortProjects(updatedProjects);
+        emit(
+          loaded.copyWith(
+            projects: sortedProjects,
+            unseenByProjectId: _unseenByProjectId(sortedProjects),
+          ),
+        );
+      }
+    } catch (e, st) {
+      loge("Project timestamp update handler error", e, st);
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "project_list_timestamp_update",
+              fatal: false,
+              reason: "Failed to handle project timestamp update",
+              information: [timestampByProjectId.toString()],
+            )
+            .catchError((Object error, StackTrace stackTrace) {
+              loge("Failed to report project timestamp update error", error, stackTrace);
+            }),
+      );
+    }
+  }
+
+  List<Project> _sortProjects(Iterable<Project> projects) {
+    return projects.toList()..sort((a, b) => _compareProjectsByTimestampAndName(a: a, b: b));
+  }
+
+  int _compareProjectsByTimestampAndName({required Project a, required Project b}) {
+    final aUpdated = a.time?.updated;
+    final bUpdated = b.time?.updated;
+    if (aUpdated == null && bUpdated != null) return 1;
+    if (aUpdated != null && bUpdated == null) return -1;
+
+    final updatedCompare = switch ((aUpdated, bUpdated)) {
+      (final a?, final b?) => b.compareTo(a),
+      _ => 0,
+    };
+    if (updatedCompare != 0) return updatedCompare;
+
+    final nameCompare = _effectiveName(a).toLowerCase().compareTo(_effectiveName(b).toLowerCase());
+    if (nameCompare != 0) return nameCompare;
+
+    return a.id.compareTo(b.id);
+  }
+
+  String _effectiveName(Project project) => project.name ?? project.path;
 
   /// Whether the bridge (the user's computer) is currently unreachable. With
   /// nothing loaded, the bridge-disconnected flow (setup onboarding or "turn
@@ -534,24 +611,25 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
     switch (projectResponse) {
       case SuccessResponse(data: Projects(data: final projects)):
+        final sortedProjects = _sortProjects(projects);
         // The REST aggregate is authoritative at fetch time — seed the tracker
         // so a stale live `true` can't keep a project bold after its last
         // unseen session was archived/deleted while an echo was missed.
         _sessionUnseenTracker.seedProjects(
-          {for (final p in projects) p.id: p.hasUnseenChanges},
+          {for (final p in sortedProjects) p.id: p.hasUnseenChanges},
           sinceTick: unseenTick,
         );
         emit(
           ProjectListState.loaded(
-            projects: projects,
-            activityById: _sseEventRepository.currentProjectActivity,
-            unseenByProjectId: _unseenByProjectId(projects),
+            projects: sortedProjects,
+            activityById: _sseEventTracker.currentProjectActivity,
+            unseenByProjectId: _unseenByProjectId(sortedProjects),
             // Carrying the previous machine identity over keeps the row from
             // flickering out and back across a refresh of a still-empty list.
-            bridges: projects.isEmpty ? _loadedBridges : const [],
+            bridges: sortedProjects.isEmpty ? _loadedBridges : const [],
           ),
         );
-        if (projects.isEmpty) unawaited(_enrichLoadedEmptyWithBridges());
+        if (sortedProjects.isEmpty) unawaited(_enrichLoadedEmptyWithBridges());
         return true;
 
       case ErrorResponse(:final error):

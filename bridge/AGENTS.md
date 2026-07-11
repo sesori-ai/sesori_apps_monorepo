@@ -103,6 +103,9 @@ One API class wraps one external binary/tool. Use separate classes for separate 
 
 DAOs execute raw queries and return raw data. No decision-making logic, no selection algorithms, no business rules. All mapping and selection logic belongs in the Repository layer.
 
+Durable timestamp columns should be non-null when a stable baseline can be backfilled. Prefer a migration that writes
+that baseline for every existing row over nullable persistence whose only purpose is avoiding migration work.
+
 When a durable entity has separate identity and location fields, do not infer
 the location from an unknown identifier. Non-null persisted fields are
 authoritative; a missing row remains missing (`null`) and the repository or

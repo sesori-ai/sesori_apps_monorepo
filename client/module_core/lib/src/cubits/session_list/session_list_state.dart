@@ -1,8 +1,8 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../capabilities/sse/session_activity_info.dart";
 import "../../errors/remote_failure_reason.dart";
+import "../../services/models/session_activity_info.dart";
 
 part "session_list_state.freezed.dart";
 

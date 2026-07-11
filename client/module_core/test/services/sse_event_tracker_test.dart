@@ -14,7 +14,7 @@ void main() {
     registerFallbackValue(StackTrace.empty);
   });
 
-  group("SseEventRepository", () {
+  group("SseEventTracker", () {
     late MockConnectionService mockConnectionService;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
@@ -44,10 +44,10 @@ void main() {
     // 1. sessionActivity defaults to empty map
     // -------------------------------------------------------------------------
 
-    test("sessionActivity defaults to empty map", () {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
-      expect(repo.currentSessionActivity, isEmpty);
-      repo.onDispose();
+    test("sessionActivity defaults to empty map", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+      expect(tracker.currentSessionActivity, isEmpty);
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
@@ -55,10 +55,10 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity emits active session info from projectsSummary event", () async {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
-      final subscription = repo.sessionActivity.listen((activity) {
+      final subscription = tracker.sessionActivity.listen((activity) {
         if (activity.isNotEmpty) {
           completer.complete(activity);
         }
@@ -87,7 +87,7 @@ void main() {
       expect(activity["/foo"]!["s2"]!.mainAgentRunning, isFalse);
 
       await subscription.cancel();
-      repo.onDispose();
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
@@ -95,10 +95,10 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity excludes projects with no active sessions", () async {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
-      final subscription = repo.sessionActivity.listen((activity) {
+      final subscription = tracker.sessionActivity.listen((activity) {
         if (activity.isEmpty) {
           completer.complete(activity);
         }
@@ -121,7 +121,7 @@ void main() {
       expect(activity, isEmpty);
 
       await subscription.cancel();
-      repo.onDispose();
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
@@ -129,10 +129,10 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity handles multiple projects", () async {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
-      final subscription = repo.sessionActivity.listen((activity) {
+      final subscription = tracker.sessionActivity.listen((activity) {
         if (activity.length == 2) {
           completer.complete(activity);
         }
@@ -166,7 +166,7 @@ void main() {
       expect(activity["/bar"]!.keys, unorderedEquals({"s2", "s3"}));
 
       await subscription.cancel();
-      repo.onDispose();
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
@@ -174,10 +174,10 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity updates when new event arrives", () async {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 
       final activities = <Map<String, Map<String, SessionActivityInfo>>>[];
-      final subscription = repo.sessionActivity.listen((activity) {
+      final subscription = tracker.sessionActivity.listen((activity) {
         if (activity.isNotEmpty) {
           activities.add(activity);
         }
@@ -229,17 +229,17 @@ void main() {
       expect(activities[1]["/foo"]!.keys, unorderedEquals({"s1", "s2"}));
 
       await subscription.cancel();
-      repo.onDispose();
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
     // 6. projectActivity defaults to empty map
     // -------------------------------------------------------------------------
 
-    test("projectActivity defaults to empty map", () {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
-      expect(repo.currentProjectActivity, isEmpty);
-      repo.onDispose();
+    test("projectActivity defaults to empty map", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+      expect(tracker.currentProjectActivity, isEmpty);
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
@@ -247,10 +247,10 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("projectActivity emits active session counts from projectsSummary event", () async {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, int>>();
-      final subscription = repo.projectActivity.listen((activity) {
+      final subscription = tracker.projectActivity.listen((activity) {
         if (activity.isNotEmpty) {
           completer.complete(activity);
         }
@@ -277,7 +277,7 @@ void main() {
       expect(activity, {"/foo": 3});
 
       await subscription.cancel();
-      repo.onDispose();
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
@@ -285,10 +285,10 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("projectActivity excludes projects with no active sessions", () async {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, int>>();
-      final subscription = repo.projectActivity.listen((activity) {
+      final subscription = tracker.projectActivity.listen((activity) {
         if (activity.isEmpty) {
           completer.complete(activity);
         }
@@ -311,7 +311,7 @@ void main() {
       expect(activity, isEmpty);
 
       await subscription.cancel();
-      repo.onDispose();
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
@@ -323,10 +323,10 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity maps awaitingInput true from ActiveSession", () async {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
-      final subscription = repo.sessionActivity.listen((activity) {
+      final subscription = tracker.sessionActivity.listen((activity) {
         if (activity.isNotEmpty) {
           completer.complete(activity);
         }
@@ -351,7 +351,7 @@ void main() {
       expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
 
       await subscription.cancel();
-      repo.onDispose();
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
@@ -359,10 +359,10 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("sessionActivity maps awaitingInput false from ActiveSession", () async {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 
       final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
-      final subscription = repo.sessionActivity.listen((activity) {
+      final subscription = tracker.sessionActivity.listen((activity) {
         if (activity.isNotEmpty) {
           completer.complete(activity);
         }
@@ -387,7 +387,7 @@ void main() {
       expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
 
       await subscription.cancel();
-      repo.onDispose();
+      await tracker.onDispose();
     });
 
     // -------------------------------------------------------------------------
@@ -395,10 +395,10 @@ void main() {
     // -------------------------------------------------------------------------
 
     test("non-projectsSummary events are ignored", () async {
-      final repo = SseEventRepository(mockConnectionService, failureReporter: mockFailureReporter);
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 
       var emissionCount = 0;
-      final subscription = repo.sessionActivity.listen((_) => emissionCount++);
+      final subscription = tracker.sessionActivity.listen((_) => emissionCount++);
 
       // Wait for initial seeded value
       await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -429,7 +429,121 @@ void main() {
       expect(emissionCount, initialCount);
 
       await subscription.cancel();
-      repo.onDispose();
+      await tracker.onDispose();
+    });
+
+    // -------------------------------------------------------------------------
+    // 13. projectTimestampUpdates emits complete project updates
+    // -------------------------------------------------------------------------
+
+    test("projectTimestampUpdates emits complete project.updated events", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+
+      final completer = Completer<Map<String, int>>();
+      final subscription = tracker.projectTimestampUpdates.listen((update) {
+        if (update.isNotEmpty) {
+          completer.complete(update);
+        }
+      });
+
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectUpdated(
+            projectID: "project-1",
+            updatedAt: 12345,
+          ),
+        ),
+      );
+
+      final update = await completer.future;
+      expect(update, {"project-1": 12345});
+
+      await subscription.cancel();
+      await tracker.onDispose();
+    });
+
+    // -------------------------------------------------------------------------
+    // 14. projectTimestampUpdates ignores incomplete project.updated events
+    // -------------------------------------------------------------------------
+
+    test("projectTimestampUpdates ignores incomplete project.updated events", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+
+      var emissionCount = 0;
+      final subscription = tracker.projectTimestampUpdates.listen((_) => emissionCount++);
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      final initialCount = emissionCount;
+
+      eventController.add(
+        SseEvent(
+          data: const SesoriSseEvent.projectUpdated(projectID: null, updatedAt: null),
+        ),
+      );
+      eventController.add(
+        SseEvent(
+          data: const SesoriSseEvent.projectUpdated(projectID: null, updatedAt: 12345),
+        ),
+      );
+      eventController.add(
+        SseEvent(
+          data: const SesoriSseEvent.projectUpdated(projectID: "project-1", updatedAt: null),
+        ),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(emissionCount, initialCount);
+
+      await subscription.cancel();
+      await tracker.onDispose();
+    });
+
+    // -------------------------------------------------------------------------
+    // 15. projectTimestampUpdates ignores non-project.updated events
+    // -------------------------------------------------------------------------
+
+    test("projectTimestampUpdates ignores non-project.updated events", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+
+      var emissionCount = 0;
+      final subscription = tracker.projectTimestampUpdates.listen((_) => emissionCount++);
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      final initialCount = emissionCount;
+
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "/foo",
+                activeSessions: [],
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(emissionCount, initialCount);
+
+      await subscription.cancel();
+      await tracker.onDispose();
+    });
+
+    test("onDispose closes every exposed stream", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+      final projectActivityDone = tracker.projectActivity.drain<void>();
+      final sessionActivityDone = tracker.sessionActivity.drain<void>();
+      final timestampUpdatesDone = tracker.projectTimestampUpdates.drain<void>();
+
+      await tracker.onDispose();
+
+      await Future.wait([
+        projectActivityDone,
+        sessionActivityDone,
+        timestampUpdatesDone,
+      ]);
     });
   });
 }

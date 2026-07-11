@@ -15,6 +15,7 @@ import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
 import 'generated/schema_v7.dart' as v7;
 import 'generated/schema_v8.dart' as v8;
+import 'generated/schema_v9.dart' as v9;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -486,25 +487,28 @@ void main() {
     },
   );
 
-  test('the v5 session→project FK stays enforced on the current schema', () async {
-    final db = await _migrateFromV4(verifier: verifier);
-    addTearDown(db.close);
+  test(
+    'the v5 session→project FK stays enforced on the current schema',
+    () async {
+      final db = await _migrateFromV4(verifier: verifier);
+      addTearDown(db.close);
 
-    expect(
-      () => db
-          .into(db.sessionTable)
-          .insert(
-            SessionTableCompanion.insert(
-              sessionId: 'test',
-              projectId: 'nonexistent',
-              isDedicated: false,
-              createdAt: 0,
-              pluginId: 'opencode',
+      expect(
+        () => db
+            .into(db.sessionTable)
+            .insert(
+              SessionTableCompanion.insert(
+                sessionId: 'test',
+                projectId: 'nonexistent',
+                isDedicated: false,
+                createdAt: 0,
+                pluginId: 'opencode',
+              ),
             ),
-          ),
-      throwsA(_isForeignKeyViolation),
-    );
-  });
+        throwsA(_isForeignKeyViolation),
+      );
+    },
+  );
 
   test('migration v5 → v6 structural validation', () async {
     final connection = await verifier.startAt(5);
@@ -876,6 +880,62 @@ void main() {
       );
     },
   );
+
+  test('migration v8 → v9 structural validation', () async {
+    final connection = await verifier.startAt(8);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(db, 9);
+    await db.close();
+  });
+
+  test(
+    'migration v8 → v9 preserves openedAt in createdAt and updatedAt',
+    () async {
+      const openedAt = 1700000000123;
+      await verifier.testWithDataIntegrity(
+        oldVersion: 8,
+        newVersion: 9,
+        createOld: v8.DatabaseAtV8.new,
+        createNew: v9.DatabaseAtV9.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insert(
+            oldDb.projectsTable,
+            const v8.ProjectsTableData(
+              projectId: 'project-1',
+              path: '/projects/one',
+              hidden: 1,
+              baseBranch: 'main',
+              worktreeCounter: 2,
+              displayName: 'One',
+              openedAt: openedAt,
+            ),
+          );
+        },
+        validateItems: (newDb) async {
+          final projects = await newDb.select(newDb.projectsTable).get();
+          expect(projects, hasLength(1));
+          final project = projects.single;
+          expect(project.createdAt, openedAt);
+          expect(project.updatedAt, openedAt);
+          expect(project.projectId, 'project-1');
+          expect(project.path, '/projects/one');
+          expect(project.hidden, 1);
+          expect(project.baseBranch, 'main');
+          expect(project.worktreeCounter, 2);
+          expect(project.displayName, 'One');
+
+          final oldColumn = await newDb
+              .customSelect(
+                "SELECT name FROM pragma_table_info('projects_table') WHERE name = 'opened_at'",
+              )
+              .get();
+          expect(oldColumn, isEmpty);
+        },
+      );
+    },
+  );
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
@@ -886,7 +946,7 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    8,
+    9,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

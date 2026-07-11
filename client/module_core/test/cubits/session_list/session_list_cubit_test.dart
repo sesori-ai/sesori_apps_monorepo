@@ -9,9 +9,9 @@ import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
-import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
+import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -24,7 +24,7 @@ void main() {
     late MockSessionService mockSessionService;
     late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
-    late MockSseEventRepository mockSseEventRepository;
+    late MockSseEventTracker mockSseEventTracker;
     late FakeSessionUnseenTracker fakeSessionUnseenTracker;
     late MockRouteSource mockRouteSource;
     late MockFailureReporter mockFailureReporter;
@@ -37,7 +37,7 @@ void main() {
       mockSessionService = MockSessionService();
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
-      mockSseEventRepository = MockSseEventRepository();
+      mockSseEventTracker = MockSseEventTracker();
       fakeSessionUnseenTracker = FakeSessionUnseenTracker();
       mockFailureReporter = MockFailureReporter();
       eventController = StreamController<SseEvent>.broadcast();
@@ -73,7 +73,7 @@ void main() {
       sessionService: mockSessionService,
       projectService: mockProjectService,
       connectionService: mockConnectionService,
-      sseEventRepository: mockSseEventRepository,
+      sseEventTracker: mockSseEventTracker,
       sessionUnseenTracker: fakeSessionUnseenTracker,
       routeSource: mockRouteSource,
       projectId: projectId,
@@ -1412,7 +1412,7 @@ void main() {
           sessionService: mockSessionService,
           projectService: mockProjectService,
           connectionService: mockConnectionService,
-          sseEventRepository: mockSseEventRepository,
+          sseEventTracker: mockSseEventTracker,
           sessionUnseenTracker: fakeSessionUnseenTracker,
           routeSource: mockRouteSource,
           projectId: "global",
@@ -1429,11 +1429,11 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 19. activeSessionIds from SseEventRepository
+    // 19. activeSessionIds from SseEventTracker
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "state includes activeSessionIds from SseEventRepository",
+      "state includes activeSessionIds from SseEventTracker",
       build: () {
         when(() => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData"))).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1446,7 +1446,7 @@ void main() {
           ),
         );
         // Mock the repository to emit activity for this project.
-        mockSseEventRepository.emitSessionActivity({
+        mockSseEventTracker.emitSessionActivity({
           projectId: {
             "s1": const SessionActivityInfo(mainAgentRunning: true),
             "s2": const SessionActivityInfo(mainAgentRunning: true),
@@ -1489,7 +1489,7 @@ void main() {
         // Wait for initial load
         await Future<void>.delayed(Duration.zero);
         // Emit initial activity
-        mockSseEventRepository.emitSessionActivity({
+        mockSseEventTracker.emitSessionActivity({
           projectId: {
             "s1": const SessionActivityInfo(mainAgentRunning: true),
           },
@@ -1497,7 +1497,7 @@ void main() {
         // Wait for the activity update to be processed
         await Future<void>.delayed(const Duration(milliseconds: 10));
         // Emit updated activity
-        mockSseEventRepository.emitSessionActivity({
+        mockSseEventTracker.emitSessionActivity({
           projectId: {
             "s1": const SessionActivityInfo(mainAgentRunning: true),
             "s2": const SessionActivityInfo(mainAgentRunning: true),
@@ -1543,7 +1543,7 @@ void main() {
           ),
         );
         // Emit activity for this project and another.
-        mockSseEventRepository.emitSessionActivity({
+        mockSseEventTracker.emitSessionActivity({
           projectId: {
             "s1": const SessionActivityInfo(mainAgentRunning: true),
           },
@@ -1671,7 +1671,7 @@ void main() {
           ),
         );
         // Emit activity for a different project.
-        mockSseEventRepository.emitSessionActivity({
+        mockSseEventTracker.emitSessionActivity({
           "project-2": {
             "s2": const SessionActivityInfo(mainAgentRunning: true),
           },
@@ -1701,7 +1701,7 @@ void main() {
             ),
           ),
         );
-        mockSseEventRepository.emitSessionActivity({
+        mockSseEventTracker.emitSessionActivity({
           projectId: {
             "s1": const SessionActivityInfo(mainAgentRunning: true, awaitingInput: true),
           },

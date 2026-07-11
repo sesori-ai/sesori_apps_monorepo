@@ -24,6 +24,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
@@ -293,6 +294,13 @@ class _RegistrationHarness {
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final pushSubsystem = _createPushSubsystem();
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
+    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -339,13 +347,7 @@ class _RegistrationHarness {
       failureReporter: FakeFailureReporter(),
       prSyncService: FakePrSyncService(),
       sessionRepository: sessionRepository,
-      projectRepository: ProjectRepository(
-        plugin: plugin,
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-      ),
+      projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
           pluginId: "opencode",
@@ -354,13 +356,7 @@ class _RegistrationHarness {
           db: database,
           calculator: const SessionUnseenCalculator(),
         ),
-        projectRepository: ProjectRepository(
-          plugin: plugin,
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
+        projectRepository: projectRepository,
         viewTracker: SessionViewTracker(),
       ),
       sessionViewTracker: SessionViewTracker(),
@@ -382,6 +378,10 @@ class _RegistrationHarness {
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
         ),
+      ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
       ),
       healthRepository: HealthRepository(
         plugin: plugin,

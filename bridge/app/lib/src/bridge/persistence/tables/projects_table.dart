@@ -21,11 +21,17 @@ class ProjectsTable extends Table {
   /// null means fall back to the directory basename.
   TextColumn get displayName => text().nullable()();
 
-  /// Wall-clock ms when this project row was recorded — the folder was opened
-  /// or the project was first discovered. Lets a folder with no sessions yet
-  /// survive a refresh, and doubles as the project's time until a session
-  /// supplies one. Stamped at insert time; re-opening a folder bumps it.
-  IntColumn get openedAt => integer().clientDefault(() => DateTime.now().millisecondsSinceEpoch)();
+  /// Wall-clock ms when this project row was first recorded — the folder was
+  /// opened or the project was first discovered. Stamped at insert time and
+  /// never advanced by later opens; it is the authoritative project creation
+  /// time for REST responses.
+  IntColumn get createdAt => integer().clientDefault(() => DateTime.now().millisecondsSinceEpoch)();
+
+  /// Wall-clock ms of the last recorded activity for this project. Advanced by
+  /// the project-activity service from plugin activity, session evidence, and
+  /// user-facing events. The repository writes exact values supplied by the
+  /// service and performs no min/max itself.
+  IntColumn get updatedAt => integer().clientDefault(() => DateTime.now().millisecondsSinceEpoch)();
 
   @override
   bool get withoutRowId => true;
@@ -43,7 +49,8 @@ sealed class ProjectDto with _$ProjectDto, $ProjectsTableTableToColumns {
     String? baseBranch,
     @Default(0) int worktreeCounter,
     String? displayName,
-    required int openedAt,
+    required int createdAt,
+    required int updatedAt,
   }) = _ProjectDto;
 
   const ProjectDto._();

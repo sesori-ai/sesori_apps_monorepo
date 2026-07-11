@@ -72,7 +72,7 @@ void main() {
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
-    getIt.registerLazySingleton<SseEventRepository>(MockSseEventRepository.new);
+    getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);
     getIt.registerLazySingleton<SessionUnseenTracker>(FakeSessionUnseenTracker.new);
     getIt.registerLazySingleton<RegisteredBridgesService>(() => mockRegisteredBridgesService);

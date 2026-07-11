@@ -20,6 +20,7 @@ void main() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.projectsDao.setActivity(projectId: "p1", createdAt: 101, updatedAt: 202);
       handler = RenameProjectHandler(
         ProjectRepository(
           plugin: plugin,
@@ -56,7 +57,7 @@ void main() {
       plugin.renameProjectResult = const PluginProject(
         id: "p1",
         name: "New Name",
-        time: null,
+        activity: null,
       );
 
       await handler.handle(
@@ -75,7 +76,7 @@ void main() {
       plugin.renameProjectResult = const PluginProject(
         id: "p1",
         name: "Renamed Project",
-        time: PluginProjectTime(created: 10, updated: 20),
+        activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
       );
 
       final result = await handler.handle(
@@ -88,8 +89,8 @@ void main() {
 
       expect(result.id, equals("p1"));
       expect(result.name, equals("Renamed Project"));
-      expect(result.time?.created, equals(10));
-      expect(result.time?.updated, equals(20));
+      expect(result.time?.created, equals(101));
+      expect(result.time?.updated, equals(202));
     });
   });
 }

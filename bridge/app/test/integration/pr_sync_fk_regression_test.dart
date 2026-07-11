@@ -53,7 +53,7 @@ void main() {
             PluginProject(
               id: "proj-X",
               name: "Project X",
-              time: PluginProjectTime(created: 0, updated: 100),
+              activity: PluginProjectActivity(createdAt: 0, updatedAt: 100),
             ),
           ],
         );
@@ -71,7 +71,7 @@ void main() {
         );
 
         // Primary fix (T5): getProjects persists the project row.
-        await projectRepo.getProjects();
+        await projectRepo.getProjects(defaultTimestamp: 1234);
 
         final projectRows = await db.select(db.projectsTable).get();
         expect(

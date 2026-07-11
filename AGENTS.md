@@ -471,6 +471,14 @@ The bridge uses Drift (SQLite) for local persistence. Schema changes require a s
 - Never edit `drift_schemas/*.json` files — these are generated snapshots.
 - Every schema migration MUST have corresponding migration tests. No exceptions.
 - The `databases:` key in `bridge/app/build.yaml` must point to the database class.
+- Prefer non-null columns for durable timestamps when a stable migration baseline exists. Backfill existing rows during
+  migration instead of introducing a permanent nullable state solely to avoid the backfill.
+
+## Compatibility Debt
+
+Temporary wire nullability or fallback behavior added only for old-version interoperability must be recorded in
+`docs/COMPATIBILITY_DEBT.md` with its supported scenario, a dated removal target, and exact cleanup steps. Do not let
+compatibility branches become undocumented permanent behavior.
 
 ## Git
 

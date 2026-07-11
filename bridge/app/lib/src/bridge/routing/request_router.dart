@@ -11,6 +11,7 @@ import "../repositories/provider_repository.dart";
 import "../repositories/question_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/project_activity_service.dart";
 import "../services/project_initialization_service.dart";
 import "../services/session_archive_service.dart";
 import "../services/session_creation_service.dart";
@@ -75,6 +76,7 @@ class RequestRouter {
     required ProjectRepository projectRepository,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
+    required ProjectActivityService projectActivityService,
     required HealthRepository healthRepository,
     required ProviderRepository providerRepository,
     required AgentRepository agentRepository,
@@ -97,6 +99,7 @@ class RequestRouter {
          projectRepository: projectRepository,
          filesystemRepository: filesystemRepository,
          projectInitializationService: projectInitializationService,
+         projectActivityService: projectActivityService,
          healthRepository: healthRepository,
          providerRepository: providerRepository,
          agentRepository: agentRepository,
@@ -121,6 +124,7 @@ class RequestRouter {
     required ProjectRepository projectRepository,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
+    required ProjectActivityService projectActivityService,
     required HealthRepository healthRepository,
     required ProviderRepository providerRepository,
     required AgentRepository agentRepository,
@@ -136,7 +140,7 @@ class RequestRouter {
       HealthCheckHandler(healthRepository: healthRepository),
       RestartBridgeHandler(restartService: restartService),
       GetCurrentProjectHandler(projectRepository: projectRepository),
-      GetProjectsHandler(projectRepository: projectRepository),
+      GetProjectsHandler(projectActivityService: projectActivityService),
       getCommandsHandler,
       GetSessionStatusesHandler(plugin),
       GetChildSessionsHandler(sessionRepository: sessionRepository),
@@ -175,11 +179,11 @@ class RequestRouter {
       RenameProjectHandler(projectRepository),
       CreateProjectHandler(
         projectInitializationService: projectInitializationService,
-        projectRepository: projectRepository,
+        projectActivityService: projectActivityService,
       ),
       OpenProjectHandler(
         filesystemRepository: filesystemRepository,
-        projectRepository: projectRepository,
+        projectActivityService: projectActivityService,
       ),
       HideProjectHandler(projectRepository: projectRepository),
       GetBaseBranchHandler(projectRepository: projectRepository),

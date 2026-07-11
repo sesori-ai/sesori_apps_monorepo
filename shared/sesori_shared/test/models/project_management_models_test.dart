@@ -8,7 +8,7 @@ void main() {
         id: "/projects/a",
         name: "A",
         path: "/moved/a",
-        time: ProjectTime(created: 1, updated: 2, initialized: null),
+        time: ProjectTime(created: 1, updated: 2),
       );
       final restored = Project.fromJson(original.toJson());
 
@@ -24,6 +24,17 @@ void main() {
       });
 
       expect(project.path, isEmpty);
+    });
+
+    test("ProjectTime ignores the removed initialized field", () {
+      final time = ProjectTime.fromJson({
+        "created": 1,
+        "updated": 2,
+        "initialized": 3,
+      });
+
+      expect(time, const ProjectTime(created: 1, updated: 2));
+      expect(time.toJson(), {"created": 1, "updated": 2});
     });
   });
 

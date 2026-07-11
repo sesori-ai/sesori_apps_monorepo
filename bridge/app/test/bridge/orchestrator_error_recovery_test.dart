@@ -26,6 +26,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
@@ -68,6 +69,13 @@ void main() {
           projectsDao: database.projectsDao,
         ),
         unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final projectRepository = ProjectRepository(
+        plugin: plugin,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
       );
       final orchestrator = Orchestrator(
         config: const BridgeConfig(
@@ -117,13 +125,7 @@ void main() {
           sessionRepository: sessionRepository,
         ),
         sessionRepository: sessionRepository,
-        projectRepository: ProjectRepository(
-          plugin: plugin,
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
+        projectRepository: projectRepository,
         sessionUnseenService: SessionUnseenService(
           unseenRepository: SessionUnseenRepository(
             pluginId: "opencode",
@@ -132,13 +134,7 @@ void main() {
             db: database,
             calculator: const SessionUnseenCalculator(),
           ),
-          projectRepository: ProjectRepository(
-            plugin: plugin,
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            unseenCalculator: const SessionUnseenCalculator(),
-            filesystemApi: FakeFilesystemApi(),
-          ),
+          projectRepository: projectRepository,
           viewTracker: SessionViewTracker(),
         ),
         sessionViewTracker: SessionViewTracker(),
@@ -161,6 +157,10 @@ void main() {
             permissionValidator: const FilesystemPermissionValidator(),
           ),
         ),
+        projectActivityService: ProjectActivityService(
+          projectRepository: projectRepository,
+          now: () => DateTime.now().millisecondsSinceEpoch,
+        ),
         healthRepository: HealthRepository(
           plugin: plugin,
           bridgeVersion: "0.0.0-test",
@@ -169,7 +169,11 @@ void main() {
         providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
         agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
         permissionRepository: PermissionRepository(plugin: plugin),
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+        questionRepository: QuestionRepository(
+          plugin: plugin,
+          sessionDao: database.sessionDao,
+          projectsDao: database.projectsDao,
+        ),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
@@ -218,6 +222,7 @@ void main() {
     test("stream continues after mapper throws", () async {
       final harness = await _TestHarness.start(
         plugin: _ThrowingSummaryPlugin(),
+        throwOnProjectReconciliation: false,
       );
       addTearDown(harness.close);
 
@@ -241,6 +246,7 @@ void main() {
     test("records failure with event-specific unique identifier", () async {
       final harness = await _TestHarness.start(
         plugin: _ThrowingSummaryPlugin(),
+        throwOnProjectReconciliation: false,
       );
       addTearDown(harness.close);
 
@@ -254,6 +260,21 @@ void main() {
         harness.failureReporter.recordedIdentifiers.single,
         equals("sse_projects_summary"),
       );
+    });
+
+    test("startup and reconnect activity failures do not stop plugin events", () async {
+      final harness = await _TestHarness.start(
+        plugin: _ThrowingSummaryPlugin(),
+        throwOnProjectReconciliation: true,
+      );
+      addTearDown(harness.close);
+
+      await harness.waitForSubscription();
+      harness.plugin.add(const BridgeSseServerConnected());
+      harness.plugin.add(const BridgeSseProjectUpdated());
+
+      await harness.waitForFailureCount(expected: 2);
+      expect(harness.plugin.subscribeCount, 1);
     });
   });
 }
@@ -277,6 +298,7 @@ class _TestHarness {
 
   static Future<_TestHarness> start({
     required _ThrowingSummaryPlugin plugin,
+    required bool throwOnProjectReconciliation,
   }) async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
@@ -345,6 +367,12 @@ class _TestHarness {
       failureReporter: FakeFailureReporter(),
     );
 
+    final projectActivityService = throwOnProjectReconciliation
+        ? _ThrowingProjectActivityService(projectRepository: projectRepository)
+        : ProjectActivityService(
+            projectRepository: projectRepository,
+            now: () => DateTime.now().millisecondsSinceEpoch,
+          );
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -406,6 +434,7 @@ class _TestHarness {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: projectActivityService,
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
@@ -414,7 +443,11 @@ class _TestHarness {
       providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
       agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao, projectsDao: database.projectsDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -464,6 +497,14 @@ class _TestHarness {
     await database.close();
     await relayServer.close();
   }
+}
+
+class _ThrowingProjectActivityService extends ProjectActivityService {
+  _ThrowingProjectActivityService({required super.projectRepository})
+    : super(now: () => DateTime.now().millisecondsSinceEpoch);
+
+  @override
+  Future<void> reconcile() => Future<void>.error(StateError("activity reconciliation failed"));
 }
 
 typedef _TestPushSubsystem = ({

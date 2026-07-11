@@ -9,8 +9,6 @@ import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
-import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
-import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
@@ -18,9 +16,11 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/registered_bridges_store.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
+import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
+import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 /// A [LifecycleSource] seeded as resumed, for cubits that subscribe to
@@ -148,11 +148,12 @@ class MockRouteSource extends Mock implements RouteSource {
   void emitRoute(AppRouteDef? route) => _currentRoute.add(route);
 }
 
-class MockSseEventRepository extends Mock implements SseEventRepository {
+class MockSseEventTracker extends Mock implements SseEventTracker {
   final BehaviorSubject<Map<String, int>> _projectActivity = BehaviorSubject.seeded(const {});
   final BehaviorSubject<Map<String, Map<String, SessionActivityInfo>>> _sessionActivity = BehaviorSubject.seeded(
     const {},
   );
+  final BehaviorSubject<Map<String, int>> _projectTimestampUpdates = BehaviorSubject.seeded(const {});
 
   @override
   ValueStream<Map<String, int>> get projectActivity => _projectActivity.stream;
@@ -166,9 +167,17 @@ class MockSseEventRepository extends Mock implements SseEventRepository {
   @override
   Map<String, Map<String, SessionActivityInfo>> get currentSessionActivity => _sessionActivity.value;
 
+  @override
+  ValueStream<Map<String, int>> get projectTimestampUpdates => _projectTimestampUpdates.stream;
+
+  @override
+  Map<String, int> get currentProjectTimestampUpdates => _projectTimestampUpdates.value;
+
   void emitProjectActivity(Map<String, int> activity) => _projectActivity.add(activity);
 
   void emitSessionActivity(Map<String, Map<String, SessionActivityInfo>> activity) => _sessionActivity.add(activity);
+
+  void emitProjectTimestampUpdate(Map<String, int> update) => _projectTimestampUpdates.add(update);
 }
 
 class FakeUri extends Fake implements Uri {}
