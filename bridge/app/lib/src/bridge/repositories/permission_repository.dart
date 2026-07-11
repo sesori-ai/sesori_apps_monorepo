@@ -57,6 +57,12 @@ class PermissionRepository {
       final pending = await plugin.getPendingPermissions(sessionId: sessionId);
       for (final permission in pending) {
         if (permission.id != requestId) continue;
+        if (tombstoned.contains(permission.sessionID)) {
+          throw PluginOperationException.notFound(
+            "replyToPermission",
+            message: "session ${permission.sessionID} was deleted",
+          );
+        }
         if (permission.displaySessionId case final displaySessionId? when tombstoned.contains(displaySessionId)) {
           throw PluginOperationException.notFound(
             "replyToPermission",

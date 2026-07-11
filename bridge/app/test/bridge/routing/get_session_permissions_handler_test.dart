@@ -192,6 +192,38 @@ void main() {
       );
       expect(derivedPlugin.permissionReplyCalls, isZero);
     });
+
+    test("permission replies reject a tombstoned owning descendant", () async {
+      final derivedPlugin = _DerivedPermissionPlugin()
+        ..permissions = const [
+          PluginPendingPermission(
+            id: "permission-stale-child",
+            sessionID: "gone-child",
+            displaySessionId: "live-root",
+            tool: "shell",
+            description: "stale child",
+          ),
+        ];
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone-child",
+        pluginId: derivedPlugin.id,
+        deletedAt: 1,
+      );
+      final repository = PermissionRepository(
+        plugin: derivedPlugin,
+        sessionDao: db.sessionDao,
+      );
+
+      await expectLater(
+        repository.replyToPermission(
+          requestId: "permission-stale-child",
+          sessionId: "live-root",
+          reply: PermissionReply.once,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(derivedPlugin.permissionReplyCalls, isZero);
+    });
   });
 }
 

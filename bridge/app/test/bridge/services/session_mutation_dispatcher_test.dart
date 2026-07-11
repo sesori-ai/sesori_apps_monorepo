@@ -84,12 +84,23 @@ void main() {
     });
 
     test("deletion discards a pending title", () async {
+      plugin.sessions = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: null,
+          time: null,
+          summary: null,
+        ),
+      ];
       final deletionEvent = expectLater(
         dispatcher.deletedSessions,
         emits(
           isA<Session>()
               .having((session) => session.id, "id", "s1")
-              .having((session) => session.projectID, "projectID", ""),
+              .having((session) => session.projectID, "projectID", "/repo"),
         ),
       );
       await dispatcher.captureTitle(sessionId: "s1", title: "stale");
@@ -123,6 +134,34 @@ void main() {
       );
       expect(plugin.renameCalls, isZero);
     });
+
+    test("dispose waits for an in-flight deletion to emit", () async {
+      final deleteStarted = Completer<void>();
+      final releaseDelete = Completer<void>();
+      plugin
+        ..deleteStarted = deleteStarted
+        ..releaseDelete = releaseDelete.future;
+      final events = expectLater(
+        dispatcher.deletedSessions,
+        emitsInOrder([
+          isA<Session>().having((session) => session.id, "id", "s1"),
+          emitsDone,
+        ]),
+      );
+
+      final deletion = dispatcher.deleteSession(sessionId: "s1");
+      await deleteStarted.future;
+      final disposal = dispatcher.dispose();
+      releaseDelete.complete();
+
+      await deletion;
+      await disposal;
+      await events;
+      await expectLater(
+        dispatcher.deleteSession(sessionId: "after-dispose"),
+        throwsA(isA<StateError>()),
+      );
+    });
   });
 }
 
@@ -130,6 +169,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   Completer<void>? deleteStarted;
   Future<void>? releaseDelete;
   int renameCalls = 0;
+  List<PluginSession> sessions = const [];
 
   @override
   String get id => "codex";
@@ -138,7 +178,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   String get launchDirectory => "/repo";
 
   @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async => const [];
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async => sessions;
 
   @override
   void primeSessionDirectory({required String sessionId, required String directory}) {}

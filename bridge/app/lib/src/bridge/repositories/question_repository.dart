@@ -170,6 +170,12 @@ class QuestionRepository {
       final pending = await plugin.getPendingQuestions(sessionId: sessionId);
       for (final question in pending) {
         if (question.id != questionId) continue;
+        if (tombstoned.contains(question.sessionID)) {
+          throw PluginOperationException.notFound(
+            operation,
+            message: "session ${question.sessionID} was deleted",
+          );
+        }
         if (question.displaySessionId case final displaySessionId? when tombstoned.contains(displaySessionId)) {
           throw PluginOperationException.notFound(
             operation,

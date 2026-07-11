@@ -342,6 +342,43 @@ void main() {
       expect(plugin.questionMutationCalls, isZero);
     });
 
+    test("question mutations reject a tombstoned owning descendant", () async {
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone-child",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+        questionsBySession: {
+          "live-root": const [
+            PluginPendingQuestion(
+              id: "q-stale-child",
+              sessionID: "gone-child",
+              displaySessionId: "live-root",
+              questions: [],
+            ),
+          ],
+        },
+      );
+      final repository = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      await expectLater(
+        repository.replyToQuestion(questionId: "q-stale-child", sessionId: "live-root", answers: const []),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      await expectLater(
+        repository.rejectQuestion(questionId: "q-stale-child", sessionId: "live-root"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(plugin.questionMutationCalls, isZero);
+    });
+
     test("getProjectQuestions filters display tombstones from both aggregation paths", () async {
       const parent = "/repo";
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);

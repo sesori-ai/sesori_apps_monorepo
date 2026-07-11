@@ -10,6 +10,7 @@ class SessionMutationDispatcher {
   final StreamController<Session> _deletedSessionsController = StreamController<Session>.broadcast(sync: true);
   final Map<String, String?> _pendingTitles = {};
   Future<void> _tail = Future<void>.value();
+  bool _disposed = false;
 
   SessionMutationDispatcher({required SessionRepository sessionRepository}) : _sessionRepository = sessionRepository;
 
@@ -41,6 +42,7 @@ class SessionMutationDispatcher {
   }
 
   Future<void> deleteSession({required String sessionId}) {
+    if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
     return _serialized(() async {
       final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);
       _pendingTitles.remove(sessionId);
@@ -48,7 +50,11 @@ class SessionMutationDispatcher {
     });
   }
 
-  Future<void> dispose() => _deletedSessionsController.close();
+  Future<void> dispose() {
+    if (_disposed) return Future.value();
+    _disposed = true;
+    return _serialized(_deletedSessionsController.close);
+  }
 
   Future<void> _captureTitle({required String sessionId, required String? title}) async {
     if (await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) return;
