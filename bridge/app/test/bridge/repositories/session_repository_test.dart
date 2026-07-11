@@ -1301,6 +1301,34 @@ void main() {
       expect(children.map((session) => session.id), ["live-child"]);
     });
 
+    test("deleteSession survives rowless project discovery failure", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+      )..listAllSessionsError = StateError("enumeration failed");
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final deleted = await repository.deleteSession(sessionId: "rowless");
+
+      expect(deleted.projectID, isEmpty);
+      expect(plugin.deleteCalls, 1);
+      expect(
+        await db.sessionDao.isSessionTombstoned(sessionId: "rowless", pluginId: plugin.id),
+        isTrue,
+      );
+    });
+
     test("tombstoned sessions are filtered from enumeration and resolution", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1515,6 +1543,8 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   List<PluginSession> allSessions;
   String? lastRenameSessionId;
   List<PluginSession> childSessions = const [];
+  Object? listAllSessionsError;
+  int deleteCalls = 0;
 
   /// The hint set received on the most recent [listAllSessions] call.
   Set<String>? receivedKnownDirectories;
@@ -1531,8 +1561,14 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    if (listAllSessionsError case final error?) throw error;
     receivedKnownDirectories = knownDirectories;
     return allSessions;
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    deleteCalls++;
   }
 
   @override

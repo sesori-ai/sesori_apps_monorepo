@@ -295,7 +295,15 @@ class SessionRepository {
   /// because a backend without session deletion may still enumerate them.
   Future<Session> deleteSession({required String sessionId}) async {
     final stored = await _sessionDao.getSession(sessionId: sessionId);
-    final projectId = stored?.projectId ?? await findProjectIdForSession(sessionId: sessionId) ?? "";
+    var projectId = stored?.projectId;
+    if (projectId == null) {
+      try {
+        projectId = await findProjectIdForSession(sessionId: sessionId);
+      } catch (error, stackTrace) {
+        Log.w("failed to resolve project for rowless session deletion $sessionId", error, stackTrace);
+      }
+    }
+    projectId ??= "";
     final deletionSnapshot = Session(
       id: sessionId,
       projectID: projectId,
