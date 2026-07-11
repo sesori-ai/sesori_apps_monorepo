@@ -622,6 +622,40 @@ void main() {
       await respond("session/prompt", {"stopReason": "end_turn"});
     });
 
+    test("a prime repairs a launch-directory fallback from enumeration", () async {
+      await connect(sessionCapabilities: true);
+      const stored = "/Users/x/kustos";
+
+      final stop = autoListResponder(
+        bare: () => {
+          "sessions": [
+            {"sessionId": "cold-s", "title": "Cold"},
+          ],
+        },
+      );
+      final sessions = await plugin.listAllSessions(knownDirectories: const {});
+      stop();
+      expect(sessions.single.directory, cwd);
+
+      plugin.primeSessionDirectory(sessionId: "cold-s", directory: stored);
+      final sending = plugin.sendPrompt(
+        sessionId: "cold-s",
+        parts: const [PluginPromptPart.text(text: "resume me")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      expect(
+        (loadFrame["params"] as Map)["cwd"],
+        stored,
+        reason: "the stored bridge prime must repair a scan-only fallback",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
+    });
+
     test("a prime does not override an agent-reported directory", () async {
       await connect(sessionCapabilities: true);
       const opened = "/Users/x/kustos";

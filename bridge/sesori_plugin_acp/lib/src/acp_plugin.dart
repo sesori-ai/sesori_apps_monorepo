@@ -546,12 +546,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final hasCwd = rawCwd != null && rawCwd.trim().isNotEmpty;
     final directory = normalizeProjectDirectory(directory: hasCwd ? rawCwd : fallbackDirectory);
     final id = info.sessionId;
-    // Remember the session's directory so a later turn/history load uses its
-    // own cwd and events/activity attribute to the right project. The
-    // title/time snapshot keeps `session_info_update` emissions full-fidelity
-    // (the mobile list replaces the whole session on session.updated).
+    // Only an agent-reported cwd is authoritative for later turn/history
+    // loads. A scan fallback remains eligible for a stored bridge prime to
+    // repair. Events can use the fallback until that prime arrives.
     if (id.isNotEmpty) {
-      _sessionDirectories[id] = directory;
+      if (hasCwd) _sessionDirectories[id] = directory;
       eventMapper.setSessionProject(id, directory);
       eventMapper.setSessionSnapshot(
         sessionId: id,
