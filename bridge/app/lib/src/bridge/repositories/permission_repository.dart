@@ -45,11 +45,21 @@ class PermissionRepository {
     required String requestId,
     required String sessionId,
     required PermissionReply reply,
-  }) => _plugin.replyToPermission(
-    requestId: requestId,
-    sessionId: sessionId,
-    reply: _toPluginReply(reply),
-  );
+  }) async {
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      if (await _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: plugin.id)) {
+        throw PluginOperationException.notFound(
+          "replyToPermission",
+          message: "session $sessionId was deleted",
+        );
+      }
+    }
+    return _plugin.replyToPermission(
+      requestId: requestId,
+      sessionId: sessionId,
+      reply: _toPluginReply(reply),
+    );
+  }
 
   static PluginPermissionReply _toPluginReply(PermissionReply reply) => switch (reply) {
     .once => .once,

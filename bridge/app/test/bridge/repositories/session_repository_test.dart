@@ -1238,6 +1238,34 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       expect(plugin.lastRenameSessionId, isNull);
+
+      final guardedOperations = <Future<void> Function()>[
+        () => repository.sendCommand(
+          sessionId: "gone",
+          command: "test",
+          arguments: "",
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        () => repository.sendPrompt(
+          sessionId: "gone",
+          parts: const [],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        () async => repository.getSessionMessages(sessionId: "gone"),
+        () => repository.notifySessionArchived(sessionId: "gone"),
+        () => repository.abortSession(sessionId: "gone"),
+        () async => repository.getChildSessions(sessionId: "gone"),
+      ];
+      for (final operation in guardedOperations) {
+        await expectLater(
+          operation(),
+          throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+        );
+      }
     });
 
     test("tombstoned sessions are filtered from enumeration and resolution", () async {
@@ -1363,6 +1391,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
+
+  @override
+  Future<void> deleteSession(String sessionId) async {}
 
   @override
   Future<List<PluginProject>> getProjects() async => projectsResult;

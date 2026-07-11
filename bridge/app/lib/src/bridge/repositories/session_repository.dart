@@ -194,11 +194,8 @@ class SessionRepository {
   }
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
-    if (_plugin is BridgeDerivedProjectsPluginApi && await isSessionTombstoned(sessionId: sessionId)) {
-      throw PluginOperationException.notFound(
-        "renameSession",
-        message: "session $sessionId was deleted",
-      );
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "renameSession");
     }
     final updated = await _plugin.renameSession(sessionId: sessionId, title: title);
     return updated.toSharedSession();
@@ -226,6 +223,9 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "sendCommand");
+    }
     await _primeDerivedSessionDirectory(sessionId: sessionId);
     return _plugin.sendCommand(
       sessionId: sessionId,
@@ -247,6 +247,9 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "sendPrompt");
+    }
     await _primeDerivedSessionDirectory(sessionId: sessionId);
     return _plugin.sendPrompt(
       sessionId: sessionId,
@@ -265,6 +268,9 @@ class SessionRepository {
   /// be the FIRST plugin call for a stored worktree session, and a
   /// directory-scoped backend would otherwise replay in its launch directory.
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "getSessionMessages");
+    }
     await _primeDerivedSessionDirectory(sessionId: sessionId);
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
     return pluginMessages.toSharedMessageWithParts();
@@ -284,10 +290,15 @@ class SessionRepository {
     return _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: _plugin.id);
   }
 
-  /// Records a delete tombstone and removes the stored row atomically. The
-  /// tombstone is written even for rowless sessions because a backend without
-  /// session deletion may still enumerate them.
+  /// Deletes the backend session, then records its tombstone and removes the
+  /// stored row atomically. The tombstone is written even for rowless sessions
+  /// because a backend without session deletion may still enumerate them.
   Future<void> deleteSession({required String sessionId}) async {
+    try {
+      await _plugin.deleteSession(sessionId);
+    } on PluginOperationException catch (error) {
+      if (!error.isNotFound) rethrow;
+    }
     await _sessionDao.transaction(() async {
       await _sessionDao.insertSessionTombstone(
         sessionId: sessionId,
@@ -428,11 +439,17 @@ class SessionRepository {
     }
   }
 
-  Future<void> notifySessionArchived({required String sessionId}) {
+  Future<void> notifySessionArchived({required String sessionId}) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "archiveSession");
+    }
     return _plugin.archiveSession(sessionId: sessionId);
   }
 
-  Future<void> abortSession({required String sessionId}) {
+  Future<void> abortSession({required String sessionId}) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "abortSession");
+    }
     return _plugin.abortSession(sessionId: sessionId);
   }
 
@@ -492,8 +509,19 @@ class SessionRepository {
   }
 
   Future<List<Session>> getChildSessions({required String sessionId}) async {
+    if (_plugin is BridgeDerivedProjectsPluginApi) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "getChildSessions");
+    }
     final pluginSessions = await _plugin.getChildSessions(sessionId);
     return pluginSessions.toSharedSessions();
+  }
+
+  Future<void> _throwIfTombstoned({required String sessionId, required String operation}) async {
+    if (!await isSessionTombstoned(sessionId: sessionId)) return;
+    throw PluginOperationException.notFound(
+      operation,
+      message: "session $sessionId was deleted",
+    );
   }
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {

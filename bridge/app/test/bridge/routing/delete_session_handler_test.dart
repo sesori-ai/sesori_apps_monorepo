@@ -41,7 +41,6 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = DeleteSessionHandler(
-        plugin: plugin,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
         sessionTitleService: SessionTitleService(sessionRepository: sessionRepository),

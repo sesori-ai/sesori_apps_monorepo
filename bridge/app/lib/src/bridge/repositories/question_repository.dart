@@ -124,17 +124,36 @@ class QuestionRepository {
     required String questionId,
     required String sessionId,
     required List<ReplyAnswer> answers,
-  }) => _plugin.replyToQuestion(
-    questionId: questionId,
-    sessionId: sessionId,
-    answers: answers.map((answer) => answer.values).toList(),
-  );
+  }) async {
+    await _throwIfTombstoned(sessionId: sessionId, operation: "replyToQuestion");
+    return _plugin.replyToQuestion(
+      questionId: questionId,
+      sessionId: sessionId,
+      answers: answers.map((answer) => answer.values).toList(),
+    );
+  }
 
   Future<void> rejectQuestion({
     required String questionId,
     required String? sessionId,
-  }) => _plugin.rejectQuestion(
-    questionId: questionId,
-    sessionId: sessionId,
-  );
+  }) async {
+    if (sessionId != null) {
+      await _throwIfTombstoned(sessionId: sessionId, operation: "rejectQuestion");
+    }
+    return _plugin.rejectQuestion(
+      questionId: questionId,
+      sessionId: sessionId,
+    );
+  }
+
+  Future<void> _throwIfTombstoned({required String sessionId, required String operation}) async {
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      if (await _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: plugin.id)) {
+        throw PluginOperationException.notFound(
+          operation,
+          message: "session $sessionId was deleted",
+        );
+      }
+    }
+  }
 }

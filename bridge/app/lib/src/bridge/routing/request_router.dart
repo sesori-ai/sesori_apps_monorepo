@@ -165,7 +165,6 @@ class RequestRouter {
         sessionUnseenService: sessionUnseenService,
       ),
       DeleteSessionHandler(
-        plugin: plugin,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
         sessionTitleService: sessionTitleService,

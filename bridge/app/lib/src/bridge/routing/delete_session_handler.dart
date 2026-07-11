@@ -1,6 +1,5 @@
 import "dart:convert";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/tables/session_table.dart";
@@ -12,18 +11,15 @@ import "worktree_cleanup.dart";
 
 /// Handles `DELETE /session/delete` — deletes a session.
 class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
-  final BridgePluginApi _plugin;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
   final SessionTitleService _sessionTitleService;
 
   DeleteSessionHandler({
-    required BridgePluginApi plugin,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
     required SessionTitleService sessionTitleService,
-  }) : _plugin = plugin,
-       _worktreeService = worktreeService,
+  }) : _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
        _sessionTitleService = sessionTitleService,
        super(
@@ -74,14 +70,6 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
             body: jsonEncode(rejection.toJson()),
           );
         }
-      }
-    }
-
-    try {
-      await _plugin.deleteSession(sessionId);
-    } on PluginOperationException catch (error) {
-      if (!error.isNotFound) {
-        rethrow;
       }
     }
 

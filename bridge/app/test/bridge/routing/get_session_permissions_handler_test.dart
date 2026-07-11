@@ -83,11 +83,12 @@ void main() {
         pluginId: derivedPlugin.id,
         deletedAt: 1,
       );
+      final repository = PermissionRepository(
+        plugin: derivedPlugin,
+        sessionDao: db.sessionDao,
+      );
       final derivedHandler = GetSessionPermissionsHandler(
-        permissionRepository: PermissionRepository(
-          plugin: derivedPlugin,
-          sessionDao: db.sessionDao,
-        ),
+        permissionRepository: repository,
       );
 
       final response = await derivedHandler.handle(
@@ -100,6 +101,14 @@ void main() {
 
       expect(response.data, isEmpty);
       expect(derivedPlugin.pendingPermissionCalls, isZero);
+      await expectLater(
+        repository.replyToPermission(
+          requestId: "permission-gone",
+          sessionId: "gone",
+          reply: PermissionReply.reject,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
     });
 
     test("filters permissions for tombstoned child and displayed sessions", () async {

@@ -249,6 +249,15 @@ void main() {
 
       expect(await repository.getPendingQuestions(sessionId: "gone"), isEmpty);
       expect(plugin.queriedSessionIds, isNot(contains("gone")));
+
+      await expectLater(
+        repository.replyToQuestion(questionId: "q-gone", sessionId: "gone", answers: const []),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      await expectLater(
+        repository.rejectQuestion(questionId: "q-gone", sessionId: "gone"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
     });
 
     test("getPendingQuestions filters tombstoned child and displayed sessions", () async {
