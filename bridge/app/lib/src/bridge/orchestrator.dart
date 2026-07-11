@@ -34,6 +34,7 @@ import "routing/get_session_diffs_handler.dart";
 import "routing/request_router.dart";
 import "routing/send_prompt_handler.dart";
 import "services/pr_sync_service.dart";
+import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_archive_service.dart";
@@ -69,6 +70,7 @@ class Orchestrator {
   final SessionViewTracker _sessionViewTracker;
   final FilesystemRepository _filesystemRepository;
   final ProjectInitializationService _projectInitializationService;
+  final ProjectActivityService _projectActivityService;
   final HealthRepository _healthRepository;
   final ProviderRepository _providerRepository;
   final AgentRepository _agentRepository;
@@ -100,6 +102,7 @@ class Orchestrator {
     required SessionViewTracker sessionViewTracker,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
+    required ProjectActivityService projectActivityService,
     required HealthRepository healthRepository,
     required ProviderRepository providerRepository,
     required AgentRepository agentRepository,
@@ -130,6 +133,7 @@ class Orchestrator {
        _sessionViewTracker = sessionViewTracker,
        _filesystemRepository = filesystemRepository,
        _projectInitializationService = projectInitializationService,
+       _projectActivityService = projectActivityService,
        _healthRepository = healthRepository,
        _providerRepository = providerRepository,
        _agentRepository = agentRepository,
@@ -180,6 +184,7 @@ class Orchestrator {
       sessionViewTracker: _sessionViewTracker,
       filesystemRepository: _filesystemRepository,
       projectInitializationService: _projectInitializationService,
+      projectActivityService: _projectActivityService,
       healthRepository: _healthRepository,
       providerRepository: _providerRepository,
       agentRepository: _agentRepository,
@@ -231,6 +236,7 @@ class OrchestratorSession {
   final SessionRepository _sessionRepository;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
+  final ProjectActivityService _projectActivityService;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
   final CompositeSubscription _subscriptions = CompositeSubscription();
@@ -277,6 +283,7 @@ class OrchestratorSession {
     required SessionViewTracker sessionViewTracker,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
+    required ProjectActivityService projectActivityService,
     required HealthRepository healthRepository,
     required ProviderRepository providerRepository,
     required AgentRepository agentRepository,
@@ -308,6 +315,7 @@ class OrchestratorSession {
        _sessionViewTracker = sessionViewTracker,
        _sessionRepository = sessionRepository,
        _sessionAbortService = sessionAbortService,
+       _projectActivityService = projectActivityService,
        _restartService = restartService,
        _statusNotifier = statusNotifier,
        _router = RequestRouter(
@@ -325,14 +333,15 @@ class OrchestratorSession {
              sseManager: sseManager,
            ),
          ),
-          prSyncService: prSyncService,
-          projectRepository: projectRepository,
-          filesystemRepository: filesystemRepository,
-          projectInitializationService: projectInitializationService,
-          healthRepository: healthRepository,
-          providerRepository: providerRepository,
-          agentRepository: agentRepository,
-          permissionRepository: permissionRepository,
+         prSyncService: prSyncService,
+         projectRepository: projectRepository,
+         filesystemRepository: filesystemRepository,
+         projectInitializationService: projectInitializationService,
+         projectActivityService: projectActivityService,
+         healthRepository: healthRepository,
+         providerRepository: providerRepository,
+         agentRepository: agentRepository,
+         permissionRepository: permissionRepository,
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
           sessionUnseenService: sessionUnseenService,
@@ -376,7 +385,23 @@ class OrchestratorSession {
       _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
       _completionListener.start();
       _maintenanceListener.start();
+      _projectActivityService.changes
+          .listen((change) {
+            final event = SesoriSseEvent.projectUpdated(
+              projectID: change.projectId,
+              updatedAt: change.updatedAt,
+            );
+            _sseManager.enqueueEvent(event);
+            _completionListener.handleSseEvent(event);
+          })
+          .addTo(_subscriptions);
 
+      // Reconcile in one batch before publishing the startup baseline. Failure
+      // is isolated so project activity cannot prevent the relay session from
+      // starting.
+      await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
+        Log.w("ProjectActivityService: startup reconciliation failed", e, st);
+      });
       final startupSummary = await _buildProjectsSummary();
       if (startupSummary != null) {
         _completionListener.handleSseEvent(startupSummary);
@@ -384,7 +409,6 @@ class OrchestratorSession {
           _statusNotifier?.handleProjectsSummary(summary: startupSummary);
         }
       }
-
       Log.d("subscribing to plugin event stream...");
       _plugin.events
           .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
@@ -429,7 +453,6 @@ class OrchestratorSession {
             );
           })
           .addTo(_subscriptions);
-
       // Live re-auth: when the token provider emits a token whose auth IDENTITY
       // differs from the one the relay socket is actually authenticated with
       // (supervised mode: the GUI pushed a token_update after an account switch;
@@ -543,6 +566,8 @@ class OrchestratorSession {
       );
       await _subscriptions.cancel();
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
+      await _projectActivityService.dispose();
+      Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
       await _sessionAbortService.dispose();
       Log.v("[shutdown] session abort service disposed (+${teardownSw.elapsedMilliseconds}ms)");
       await _completionListener.dispose();
@@ -646,12 +671,20 @@ class OrchestratorSession {
   Future<void> _processPluginEvent(BridgeSseEvent event) async {
     try {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
+
+      // A server (re)connect means the plugin may have just loaded a new set of
+      // sessions. Reconcile persisted project activity so we don't miss
+      // offline activity that arrived while disconnected.
+      if (event is BridgeSseServerConnected) {
+        await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
+          Log.w("ProjectActivityService: server-connected reconciliation failed", e, st);
+        });
+      }
+
       // A project update means "activity changed" — rebuild the full summary
       // (repository data: the bridge's session→project attribution), which the
       // pure mapper cannot fetch itself.
-      final sesoriEvent = event is BridgeSseProjectUpdated
-          ? await _buildProjectsSummary()
-          : _mapper.map(event);
+      final sesoriEvent = event is BridgeSseProjectUpdated ? await _buildProjectsSummary() : _mapper.map(event);
       if (sesoriEvent != null) {
         Log.v(
           "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
@@ -661,11 +694,17 @@ class OrchestratorSession {
           _statusNotifier?.handleProjectsSummary(summary: sesoriEvent);
         }
         _sseManager.enqueueEvent(sesoriEvent);
-        unawaited(
-          _routeUnseenActivity(sesoriEvent).catchError((Object e, StackTrace st) {
-            Log.w("failed to route unseen activity for ${sesoriEvent.runtimeType}", e, st);
-          }),
-        );
+        // The original event is enqueued before either persistence side effect.
+        try {
+          await _routeUnseenActivity(sesoriEvent);
+        } catch (e, st) {
+          Log.w("failed to route unseen activity for ${sesoriEvent.runtimeType}", e, st);
+        }
+        try {
+          await _projectActivityService.handleEvent(sesoriEvent);
+        } catch (e, st) {
+          Log.w("failed to route project activity for ${sesoriEvent.runtimeType}", e, st);
+        }
       } else {
         Log.v("[sse] mapping returned null — event dropped");
       }

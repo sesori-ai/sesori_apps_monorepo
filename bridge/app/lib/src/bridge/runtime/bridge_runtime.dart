@@ -47,6 +47,7 @@ import "../repositories/session_unseen_calculator.dart";
 import "../repositories/session_unseen_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/project_activity_service.dart";
 import "../services/project_initialization_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_event_enrichment_service.dart";
@@ -183,6 +184,10 @@ class BridgeRuntime {
       ),
       filesystemRepository: filesystemRepository,
     );
+    final projectActivityService = ProjectActivityService(
+      projectRepository: projectRepository,
+      now: () => DateTime.now().millisecondsSinceEpoch,
+    );
     final healthRepository = HealthRepository(
       plugin: plugin,
       bridgeVersion: appVersion,
@@ -254,6 +259,7 @@ class BridgeRuntime {
         sessionViewTracker: sessionViewTracker,
         filesystemRepository: filesystemRepository,
         projectInitializationService: projectInitializationService,
+        projectActivityService: projectActivityService,
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,

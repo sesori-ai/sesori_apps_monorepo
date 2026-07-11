@@ -12,7 +12,6 @@
     "description": "App-bar title shown in place of 'Projects' while the connect-your-computer onboarding is visible (no bridge has ever been registered and none is connected)."
   },
   "projectListLoadingSemantics": "Loading projects",
-  "projectListEmpty": "No projects found",
   "projectListUpdated": "Updated {timestamp}",
   "@projectListUpdated": {
     "placeholders": {
@@ -34,21 +33,17 @@
       }
     }
   },
-  "projectsOnboardingPhoneStatusStep": "Step 1:",
-  "@projectsOnboardingPhoneStatusStep": {
-    "description": "Leading label for the phone-connection status line above the onboarding hero, e.g. 'Step 1: Phone connected'."
+  "projectsEmptyConnected": "Connected",
+  "@projectsEmptyConnected": {
+    "description": "Status caption under the connection graphic on the connected-but-empty Projects screen, rendered in the success color with a check icon."
   },
-  "projectsOnboardingPhoneStatusConnected": "Phone connected",
-  "@projectsOnboardingPhoneStatusConnected": {
-    "description": "Success portion of the phone-connection status line, rendered in the success color with a check icon."
+  "projectsEmptyMessage": "You don't have any projects created or opened yet.",
+  "@projectsEmptyMessage": {
+    "description": "Message above the add-project button on the connected-but-empty Projects screen."
   },
-  "projectsOnboardingPcStatusStep": "Step 2:",
-  "@projectsOnboardingPcStatusStep": {
-    "description": "Leading label for the PC status line below the onboarding hero, e.g. 'Step 2: Run Sesori on your PC'."
-  },
-  "projectsOnboardingPcStatusRun": "Run Sesori on your PC",
-  "@projectsOnboardingPcStatusRun": {
-    "description": "Secondary portion of the PC status line, rendered in the secondary text color."
+  "projectsEmptyAddProject": "Add a new project to get started",
+  "@projectsEmptyAddProject": {
+    "description": "Label of the button on the connected-but-empty Projects screen that opens the Add Project sheet."
   },
   "projectsOnboardingPcStatusWhy": "Why is this needed?",
   "@projectsOnboardingPcStatusWhy": {

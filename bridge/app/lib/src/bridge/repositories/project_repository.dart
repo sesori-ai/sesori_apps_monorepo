@@ -3,14 +3,23 @@ import "dart:io" show FileSystemException;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgeDerivedProjectsPluginApi, BridgePluginApi, Log, NativeProjectsPluginApi;
-import "package:sesori_shared/sesori_shared.dart" show Project;
+    show
+        BridgeDerivedProjectsPluginApi,
+        BridgePluginApi,
+        Log,
+        NativeProjectsPluginApi,
+        PluginProjectActivity,
+        PluginSessionTime;
+import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
 
 import "../api/filesystem_api.dart";
 import "../persistence/daos/projects_dao.dart";
-import "../persistence/daos/session_dao.dart";
+import "../persistence/daos/session_dao.dart" show SessionDao, SessionUnseenRow;
+import "../persistence/tables/projects_table.dart" show ProjectDto;
 import "derived_project_builder.dart";
 import "mappers/plugin_project_mapper.dart";
+import "models/project_activity.dart";
+import "models/project_activity_evidence.dart";
 import "models/project_not_found_exception.dart";
 import "session_unseen_calculator.dart";
 
@@ -18,16 +27,19 @@ import "session_unseen_calculator.dart";
 /// subtype:
 ///
 /// - [NativeProjectsPluginApi] (e.g. OpenCode): the plugin owns the project
-///   list. This path fetches `plugin.getProjects()`, overlays the bridge's
-///   hidden flag and unseen state, and sorts — unchanged from before
-///   bridge-derived tracking existed.
+///   list. This path fetches `plugin.getProjects()` once, inserts rows for
+///   newly discovered projects using the plugin's session-derived activity, and
+///   returns projects with [Project.time] read from the persisted row.
 /// - [BridgeDerivedProjectsPluginApi] (Codex and every ACP plugin): the backend
 ///   has no project concept, so the bridge derives the list from the plugin's
-///   sessions via [DerivedProjectBuilder] and owns opened-folder + display-name
-///   persistence in the projects table.
+///   sessions via [DerivedProjectBuilder] and owns created/updated persistence
+///   in the projects table.
 ///
 /// All capability branching is contained here; routing handlers stay
 /// capability-agnostic and call these methods unconditionally.
+///
+/// This repository aggregates raw evidence, maps persistence rows, resolves open
+/// targets, and performs exact reads and writes. It does not order timestamps.
 class ProjectRepository {
   static const DerivedProjectBuilder _derivedProjectBuilder = DerivedProjectBuilder();
 
@@ -49,47 +61,55 @@ class ProjectRepository {
        _unseenCalculator = unseenCalculator,
        _filesystemApi = filesystemApi;
 
-  Future<List<Project>> getProjects() async {
+  Future<List<Project>> getProjects({required int defaultTimestamp}) async {
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
         // Seed the plugin's launch directory so it always surfaces as a project
-        // — even with no sessions yet. Insert-or-ignore: a fresh row stamps its
-        // openedAt at creation; an existing row is left untouched.
-        await _projectsDao.insertProjectsIfMissing(
-          projectIds: [normalizeProjectDirectory(directory: plugin.launchDirectory)],
+        // — even with no sessions yet. Existing rows are left untouched.
+        await _projectsDao.insertMissingProjectsWithActivity(
+          activities: {
+            normalizeProjectDirectory(directory: plugin.launchDirectory): (
+              createdAt: defaultTimestamp,
+              updatedAt: defaultTimestamp,
+            ),
+          },
         );
         final derived = await _deriveProjects(plugin);
-        // Persist canonical rows so a later session insert (and the hidden flag)
-        // have a project row to reference.
-        await _projectsDao.insertProjectsIfMissing(
-          projectIds: [for (final project in derived) project.id],
-        );
+        await _seedNewProjects([
+          for (final project in derived) (project: project, directActivity: null),
+        ], defaultTimestamp: defaultTimestamp);
         final hiddenIds = await _projectsDao.getHiddenProjectIds();
         final visible = derived.where((project) => !hiddenIds.contains(project.id)).toList();
         final unseenById = await unseenByProjectId(
           projectIds: [for (final project in visible) project.id],
         );
+        final activityById = _mapActivities(await _projectsDao.getAllProjects());
         final projects = [
           for (final project in visible)
             project.copyWith(
               hasUnseenChanges: unseenById[project.id] ?? false,
               directoryMissing: _directoryMissing(project.id),
+              time: _activityToTime(activityById[project.id]!),
             ),
         ];
-        projects.sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+        projects.sort(_projectComparator);
         return projects;
 
       case final NativeProjectsPluginApi plugin:
         final pluginProjects = await plugin.getProjects();
-        await _projectsDao.insertProjectsIfMissing(
-          projectIds: [for (final p in pluginProjects) p.id],
-        );
+        await _seedNewProjects([
+          for (final p in pluginProjects)
+            (
+              project: p.toSharedProject(
+                path: p.id,
+                hasUnseenChanges: false,
+                directoryMissing: false,
+                time: null,
+              ),
+              directActivity: p.activity,
+            ),
+        ], defaultTimestamp: defaultTimestamp);
         final storedProjects = await _projectsDao.getAllProjects();
-        // Overlay each project's live directory: the recorded path where one
-        // exists (a moved folder re-opened at a new location), the stable id
-        // otherwise. directoryMissing is computed against the live directory —
-        // the id may legitimately point at a location the project moved away
-        // from.
         final pathById = {
           for (final stored in storedProjects)
             if (stored.path.isNotEmpty) stored.projectId: stored.path,
@@ -99,17 +119,17 @@ class ProjectRepository {
         final unseenById = await unseenByProjectId(
           projectIds: [for (final p in visible) p.id],
         );
+        final activityById = _mapActivities(storedProjects);
         final projects = visible.map((p) {
           final path = pathById[p.id] ?? p.id;
           return p.toSharedProject(
             path: path,
             hasUnseenChanges: unseenById[p.id] ?? false,
             directoryMissing: _directoryMissing(path),
+            time: _activityToTime(activityById[p.id]!),
           );
         }).toList();
-        projects.sort(
-          (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
-        );
+        projects.sort(_projectComparator);
         return projects;
     }
   }
@@ -152,9 +172,15 @@ class ProjectRepository {
     if (path == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
+    final activity = _mapActivity(await _projectsDao.getProject(projectId: projectId));
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
-        return _findDerivedProject(plugin, normalizeProjectDirectory(directory: path));
+        final project = await _findDerivedProject(plugin, normalizeProjectDirectory(directory: path));
+        return project.copyWith(
+          hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
+          directoryMissing: _directoryMissing(project.id),
+          time: _activityToTime(activity!),
+        );
       case final NativeProjectsPluginApi plugin:
         // The backend needs the live directory — the id may point at a
         // location the folder has since moved away from.
@@ -163,47 +189,69 @@ class ProjectRepository {
           path: path,
           hasUnseenChanges: await projectHasUnseenChanges(projectId: pluginProject.id),
           directoryMissing: _directoryMissing(path),
+          time: _activityToTime(activity!),
         );
     }
   }
 
-  Future<Project> openProject({required String path}) async {
+  /// Resolves the canonical target for opening [path].
+  ///
+  /// For a native plugin the backend maps the opened directory to the stable
+  /// project id (a moved folder keeps its identity). For a bridge-derived
+  /// plugin the canonical id is the normalized directory itself.
+  Future<ProjectOpenTarget> resolveProjectOpenTarget({required String path}) async {
     switch (_plugin) {
-      case final BridgeDerivedProjectsPluginApi plugin:
-        // Record the folder so a project with no sessions yet survives the
-        // refresh and later bridge restarts; the plugin has no getProject to
-        // call. Re-opening bumps openedAt so the folder resurfaces with a
-        // fresh time.
+      case BridgeDerivedProjectsPluginApi():
         final canonical = normalizeProjectDirectory(directory: path);
-        await _projectsDao.recordOpenedProject(
-          projectId: canonical,
+        final stored = await _projectsDao.getProject(projectId: canonical);
+        final base = p.basename(canonical);
+        return ProjectOpenTarget(
+          project: Project(
+            id: canonical,
+            name: stored?.displayName ?? (base.isEmpty ? canonical : base),
+            path: canonical,
+            time: null,
+          ),
           path: canonical,
-          openedAt: DateTime.now().millisecondsSinceEpoch,
         );
-        await _projectsDao.unhideProject(projectId: canonical);
-        return _findDerivedProject(plugin, canonical);
-
       case final NativeProjectsPluginApi plugin:
-        // The backend resolves the opened directory to its canonical project:
-        // for a git-backed backend a moved folder keeps its identity, so the
-        // reported id can differ from the opened path. Persist the opened
-        // path as the project's live directory so every later operation runs
-        // where the folder actually is, and key it on the stable id so
-        // hidden/rename/base-branch state survives the move.
         final openedPath = normalizeProjectDirectory(directory: path);
         final pluginProject = await plugin.getProject(openedPath);
-        await _projectsDao.recordOpenedProject(
-          projectId: pluginProject.id,
+        return ProjectOpenTarget(
+          project: pluginProject.toSharedProject(
+            path: openedPath,
+            hasUnseenChanges: false,
+            directoryMissing: false,
+            time: null,
+          ),
           path: openedPath,
-          openedAt: DateTime.now().millisecondsSinceEpoch,
-        );
-        await _projectsDao.unhideProject(projectId: pluginProject.id);
-        return pluginProject.toSharedProject(
-          path: openedPath,
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: pluginProject.id),
-          directoryMissing: _directoryMissing(openedPath),
         );
     }
+  }
+
+  /// Persists the exact [activity] for an opened project and unhides it. This is
+  /// a dumb exact write; the caller ([ProjectActivityService]) owns the decision.
+  Future<void> persistOpenedProject({
+    required String projectId,
+    required String path,
+    required ProjectActivity activity,
+  }) async {
+    await _projectsDao.recordOpenedProject(
+      projectId: projectId,
+      path: path,
+      createdAt: activity.createdAt,
+      updatedAt: activity.updatedAt,
+    );
+    await _projectsDao.unhideProject(projectId: projectId);
+  }
+
+  Future<Project> mapOpenedProject({required ProjectOpenTarget target}) async {
+    final activity = await getActivity(projectId: target.projectId);
+    return target.project.copyWith(
+      time: _activityToTime(activity!),
+      hasUnseenChanges: await projectHasUnseenChanges(projectId: target.projectId),
+      directoryMissing: _directoryMissing(target.path),
+    );
   }
 
   Future<Project> renameProject({required String projectId, required String name}) async {
@@ -211,13 +259,19 @@ class ProjectRepository {
     if (path == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
+    final activity = _mapActivity(await _projectsDao.getProject(projectId: projectId));
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
         // codex has no backend to store a project name, so persist a display-name
         // override that _deriveProjects applies on the next listing.
         final canonical = normalizeProjectDirectory(directory: path);
         await _projectsDao.setDisplayName(projectId: canonical, displayName: name);
-        return _findDerivedProject(plugin, canonical);
+        final project = await _findDerivedProject(plugin, canonical);
+        return project.copyWith(
+          hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
+          directoryMissing: _directoryMissing(project.id),
+          time: _activityToTime(activity!),
+        );
 
       case final NativeProjectsPluginApi plugin:
         // The backend looks the project up by directory, so hand it the live
@@ -227,6 +281,7 @@ class ProjectRepository {
           path: path,
           hasUnseenChanges: await projectHasUnseenChanges(projectId: updated.id),
           directoryMissing: _directoryMissing(path),
+          time: _activityToTime(activity!),
         );
     }
   }
@@ -239,24 +294,101 @@ class ProjectRepository {
     return _projectsDao.getBaseBranch(projectId: projectId);
   }
 
-  Future<void> setBaseBranch({required String projectId, required String baseBranch}) {
+  Future<void> setBaseBranch({required String projectId, required String? baseBranch}) {
     return _projectsDao.setBaseBranch(
       projectId: projectId,
       baseBranch: baseBranch,
     );
   }
 
-  /// Builds the full bridge-derived project set from the plugin's sessions, the
-  /// bridge's stored project rows, and the stored session→project attribution.
-  Future<List<Project>> _deriveProjects(BridgeDerivedProjectsPluginApi plugin) async {
+  Future<StoredProjectActivity?> getStoredSessionActivity({required String sessionId}) async {
+    final session = await _sessionDao.getSession(sessionId: sessionId);
+    if (session == null) return null;
+    final project = await _projectsDao.getProject(projectId: session.projectId);
+    final activity = _mapActivity(project);
+    if (activity == null) return null;
+    return StoredProjectActivity(projectId: session.projectId, activity: activity);
+  }
+
+  Future<ProjectActivityReconciliationData> listProjectActivityEvidence() async {
+    switch (_plugin) {
+      case final NativeProjectsPluginApi plugin:
+        final pluginProjects = await plugin.getProjects();
+        final storedProjects = await _projectsDao.getAllProjects();
+        return ProjectActivityReconciliationData(
+          evidence: [
+            for (final p in pluginProjects)
+              ProjectActivityEvidence(
+                projectId: p.id,
+                pluginActivity: p.activity,
+                sessionActivities: const [],
+              ),
+          ],
+          storedActivities: _mapActivities(storedProjects),
+        );
+      case final BridgeDerivedProjectsPluginApi plugin:
+        final (storedProjects, sessionProjectPaths, tombstoned) = await (
+          _projectsDao.getAllProjects(),
+          _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+          _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
+        ).wait;
+        final sessions = await plugin.listAllSessions(
+          knownDirectories: {
+            for (final stored in storedProjects) stored.path,
+            for (final row in sessionProjectPaths) ?row.worktreePath,
+          },
+        );
+        final pathBySessionId = {
+          for (final row in sessionProjectPaths) row.sessionId: row.projectPath,
+        };
+        final grouped = <String, List<PluginSessionTime>>{};
+        for (final session in sessions) {
+          if (tombstoned.contains(session.id)) continue;
+          final time = session.time;
+          if (time == null) continue;
+          final projectPath = pathBySessionId[session.id] ?? session.directory;
+          final key = normalizeProjectDirectory(directory: projectPath);
+          grouped.putIfAbsent(key, () => []).add(time);
+        }
+        return ProjectActivityReconciliationData(
+          evidence: [
+            for (final entry in grouped.entries)
+              ProjectActivityEvidence(
+                projectId: entry.key,
+                pluginActivity: null,
+                sessionActivities: entry.value,
+              ),
+          ],
+          storedActivities: _mapActivities(storedProjects),
+        );
+    }
+  }
+
+  Future<ProjectActivity?> getActivity({required String projectId}) async {
+    return _mapActivity(await _projectsDao.getProject(projectId: projectId));
+  }
+
+  Future<void> writeActivity({required String projectId, required ProjectActivity activity}) =>
+      _projectsDao.setActivity(projectId: projectId, createdAt: activity.createdAt, updatedAt: activity.updatedAt);
+
+  Future<void> batchWriteActivities({required Map<String, ProjectActivity> activities}) =>
+      _projectsDao.setAllActivities(
+        activities: {
+          for (final entry in activities.entries)
+            entry.key: (createdAt: entry.value.createdAt, updatedAt: entry.value.updatedAt),
+        },
+      );
+
+  // ── Derived-project helpers ───────────────────────────────────────────────
+
+  Future<List<Project>> _deriveProjects(
+    BridgeDerivedProjectsPluginApi plugin,
+  ) async {
     final (storedProjects, sessionProjectPaths, tombstoned) = await (
       _projectsDao.getAllProjects(),
       _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
       _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
     ).wait;
-    // The bridge's rows tell a directory-scoped backend where to look: every
-    // stored project path plus every dedicated-worktree path it has a session
-    // in. A globally-indexed backend ignores the hints.
     final sessions = await plugin.listAllSessions(
       knownDirectories: {
         for (final stored in storedProjects) stored.path,
@@ -274,45 +406,35 @@ class ProjectRepository {
     );
   }
 
-  /// The derived project for [canonicalId], or a minimal placeholder when the
-  /// bridge has no row and no session for it yet (e.g. a getProject for a path
-  /// that was never listed). The placeholder still honours a stored
-  /// display-name override so a rename isn't lost to the directory basename.
   Future<Project> _findDerivedProject(BridgeDerivedProjectsPluginApi plugin, String canonicalId) async {
-    final hasUnseenChanges = await projectHasUnseenChanges(projectId: canonicalId);
-    final directoryMissing = _directoryMissing(canonicalId);
     final derived = await _deriveProjects(plugin);
     for (final project in derived) {
-      if (project.id == canonicalId) {
-        return project.copyWith(hasUnseenChanges: hasUnseenChanges, directoryMissing: directoryMissing);
-      }
-    }
-    final stored = await _projectsDao.getAllProjects();
-    String? displayName;
-    for (final row in stored) {
-      if (normalizeProjectDirectory(directory: row.path) == canonicalId) {
-        displayName = row.displayName;
-        break;
-      }
+      if (project.id == canonicalId) return project;
     }
     final base = p.basename(canonicalId);
     return Project(
       id: canonicalId,
-      name: displayName != null && displayName.isNotEmpty ? displayName : (base.isEmpty ? canonicalId : base),
+      name: base.isEmpty ? canonicalId : base,
       path: canonicalId,
       time: null,
-      hasUnseenChanges: hasUnseenChanges,
-      directoryMissing: directoryMissing,
     );
   }
 
-  /// Whether the project directory at [path] no longer exists on disk (the
-  /// folder was moved or deleted). Only a definitive not-found counts as
-  /// missing: `directoryExists` returns false for a genuinely absent directory
-  /// but throws on a permission or other IO error, where existence can't be
-  /// determined — there we log and treat the project as present so a folder
-  /// isn't flagged missing merely because, e.g., the terminal running the
-  /// bridge lacks Full Disk Access.
+  Future<void> _seedNewProjects(
+    List<({Project project, PluginProjectActivity? directActivity})> projects, {
+    required int defaultTimestamp,
+  }) async {
+    await _projectsDao.insertMissingProjectsWithActivity(
+      activities: {
+        for (final item in projects)
+          item.project.id: (
+            createdAt: item.directActivity?.createdAt ?? defaultTimestamp,
+            updatedAt: item.directActivity?.updatedAt ?? defaultTimestamp,
+          ),
+      },
+    );
+  }
+
   bool _directoryMissing(String path) {
     try {
       return !_filesystemApi.directoryExists(path);
@@ -321,4 +443,39 @@ class ProjectRepository {
       return false;
     }
   }
+
+  static ProjectTime _activityToTime(ProjectActivity activity) {
+    return ProjectTime(created: activity.createdAt, updated: activity.updatedAt);
+  }
+
+  static ProjectActivity? _mapActivity(ProjectDto? project) {
+    if (project == null) return null;
+    return ProjectActivity(createdAt: project.createdAt, updatedAt: project.updatedAt);
+  }
+
+  static Map<String, ProjectActivity> _mapActivities(List<ProjectDto> projects) => {
+    for (final project in projects) project.projectId: _mapActivity(project)!,
+  };
+
+  static int _projectComparator(Project a, Project b) {
+    final updatedA = a.time?.updated ?? 0;
+    final updatedB = b.time?.updated ?? 0;
+    if (updatedA != updatedB) return updatedB.compareTo(updatedA);
+    final nameA = a.name ?? a.id;
+    final nameB = b.name ?? b.id;
+    final nameCompare = nameA.compareTo(nameB);
+    if (nameCompare != 0) return nameCompare;
+    return a.id.compareTo(b.id);
+  }
+}
+
+/// Canonical target returned by [ProjectRepository.resolveProjectOpenTarget].
+class ProjectOpenTarget {
+  const ProjectOpenTarget({required this.project, required this.path});
+
+  final Project project;
+  String get projectId => project.id;
+
+  /// Live directory where the project currently resides on disk.
+  final String path;
 }

@@ -21,6 +21,7 @@ import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
@@ -118,6 +119,10 @@ void main() {
         processRunner: FakeProcessRunner(),
       );
       final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+      final projectActivityService = ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      );
       final sessionCreationService = SessionCreationService(
         metadataService: metadataService,
         worktreeService: worktreeService,
@@ -150,6 +155,7 @@ void main() {
         projectRepository: projectRepository,
         filesystemRepository: filesystemRepository,
         projectInitializationService: projectInitializationService,
+        projectActivityService: projectActivityService,
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,
@@ -494,6 +500,10 @@ void main() {
         processRunner: FakeProcessRunner(),
       );
       final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+      final projectActivityService = ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      );
 
       router = RequestRouter(
         plugin: plugin,
@@ -525,6 +535,7 @@ void main() {
         projectRepository: projectRepository,
         filesystemRepository: filesystemRepository,
         projectInitializationService: projectInitializationService,
+        projectActivityService: projectActivityService,
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,

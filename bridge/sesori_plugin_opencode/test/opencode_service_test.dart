@@ -10,12 +10,12 @@ import "package:test/test.dart";
 
 void main() {
   group("OpenCodeService.getProjects", () {
-    test("delegates to repository and returns result", () async {
+    test("returns projects and owns tracker alias bookkeeping", () async {
       final repository = FakeOpenCodeRepository(
         projects: [
           const Project(
             time: ProjectTime(created: 0, updated: 0, initialized: null),
-            sandboxes: <String>[],
+            sandboxes: <String>["/moved/repo-a"],
             id: "p1",
             worktree: "/repo-a",
             vcs: null,
@@ -35,12 +35,22 @@ void main() {
           ),
         ],
       );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final tracker = FakeActiveSessionTracker()..updateProjectWorktreesReturns = true;
+      final service = OpenCodeService(repository, tracker);
+      final invalidations = <void>[];
+      final subscription = service.summaryInvalidations.listen(invalidations.add);
+      addTearDown(subscription.cancel);
+      addTearDown(service.dispose);
 
       final projects = await service.getProjects();
+      await Future<void>.delayed(Duration.zero);
 
       expect(repository.getProjectsCalls, equals(1));
-      expect(projects.map((p) => p.id).toList(), equals(["p1", "p2"]));
+      expect(projects.map((project) => project.id).toList(), equals(["/repo-a", "/repo-b"]));
+      expect(projects.every((project) => project.activity == null), isTrue);
+      expect(tracker.lastProjectWorktrees, {"/repo-a", "/repo-b"});
+      expect(tracker.registeredAliases, [(directory: "/moved/repo-a", worktree: "/repo-a")]);
+      expect(invalidations, hasLength(1));
     });
   });
 
@@ -1967,9 +1977,16 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
        super(api);
 
   @override
-  Future<List<Project>> getProjects() async {
+  Future<List<({PluginProject project, List<String> sandboxes})>> getProjects() async {
     getProjectsCalls += 1;
-    return _projects;
+    return _projects
+        .map(
+          (project) => (
+            project: PluginProject(id: project.worktree, name: project.name),
+            sandboxes: project.sandboxes,
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -2169,6 +2186,10 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   String? lastClearedPermissionRequestId;
   String? lastClearedPermissionSessionId;
   String? lastGetSessionIdForQuestionQuestionId;
+  Set<String>? lastProjectWorktrees;
+  bool updateProjectWorktreesReturns = false;
+  final List<({String directory, String worktree})> registeredAliases = [];
+  bool registerWorktreeAliasReturns = false;
 
   FakeActiveSessionTracker({
     this.summary = const [],
@@ -2190,6 +2211,18 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   @override
   void reset() {
     resetCalls += 1;
+  }
+
+  @override
+  bool updateProjectWorktrees({required Set<String> worktrees}) {
+    lastProjectWorktrees = worktrees;
+    return updateProjectWorktreesReturns;
+  }
+
+  @override
+  bool registerWorktreeAlias({required String directory, required String worktree}) {
+    registeredAliases.add((directory: directory, worktree: worktree));
+    return registerWorktreeAliasReturns;
   }
 
   @override

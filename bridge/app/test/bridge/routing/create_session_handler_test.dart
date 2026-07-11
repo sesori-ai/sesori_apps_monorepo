@@ -239,7 +239,7 @@ void main() {
 
     test("moved project: session cwd is the live directory, stored attribution keeps the id", () async {
       // The folder moved from /repo to /moved/repo and was re-opened there.
-      await db.projectsDao.recordOpenedProject(projectId: "/repo", path: "/moved/repo", openedAt: 1);
+      await db.projectsDao.recordOpenedProject(projectId: "/repo", path: "/moved/repo", createdAt: 1, updatedAt: 1);
       plugin.createSessionResult = const PluginSession(
         id: "moved-1",
         projectID: "p1",

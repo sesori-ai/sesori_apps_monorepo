@@ -20,6 +20,8 @@ typedef SessionUnseenRow = ({
 
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
+  static const _ownerIdentity = "local";
+
   SessionDao(super.attachedDatabase);
 
   /// Sets the bridge-owned title copy for [sessionId] (null removes the copy).
@@ -39,6 +41,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   }) async {
     await into(deletedSessionsTable).insert(
       DeletedSessionsTableCompanion.insert(
+        ownerIdentity: const Value(_ownerIdentity),
         sessionId: sessionId,
         pluginId: pluginId,
         deletedAt: deletedAt,
@@ -50,14 +53,17 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   /// The tombstoned session ids for [pluginId] — sessions the user deleted
   /// that a backend without session deletion would otherwise keep listing.
   Future<Set<String>> getTombstonedSessionIds({required String pluginId}) async {
-    final query = select(deletedSessionsTable)..where((t) => t.pluginId.equals(pluginId));
+    final query = select(deletedSessionsTable)
+      ..where((t) => t.ownerIdentity.equals(_ownerIdentity) & t.pluginId.equals(pluginId));
     final rows = await query.get();
     return {for (final row in rows) row.sessionId};
   }
 
   Future<bool> isSessionTombstoned({required String sessionId, required String pluginId}) async {
     final query = select(deletedSessionsTable)
-      ..where((t) => t.pluginId.equals(pluginId) & t.sessionId.equals(sessionId));
+      ..where(
+        (t) => t.ownerIdentity.equals(_ownerIdentity) & t.pluginId.equals(pluginId) & t.sessionId.equals(sessionId),
+      );
     return await query.getSingleOrNull() != null;
   }
 

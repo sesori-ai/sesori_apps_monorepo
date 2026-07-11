@@ -150,6 +150,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   Object? throwOnArchiveSessionError;
   Completer<void>? archiveSessionCompleter;
   Completer<void>? sendCommandCompleter;
+  int getProjectsCallCount = 0;
 
   // ── BridgePlugin implementation ──────────────────────────────────────────
 
@@ -167,6 +168,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginProject>> getProjects() async {
+    getProjectsCallCount++;
     if (throwOnGetProjectsError case final error?) {
       throw error;
     }

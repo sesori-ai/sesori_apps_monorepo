@@ -251,6 +251,20 @@ void main() {
       expect(await dao.isSessionTombstoned(sessionId: "shared-id", pluginId: "other"), isFalse);
     });
 
+    test("tombstone reads are scoped to the current owner", () async {
+      await db.into(db.deletedSessionsTable).insert(
+        DeletedSessionsTableCompanion.insert(
+          ownerIdentity: const Value("other-owner"),
+          sessionId: "shared-id",
+          pluginId: "codex",
+          deletedAt: 1,
+        ),
+      );
+
+      expect(await dao.isSessionTombstoned(sessionId: "shared-id", pluginId: "codex"), isFalse);
+      expect(await dao.getTombstonedSessionIds(pluginId: "codex"), isEmpty);
+    });
+
     test("setArchived and clearArchived update archivedAt", () async {
       await dao.insertSession(
         pluginId: "opencode",

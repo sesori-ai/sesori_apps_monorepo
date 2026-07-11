@@ -18,6 +18,10 @@ class DeletedSessionsTable extends Table {
   @override
   String get tableName => "deleted_sessions_table";
 
+  /// Current owner of this durable local entity. Local mode has one owner;
+  /// carrying it in the key keeps future identity scoping possible.
+  TextColumn get ownerIdentity => text().withDefault(const Constant("local"))();
+
   TextColumn get sessionId => text()();
 
   /// The id of the plugin that owned the session. Scoping keeps one plugin's
@@ -30,12 +34,13 @@ class DeletedSessionsTable extends Table {
   bool get withoutRowId => true;
 
   @override
-  Set<Column>? get primaryKey => {pluginId, sessionId};
+  Set<Column>? get primaryKey => {ownerIdentity, pluginId, sessionId};
 }
 
 @freezed
 sealed class DeletedSessionDto with _$DeletedSessionDto, $DeletedSessionsTableTableToColumns {
   const factory DeletedSessionDto({
+    required String ownerIdentity,
     required String sessionId,
     required String pluginId,
     required int deletedAt,

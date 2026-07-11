@@ -100,7 +100,7 @@ with the parallel-plugins direction in `parallel-plugins/CONSIDERATIONS.md`.
 
 ## Theme B — Durable derive-plugin session state the backend won't persist ✅ Resolved
 
-**Resolved** — schema v9 (`title` column on `sessions_table` + a new
+**Resolved** — schema v10 (`title` column on `sessions_table` + a new
 `deleted_sessions_table`), migrated with structural + data-integrity tests per
 the Drift workflow, and `plugin_id`-scoped throughout so one plugin's state
 never touches another's rows (CONSIDERATIONS §2).

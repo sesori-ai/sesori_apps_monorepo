@@ -53,6 +53,10 @@ The managed runtime is pinned in `sesori_plugin_opencode/lib/src/runtime/open_co
 
 - `dart test` from `app/`, `sesori_plugin_opencode/`, and `sesori_plugin_interface/`
 
+For Drift conflicts, preserve every schema version already merged to `main`.
+Move branch-local schema changes to the next version and generate a new
+migration/snapshot; never fold them into the merged version.
+
 ## Conventions
 
 - Freezed models use `build.yaml` options: `format: false`, `map: false`, `when: false`
@@ -102,6 +106,9 @@ One API class wraps one external binary/tool. Use separate classes for separate 
 ### DAOs Are Dumb
 
 DAOs execute raw queries and return raw data. No decision-making logic, no selection algorithms, no business rules. All mapping and selection logic belongs in the Repository layer.
+
+Durable timestamp columns should be non-null when a stable baseline can be backfilled. Prefer a migration that writes
+that baseline for every existing row over nullable persistence whose only purpose is avoiding migration work.
 
 When a durable entity has separate identity and location fields, do not infer
 the location from an unknown identifier. Non-null persisted fields are

@@ -470,12 +470,24 @@ The bridge uses Drift (SQLite) for local persistence. Schema changes require a s
    - Data integrity test: insert data at old version, migrate, verify data at new version
 8. **Verify**: `make test && make analyze` from `bridge/`.
 
+When `main` already contains schema version N, a conflicting feature branch
+must move its pending schema changes to N+1 after merging `main`. Never rewrite
+or combine new work into the already-merged N migration or schema snapshot.
+
 ### Important Rules
 
 - Never edit `*.steps.dart` beyond the migration callback bodies.
 - Never edit `drift_schemas/*.json` files — these are generated snapshots.
 - Every schema migration MUST have corresponding migration tests. No exceptions.
 - The `databases:` key in `bridge/app/build.yaml` must point to the database class.
+- Prefer non-null columns for durable timestamps when a stable migration baseline exists. Backfill existing rows during
+  migration instead of introducing a permanent nullable state solely to avoid the backfill.
+
+## Compatibility Debt
+
+Temporary wire nullability or fallback behavior added only for old-version interoperability must be recorded in
+`docs/COMPATIBILITY_DEBT.md` with its supported scenario, a dated removal target, and exact cleanup steps. Do not let
+compatibility branches become undocumented permanent behavior.
 
 ## Git
 

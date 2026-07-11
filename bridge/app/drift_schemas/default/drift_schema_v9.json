@@ -80,8 +80,18 @@
             "dsl_features": []
           },
           {
-            "name": "opened_at",
-            "getter_name": "openedAt",
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "() => DateTime.now().millisecondsSinceEpoch",
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
             "moor_type": "int",
             "nullable": false,
             "customConstraints": null,
@@ -281,16 +291,6 @@
             "default_dart": null,
             "default_client_dart": null,
             "dsl_features": []
-          },
-          {
-            "name": "title",
-            "getter_name": "title",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
           }
         ],
         "is_virtual": false,
@@ -303,54 +303,6 @@
     },
     {
       "id": 2,
-      "references": [],
-      "type": "table",
-      "data": {
-        "name": "deleted_sessions_table",
-        "was_declared_in_moor": false,
-        "columns": [
-          {
-            "name": "session_id",
-            "getter_name": "sessionId",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "plugin_id",
-            "getter_name": "pluginId",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "deleted_at",
-            "getter_name": "deletedAt",
-            "moor_type": "int",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          }
-        ],
-        "is_virtual": false,
-        "without_rowid": true,
-        "constraints": [],
-        "explicit_pk": [
-          "plugin_id",
-          "session_id"
-        ]
-      }
-    },
-    {
-      "id": 3,
       "references": [
         0
       ],
@@ -518,7 +470,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"projects_table\" (\"project_id\" TEXT NOT NULL, \"path\" TEXT NOT NULL, \"hidden\" INTEGER NOT NULL DEFAULT 0 CHECK (\"hidden\" IN (0, 1)), \"base_branch\" TEXT NULL, \"worktree_counter\" INTEGER NOT NULL DEFAULT 0, \"display_name\" TEXT NULL, \"opened_at\" INTEGER NOT NULL, PRIMARY KEY (\"project_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"projects_table\" (\"project_id\" TEXT NOT NULL, \"path\" TEXT NOT NULL, \"hidden\" INTEGER NOT NULL DEFAULT 0 CHECK (\"hidden\" IN (0, 1)), \"base_branch\" TEXT NULL, \"worktree_counter\" INTEGER NOT NULL DEFAULT 0, \"display_name\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"project_id\")) WITHOUT ROWID;"
         }
       ]
     },
@@ -527,16 +479,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"last_activity_at\" INTEGER NULL, \"last_seen_at\" INTEGER NULL, \"last_user_message_at\" INTEGER NULL, \"plugin_id\" TEXT NOT NULL, \"title\" TEXT NULL, PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
-        }
-      ]
-    },
-    {
-      "name": "deleted_sessions_table",
-      "sql": [
-        {
-          "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"deleted_sessions_table\" (\"session_id\" TEXT NOT NULL, \"plugin_id\" TEXT NOT NULL, \"deleted_at\" INTEGER NOT NULL, PRIMARY KEY (\"plugin_id\", \"session_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"last_activity_at\" INTEGER NULL, \"last_seen_at\" INTEGER NULL, \"last_user_message_at\" INTEGER NULL, \"plugin_id\" TEXT NOT NULL, PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
         }
       ]
     },

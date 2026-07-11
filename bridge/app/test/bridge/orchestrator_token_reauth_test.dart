@@ -26,6 +26,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
@@ -367,6 +368,13 @@ class _ReauthHarness {
     );
     final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
+    );
     // One registration service feeds both the orchestrator and the relay client's
     // bridge-id provider, mirroring production — so the auth message reflects the
     // id the revoked path re-registers.
@@ -410,13 +418,7 @@ class _ReauthHarness {
       failureReporter: FakeFailureReporter(),
       prSyncService: FakePrSyncService(),
       sessionRepository: sessionRepository,
-      projectRepository: ProjectRepository(
-        plugin: plugin,
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-      ),
+      projectRepository: projectRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
       filesystemRepository: FilesystemRepository(
@@ -437,6 +439,10 @@ class _ReauthHarness {
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
         ),
+      ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
       ),
       healthRepository: HealthRepository(
         plugin: plugin,
