@@ -33,12 +33,12 @@ class AppDatabase extends _$AppDatabase {
     onCreate: (m) async => m.createAll(),
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
-          await m.addColumn(schema.projectsTable, schema.projectsTable.baseBranch);
-          await m.addColumn(schema.projectsTable, schema.projectsTable.worktreeCounter);
-          await m.createTable(schema.sessionWorktreesTable);
-        },
-        from2To3: (m, schema) async {
-          await customStatement("""
+        await m.addColumn(schema.projectsTable, schema.projectsTable.baseBranch);
+        await m.addColumn(schema.projectsTable, schema.projectsTable.worktreeCounter);
+        await m.createTable(schema.sessionWorktreesTable);
+      },
+      from2To3: (m, schema) async {
+        await customStatement("""
             CREATE TABLE sessions_table (
               session_id TEXT NOT NULL,
               project_id TEXT NOT NULL,
@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
             ) WITHOUT ROWID
           """);
 
-          await customStatement("""
+        await customStatement("""
             INSERT INTO sessions_table (
               session_id,
               project_id,
@@ -78,85 +78,85 @@ class AppDatabase extends _$AppDatabase {
             FROM session_worktrees_table
           """);
 
-          await customStatement("DROP TABLE session_worktrees_table");
-        },
-        from3To4: (m, schema) async {
-          await m.createTable(schema.pullRequestsTable);
-        },
-        from4To5: (m, schema) async {
-          // Seed placeholder projects before recreating the sessions table with
-          // an FK. Existing orphan sessions must be preserved, not deleted.
-          await m.database.customStatement(
-            'INSERT OR IGNORE INTO projects_table '
-            '(project_id, hidden, base_branch, worktree_counter) '
-            'SELECT DISTINCT project_id, 0, NULL, 0 FROM sessions_table '
-            'WHERE project_id NOT IN '
-            '(SELECT project_id FROM projects_table)',
-          );
+        await customStatement("DROP TABLE session_worktrees_table");
+      },
+      from3To4: (m, schema) async {
+        await m.createTable(schema.pullRequestsTable);
+      },
+      from4To5: (m, schema) async {
+        // Seed placeholder projects before recreating the sessions table with
+        // an FK. Existing orphan sessions must be preserved, not deleted.
+        await m.database.customStatement(
+          'INSERT OR IGNORE INTO projects_table '
+          '(project_id, hidden, base_branch, worktree_counter) '
+          'SELECT DISTINCT project_id, 0, NULL, 0 FROM sessions_table '
+          'WHERE project_id NOT IN '
+          '(SELECT project_id FROM projects_table)',
+        );
 
-          // Drift recreates the table to add the FK while preserving the
-          // WITHOUT ROWID table shape.
-          await m.alterTable(TableMigration(schema.sessionsTable));
+        // Drift recreates the table to add the FK while preserving the
+        // WITHOUT ROWID table shape.
+        await m.alterTable(TableMigration(schema.sessionsTable));
 
-          // Migrations run inside a transaction, so foreign_keys cannot be
-          // toggled mid-flight. Validate the final graph explicitly instead.
-          final violations = await m.database.customSelect('PRAGMA foreign_key_check').get();
-          if (violations.isNotEmpty) {
-            throw StateError(
-              'Migration v4→v5 failed: ${violations.length} FK violations '
-              'remain after orphan cleanup. Rows: '
-              '${violations.map((row) => row.data).toList()}',
-            );
-          }
-        },
-        from5To6: (m, schema) async {
-          await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgent);
-          await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgentModel);
-        },
-        from6To7: (m, schema) async {
-          // Unseen-changes tracking. All three columns are nullable and default
-          // to NULL, which the unseen calculator treats as 0 — so every existing
-          // session is baseline-"seen" (unseen = activity > max(userMessage,
-          // seen) == 0 > 0 == false) until new activity arrives.
-          await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastActivityAt);
-          await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastSeenAt);
-          await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastUserMessageAt);
-        },
-        from7To8: (m, schema) async {
-          // Bridge-owned project metadata for derive-style plugins. Every project
-          // id ever persisted has been the project's directory path, so `path`
-          // backfills straight from it; `openedAt` is backfilled with the
-          // migration wall-clock time (the best "recorded at" we have for rows
-          // that predate the column).
-          await m.alterTable(
-            TableMigration(
-              schema.projectsTable,
-              newColumns: [
-                schema.projectsTable.path,
-                schema.projectsTable.displayName,
-                schema.projectsTable.openedAt,
-              ],
-              columnTransformer: {
-                schema.projectsTable.path: schema.projectsTable.projectId,
-                schema.projectsTable.openedAt: Constant<int>(DateTime.now().millisecondsSinceEpoch),
-              },
-            ),
+        // Migrations run inside a transaction, so foreign_keys cannot be
+        // toggled mid-flight. Validate the final graph explicitly instead.
+        final violations = await m.database.customSelect('PRAGMA foreign_key_check').get();
+        if (violations.isNotEmpty) {
+          throw StateError(
+            'Migration v4→v5 failed: ${violations.length} FK violations '
+            'remain after orphan cleanup. Rows: '
+            '${violations.map((row) => row.data).toList()}',
           );
-          // Backfill every pre-existing session row to opencode — the only
-          // plugin shipped before pluginId existed. This migration is the single
-          // place the persistence layer is allowed to know opencode's id; the
-          // column itself has no default and every insert stamps the active
-          // plugin's id explicitly.
-          await m.alterTable(
-            TableMigration(
-              schema.sessionsTable,
-              newColumns: [schema.sessionsTable.pluginId],
-              columnTransformer: {
-                schema.sessionsTable.pluginId: const Constant<String>("opencode"),
-              },
-            ),
-          );
-        },
+        }
+      },
+      from5To6: (m, schema) async {
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgent);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgentModel);
+      },
+      from6To7: (m, schema) async {
+        // Unseen-changes tracking. All three columns are nullable and default
+        // to NULL, which the unseen calculator treats as 0 — so every existing
+        // session is baseline-"seen" (unseen = activity > max(userMessage,
+        // seen) == 0 > 0 == false) until new activity arrives.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastActivityAt);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastSeenAt);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastUserMessageAt);
+      },
+      from7To8: (m, schema) async {
+        // Bridge-owned project metadata for derive-style plugins. Every project
+        // id ever persisted has been the project's directory path, so `path`
+        // backfills straight from it; `openedAt` is backfilled with the
+        // migration wall-clock time (the best "recorded at" we have for rows
+        // that predate the column).
+        await m.alterTable(
+          TableMigration(
+            schema.projectsTable,
+            newColumns: [
+              schema.projectsTable.path,
+              schema.projectsTable.displayName,
+              schema.projectsTable.openedAt,
+            ],
+            columnTransformer: {
+              schema.projectsTable.path: schema.projectsTable.projectId,
+              schema.projectsTable.openedAt: Constant<int>(DateTime.now().millisecondsSinceEpoch),
+            },
+          ),
+        );
+        // Backfill every pre-existing session row to opencode — the only
+        // plugin shipped before pluginId existed. This migration is the single
+        // place the persistence layer is allowed to know opencode's id; the
+        // column itself has no default and every insert stamps the active
+        // plugin's id explicitly.
+        await m.alterTable(
+          TableMigration(
+            schema.sessionsTable,
+            newColumns: [schema.sessionsTable.pluginId],
+            columnTransformer: {
+              schema.sessionsTable.pluginId: const Constant<String>("opencode"),
+            },
+          ),
+        );
+      },
       from8To9: (m, schema) async {
         await m.alterTable(
           TableMigration(
