@@ -1,6 +1,6 @@
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSession, PluginSessionTime;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSession;
 import "package:sesori_shared/sesori_shared.dart" show Project;
 
 import "../persistence/tables/projects_table.dart" show ProjectDto;
@@ -25,27 +25,19 @@ import "../persistence/tables/projects_table.dart" show ProjectDto;
 ///
 /// The returned [Project] objects carry identity and name only; the repository
 /// overlays the persisted activity timestamp before returning them to callers.
-/// The paired session times remain uncombined so the activity service owns all
-/// timestamp ordering decisions.
 class DerivedProjectBuilder {
   const DerivedProjectBuilder();
 
-  List<({Project project, List<PluginSessionTime> sessionActivities})> build({
+  List<Project> build({
     required List<PluginSession> sessions,
     required List<ProjectDto> storedProjects,
     required Map<String, String> projectPathBySessionId,
   }) {
-    final accumulators = <String, _ProjectAccumulator>{};
-    _ProjectAccumulator accumulatorFor(String directory) {
-      final key = normalizeProjectDirectory(directory: directory);
-      return accumulators.putIfAbsent(key, () => _ProjectAccumulator(id: key));
-    }
-
+    final projectIds = <String>{};
     for (final session in sessions) {
-      final accumulator = accumulatorFor(projectPathBySessionId[session.id] ?? session.directory);
-      final time = session.time;
-      if (time == null) continue;
-      accumulator.sessionTimes.add(time);
+      projectIds.add(
+        normalizeProjectDirectory(directory: projectPathBySessionId[session.id] ?? session.directory),
+      );
     }
 
     final displayNameByKey = <String, String?>{};
@@ -53,34 +45,25 @@ class DerivedProjectBuilder {
       final key = normalizeProjectDirectory(directory: stored.path);
       displayNameByKey[key] = stored.displayName;
       // Ensure stored rows with no sessions still appear as projects.
-      accumulators.putIfAbsent(key, () => _ProjectAccumulator(id: key));
+      projectIds.add(key);
     }
 
-    final results = <({Project project, List<PluginSessionTime> sessionActivities})>[];
-    for (final accumulator in accumulators.values) {
-      final override = displayNameByKey[accumulator.id];
-      results.add((
-        project: Project(
-          id: accumulator.id,
-          name: override != null && override.isNotEmpty ? override : _basename(accumulator.id),
-          path: accumulator.id,
+    return [
+      for (final id in projectIds)
+        Project(
+          id: id,
+          name: switch (displayNameByKey[id]) {
+            final override? when override.isNotEmpty => override,
+            _ => _basename(id),
+          },
+          path: id,
           time: null,
         ),
-        sessionActivities: List.unmodifiable(accumulator.sessionTimes),
-      ));
-    }
-    return results;
+    ];
   }
 
   String _basename(String directory) {
     final base = p.basename(directory);
     return base.isEmpty ? directory : base;
   }
-}
-
-class _ProjectAccumulator {
-  _ProjectAccumulator({required this.id});
-
-  final String id;
-  final List<PluginSessionTime> sessionTimes = [];
 }

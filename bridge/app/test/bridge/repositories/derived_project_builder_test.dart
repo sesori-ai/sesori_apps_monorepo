@@ -34,7 +34,7 @@ void main() {
   }
 
   group("DerivedProjectBuilder", () {
-    test("groups sessions in the same directory without folding their times", () {
+    test("groups sessions in the same directory into project identity", () {
       final projects = builder.build(
         sessions: [
           session("/tmp/projects/alpha", id: "s1", created: 100, updated: 200),
@@ -46,11 +46,9 @@ void main() {
 
       expect(projects, hasLength(1));
       final project = projects.single;
-      expect(project.project.id, "/tmp/projects/alpha");
-      expect(project.project.name, "alpha");
-      expect(project.project.time, isNull);
-      expect(project.sessionActivities.map((time) => time.created), [100, 50]);
-      expect(project.sessionActivities.map((time) => time.updated), [200, 300]);
+      expect(project.id, "/tmp/projects/alpha");
+      expect(project.name, "alpha");
+      expect(project.time, isNull);
     });
 
     test("separate directories produce separate projects", () {
@@ -63,7 +61,7 @@ void main() {
         projectPathBySessionId: const {},
       );
 
-      expect(projects.map((p) => p.project.id), containsAll(["/tmp/projects/alpha", "/tmp/projects/beta"]));
+      expect(projects.map((p) => p.id), containsAll(["/tmp/projects/alpha", "/tmp/projects/beta"]));
       expect(projects, hasLength(2));
     });
 
@@ -79,7 +77,7 @@ void main() {
       );
 
       expect(projects, hasLength(1));
-      expect(projects.single.project.id, "/tmp/projects/alpha");
+      expect(projects.single.id, "/tmp/projects/alpha");
     });
 
     test("a session with a stored project attribution groups under that project, not its own cwd", () {
@@ -96,9 +94,7 @@ void main() {
 
       // Both sessions collapse to the parent — no separate worktree project card.
       expect(projects, hasLength(1));
-      final project = projects.single;
-      expect(project.project.id, "/tmp/projects/alpha");
-      expect(project.sessionActivities.map((time) => time.updated), [100, 200]);
+      expect(projects.single.id, "/tmp/projects/alpha");
     });
 
     test("a stored display-name override wins over the basename", () {
@@ -110,7 +106,7 @@ void main() {
         projectPathBySessionId: const {},
       );
 
-      expect(projects.single.project.name, "My Alpha");
+      expect(projects.single.name, "My Alpha");
     });
 
     test("a stored folder with no sessions is listed without activity evidence", () {
@@ -123,23 +119,9 @@ void main() {
       );
 
       expect(projects, hasLength(1));
-      expect(projects.single.project.id, "/tmp/projects/empty");
-      expect(projects.single.project.name, "empty");
-      expect(projects.single.project.time, isNull);
-      expect(projects.single.sessionActivities, isEmpty);
-    });
-
-    test("session timestamps remain raw evidence beside stored projects", () {
-      final projects = builder.build(
-        sessions: [session("/tmp/projects/alpha", created: 100, updated: 900)],
-        storedProjects: [
-          storedProject("/tmp/projects/alpha", createdAt: 1, updatedAt: 1),
-        ],
-        projectPathBySessionId: const {},
-      );
-
-      expect(projects.single.sessionActivities.single.created, 100);
-      expect(projects.single.sessionActivities.single.updated, 900);
+      expect(projects.single.id, "/tmp/projects/empty");
+      expect(projects.single.name, "empty");
+      expect(projects.single.time, isNull);
     });
   });
 }

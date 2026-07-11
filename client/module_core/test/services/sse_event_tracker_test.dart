@@ -18,11 +18,19 @@ void main() {
     late MockConnectionService mockConnectionService;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
+    late bool throwOnEventCancel;
 
     setUp(() {
       mockConnectionService = MockConnectionService();
       mockFailureReporter = MockFailureReporter();
-      eventController = StreamController<SseEvent>.broadcast();
+      throwOnEventCancel = false;
+      eventController = StreamController<SseEvent>(
+        onCancel: () async {
+          if (throwOnEventCancel) {
+            throw StateError("event subscription cancellation failed");
+          }
+        },
+      );
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
       when(
         () => mockFailureReporter.recordFailure(
@@ -462,6 +470,49 @@ void main() {
       await tracker.onDispose();
     });
 
+    test("projectTimestampUpdates retains cumulative per-project maxima", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+      final updates = <Map<String, int>>[];
+      final subscription = tracker.projectTimestampUpdates.skip(1).listen(updates.add);
+
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectUpdated(projectID: "project-1", updatedAt: 200),
+        ),
+      );
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectUpdated(projectID: "project-2", updatedAt: 300),
+        ),
+      );
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectUpdated(projectID: "project-1", updatedAt: 100),
+        ),
+      );
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectUpdated(projectID: "project-1", updatedAt: 200),
+        ),
+      );
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectUpdated(projectID: "project-1", updatedAt: 400),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(updates, [
+        {"project-1": 200},
+        {"project-1": 200, "project-2": 300},
+        {"project-1": 400, "project-2": 300},
+      ]);
+      expect(tracker.currentProjectTimestampUpdates, {"project-1": 400, "project-2": 300});
+
+      await subscription.cancel();
+      await tracker.onDispose();
+    });
+
     // -------------------------------------------------------------------------
     // 14. projectTimestampUpdates ignores incomplete project.updated events
     // -------------------------------------------------------------------------
@@ -544,6 +595,20 @@ void main() {
         sessionActivityDone,
         timestampUpdatesDone,
       ]);
+    });
+
+    test("onDispose closes every exposed stream when event cancellation throws", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+      var closedStreamCount = 0;
+      tracker.projectActivity.listen((_) {}, onDone: () => closedStreamCount++);
+      tracker.sessionActivity.listen((_) {}, onDone: () => closedStreamCount++);
+      tracker.projectTimestampUpdates.listen((_) {}, onDone: () => closedStreamCount++);
+      throwOnEventCancel = true;
+
+      await expectLater(tracker.onDispose(), throwsA(isA<StateError>()));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(closedStreamCount, 3);
     });
   });
 }

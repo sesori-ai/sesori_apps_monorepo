@@ -164,26 +164,16 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     try {
       if (isClosed) return;
       if (state case final ProjectListLoaded loaded) {
-        final updates = timestampByProjectId;
-        if (updates.isEmpty) return;
+        final merged = _mergeProjectTimestampUpdates(
+          projects: loaded.projects,
+          timestampByProjectId: timestampByProjectId,
+        );
+        if (!merged.changed) return;
 
-        var changed = false;
-        final updatedProjects = loaded.projects.map((project) {
-          final updated = updates[project.id];
-          final time = project.time;
-          if (updated == null || time == null) return project;
-          if (time.updated == updated) return project;
-          changed = true;
-          return project.copyWith(time: time.copyWith(updated: updated));
-        }).toList();
-
-        if (!changed) return;
-
-        final sortedProjects = _sortProjects(updatedProjects);
         emit(
           loaded.copyWith(
-            projects: sortedProjects,
-            unseenByProjectId: _unseenByProjectId(sortedProjects),
+            projects: merged.projects,
+            unseenByProjectId: _unseenByProjectId(merged.projects),
           ),
         );
       }
@@ -206,6 +196,23 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
+  ({bool changed, List<Project> projects}) _mergeProjectTimestampUpdates({
+    required Iterable<Project> projects,
+    required Map<String, int> timestampByProjectId,
+  }) {
+    var changed = false;
+    final mergedProjects = projects.map((project) {
+      final updated = timestampByProjectId[project.id];
+      final time = project.time;
+      if (updated == null || time == null || updated <= time.updated) return project;
+
+      changed = true;
+      return project.copyWith(time: time.copyWith(updated: updated));
+    });
+    final sortedProjects = _sortProjects(mergedProjects);
+    return (changed: changed, projects: sortedProjects);
+  }
+
   List<Project> _sortProjects(Iterable<Project> projects) {
     return projects.toList()..sort((a, b) => _compareProjectsByTimestampAndName(a: a, b: b));
   }
@@ -217,7 +224,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     if (aUpdated != null && bUpdated == null) return -1;
 
     final updatedCompare = switch ((aUpdated, bUpdated)) {
-      (final a?, final b?) => b.compareTo(a),
+      (final aUpdatedValue?, final bUpdatedValue?) => bUpdatedValue.compareTo(aUpdatedValue),
       _ => 0,
     };
     if (updatedCompare != 0) return updatedCompare;
@@ -611,7 +618,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
     switch (projectResponse) {
       case SuccessResponse(data: Projects(data: final projects)):
-        final sortedProjects = _sortProjects(projects);
+        final sortedProjects = _mergeProjectTimestampUpdates(
+          projects: projects,
+          timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
+        ).projects;
         // The REST aggregate is authoritative at fetch time — seed the tracker
         // so a stale live `true` can't keep a project bold after its last
         // unseen session was archived/deleted while an echo was missed.

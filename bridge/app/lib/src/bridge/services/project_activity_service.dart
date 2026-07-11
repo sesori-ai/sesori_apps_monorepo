@@ -58,8 +58,8 @@ class ProjectActivityService {
           case MessageAssistant(:final time):
             occurredAt = time?.completed;
             if (occurredAt == null) return;
-          case MessageError():
-            return;
+          case MessageError(:final time):
+            occurredAt = time?.completed ?? time?.created ?? _now();
         }
         await _touchStoredSession(sessionId: info.sessionID, occurredAt: occurredAt);
       case SesoriQuestionAsked(:final sessionID, :final displaySessionId) ||

@@ -92,6 +92,78 @@ void main() {
     );
   });
 
+  test("uses error completion time before creation time", () async {
+    await _storeSession(database: database, sessionId: "root", projectId: "project");
+
+    await service.handleEvent(
+      const SesoriSseEvent.messageUpdated(
+        info: Message.error(
+          id: "error",
+          sessionID: "root",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          errorName: "Failure",
+          errorMessage: "failed",
+          time: MessageTime(created: 200, completed: 300),
+        ),
+      ),
+    );
+
+    expect(
+      await _activity(database: database, projectId: "project"),
+      const ProjectActivity(createdAt: 100, updatedAt: 300),
+    );
+  });
+
+  test("uses error creation time when completion time is absent", () async {
+    await _storeSession(database: database, sessionId: "root", projectId: "project");
+
+    await service.handleEvent(
+      const SesoriSseEvent.messageUpdated(
+        info: Message.error(
+          id: "error",
+          sessionID: "root",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          errorName: "Failure",
+          errorMessage: "failed",
+          time: MessageTime(created: 200, completed: null),
+        ),
+      ),
+    );
+
+    expect(
+      await _activity(database: database, projectId: "project"),
+      const ProjectActivity(createdAt: 100, updatedAt: 200),
+    );
+  });
+
+  test("uses receipt time when an error has no timestamps", () async {
+    await _storeSession(database: database, sessionId: "root", projectId: "project");
+
+    await service.handleEvent(
+      const SesoriSseEvent.messageUpdated(
+        info: Message.error(
+          id: "error",
+          sessionID: "root",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          errorName: "Failure",
+          errorMessage: "failed",
+          time: null,
+        ),
+      ),
+    );
+
+    expect(
+      await _activity(database: database, projectId: "project"),
+      const ProjectActivity(createdAt: 100, updatedAt: 1000),
+    );
+  });
+
   test("ordinary project listing seeds with now without reconciling", () async {
     plugin.projectsResult = const [
       PluginProject(id: "project", activity: PluginProjectActivity(createdAt: 10, updatedAt: 20)),

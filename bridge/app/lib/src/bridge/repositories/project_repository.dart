@@ -76,20 +76,20 @@ class ProjectRepository {
         );
         final derived = await _deriveProjects(plugin);
         await _seedNewProjects([
-          for (final item in derived) (project: item.project, directActivity: null),
+          for (final project in derived) (project: project, directActivity: null),
         ], defaultTimestamp: defaultTimestamp);
         final hiddenIds = await _projectsDao.getHiddenProjectIds();
-        final visible = derived.where((item) => !hiddenIds.contains(item.project.id)).toList();
+        final visible = derived.where((project) => !hiddenIds.contains(project.id)).toList();
         final unseenById = await unseenByProjectId(
-          projectIds: [for (final item in visible) item.project.id],
+          projectIds: [for (final project in visible) project.id],
         );
         final activityById = _mapActivities(await _projectsDao.getAllProjects());
         final projects = [
-          for (final item in visible)
-            item.project.copyWith(
-              hasUnseenChanges: unseenById[item.project.id] ?? false,
-              directoryMissing: _directoryMissing(item.project.id),
-              time: _activityToTime(activityById[item.project.id]!),
+          for (final project in visible)
+            project.copyWith(
+              hasUnseenChanges: unseenById[project.id] ?? false,
+              directoryMissing: _directoryMissing(project.id),
+              time: _activityToTime(activityById[project.id]!),
             ),
         ];
         projects.sort(_projectComparator);
@@ -119,7 +119,7 @@ class ProjectRepository {
         final unseenById = await unseenByProjectId(
           projectIds: [for (final p in visible) p.id],
         );
-        final activityById = _mapActivities(await _projectsDao.getAllProjects());
+        final activityById = _mapActivities(storedProjects);
         final projects = visible.map((p) {
           final path = pathById[p.id] ?? p.id;
           return p.toSharedProject(
@@ -379,7 +379,7 @@ class ProjectRepository {
 
   // ── Derived-project helpers ───────────────────────────────────────────────
 
-  Future<List<({Project project, List<PluginSessionTime> sessionActivities})>> _deriveProjects(
+  Future<List<Project>> _deriveProjects(
     BridgeDerivedProjectsPluginApi plugin,
   ) async {
     final (storedProjects, sessionProjectPaths) = await (
@@ -402,35 +402,16 @@ class ProjectRepository {
   }
 
   Future<Project> _findDerivedProject(BridgeDerivedProjectsPluginApi plugin, String canonicalId) async {
-    final hasUnseenChanges = await projectHasUnseenChanges(projectId: canonicalId);
-    final directoryMissing = _directoryMissing(canonicalId);
-    final activity = _mapActivity(await _projectsDao.getProject(projectId: canonicalId));
     final derived = await _deriveProjects(plugin);
-    for (final item in derived) {
-      if (item.project.id == canonicalId) {
-        return item.project.copyWith(
-          hasUnseenChanges: hasUnseenChanges,
-          directoryMissing: directoryMissing,
-          time: _activityToTime(activity!),
-        );
-      }
-    }
-    final stored = await _projectsDao.getAllProjects();
-    String? displayName;
-    for (final row in stored) {
-      if (normalizeProjectDirectory(directory: row.path) == canonicalId) {
-        displayName = row.displayName;
-        break;
-      }
+    for (final project in derived) {
+      if (project.id == canonicalId) return project;
     }
     final base = p.basename(canonicalId);
     return Project(
       id: canonicalId,
-      name: displayName != null && displayName.isNotEmpty ? displayName : (base.isEmpty ? canonicalId : base),
+      name: base.isEmpty ? canonicalId : base,
       path: canonicalId,
-      time: _activityToTime(activity!),
-      hasUnseenChanges: hasUnseenChanges,
-      directoryMissing: directoryMissing,
+      time: null,
     );
   }
 

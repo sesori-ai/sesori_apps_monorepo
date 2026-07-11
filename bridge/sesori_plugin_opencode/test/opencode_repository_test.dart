@@ -552,6 +552,15 @@ void main() {
       expect(projects.first.project.activity, isNull);
     });
 
+    test("activity is null when nonempty session times are all null", () {
+      expect(
+        OpenCodeRepository.deriveActivityFromSessionTimes(
+          times: const <GlobalSessionTime?>[null, null],
+        ),
+        isNull,
+      );
+    });
+
     test("derives activity from both global and real-project sessions", () async {
       // Project has sessions from both the real project ID and the global
       // project ID (pre-git-init orphans). Both should contribute to the
@@ -770,6 +779,101 @@ void main() {
       expect(projects.first.project.activity, isNotNull);
       expect(projects.first.project.activity!.updatedAt, equals(9000));
       expect(projects.first.project.activity!.createdAt, equals(2000));
+    });
+
+    test("attributes sandbox session activity to the canonical project", () async {
+      final api = _FakeApi(
+        projects: [
+          const Project(
+            sandboxes: <String>["/moved/repo", "/second/repo"],
+            id: "my-project",
+            worktree: "/repo",
+            time: ProjectTime(created: 1000, updated: 1000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+          ),
+        ],
+        globalSessions: [
+          const GlobalSession(
+            slug: "canonical",
+            title: "canonical",
+            version: "v",
+            project: null,
+            id: "canonical-session",
+            projectID: "my-project",
+            directory: "/repo",
+            time: GlobalSessionTime(created: 2000, updated: 5000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const GlobalSession(
+            slug: "moved",
+            title: "moved",
+            version: "v",
+            project: null,
+            id: "moved-session",
+            projectID: "global",
+            directory: "/moved/repo",
+            time: GlobalSessionTime(created: 500, updated: 9000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const GlobalSession(
+            slug: "second-move",
+            title: "second move",
+            version: "v",
+            project: null,
+            id: "second-moved-session",
+            projectID: "global",
+            directory: "/second/repo",
+            time: GlobalSessionTime(created: 1000, updated: 12000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      expect(projects, hasLength(1));
+      expect(projects.single.project.id, equals("/repo"));
+      expect(
+        projects.single.project.activity,
+        equals(const PluginProjectActivity(createdAt: 500, updatedAt: 12000)),
+      );
     });
 
     test("excludes global meta-project from results", () async {

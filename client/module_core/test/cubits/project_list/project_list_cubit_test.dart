@@ -53,6 +53,7 @@ void main() {
     late FakeSessionUnseenTracker fakeSessionUnseenTracker;
     late MockFailureReporter mockFailureReporter;
     late BehaviorSubject<ConnectionStatus> statusController;
+    late Completer<ApiResponse<Projects>> projectFetchCompleter;
 
     setUp(() {
       mockProjectService = MockProjectService();
@@ -1327,6 +1328,104 @@ void main() {
       ],
       verify: (_) {
         verify(() => mockProjectService.listProjects()).called(1);
+      },
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "projectTimestampUpdates: stale update cannot regress or reorder projects",
+      build: () {
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Projects(
+              data: [
+                Project(
+                  id: "A",
+                  name: "Alpha",
+                  path: "/A",
+                  time: ProjectTime(created: 1000, updated: 3000),
+                ),
+                Project(
+                  id: "B",
+                  name: "Bravo",
+                  path: "/B",
+                  time: ProjectTime(created: 1000, updated: 2000),
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        mockSseEventTracker.emitProjectTimestampUpdate({"A": 1000});
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => <ProjectListState>[],
+      verify: (cubit) {
+        final loaded = cubit.state as ProjectListLoaded;
+        expect(loaded.projects.map((project) => project.id), ["A", "B"]);
+        expect(loaded.projects.first.time?.updated, 3000);
+        verify(() => mockProjectService.listProjects()).called(1);
+      },
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "projectTimestampUpdates: event during initial fetch is merged before first loaded emit",
+      build: () {
+        projectFetchCompleter = Completer<ApiResponse<Projects>>();
+        when(() => mockProjectService.listProjects()).thenAnswer((_) => projectFetchCompleter.future);
+        addTearDown(() {
+          if (!projectFetchCompleter.isCompleted) {
+            projectFetchCompleter.complete(ApiResponse.success(const Projects(data: [])));
+          }
+        });
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        verify(() => mockProjectService.listProjects()).called(1);
+        mockSseEventTracker.emitProjectTimestampUpdate({"B": 4000});
+        projectFetchCompleter.complete(
+          ApiResponse.success(
+            const Projects(
+              data: [
+                Project(
+                  id: "A",
+                  name: "Alpha",
+                  path: "/A",
+                  time: ProjectTime(created: 1000, updated: 3000),
+                ),
+                Project(
+                  id: "B",
+                  name: "Bravo",
+                  path: "/B",
+                  time: ProjectTime(created: 1000, updated: 2000),
+                ),
+              ],
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      expect: () => [
+        isA<ProjectListLoaded>()
+            .having(
+              (state) => state.projects.map((project) => project.id).toList(),
+              "project order",
+              ["B", "A"],
+            )
+            .having(
+              (state) => state.projects.first.time?.updated,
+              "live timestamp",
+              4000,
+            ),
+      ],
+      verify: (_) {
+        verifyNoMoreInteractions(mockProjectService);
       },
     );
 

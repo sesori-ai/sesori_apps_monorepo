@@ -1,4 +1,6 @@
+import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/persistence/tables/projects_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_activity.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
@@ -120,6 +122,25 @@ void main() {
       expect(rows["default"]!.createdAt, 1234);
       expect(rows["default"]!.updatedAt, 1234);
       expect(result.every((project) => project.time != null), isTrue);
+    });
+
+    test("getProjects reuses one post-seed project snapshot for paths and activity", () async {
+      plugin.projectsResult = const [
+        PluginProject(id: "new", activity: PluginProjectActivity(createdAt: 10, updatedAt: 20)),
+      ];
+      final projectsDao = _CountingProjectsDao(database: db);
+      final countingRepo = ProjectRepository(
+        plugin: plugin,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final result = await countingRepo.getProjects(defaultTimestamp: 9999);
+
+      expect(projectsDao.getAllProjectsCallCount, 1);
+      expect(result.single.time, const ProjectTime(created: 10, updated: 20));
     });
 
     test("getProjects sorts equal timestamps by name and then id", () async {
@@ -438,10 +459,12 @@ void main() {
     test("renameProject persists a display-name override applied on the next listing", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", created: 1, updated: 1)];
       await repo.getProjects(defaultTimestamp: 9999);
+      await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 10, updatedAt: 20);
 
       final renamed = await repo.renameProject(projectId: "/tmp/proj/alpha", name: "Renamed Alpha");
 
       expect(renamed.name, "Renamed Alpha");
+      expect(renamed.time, const ProjectTime(created: 10, updated: 20));
       final listed = (await repo.getProjects(defaultTimestamp: 9999)).firstWhere(
         (p) => p.id == "/tmp/proj/alpha",
       );
@@ -451,6 +474,7 @@ void main() {
     test("getProject resolves a derived project without calling the plugin's guarded getProject", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
       await repo.getProjects(defaultTimestamp: 9999);
+      await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 30, updatedAt: 40);
 
       // The mixin's getProject throws; routing through the repository must
       // resolve from the derived set instead of surfacing that as an error.
@@ -458,6 +482,25 @@ void main() {
 
       expect(project.id, "/tmp/proj/alpha");
       expect(project.name, "alpha");
+      expect(project.time, const ProjectTime(created: 30, updated: 40));
+    });
+
+    test("derived getProject does not reread activity while finding project metadata", () async {
+      plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
+      await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 30, updatedAt: 40);
+      final projectsDao = _CountingProjectsDao(database: db);
+      final countingRepo = ProjectRepository(
+        plugin: plugin,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final project = await countingRepo.getProject(projectId: "/tmp/proj/alpha");
+
+      expect(project.time, const ProjectTime(created: 30, updated: 40));
+      expect(projectsDao.getProjectCallCount, 2);
     });
 
     test("getProject and renameProject reject an unknown derived project id", () async {
@@ -724,4 +767,23 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _CountingProjectsDao extends ProjectsDao {
+  _CountingProjectsDao({required AppDatabase database}) : super(database);
+
+  int getAllProjectsCallCount = 0;
+  int getProjectCallCount = 0;
+
+  @override
+  Future<List<ProjectDto>> getAllProjects() {
+    getAllProjectsCallCount++;
+    return super.getAllProjects();
+  }
+
+  @override
+  Future<ProjectDto?> getProject({required String projectId}) {
+    getProjectCallCount++;
+    return super.getProject(projectId: projectId);
+  }
 }

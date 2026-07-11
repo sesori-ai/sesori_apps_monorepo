@@ -24,7 +24,7 @@ class SseEventTracker with Disposable {
   );
 
   /// Map of project ID -> latest updated timestamp from complete
-  /// [SesoriProjectUpdated] events.
+  /// [SesoriProjectUpdated] events seen for every project.
   ///
   /// Only emits complete updates where both the project ID and the activity
   /// time are non-null. Incomplete events are ignored so the stream does not
@@ -76,7 +76,11 @@ class SseEventTracker with Disposable {
           _updateActivityFromSummary(projects);
         case SesoriProjectUpdated(:final projectID, :final updatedAt):
           if (projectID != null && updatedAt != null) {
-            _projectTimestampUpdates.add({projectID: updatedAt});
+            final currentUpdates = _projectTimestampUpdates.value;
+            final currentUpdatedAt = currentUpdates[projectID];
+            if (currentUpdatedAt == null || updatedAt > currentUpdatedAt) {
+              _projectTimestampUpdates.add({...currentUpdates, projectID: updatedAt});
+            }
           }
         case SesoriSessionCreated() ||
             SesoriSessionUpdated() ||
@@ -168,11 +172,14 @@ class SseEventTracker with Disposable {
 
   @override
   Future<void> onDispose() async {
-    await _subscription.cancel();
-    await Future.wait([
-      _projectActivity.close(),
-      _sessionActivity.close(),
-      _projectTimestampUpdates.close(),
-    ]);
+    try {
+      await _subscription.cancel();
+    } finally {
+      await Future.wait([
+        _projectActivity.close(),
+        _sessionActivity.close(),
+        _projectTimestampUpdates.close(),
+      ]);
+    }
   }
 }

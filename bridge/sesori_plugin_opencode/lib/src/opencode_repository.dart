@@ -1,3 +1,4 @@
+import "package:meta/meta.dart" show visibleForTesting;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         PluginAgent,
@@ -53,9 +54,10 @@ const String _globalProjectId = "global";
 /// sessions across every project (`/experimental/session?roots=true`). It then:
 ///
 /// 1. **Derives activity per project**: For every real project, we look at ALL
-///    root sessions under its worktree (regardless of their project ID) and
-///    compute the minimum `createdAt` and maximum `updatedAt`. This activity is
-///    purely session-derived; the upstream project's own `time` is never used.
+///    root sessions under its worktree and sandbox aliases (regardless of their
+///    project ID) and compute the minimum `createdAt` and maximum `updatedAt`.
+///    This activity is purely session-derived; the upstream project's own
+///    `time` is never used.
 ///
 /// 2. **Synthesizes virtual projects**: For directories that have `"global"`
 ///    sessions but no real project entry (e.g., a non-git directory that was
@@ -197,9 +199,9 @@ class OpenCodeRepository {
     );
 
     final mappedRealProjects = realProjects.map((project) {
-      final sessions = _sessionsUnderWorktree(
+      final sessions = _sessionsUnderWorktrees(
         allSessionsByDirectory,
-        project.worktree,
+        [project.worktree, ...project.sandboxes],
       );
       return (
         project: _pluginModelMapper.mapProject(
@@ -388,20 +390,20 @@ class OpenCodeRepository {
     return _api.getPendingPermissions(directory: directory?.normalize());
   }
 
-  /// Collects all sessions whose directory is equal to or under [worktree],
+  /// Collects all sessions whose directory is equal to or under any [worktrees],
   /// using the same prefix-based matching as [_isDirectoryUnderWorktree].
   ///
   /// This is necessary because users can start sessions from subdirectories
   /// (e.g., `/repo/packages/foo`) while the project worktree is the git root
   /// (`/repo`). A simple exact-key lookup would miss those subdirectory
   /// sessions.
-  List<GlobalSession> _sessionsUnderWorktree(
+  List<GlobalSession> _sessionsUnderWorktrees(
     Map<String, List<GlobalSession>> sessionsByDirectory,
-    String worktree,
+    Iterable<String> worktrees,
   ) {
     final result = <GlobalSession>[];
     for (final entry in sessionsByDirectory.entries) {
-      if (_isDirectoryUnderWorktree(entry.key, worktree)) {
+      if (worktrees.any((worktree) => _isDirectoryUnderWorktree(entry.key, worktree))) {
         result.addAll(entry.value);
       }
     }
@@ -451,12 +453,13 @@ class OpenCodeRepository {
       if (projectByWorktree.containsKey(directory)) continue;
       if (directory == globalWorktree) continue;
 
-      final coveredByRealProject = realProjects.any((project) {
-        if (project.worktree.isEmpty) return false;
-        if (directory.startsWith("${project.worktree}/")) return true;
-        if (project.worktree.startsWith("$directory/")) return true;
-        return false;
-      });
+      final coveredByRealProject = realProjects.any(
+        (project) => <String>[project.worktree, ...project.sandboxes].any(
+          (worktree) =>
+              worktree.isNotEmpty &&
+              (_isDirectoryUnderWorktree(directory, worktree) || _isDirectoryUnderWorktree(worktree, directory)),
+        ),
+      );
       if (coveredByRealProject) continue;
 
       final activity = _deriveActivityFromSessions(groupedSessions);
@@ -475,18 +478,27 @@ class OpenCodeRepository {
 
   /// Returns a [PluginProjectActivity] representing the earliest `createdAt`
   /// and latest `updatedAt` across the given [sessions]. Returns null if the
-  /// list is empty.
+  /// sessions provide no time information.
   PluginProjectActivity? _deriveActivityFromSessions(List<GlobalSession> sessions) {
-    if (sessions.isEmpty) return null;
+    return deriveActivityFromSessionTimes(
+      times: sessions.map((session) => session.time),
+    );
+  }
 
+  @visibleForTesting
+  static PluginProjectActivity? deriveActivityFromSessionTimes({
+    required Iterable<GlobalSessionTime?> times,
+  }) {
     final created = <int>[];
     final updated = <int>[];
 
-    for (final session in sessions) {
-      final time = session.time;
+    for (final time in times) {
+      if (time == null) continue;
       created.add(time.created);
       updated.add(time.updated);
     }
+
+    if (created.isEmpty || updated.isEmpty) return null;
 
     return PluginProjectActivity(
       createdAt: created.reduce((a, b) => a < b ? a : b),
