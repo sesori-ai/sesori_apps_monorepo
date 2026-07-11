@@ -379,16 +379,33 @@ void main() {
         },
         byCwd: {
           home: [
-            {"sessionId": "s1", "cwd": home, "title": "One"},
+            {"sessionId": "s1", "title": "One"},
           ],
         },
       );
       final sessions = await plugin.listAllSessions(knownDirectories: const {home});
-      stop();
 
       final s1 = sessions.singleWhere((s) => s.id == "s1");
       expect(s1.directory, home, reason: "the cwd-scoped hit must replace the launch fallback");
       expect(s1.projectID, home);
+
+      final sending = plugin.sendPrompt(
+        sessionId: "s1",
+        parts: const [PluginPromptPart.text(text: "resume me")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      stop();
+      expect(
+        (loadFrame["params"] as Map)["cwd"],
+        home,
+        reason: "a cwd-scoped hit stays authoritative when the item omits cwd",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
     });
 
     test("a blank cwd falls back to the launch directory, not the process cwd", () async {
@@ -638,6 +655,21 @@ void main() {
       expect(sessions.single.directory, cwd);
 
       plugin.primeSessionDirectory(sessionId: "cold-s", directory: stored);
+      final stopAgain = autoListResponder(
+        bare: () => {
+          "sessions": [
+            {"sessionId": "cold-s", "title": "Cold"},
+          ],
+        },
+      );
+      await plugin.listAllSessions(knownDirectories: const {});
+      stopAgain();
+      expect(
+        plugin.eventMapper.projectForSession("cold-s"),
+        stored,
+        reason: "an unfiltered fallback must not replace established event attribution",
+      );
+
       final sending = plugin.sendPrompt(
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],

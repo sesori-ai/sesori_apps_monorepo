@@ -422,7 +422,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       try {
         for (final info in await _listSessionPages(client, cwd: null)) {
           if (info.sessionId.isEmpty) continue;
-          sessionsById[info.sessionId] = _toPluginSession(info, fallbackDirectory: launchDirectory);
+          sessionsById[info.sessionId] = _toPluginSession(
+            info,
+            fallbackDirectory: launchDirectory,
+            fallbackIsAuthoritative: false,
+          );
           final hasCwd = info.cwd != null && info.cwd!.trim().isNotEmpty;
           if (!hasCwd) fallbackAttributed.add(info.sessionId);
         }
@@ -448,7 +452,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           // it fills a session not seen yet AND repairs one the unfiltered
           // pass could only attribute to the launch fallback.
           if (!sessionsById.containsKey(info.sessionId) || fallbackAttributed.remove(info.sessionId)) {
-            sessionsById[info.sessionId] = _toPluginSession(info, fallbackDirectory: directory);
+            sessionsById[info.sessionId] = _toPluginSession(
+              info,
+              fallbackDirectory: directory,
+              fallbackIsAuthoritative: true,
+            );
           }
         }
       } on Object catch (error, stack) {
@@ -476,7 +484,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     try {
       final mapped = [
         for (final info in await _listSessionPages(client, cwd: target))
-          _toPluginSession(info, fallbackDirectory: target),
+          _toPluginSession(
+            info,
+            fallbackDirectory: target,
+            fallbackIsAuthoritative: true,
+          ),
       ];
       final from = start ?? 0;
       if (from >= mapped.length) return const [];
@@ -536,7 +548,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     return infos;
   }
 
-  PluginSession _toPluginSession(AcpSessionInfo info, {required String fallbackDirectory}) {
+  PluginSession _toPluginSession(
+    AcpSessionInfo info, {
+    required String fallbackDirectory,
+    required bool fallbackIsAuthoritative,
+  }) {
     // The session belongs to its own cwd, canonicalized so it matches the
     // project id the bridge derives from the same value. A missing OR blank cwd
     // falls back to the directory that was scanned — the same `trim().isNotEmpty`
@@ -545,13 +561,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final rawCwd = info.cwd;
     final hasCwd = rawCwd != null && rawCwd.trim().isNotEmpty;
     final directory = normalizeProjectDirectory(directory: hasCwd ? rawCwd : fallbackDirectory);
+    final directoryIsAuthoritative = hasCwd || fallbackIsAuthoritative;
     final id = info.sessionId;
-    // Only an agent-reported cwd is authoritative for later turn/history
-    // loads. A scan fallback remains eligible for a stored bridge prime to
-    // repair. Events can use the fallback until that prime arrives.
+    // A cwd-scoped response is authoritative even when its item omits cwd. Only
+    // the unfiltered launch fallback remains eligible for a stored bridge prime
+    // to repair.
     if (id.isNotEmpty) {
-      if (hasCwd) _sessionDirectories[id] = directory;
-      eventMapper.setSessionProject(id, directory);
+      if (directoryIsAuthoritative) _sessionDirectories[id] = directory;
+      eventMapper.setSessionProject(id, _sessionDirectories[id] ?? directory);
       eventMapper.setSessionSnapshot(
         sessionId: id,
         title: info.title,
