@@ -136,6 +136,8 @@ When a class owns more than one long-lived `StreamSubscription`, prefer a single
 
 Do not extract a bridge collaborator only to make a file shorter. The extracted class must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods on the cohesive owner.
 
+Name a coordinator for the full invariant it owns. A class that orders title updates against session deletion is a session-mutation dispatcher, not a title service; names that mention only one field hide lifecycle responsibilities and invite misplaced callers.
+
 In the push subsystem, `PushDispatcher` owns only outbound push sends. `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
 
 ### Backend Quirks Live In The Plugin

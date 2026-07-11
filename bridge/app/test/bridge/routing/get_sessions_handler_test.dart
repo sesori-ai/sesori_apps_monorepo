@@ -7,8 +7,8 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -26,7 +26,7 @@ void main() {
     late FakeSessionRepository sessionRepository;
     late AppDatabase db;
     late SessionPersistenceService sessionPersistenceService;
-    late _TrackingSessionTitleService sessionTitleService;
+    late _TrackingSessionMutationDispatcher sessionTitleService;
     late SessionUnseenService unseenService;
     late GetSessionsHandler handler;
 
@@ -47,13 +47,13 @@ void main() {
         db: db,
         pluginId: "opencode",
       );
-      sessionTitleService = _TrackingSessionTitleService();
+      sessionTitleService = _TrackingSessionMutationDispatcher();
       unseenService = buildTestSessionUnseenService(db, plugin);
       handler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
         sessionUnseenService: unseenService,
       );
     });
@@ -103,7 +103,7 @@ void main() {
         sessionRepository: realRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
-        sessionTitleService: SessionTitleService(sessionRepository: realRepository),
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: realRepository),
         sessionUnseenService: unseenService,
       );
 
@@ -335,7 +335,7 @@ void main() {
           summary: null,
         ),
       ];
-      final titleService = _TrackingSessionTitleService(
+      final titleService = _TrackingSessionMutationDispatcher(
         onApply: (sessionId) {
           sessionRepository.enrichedTitleOverrides[sessionId] = "Pending title";
         },
@@ -344,7 +344,7 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
-        sessionTitleService: titleService,
+        sessionMutationDispatcher: titleService,
         sessionUnseenService: unseenService,
       );
 
@@ -876,7 +876,7 @@ void main() {
         sessionRepository: realRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
-        sessionTitleService: SessionTitleService(sessionRepository: realRepository),
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: realRepository),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -1085,7 +1085,7 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: slowPrSyncService,
         sessionPersistenceService: sessionPersistenceService,
-        sessionTitleService: SessionTitleService(sessionRepository: sessionRepository),
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         prRefreshTimeout: const Duration(milliseconds: 50),
       );
@@ -1136,7 +1136,7 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: fastPrSyncService,
         sessionPersistenceService: sessionPersistenceService,
-        sessionTitleService: SessionTitleService(sessionRepository: sessionRepository),
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
 
@@ -1157,12 +1157,12 @@ void main() {
   });
 }
 
-class _TrackingSessionTitleService implements SessionTitleService {
+class _TrackingSessionMutationDispatcher implements SessionMutationDispatcher {
   final List<String> appliedSessionIds = [];
   final Set<String> failSessionIds = {};
   final void Function(String sessionId)? onApply;
 
-  _TrackingSessionTitleService({this.onApply});
+  _TrackingSessionMutationDispatcher({this.onApply});
 
   @override
   Future<void> applyPendingTitle({required String sessionId}) async {

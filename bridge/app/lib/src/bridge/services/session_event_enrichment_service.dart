@@ -2,7 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
-import "session_title_service.dart";
+import "session_mutation_dispatcher.dart";
 
 /// Prepares raw plugin session events for delivery: first syncs stored state
 /// the backend won't hold (the bridge's title copy for derived-plugin
@@ -10,15 +10,15 @@ import "session_title_service.dart";
 /// so the payload phones receive and the next REST enumeration agree.
 class SessionEventEnrichmentService {
   final SessionRepository _sessionRepository;
-  final SessionTitleService _sessionTitleService;
+  final SessionMutationDispatcher _sessionMutationDispatcher;
   final FailureReporter _failureReporter;
 
   SessionEventEnrichmentService({
     required SessionRepository sessionRepository,
-    required SessionTitleService sessionTitleService,
+    required SessionMutationDispatcher sessionMutationDispatcher,
     required FailureReporter failureReporter,
   }) : _sessionRepository = sessionRepository,
-       _sessionTitleService = sessionTitleService,
+       _sessionMutationDispatcher = sessionMutationDispatcher,
        _failureReporter = failureReporter;
 
   Future<BridgeSseEvent?> enrich(BridgeSseEvent event) async {
@@ -70,7 +70,7 @@ class SessionEventEnrichmentService {
   }) async {
     final session = Session.fromJson(info);
     if (titleChanged) {
-      await _sessionTitleService.captureTitle(sessionId: session.id, title: session.title);
+      await _sessionMutationDispatcher.captureTitle(sessionId: session.id, title: session.title);
     }
     return _sessionRepository.enrichSession(session: session);
   }

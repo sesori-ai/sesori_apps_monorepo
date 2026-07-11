@@ -4,7 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/tables/session_table.dart";
 import "../repositories/session_repository.dart";
-import "../services/session_title_service.dart";
+import "../services/session_mutation_dispatcher.dart";
 import "../services/worktree_service.dart";
 import "request_handler.dart";
 import "worktree_cleanup.dart";
@@ -13,15 +13,15 @@ import "worktree_cleanup.dart";
 class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
-  final SessionTitleService _sessionTitleService;
+  final SessionMutationDispatcher _sessionMutationDispatcher;
 
   DeleteSessionHandler({
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
-    required SessionTitleService sessionTitleService,
+    required SessionMutationDispatcher sessionMutationDispatcher,
   }) : _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
-       _sessionTitleService = sessionTitleService,
+       _sessionMutationDispatcher = sessionMutationDispatcher,
        super(
          HttpMethod.delete,
          "/session/delete",
@@ -76,7 +76,7 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
     // Unconditional (not gated on a stored row): the repository delete also
     // records the tombstone, and a rowless-but-enumerable backend session
     // still needs one or it reappears from the next enumeration.
-    await _sessionTitleService.deleteSession(sessionId: sessionId);
+    await _sessionMutationDispatcher.deleteSession(sessionId: sessionId);
 
     return const SuccessEmptyResponse();
   }

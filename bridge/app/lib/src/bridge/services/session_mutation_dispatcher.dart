@@ -4,13 +4,13 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
 
-/// Coordinates bridge-owned title updates that can race session persistence.
-class SessionTitleService {
+/// Serializes bridge-owned session mutations that share pending-title state.
+class SessionMutationDispatcher {
   final SessionRepository _sessionRepository;
   final Map<String, String?> _pendingTitles = {};
   Future<void> _tail = Future<void>.value();
 
-  SessionTitleService({required SessionRepository sessionRepository}) : _sessionRepository = sessionRepository;
+  SessionMutationDispatcher({required SessionRepository sessionRepository}) : _sessionRepository = sessionRepository;
 
   Future<void> captureTitle({required String sessionId, required String? title}) {
     return _serialized(() async {

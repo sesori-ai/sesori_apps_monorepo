@@ -28,8 +28,8 @@ import "package:sesori_bridge/src/bridge/services/project_activity_service.dart"
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -294,7 +294,7 @@ class _RegistrationHarness {
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
     final projectRepository = ProjectRepository(
       plugin: plugin,
@@ -339,7 +339,7 @@ class _RegistrationHarness {
           ),
         ),
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionMutationDispatcher,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -426,10 +426,10 @@ class _RegistrationHarness {
       ),
       sessionEventEnrichmentService: SessionEventEnrichmentService(
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionMutationDispatcher,
         failureReporter: FakeFailureReporter(),
       ),
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionMutationDispatcher,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

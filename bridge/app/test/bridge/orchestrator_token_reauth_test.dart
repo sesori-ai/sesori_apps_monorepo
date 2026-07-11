@@ -30,8 +30,8 @@ import "package:sesori_bridge/src/bridge/services/project_activity_service.dart"
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -366,7 +366,7 @@ class _ReauthHarness {
       ),
       viewTracker: sessionViewTracker,
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
     final projectRepository = ProjectRepository(
       plugin: plugin,
@@ -407,7 +407,7 @@ class _ReauthHarness {
           ),
         ),
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -476,10 +476,10 @@ class _ReauthHarness {
       ),
       sessionEventEnrichmentService: SessionEventEnrichmentService(
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
         failureReporter: FakeFailureReporter(),
       ),
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

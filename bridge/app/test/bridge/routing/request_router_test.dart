@@ -26,9 +26,9 @@ import "package:sesori_bridge/src/bridge/services/project_initialization_service
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -118,7 +118,7 @@ void main() {
         sessionRepository: sessionRepository,
         processRunner: FakeProcessRunner(),
       );
-      final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+      final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
       final projectActivityService = ProjectActivityService(
         projectRepository: projectRepository,
         now: () => DateTime.now().millisecondsSinceEpoch,
@@ -127,7 +127,7 @@ void main() {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionMutationDispatcher,
       );
       final sessionArchiveService = SessionArchiveService(
         worktreeService: worktreeService,
@@ -160,7 +160,7 @@ void main() {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionMutationDispatcher,
         permissionRepository: permissionRepository,
         questionRepository: questionRepository,
         sessionPersistenceService: sessionPersistenceService,
@@ -499,7 +499,7 @@ void main() {
         ),
         processRunner: FakeProcessRunner(),
       );
-      final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+      final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
       final projectActivityService = ProjectActivityService(
         projectRepository: projectRepository,
         now: () => DateTime.now().millisecondsSinceEpoch,
@@ -518,7 +518,7 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
-          sessionTitleService: sessionTitleService,
+          sessionMutationDispatcher: sessionMutationDispatcher,
         ),
         sessionArchiveService: SessionArchiveService(
           worktreeService: worktreeService,
@@ -540,7 +540,7 @@ void main() {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionMutationDispatcher,
         permissionRepository: permissionRepository,
         questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
         sessionPersistenceService: sessionPersistenceService,

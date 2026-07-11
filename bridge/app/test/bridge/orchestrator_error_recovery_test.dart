@@ -30,8 +30,8 @@ import "package:sesori_bridge/src/bridge/services/project_activity_service.dart"
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -71,7 +71,7 @@ void main() {
         ),
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+      final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
       final projectRepository = ProjectRepository(
         plugin: plugin,
         projectsDao: database.projectsDao,
@@ -110,7 +110,7 @@ void main() {
             ),
           ),
           sessionRepository: sessionRepository,
-          sessionTitleService: sessionTitleService,
+          sessionMutationDispatcher: sessionTitleService,
         ),
         pushDispatcher: pushSubsystem.dispatcher,
         completionListener: pushSubsystem.completionListener,
@@ -204,10 +204,10 @@ void main() {
         ),
         sessionEventEnrichmentService: SessionEventEnrichmentService(
           sessionRepository: sessionRepository,
-          sessionTitleService: sessionTitleService,
+          sessionMutationDispatcher: sessionTitleService,
           failureReporter: FakeFailureReporter(),
         ),
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
         restartService: buildTestRestartService(),
         statusNotifier: null,
       );
@@ -367,10 +367,10 @@ class _TestHarness {
         plugin: plugin,
       ),
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -393,7 +393,7 @@ class _TestHarness {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -459,7 +459,7 @@ class _TestHarness {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

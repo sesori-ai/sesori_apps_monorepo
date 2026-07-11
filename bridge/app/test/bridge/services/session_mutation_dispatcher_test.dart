@@ -4,17 +4,17 @@ import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
 
 void main() {
-  group("SessionTitleService", () {
+  group("SessionMutationDispatcher", () {
     late AppDatabase db;
     late SessionRepository repository;
-    late SessionTitleService service;
+    late SessionMutationDispatcher dispatcher;
     late _FakeDerivedPlugin plugin;
 
     setUp(() {
@@ -30,7 +30,7 @@ void main() {
         ),
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      service = SessionTitleService(sessionRepository: repository);
+      dispatcher = SessionMutationDispatcher(sessionRepository: repository);
     });
 
     tearDown(() => db.close());
@@ -51,40 +51,40 @@ void main() {
     }
 
     test("applies a title captured before the session row exists", () async {
-      await service.captureTitle(sessionId: "s1", title: "Early title");
+      await dispatcher.captureTitle(sessionId: "s1", title: "Early title");
       await insertSession();
 
-      await service.applyPendingTitle(sessionId: "s1");
+      await dispatcher.applyPendingTitle(sessionId: "s1");
 
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Early title");
     });
 
     test("buffers a rename until its session row exists", () async {
-      final renamed = await service.renameSession(sessionId: "s1", title: "User rename");
+      final renamed = await dispatcher.renameSession(sessionId: "s1", title: "User rename");
       expect(renamed.title, "User rename");
       await insertSession();
 
-      await service.applyPendingTitle(sessionId: "s1");
+      await dispatcher.applyPendingTitle(sessionId: "s1");
 
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "User rename");
     });
 
     test("applies a pending null by removing the stored title copy", () async {
-      await service.captureTitle(sessionId: "s1", title: null);
+      await dispatcher.captureTitle(sessionId: "s1", title: null);
       await insertSession();
       await db.sessionDao.setTitle(sessionId: "s1", title: "stale");
 
-      await service.applyPendingTitle(sessionId: "s1");
+      await dispatcher.applyPendingTitle(sessionId: "s1");
 
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, isNull);
     });
 
     test("deletion discards a pending title", () async {
-      await service.captureTitle(sessionId: "s1", title: "stale");
-      await service.deleteSession(sessionId: "s1");
+      await dispatcher.captureTitle(sessionId: "s1", title: "stale");
+      await dispatcher.deleteSession(sessionId: "s1");
       await insertSession();
 
-      await service.applyPendingTitle(sessionId: "s1");
+      await dispatcher.applyPendingTitle(sessionId: "s1");
 
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, isNull);
     });
@@ -96,9 +96,9 @@ void main() {
         ..deleteStarted = deleteStarted
         ..releaseDelete = releaseDelete.future;
 
-      final deletion = service.deleteSession(sessionId: "s1");
+      final deletion = dispatcher.deleteSession(sessionId: "s1");
       await deleteStarted.future;
-      final rename = service.renameSession(sessionId: "s1", title: "Resurrected");
+      final rename = dispatcher.renameSession(sessionId: "s1", title: "Resurrected");
       await Future<void>.delayed(Duration.zero);
       expect(plugin.renameCalls, isZero);
 

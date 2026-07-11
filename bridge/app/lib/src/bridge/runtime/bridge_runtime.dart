@@ -51,8 +51,8 @@ import "../services/project_activity_service.dart";
 import "../services/project_initialization_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_event_enrichment_service.dart";
+import "../services/session_mutation_dispatcher.dart";
 import "../services/session_persistence_service.dart";
-import "../services/session_title_service.dart";
 import "../services/session_unseen_service.dart";
 import "../services/session_view_tracker.dart";
 import "../services/worktree_service.dart";
@@ -142,10 +142,10 @@ class BridgeRuntime {
       projectRepository: projectRepository,
       viewTracker: sessionViewTracker,
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionMutationDispatcher,
       failureReporter: failureReporter,
     );
     final pushTracker = PushSessionStateTracker(now: DateTime.now);
@@ -211,7 +211,7 @@ class BridgeRuntime {
       ),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionMutationDispatcher,
     );
 
     return BridgeRuntime(
@@ -277,7 +277,7 @@ class BridgeRuntime {
         ),
         worktreeService: worktreeService,
         sessionEventEnrichmentService: sessionEventEnrichmentService,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionMutationDispatcher,
         restartService: restartService,
         statusNotifier: statusNotifier,
       ).create(),

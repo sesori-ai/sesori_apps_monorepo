@@ -5,7 +5,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -35,7 +35,7 @@ void main() {
       );
       service = SessionEventEnrichmentService(
         sessionRepository: repository,
-        sessionTitleService: SessionTitleService(sessionRepository: repository),
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: repository),
         failureReporter: LogFailureReporter(),
       );
     });
@@ -48,6 +48,7 @@ void main() {
     test("falls back to original event when enrichment fails", () async {
       const event = BridgeSseSessionUpdated(
         info: {"id": "s1", "projectID": 42},
+        titleChanged: false,
       );
 
       final result = await service.enrich(event);
@@ -152,7 +153,7 @@ void main() {
       };
 
       expect(await service.enrich(const BridgeSseSessionCreated(info: info)), isNull);
-      expect(await service.enrich(const BridgeSseSessionUpdated(info: info)), isNull);
+      expect(await service.enrich(const BridgeSseSessionUpdated(info: info, titleChanged: false)), isNull);
       expect(
         await service.enrich(
           const BridgeSsePermissionAsked(
@@ -196,7 +197,7 @@ void main() {
     group("derived-plugin title capture", () {
       late _FakeDerivedPlugin derivedPlugin;
       late SessionRepository derivedRepository;
-      late SessionTitleService derivedTitleService;
+      late SessionMutationDispatcher derivedTitleService;
       late SessionEventEnrichmentService derivedService;
 
       setUp(() {
@@ -211,10 +212,10 @@ void main() {
           ),
           unseenCalculator: const SessionUnseenCalculator(),
         );
-        derivedTitleService = SessionTitleService(sessionRepository: derivedRepository);
+        derivedTitleService = SessionMutationDispatcher(sessionRepository: derivedRepository);
         derivedService = SessionEventEnrichmentService(
           sessionRepository: derivedRepository,
-          sessionTitleService: derivedTitleService,
+          sessionMutationDispatcher: derivedTitleService,
           failureReporter: LogFailureReporter(),
         );
       });
@@ -313,7 +314,10 @@ void main() {
         await insertStored(title: "User rename");
 
         final result = await derivedService.enrich(
-          BridgeSseSessionUpdated(info: sessionInfo(title: "Cached backend title")),
+          BridgeSseSessionUpdated(
+            info: sessionInfo(title: "Cached backend title"),
+            titleChanged: false,
+          ),
         );
 
         expect((result! as BridgeSseSessionUpdated).info["title"], "User rename");

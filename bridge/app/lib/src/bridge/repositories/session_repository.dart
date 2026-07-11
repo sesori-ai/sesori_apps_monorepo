@@ -509,8 +509,16 @@ class SessionRepository {
   }
 
   Future<List<Session>> getChildSessions({required String sessionId}) async {
-    if (_plugin is BridgeDerivedProjectsPluginApi) {
-      await _throwIfTombstoned(sessionId: sessionId, operation: "getChildSessions");
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) {
+        throw PluginOperationException.notFound(
+          "getChildSessions",
+          message: "session $sessionId was deleted",
+        );
+      }
+      final pluginSessions = await plugin.getChildSessions(sessionId);
+      return pluginSessions.where((session) => !tombstoned.contains(session.id)).toSharedSessions();
     }
     final pluginSessions = await _plugin.getChildSessions(sessionId);
     return pluginSessions.toSharedSessions();

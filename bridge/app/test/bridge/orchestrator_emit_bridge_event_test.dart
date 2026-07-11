@@ -36,8 +36,8 @@ import "package:sesori_bridge/src/bridge/services/project_activity_service.dart"
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_title_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -110,10 +110,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -134,7 +134,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -200,7 +200,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -293,10 +293,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
     final projectRepository = ProjectRepository(
@@ -338,7 +338,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
@@ -407,7 +407,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -506,10 +506,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
     // Wired exactly like the supervised composition root: the notifier
@@ -537,7 +537,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -600,7 +600,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: statusNotifier,
     );
@@ -733,10 +733,10 @@ void main() {
       ),
     );
 
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -753,7 +753,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
@@ -822,7 +822,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -952,10 +952,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -972,7 +972,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
@@ -1041,7 +1041,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -1118,10 +1118,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -1138,7 +1138,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -1207,7 +1207,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -1309,10 +1309,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
-    final sessionTitleService = SessionTitleService(sessionRepository: sessionRepository);
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -1329,7 +1329,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
-        sessionTitleService: sessionTitleService,
+        sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
@@ -1398,7 +1398,7 @@ void main() {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
-      sessionTitleService: sessionTitleService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

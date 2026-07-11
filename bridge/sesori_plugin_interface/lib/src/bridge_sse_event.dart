@@ -30,7 +30,7 @@ class BridgeSseSessionCreated extends BridgeSseEvent {
 class BridgeSseSessionUpdated extends BridgeSseEvent {
   final Map<String, dynamic> info;
   final bool titleChanged;
-  const BridgeSseSessionUpdated({required this.info, this.titleChanged = false});
+  const BridgeSseSessionUpdated({required this.info, required this.titleChanged});
 }
 
 /// Signals that every session under [projectID] should be re-fetched.

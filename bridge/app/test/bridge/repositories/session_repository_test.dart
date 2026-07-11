@@ -1268,6 +1268,39 @@ void main() {
       }
     });
 
+    test("getChildSessions filters tombstoned derived children", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final plugin =
+          _FakeDerivedPlugin(
+              launchDirectory: "/repo",
+              allSessions: const [],
+            )
+            ..childSessions = [
+              pluginSession("/repo", id: "live-child"),
+              pluginSession("/repo", id: "gone-child"),
+            ];
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone-child",
+        pluginId: plugin.id,
+        deletedAt: 1,
+      );
+
+      final children = await repository.getChildSessions(sessionId: "live-parent");
+
+      expect(children.map((session) => session.id), ["live-child"]);
+    });
+
     test("tombstoned sessions are filtered from enumeration and resolution", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1481,6 +1514,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
   List<PluginSession> allSessions;
   String? lastRenameSessionId;
+  List<PluginSession> childSessions = const [];
 
   /// The hint set received on the most recent [listAllSessions] call.
   Set<String>? receivedKnownDirectories;
@@ -1520,6 +1554,9 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
       summary: null,
     );
   }
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => childSessions;
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => activitySummaries;
