@@ -644,9 +644,11 @@ void main() {
           isA<ProjectListLoaded>()
               .having((s) => s.projects, "projects", isEmpty)
               .having((s) => s.bridges, "bridges", isEmpty),
-          isA<ProjectListLoaded>()
-              .having((s) => s.projects, "projects", isEmpty)
-              .having((s) => s.bridges.map((b) => b.name), "bridge names", ["Macbook-Pro.local"]),
+          isA<ProjectListLoaded>().having((s) => s.projects, "projects", isEmpty).having(
+            (s) => s.bridges.map((b) => b.name),
+            "bridge names",
+            ["Macbook-Pro.local"],
+          ),
         ],
       );
 
@@ -738,8 +740,7 @@ void main() {
         // never blinks out.
         expect: () => [
           isA<ProjectListLoaded>().having((s) => s.bridges, "bridges", isEmpty),
-          isA<ProjectListLoaded>()
-              .having((s) => s.bridges.map((b) => b.name), "bridge names", ["Macbook-Pro.local"]),
+          isA<ProjectListLoaded>().having((s) => s.bridges.map((b) => b.name), "bridge names", ["Macbook-Pro.local"]),
         ],
       );
 
@@ -769,9 +770,11 @@ void main() {
           isA<ProjectListLoaded>()
               .having((s) => s.projects, "projects", isEmpty)
               .having((s) => s.bridges, "bridges", isEmpty),
-          isA<ProjectListLoaded>()
-              .having((s) => s.projects, "projects", isEmpty)
-              .having((s) => s.bridges.map((b) => b.name), "bridge names", ["Macbook-Pro.local"]),
+          isA<ProjectListLoaded>().having((s) => s.projects, "projects", isEmpty).having(
+            (s) => s.bridges.map((b) => b.name),
+            "bridge names",
+            ["Macbook-Pro.local"],
+          ),
         ],
       );
     });
@@ -1436,7 +1439,9 @@ void main() {
           () => mockProjectService.listProjects(),
         ).thenAnswer(
           (_) async => ApiResponse.success(
-            Projects(data: [testProject(id: "A", name: "Alpha")]),
+            Projects(
+              data: [testProject(id: "A", name: "Alpha")],
+            ),
           ),
         );
         return buildCubit();

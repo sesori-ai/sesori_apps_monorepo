@@ -663,7 +663,12 @@ void main() {
       test("getSessionsForProject hands the plugin the live directory and re-keys sessions to the id", () async {
         final db = createTestDatabase();
         addTearDown(db.close);
-        await db.projectsDao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", createdAt: 1, updatedAt: 1);
+        await db.projectsDao.recordOpenedProject(
+          projectId: "/projects/a",
+          path: "/moved/a",
+          createdAt: 1,
+          updatedAt: 1,
+        );
         plugin.sessionsByWorktree = {
           "/moved/a": const [
             PluginSession(
@@ -705,7 +710,12 @@ void main() {
       test("getCommands resolves the project id to the live directory", () async {
         final db = createTestDatabase();
         addTearDown(db.close);
-        await db.projectsDao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", createdAt: 1, updatedAt: 1);
+        await db.projectsDao.recordOpenedProject(
+          projectId: "/projects/a",
+          path: "/moved/a",
+          createdAt: 1,
+          updatedAt: 1,
+        );
 
         final repository = SessionRepository(
           plugin: plugin,
@@ -729,7 +739,12 @@ void main() {
       test("getProjectPath returns the live directory, probing the plugin for availability", () async {
         final db = createTestDatabase();
         addTearDown(db.close);
-        await db.projectsDao.recordOpenedProject(projectId: "/projects/a", path: "/moved/a", createdAt: 1, updatedAt: 1);
+        await db.projectsDao.recordOpenedProject(
+          projectId: "/projects/a",
+          path: "/moved/a",
+          createdAt: 1,
+          updatedAt: 1,
+        );
 
         final repository = SessionRepository(
           plugin: plugin,
@@ -853,7 +868,10 @@ void main() {
       const worktree = "/tmp/proj/alpha/.worktrees/session-001";
       final plugin = _FakeDerivedPlugin(
         launchDirectory: parent,
-        allSessions: [pluginSession(parent, id: "s1"), pluginSession(worktree, id: "w1")],
+        allSessions: [
+          pluginSession(parent, id: "s1"),
+          pluginSession(worktree, id: "w1"),
+        ],
       );
       final repository = SessionRepository(
         plugin: plugin,

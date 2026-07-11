@@ -168,7 +168,6 @@ class BridgeRuntime {
       rssBytesReader: readCurrentRssBytes,
     );
 
-
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
