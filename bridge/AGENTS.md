@@ -10,6 +10,10 @@ From `bridge/`:
 - `make test` — run tests in all modules that have a `test/` directory
 - `make analyze` — static analysis across all modules
 
+One-off benchmark executables belong under the owning package's
+`tool/benchmarks/` directory, never under `lib/`, `bin/`, or another production
+source directory.
+
 Bridge CI runs `dart analyze --fatal-infos`, which is stricter than `make analyze` — info-level lints (e.g. `directives_ordering` import sorting) fail CI. Before pushing, run `dart analyze --fatal-infos` from each changed module dir (e.g. `bridge/app/`).
 
 From `bridge/app/`:
