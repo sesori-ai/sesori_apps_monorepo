@@ -547,15 +547,20 @@ first repeatable AOT harnesses and recorded the raw pre-change measurements in
 
 The catalog budgets remain release targets rather than claims about the current
 plugin-backed path. The local fakes isolate bridge mapping/persistence overhead
-but deliberately exclude backend HTTP/RPC/disk latency. They measured p95 at
-1.702 ms for 500 native projects, 0.168 ms for a native 100-session page,
-0.560 ms for 1,000 native sessions, 0.932 ms for a derived 100-session page that
-enumerated 10,000 rows, and 0.683 ms for 1,000 derived sessions.
+but deliberately exclude backend HTTP/RPC/disk latency. The endpoint-core
+scenario includes list-triggered persistence, pending-title application, and
+post-persistence enrichment, but excludes optional PR refresh. It measured p95
+at 1.728 ms for 500 native projects, 0.943 ms for one derived project from
+10,000 sessions, 0.988 ms for a native 100-session page that enumerated 10,000
+rows, 7.693 ms for 1,000 native sessions, 1.729 ms for a derived 100-session page
+that enumerated 10,000 rows, and 7.756 ms for 1,000 derived sessions.
 
-Codex's real filesystem fixture measured `listSessions` and main-isolate delay
-at p95 25.879/25.889 ms for 1,000 sessions and 236.095/236.116 ms for 10,000.
-This validates the Stage 5 worker-isolate requirement and exceeds the future
-100 ms maximum scheduling-lag target at 10,000 sessions.
+Codex's real filesystem fixture includes a 4 KiB transcript tail per session.
+Across 100 directional, non-gating samples, it measured `listSessions` and
+main-isolate delay at p95 35.490/35.501 ms for 1,000 sessions and
+350.815/350.830 ms for 10,000. This validates the Stage 5 worker-isolate
+requirement and exceeds the future 100 ms maximum scheduling-lag target at
+10,000 sessions.
 
 The initial release budgets are:
 
