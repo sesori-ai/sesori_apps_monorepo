@@ -96,7 +96,7 @@ automation backdoor. Backend-specific behavior remains behind
 | Topic | Decision |
 |---|---|
 | Project identity | One shared project per normalized directory. Hide, name, and base-branch state apply across plugins. |
-| Project names | Seed a new project once from the first imported name, otherwise use the folder basename. Later imports never rename it. Sesori rename is authoritative. |
+| Project names | Seed a new project once from the first imported name, otherwise use `p.basename` from `package:path` for a cross-platform folder basename. Later imports never rename it. Sesori rename is authoritative. |
 | Session identity | Introduce a Sesori-owned public session id and keep `(plugin_id, backend_session_id)` private to the bridge. Existing public ids are preserved during migration; new sessions use bridge-generated ids. |
 | Owner | Store the authenticated JWT `userId` on durable projects, sessions, tombstones, and import runs. Existing rows are backfilled to the account performing migration. |
 | Provenance | Add required `created_with_sesori`. Existing rows migrate to `true`; directly created roots are `true`; hydrated roots are `false`; descendants inherit the root's value. It is internal for this release, with a future Sesori-created/imported filter documented. |
@@ -455,9 +455,9 @@ At launch:
    probe startup plugins in parallel, record unavailable plugins without
    aborting, provision available plugins sequentially, and start them
    independently/in parallel.
-8. Register each successful API/status stream; keep each failure in diagnostics.
-9. Start relay/orchestrator even when zero plugins are active.
-10. Queue due one-time hydrations without blocking relay or session creation.
+6. Register each successful API/status stream; keep each failure in diagnostics.
+7. Start relay/orchestrator even when zero plugins are active.
+8. Queue due one-time hydrations without blocking relay or session creation.
 
 At shutdown, cancel the orchestrator once, then call
 `PluginLifecycleService.stopAllActivePlugins()` for per-plugin budgets under a
