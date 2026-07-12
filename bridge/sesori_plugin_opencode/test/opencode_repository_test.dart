@@ -406,17 +406,16 @@ void main() {
   });
 
   group("OpenCodeRepository.getProjects", () {
-    test("merges timestamps from real-project sessions into project", () async {
-      // A real project whose own timestamp is old (set at OpenCode startup).
-      // A session belonging to that project has a much more recent timestamp
-      // (updated when user sent a message via Session.touch()).
+    test("ignores the raw project startup timestamp and derives activity from root sessions", () async {
+      // OpenCode stamps the raw project update time at server startup, making
+      // it newer than actual work. It must not influence project activity.
       final api = _FakeApi(
         projects: [
           const Project(
             sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
-            time: ProjectTime(created: 1000, updated: 1000, initialized: null),
+            time: ProjectTime(created: 1000, updated: 99000, initialized: null),
             vcs: null,
             name: null,
             icon: null,
@@ -446,6 +445,28 @@ void main() {
             permission: null,
             revert: null,
           ),
+          const GlobalSession(
+            slug: "child",
+            title: "child",
+            version: "v",
+            project: null,
+            id: "child",
+            projectID: "my-project",
+            directory: "/repo",
+            time: GlobalSessionTime(created: 1, updated: 100000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: "s1",
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ],
       );
       final repository = OpenCodeRepository(api);
@@ -453,12 +474,12 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.time.updated, equals(9000));
-      // created should be the earliest across project and sessions.
-      expect(projects.first.time.created, equals(1000));
+      expect(projects.first.project.activity, isNotNull);
+      expect(projects.first.project.activity!.updatedAt, equals(9000));
+      expect(projects.first.project.activity!.createdAt, equals(1500));
     });
 
-    test("merges timestamps from global sessions into matching real project", () async {
+    test("derives activity from global sessions into matching real project", () async {
       // Orphaned global sessions under a directory that also has a real project.
       final api = _FakeApi(
         projects: [
@@ -503,13 +524,12 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      // updated = max(2000, 3000)
-      expect(projects.first.time.updated, equals(3000));
-      // created = min(1000, 500)
-      expect(projects.first.time.created, equals(500));
+      expect(projects.first.project.activity, isNotNull);
+      expect(projects.first.project.activity!.updatedAt, equals(3000));
+      expect(projects.first.project.activity!.createdAt, equals(500));
     });
 
-    test("uses project's own timestamp when no sessions exist", () async {
+    test("activity is null when no sessions exist", () async {
       final api = _FakeApi(
         projects: [
           const Project(
@@ -529,14 +549,22 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.time.updated, equals(2000));
-      expect(projects.first.time.created, equals(1000));
+      expect(projects.first.project.activity, isNull);
     });
 
-    test("merges timestamps from both global and real-project sessions", () async {
+    test("activity is null when nonempty session times are all null", () {
+      expect(
+        OpenCodeRepository.deriveActivityFromSessionTimes(
+          times: const <GlobalSessionTime?>[null, null],
+        ),
+        isNull,
+      );
+    });
+
+    test("derives activity from both global and real-project sessions", () async {
       // Project has sessions from both the real project ID and the global
       // project ID (pre-git-init orphans). Both should contribute to the
-      // merged timestamp.
+      // session-derived activity.
       final api = _FakeApi(
         projects: [
           const Project(
@@ -602,10 +630,9 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      // updated = max(1000, 5000, 8000)
-      expect(projects.first.time.updated, equals(8000));
-      // created = min(1000, 2000, 500)
-      expect(projects.first.time.created, equals(500));
+      expect(projects.first.project.activity, isNotNull);
+      expect(projects.first.project.activity!.updatedAt, equals(8000));
+      expect(projects.first.project.activity!.createdAt, equals(500));
     });
 
     test("creates virtual projects only from global sessions", () async {
@@ -655,9 +682,11 @@ void main() {
 
       // Should have the real project + a virtual one.
       expect(projects, hasLength(2));
-      final virtual = projects.where((p) => p.worktree == "/no-git-repo");
+      final virtual = projects.where((p) => p.project.id == "/no-git-repo");
       expect(virtual, hasLength(1));
-      expect(virtual.first.time.updated, equals(3000));
+      expect(virtual.first.project.activity, isNotNull);
+      expect(virtual.first.project.activity!.updatedAt, equals(3000));
+      expect(virtual.first.project.activity!.createdAt, equals(500));
     });
 
     test("does not create virtual project for real-project sessions without matching project", () async {
@@ -699,11 +728,11 @@ void main() {
       expect(projects, isEmpty);
     });
 
-    test("merges timestamps from sessions in subdirectories of the worktree", () async {
+    test("derives activity from sessions in subdirectories of the worktree", () async {
       // A session started from a subdirectory of the project (e.g. the user
       // ran OpenCode from /repo/packages/foo). The project worktree is /repo.
       // The session's timestamp should still contribute to the project's
-      // merged "last updated".
+      // session-derived activity.
       final api = _FakeApi(
         projects: [
           const Project(
@@ -747,9 +776,126 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      // The subdirectory session's updated (9000) should be picked up.
-      expect(projects.first.time.updated, equals(9000));
-      expect(projects.first.time.created, equals(1000));
+      expect(projects.first.project.activity, isNotNull);
+      expect(projects.first.project.activity!.updatedAt, equals(9000));
+      expect(projects.first.project.activity!.createdAt, equals(2000));
+    });
+
+    test("attributes sandbox session activity to the canonical project", () async {
+      final api = _FakeApi(
+        projects: [
+          const Project(
+            sandboxes: <String>["/moved/repo", "/second/repo", ""],
+            id: "my-project",
+            worktree: "/repo",
+            time: ProjectTime(created: 1000, updated: 1000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+          ),
+        ],
+        globalSessions: [
+          const GlobalSession(
+            slug: "canonical",
+            title: "canonical",
+            version: "v",
+            project: null,
+            id: "canonical-session",
+            projectID: "my-project",
+            directory: "/repo",
+            time: GlobalSessionTime(created: 2000, updated: 5000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const GlobalSession(
+            slug: "moved",
+            title: "moved",
+            version: "v",
+            project: null,
+            id: "moved-session",
+            projectID: "global",
+            directory: "/moved/repo",
+            time: GlobalSessionTime(created: 500, updated: 9000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const GlobalSession(
+            slug: "second-move",
+            title: "second move",
+            version: "v",
+            project: null,
+            id: "second-moved-session",
+            projectID: "global",
+            directory: "/second/repo",
+            time: GlobalSessionTime(created: 1000, updated: 12000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const GlobalSession(
+            slug: "unrelated",
+            title: "unrelated",
+            version: "v",
+            project: null,
+            id: "unrelated-session",
+            projectID: "global",
+            directory: "/unrelated/repo",
+            time: GlobalSessionTime(created: 100, updated: 99000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+        ],
+      );
+      final repository = OpenCodeRepository(api);
+
+      final projects = await repository.getProjects();
+
+      expect(projects, hasLength(2));
+      final canonical = projects.singleWhere((project) => project.project.id == "/repo");
+      expect(
+        canonical.project.activity,
+        equals(const PluginProjectActivity(createdAt: 500, updatedAt: 12000)),
+      );
     });
 
     test("excludes global meta-project from results", () async {
@@ -782,7 +928,7 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.worktree, equals("/repo"));
+      expect(projects.first.project.id, equals("/repo"));
     });
   });
 

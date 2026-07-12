@@ -270,6 +270,9 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
 class _FakeWorktreeService extends WorktreeService {
@@ -310,7 +313,6 @@ class _FakeWorktreeService extends WorktreeService {
   @override
   Future<bool> removeWorktree({
     required String projectId,
-    required String projectPath,
     required String worktreePath,
     required bool force,
   }) async {
@@ -322,7 +324,7 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<bool> deleteBranch({
-    required String projectPath,
+    required String projectId,
     required String branchName,
     required bool force,
   }) async {

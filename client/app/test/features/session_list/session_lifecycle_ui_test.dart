@@ -300,7 +300,7 @@ void main() {
   late MockSessionService mockSessionService;
   late MockProjectService mockProjectService;
   late MockConnectionService mockConnectionService;
-  late MockSseEventRepository mockSseEventRepository;
+  late MockSseEventTracker mockSseEventTracker;
   late MockRouteSource mockRouteSource;
   late MockFailureReporter mockFailureReporter;
   late BehaviorSubject<ConnectionStatus> statusController;
@@ -312,7 +312,7 @@ void main() {
     mockSessionService = MockSessionService();
     mockProjectService = MockProjectService();
     mockConnectionService = MockConnectionService();
-    mockSseEventRepository = MockSseEventRepository();
+    mockSseEventTracker = MockSseEventTracker();
     mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
     mockFailureReporter = MockFailureReporter();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -355,8 +355,8 @@ void main() {
     if (getIt.isRegistered<ConnectionService>()) {
       getIt.unregister<ConnectionService>();
     }
-    if (getIt.isRegistered<SseEventRepository>()) {
-      getIt.unregister<SseEventRepository>();
+    if (getIt.isRegistered<SseEventTracker>()) {
+      getIt.unregister<SseEventTracker>();
     }
     if (getIt.isRegistered<RouteSource>()) {
       getIt.unregister<RouteSource>();
@@ -538,7 +538,7 @@ void main() {
       getIt.registerSingleton<SessionService>(mockSessionService);
       getIt.registerSingleton<ProjectService>(mockProjectService);
       getIt.registerSingleton<ConnectionService>(mockConnectionService);
-      getIt.registerSingleton<SseEventRepository>(mockSseEventRepository);
+      getIt.registerSingleton<SseEventTracker>(mockSseEventTracker);
       getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
       getIt.registerSingleton<RouteSource>(mockRouteSource);
       getIt.registerSingleton<FailureReporter>(mockFailureReporter);

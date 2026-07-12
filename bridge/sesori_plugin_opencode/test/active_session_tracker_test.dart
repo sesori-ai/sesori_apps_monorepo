@@ -173,6 +173,150 @@ void main() {
       });
     });
 
+    group("worktree aliases (moved project live directory)", () {
+      test("an aliased directory and its subdirectories resolve to the canonical worktree", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.updateProjectWorktrees(worktrees: {"/repo"});
+
+        tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        expect(tracker.resolveProjectWorktree(directory: "/moved/repo"), equals("/repo"));
+        expect(
+          tracker.resolveProjectWorktree(directory: "/moved/repo/.worktrees/session-001"),
+          equals("/repo"),
+        );
+      });
+
+      test("a canonical worktree match takes precedence over an alias", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.updateProjectWorktrees(worktrees: {"/moved/repo"});
+
+        tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        expect(tracker.resolveProjectWorktree(directory: "/moved/repo"), equals("/moved/repo"));
+      });
+
+      test("self-aliases and empty worktrees are ignored", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+
+        expect(tracker.registerWorktreeAlias(directory: "/repo", worktree: "/repo"), isFalse);
+        expect(tracker.registerWorktreeAlias(directory: "/repo", worktree: ""), isFalse);
+        expect(tracker.resolveProjectWorktree(directory: "/repo"), isNull);
+      });
+
+      test("registering an alias re-groups an already-active session under the canonical project", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.updateProjectWorktrees(worktrees: {"/repo"});
+
+        // A session running at the moved project's live location: no known
+        // worktree contains it, so the summary can't group it yet.
+        tracker.handleEvent(_sessionCreated("s1", "/moved/repo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+        expect(tracker.buildSummary(), isEmpty);
+
+        final changed = tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        expect(changed, isTrue, reason: "the summary regained a session — callers must re-emit");
+        final pairs = tracker.buildSummary().map((item) => (item.id, item.activeSessions.length)).toSet();
+        expect(pairs, equals({("/repo", 1)}));
+
+        // Re-registering the same alias changes nothing.
+        expect(tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo"), isFalse);
+      });
+
+      test("sessions created after the alias is known group under the canonical project", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.updateProjectWorktrees(worktrees: {"/repo"});
+        tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        tracker.handleEvent(_sessionCreated("s1", "/moved/repo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        final pairs = tracker.buildSummary().map((item) => (item.id, item.activeSessions.length)).toSet();
+        expect(pairs, equals({("/repo", 1)}));
+      });
+
+      test("coldStart seeds aliases from the backend's sandboxes", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>["/moved/repo"],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
+        );
+
+        expect(tracker.resolveProjectWorktree(directory: "/moved/repo"), equals("/repo"));
+        expect(
+          tracker.resolveProjectWorktree(directory: "/moved/repo/.worktrees/session-001"),
+          equals("/repo"),
+        );
+      });
+
+      test("coldStart discovers active sessions running at a sandboxed live location", () async {
+        // The status/session queries are scoped per OpenCode instance, so a
+        // busy session at the moved location only surfaces when the sandbox
+        // directory itself is queried — and it must group under the canonical
+        // worktree.
+        final tracker = await _coldStartedTracker(
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>["/moved/repo"],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
+          sessions: [_session("s1", "/moved/repo")],
+          statuses: {"s1": const SessionStatusBusy()},
+        );
+
+        final pairs = tracker.buildSummary().map((item) => (item.id, item.activeSessions.length)).toSet();
+        expect(pairs, equals({("/repo", 1)}));
+      });
+
+      test("reset clears seeded aliases", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.registerWorktreeAlias(directory: "/moved/repo", worktree: "/repo");
+
+        tracker.reset();
+
+        expect(tracker.resolveProjectWorktree(directory: "/moved/repo"), isNull);
+      });
+
+      test("coldStart replaces previously-seeded aliases", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
+        );
+        tracker.registerWorktreeAlias(directory: "/stale/location", worktree: "/repo");
+
+        await tracker.coldStart();
+
+        expect(tracker.resolveProjectWorktree(directory: "/stale/location"), isNull);
+      });
+    });
+
     group("getActiveStatuses", () {
       test("empty tracker returns empty map", () {
         final tracker = ActiveSessionTracker(_fakeRepository());

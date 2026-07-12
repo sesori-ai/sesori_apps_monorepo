@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/session_mutation_dispatcher.dart";
 import "../services/session_persistence_service.dart";
 import "../services/session_unseen_service.dart";
 import "request_handler.dart";
@@ -16,6 +17,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
   final SessionPersistenceService _sessionPersistenceService;
+  final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionUnseenService _sessionUnseenService;
   final Duration _prRefreshTimeout;
 
@@ -23,11 +25,13 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required SessionPersistenceService sessionPersistenceService,
+    required SessionMutationDispatcher sessionMutationDispatcher,
     required SessionUnseenService sessionUnseenService,
     Duration prRefreshTimeout = const Duration(seconds: 5),
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _sessionPersistenceService = sessionPersistenceService,
+       _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionUnseenService = sessionUnseenService,
        _prRefreshTimeout = prRefreshTimeout,
        super(
@@ -56,25 +60,40 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     final start = body.start;
     final limit = body.limit;
 
-    await _sessionPersistenceService.ensureProject(projectId: projectId);
-
     // Captured BEFORE the fetch so the vanished-session reconcile only removes
     // rows that already existed when the snapshot was taken — a session created
     // concurrently (row inserted after this point) is kept.
     final fetchStartedAt = DateTime.now().millisecondsSinceEpoch;
-    final sessions = await _sessionRepository.getSessionsForProject(
+    var sessions = await _sessionRepository.getSessionsForProject(
       projectId: projectId,
       start: start,
       limit: limit,
     );
 
+    var persisted = false;
     try {
       await _sessionPersistenceService.persistSessionsForProject(
         projectId: projectId,
         sessions: sessions,
       );
+      persisted = true;
     } on Object catch (e, st) {
-      Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
+      Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId", e, st);
+    }
+
+    if (persisted) {
+      for (final session in sessions) {
+        try {
+          await _sessionMutationDispatcher.applyPendingTitle(sessionId: session.id);
+        } on Object catch (e, st) {
+          Log.w("GetSessionsHandler: pending title failed for sessionId=${session.id}", e, st);
+        }
+      }
+      try {
+        sessions = await _sessionRepository.enrichSessions(sessions: sessions);
+      } on Object catch (e, st) {
+        Log.w("GetSessionsHandler: post-persistence enrichment failed for projectId=$projectId", e, st);
+      }
     }
 
     if (start == null && limit == null && _sessionRepository.sessionListIsAuthoritative) {

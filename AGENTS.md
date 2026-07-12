@@ -12,6 +12,11 @@ Sesori today is "monitor + answer one assistant from your phone." The destinatio
 
 **This biases design; it does not licence building the future early.** When two designs both satisfy the layer rules, prefer the one that doesn't foreclose a direction below — but **never add abstraction/generalization for these before a concrete present need**. YAGNI and the cohesion/ownership rules still win.
 
+Do not add persisted sentinels, presence flags, or tri-state fields solely to
+preserve a hypothetical backend distinction. Require a concrete wire trace,
+shipped behavior, or explicit product requirement before making that state
+durable; otherwise use the simpler observable semantics.
+
 **Directional invariants (don't weld these doors shut):**
 
 - **Plugin boundary is sacred** — no backend specifics leak past `BridgePluginApi` into `shared/`, the relay protocol, or the client; our own harness is *just a plugin*; differing abilities are optional, declared capabilities.
@@ -62,6 +67,7 @@ Each layer has a specific responsibility and a dedicated directory. Dependencies
 - A Service MUST NOT call an API directly — it goes through a Repository
 - A Consumer (cubit, handler) MUST NOT import from `api/` — it goes through repositories/services
 - Within a layer: NO cross-dependency between same-level classes (unless base classes/abstractions designed for reuse within that layer)
+- Never infer a live location from an unknown durable-entity identifier. When identity and location are separate, a missing persistence row stays missing; trust a non-null stored location and let the owning repository/service surface the unknown entity explicitly.
 - Helper, use-case, and supporting classes around a Service MUST NOT depend back on that owning Service. If you split service logic into a collaborator, make it a standalone dependency with its own injected inputs, not a `part` file, extension, or pseudo-helper that calls back into the service.
 - Do NOT extract non-trivial business logic into top-level/global functions just to satisfy file-size limits. If the extracted logic is more than a tiny pure helper, split it into a named collaborator class with explicit dependencies and a clear ownership boundary so it can be tested in isolation.
 - Do NOT extract a class only because the file is long. An extracted collaborator must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as cohesive private methods even when the file is near the line limit. Ask this before splitting: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, the extraction is forbidden.
@@ -465,12 +471,24 @@ The bridge uses Drift (SQLite) for local persistence. Schema changes require a s
    - Data integrity test: insert data at old version, migrate, verify data at new version
 8. **Verify**: `make test && make analyze` from `bridge/`.
 
+When `main` already contains schema version N, a conflicting feature branch
+must move its pending schema changes to N+1 after merging `main`. Never rewrite
+or combine new work into the already-merged N migration or schema snapshot.
+
 ### Important Rules
 
 - Never edit `*.steps.dart` beyond the migration callback bodies.
 - Never edit `drift_schemas/*.json` files — these are generated snapshots.
 - Every schema migration MUST have corresponding migration tests. No exceptions.
 - The `databases:` key in `bridge/app/build.yaml` must point to the database class.
+- Prefer non-null columns for durable timestamps when a stable migration baseline exists. Backfill existing rows during
+  migration instead of introducing a permanent nullable state solely to avoid the backfill.
+
+## Compatibility Debt
+
+Temporary wire nullability or fallback behavior added only for old-version interoperability must be recorded in
+`docs/COMPATIBILITY_DEBT.md` with its supported scenario, a dated removal target, and exact cleanup steps. Do not let
+compatibility branches become undocumented permanent behavior.
 
 ## Git
 
@@ -546,6 +564,8 @@ Do not skip either step. The reviewers exist because violations compound — one
 - Treat user feedback in **PR comments** and in the **live chat** as guidance for future code, not just the current patch.
 - When the user pushes back on a coding practice, architecture choice, testing shape, utility placement, or workflow decision, proactively update the closest relevant `AGENTS.md` file so the same mistake is less likely to recur.
 - Prefer updating both the **repo-root `AGENTS.md`** for general guidance and the **workspace/module `AGENTS.md`** for domain-specific guidance when the feedback is scoped.
+- For UI review comments from bots, do not assume a changed shared component is an unintended regression just because the PR title names one screen. First check whether the design changed across all consumers; if the design source or user intent says the shared visual changed globally, decline the bot comment instead of preserving old styling on non-focused screens.
+- Do not broaden a PR to eliminate rare or speculative edge cases merely because a reviewer can describe them. Require a plausible user flow and meaningful consequence; decline fixes that need broad locking, new abstractions, or large refactors without concrete evidence proportional to that cost.
 - Do this proactively after the lesson is clear; do not wait for the user to ask a second time.
 - Assume the user reviews **committed and pushed code**, not your uncommitted local workspace. If you are expecting PR feedback to reflect your latest work, proactively commit and push first.
 - Never rely on users reviewing uncommitted changes. Remote PR state is the review source of truth unless the user explicitly says otherwise.
@@ -574,4 +594,8 @@ This applies in every workspace (bridge, mobile, shared).
 
 - Don't modify `shared/sesori_shared` without considering impact on all consumers:
   bridge, mobile, desktop core, and shared app UI.
+- When bridge and client adapters produce the same shared DTO under the same
+  schema limits/fallback rules, centralize that pure normalization in
+  `sesori_shared`; keep Flutter plugins, `dart:io`, and other platform reads in
+  the product adapters and pass only plain values into shared code.
 - Don't create a root-level `pubspec.yaml`. There is no root workspace.

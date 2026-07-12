@@ -41,7 +41,6 @@ void main() {
 
       final repo = repository();
       await repo.removeWorktree(
-        projectId: "/repo",
         projectPath: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
         force: false,
@@ -58,7 +57,6 @@ void main() {
 
       final repo = repository();
       await repo.removeWorktree(
-        projectId: "/repo",
         projectPath: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
         force: false,
@@ -75,7 +73,6 @@ void main() {
       final repo = repository();
       // Should not throw
       await repo.removeWorktree(
-        projectId: "/repo",
         projectPath: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
         force: false,

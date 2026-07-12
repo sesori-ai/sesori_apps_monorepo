@@ -23,9 +23,6 @@ import "../persistence/database.dart";
 ///
 /// ## Public surface
 ///
-/// - [ensureProject] — fast path: insert a single placeholder project row
-///   if missing. Used by [CreateSessionHandler] (before insertSession) and
-///   [GetSessionsHandler] (before reading sessions, to satisfy the v5 FK).
 /// - [persistSessionsForProject] — bulk path: insert the project + each of
 ///   the given sessions inside one transaction. Called by
 ///   [GetSessionsHandler] post-fetch on a best-effort basis.
@@ -51,10 +48,6 @@ class SessionPersistenceService {
        _sessionDao = sessionDao,
        _db = db,
        _pluginId = pluginId;
-
-  Future<void> ensureProject({required String projectId}) async {
-    await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
-  }
 
   Future<void> persistSessionsForProject({
     required String projectId,
@@ -109,10 +102,6 @@ class SessionPersistenceService {
         pluginId: _pluginId,
       );
     });
-  }
-
-  Future<void> deleteSession({required String sessionId}) async {
-    await _sessionDao.deleteSession(sessionId: sessionId);
   }
 
   Future<void> archiveSession({

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AuthInitRequest {
 
- String get clientType; DeviceInfo get device;
+ AuthClientType get clientType; DeviceInfo get device;
 /// Create a copy of AuthInitRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $AuthInitRequestCopyWith<$Res>  {
   factory $AuthInitRequestCopyWith(AuthInitRequest value, $Res Function(AuthInitRequest) _then) = _$AuthInitRequestCopyWithImpl;
 @useResult
 $Res call({
- String clientType, DeviceInfo device
+ AuthClientType clientType, DeviceInfo device
 });
 
 
@@ -68,7 +68,7 @@ class _$AuthInitRequestCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? clientType = null,Object? device = null,}) {
   return _then(_self.copyWith(
 clientType: null == clientType ? _self.clientType : clientType // ignore: cast_nullable_to_non_nullable
-as String,device: null == device ? _self.device : device // ignore: cast_nullable_to_non_nullable
+as AuthClientType,device: null == device ? _self.device : device // ignore: cast_nullable_to_non_nullable
 as DeviceInfo,
   ));
 }
@@ -93,7 +93,7 @@ class _AuthInitRequest implements AuthInitRequest {
   const _AuthInitRequest({required this.clientType, required this.device});
   factory _AuthInitRequest.fromJson(Map<String, dynamic> json) => _$AuthInitRequestFromJson(json);
 
-@override final  String clientType;
+@override final  AuthClientType clientType;
 @override final  DeviceInfo device;
 
 /// Create a copy of AuthInitRequest
@@ -129,7 +129,7 @@ abstract mixin class _$AuthInitRequestCopyWith<$Res> implements $AuthInitRequest
   factory _$AuthInitRequestCopyWith(_AuthInitRequest value, $Res Function(_AuthInitRequest) _then) = __$AuthInitRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String clientType, DeviceInfo device
+ AuthClientType clientType, DeviceInfo device
 });
 
 
@@ -149,7 +149,7 @@ class __$AuthInitRequestCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? clientType = null,Object? device = null,}) {
   return _then(_AuthInitRequest(
 clientType: null == clientType ? _self.clientType : clientType // ignore: cast_nullable_to_non_nullable
-as String,device: null == device ? _self.device : device // ignore: cast_nullable_to_non_nullable
+as AuthClientType,device: null == device ? _self.device : device // ignore: cast_nullable_to_non_nullable
 as DeviceInfo,
   ));
 }

@@ -203,7 +203,13 @@ Findings log · Plan-deltas.
   "Linux desktop"), device name = computerName (macOS/Windows) /
   `Platform.localHostname` (Linux), never throws (degrades to fallback names,
   `logw` with error args), clamped to the server schema limits (120/40). The
-  shell's `configureDesktopDependencies()` gained `@InjectableInit` +
+  review follow-up centralized those auth-schema rules in
+  `sesori_shared`: typed `AuthClientType` values replace raw wire strings, and
+  pure `AuthDeviceInfoBuilder` owns fallback names, trimming, and length
+  limits. Mobile, desktop, and bridge now feed their platform-specific facts
+  into that builder; `device_info_plus`/`package_info_plus` and bridge
+  `dart:io` remain data sources only. The shell's
+  `configureDesktopDependencies()` gained `@InjectableInit` +
   `getIt.init()` as phase 1. `desktop-ci.yml` Linux apt deps gained
   `libsecret-1-dev` (flutter_secure_storage_linux compile requirement). DI
   acceptance asserted by test: full 4-phase bootstrap then
@@ -212,7 +218,10 @@ Findings log · Plan-deltas.
   plugin packages already resolved by mobile at the same versions). Verified:
   analyze + tests green across all 6 modules (desktop now 6 tests);
   `flutter build macos` OK; Windows/Linux legs on the PR's CI.
-- **Deltas:** none structural. Naming uses the `Desktop*` adapter prefix
+- **Deltas:** the device-descriptor normalization moved from each product into
+  `sesori_shared`, and `AuthInitRequest.clientType` is now the shared
+  `AuthClientType` enum rather than an unconstrained string. Platform reads
+  remain in product adapters. Naming uses the `Desktop*` adapter prefix
   (mobile uses `Flutter*`/`App*`) to keep the two products' adapters
   distinguishable in cross-package searches. A Linux distro without a secret
   service fails loudly at first secure-storage use (libsecret

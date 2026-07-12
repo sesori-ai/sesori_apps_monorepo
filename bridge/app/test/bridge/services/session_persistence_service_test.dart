@@ -28,22 +28,6 @@ void main() {
 
     tearDown(() => db.close());
 
-    test("ensureProject inserts row if missing, preserves existing fields", () async {
-      await service.ensureProject(projectId: "p1");
-
-      var projects = await db.select(db.projectsTable).get();
-      expect(projects, hasLength(1));
-      expect(projects.single.projectId, equals("p1"));
-      expect(projects.single.hidden, isFalse);
-
-      await projectsDao.hideProject(projectId: "p1");
-      await service.ensureProject(projectId: "p1");
-
-      projects = await db.select(db.projectsTable).get();
-      expect(projects, hasLength(1));
-      expect(projects.single.hidden, isTrue);
-    });
-
     test("persistSessionsForProject inserts project + all sessions in a transaction", () async {
       final sessions = List<Session>.generate(
         5,
@@ -181,28 +165,6 @@ void main() {
       final rows = await db.select(db.sessionTable).get();
       expect(projects, isEmpty);
       expect(rows, isEmpty);
-    });
-
-    test("deleteSession removes an existing stored session", () async {
-      await projectsDao.insertProjectsIfMissing(projectIds: ["proj-delete"]);
-      await sessionDao.insertSession(
-        pluginId: "opencode",
-        sessionId: "sess-delete",
-        projectId: "proj-delete",
-        isDedicated: true,
-        createdAt: 1,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-
-      await service.deleteSession(sessionId: "sess-delete");
-
-      expect(await sessionDao.getSession(sessionId: "sess-delete"), isNull);
     });
 
     test("archiveSession sets archivedAt on an existing stored session", () async {

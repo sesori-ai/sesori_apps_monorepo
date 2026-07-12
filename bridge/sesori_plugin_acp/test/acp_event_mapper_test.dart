@@ -63,6 +63,71 @@ void main() {
       expect(part.type, PluginMessagePartType.reasoning);
     });
 
+    test("an accepted prompt maps to one canonical live user message", () {
+      final events = mapper.mapSentPrompt(
+        sessionId: "s1",
+        parts: [
+          const PluginPromptPart.text(text: "Hello"),
+          const PluginPromptPart.text(text: "Cursor"),
+        ],
+      );
+
+      final message = shared.Message.fromJson(
+        events.whereType<BridgeSseMessageUpdated>().single.info,
+      );
+      expect(message, isA<shared.MessageUser>());
+      expect(
+        events
+            .whereType<BridgeSseMessagePartUpdated>()
+            .map((event) => event.part.text),
+        ["Hello", "Cursor"],
+      );
+    });
+
+    test("a live agent user echo is dropped", () {
+      mapper.mapSentPrompt(
+        sessionId: "s1",
+        parts: [const PluginPromptPart.text(text: "Hello")],
+      );
+
+      final events = mapper.map(update({
+        "sessionUpdate": "user_message_chunk",
+        "content": {"type": "text", "text": "Hello"},
+      }));
+
+      expect(events, isEmpty);
+    });
+
+    test("id-less assistant text after a tool opens a later envelope", () {
+      mapper.beginTurn("s1");
+      final beforeTool = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "Before"},
+      }));
+      mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tc-order",
+        "kind": "read",
+        "status": "completed",
+      }));
+      final afterTool = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "After"},
+      }));
+
+      final beforeId = shared.Message.fromJson(
+        beforeTool.whereType<BridgeSseMessageUpdated>().single.info,
+      ).id;
+      final afterId = shared.Message.fromJson(
+        afterTool.whereType<BridgeSseMessageUpdated>().single.info,
+      ).id;
+      expect(afterId, isNot(beforeId));
+      expect(
+        afterTool.whereType<BridgeSseMessagePartDelta>().single.delta,
+        "After",
+      );
+    });
+
     test("tool_call maps to an assistant message with a tool part", () {
       final events = mapper.map(update({
         "sessionUpdate": "tool_call",
@@ -458,6 +523,7 @@ void main() {
         "title": "Fix the parser",
       }));
       final updated = events.whereType<BridgeSseSessionUpdated>().single;
+      expect(updated.titleChanged, isTrue);
       final session = shared.Session.fromJson(updated.info);
       expect(session.id, "s1");
       expect(session.title, "Fix the parser");
@@ -515,7 +581,9 @@ void main() {
         "sessionUpdate": "session_info_update",
         "updatedAt": DateTime.fromMillisecondsSinceEpoch(3000, isUtc: true).toIso8601String(),
       }));
-      final session = shared.Session.fromJson(events.whereType<BridgeSseSessionUpdated>().single.info);
+      final updated = events.whereType<BridgeSseSessionUpdated>().single;
+      expect(updated.titleChanged, isFalse);
+      final session = shared.Session.fromJson(updated.info);
       expect(session.title, "Existing title");
       expect(session.time?.updated, 3000);
     });
