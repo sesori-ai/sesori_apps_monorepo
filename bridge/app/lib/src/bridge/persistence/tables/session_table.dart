@@ -62,6 +62,13 @@ class SessionTable extends Table {
   /// v7→v8 migration backfills pre-existing rows itself.
   TextColumn get pluginId => text()();
 
+  /// The bridge's last-known title for a derived-plugin session (from a
+  /// rename or a title-bearing `session.updated` event). Derived backends
+  /// (ACP, codex) don't persist renames, so this stored copy wins over the
+  /// backend's enumeration title. Null for native plugins (their backend is
+  /// authoritative) and for sessions with no bridge-known title.
+  TextColumn get title => text().nullable()();
+
   @override
   bool get withoutRowId => true;
 
@@ -87,6 +94,7 @@ sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
     required int? lastSeenAt,
     required int? lastUserMessageAt,
     required String pluginId,
+    required String? title,
   }) = _SessionDto;
 
   const SessionDto._();

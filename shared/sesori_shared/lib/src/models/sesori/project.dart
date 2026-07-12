@@ -18,6 +18,13 @@ sealed class Project with _$Project {
   const factory Project({
     required String id,
     required String? name,
+    // Live directory of the project on disk — the directory backend operations
+    // run in. Distinct from [id]: the id is a stable identifier that survives
+    // folder moves (for git-backed backends it is the original worktree path,
+    // pinned at first open). Defaults to "" so payloads from older bridges
+    // (which don't send a path) still decode; clients fall back to [id] when
+    // empty.
+    @Default("") String path,
     required ProjectTime? time,
     // Whether this project has at least one non-archived session with unseen
     // activity. Backend-derived from its sessions. Defaults to false so older
@@ -39,7 +46,6 @@ sealed class ProjectTime with _$ProjectTime {
   const factory ProjectTime({
     required int created,
     required int updated,
-    required int? initialized,
   }) = _ProjectTime;
 
   factory ProjectTime.fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);

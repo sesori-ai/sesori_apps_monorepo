@@ -6,6 +6,8 @@ part of 'session_dao.dart';
 mixin _$SessionDaoMixin on DatabaseAccessor<AppDatabase> {
   $ProjectsTableTable get projectsTable => attachedDatabase.projectsTable;
   $SessionTableTable get sessionTable => attachedDatabase.sessionTable;
+  $DeletedSessionsTableTable get deletedSessionsTable =>
+      attachedDatabase.deletedSessionsTable;
   SessionDaoManager get managers => SessionDaoManager(this);
 }
 
@@ -16,4 +18,9 @@ class SessionDaoManager {
       $$ProjectsTableTableTableManager(_db.attachedDatabase, _db.projectsTable);
   $$SessionTableTableTableManager get sessionTable =>
       $$SessionTableTableTableManager(_db.attachedDatabase, _db.sessionTable);
+  $$DeletedSessionsTableTableTableManager get deletedSessionsTable =>
+      $$DeletedSessionsTableTableTableManager(
+        _db.attachedDatabase,
+        _db.deletedSessionsTable,
+      );
 }

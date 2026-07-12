@@ -3,6 +3,7 @@ import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -17,12 +18,13 @@ void main() {
     late AppDatabase db;
     late ProjectsDao projectsDao;
     late GetProjectsHandler handler;
+    late ProjectActivityService projectActivityService;
 
     setUp(() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
       projectsDao = db.projectsDao;
-      handler = GetProjectsHandler(
+      projectActivityService = ProjectActivityService(
         projectRepository: ProjectRepository(
           plugin: plugin,
           projectsDao: projectsDao,
@@ -30,10 +32,15 @@ void main() {
           unseenCalculator: const SessionUnseenCalculator(),
           filesystemApi: FakeFilesystemApi(),
         ),
+        now: () => 1234,
+      );
+      handler = GetProjectsHandler(
+        projectActivityService: projectActivityService,
       );
     });
 
     tearDown(() async {
+      await projectActivityService.dispose();
       await plugin.close();
       await db.close();
     });
@@ -90,11 +97,11 @@ void main() {
       expect(project.name, equals("My Project"));
     });
 
-    test("maps PluginProjectTime when present", () async {
+    test("maps PluginProjectActivity when present", () async {
       plugin.projectsResult = [
         const PluginProject(
           id: "p1",
-          time: PluginProjectTime(created: 1000, updated: 2000),
+          activity: PluginProjectActivity(createdAt: 1000, updatedAt: 2000),
         ),
       ];
 
@@ -110,7 +117,7 @@ void main() {
       expect(time?.updated, equals(2000));
     });
 
-    test("time is null when PluginProjectTime is absent", () async {
+    test("time uses the persisted insertion timestamp when plugin activity is absent", () async {
       plugin.projectsResult = [
         const PluginProject(id: "p1"),
       ];
@@ -122,7 +129,8 @@ void main() {
         fragment: null,
       );
 
-      expect(response.data[0].time, isNull);
+      final row = await projectsDao.getProject(projectId: "p1");
+      expect(response.data[0].time, ProjectTime(created: row!.createdAt, updated: row.updatedAt));
     });
 
     test("returns all projects when plugin returns multiple", () async {

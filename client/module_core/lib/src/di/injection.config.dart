@@ -30,8 +30,6 @@ import 'package:sesori_dart_core/src/capabilities/server_connection/connection_s
     as _i369;
 import 'package:sesori_dart_core/src/capabilities/session/session_service.dart'
     as _i12;
-import 'package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart'
-    as _i569;
 import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
@@ -73,6 +71,7 @@ import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
     as _i28;
 import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
     as _i18;
+import 'package:sesori_dart_core/src/services/sse_event_tracker.dart' as _i508;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -194,14 +193,14 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i569.SseEventRepository>(
-      () => _i569.SseEventRepository(
+    gh.lazySingleton<_i28.SessionUnseenTracker>(
+      () => _i28.SessionUnseenTracker(
         gh<_i369.ConnectionService>(),
         failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
-    gh.lazySingleton<_i28.SessionUnseenTracker>(
-      () => _i28.SessionUnseenTracker(
+    gh.lazySingleton<_i508.SseEventTracker>(
+      () => _i508.SseEventTracker(
         gh<_i369.ConnectionService>(),
         failureReporter: gh<_i553.FailureReporter>(),
       ),

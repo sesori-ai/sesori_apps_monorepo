@@ -10,7 +10,7 @@ part of "../project_list_screen.dart";
 
 /// Content of the onboarding "Why is this needed?" bottom sheet. Pure
 /// presentation with only per-row FAQ expand/collapse state; opened via
-/// [showPregoBottomSheet] from [_OnboardingChecklist].
+/// [showPregoBottomSheet] from [_WhyBridgeButton].
 class _WhyBridgeInfoSheet extends StatelessWidget {
   const _WhyBridgeInfoSheet();
 

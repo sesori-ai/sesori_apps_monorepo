@@ -2,6 +2,7 @@ import "package:drift/drift.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../database.dart";
+import "../tables/deleted_sessions_table.dart";
 import "../tables/projects_table.dart";
 import "../tables/session_table.dart";
 
@@ -17,9 +18,54 @@ typedef SessionUnseenRow = ({
   int? userMessageAt,
 });
 
-@DriftAccessor(tables: [SessionTable, ProjectsTable])
+@DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
+  static const _ownerIdentity = "local";
+
   SessionDao(super.attachedDatabase);
+
+  /// Sets the bridge-owned title copy for [sessionId] (null removes the copy).
+  /// No-op for rowless sessions.
+  Future<void> setTitle({required String sessionId, required String? title}) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(title: Value(title)),
+    );
+  }
+
+  /// Records a delete tombstone for [sessionId]. Idempotent — re-deleting an
+  /// already-tombstoned session keeps the original timestamp.
+  Future<void> insertSessionTombstone({
+    required String sessionId,
+    required String pluginId,
+    required int deletedAt,
+  }) async {
+    await into(deletedSessionsTable).insert(
+      DeletedSessionsTableCompanion.insert(
+        ownerIdentity: const Value(_ownerIdentity),
+        sessionId: sessionId,
+        pluginId: pluginId,
+        deletedAt: deletedAt,
+      ),
+      mode: InsertMode.insertOrIgnore,
+    );
+  }
+
+  /// The tombstoned session ids for [pluginId] — sessions the user deleted
+  /// that a backend without session deletion would otherwise keep listing.
+  Future<Set<String>> getTombstonedSessionIds({required String pluginId}) async {
+    final query = select(deletedSessionsTable)
+      ..where((t) => t.ownerIdentity.equals(_ownerIdentity) & t.pluginId.equals(pluginId));
+    final rows = await query.get();
+    return {for (final row in rows) row.sessionId};
+  }
+
+  Future<bool> isSessionTombstoned({required String sessionId, required String pluginId}) async {
+    final query = select(deletedSessionsTable)
+      ..where(
+        (t) => t.ownerIdentity.equals(_ownerIdentity) & t.pluginId.equals(pluginId) & t.sessionId.equals(sessionId),
+      );
+    return await query.getSingleOrNull() != null;
+  }
 
   /// Inserts a session row with full worktree state. If a placeholder row
   /// already exists for this id (e.g. a `session.created` SSE event raced ahead

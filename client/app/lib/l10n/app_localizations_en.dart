@@ -36,9 +36,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListLoadingSemantics => 'Loading projects';
 
   @override
-  String get projectListEmpty => 'No projects found';
-
-  @override
   String projectListUpdated(String timestamp) {
     return 'Updated $timestamp';
   }
@@ -70,16 +67,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get projectsOnboardingPhoneStatusStep => 'Step 1:';
+  String get projectsEmptyConnected => 'Connected';
 
   @override
-  String get projectsOnboardingPhoneStatusConnected => 'Phone connected';
+  String get projectsEmptyMessage => 'You don\'t have any projects created or opened yet.';
 
   @override
-  String get projectsOnboardingPcStatusStep => 'Step 2:';
-
-  @override
-  String get projectsOnboardingPcStatusRun => 'Run Sesori on your PC';
+  String get projectsEmptyAddProject => 'Add a new project to get started';
 
   @override
   String get projectsOnboardingPcStatusWhy => 'Why is this needed?';
@@ -145,7 +139,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingStepInfoSemantics => 'More information';
 
   @override
-  String get projectsBridgeOfflineTitle => 'Bridge disconnected';
+  String get projectsBridgeOfflineDisconnected => 'Disconnected';
 
   @override
   String get projectsBridgeOfflineReconnect => 'Reconnect';
@@ -154,7 +148,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override
-  String get projectsBridgeOfflineRunBridge => 'Run the bridge';
+  String get projectsBridgeOfflineStartBridge => 'Start your bridge';
+
+  @override
+  String get projectsBridgeOfflineStartBridgeInfo => 'Leave it running while you use Sesori from your phone.';
 
   @override
   String get connectionLostTitle => 'Connection Lost';

@@ -86,6 +86,7 @@ void main() {
 
       expect(events, hasLength(1));
       final updated = events.single as BridgeSseSessionUpdated;
+      expect(updated.titleChanged, isTrue);
       final session = shared.Session.fromJson(updated.info);
       expect(session.id, "t-1");
       expect(session.title, "Welcome session");

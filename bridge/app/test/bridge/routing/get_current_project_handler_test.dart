@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -16,9 +18,11 @@ void main() {
     late AppDatabase db;
     late GetCurrentProjectHandler handler;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/project"]);
+      await db.projectsDao.setActivity(projectId: "/tmp/project", createdAt: 101, updatedAt: 202);
       handler = GetCurrentProjectHandler(
         projectRepository: ProjectRepository(
           plugin: plugin,
@@ -76,7 +80,7 @@ void main() {
       plugin.currentProjectResult = const PluginProject(
         id: "p1",
         name: "My Project",
-        time: PluginProjectTime(created: 11, updated: 22),
+        activity: PluginProjectActivity(createdAt: 11, updatedAt: 22),
       );
 
       final response = await handler.handle(
@@ -91,8 +95,25 @@ void main() {
 
       expect(response.id, equals("p1"));
       expect(response.name, equals("My Project"));
-      expect(response.time?.created, equals(11));
-      expect(response.time?.updated, equals(22));
+      expect(response.time?.created, equals(101));
+      expect(response.time?.updated, equals(202));
+    });
+
+    test("returns 404 for an unknown project id without creating a row", () async {
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/project/current",
+          body: jsonEncode(const ProjectIdRequest(projectId: "/unknown").toJson()),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(404));
+      expect(await db.projectsDao.getProject(projectId: "/unknown"), isNull);
+      expect(plugin.lastGetCurrentProjectProjectId, isNot(equals("/unknown")));
     });
   });
 }

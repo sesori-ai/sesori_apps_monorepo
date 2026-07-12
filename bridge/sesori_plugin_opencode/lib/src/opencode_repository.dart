@@ -1,3 +1,4 @@
+import "package:meta/meta.dart" show visibleForTesting;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         PluginAgent,
@@ -5,6 +6,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginCommandSource,
         PluginMessageWithParts,
         PluginPermissionReply,
+        PluginProject,
+        PluginProjectActivity,
         PluginPromptPart,
         PluginProvidersResult,
         PluginSession,
@@ -50,10 +53,11 @@ const String _globalProjectId = "global";
 /// [getProjects] fetches both the project list (`/project`) and all root
 /// sessions across every project (`/experimental/session?roots=true`). It then:
 ///
-/// 1. **Merges timestamps**: For every real project, we look at ALL sessions
-///    under its worktree (regardless of their project ID) and merge their
-///    timestamps so the project's "last updated" reflects the most recent
-///    session activity.
+/// 1. **Derives activity per project**: For every real project, we look at ALL
+///    root sessions under its worktree and sandbox aliases (regardless of their
+///    project ID) and compute the minimum `createdAt` and maximum `updatedAt`.
+///    This activity is purely session-derived; the upstream project's own
+///    `time` is never used.
 ///
 /// 2. **Synthesizes virtual projects**: For directories that have `"global"`
 ///    sessions but no real project entry (e.g., a non-git directory that was
@@ -162,7 +166,7 @@ class OpenCodeRepository {
     );
   }
 
-  Future<List<Project>> getProjects() async {
+  Future<List<({PluginProject project, List<String> sandboxes})>> getProjects() async {
     final (rawProjects, allSessions) = await wait2(
       _api.listProjects(),
       _api.listAllSessions(directory: null, roots: true),
@@ -181,9 +185,9 @@ class OpenCodeRepository {
       projectByWorktree[project.worktree] = project;
     }
 
-    // All sessions grouped by directory — used to merge timestamps into real
-    // projects so that "last updated" reflects the most recent session activity,
-    // not just the project's own metadata timestamp.
+    // All root sessions grouped by directory — used to derive each project's
+    // activity so that "last updated" reflects real session work, not the
+    // upstream project metadata timestamp.
     final allSessionsByDirectory = _groupSessionsByDirectory(allSessions);
 
     // Only "global" project sessions grouped by directory — used to detect
@@ -194,15 +198,18 @@ class OpenCodeRepository {
       projectID: _globalProjectId,
     );
 
-    final mergedRealProjects = realProjects.map((project) {
-      final sessions = _sessionsUnderWorktree(
+    final mappedRealProjects = realProjects.map((project) {
+      final sessions = _sessionsUnderWorktrees(
         allSessionsByDirectory,
-        project.worktree,
+        [project.worktree, ...project.sandboxes],
       );
-      if (sessions.isEmpty) return project;
-      return _mergeProjectTimeWithSessions(
-        project: project,
-        sessions: sessions,
+      return (
+        project: _pluginModelMapper.mapProject(
+          worktree: project.worktree,
+          name: project.name,
+          activity: _deriveActivityFromSessions(sessions),
+        ),
+        sandboxes: project.sandboxes,
       );
     }).toList();
 
@@ -213,7 +220,7 @@ class OpenCodeRepository {
       globalWorktree: globalWorktree,
     );
 
-    return [...mergedRealProjects, ...virtualProjects];
+    return [...mappedRealProjects, ...virtualProjects];
   }
 
   Future<void> replyToPermission({
@@ -383,20 +390,21 @@ class OpenCodeRepository {
     return _api.getPendingPermissions(directory: directory?.normalize());
   }
 
-  /// Collects all sessions whose directory is equal to or under [worktree],
+  /// Collects all sessions whose directory is equal to or under any [worktrees],
   /// using the same prefix-based matching as [_isDirectoryUnderWorktree].
   ///
   /// This is necessary because users can start sessions from subdirectories
   /// (e.g., `/repo/packages/foo`) while the project worktree is the git root
   /// (`/repo`). A simple exact-key lookup would miss those subdirectory
   /// sessions.
-  List<GlobalSession> _sessionsUnderWorktree(
+  List<GlobalSession> _sessionsUnderWorktrees(
     Map<String, List<GlobalSession>> sessionsByDirectory,
-    String worktree,
+    Iterable<String> worktrees,
   ) {
+    final nonEmptyWorktrees = worktrees.where((worktree) => worktree.isNotEmpty);
     final result = <GlobalSession>[];
     for (final entry in sessionsByDirectory.entries) {
-      if (_isDirectoryUnderWorktree(entry.key, worktree)) {
+      if (nonEmptyWorktrees.any((worktree) => _isDirectoryUnderWorktree(entry.key, worktree))) {
         result.addAll(entry.value);
       }
     }
@@ -415,13 +423,14 @@ class OpenCodeRepository {
     final grouped = <String, List<GlobalSession>>{};
     for (final session in sessions) {
       if (projectID != null && session.projectID != projectID) continue;
+      if (session.parentID != null) continue;
       if (session.directory.isEmpty) continue;
       grouped.putIfAbsent(session.directory, () => []).add(session);
     }
     return grouped;
   }
 
-  /// Builds virtual [Project] entries for directories that have `"global"`
+  /// Builds virtual [PluginProject] entries for directories that have `"global"`
   /// sessions but no corresponding real project entry.
   ///
   /// This covers directories where a user ran OpenCode before `git init`. Those
@@ -430,13 +439,13 @@ class OpenCodeRepository {
   ///
   /// Directories already covered by a real project (exact match or
   /// parent/child) are skipped to avoid duplicates.
-  List<Project> _buildVirtualProjects({
+  List<({PluginProject project, List<String> sandboxes})> _buildVirtualProjects({
     required Map<String, List<GlobalSession>> globalOnlyByDirectory,
     required Map<String, Project> projectByWorktree,
     required List<Project> realProjects,
     required String? globalWorktree,
   }) {
-    final virtual = <Project>[];
+    final virtual = <({PluginProject project, List<String> sandboxes})>[];
 
     for (final entry in globalOnlyByDirectory.entries) {
       final directory = entry.key;
@@ -445,81 +454,56 @@ class OpenCodeRepository {
       if (projectByWorktree.containsKey(directory)) continue;
       if (directory == globalWorktree) continue;
 
-      final coveredByRealProject = realProjects.any((project) {
-        if (project.worktree.isEmpty) return false;
-        if (directory.startsWith("${project.worktree}/")) return true;
-        if (project.worktree.startsWith("$directory/")) return true;
-        return false;
-      });
-      if (coveredByRealProject) continue;
-
-      final time = _deriveTimeFromSessions(groupedSessions);
-      virtual.add(
-        Project(
-          id: _globalProjectId,
-          worktree: directory,
-          vcs: null,
-          name: null,
-          icon: null,
-          commands: null,
-          time: time ?? const ProjectTime(created: 0, updated: 0, initialized: null),
-          sandboxes: const [],
+      final coveredByRealProject = realProjects.any(
+        (project) => <String>[project.worktree, ...project.sandboxes].any(
+          (worktree) =>
+              worktree.isNotEmpty &&
+              (_isDirectoryUnderWorktree(directory, worktree) || _isDirectoryUnderWorktree(worktree, directory)),
         ),
       );
+      if (coveredByRealProject) continue;
+
+      final activity = _deriveActivityFromSessions(groupedSessions);
+      virtual.add((
+        project: _pluginModelMapper.mapProject(
+          worktree: directory,
+          name: null,
+          activity: activity,
+        ),
+        sandboxes: const [],
+      ));
     }
 
     return virtual;
   }
 
-  /// Merges a project's own timestamps with the timestamps derived from its
-  /// sessions, producing a [ProjectTime] where `created` is the earliest and
-  /// `updated` is the most recent across both sources.
-  Project _mergeProjectTimeWithSessions({
-    required Project project,
-    required List<GlobalSession> sessions,
-  }) {
-    final sessionTime = _deriveTimeFromSessions(sessions);
-    final projectTime = project.time;
-    if (sessionTime == null) return project;
-
-    final createdCandidates = <int>[];
-    final updatedCandidates = <int>[];
-
-    createdCandidates.add(projectTime.created);
-    updatedCandidates.add(projectTime.updated);
-    createdCandidates.add(sessionTime.created);
-    updatedCandidates.add(sessionTime.updated);
-
-    if (createdCandidates.isEmpty || updatedCandidates.isEmpty) return project;
-
-    final mergedTime = ProjectTime(
-      created: createdCandidates.reduce((a, b) => a < b ? a : b),
-      updated: updatedCandidates.reduce((a, b) => a > b ? a : b),
-      initialized: projectTime.initialized,
+  /// Returns a [PluginProjectActivity] representing the earliest `createdAt`
+  /// and latest `updatedAt` across the given [sessions]. Returns null if the
+  /// sessions provide no time information.
+  PluginProjectActivity? _deriveActivityFromSessions(List<GlobalSession> sessions) {
+    return deriveActivityFromSessionTimes(
+      times: sessions.map((session) => session.time),
     );
-
-    return project.copyWith(time: mergedTime);
   }
 
-  /// Returns a [ProjectTime] representing the earliest `created` and latest
-  /// `updated` across the given [sessions]. Returns null if no session carries
-  /// time information.
-  ProjectTime? _deriveTimeFromSessions(List<GlobalSession> sessions) {
+  @visibleForTesting
+  static PluginProjectActivity? deriveActivityFromSessionTimes({
+    required Iterable<GlobalSessionTime?> times,
+  }) {
     final created = <int>[];
     final updated = <int>[];
 
-    for (final session in sessions) {
-      final time = session.time;
+    for (final time in times) {
+      if (time == null) continue;
       created.add(time.created);
       updated.add(time.updated);
     }
 
     if (created.isEmpty || updated.isEmpty) return null;
 
-    return ProjectTime(
-      created: created.reduce((a, b) => a < b ? a : b),
-      updated: updated.reduce((a, b) => a > b ? a : b),
-      initialized: null,
+    return PluginProjectActivity(
+      createdAt: created.reduce((a, b) => a < b ? a : b),
+      updatedAt: updated.reduce((a, b) => a > b ? a : b),
     );
   }
 
