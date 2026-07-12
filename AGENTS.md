@@ -10,10 +10,6 @@ Phone ↔ bridge traffic is end-to-end encrypted (X25519 key exchange + XChaCha2
 
 Sesori today is "monitor + answer one assistant from your phone." The destination is an **ambient dev cockpit**: multiple surfaces (phone, `client/desktop`, later web), multiple bridges (laptop, desktop, managed VMs), multiple plugin backends (OpenCode, Codex, our own harness), opt-in autonomy over CI/review, and eventually a master agent across sessions. Full detail in **`docs/VISION.md`**; build order in **`docs/ROADMAP.md`**; the active desktop workstream in **`docs/desktop/PLAN.md`**.
 
-Name durable what/why decision documents `ARCHITECTURE.md` (or another explicit
-directional name), not `PLAN.md`. Reserve `PLAN.md` / `IMPLEMENTATION.md` for
-documents that tell an implementer how to execute and sequence the work.
-
 **This biases design; it does not licence building the future early.** When two designs both satisfy the layer rules, prefer the one that doesn't foreclose a direction below — but **never add abstraction/generalization for these before a concrete present need**. YAGNI and the cohesion/ownership rules still win.
 
 Do not add persisted sentinels, presence flags, or tri-state fields solely to

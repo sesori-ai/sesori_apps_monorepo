@@ -9,7 +9,7 @@
 > are superseded by the bridge-owned catalog decision, but its inventory of
 > current seams remains useful. Before implementation, read both documents and
 > re-verify every code reference. The current re-audit, concrete decisions, and
-> staged execution are tracked in [`IMPLEMENTATION.md`](IMPLEMENTATION.md).
+> staged execution are tracked in [`PLAN.md`](PLAN.md).
 
 ## 1. Target
 
