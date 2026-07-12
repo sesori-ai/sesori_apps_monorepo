@@ -195,7 +195,11 @@ class _LiveListBenchmark {
 
     await database.projectsDao.insertMissingProjectsWithActivity(
       activities: const {
-        _projectDirectory: (createdAt: _defaultTimestamp, updatedAt: _defaultTimestamp),
+        _projectDirectory: (
+          path: _projectDirectory,
+          createdAt: _defaultTimestamp,
+          updatedAt: _defaultTimestamp,
+        ),
       },
     );
     final nativeLargeRepository = _sessionRepository(database: database, plugin: nativeLarge);

@@ -54,18 +54,5 @@ void main() {
       expect(response.agents.single.name, equals("planner"));
     });
 
-    test("rejects another plugin before plugin I/O", () async {
-      await expectLater(
-        handler.handle(
-          makeRequest("POST", "/agent"),
-          body: const ProjectIdRequest(projectId: "/repo", pluginId: "other"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
-        ),
-        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 400)),
-      );
-      expect(plugin.lastAgentsProjectId, isNull);
-    });
   });
 }

@@ -55,20 +55,6 @@ void main() {
       expect(plugin.lastGetProvidersProjectId, equals("project-1"));
     });
 
-    test("rejects another plugin before plugin I/O", () async {
-      await expectLater(
-        handler.handle(
-          makeRequest("POST", "/provider"),
-          body: const ProjectIdRequest(projectId: "project-1", pluginId: "other"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
-        ),
-        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 400)),
-      );
-      expect(plugin.lastGetProvidersProjectId, isNull);
-    });
-
     // ── Response format ─────────────────────────────────────────────────────
 
     test("returns typed provider list response", () async {

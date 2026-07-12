@@ -168,7 +168,9 @@ class SessionRepository {
   }
 
   Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) {
-    return enrichSession(session: Session.fromJson(sessionJson));
+    return enrichSession(
+      session: Session.fromJson(sessionJson).copyWith(pluginId: _plugin.id),
+    );
   }
 
   Future<Session> createSession({
@@ -180,7 +182,6 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
-    _validatePluginSelection(pluginId: pluginId, operation: "createSession");
     final created = await _plugin.createSession(
       directory: directory,
       parentSessionId: parentSessionId,
@@ -204,7 +205,6 @@ class SessionRepository {
   }
 
   Future<CommandListResponse> getCommands({required String? projectId, required String? pluginId}) async {
-    _validatePluginSelection(pluginId: pluginId, operation: "getCommands");
     final normalizedProjectId = projectId?.trim();
     final commands = await _plugin.getCommands(
       // The plugin reads commands from the project's directory, so resolve
@@ -498,7 +498,6 @@ class SessionRepository {
 
     return enrichSharedSessions(
       sessions: sessions,
-      pluginId: _plugin.id,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: _unseenCalculator,
@@ -550,15 +549,6 @@ class SessionRepository {
     }
     final pluginSessions = await _plugin.getChildSessions(sessionId);
     return pluginSessions.toSharedSessions(pluginId: _plugin.id);
-  }
-
-  void _validatePluginSelection({required String? pluginId, required String operation}) {
-    if (pluginId == null || pluginId == _plugin.id) return;
-    throw PluginOperationException(
-      operation,
-      statusCode: 400,
-      message: "requested plugin is not active",
-    );
   }
 
   Future<void> _throwIfTombstoned({required String sessionId, required String operation}) async {

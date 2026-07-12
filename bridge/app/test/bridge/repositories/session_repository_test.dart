@@ -152,7 +152,7 @@ void main() {
       final result = await repository.enrichSession(
         session: const Session(
           id: "s1",
-          pluginId: null,
+          pluginId: "fake",
           projectID: "p1",
           directory: "/tmp/project",
           parentID: null,
@@ -211,7 +211,7 @@ void main() {
       final result = await repository.enrichSession(
         session: const Session(
           id: "s1",
-          pluginId: null,
+          pluginId: "fake",
           projectID: "p1",
           directory: "/tmp/project",
           parentID: null,
@@ -279,7 +279,7 @@ void main() {
         sessions: const [
           Session(
             id: "s1",
-            pluginId: null,
+            pluginId: "fake",
             projectID: "p1",
             directory: "/tmp/project",
             parentID: null,
@@ -291,7 +291,7 @@ void main() {
           ),
           Session(
             id: "s2",
-            pluginId: null,
+            pluginId: "fake",
             projectID: "p1",
             directory: "/tmp/project",
             parentID: null,
@@ -749,60 +749,6 @@ void main() {
 
       expect(missing.pluginId, equals(plugin.id));
       expect(explicitNull.pluginId, equals(plugin.id));
-    });
-
-    test("createSession rejects another plugin before plugin I/O", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-      final repository = SessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      await expectLater(
-        repository.createSession(
-          pluginId: "other",
-          directory: "/repo",
-          parentSessionId: null,
-          parts: const [],
-          variant: null,
-          agent: null,
-          model: null,
-        ),
-        throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.statusCode, "statusCode", 400)
-              .having((error) => error.message, "message", "requested plugin is not active"),
-        ),
-      );
-      expect(plugin.createSessionCalls, isZero);
-    });
-
-    test("getCommands rejects another plugin before project or plugin I/O", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-      final repository = SessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      await expectLater(
-        repository.getCommands(projectId: "unknown", pluginId: "other"),
-        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 400)),
-      );
-      expect(plugin.lastGetCommandsProjectId, isNull);
     });
 
     group("moved project (stable id, new live path)", () {

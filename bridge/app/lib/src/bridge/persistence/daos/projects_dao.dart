@@ -199,7 +199,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// Inserts project rows with the exact [activities] for ids that are missing.
   /// Existing rows are untouched.
   Future<void> insertMissingProjectsWithActivity({
-    required Map<String, ({int createdAt, int updatedAt})> activities,
+    required Map<String, ({String path, int createdAt, int updatedAt})> activities,
   }) async {
     if (activities.isEmpty) return;
     await batch((b) {
@@ -208,7 +208,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
         activities.entries.map((e) {
           return ProjectsTableCompanion.insert(
             projectId: e.key,
-            path: e.key,
+            path: e.value.path,
             createdAt: Value(e.value.createdAt),
             updatedAt: Value(e.value.updatedAt),
           );

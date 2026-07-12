@@ -119,18 +119,5 @@ void main() {
       expect(plugin.lastGetCommandsProjectId, equals("/repo"));
     });
 
-    test("rejects another plugin before plugin I/O", () async {
-      await expectLater(
-        handler.handle(
-          makeRequest("POST", "/command"),
-          body: const ProjectIdRequest(projectId: "/repo", pluginId: "other"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
-        ),
-        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 400)),
-      );
-      expect(plugin.lastGetCommandsProjectId, isNull);
-    });
   });
 }

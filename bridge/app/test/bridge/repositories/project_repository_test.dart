@@ -74,6 +74,21 @@ void main() {
       expect(result.map((p) => p.id).toList(), equals(["p3", "p1"]));
     });
 
+    test("getProjects persists a native project's declared directory instead of its id", () async {
+      plugin.projectsResult = const [
+        PluginProject(id: "backend-project-1", directory: "/projects/one", name: "One"),
+      ];
+
+      final result = await repo.getProjects(defaultTimestamp: 9999);
+
+      expect(result.single.id, "backend-project-1");
+      expect(result.single.path, "/projects/one");
+      expect(
+        (await db.projectsDao.getProject(projectId: "backend-project-1"))!.path,
+        "/projects/one",
+      );
+    });
+
     test("getProjects rethrows PluginApiException when plugin throws", () async {
       plugin.getProjectsError = PluginApiException("/project", 500);
 

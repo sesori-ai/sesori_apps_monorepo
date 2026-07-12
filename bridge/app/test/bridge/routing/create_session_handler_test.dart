@@ -1030,29 +1030,6 @@ void main() {
       expect(await db.sessionDao.getSession(sessionId: "new-sess-1"), isNull);
     });
 
-    test("rejects another plugin before plugin I/O", () async {
-      await expectLater(
-        handler.handle(
-          makeRequest("POST", "/session/create"),
-          body: const CreateSessionRequest(
-            projectId: "/repo",
-            pluginId: "other",
-            dedicatedWorktree: false,
-            parts: [],
-            variant: null,
-            agent: null,
-            model: null,
-            command: null,
-          ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
-        ),
-        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 400)),
-      );
-      expect(plugin.lastCreateSessionDirectory, isNull);
-    });
-
     test("no command — sendCommand not called", () async {
       plugin.createSessionResult = const PluginSession(
         id: "no-cmd-1",

@@ -627,8 +627,9 @@ the default fixed-host fixtures without changing production behavior.
 - Add required `PluginProject.directory` and update all implementations/fakes.
 - Add nullable compatibility `pluginId` fields to `Session`,
   `CreateSessionRequest`, and `ProjectIdRequest`.
-- Stamp and validate plugin identity at the existing single-plugin repository/
-  service boundary. A non-null id for another plugin is rejected, never ignored.
+- Stamp plugin identity at the existing single-plugin repository/service
+  boundary. Carry request `pluginId` through the compatibility contract, but
+  assume it identifies the active plugin until multi-plugin routing lands.
 - Add compatibility-debt entries and regenerate all affected Freezed code.
 - Defer plugin metadata/import DTOs and SSE variants until Stages 5 and 7, when
   their first production consumers land.
@@ -654,6 +655,9 @@ use the intended indexes.
 
 - Teach `SessionRepository` to resolve Sesori ids to backend bindings and route
   every targeted operation through the selected plugin API.
+- Start consuming request `pluginId` to select the owning plugin. Until this
+  stage, the single-plugin bridge deliberately carries but does not validate or
+  route on that field.
 - Allocate independent Sesori ids for newly created sessions while preserving
   migrated ids.
 - Write complete project/session projections on create/open/rename/archive/

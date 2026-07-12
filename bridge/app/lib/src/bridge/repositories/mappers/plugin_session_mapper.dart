@@ -44,13 +44,12 @@ extension PluginSessionsMapper on Iterable<PluginSession> {
 
 Session enrichSharedSession({
   required Session session,
-  required String pluginId,
   required SessionDto? storedSession,
   required PullRequestInfo? pullRequest,
   required SessionUnseenCalculator unseenCalculator,
   required bool adoptStoredProjectId,
 }) {
-  var result = session.copyWith(pluginId: pluginId);
+  var result = session;
 
   if (storedSession != null) {
     final currentTime = session.time;
@@ -109,7 +108,6 @@ SessionPromptDefaults? _promptDefaultsFromStoredSession(SessionDto storedSession
 
 List<Session> enrichSharedSessions({
   required List<Session> sessions,
-  required String pluginId,
   required Map<String, SessionDto> storedSessionsById,
   required Map<String, PullRequestInfo> pullRequestsBySessionId,
   required SessionUnseenCalculator unseenCalculator,
@@ -119,7 +117,6 @@ List<Session> enrichSharedSessions({
       .map(
         (session) => enrichSharedSession(
           session: session,
-          pluginId: pluginId,
           storedSession: storedSessionsById[session.id],
           pullRequest: pullRequestsBySessionId[session.id],
           unseenCalculator: unseenCalculator,

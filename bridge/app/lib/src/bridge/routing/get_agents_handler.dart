@@ -21,6 +21,6 @@ class GetAgentsHandler extends GetRequestHandler<Agents> {
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    return _repository.getAgents(projectId: null, pluginId: null);
+    return _repository.getAgents(projectId: null, pluginId: _repository.pluginId);
   }
 }

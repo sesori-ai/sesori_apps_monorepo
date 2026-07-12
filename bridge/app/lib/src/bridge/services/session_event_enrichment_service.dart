@@ -72,7 +72,7 @@ class SessionEventEnrichmentService {
     if (titleChanged) {
       await _sessionMutationDispatcher.captureTitle(sessionId: session.id, title: session.title);
     }
-    return _sessionRepository.enrichSession(session: session);
+    return _sessionRepository.enrichSessionJson(sessionJson: session.toJson());
   }
 
   List<String> _sessionIds(BridgeSseEvent event) {

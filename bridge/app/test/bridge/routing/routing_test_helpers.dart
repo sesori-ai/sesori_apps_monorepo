@@ -1011,7 +1011,6 @@ class FakeSessionRepository implements SessionRepository {
     };
     final enriched = enrichSharedSessions(
       sessions: sessions,
-      pluginId: _plugin.id,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: const SessionUnseenCalculator(),

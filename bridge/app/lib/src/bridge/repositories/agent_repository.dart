@@ -1,6 +1,6 @@
 import "dart:io" as io;
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, PluginOperationException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi;
 import "package:sesori_shared/sesori_shared.dart" show Agents, StringExtensions;
 
 import "../persistence/daos/projects_dao.dart";
@@ -15,8 +15,9 @@ class AgentRepository {
     : _plugin = plugin,
       _projectsDao = projectsDao;
 
-  Future<Agents> getAgents({required String? projectId, required String? pluginId}) async {
-    _validatePluginSelection(pluginId: pluginId);
+  String get pluginId => _plugin.id;
+
+  Future<Agents> getAgents({required String? projectId, required String pluginId}) async {
     // A null/blank projectId comes from the deprecated GET /agent route,
     // which carries no project context. Fall back to the bridge CWD, which
     // plugins treat as the active project. A real id resolves to the
@@ -35,14 +36,5 @@ class AgentRepository {
     final pluginAgents = await _plugin.getAgents(projectId: directory);
     final agents = pluginAgents.map((a) => a.toAgentInfo()).toList();
     return Agents(agents: agents);
-  }
-
-  void _validatePluginSelection({required String? pluginId}) {
-    if (pluginId == null || pluginId == _plugin.id) return;
-    throw const PluginOperationException(
-      "getAgents",
-      statusCode: 400,
-      message: "requested plugin is not active",
-    );
   }
 }
