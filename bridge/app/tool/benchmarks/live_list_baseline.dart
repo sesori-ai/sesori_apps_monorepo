@@ -4,12 +4,15 @@ import "dart:io";
 
 import "package:args/args.dart";
 import "package:drift/native.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 const _defaultWarmupCount = 25;
@@ -60,7 +63,7 @@ class _LiveListBenchmark {
   Future<Map<String, Object?>> run() async {
     final rssBefore = ProcessInfo.currentRss;
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-live-list-baseline-");
-    final databaseFile = File("${temporaryDirectory.path}${Platform.pathSeparator}benchmark.sqlite");
+    final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
     AppDatabase? database;
 
     try {
@@ -137,14 +140,45 @@ class _LiveListBenchmark {
     final filesystemApi = _ExistingFilesystemApi();
     const unseenCalculator = SessionUnseenCalculator();
 
-    final projectRepository = ProjectRepository(
+    final nativeProjectRepository = ProjectRepository(
       plugin: nativeLarge,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,
       filesystemApi: filesystemApi,
     );
+    final derivedProjectRepository = ProjectRepository(
+      plugin: derivedLarge,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: unseenCalculator,
+      filesystemApi: filesystemApi,
+    );
     final results = <Map<String, Object?>>[];
+    results.add(
+      await _measure(
+        name: "derived_1_project_from_10000_sessions",
+        fixture: const {
+          "capability": "bridge-derived-projects",
+          "sessionCount": 10000,
+          "expectedProjectId": _projectDirectory,
+        },
+        expectedRowsReturned: 1,
+        expectedPluginRowsEnumeratedPerSample: 10000,
+        plugin: derivedLarge,
+        operation: () async {
+          final derivedProjects = await derivedProjectRepository.getProjects(
+            defaultTimestamp: _defaultTimestamp,
+          );
+          if (derivedProjects.single.id != _projectDirectory) {
+            throw StateError(
+              "derived project id was ${derivedProjects.single.id}; expected $_projectDirectory",
+            );
+          }
+          return derivedProjects.length;
+        },
+      ),
+    );
     results.add(
       await _measure(
         name: "native_500_projects",
@@ -154,7 +188,7 @@ class _LiveListBenchmark {
         },
         expectedRowsReturned: 500,
         plugin: nativeLarge,
-        operation: () async => (await projectRepository.getProjects(defaultTimestamp: _defaultTimestamp)).length,
+        operation: () async => (await nativeProjectRepository.getProjects(defaultTimestamp: _defaultTimestamp)).length,
       ),
     );
 
@@ -167,80 +201,131 @@ class _LiveListBenchmark {
     final nativeSmallRepository = _sessionRepository(database: database, plugin: nativeSmall);
     final derivedLargeRepository = _sessionRepository(database: database, plugin: derivedLarge);
     final derivedSmallRepository = _sessionRepository(database: database, plugin: derivedSmall);
+    final nativeLargePersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+      pluginId: nativeLarge.id,
+    );
+    final nativeSmallPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+      pluginId: nativeSmall.id,
+    );
+    final derivedLargePersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+      pluginId: derivedLarge.id,
+    );
+    final derivedSmallPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+      pluginId: derivedSmall.id,
+    );
+    final nativeLargeDispatcher = SessionMutationDispatcher(sessionRepository: nativeLargeRepository);
+    final nativeSmallDispatcher = SessionMutationDispatcher(sessionRepository: nativeSmallRepository);
+    final derivedLargeDispatcher = SessionMutationDispatcher(sessionRepository: derivedLargeRepository);
+    final derivedSmallDispatcher = SessionMutationDispatcher(sessionRepository: derivedSmallRepository);
 
-    results.add(
-      await _measure(
-        name: "native_100_of_10000_sessions",
-        fixture: const {
-          "capability": "native-projects",
-          "sessionCount": 10000,
-          "start": 0,
-          "limit": 100,
-        },
-        expectedRowsReturned: 100,
-        plugin: nativeLarge,
-        operation: () async => (await nativeLargeRepository.getSessionsForProject(
-          projectId: _projectDirectory,
-          start: 0,
-          limit: 100,
-        )).length,
-      ),
-    );
-    results.add(
-      await _measure(
-        name: "native_1000_unpaginated_sessions",
-        fixture: const {
-          "capability": "native-projects",
-          "sessionCount": 1000,
-          "start": null,
-          "limit": null,
-        },
-        expectedRowsReturned: 1000,
-        plugin: nativeSmall,
-        operation: () async => (await nativeSmallRepository.getSessionsForProject(
-          projectId: _projectDirectory,
-          start: null,
-          limit: null,
-        )).length,
-      ),
-    );
-    results.add(
-      await _measure(
-        name: "derived_100_of_10000_global_enumeration",
-        fixture: const {
-          "capability": "bridge-derived-projects",
-          "sessionCount": 10000,
-          "start": 0,
-          "limit": 100,
-        },
-        expectedRowsReturned: 100,
-        plugin: derivedLarge,
-        operation: () async => (await derivedLargeRepository.getSessionsForProject(
-          projectId: _projectDirectory,
-          start: 0,
-          limit: 100,
-        )).length,
-      ),
-    );
-    results.add(
-      await _measure(
-        name: "derived_1000_unpaginated_sessions",
-        fixture: const {
-          "capability": "bridge-derived-projects",
-          "sessionCount": 1000,
-          "start": null,
-          "limit": null,
-        },
-        expectedRowsReturned: 1000,
-        plugin: derivedSmall,
-        operation: () async => (await derivedSmallRepository.getSessionsForProject(
-          projectId: _projectDirectory,
-          start: null,
-          limit: null,
-        )).length,
-      ),
-    );
-    return results;
+    try {
+      results.add(
+        await _measure(
+          name: "native_100_of_10000_endpoint_core_without_pr_refresh",
+          fixture: const {
+            "capability": "native-projects",
+            "measuredPath": "endpoint-core-without-pr-refresh",
+            "sessionCount": 10000,
+            "start": 0,
+            "limit": 100,
+          },
+          expectedRowsReturned: 100,
+          expectedPluginRowsEnumeratedPerSample: 10000,
+          plugin: nativeLarge,
+          operation: () => _sessionEndpointCoreCount(
+            repository: nativeLargeRepository,
+            persistenceService: nativeLargePersistenceService,
+            mutationDispatcher: nativeLargeDispatcher,
+            start: 0,
+            limit: 100,
+          ),
+        ),
+      );
+      results.add(
+        await _measure(
+          name: "native_1000_unpaginated_endpoint_core_without_pr_refresh",
+          fixture: const {
+            "capability": "native-projects",
+            "measuredPath": "endpoint-core-without-pr-refresh",
+            "sessionCount": 1000,
+            "start": null,
+            "limit": null,
+          },
+          expectedRowsReturned: 1000,
+          plugin: nativeSmall,
+          operation: () => _sessionEndpointCoreCount(
+            repository: nativeSmallRepository,
+            persistenceService: nativeSmallPersistenceService,
+            mutationDispatcher: nativeSmallDispatcher,
+            start: null,
+            limit: null,
+          ),
+        ),
+      );
+      results.add(
+        await _measure(
+          name: "derived_100_of_10000_endpoint_core_without_pr_refresh",
+          fixture: const {
+            "capability": "bridge-derived-projects",
+            "measuredPath": "endpoint-core-without-pr-refresh",
+            "sessionCount": 10000,
+            "start": 0,
+            "limit": 100,
+          },
+          expectedRowsReturned: 100,
+          expectedPluginRowsEnumeratedPerSample: 10000,
+          plugin: derivedLarge,
+          operation: () => _sessionEndpointCoreCount(
+            repository: derivedLargeRepository,
+            persistenceService: derivedLargePersistenceService,
+            mutationDispatcher: derivedLargeDispatcher,
+            start: 0,
+            limit: 100,
+          ),
+        ),
+      );
+      results.add(
+        await _measure(
+          name: "derived_1000_unpaginated_endpoint_core_without_pr_refresh",
+          fixture: const {
+            "capability": "bridge-derived-projects",
+            "measuredPath": "endpoint-core-without-pr-refresh",
+            "sessionCount": 1000,
+            "start": null,
+            "limit": null,
+          },
+          expectedRowsReturned: 1000,
+          plugin: derivedSmall,
+          operation: () => _sessionEndpointCoreCount(
+            repository: derivedSmallRepository,
+            persistenceService: derivedSmallPersistenceService,
+            mutationDispatcher: derivedSmallDispatcher,
+            start: null,
+            limit: null,
+          ),
+        ),
+      );
+      return results;
+    } finally {
+      await Future.wait([
+        nativeLargeDispatcher.dispose(),
+        nativeSmallDispatcher.dispose(),
+        derivedLargeDispatcher.dispose(),
+        derivedSmallDispatcher.dispose(),
+      ]);
+    }
   }
 
   SessionRepository _sessionRepository({required AppDatabase database, required BridgePluginApi plugin}) {
@@ -256,10 +341,34 @@ class _LiveListBenchmark {
     );
   }
 
+  Future<int> _sessionEndpointCoreCount({
+    required SessionRepository repository,
+    required SessionPersistenceService persistenceService,
+    required SessionMutationDispatcher mutationDispatcher,
+    required int? start,
+    required int? limit,
+  }) async {
+    var sessions = await repository.getSessionsForProject(
+      projectId: _projectDirectory,
+      start: start,
+      limit: limit,
+    );
+    await persistenceService.persistSessionsForProject(
+      projectId: _projectDirectory,
+      sessions: sessions,
+    );
+    for (final session in sessions) {
+      await mutationDispatcher.applyPendingTitle(sessionId: session.id);
+    }
+    sessions = await repository.enrichSessions(sessions: sessions);
+    return sessions.length;
+  }
+
   Future<Map<String, Object?>> _measure({
     required String name,
     required Map<String, Object?> fixture,
     required int expectedRowsReturned,
+    int? expectedPluginRowsEnumeratedPerSample,
     required _PluginCounters plugin,
     required Future<int> Function() operation,
   }) async {
@@ -278,6 +387,14 @@ class _LiveListBenchmark {
       _verifyRows(name: name, expected: expectedRowsReturned, actual: rows);
       rowsReturned += rows;
       samples.add(stopwatch.elapsedMicroseconds);
+    }
+    if (expectedPluginRowsEnumeratedPerSample != null) {
+      final expected = expectedPluginRowsEnumeratedPerSample * _configuration.sampleCount;
+      if (plugin.rowsEnumerated != expected) {
+        throw StateError(
+          "$name enumerated ${plugin.rowsEnumerated} plugin rows; expected $expected",
+        );
+      }
     }
     samples.sort();
 
@@ -402,7 +519,7 @@ class _LiveListBenchmark {
           "/proc/cpuinfo",
         ).readAsLinesSync().where((line) => line.startsWith("model name")).firstOrNull;
         return modelLine?.split(":").last.trim();
-      } on FileSystemException catch (error, stackTrace) {
+      } on Object catch (error, stackTrace) {
         stderr.writeln("Linux CPU query failed: $error");
         stderr.writeln(stackTrace);
         return null;
@@ -445,11 +562,11 @@ class _NativeBenchmarkPlugin with _PluginCounters implements NativeProjectsPlugi
 
   @override
   Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async {
+    final allSessions = List<PluginSession>.of(sessions, growable: false);
+    recordCall(rows: allSessions.length);
     final from = start ?? 0;
-    final until = limit == null ? sessions.length : (from + limit).clamp(0, sessions.length);
-    final result = sessions.sublist(from, until);
-    recordCall(rows: result.length);
-    return result;
+    final until = limit == null ? allSessions.length : (from + limit).clamp(0, allSessions.length);
+    return allSessions.sublist(from, until);
   }
 
   @override

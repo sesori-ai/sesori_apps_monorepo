@@ -7,9 +7,10 @@ import "package:codex_plugin/codex_plugin.dart";
 import "package:path/path.dart" as p;
 
 typedef _BenchmarkOptions = ({
-  int sessions,
   int projects,
   int samples,
+  int sessions,
+  int transcriptBytes,
   int warmup,
 });
 
@@ -18,22 +19,26 @@ typedef _FixtureSummary = ({
   int files,
   int indexEntries,
   int rolloutFiles,
+  int transcriptBytesPerSession,
 });
 
 const _defaultOptions = (
-  sessions: 1000,
   projects: 50,
-  samples: 10,
+  samples: 20,
+  sessions: 1000,
+  transcriptBytes: 4096,
   warmup: 2,
 );
 
 Future<void> main(List<String> arguments) async {
   Directory? codexHome;
   try {
+    final rssProcessStart = ProcessInfo.currentRss;
     final options = _parseOptions(arguments: arguments);
     stderr.writeln(
       "Generating deterministic CODEX_HOME fixture: "
-      "${options.sessions} sessions across ${options.projects} projects.",
+      "${options.sessions} sessions across ${options.projects} projects, "
+      "${options.transcriptBytes} transcript bytes per session.",
     );
 
     codexHome = Directory.systemTemp.createTempSync(
@@ -43,7 +48,9 @@ Future<void> main(List<String> arguments) async {
       codexHome: codexHome,
       sessions: options.sessions,
       projects: options.projects,
+      transcriptBytes: options.transcriptBytes,
     );
+    final rssAfterFixture = ProcessInfo.currentRss;
     final reader = SessionRolloutReader(
       environment: {"CODEX_HOME": codexHome.path},
     );
@@ -66,8 +73,8 @@ Future<void> main(List<String> arguments) async {
         expected: options.sessions,
       );
     }
+    final rssAfterWarmup = ProcessInfo.currentRss;
 
-    final rssBefore = ProcessInfo.currentRss;
     final listRolloutFilesMicros = <int>[];
     final readIndexMicros = <int>[];
     final listSessionsMicros = <int>[];
@@ -115,7 +122,7 @@ Future<void> main(List<String> arguments) async {
       );
       schedulingLagMicros.add(await lagCompleter.future);
     }
-    final rssAfter = ProcessInfo.currentRss;
+    final rssAfterMeasurements = ProcessInfo.currentRss;
 
     final result = <String, Object?>{
       "schemaVersion": 1,
@@ -136,6 +143,7 @@ Future<void> main(List<String> arguments) async {
       "parameters": {
         "sessions": options.sessions,
         "projects": options.projects,
+        "transcriptBytesPerSession": options.transcriptBytes,
         "samples": options.samples,
         "warmup": options.warmup,
       },
@@ -144,10 +152,12 @@ Future<void> main(List<String> arguments) async {
         "files": fixture.files,
         "indexEntries": fixture.indexEntries,
         "rolloutFiles": fixture.rolloutFiles,
+        "transcriptBytesPerSession": fixture.transcriptBytesPerSession,
         "sessions": options.sessions,
         "projects": options.projects,
       },
       "measurements": {
+        "classification": "directional-non-gating",
         "percentileMethod": "nearest-rank",
         "durationMicros": {
           "listRolloutFiles": _statistics(values: listRolloutFilesMicros),
@@ -160,9 +170,10 @@ Future<void> main(List<String> arguments) async {
         },
         "sessionsReturned": sessionsReturned,
         "rssBytes": {
-          "before": rssBefore,
-          "after": rssAfter,
-          "delta": rssAfter - rssBefore,
+          "processStart": rssProcessStart,
+          "afterFixture": rssAfterFixture,
+          "afterWarmup": rssAfterWarmup,
+          "afterMeasurements": rssAfterMeasurements,
         },
       },
     };
@@ -176,10 +187,11 @@ Future<void> main(List<String> arguments) async {
     if (codexHome != null) {
       try {
         codexHome.deleteSync(recursive: true);
-      } on Object catch (error) {
+      } on Object catch (error, stackTrace) {
         stderr.writeln(
           "Failed to remove temporary fixture ${codexHome.path}: $error",
         );
+        stderr.writeln(stackTrace);
       }
     }
   }
@@ -187,9 +199,10 @@ Future<void> main(List<String> arguments) async {
 
 _BenchmarkOptions _parseOptions({required List<String> arguments}) {
   final values = <String, int>{
-    "sessions": _defaultOptions.sessions,
     "projects": _defaultOptions.projects,
     "samples": _defaultOptions.samples,
+    "sessions": _defaultOptions.sessions,
+    "transcript-bytes": _defaultOptions.transcriptBytes,
     "warmup": _defaultOptions.warmup,
   };
 
@@ -224,9 +237,10 @@ _BenchmarkOptions _parseOptions({required List<String> arguments}) {
   }
 
   final options = (
-    sessions: values["sessions"]!,
     projects: values["projects"]!,
     samples: values["samples"]!,
+    sessions: values["sessions"]!,
+    transcriptBytes: values["transcript-bytes"]!,
     warmup: values["warmup"]!,
   );
   if (options.sessions <= 0) {
@@ -241,6 +255,9 @@ _BenchmarkOptions _parseOptions({required List<String> arguments}) {
   if (options.samples <= 0) {
     throw const FormatException("--samples must be greater than zero");
   }
+  if (options.transcriptBytes < 0) {
+    throw const FormatException("--transcript-bytes must not be negative");
+  }
   if (options.warmup < 0) {
     throw const FormatException("--warmup must not be negative");
   }
@@ -251,9 +268,11 @@ _FixtureSummary _writeFixture({
   required Directory codexHome,
   required int sessions,
   required int projects,
+  required int transcriptBytes,
 }) {
   final index = StringBuffer();
   final createdDirectories = <String>{};
+  final transcriptText = "x" * transcriptBytes;
   var rolloutBytes = 0;
 
   for (var i = 0; i < sessions; i++) {
@@ -306,6 +325,16 @@ _FixtureSummary _writeFixture({
           'timestamp': timestampText,
           'type': 'turn_context',
           'payload': {'model': 'gpt-5.4-codex'},
+        })}\n${jsonEncode({
+          'timestamp': timestampText,
+          'type': 'response_item',
+          'payload': {
+            'type': 'message',
+            'role': 'assistant',
+            'content': [
+              {'type': 'output_text', 'text': transcriptText},
+            ],
+          },
         })}\n";
     final rolloutPath = p.join(
       directoryPath,
@@ -325,6 +354,7 @@ _FixtureSummary _writeFixture({
     files: sessions + 1,
     indexEntries: sessions,
     rolloutFiles: sessions,
+    transcriptBytesPerSession: transcriptBytes,
   );
 }
 
@@ -366,30 +396,40 @@ void _validateCount({
 }
 
 String _gitCommit() {
-  final result = Process.runSync("git", const ["rev-parse", "HEAD"]);
-  if (result.exitCode == 0) {
-    final commit = result.stdout.toString().trim();
-    if (commit.isNotEmpty) return commit;
+  try {
+    final result = Process.runSync("git", const ["rev-parse", "HEAD"]);
+    if (result.exitCode == 0) {
+      final commit = result.stdout.toString().trim();
+      if (commit.isNotEmpty) return commit;
+    }
+    stderr.writeln(
+      "Unable to resolve git commit: ${result.stderr.toString().trim()}",
+    );
+  } on ProcessException catch (error, stackTrace) {
+    stderr.writeln("Unable to resolve git commit: $error");
+    stderr.writeln(stackTrace);
   }
-  stderr.writeln(
-    "Unable to resolve git commit: ${result.stderr.toString().trim()}",
-  );
   return "unknown";
 }
 
 String _cpuModel() {
   if (Platform.isMacOS) {
-    final result = Process.runSync(
-      "/usr/sbin/sysctl",
-      const ["-n", "machdep.cpu.brand_string"],
-    );
-    if (result.exitCode == 0) {
-      final model = result.stdout.toString().trim();
-      if (model.isNotEmpty) return model;
+    try {
+      final result = Process.runSync(
+        "/usr/sbin/sysctl",
+        const ["-n", "machdep.cpu.brand_string"],
+      );
+      if (result.exitCode == 0) {
+        final model = result.stdout.toString().trim();
+        if (model.isNotEmpty) return model;
+      }
+      stderr.writeln(
+        "Unable to resolve CPU model: ${result.stderr.toString().trim()}",
+      );
+    } on ProcessException catch (error, stackTrace) {
+      stderr.writeln("Unable to resolve CPU model: $error");
+      stderr.writeln(stackTrace);
     }
-    stderr.writeln(
-      "Unable to resolve CPU model: ${result.stderr.toString().trim()}",
-    );
   } else if (Platform.isLinux) {
     try {
       for (final line in File("/proc/cpuinfo").readAsLinesSync()) {
@@ -397,8 +437,9 @@ String _cpuModel() {
         final separator = line.indexOf(":");
         if (separator != -1) return line.substring(separator + 1).trim();
       }
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       stderr.writeln("Unable to resolve CPU model: $error");
+      stderr.writeln(stackTrace);
     }
   } else if (Platform.isWindows) {
     final model = Platform.environment["PROCESSOR_IDENTIFIER"];
