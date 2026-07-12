@@ -10,6 +10,7 @@ import "../api/database/tables/pull_requests_table.dart";
 import "daos/projects_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
+import "tables/deleted_sessions_table.dart";
 import "tables/projects_table.dart";
 import "tables/session_table.dart";
 
@@ -19,14 +20,14 @@ part "database.g.dart";
 ///
 /// New tables and DAOs should be registered here as the persistence layer grows.
 @DriftDatabase(
-  tables: [ProjectsTable, SessionTable, PullRequestsTable],
+  tables: [ProjectsTable, SessionTable, DeletedSessionsTable, PullRequestsTable],
   daos: [ProjectsDao, SessionDao, PullRequestDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -39,44 +40,44 @@ class AppDatabase extends _$AppDatabase {
       },
       from2To3: (m, schema) async {
         await customStatement("""
-          CREATE TABLE sessions_table (
-            session_id TEXT NOT NULL,
-            project_id TEXT NOT NULL,
-            worktree_path TEXT NULL,
-            branch_name TEXT NULL,
-            is_dedicated INTEGER NOT NULL CHECK (is_dedicated IN (0, 1)),
-            archived_at INTEGER NULL,
-            base_branch TEXT NULL,
-            base_commit TEXT NULL,
-            created_at INTEGER NOT NULL,
-            PRIMARY KEY (session_id)
-          ) WITHOUT ROWID
-        """);
+            CREATE TABLE sessions_table (
+              session_id TEXT NOT NULL,
+              project_id TEXT NOT NULL,
+              worktree_path TEXT NULL,
+              branch_name TEXT NULL,
+              is_dedicated INTEGER NOT NULL CHECK (is_dedicated IN (0, 1)),
+              archived_at INTEGER NULL,
+              base_branch TEXT NULL,
+              base_commit TEXT NULL,
+              created_at INTEGER NOT NULL,
+              PRIMARY KEY (session_id)
+            ) WITHOUT ROWID
+          """);
 
         await customStatement("""
-          INSERT INTO sessions_table (
-            session_id,
-            project_id,
-            worktree_path,
-            branch_name,
-            is_dedicated,
-            archived_at,
-            base_branch,
-            base_commit,
-            created_at
-          )
-          SELECT
-            session_id,
-            project_id,
-            worktree_path,
-            branch_name,
-            1 AS is_dedicated,
-            NULL AS archived_at,
-            NULL AS base_branch,
-            NULL AS base_commit,
-            CAST(strftime('%s', 'now') AS INTEGER) * 1000 AS created_at
-          FROM session_worktrees_table
-        """);
+            INSERT INTO sessions_table (
+              session_id,
+              project_id,
+              worktree_path,
+              branch_name,
+              is_dedicated,
+              archived_at,
+              base_branch,
+              base_commit,
+              created_at
+            )
+            SELECT
+              session_id,
+              project_id,
+              worktree_path,
+              branch_name,
+              1 AS is_dedicated,
+              NULL AS archived_at,
+              NULL AS base_branch,
+              NULL AS base_commit,
+              CAST(strftime('%s', 'now') AS INTEGER) * 1000 AS created_at
+            FROM session_worktrees_table
+          """);
 
         await customStatement("DROP TABLE session_worktrees_table");
       },
@@ -156,6 +157,28 @@ class AppDatabase extends _$AppDatabase {
             },
           ),
         );
+      },
+      from8To9: (m, schema) async {
+        await m.alterTable(
+          TableMigration(
+            schema.projectsTable,
+            newColumns: [
+              schema.projectsTable.createdAt,
+              schema.projectsTable.updatedAt,
+            ],
+            columnTransformer: {
+              schema.projectsTable.createdAt: const CustomExpression<int>('opened_at'),
+              schema.projectsTable.updatedAt: const CustomExpression<int>('opened_at'),
+            },
+          ),
+        );
+      },
+      from9To10: (m, schema) async {
+        // Bridge-owned title for derived-plugin sessions (their backends don't
+        // persist renames). Existing rows have no bridge-known title.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.title);
+        // Tombstones stop backends without deletion from resurrecting sessions.
+        await m.createTable(schema.deletedSessionsTable);
       },
     ),
     beforeOpen: (details) async {

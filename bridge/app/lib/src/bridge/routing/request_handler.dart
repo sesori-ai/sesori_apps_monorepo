@@ -3,6 +3,8 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/project_not_found_exception.dart";
+
 /// HTTP methods supported by [RequestHandler].
 enum HttpMethod {
   get,
@@ -50,6 +52,8 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
       );
 
       return buildOkJsonResponse(request, result);
+    } on ProjectNotFoundException {
+      return buildErrorResponse(request, 404, "project not found");
     } on PluginOperationException catch (err) {
       Log.w("${request.method} ${request.path}: upstream failure: $err");
       return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
@@ -111,6 +115,8 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
       );
 
       return buildOkJsonResponse(request, result);
+    } on ProjectNotFoundException {
+      return buildErrorResponse(request, 404, "project not found");
     } on PluginOperationException catch (err) {
       Log.w("${request.method} ${request.path}: upstream failure: $err");
       return buildErrorResponse(request, err.statusCode ?? 502, err.toString());

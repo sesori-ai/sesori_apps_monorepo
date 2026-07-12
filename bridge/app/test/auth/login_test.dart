@@ -278,7 +278,7 @@ void main() {
         final api = LoginOAuthApi(
           authBackendUrl: authServer.baseUrl,
           client: authServer.client,
-          clientType: 'bridge_macos',
+          clientType: AuthClientType.bridgeMacos,
           device: DeviceInfo(name: 'Test Mac', osVersion: null, appVersion: null),
         );
 
@@ -529,7 +529,7 @@ LoginOAuthService _createOAuthService({
     api: LoginOAuthApi(
       authBackendUrl: authServer.baseUrl,
       client: authServer.client,
-      clientType: 'bridge_macos',
+      clientType: AuthClientType.bridgeMacos,
       device: DeviceInfo(name: 'Test Mac', osVersion: 'macOS 14.5', appVersion: '1.2.0'),
     ),
     browserLauncher: browserLauncher,

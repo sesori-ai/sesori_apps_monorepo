@@ -4,19 +4,19 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
-import "../repositories/project_repository.dart";
+import "../services/project_activity_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/open` — opens an existing directory as a project.
 class OpenProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project> {
   final FilesystemRepository _filesystemRepository;
-  final ProjectRepository _projectRepository;
+  final ProjectActivityService _projectActivityService;
 
   OpenProjectHandler({
     required FilesystemRepository filesystemRepository,
-    required ProjectRepository projectRepository,
+    required ProjectActivityService projectActivityService,
   }) : _filesystemRepository = filesystemRepository,
-       _projectRepository = projectRepository,
+       _projectActivityService = projectActivityService,
        super(
          HttpMethod.post,
          "/project/open",
@@ -59,7 +59,7 @@ class OpenProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project>
       case FilesystemEntityKind.notDirectory:
         throw buildErrorResponse(request, 400, "path is not a directory");
       case FilesystemEntityKind.directory:
-        return _projectRepository.openProject(path: path);
+        return _projectActivityService.openProject(path: path);
     }
   }
 }

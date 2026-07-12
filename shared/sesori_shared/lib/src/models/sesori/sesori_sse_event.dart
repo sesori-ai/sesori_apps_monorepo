@@ -178,6 +178,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.permissionAsked({
     required String requestID,
     required String sessionID,
+
     /// Top-most root session this request should be surfaced under (for a
     /// child/sub-agent session's request). Null when unknown; consumers fall
     /// back to [sessionID].
@@ -191,6 +192,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.permissionReplied({
     required String requestID,
     required String sessionID,
+
     /// Root session this request is surfaced under; null ⇒ fall back to
     /// [sessionID].
     required String? displaySessionId,
@@ -209,6 +211,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.questionAsked({
     required String id,
     required String sessionID,
+
     /// Top-most root session this request should be surfaced under (for a
     /// child/sub-agent session's request). Null when unknown; consumers fall
     /// back to [sessionID].
@@ -221,6 +224,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.questionReplied({
     required String requestID,
     required String sessionID,
+
     /// Root session this request is surfaced under; null ⇒ fall back to
     /// [sessionID].
     required String? displaySessionId,
@@ -231,6 +235,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.questionRejected({
     required String requestID,
     required String sessionID,
+
     /// Root session this request is surfaced under; null ⇒ fall back to
     /// [sessionID].
     required String? displaySessionId,
@@ -256,7 +261,10 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   }) = SesoriProjectsSummary;
 
   @FreezedUnionValue("project.updated")
-  const factory SesoriSseEvent.projectUpdated() = SesoriProjectUpdated;
+  const factory SesoriSseEvent.projectUpdated({
+    required String? projectID,
+    required int? updatedAt,
+  }) = SesoriProjectUpdated;
 
   @FreezedUnionValue("vcs.branch.updated")
   const factory SesoriSseEvent.vcsBranchUpdated() = SesoriVcsBranchUpdated;

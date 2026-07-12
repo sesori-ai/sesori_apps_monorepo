@@ -150,6 +150,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   Object? throwOnArchiveSessionError;
   Completer<void>? archiveSessionCompleter;
   Completer<void>? sendCommandCompleter;
+  int getProjectsCallCount = 0;
 
   // ── BridgePlugin implementation ──────────────────────────────────────────
 
@@ -167,6 +168,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginProject>> getProjects() async {
+    getProjectsCallCount++;
     if (throwOnGetProjectsError case final error?) {
       throw error;
     }
@@ -454,6 +456,7 @@ class FakeSessionDao {
       lastSeenAt: null,
       lastUserMessageAt: null,
       pluginId: pluginId,
+      title: null,
     );
   }
 
@@ -630,7 +633,6 @@ class FakePrSyncService extends PrSyncService {
 }
 
 class FakeSessionPersistenceService extends SessionPersistenceService {
-  final List<String> ensuredProjectIds = <String>[];
   final List<({String projectId, List<Session> sessions})> persistedCalls =
       <({String projectId, List<Session> sessions})>[];
 
@@ -647,11 +649,6 @@ class FakeSessionPersistenceService extends SessionPersistenceService {
   static SessionDao _unsupportedSessionDao() => throw UnimplementedError();
 
   static AppDatabase _unsupportedDatabase() => throw UnimplementedError();
-
-  @override
-  Future<void> ensureProject({required String projectId}) async {
-    ensuredProjectIds.add(projectId);
-  }
 
   @override
   Future<void> persistSessionsForProject({
@@ -704,17 +701,36 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}
 }
 
+Session _deletedSession(String sessionId) => Session(
+  id: sessionId,
+  projectID: "",
+  directory: "",
+  parentID: null,
+  title: null,
+  time: null,
+  summary: null,
+  pullRequest: null,
+  promptDefaults: null,
+);
+
 class _NoopSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async =>
-      const <MessageWithParts>[];
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
-  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async =>
-      const <ProjectActivitySummary>[];
+  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
+
+  @override
+  Future<bool> isSessionTombstoned({required String sessionId}) async => false;
+
+  @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const <MessageWithParts>[];
+
+  @override
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const <ProjectActivitySummary>[];
 
   @override
   Future<Session> createSession({
@@ -833,6 +849,9 @@ class _NoopSessionRepository implements SessionRepository {
     pullRequest: null,
     promptDefaults: null,
   );
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -844,6 +863,7 @@ class FakeSessionRepository implements SessionRepository {
   final FakePullRequestRepository _pullRequestRepository;
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
+  final Map<String, String?> enrichedTitleOverrides = {};
 
   /// Settable so handler tests can exercise the non-authoritative
   /// (bridge-derived) reconcile gating.
@@ -863,6 +883,21 @@ class FakeSessionRepository implements SessionRepository {
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
     return pluginMessages.toSharedMessageWithParts();
   }
+
+  /// Recorded setSessionTitleIfStored calls (sessionId → title).
+  final List<({String sessionId, String? title})> recordedTitles = [];
+
+  @override
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
+    recordedTitles.add((sessionId: sessionId, title: title));
+    return true;
+  }
+
+  @override
+  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
+
+  @override
+  Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => [
@@ -966,13 +1001,19 @@ class FakeSessionRepository implements SessionRepository {
       for (final session in sessions)
         if (_selectBestPr(prsBySessionId[session.id]) case final pr?) session.id: pullRequestInfoFromDto(pr),
     };
-    return enrichSharedSessions(
+    final enriched = enrichSharedSessions(
       sessions: sessions,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: const SessionUnseenCalculator(),
       adoptStoredProjectId: false,
     );
+    return [
+      for (final session in enriched)
+        enrichedTitleOverrides.containsKey(session.id)
+            ? session.copyWith(title: enrichedTitleOverrides[session.id])
+            : session,
+    ];
   }
 
   static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {
@@ -1161,4 +1202,7 @@ class FakeSessionRepository implements SessionRepository {
     pullRequest: null,
     promptDefaults: null,
   );
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }

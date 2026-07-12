@@ -47,8 +47,11 @@ import "../repositories/session_unseen_calculator.dart";
 import "../repositories/session_unseen_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/project_activity_service.dart";
 import "../services/project_initialization_service.dart";
+import "../services/session_creation_service.dart";
 import "../services/session_event_enrichment_service.dart";
+import "../services/session_mutation_dispatcher.dart";
 import "../services/session_persistence_service.dart";
 import "../services/session_unseen_service.dart";
 import "../services/session_view_tracker.dart";
@@ -115,6 +118,7 @@ class BridgeRuntime {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: unseenCalculator,
     );
@@ -138,8 +142,10 @@ class BridgeRuntime {
       projectRepository: projectRepository,
       viewTracker: sessionViewTracker,
     );
+    final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionMutationDispatcher,
       failureReporter: failureReporter,
     );
     final pushTracker = PushSessionStateTracker(now: DateTime.now);
@@ -165,7 +171,6 @@ class BridgeRuntime {
       rssBytesReader: readCurrentRssBytes,
     );
 
-
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
@@ -179,13 +184,35 @@ class BridgeRuntime {
       ),
       filesystemRepository: filesystemRepository,
     );
+    final projectActivityService = ProjectActivityService(
+      projectRepository: projectRepository,
+      now: () => DateTime.now().millisecondsSinceEpoch,
+    );
     final healthRepository = HealthRepository(
       plugin: plugin,
       bridgeVersion: appVersion,
       filesystemAccessOk: filesystemAccessOk,
     );
-    final providerRepository = ProviderRepository(plugin: plugin);
-    final agentRepository = AgentRepository(plugin: plugin);
+    final providerRepository = ProviderRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final agentRepository = AgentRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        plugin: plugin,
+        gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+      ),
+    );
+    final sessionCreationService = SessionCreationService(
+      metadataService: MetadataService(
+        client: httpClient,
+        baseUrl: config.authBackendURL,
+        tokenRefresher: tokenRefresher,
+      ),
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionMutationDispatcher,
+    );
 
     return BridgeRuntime(
       database: database,
@@ -200,11 +227,7 @@ class BridgeRuntime {
         config: config,
         client: relayClient,
         plugin: plugin,
-        metadataService: MetadataService(
-          client: httpClient,
-          baseUrl: config.authBackendURL,
-          tokenRefresher: tokenRefresher,
-        ),
+        sessionCreationService: sessionCreationService,
         pushDispatcher: pushDispatcher,
         completionListener: CompletionPushListener(
           tracker: pushTracker,
@@ -236,26 +259,25 @@ class BridgeRuntime {
         sessionViewTracker: sessionViewTracker,
         filesystemRepository: filesystemRepository,
         projectInitializationService: projectInitializationService,
+        projectActivityService: projectActivityService,
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,
-        permissionRepository: PermissionRepository(plugin: plugin),
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+        permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
+        questionRepository: QuestionRepository(
+          plugin: plugin,
+          sessionDao: database.sessionDao,
+          projectsDao: database.projectsDao,
+        ),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           db: database,
           pluginId: plugin.id,
         ),
-        worktreeService: WorktreeService(
-          worktreeRepository: WorktreeRepository(
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            plugin: plugin,
-            gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
-          ),
-        ),
+        worktreeService: worktreeService,
         sessionEventEnrichmentService: sessionEventEnrichmentService,
+        sessionMutationDispatcher: sessionMutationDispatcher,
         restartService: restartService,
         statusNotifier: statusNotifier,
       ).create(),

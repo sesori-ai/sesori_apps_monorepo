@@ -24,8 +24,7 @@ class SseEventMapper {
   /// model carries — without a null-assertion (`!`). Known variants always
   /// encode to a map; the fallback only covers an unknown variant whose raw
   /// payload is not a map.
-  static Map<String, dynamic> _asMap(Object? json) =>
-      json is Map<String, dynamic> ? json : const <String, dynamic>{};
+  static Map<String, dynamic> _asMap(Object? json) => json is Map<String, dynamic> ? json : const <String, dynamic>{};
 
   /// Normalizes a `message.updated` payload into the shared-`Message` JSON
   /// shape the phone parses, mirroring the REST load path
@@ -65,7 +64,7 @@ class SseEventMapper {
       SseServerInstanceDisposed(:final directory) => BridgeSseServerInstanceDisposed(directory: directory),
       SseGlobalDisposed() => const BridgeSseGlobalDisposed(),
       SseSessionCreated(:final info) => BridgeSseSessionCreated(info: info.toJson()),
-      SseSessionUpdated(:final info) => BridgeSseSessionUpdated(info: info.toJson()),
+      SseSessionUpdated(:final info) => BridgeSseSessionUpdated(info: info.toJson(), titleChanged: false),
       SseSessionDeleted(:final info) => BridgeSseSessionDeleted(info: info.toJson()),
       SseSessionDiff(:final sessionID) => BridgeSseSessionDiff(
         sessionID: sessionID,
@@ -117,14 +116,13 @@ class SseEventMapper {
       // request id), `permission` (the tool/permission identifier) and the
       // requested `patterns`; there is no separate `description` field, so
       // the requested patterns stand in for the human-readable detail.
-      SsePermissionAsked(:final id, :final sessionID, :final permission, :final patterns) =>
-        BridgeSsePermissionAsked(
-          requestID: id,
-          sessionID: sessionID,
-          displaySessionId: displaySessionId,
-          tool: permission,
-          description: patterns.join(", "),
-        ),
+      SsePermissionAsked(:final id, :final sessionID, :final permission, :final patterns) => BridgeSsePermissionAsked(
+        requestID: id,
+        sessionID: sessionID,
+        displaySessionId: displaySessionId,
+        tool: permission,
+        description: patterns.join(", "),
+      ),
       SsePermissionReplied(:final requestID, :final sessionID, :final reply) => BridgeSsePermissionReplied(
         requestID: requestID,
         sessionID: sessionID,

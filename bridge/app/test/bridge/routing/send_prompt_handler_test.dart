@@ -24,6 +24,7 @@ void main() {
       sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -349,6 +350,7 @@ void main() {
       final localRepository = SessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -401,6 +403,7 @@ void main() {
       final localRepository = SessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -442,6 +445,7 @@ void main() {
       final throwingRepository = _ThrowingUpdateSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -570,6 +574,7 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
   _ThrowingUpdateSessionRepository({
     required super.plugin,
     required super.sessionDao,
+    required super.projectsDao,
     required super.pullRequestRepository,
     required super.unseenCalculator,
   });
@@ -583,4 +588,7 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
     updatePromptDefaultsCallCount++;
     throw StateError("updatePromptDefaults failed");
   }
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }

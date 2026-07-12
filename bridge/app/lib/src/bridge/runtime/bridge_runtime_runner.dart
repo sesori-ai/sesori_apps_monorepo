@@ -25,7 +25,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ServerClock,
         StartAbortController,
         StartAbortSignal;
-import "package:sesori_shared/sesori_shared.dart" show DeviceInfo;
+import "package:sesori_shared/sesori_shared.dart" show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo;
 
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
@@ -239,6 +239,7 @@ class BridgeRuntimeRunner {
     );
     shutdownCoordinator.add(disposable: httpClient.close);
 
+    final bridgeClientType = _bridgeClientType();
     final runtimeAuthService = BridgeRuntimeAuthService(
       loginEmailRepository: LoginEmailRepository(
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
@@ -248,8 +249,8 @@ class BridgeRuntimeRunner {
         api: LoginOAuthApi(
           authBackendUrl: options.authBackendUrl,
           client: httpClient,
-          clientType: "bridge_${PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem).value}",
-          device: _bridgeDeviceInfo(),
+          clientType: bridgeClientType,
+          device: _bridgeDeviceInfo(clientType: bridgeClientType),
         ),
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
@@ -1214,11 +1215,17 @@ class BridgeRuntimeRunner {
   /// we fall back to a constant so the server's required, non-empty `name` is
   /// always satisfied, and clamp to the 120-char server limit. The cosmetic OS
   /// version is omitted when it can't be derived.
-  static DeviceInfo _bridgeDeviceInfo() {
-    final hostname = _localHostname().trim();
-    final name = hostname.isEmpty ? "Sesori Bridge" : hostname;
-    return DeviceInfo(
-      name: name.length > 120 ? name.substring(0, 120).trim() : name,
+  static AuthClientType _bridgeClientType() =>
+      switch (PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem)) {
+        PlatformOs.macos => AuthClientType.bridgeMacos,
+        PlatformOs.windows => AuthClientType.bridgeWindows,
+        PlatformOs.linux => AuthClientType.bridgeLinux,
+      };
+
+  static DeviceInfo _bridgeDeviceInfo({required AuthClientType clientType}) {
+    return const AuthDeviceInfoBuilder().build(
+      clientType: clientType,
+      detectedName: _localHostname(),
       osVersion: const OsVersionFormatter().format(
         operatingSystem: io.Platform.operatingSystem,
         operatingSystemVersion: io.Platform.operatingSystemVersion,

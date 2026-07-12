@@ -386,6 +386,33 @@ void main() {
     });
   });
 
+  group('projectUpdated round-trip', () {
+    test('decodes an older payload without timestamp metadata', () {
+      final parsed = SesoriSseEvent.fromJson({
+        'type': 'project.updated',
+      });
+
+      expect(parsed, isA<SesoriProjectUpdated>());
+      final event = parsed as SesoriProjectUpdated;
+      expect(event.projectID, isNull);
+      expect(event.updatedAt, isNull);
+    });
+
+    test('preserves populated timestamp metadata', () {
+      const event = SesoriSseEvent.projectUpdated(
+        projectID: 'project-1',
+        updatedAt: 1718400000000,
+      );
+
+      final json = event.toJson();
+      final parsed = SesoriSseEvent.fromJson(json);
+
+      expect(json['projectID'], 'project-1');
+      expect(json['updatedAt'], 1718400000000);
+      expect(parsed, event);
+    });
+  });
+
   // ---------------------------------------------------------------------------
   // Session-scoped event marker (SesoriSessionEvent)
   // ---------------------------------------------------------------------------

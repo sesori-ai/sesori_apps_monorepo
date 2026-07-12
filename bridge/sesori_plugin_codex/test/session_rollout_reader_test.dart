@@ -184,6 +184,30 @@ void main() {
       expect(messages[0].info.sessionID, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
     });
 
+    test("readMessages surfaces transcript read failures", () {
+      const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+      final path = p.join(codexHome.path, "broken-rollout.jsonl");
+      File(path).writeAsBytesSync([0xFF]);
+
+      expect(
+        () => reader.readMessages(path, sessionId),
+        throwsA(
+          isA<PluginOperationException>()
+              .having(
+                (error) => error.operation,
+                "operation",
+                "read Codex session transcript",
+              )
+              .having(
+                (error) => error.message,
+                "message",
+                "history read for $sessionId failed",
+              )
+              .having((error) => error.cause, "cause", isA<FileSystemException>()),
+        ),
+      );
+    });
+
     test("readMessages surfaces tool calls (function_call + output) as tool parts", () {
       final path = _writeRollout(
         codexHome,

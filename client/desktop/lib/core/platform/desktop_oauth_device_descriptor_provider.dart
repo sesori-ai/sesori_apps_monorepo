@@ -23,83 +23,79 @@ class DesktopOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvi
   DesktopOAuthDeviceDescriptorProvider(DeviceInfoPlugin deviceInfo) : _deviceInfo = deviceInfo;
 
   final DeviceInfoPlugin _deviceInfo;
-
-  static const _maxNameLength = 120;
-  static const _maxVersionLength = 40;
+  static const _deviceInfoBuilder = AuthDeviceInfoBuilder();
 
   @override
   Future<OAuthDeviceDescriptor> describe() async {
+    final clientType = _clientType();
     final appVersion = await _appVersion();
-    final device = await _device(appVersion: appVersion);
-    return OAuthDeviceDescriptor(clientType: _clientType(), device: device);
+    final device = await _device(clientType: clientType, appVersion: appVersion);
+    return OAuthDeviceDescriptor(clientType: clientType, device: device);
   }
 
-  String _clientType() => switch (defaultTargetPlatform) {
-    TargetPlatform.macOS => "app_macos",
-    TargetPlatform.windows => "app_windows",
-    TargetPlatform.linux => "app_linux",
+  AuthClientType _clientType() => switch (defaultTargetPlatform) {
+    TargetPlatform.macOS => AuthClientType.appMacos,
+    TargetPlatform.windows => AuthClientType.appWindows,
+    TargetPlatform.linux => AuthClientType.appLinux,
     // Unreachable in the desktop shell; kept exhaustive with the generic type.
-    TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.fuchsia => "app",
+    TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.fuchsia => AuthClientType.app,
   };
 
-  Future<DeviceInfo> _device({required String? appVersion}) async {
+  Future<DeviceInfo> _device({required AuthClientType clientType, required String? appVersion}) async {
     try {
       switch (defaultTargetPlatform) {
         case TargetPlatform.macOS:
           final info = await _deviceInfo.macOsInfo;
-          return DeviceInfo(
-            name: _clamp(value: info.computerName, maxLength: _maxNameLength) ?? _fallbackName(),
-            osVersion: _clamp(
-              value: "macOS ${info.majorVersion}.${info.minorVersion}.${info.patchVersion}",
-              maxLength: _maxVersionLength,
-            ),
+          return _deviceInfoBuilder.build(
+            clientType: clientType,
+            detectedName: info.computerName,
+            osVersion: "macOS ${info.majorVersion}.${info.minorVersion}.${info.patchVersion}",
             appVersion: appVersion,
           );
         case TargetPlatform.windows:
           final info = await _deviceInfo.windowsInfo;
-          return DeviceInfo(
-            name: _clamp(value: info.computerName, maxLength: _maxNameLength) ?? _fallbackName(),
-            osVersion: _clamp(value: info.productName, maxLength: _maxVersionLength),
+          return _deviceInfoBuilder.build(
+            clientType: clientType,
+            detectedName: info.computerName,
+            osVersion: info.productName,
             appVersion: appVersion,
           );
         case TargetPlatform.linux:
           final info = await _deviceInfo.linuxInfo;
-          return DeviceInfo(
-            name: _clamp(value: Platform.localHostname, maxLength: _maxNameLength) ?? _fallbackName(),
-            osVersion: _clamp(value: info.prettyName, maxLength: _maxVersionLength),
+          return _deviceInfoBuilder.build(
+            clientType: clientType,
+            detectedName: Platform.localHostname,
+            osVersion: info.prettyName,
             appVersion: appVersion,
           );
         case TargetPlatform.iOS:
         case TargetPlatform.android:
         case TargetPlatform.fuchsia:
-          return DeviceInfo(name: _fallbackName(), osVersion: null, appVersion: appVersion);
+          return _deviceInfoBuilder.build(
+            clientType: clientType,
+            detectedName: null,
+            osVersion: null,
+            appVersion: appVersion,
+          );
       }
     } on Object catch (error, stackTrace) {
       logw("Failed to read device info for the OAuth device descriptor", error, stackTrace);
-      return DeviceInfo(name: _fallbackName(), osVersion: null, appVersion: appVersion);
+      return _deviceInfoBuilder.build(
+        clientType: clientType,
+        detectedName: null,
+        osVersion: null,
+        appVersion: appVersion,
+      );
     }
   }
 
   Future<String?> _appVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      return _clamp(value: info.version, maxLength: _maxVersionLength);
+      return info.version;
     } on Object catch (error, stackTrace) {
       logw("Failed to read app version for the OAuth device descriptor", error, stackTrace);
       return null;
     }
-  }
-
-  String _fallbackName() => switch (defaultTargetPlatform) {
-    TargetPlatform.macOS => "Mac",
-    TargetPlatform.windows => "Windows device",
-    TargetPlatform.linux => "Linux device",
-    TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.fuchsia => "Device",
-  };
-
-  String? _clamp({required String value, required int maxLength}) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-    return trimmed.length > maxLength ? trimmed.substring(0, maxLength).trim() : trimmed;
   }
 }

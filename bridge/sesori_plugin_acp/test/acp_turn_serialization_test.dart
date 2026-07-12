@@ -131,6 +131,72 @@ void main() {
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
 
+    test("an accepted prompt is emitted immediately as a user message", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await sendPrompt(sessionId, "visible immediately");
+      await pump();
+
+      final message = emitted.whereType<BridgeSseMessageUpdated>().single;
+      expect(message.info["role"], "user");
+      expect(
+        emitted.whereType<BridgeSseMessagePartUpdated>().single.part.text,
+        "visible immediately",
+      );
+
+      final prompt = await waitForFrame("session/prompt");
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("an initial create prompt is left to history replay", () async {
+      await connect();
+      emitted.clear();
+
+      final creating = plugin.createSession(
+        directory: cwd,
+        parentSessionId: null,
+        parts: [
+          const PluginPromptPart.text(text: "[SYSTEM CONTEXT — IMPORTANT] internal"),
+          const PluginPromptPart.text(text: "visible prompt"),
+        ],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final frame = await waitForFrame("session/new");
+      respondTo(frame, {"sessionId": "s1"});
+      await creating;
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+
+      final prompt = await waitForFrame("session/prompt");
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("command arguments are not emitted as a user message", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await plugin.sendCommand(
+        sessionId: sessionId,
+        command: "review",
+        arguments: "[SYSTEM CONTEXT — IMPORTANT] internal\n\nuser arguments",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+
+      final prompt = await waitForFrame("session/prompt");
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a second prompt on one session dispatches only after the first turn completes", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
