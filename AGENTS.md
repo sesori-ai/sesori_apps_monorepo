@@ -504,11 +504,15 @@ When waiting for PR CI/reviews, use `pr_monitor` notifications rather than long-
 
 ## Testing
 
-| Location                 | Command        |
-| ------------------------ | -------------- |
-| bridge modules           | `dart test`    |
-| client/app               | `flutter test` |
-| client pure Dart modules | `dart test`    |
+| Location                       | Command        |
+| ------------------------------ | -------------- |
+| bridge modules                 | `dart test`    |
+| client/app                     | `flutter test` |
+| client/desktop                 | `flutter test` |
+| client/module_core             | `dart test`    |
+| client/module_auth             | `dart test`    |
+| client/module_desktop_core     | `dart test`    |
+| client/module_prego            | `flutter test` |
 
 ## Dart Coding Conventions
 

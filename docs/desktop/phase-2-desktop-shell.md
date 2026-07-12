@@ -296,6 +296,39 @@ Findings log · Plan-deltas.
 - **Acceptance:** trackers are pure Dart, push-based, testable without Flutter,
   and do not resolve `ConnectionService`; v1 UI can render bridge offline from the
   tracker baseline before the control channel is available.
+- **Aristotle:** plan ☑ (approved with 2 mechanical fixes folded in: `rxdart`
+  promoted to a runtime dep; status model renamed to avoid a collision) ·
+  impl ☑ (PR raised on branch `desktop-phase-2.4-trackers`).
+- **Findings:** Two Layer-2 trackers in `module_desktop_core/lib/src/trackers/`,
+  both `@lazySingleton` with `@disposeMethod`, both `BehaviorSubject`-backed
+  (stream + snapshot, seeded defaults — the "render bridge offline before any
+  control channel" acceptance is the seed itself). (1) **`BridgeStatusTracker`**
+  holds a Freezed **`BridgeControlStatus`** snapshot — named that (not
+  `BridgeStatus`) because `sesori_dart_core` already exports a relay-side
+  `BridgeStatus` enum; fields `{helperOnline, relay, plugin,
+  activeSessionCount, bridgeId}` reuse the shared PR-1.2 enums directly
+  (ADR A4; unknown fallbacks flow through untouched — asserted by test). Write
+  API for the PR-2.5 dispatcher: `markHelperConnected` /
+  `markHelperDisconnected` (resets to baseline but **retains `bridgeId`** —
+  ADR A13, the offline-unregister fallback needs the id exactly when the
+  helper is gone; disk persistence stays PR 2.13) / `applyStatus` /
+  `handleRegistered`. (2) **`BridgePromptTracker`** holds
+  `List<ControlPromptRequest>` (wire DTO stored directly — a duplicate local
+  model + mapper would be pure ceremony): `addPrompt` (same-id resend
+  replaces), `removePrompt`, `clear` (prompts are per-connection and
+  unanswerable after a drop — the bridge resolves them `nonInteractive` on
+  channel loss). No timers, no polling, no Flutter, no relay resolution.
+  11 new dart tests (19 total in the module); analyze clean; shell untouched.
+  Follow-up workspace inventory updated the dependency-maintenance skill,
+  launch configurations, repository/client docs, and test-command guidance for
+  the desktop packages; the same audit added the already-current ACP and Cursor
+  bridge plugins where hard-coded package lists had also fallen behind.
+- **Deltas:** the status model gained an explicit `helperOnline` flag beyond
+  the raw DTO fields — the control-channel link state is GUI-side knowledge
+  (the helper can't push "I'm gone"), and the offline baseline the acceptance
+  requires needs it. Repository tooling and developer docs were also refreshed
+  to treat the desktop packages as current workspace members; no runtime scope
+  changed.
 
 ## PR 2.5a — Re-export `AuthTokenProvider` from `module_core` (seam, precursor)
 - **Goal:** `sesori_dart_core` re-exports `AuthSession`/`OAuthFlowProvider` but

@@ -1,9 +1,9 @@
 {
-  // Launch configurations for the Sesori app (client/app, package: sesori_mobile).
+  // Launch configurations for the Sesori mobile and desktop product shells.
   // Requires the Dart & Flutter VS Code extensions. There are no build flavors,
   // so entries differ only by Flutter build mode and target device. Desktop
   // configs pin a host deviceId; pick the one matching your OS (only the macOS,
-  // Windows, and Linux desktop targets are enabled in client/app).
+  // Windows, and Linux desktop targets are enabled in client/desktop).
   "version": "0.2.0",
   "configurations": [
     {
@@ -40,8 +40,8 @@
       "name": "Desktop macOS (debug)",
       "request": "launch",
       "type": "dart",
-      "program": "${workspaceFolder}/client/app/lib/main.dart",
-      "cwd": "${workspaceFolder}/client/app",
+      "program": "${workspaceFolder}/client/desktop/lib/main.dart",
+      "cwd": "${workspaceFolder}/client/desktop",
       "deviceId": "macos",
       "flutterMode": "debug"
     },
@@ -49,8 +49,8 @@
       "name": "Desktop macOS (profile)",
       "request": "launch",
       "type": "dart",
-      "program": "${workspaceFolder}/client/app/lib/main.dart",
-      "cwd": "${workspaceFolder}/client/app",
+      "program": "${workspaceFolder}/client/desktop/lib/main.dart",
+      "cwd": "${workspaceFolder}/client/desktop",
       "deviceId": "macos",
       "flutterMode": "profile"
     },
@@ -58,8 +58,8 @@
       "name": "Desktop macOS (release)",
       "request": "launch",
       "type": "dart",
-      "program": "${workspaceFolder}/client/app/lib/main.dart",
-      "cwd": "${workspaceFolder}/client/app",
+      "program": "${workspaceFolder}/client/desktop/lib/main.dart",
+      "cwd": "${workspaceFolder}/client/desktop",
       "deviceId": "macos",
       "flutterMode": "release"
     },
@@ -67,8 +67,8 @@
       "name": "Desktop Windows (debug)",
       "request": "launch",
       "type": "dart",
-      "program": "${workspaceFolder}/client/app/lib/main.dart",
-      "cwd": "${workspaceFolder}/client/app",
+      "program": "${workspaceFolder}/client/desktop/lib/main.dart",
+      "cwd": "${workspaceFolder}/client/desktop",
       "deviceId": "windows",
       "flutterMode": "debug"
     },
@@ -76,8 +76,8 @@
       "name": "Desktop Linux (debug)",
       "request": "launch",
       "type": "dart",
-      "program": "${workspaceFolder}/client/app/lib/main.dart",
-      "cwd": "${workspaceFolder}/client/app",
+      "program": "${workspaceFolder}/client/desktop/lib/main.dart",
+      "cwd": "${workspaceFolder}/client/desktop",
       "deviceId": "linux",
       "flutterMode": "debug"
     }

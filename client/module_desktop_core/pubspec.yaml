@@ -13,6 +13,7 @@ dependencies:
   get_it: ^9.2.1
   injectable: ^3.0.0
   meta: ^1.18.0
+  rxdart: ^0.28.0
   sesori_dart_core:
     path: ../module_core
   sesori_shared:
@@ -25,5 +26,4 @@ dev_dependencies:
   freezed: ^3.2.5
   injectable_generator: ^3.0.2
   mocktail: ^1.0.5
-  rxdart: ^0.28.0
   test: ^1.31.0
