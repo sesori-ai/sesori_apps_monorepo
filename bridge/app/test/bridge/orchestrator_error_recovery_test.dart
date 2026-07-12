@@ -131,7 +131,7 @@ void main() {
         projectRepository: projectRepository,
         sessionUnseenService: SessionUnseenService(
           unseenRepository: SessionUnseenRepository(
-            pluginId: "opencode",
+            plugin: plugin,
             sessionDao: database.sessionDao,
             projectsDao: database.projectsDao,
             db: database,
@@ -407,7 +407,7 @@ class _TestHarness {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,

@@ -783,6 +783,7 @@ class OrchestratorSession {
         await _sessionUnseenService.recordSessionCreated(
           sessionId: info.id,
           projectId: info.projectID,
+          sessionDirectory: info.directory,
           parentId: info.parentID,
           occurredAt: info.time?.created,
         );

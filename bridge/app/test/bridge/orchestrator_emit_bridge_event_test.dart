@@ -148,7 +148,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -360,7 +360,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -559,7 +559,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -775,7 +775,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -900,6 +900,29 @@ void main() {
       equals(["projects.summary", "session.diff"]),
     );
 
+    plugin.add(
+      const BridgeSseSessionCreated(
+        info: {
+          "id": "opaque-session",
+          "projectID": "0190f4c6-opaque-project-id",
+          "directory": "/projects/native-repository",
+          "parentID": null,
+          "title": "opaque project session",
+          "time": {"created": 3, "updated": 3, "archived": null},
+          "summary": null,
+        },
+      ),
+    );
+    final persistenceTimeoutAt = DateTime.now().add(const Duration(seconds: 2));
+    while (await database.projectsDao.getProject(projectId: "0190f4c6-opaque-project-id") == null) {
+      if (DateTime.now().isAfter(persistenceTimeoutAt)) {
+        fail("Timed out waiting for the native project placeholder");
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    final nativeProject = await database.projectsDao.getProject(projectId: "0190f4c6-opaque-project-id");
+    expect(nativeProject?.path, "/projects/native-repository");
+
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
     await plugin.close();
@@ -994,7 +1017,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -1160,7 +1183,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -1351,7 +1374,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,

@@ -1,3 +1,6 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show BridgeDerivedProjectsPluginApi, BridgePluginApi, NativeProjectsPluginApi;
+
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/database.dart";
@@ -26,21 +29,21 @@ class SessionUnseenRepository {
   final AppDatabase _db;
   final SessionUnseenCalculator _calculator;
 
-  /// The active plugin's id, stamped onto any session row this repository
-  /// creates ([ensureRootSessionActivity]).
-  final String _pluginId;
+  /// The active plugin determines both ownership and project-path semantics for
+  /// session rows this repository creates ([ensureRootSessionActivity]).
+  final BridgePluginApi _plugin;
 
   SessionUnseenRepository({
     required SessionDao sessionDao,
     required ProjectsDao projectsDao,
     required AppDatabase db,
     required SessionUnseenCalculator calculator,
-    required String pluginId,
+    required BridgePluginApi plugin,
   }) : _sessionDao = sessionDao,
        _projectsDao = projectsDao,
        _db = db,
        _calculator = calculator,
-       _pluginId = pluginId;
+       _plugin = plugin;
 
   /// Returns the unseen timestamps + project id for [sessionId], or null when
   /// the session has no persisted row (e.g. a child session, or one not yet
@@ -106,20 +109,27 @@ class SessionUnseenRepository {
   /// fetch-start time to protect rows created during an in-flight fetch, so a
   /// backend-domain value here (skewed behind the local clock) could get a
   /// freshly-created session's row wrongly reconcile-deleted. [activityAt] may
-  /// live in the backend's clock domain.
+  /// live in the backend's clock domain. [sessionDirectory] is persisted as the
+  /// project path only when the active plugin owns native projects; for a
+  /// bridge-derived project, [projectId] is already the owning project path.
   /// Wrapped in a transaction so the project FK cannot fire.
   Future<void> ensureRootSessionActivity({
     required String sessionId,
     required String projectId,
+    required String sessionDirectory,
     required int createdAt,
     required int activityAt,
     required bool advanceSeen,
     required bool isUserMessage,
   }) async {
+    final projectPath = switch (_plugin) {
+      NativeProjectsPluginApi() => sessionDirectory,
+      BridgeDerivedProjectsPluginApi() => projectId,
+    };
     await _db.transaction(() async {
-      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await _projectsDao.insertProjectIfMissing(projectId: projectId, path: projectPath);
       await _sessionDao.insertSessionsIfMissing(
-        pluginId: _pluginId,
+        pluginId: _plugin.id,
         sessions: [(sessionId: sessionId, projectId: projectId, createdAt: createdAt, archivedAt: null)],
       );
       await _sessionDao.setActivityTimestamps(
@@ -155,7 +165,7 @@ class SessionUnseenRepository {
       projectId: projectId,
       keepSessionIds: keepSessionIds,
       createdBefore: createdBefore,
-      pluginId: _pluginId,
+      pluginId: _plugin.id,
     );
   }
 

@@ -9,13 +9,14 @@ part "projects_dao.g.dart";
 class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin {
   ProjectsDao(super.attachedDatabase);
 
-  // `path` is the project's live directory; `projectId` is its stable
-  // identifier (for every shipped plugin: the directory the project was FIRST
-  // opened at). They diverge when a folder is moved on disk and re-opened —
-  // [recordOpenedProject] is the only writer that stores a meaningful path.
-  // Every other insert below stamps the project id as the row's `path` purely
-  // as the new-row default (correct until a move is recorded); none of their
-  // conflict clauses touch `path`, so an existing recorded path is preserved.
+  // `path` is the project's live directory; `projectId` is its stable,
+  // plugin-defined identifier and may be opaque. They can also diverge when a
+  // folder is moved on disk and re-opened — [recordOpenedProject] is the writer
+  // that updates an existing row's path.
+  // Inserts without an explicit path stamp the project id as the row's `path`
+  // purely as the new-row default (correct until a move is recorded); none of
+  // their conflict clauses touch `path`, so an existing recorded path is
+  // preserved.
 
   /// Returns every stored project row.
   Future<List<ProjectDto>> getAllProjects() async {
@@ -194,6 +195,15 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
         mode: InsertMode.insertOrIgnore,
       );
     });
+  }
+
+  /// Inserts one project with its explicit [path] when it does not exist.
+  /// Existing rows are untouched.
+  Future<void> insertProjectIfMissing({required String projectId, required String path}) async {
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId, path: path),
+      mode: InsertMode.insertOrIgnore,
+    );
   }
 
   Future<void> insertProjectsWithPathsIfMissing({

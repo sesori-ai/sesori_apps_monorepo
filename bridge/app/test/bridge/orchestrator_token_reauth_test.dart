@@ -351,7 +351,7 @@ class _ReauthHarness {
     final sessionViewTracker = SessionViewTracker();
     final sessionUnseenService = SessionUnseenService(
       unseenRepository: SessionUnseenRepository(
-        pluginId: "opencode",
+        plugin: plugin,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         db: database,

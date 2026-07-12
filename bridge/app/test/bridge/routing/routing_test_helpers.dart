@@ -34,7 +34,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
   const calculator = SessionUnseenCalculator();
   return SessionUnseenService(
     unseenRepository: SessionUnseenRepository(
-      pluginId: plugin.id,
+      plugin: plugin,
       sessionDao: db.sessionDao,
       projectsDao: db.projectsDao,
       db: db,

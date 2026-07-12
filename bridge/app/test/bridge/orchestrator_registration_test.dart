@@ -353,7 +353,7 @@ class _RegistrationHarness {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,

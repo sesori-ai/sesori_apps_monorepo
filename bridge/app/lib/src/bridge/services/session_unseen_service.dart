@@ -181,7 +181,8 @@ class SessionUnseenService {
   /// Records that a brand-new ROOT session was created (observed live). Child
   /// sessions ([parentId] != null) are ignored. The new root is stamped with
   /// activity so it is immediately unseen — unless a phone is already viewing
-  /// it, in which case it stays seen.
+  /// it, in which case it stays seen. [sessionDirectory] supplies the live path
+  /// when a native-project plugin reports an opaque [projectId].
   ///
   /// [occurredAt] is the session's own creation time, preferred for the stamp
   /// so it lives in the same clock domain as the message-derived stamps: the
@@ -192,6 +193,7 @@ class SessionUnseenService {
   Future<void> recordSessionCreated({
     required String sessionId,
     required String projectId,
+    required String sessionDirectory,
     required String? parentId,
     int? occurredAt,
   }) {
@@ -215,6 +217,7 @@ class SessionUnseenService {
       await _unseenRepository.ensureRootSessionActivity(
         sessionId: sessionId,
         projectId: projectId,
+        sessionDirectory: sessionDirectory,
         // Local-domain guard timestamp (see [ensureRootSessionActivity]); only
         // the activity marker uses the session's own creation time.
         createdAt: _wallClock(),
