@@ -9,7 +9,7 @@
 ## Current pointer
 
 - **Last completed phase:** Phase 2 — PR 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder — PR raised on branch `desktop-phase-2.5-control-server`, stacked on 2.5a (#411) → 2.4 (#410) → 2.3 (#409) → 2.2 (#408) → 2.1 (#405)
-- **Next up:** Phase 2 — PR 2.6 `BridgeProcessService` (spawn/kill/path + expected-stop boundary + helper log capture) — **paused until the open stacked PRs merge (user decision)**. Phase 1's MT-1 manual checkpoint is complete; its findings/fixes merged in PR #421.
+- **Next up:** Parallel-plugin implementation. Desktop Phase 2 pauses before PR 2.6 `BridgeProcessService` until that workstream completes and the remaining desktop plan is reassessed (user decision). Phase 1's MT-1 manual checkpoint is complete; its findings/fixes merged in PR #421.
 - **Branch:** one feature branch per PR; Phase 2 is being raised as **stacked branches** (each PR's base = the previous PR's branch, retargeted to `main` as predecessors merge)
 
 > **Tracking lives in four places that MUST move together in the same PR.**
