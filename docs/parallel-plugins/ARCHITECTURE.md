@@ -1,4 +1,4 @@
-# Bridge-Owned Project and Session Catalog
+# Bridge-Owned Project and Session Catalog Architecture
 
 > Status: **direction and execution plan approved; implementation not started**.
 > This document records durable product and architecture decisions for parallel

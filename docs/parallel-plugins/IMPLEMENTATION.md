@@ -1,8 +1,8 @@
 # Parallel Plugins - Implementation Plan
 
 > Status: **execution plan approved; implementation not started**.
-> [`PLAN.md`](PLAN.md) owns the durable product direction. This document owns
-> the implementation sequence, current pointer, concrete design, rollout, and
+> [`ARCHITECTURE.md`](ARCHITECTURE.md) owns the durable product direction. This
+> document owns the implementation sequence, current pointer, concrete design, rollout, and
 > verification. Keep both documents consistent when implementation findings
 > change an assumption.
 
@@ -37,7 +37,7 @@ The work includes:
   data; and
 - client selection of a plugin and that plugin's agents, models, and commands.
 
-The non-goals in `PLAN.md` remain binding. In particular, this work does not add
+The non-goals in `ARCHITECTURE.md` remain binding. In particular, this work does not add
 continuous backend sync, cross-plugin session migration, transcript storage,
 teams behavior, or offline client caching.
 
@@ -724,10 +724,10 @@ documented compatibility fallback; module dependency direction is unchanged.
   removal date has arrived, and temporary shadow instrumentation.
 - Record final schema/query plans, performance results, operational import
   guidance, and any evidence-based budget revisions.
-- Update `PLAN.md`, `CONSIDERATIONS.md`, `ROADMAP.md`, and compatibility debt to
+- Update `ARCHITECTURE.md`, `CONSIDERATIONS.md`, `ROADMAP.md`, and compatibility debt to
   reflect shipped behavior.
 
-Acceptance: all future-execution principles in `PLAN.md` are demonstrated by
+Acceptance: all future-execution principles in `ARCHITECTURE.md` are demonstrated by
 tests/results; bridge, shared, client, mobile, and desktop verification is green.
 
 ## 11. Verification Matrix
