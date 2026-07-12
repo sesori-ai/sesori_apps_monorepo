@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgeDerivedProjectsPluginApi, BridgePluginApi, NativeProjectsPluginApi;
+    show BridgeDerivedProjectsPluginApi, BridgePluginApi, Log, NativeProjectsPluginApi;
 
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
@@ -122,13 +122,17 @@ class SessionUnseenRepository {
     required bool advanceSeen,
     required bool isUserMessage,
   }) async {
-    final String projectPath;
+    var projectPath = sessionDirectory;
     switch (_plugin) {
       case final NativeProjectsPluginApi plugin:
-        final projects = await plugin.getProjects();
-        projectPath =
-            projects.where((project) => project.id == projectId).map((project) => project.directory).firstOrNull ??
-            sessionDirectory;
+        try {
+          final projects = await plugin.getProjects();
+          projectPath =
+              projects.where((project) => project.id == projectId).map((project) => project.directory).firstOrNull ??
+              sessionDirectory;
+        } catch (error, stackTrace) {
+          Log.w("failed to resolve native project root for $projectId; using session directory", error, stackTrace);
+        }
       case BridgeDerivedProjectsPluginApi():
         projectPath = projectId;
     }

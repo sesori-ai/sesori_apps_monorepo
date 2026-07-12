@@ -143,6 +143,34 @@ void main() {
       expect((await db.projectsDao.getProject(projectId: projectId))?.path, "/projects/repository");
     });
 
+    test("native session creation persists with the session directory when project discovery fails", () async {
+      const projectId = "opaque-project-id";
+      const plugin = _FakePlugin(throwOnGetProjects: true);
+      final fallbackService = SessionUnseenService(
+        unseenRepository: SessionUnseenRepository(
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          db: db,
+          calculator: const SessionUnseenCalculator(),
+          plugin: plugin,
+        ),
+        projectRepository: projectRepository(),
+        viewTracker: viewTracker,
+        now: () => clock,
+      );
+      addTearDown(fallbackService.dispose);
+
+      await fallbackService.recordSessionCreated(
+        sessionId: "native-root",
+        projectId: projectId,
+        sessionDirectory: "/projects/repository/packages/foo",
+        parentId: null,
+      );
+
+      expect((await db.projectsDao.getProject(projectId: projectId))?.path, "/projects/repository/packages/foo");
+      expect((await db.sessionDao.getSession(sessionId: "native-root"))?.projectId, projectId);
+    });
+
     test("derived project placeholder keeps owner attribution for a worktree session", () async {
       final plugin = _FakeDerivedPlugin();
       final derivedViewTracker = SessionViewTracker();
@@ -768,14 +796,18 @@ void main() {
 
 class _FakePlugin implements NativeProjectsPluginApi {
   final List<PluginProject> projects;
+  final bool throwOnGetProjects;
 
-  const _FakePlugin({this.projects = const []});
+  const _FakePlugin({this.projects = const [], this.throwOnGetProjects = false});
 
   @override
   String get id => "opencode";
 
   @override
-  Future<List<PluginProject>> getProjects() async => projects;
+  Future<List<PluginProject>> getProjects() async {
+    if (throwOnGetProjects) throw StateError("project discovery failed");
+    return projects;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
