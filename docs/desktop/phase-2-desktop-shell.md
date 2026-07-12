@@ -345,6 +345,12 @@ Findings log · Plan-deltas.
   a mobile-product change (it is one — the CI gates must run).
 - **Acceptance:** `module_core` exposes `AuthTokenProvider`; mobile build + tests
   green.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch
+  `desktop-phase-2.5a-token-provider-reexport`).
+- **Findings:** One line: `AuthTokenProvider` added to the module_core barrel's
+  existing sesori_auth `show` list (alphabetical slot). No export-name
+  collision (full-workspace analyze clean); mobile tests green (550). No
+  consumers in this PR — PR 2.5's dispatcher is the first. **Deltas:** —
 
 ## PR 2.5 — `ControlChannelServer` + `ControlMessageDispatcher` + token responder
 - **Goal:** GUI-hosted loopback WS host + off-argv per-spawn secret.
