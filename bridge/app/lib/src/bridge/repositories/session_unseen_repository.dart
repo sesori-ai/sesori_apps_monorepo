@@ -122,10 +122,16 @@ class SessionUnseenRepository {
     required bool advanceSeen,
     required bool isUserMessage,
   }) async {
-    final projectPath = switch (_plugin) {
-      NativeProjectsPluginApi() => sessionDirectory,
-      BridgeDerivedProjectsPluginApi() => projectId,
-    };
+    final String projectPath;
+    switch (_plugin) {
+      case final NativeProjectsPluginApi plugin:
+        final projects = await plugin.getProjects();
+        projectPath =
+            projects.where((project) => project.id == projectId).map((project) => project.directory).firstOrNull ??
+            sessionDirectory;
+      case BridgeDerivedProjectsPluginApi():
+        projectPath = projectId;
+    }
     await _db.transaction(() async {
       await _projectsDao.insertProjectIfMissing(projectId: projectId, path: projectPath);
       if (_plugin is NativeProjectsPluginApi && projectPath != projectId) {

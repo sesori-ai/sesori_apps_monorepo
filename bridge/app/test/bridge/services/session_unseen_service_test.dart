@@ -18,7 +18,7 @@ void main() {
     var clock = 1000;
 
     SessionUnseenRepository unseenRepository() => SessionUnseenRepository(
-      plugin: _FakePlugin(),
+      plugin: const _FakePlugin(),
       sessionDao: db.sessionDao,
       projectsDao: db.projectsDao,
       db: db,
@@ -26,7 +26,7 @@ void main() {
     );
 
     ProjectRepository projectRepository() => ProjectRepository(
-      plugin: _FakePlugin(),
+      plugin: const _FakePlugin(),
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
@@ -104,6 +104,43 @@ void main() {
       );
 
       expect((await db.projectsDao.getProject(projectId: projectId))?.path, directory);
+    });
+
+    test("native session creation prefers the declared project root over a session subdirectory", () async {
+      const projectId = "opaque-project-id";
+      const plugin = _FakePlugin(
+        projects: [
+          PluginProject(id: projectId, directory: "/projects/repository"),
+        ],
+      );
+      final rootAwareService = SessionUnseenService(
+        unseenRepository: SessionUnseenRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          db: db,
+          calculator: const SessionUnseenCalculator(),
+        ),
+        projectRepository: ProjectRepository(
+          plugin: plugin,
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
+        ),
+        viewTracker: viewTracker,
+        now: () => clock,
+      );
+      addTearDown(rootAwareService.dispose);
+
+      await rootAwareService.recordSessionCreated(
+        sessionId: "native-session",
+        projectId: projectId,
+        sessionDirectory: "/projects/repository/packages/foo",
+        parentId: null,
+      );
+
+      expect((await db.projectsDao.getProject(projectId: projectId))?.path, "/projects/repository");
     });
 
     test("derived project placeholder keeps owner attribution for a worktree session", () async {
@@ -730,8 +767,15 @@ void main() {
 }
 
 class _FakePlugin implements NativeProjectsPluginApi {
+  final List<PluginProject> projects;
+
+  const _FakePlugin({this.projects = const []});
+
   @override
   String get id => "opencode";
+
+  @override
+  Future<List<PluginProject>> getProjects() async => projects;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
