@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-12T17:56:00Z",
+  "productionBase": "c674f89a750b063670d201e315b4ef01a9203310",
+  "measuredCommit": "a05d2f28d4579c0c3addd730c7333fb385899cdf",
+  "benchmarkWorktreeDirty": true,
+  "host": {
+    "operatingSystem": "macos",
+    "operatingSystemVersion": "Version 26.5.1 (Build 25F80)",
+    "architecture": "macos_arm64",
+    "logicalProcessors": 14,
+    "cpuModel": "Apple M4 Pro"
+  },
+  "runtime": {
+    "dartVersion": "3.12.2",
+    "productMode": true
+  },
+  "liveList": {
+    "driftSchemaVersion": 10,
+    "databaseBytes": 61440,
+    "warmupCount": 25,
+    "sampleCount": 2000,
+    "rssDeltaBytes": 47398912,
+    "scenarios": [
+      {
+        "name": "native_500_projects",
+        "p50Micros": 1612,
+        "p95Micros": 1702,
+        "p99Micros": 1769,
+        "maxMicros": 1865,
+        "pluginRowsEnumeratedPerSample": 500,
+        "rowsReturnedPerSample": 500
+      },
+      {
+        "name": "native_100_of_10000_sessions",
+        "p50Micros": 141,
+        "p95Micros": 168,
+        "p99Micros": 185,
+        "maxMicros": 278,
+        "pluginRowsEnumeratedPerSample": 100,
+        "rowsReturnedPerSample": 100
+      },
+      {
+        "name": "native_1000_unpaginated_sessions",
+        "p50Micros": 530,
+        "p95Micros": 560,
+        "p99Micros": 613,
+        "maxMicros": 727,
+        "pluginRowsEnumeratedPerSample": 1000,
+        "rowsReturnedPerSample": 1000
+      },
+      {
+        "name": "derived_100_of_10000_global_enumeration",
+        "p50Micros": 863,
+        "p95Micros": 932,
+        "p99Micros": 966,
+        "maxMicros": 1118,
+        "pluginRowsEnumeratedPerSample": 10000,
+        "rowsReturnedPerSample": 100
+      },
+      {
+        "name": "derived_1000_unpaginated_sessions",
+        "p50Micros": 621,
+        "p95Micros": 683,
+        "p99Micros": 717,
+        "maxMicros": 847,
+        "pluginRowsEnumeratedPerSample": 1000,
+        "rowsReturnedPerSample": 1000
+      }
+    ]
+  },
+  "codexRolloutEnumeration": [
+    {
+      "sessions": 1000,
+      "projects": 50,
+      "fixtureBytes": 474000,
+      "samples": 10,
+      "warmup": 2,
+      "listRolloutFilesP50Micros": 6223,
+      "listRolloutFilesP95Micros": 6623,
+      "listRolloutFilesP99Micros": 6623,
+      "listRolloutFilesMaxMicros": 6623,
+      "readIndexP50Micros": 1060,
+      "readIndexP95Micros": 1307,
+      "readIndexP99Micros": 1307,
+      "readIndexMaxMicros": 1307,
+      "listSessionsP50Micros": 25187,
+      "listSessionsP95Micros": 25879,
+      "listSessionsP99Micros": 25879,
+      "listSessionsMaxMicros": 25879,
+      "schedulingLagP50Micros": 25201,
+      "schedulingLagP95Micros": 25889,
+      "schedulingLagP99Micros": 25889,
+      "schedulingLagMaxMicros": 25889,
+      "rssDeltaBytes": 28655616
+    },
+    {
+      "sessions": 10000,
+      "projects": 500,
+      "fixtureBytes": 4740000,
+      "samples": 5,
+      "warmup": 1,
+      "listRolloutFilesP50Micros": 23065,
+      "listRolloutFilesP95Micros": 23420,
+      "listRolloutFilesP99Micros": 23420,
+      "listRolloutFilesMaxMicros": 23420,
+      "readIndexP50Micros": 11516,
+      "readIndexP95Micros": 11928,
+      "readIndexP99Micros": 11928,
+      "readIndexMaxMicros": 11928,
+      "listSessionsP50Micros": 233136,
+      "listSessionsP95Micros": 236095,
+      "listSessionsP99Micros": 236095,
+      "listSessionsMaxMicros": 236095,
+      "schedulingLagP50Micros": 233151,
+      "schedulingLagP95Micros": 236116,
+      "schedulingLagP99Micros": 236116,
+      "schedulingLagMaxMicros": 236116,
+      "rssDeltaBytes": 4259840
+    }
+  ]
+}

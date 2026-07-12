@@ -1,6 +1,6 @@
 # Parallel Plugins - Implementation Plan
 
-> Status: **execution plan approved; implementation not started**.
+> Status: **implementation in progress**.
 > [`ARCHITECTURE.md`](ARCHITECTURE.md) owns the durable product direction. This
 > document owns the implementation sequence, current pointer, concrete design, rollout, and
 > verification. Keep both documents consistent when implementation findings
@@ -8,8 +8,8 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 0 - execution plan approved
-- **Next up:** Stage 1 - baseline harness and additive contracts
+- **Last completed stage:** Stage 1A - pre-change baseline harness
+- **Next up:** Stage 1B - additive compatibility contracts
 - **Runtime default:** one selected plugin until Stage 7
 - **Catalog projection version:** not assigned until the schema migration lands
 
@@ -539,14 +539,25 @@ core/shared changes.
 
 ## 9. Performance Gates
 
-The current source audit establishes qualitative baseline facts: every list
-waits for plugin enumeration, derived lists paginate after global discovery,
-Codex discovery can block the bridge isolate, and event enrichment is globally
-serial. The repository has no percentile harness, so Stage 1 records the first
-measured baseline before behavior changes.
+The source audit established that every list waits for plugin enumeration,
+derived lists paginate after global discovery, Codex discovery can block the
+bridge isolate, and event enrichment is globally serial. Stage 1A added the
+first repeatable AOT harnesses and recorded the raw pre-change measurements in
+`baselines/stage-1a-macos-arm64.json`.
 
-The initial release budgets are explicit and may only be revised in Stage 1
-with recorded host/fixture evidence:
+The catalog budgets remain release targets rather than claims about the current
+plugin-backed path. The local fakes isolate bridge mapping/persistence overhead
+but deliberately exclude backend HTTP/RPC/disk latency. They measured p95 at
+1.702 ms for 500 native projects, 0.168 ms for a native 100-session page,
+0.560 ms for 1,000 native sessions, 0.932 ms for a derived 100-session page that
+enumerated 10,000 rows, and 0.683 ms for 1,000 derived sessions.
+
+Codex's real filesystem fixture measured `listSessions` and main-isolate delay
+at p95 25.879/25.889 ms for 1,000 sessions and 236.095/236.116 ms for 10,000.
+This validates the Stage 5 worker-isolate requirement and exceeds the future
+100 ms maximum scheduling-lag target at 10,000 sessions.
+
+The initial release budgets are:
 
 | Path and fixture | Budget |
 |---|---|
@@ -580,7 +591,8 @@ selection.
 | Status | Stage | Deliverable | Main verification |
 |---|---|---|---|
 | ☑ | 0 | Execution plan approved | `aristotle-plan-review`; docs consistency |
-| ☐ | 1 | Baseline harness and additive contracts | Baseline JSON; all shared/plugin/client round trips |
+| ☑ | 1A | Pre-change baseline harness | AOT baseline JSON; app/Codex analysis |
+| ☐ | 1B | Additive compatibility contracts | Shared/plugin/client round trips |
 | ☐ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
 | ☐ | 3 | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☐ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
@@ -590,15 +602,31 @@ selection.
 | ☐ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
 | ☐ | 9 | Performance gate and cleanup | Fixed-host matrix, soak, dead-path removal, docs |
 
-### Stage 1 - Baseline Harness and Additive Contracts
+### Stage 1A - Pre-Change Baseline Harness
 
-- Add benchmark executables for catalog-shaped reads, import concurrency, event
-  latency, multi-plugin startup, and Codex rollout enumeration. Record the
-  pre-change baseline and calibrate budgets before production changes.
+- Add AOT benchmark executables for current live project/session reads and
+  Codex rollout enumeration. Record host, fixture, latency, plugin-row, database,
+  memory, and event-loop-delay measurements before production behavior changes.
+- Defer `event_projection_benchmark` to Stage 4,
+  `import_concurrency_benchmark` to Stage 5, and
+  `multi_plugin_startup_benchmark` to Stage 7. Those production seams do not
+  exist yet, so a Stage 1 executable would measure invented behavior.
+- Keep fixtures and measurement code local to each benchmark. Do not add a
+  production benchmark framework, Makefile target, or noisy CI wall-clock gate.
+
+Acceptance: both executables compile AOT, emit valid versioned JSON, and record
+the default fixed-host fixtures without changing production behavior.
+
+### Stage 1B - Additive Compatibility Contracts
+
 - Add required `PluginProject.directory` and update all implementations/fakes.
-- Add shared plugin metadata/import DTOs and nullable compatibility `pluginId`
-  fields.
+- Add nullable compatibility `pluginId` fields to `Session`,
+  `CreateSessionRequest`, and `ProjectIdRequest`.
+- Stamp and validate plugin identity at the existing single-plugin repository/
+  service boundary. A non-null id for another plugin is rejected, never ignored.
 - Add compatibility-debt entries and regenerate all affected Freezed code.
+- Defer plugin metadata/import DTOs and SSE variants until Stages 5 and 7, when
+  their first production consumers land.
 
 Acceptance: one-plugin clients behave unchanged; missing new JSON fields decode;
 the bridge always emits plugin identity in new responses; no optional capability
@@ -797,6 +825,11 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 1A:** The approved five-executable baseline scope included three paths
+  that do not exist yet: event projection, import publication, and multi-plugin
+  startup. Stage 1 was split into cohesive 1A benchmark and 1B contract PRs.
+  Live-list and Codex AOT harnesses now record the honest current baseline; the
+  remaining executables moved to their owning implementation stages.
 - **Stage 0:** Current code was re-audited at `f190b039`; catalog identity,
   schema, import, event, lifecycle, compatibility, rollout, performance, and PR
   boundaries were made concrete. `aristotle-plan-review` approved the execution
