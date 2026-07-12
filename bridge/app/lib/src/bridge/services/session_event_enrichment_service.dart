@@ -34,6 +34,9 @@ class SessionEventEnrichmentService {
           info: (await _captureTitleAndEnrich(info: info, titleChanged: titleChanged)).toJson(),
           titleChanged: titleChanged,
         ),
+        BridgeSseSessionDeleted(:final info) => BridgeSseSessionDeleted(
+          info: (await _sessionRepository.enrichSessionJson(sessionJson: info)).toJson(),
+        ),
         BridgeSseSessionsUpdated(:final sessionID, :final projectID) => BridgeSseSessionsUpdated(
           sessionID: sessionID,
           projectID: await _sessionRepository.findProjectIdForSession(sessionId: sessionID) ?? projectID,
