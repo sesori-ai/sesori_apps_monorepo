@@ -218,6 +218,17 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     });
   }
 
+  Future<void> replacePathIfMatches({
+    required String projectId,
+    required String expectedPath,
+    required String replacementPath,
+  }) async {
+    await (update(projectsTable)..where(
+          (project) => project.projectId.equals(projectId) & project.path.equals(expectedPath),
+        ))
+        .write(ProjectsTableCompanion(path: Value(replacementPath)));
+  }
+
   Future<void> setActivity({required String projectId, required int createdAt, required int updatedAt}) async {
     await into(projectsTable).insert(
       ProjectsTableCompanion.insert(

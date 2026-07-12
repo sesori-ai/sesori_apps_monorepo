@@ -22,6 +22,9 @@ class GetProvidersHandler extends BodyRequestHandler<ProjectIdRequest, ProviderL
     required Map<String, String> queryParams,
     required String? fragment,
   }) {
-    return _repository.getProviders(projectId: body.projectId, pluginId: body.pluginId);
+    return _repository.getProviders(
+      projectId: body.projectId,
+      pluginId: body.pluginId ?? _repository.pluginId,
+    );
   }
 }

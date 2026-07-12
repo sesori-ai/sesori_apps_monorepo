@@ -659,8 +659,8 @@ void main() {
       );
 
       plugin.projectsResult = const [
-        PluginProject(id: "/repo-a", directory: "/repo-a"),
-        PluginProject(id: "/repo-b", directory: "/repo-b"),
+        PluginProject(id: "project-a", directory: "/repo-a"),
+        PluginProject(id: "project-b", directory: "/repo-b"),
       ];
       plugin.sessionsByWorktree = {
         "/repo-a": const [],
@@ -679,9 +679,9 @@ void main() {
 
       final result = await repository.findProjectIdForSession(sessionId: "s-target");
 
-      expect(result, equals("/repo-b"));
-      expect(await db.projectsDao.getProject(projectId: "/repo-a"), isNotNull);
-      expect(await db.projectsDao.getProject(projectId: "/repo-b"), isNotNull);
+      expect(result, equals("project-b"));
+      expect((await db.projectsDao.getProject(projectId: "project-a"))?.path, "/repo-a");
+      expect((await db.projectsDao.getProject(projectId: "project-b"))?.path, "/repo-b");
     });
 
     test("createSession passes variant directly to plugin", () async {
@@ -703,7 +703,7 @@ void main() {
 
       for (final variant in cases) {
         await repository.createSession(
-          pluginId: variant == null ? null : plugin.id,
+          pluginId: plugin.id,
           directory: "/repo",
           parentSessionId: null,
           parts: const [PromptPart.text(text: "Ship it")],
@@ -825,7 +825,7 @@ void main() {
         expect(plugin.lastGetCommandsProjectId, equals("/moved/a"));
 
         // Null/blank keeps the plugin's own fallback untouched.
-        await repository.getCommands(projectId: "  ", pluginId: null);
+        await repository.getCommands(projectId: "  ", pluginId: plugin.id);
         expect(plugin.lastGetCommandsProjectId, isNull);
       });
 

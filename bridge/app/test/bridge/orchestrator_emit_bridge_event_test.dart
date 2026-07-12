@@ -2195,7 +2195,7 @@ class _NoopSessionRepository implements SessionRepository {
 
   @override
   Future<Session> createSession({
-    required String? pluginId,
+    required String pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -2365,7 +2365,7 @@ class _DelayingSessionRepository implements SessionRepository {
 
   @override
   Future<Session> createSession({
-    required String? pluginId,
+    required String pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -2404,7 +2404,7 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<CommandListResponse> getCommands({required String? projectId, required String? pluginId}) {
+  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) {
     return _base.getCommands(projectId: projectId, pluginId: pluginId);
   }
 

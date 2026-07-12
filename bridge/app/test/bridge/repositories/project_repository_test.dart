@@ -89,6 +89,26 @@ void main() {
       );
     });
 
+    test("getProjects repairs a legacy native id-as-path row", () async {
+      plugin.projectsResult = const [
+        PluginProject(id: "backend-project-1", directory: "/projects/one", name: "One"),
+      ];
+      await db.projectsDao.recordOpenedProject(
+        projectId: "backend-project-1",
+        path: "backend-project-1",
+        createdAt: 1,
+        updatedAt: 1,
+      );
+
+      final result = await repo.getProjects(defaultTimestamp: 9999);
+
+      expect(result.single.path, "/projects/one");
+      expect(
+        (await db.projectsDao.getProject(projectId: "backend-project-1"))!.path,
+        "/projects/one",
+      );
+    });
+
     test("getProjects rethrows PluginApiException when plugin throws", () async {
       plugin.getProjectsError = PluginApiException("/project", 500);
 

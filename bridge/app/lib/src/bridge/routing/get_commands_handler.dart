@@ -23,6 +23,9 @@ class GetCommandsHandler extends BodyRequestHandler<ProjectIdRequest, CommandLis
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    return _sessionRepository.getCommands(projectId: body.projectId, pluginId: body.pluginId);
+    return _sessionRepository.getCommands(
+      projectId: body.projectId,
+      pluginId: body.pluginId ?? _sessionRepository.pluginId,
+    );
   }
 }

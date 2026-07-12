@@ -34,7 +34,7 @@ class SessionCreationService {
     final metadata = await _generateMetadata(firstText: firstText);
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
     final created = await _sessionRepository.createSession(
-      pluginId: request.pluginId,
+      pluginId: request.pluginId ?? _sessionRepository.pluginId,
       directory: _resolveDirectory(projectDirectory: projectDirectory, worktreeResult: worktreeResult),
       parentSessionId: null,
       parts: _buildPromptParts(

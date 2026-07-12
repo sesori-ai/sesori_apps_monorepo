@@ -14,7 +14,9 @@ class ProviderRepository {
     : _plugin = plugin,
       _projectsDao = projectsDao;
 
-  Future<ProviderListResponse> getProviders({required String projectId, required String? pluginId}) async {
+  String get pluginId => _plugin.id;
+
+  Future<ProviderListResponse> getProviders({required String projectId, required String pluginId}) async {
     // The plugin reads provider config from the project's directory, so
     // resolve the id to the live path first.
     final directory = await _projectsDao.getResolvedPath(projectId: projectId);

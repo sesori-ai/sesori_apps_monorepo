@@ -63,8 +63,8 @@ it exists, and the exact cleanup to perform on the recorded date.
 - **Debt:** `CreateSessionRequest.pluginId` is declared as
   `required String? pluginId`; null selects the bridge's only/default plugin.
 - **Reason:** Clients released before explicit plugin selection omit the field.
-  A non-null id is already validated and cannot silently route to another
-  plugin.
+  Until multi-plugin routing lands, the single-plugin bridge assumes a non-null
+  id identifies its active plugin.
 - **Cleanup date:** 2027-01-12
 - **Exact cleanup:**
   1. Change `CreateSessionRequest.pluginId` to `required String pluginId`.
@@ -86,7 +86,23 @@ it exists, and the exact cleanup to perform on the recorded date.
 - **Exact cleanup:**
   1. Make the three composer routes reject a null plugin id while leaving the
      shared DTO nullable for non-composer routes.
-  2. Remove null-to-default fallback from `AgentRepository`,
-     `ProviderRepository`, and `SessionRepository.getCommands`.
+   2. Remove null-to-default fallback from the composer route handlers.
   3. Require module-core composer calls to send the selected plugin id.
-  4. Verify older-client support has ended before removing the fallback.
+   4. Verify older-client support has ended before removing the fallback.
+
+## Native project rows may store the backend id as their path
+
+- **Location:** `bridge/app/lib/src/bridge/repositories/project_repository.dart`
+  and `bridge/app/lib/src/bridge/persistence/daos/projects_dao.dart`.
+- **Debt:** Native project listing replaces a persisted `path` only when it is
+  still exactly equal to the backend project id.
+- **Reason:** Bridges released before `PluginProject.directory` stored the id as
+  the default path. New bridges repair that legacy default from the plugin's
+  declared directory while preserving any separately recorded moved path.
+- **Cleanup date:** 2027-01-12
+- **Exact cleanup:**
+  1. Remove `ProjectsDao.replacePathIfMatches`.
+  2. Remove the native-list reconciliation loop from `ProjectRepository`.
+  3. Keep new-row seeding from `PluginProject.directory` unchanged.
+  4. Verify every supported bridge version has written explicit native project
+     directories before removing the repair.

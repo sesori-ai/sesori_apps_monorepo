@@ -174,7 +174,7 @@ class SessionRepository {
   }
 
   Future<Session> createSession({
-    required String? pluginId,
+    required String pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -204,7 +204,7 @@ class SessionRepository {
     return updated.toSharedSession(pluginId: _plugin.id);
   }
 
-  Future<CommandListResponse> getCommands({required String? projectId, required String? pluginId}) async {
+  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async {
     final normalizedProjectId = projectId?.trim();
     final commands = await _plugin.getCommands(
       // The plugin reads commands from the project's directory, so resolve
@@ -457,6 +457,15 @@ class SessionRepository {
           projectIds: [for (final project in projects) project.id],
         );
         for (final project in projects) {
+          if (project.id != project.directory) {
+            await _projectsDao.replacePathIfMatches(
+              projectId: project.id,
+              expectedPath: project.id,
+              replacementPath: project.directory,
+            );
+          }
+        }
+        for (final project in projects) {
           final projectId = project.id;
           if (await _getPluginSession(projectId: projectId, sessionId: sessionId) != null) {
             return projectId;
@@ -693,4 +702,8 @@ class SessionRepository {
     }
     return null;
   }
+}
+
+extension SessionRepositoryIdentity on SessionRepository {
+  String get pluginId => _plugin.id;
 }
