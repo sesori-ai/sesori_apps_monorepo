@@ -6,7 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 class OAuthDeviceDescriptor {
   const OAuthDeviceDescriptor({required this.clientType, required this.device});
 
-  final String clientType;
+  final AuthClientType clientType;
   final DeviceInfo device;
 }
 

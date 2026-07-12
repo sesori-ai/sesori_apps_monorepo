@@ -43,6 +43,11 @@ lib/
 - **Null keys omitted from wire payloads**: `build.yaml` sets `json_serializable` `include_if_null: false`, so nullable fields are dropped from `toJson()` output by default. Do **NOT** add `@JsonKey(includeIfNull: false)` explicitly — it is already the default here. (Decoding is unaffected: a missing key deserializes to `null`.)
 - **Strict analysis**: `strict-casts`, `strict-inference`, `strict-raw-types` all ON
 - **Barrel export**: All public API re-exported from `lib/sesori_shared.dart`
+- **Platform-derived DTOs**: platform adapters gather facts through Flutter
+  plugins or `dart:io`; shared builders accept plain values and own common wire
+  schema normalization such as trimming, fallbacks, and length limits. Never
+  import platform packages into this module or duplicate those shared rules in
+  each product.
 - **Line width**: 120 characters
 - **Request/response models for bridge handlers** — every bridge handler that accepts or returns a JSON body must have a Freezed model here (e.g. `CreateProjectRequest`, `HideProjectRequest`). Models use `@Freezed(fromJson: true, toJson: true)`. Bridge handlers parse with `fromJson()`, mobile services serialize with `toJson()`.
 

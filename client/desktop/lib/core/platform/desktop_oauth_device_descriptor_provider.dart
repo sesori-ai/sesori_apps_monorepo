@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:device_info_plus/device_info_plus.dart";
 import "package:flutter/foundation.dart";
 import "package:injectable/injectable.dart";
@@ -5,19 +7,20 @@ import "package:package_info_plus/package_info_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-/// Flutter implementation of [OAuthDeviceDescriptorProvider].
+/// Desktop implementation of [OAuthDeviceDescriptorProvider].
 ///
-/// Derives the auth-server `clientType` from [defaultTargetPlatform] and reads
-/// the device name + OS version (device_info_plus) and app version
-/// (package_info_plus).
+/// Sends the desktop-specific auth-server `clientType` (`app_macos` /
+/// `app_windows` / `app_linux`) so the sign-in confirmation interstitial
+/// labels the device "macOS desktop" / "Windows desktop" / "Linux desktop"
+/// rather than "mobile app", plus a recognizable machine name.
 ///
 /// Never throws: the auth-init request requires a device, so device/package
 /// reads are wrapped and a failure degrades to a best-effort descriptor
-/// (platform-default name, null version fields). Values are clamped to the auth
-/// server's schema limits.
+/// (platform-default name, null version fields). Values are clamped to the
+/// auth server's schema limits.
 @LazySingleton(as: OAuthDeviceDescriptorProvider)
-class FlutterOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider {
-  FlutterOAuthDeviceDescriptorProvider(DeviceInfoPlugin deviceInfo) : _deviceInfo = deviceInfo;
+class DesktopOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider {
+  DesktopOAuthDeviceDescriptorProvider(DeviceInfoPlugin deviceInfo) : _deviceInfo = deviceInfo;
 
   final DeviceInfoPlugin _deviceInfo;
   static const _deviceInfoBuilder = AuthDeviceInfoBuilder();
@@ -31,46 +34,42 @@ class FlutterOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvi
   }
 
   AuthClientType _clientType() => switch (defaultTargetPlatform) {
-    TargetPlatform.iOS => AuthClientType.appIos,
-    TargetPlatform.android => AuthClientType.appAndroid,
-    TargetPlatform.macOS ||
-    TargetPlatform.windows ||
-    TargetPlatform.linux ||
-    TargetPlatform.fuchsia => AuthClientType.app,
+    TargetPlatform.macOS => AuthClientType.appMacos,
+    TargetPlatform.windows => AuthClientType.appWindows,
+    TargetPlatform.linux => AuthClientType.appLinux,
+    // Unreachable in the desktop shell; kept exhaustive with the generic type.
+    TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.fuchsia => AuthClientType.app,
   };
 
   Future<DeviceInfo> _device({required AuthClientType clientType, required String? appVersion}) async {
-    // Web has no native device-info channel and the mobile getters throw an
-    // UnsupportedError there; skip them to avoid noisy stack traces.
-    if (kIsWeb) {
-      return _deviceInfoBuilder.build(
-        clientType: clientType,
-        detectedName: null,
-        osVersion: null,
-        appVersion: appVersion,
-      );
-    }
     try {
       switch (defaultTargetPlatform) {
-        case TargetPlatform.iOS:
-          final info = await _deviceInfo.iosInfo;
-          return _deviceInfoBuilder.build(
-            clientType: clientType,
-            detectedName: info.name,
-            osVersion: "iOS ${info.systemVersion}",
-            appVersion: appVersion,
-          );
-        case TargetPlatform.android:
-          final info = await _deviceInfo.androidInfo;
-          return _deviceInfoBuilder.build(
-            clientType: clientType,
-            detectedName: "${info.manufacturer} ${info.model}",
-            osVersion: "Android ${info.version.release}",
-            appVersion: appVersion,
-          );
         case TargetPlatform.macOS:
+          final info = await _deviceInfo.macOsInfo;
+          return _deviceInfoBuilder.build(
+            clientType: clientType,
+            detectedName: info.computerName,
+            osVersion: "macOS ${info.majorVersion}.${info.minorVersion}.${info.patchVersion}",
+            appVersion: appVersion,
+          );
         case TargetPlatform.windows:
+          final info = await _deviceInfo.windowsInfo;
+          return _deviceInfoBuilder.build(
+            clientType: clientType,
+            detectedName: info.computerName,
+            osVersion: info.productName,
+            appVersion: appVersion,
+          );
         case TargetPlatform.linux:
+          final info = await _deviceInfo.linuxInfo;
+          return _deviceInfoBuilder.build(
+            clientType: clientType,
+            detectedName: Platform.localHostname,
+            osVersion: info.prettyName,
+            appVersion: appVersion,
+          );
+        case TargetPlatform.iOS:
+        case TargetPlatform.android:
         case TargetPlatform.fuchsia:
           return _deviceInfoBuilder.build(
             clientType: clientType,
@@ -79,7 +78,7 @@ class FlutterOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvi
             appVersion: appVersion,
           );
       }
-    } catch (error, stackTrace) {
+    } on Object catch (error, stackTrace) {
       logw("Failed to read device info for the OAuth device descriptor", error, stackTrace);
       return _deviceInfoBuilder.build(
         clientType: clientType,
@@ -94,7 +93,7 @@ class FlutterOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvi
     try {
       final info = await PackageInfo.fromPlatform();
       return info.version;
-    } catch (error, stackTrace) {
+    } on Object catch (error, stackTrace) {
       logw("Failed to read app version for the OAuth device descriptor", error, stackTrace);
       return null;
     }

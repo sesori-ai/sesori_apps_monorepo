@@ -13,17 +13,17 @@ Uri _buildUri({required String base, required String path}) {
 class LoginOAuthApi {
   final String authBackendUrl;
   final http.Client _client;
-  final String _clientType;
+  final AuthClientType _clientType;
   final DeviceInfo _device;
 
   LoginOAuthApi({
     required this.authBackendUrl,
     required http.Client client,
-    required String clientType,
+    required AuthClientType clientType,
     required DeviceInfo device,
-  })  : _client = client,
-        _clientType = clientType,
-        _device = device;
+  }) : _client = client,
+       _clientType = clientType,
+       _device = device;
 
   Future<AuthInitResponse> initOAuthSession({
     required OAuthProvider provider,
