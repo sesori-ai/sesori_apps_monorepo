@@ -1,11 +1,11 @@
 # Parallel Plugin Support — Pre-Scoping Considerations
 
-> Status: **not scoped, not started**. This document captures architectural
-> findings gathered while building bridge-derived project tracking (PR #360),
-> written down so the eventual feature planning starts from an audit of the
-> codebase as it actually is. When the feature is scoped, read this first,
-> then re-verify each claim against the current code — file references were
-> accurate when written and may drift.
+> Status: **superseded as a plan; retained as the pre-scope audit**. The durable
+> catalog direction and executable multi-PR plan now live in [`PLAN.md`](PLAN.md).
+> This document records the code seams originally found while building
+> bridge-derived project tracking (PR #360). Its live-aggregation assumptions
+> are superseded by bridge-owned DB-only list reads. Re-verify every reference
+> after the prerequisite PR #412 cascade merges.
 
 ## 1. Target
 
@@ -92,13 +92,11 @@ much design they need. This is the core of the future scoping work.
    resolve a session's `plugin_id` from its stored row, then dispatch to that
    plugin's API.
 
-3. **Aggregation semantics per endpoint.** `/project` becomes a union of
-   native project lists + derived derivations, merged by directory into one
-   card (union times, one hidden flag, one rename). `/sessions` for a project
-   becomes a per-plugin union sorted by time. Health, session statuses,
-   active-session summaries, providers, agents, and commands all need a
-   merge-or-namespace decision (e.g. are agents/models per-plugin namespaced
-   in the picker?).
+3. **Catalog semantics per endpoint.** This audit originally expected live
+   fan-out. The settled plan instead builds `/project` and `/sessions` from the
+   bridge catalog only, merged by directory and globally sorted. Live
+   providers, agents, and commands are selected through explicit plugin/session
+   context; missing legacy context resolves to OpenCode.
 
 4. **Events carry no plugin identity.** The orchestrator subscribes to one
    `plugin.events` stream. With several streams merged, downstream consumers
@@ -122,9 +120,10 @@ much design they need. This is the core of the future scoping work.
    sequential provisioning, parallel `start`).
 
 7. **Per-plugin CLI/config.** Options are already namespaced
-   (`--codex-*`, `--opencode-*`) which composes; the `--plugin` selector
-   becomes multi-valued (`enabledPlugins` bridge setting already hints at
-   this).
+   (`--codex-*`, `--opencode-*`) which composes. `enabledPlugins` becomes the
+   headless multi-start list. The single-value `--plugin` override is retained
+   temporarily with the existing deprecation-warning mechanism, then removed
+   in a later release.
 
 ## 4. Contract doors to keep open (cheap now, expensive later)
 
@@ -168,10 +167,11 @@ much design they need. This is the core of the future scoping work.
   worktrees in one repo share the counter (fine) but cleanup flows
   (`deleteWorkspace`) go to the owning plugin — session `plugin_id` again.
 
-## 6. Explicitly out of scope for this document
+## 6. Scope now owned by the implementation plan
 
 - Cross-plugin live session migration (dropped per root `AGENTS.md`).
 - A master agent across sessions (later roadmap; same session-control
   surface, so parallelism should not special-case it).
-- Client-side UX for mixed lists (badging, filtering) — client workstream,
-  driven by the same wire models.
+- Client-side mixed-list badges/filtering, on-demand plugin start, diagnostics,
+  and import are specified in `PLAN.md`; mobile ships first and Desktop Phase 4
+  later carries the same UI into `module_app_ui`.
