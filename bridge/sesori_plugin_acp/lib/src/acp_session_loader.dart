@@ -169,9 +169,13 @@ class AcpReplayCollector {
   // the current assistant message even when its content chunks are stamped.
   _Draft _assistantForTool() {
     if (_drafts.isNotEmpty && _drafts.last.role == "assistant") {
-      return _drafts.last;
+      final last = _drafts.last;
+      if (last.acpMessageId != null ||
+          (last.text.isEmpty && last.reasoning.isEmpty)) {
+        return last;
+      }
     }
-    return _ensureRole("assistant");
+    return _newDraft("assistant", messageId: null);
   }
 
   /// The draft the next chunk belongs to. ACP v1: chunks of one message share
@@ -183,10 +187,15 @@ class AcpReplayCollector {
   _Draft _ensureRole(String role, {String? messageId}) {
     if (_drafts.isNotEmpty && _drafts.last.role == role) {
       final last = _drafts.last;
-      if (last.acpMessageId == messageId) {
+      if (last.acpMessageId == messageId &&
+          !(messageId == null && last.tools.isNotEmpty)) {
         return last;
       }
     }
+    return _newDraft(role, messageId: messageId);
+  }
+
+  _Draft _newDraft(String role, {required String? messageId}) {
     final draft = _Draft(
       role: role,
       id: messageId != null && messageId.isNotEmpty

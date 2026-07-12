@@ -26,8 +26,11 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -61,11 +64,20 @@ void main() {
       final sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: database.pullRequestDao,
           projectsDao: database.projectsDao,
         ),
         unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
+      final projectRepository = ProjectRepository(
+        plugin: plugin,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
       );
       final orchestrator = Orchestrator(
         config: const BridgeConfig(
@@ -76,7 +88,30 @@ void main() {
         ),
         client: _ThrowingConnectRelayClient(),
         plugin: plugin,
-        metadataService: FakeMetadataService(),
+        sessionCreationService: SessionCreationService(
+          metadataService: FakeMetadataService(),
+          worktreeService: WorktreeService(
+            worktreeRepository: WorktreeRepository(
+              projectsDao: database.projectsDao,
+              sessionDao: database.sessionDao,
+              gitApi: GitCliApi(
+                processRunner: FakeProcessRunner((
+                  String executable,
+                  List<String> arguments, {
+                  Map<String, String>? environment,
+                  String? workingDirectory,
+                  Duration timeout = const Duration(seconds: 15),
+                }) async {
+                  return ProcessResult(0, 127, "", "command not found");
+                }),
+                gitPathExists: ({required String gitPath}) => true,
+              ),
+              plugin: plugin,
+            ),
+          ),
+          sessionRepository: sessionRepository,
+          sessionMutationDispatcher: sessionTitleService,
+        ),
         pushDispatcher: pushSubsystem.dispatcher,
         completionListener: pushSubsystem.completionListener,
         maintenanceListener: pushSubsystem.maintenanceListener,
@@ -93,13 +128,7 @@ void main() {
           sessionRepository: sessionRepository,
         ),
         sessionRepository: sessionRepository,
-        projectRepository: ProjectRepository(
-          plugin: plugin,
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
+        projectRepository: projectRepository,
         sessionUnseenService: SessionUnseenService(
           unseenRepository: SessionUnseenRepository(
             pluginId: "opencode",
@@ -108,13 +137,7 @@ void main() {
             db: database,
             calculator: const SessionUnseenCalculator(),
           ),
-          projectRepository: ProjectRepository(
-            plugin: plugin,
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            unseenCalculator: const SessionUnseenCalculator(),
-            filesystemApi: FakeFilesystemApi(),
-          ),
+          projectRepository: projectRepository,
           viewTracker: SessionViewTracker(),
         ),
         sessionViewTracker: SessionViewTracker(),
@@ -137,15 +160,23 @@ void main() {
             permissionValidator: const FilesystemPermissionValidator(),
           ),
         ),
+        projectActivityService: ProjectActivityService(
+          projectRepository: projectRepository,
+          now: () => DateTime.now().millisecondsSinceEpoch,
+        ),
         healthRepository: HealthRepository(
           plugin: plugin,
           bridgeVersion: "0.0.0-test",
           filesystemAccessOk: true,
         ),
-        providerRepository: ProviderRepository(plugin: plugin),
-        agentRepository: AgentRepository(plugin: plugin),
-        permissionRepository: PermissionRepository(plugin: plugin),
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+        providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+        agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
+        permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
+        questionRepository: QuestionRepository(
+          plugin: plugin,
+          sessionDao: database.sessionDao,
+          projectsDao: database.projectsDao,
+        ),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
@@ -173,8 +204,10 @@ void main() {
         ),
         sessionEventEnrichmentService: SessionEventEnrichmentService(
           sessionRepository: sessionRepository,
+          sessionMutationDispatcher: sessionTitleService,
           failureReporter: FakeFailureReporter(),
         ),
+        sessionMutationDispatcher: sessionTitleService,
         restartService: buildTestRestartService(),
         statusNotifier: null,
       );
@@ -194,6 +227,7 @@ void main() {
     test("stream continues after mapper throws", () async {
       final harness = await _TestHarness.start(
         plugin: _ThrowingSummaryPlugin(),
+        throwOnProjectReconciliation: false,
       );
       addTearDown(harness.close);
 
@@ -217,6 +251,7 @@ void main() {
     test("records failure with event-specific unique identifier", () async {
       final harness = await _TestHarness.start(
         plugin: _ThrowingSummaryPlugin(),
+        throwOnProjectReconciliation: false,
       );
       addTearDown(harness.close);
 
@@ -230,6 +265,21 @@ void main() {
         harness.failureReporter.recordedIdentifiers.single,
         equals("sse_projects_summary"),
       );
+    });
+
+    test("startup and reconnect activity failures do not stop plugin events", () async {
+      final harness = await _TestHarness.start(
+        plugin: _ThrowingSummaryPlugin(),
+        throwOnProjectReconciliation: true,
+      );
+      addTearDown(harness.close);
+
+      await harness.waitForSubscription();
+      harness.plugin.add(const BridgeSseServerConnected());
+      harness.plugin.add(const BridgeSseProjectUpdated());
+
+      await harness.waitForFailureCount(expected: 2);
+      expect(harness.plugin.subscribeCount, 1);
     });
   });
 }
@@ -253,6 +303,7 @@ class _TestHarness {
 
   static Future<_TestHarness> start({
     required _ThrowingSummaryPlugin plugin,
+    required bool throwOnProjectReconciliation,
   }) async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
@@ -273,6 +324,7 @@ class _TestHarness {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -289,7 +341,7 @@ class _TestHarness {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -315,11 +367,19 @@ class _TestHarness {
         plugin: plugin,
       ),
     );
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
+    final projectActivityService = throwOnProjectReconciliation
+        ? _ThrowingProjectActivityService(projectRepository: projectRepository)
+        : ProjectActivityService(
+            projectRepository: projectRepository,
+            now: () => DateTime.now().millisecondsSinceEpoch,
+          );
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -329,7 +389,12 @@ class _TestHarness {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: metadataService,
+      sessionCreationService: SessionCreationService(
+        metadataService: metadataService,
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -377,18 +442,24 @@ class _TestHarness {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: projectActivityService,
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -435,6 +506,14 @@ class _TestHarness {
     await database.close();
     await relayServer.close();
   }
+}
+
+class _ThrowingProjectActivityService extends ProjectActivityService {
+  _ThrowingProjectActivityService({required super.projectRepository})
+    : super(now: () => DateTime.now().millisecondsSinceEpoch);
+
+  @override
+  Future<void> reconcile() => Future<void>.error(StateError("activity reconciliation failed"));
 }
 
 typedef _TestPushSubsystem = ({

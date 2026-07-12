@@ -155,7 +155,13 @@ as List<Project>,
 /// @nodoc
 mixin _$Project {
 
- String get id; String? get name; ProjectTime? get time;// Whether this project has at least one non-archived session with unseen
+ String get id; String? get name;// Live directory of the project on disk — the directory backend operations
+// run in. Distinct from [id]: the id is a stable identifier that survives
+// folder moves (for git-backed backends it is the original worktree path,
+// pinned at first open). Defaults to "" so payloads from older bridges
+// (which don't send a path) still decode; clients fall back to [id] when
+// empty.
+ String get path; ProjectTime? get time;// Whether this project has at least one non-archived session with unseen
 // activity. Backend-derived from its sessions. Defaults to false so older
 // payloads (and the baseline) deserialize as "seen".
  bool get hasUnseenChanges;// Whether the project's directory no longer exists on disk at its recorded
@@ -176,16 +182,16 @@ $ProjectCopyWith<Project> get copyWith => _$ProjectCopyWithImpl<Project>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,time,hasUnseenChanges,directoryMissing);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
+  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
 }
 
 
@@ -196,7 +202,7 @@ abstract mixin class $ProjectCopyWith<$Res>  {
   factory $ProjectCopyWith(Project value, $Res Function(Project) _then) = _$ProjectCopyWithImpl;
 @useResult
 $Res call({
- String id, String? name, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
 });
 
 
@@ -213,11 +219,12 @@ class _$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
+as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
 as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
 as bool,
@@ -244,11 +251,18 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _Project implements Project {
-  const _Project({required this.id, required this.name, required this.time, this.hasUnseenChanges = false, this.directoryMissing = false});
+  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false});
   factory _Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 
 @override final  String id;
 @override final  String? name;
+// Live directory of the project on disk — the directory backend operations
+// run in. Distinct from [id]: the id is a stable identifier that survives
+// folder moves (for git-backed backends it is the original worktree path,
+// pinned at first open). Defaults to "" so payloads from older bridges
+// (which don't send a path) still decode; clients fall back to [id] when
+// empty.
+@override@JsonKey() final  String path;
 @override final  ProjectTime? time;
 // Whether this project has at least one non-archived session with unseen
 // activity. Backend-derived from its sessions. Defaults to false so older
@@ -274,16 +288,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,time,hasUnseenChanges,directoryMissing);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
+  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
 }
 
 
@@ -294,7 +308,7 @@ abstract mixin class _$ProjectCopyWith<$Res> implements $ProjectCopyWith<$Res> {
   factory _$ProjectCopyWith(_Project value, $Res Function(_Project) _then) = __$ProjectCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? name, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
 });
 
 
@@ -311,11 +325,12 @@ class __$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
   return _then(_Project(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
+as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
 as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
 as bool,
@@ -341,7 +356,7 @@ $ProjectTimeCopyWith<$Res>? get time {
 /// @nodoc
 mixin _$ProjectTime {
 
- int get created; int get updated; int? get initialized;
+ int get created; int get updated;
 /// Create a copy of ProjectTime
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -354,16 +369,16 @@ $ProjectTimeCopyWith<ProjectTime> get copyWith => _$ProjectTimeCopyWithImpl<Proj
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.initialized, initialized) || other.initialized == initialized));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,initialized);
+int get hashCode => Object.hash(runtimeType,created,updated);
 
 @override
 String toString() {
-  return 'ProjectTime(created: $created, updated: $updated, initialized: $initialized)';
+  return 'ProjectTime(created: $created, updated: $updated)';
 }
 
 
@@ -374,7 +389,7 @@ abstract mixin class $ProjectTimeCopyWith<$Res>  {
   factory $ProjectTimeCopyWith(ProjectTime value, $Res Function(ProjectTime) _then) = _$ProjectTimeCopyWithImpl;
 @useResult
 $Res call({
- int created, int updated, int? initialized
+ int created, int updated
 });
 
 
@@ -391,12 +406,11 @@ class _$ProjectTimeCopyWithImpl<$Res>
 
 /// Create a copy of ProjectTime
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? created = null,Object? updated = null,Object? initialized = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? created = null,Object? updated = null,}) {
   return _then(_self.copyWith(
 created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
 as int,updated: null == updated ? _self.updated : updated // ignore: cast_nullable_to_non_nullable
-as int,initialized: freezed == initialized ? _self.initialized : initialized // ignore: cast_nullable_to_non_nullable
-as int?,
+as int,
   ));
 }
 
@@ -408,12 +422,11 @@ as int?,
 @JsonSerializable()
 
 class _ProjectTime implements ProjectTime {
-  const _ProjectTime({required this.created, required this.updated, required this.initialized});
+  const _ProjectTime({required this.created, required this.updated});
   factory _ProjectTime.fromJson(Map<String, dynamic> json) => _$ProjectTimeFromJson(json);
 
 @override final  int created;
 @override final  int updated;
-@override final  int? initialized;
 
 /// Create a copy of ProjectTime
 /// with the given fields replaced by the non-null parameter values.
@@ -428,16 +441,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.initialized, initialized) || other.initialized == initialized));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,initialized);
+int get hashCode => Object.hash(runtimeType,created,updated);
 
 @override
 String toString() {
-  return 'ProjectTime(created: $created, updated: $updated, initialized: $initialized)';
+  return 'ProjectTime(created: $created, updated: $updated)';
 }
 
 
@@ -448,7 +461,7 @@ abstract mixin class _$ProjectTimeCopyWith<$Res> implements $ProjectTimeCopyWith
   factory _$ProjectTimeCopyWith(_ProjectTime value, $Res Function(_ProjectTime) _then) = __$ProjectTimeCopyWithImpl;
 @override @useResult
 $Res call({
- int created, int updated, int? initialized
+ int created, int updated
 });
 
 
@@ -465,12 +478,11 @@ class __$ProjectTimeCopyWithImpl<$Res>
 
 /// Create a copy of ProjectTime
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? created = null,Object? updated = null,Object? initialized = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? created = null,Object? updated = null,}) {
   return _then(_ProjectTime(
 created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
 as int,updated: null == updated ? _self.updated : updated // ignore: cast_nullable_to_non_nullable
-as int,initialized: freezed == initialized ? _self.initialized : initialized // ignore: cast_nullable_to_non_nullable
-as int?,
+as int,
   ));
 }
 

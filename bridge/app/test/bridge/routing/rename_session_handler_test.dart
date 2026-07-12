@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/rename_session_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -24,13 +25,16 @@ void main() {
       sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      handler = RenameSessionHandler(sessionRepository: sessionRepository);
+      handler = RenameSessionHandler(
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
+      );
     });
 
     tearDown(() async {

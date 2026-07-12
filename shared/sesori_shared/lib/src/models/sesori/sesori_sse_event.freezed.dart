@@ -2379,15 +2379,21 @@ as List<ProjectActivitySummary>,
 @JsonSerializable()
 
 class SesoriProjectUpdated implements SesoriSseEvent {
-  const SesoriProjectUpdated({final  String? $type}): $type = $type ?? 'project.updated';
+  const SesoriProjectUpdated({required this.projectID, required this.updatedAt, final  String? $type}): $type = $type ?? 'project.updated';
   factory SesoriProjectUpdated.fromJson(Map<String, dynamic> json) => _$SesoriProjectUpdatedFromJson(json);
 
-
+ final  String? projectID;
+ final  int? updatedAt;
 
 @JsonKey(name: 'type')
 final String $type;
 
 
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriProjectUpdatedCopyWith<SesoriProjectUpdated> get copyWith => _$SesoriProjectUpdatedCopyWithImpl<SesoriProjectUpdated>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
@@ -2396,23 +2402,53 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriProjectUpdated);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriProjectUpdated&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode => Object.hash(runtimeType,projectID,updatedAt);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.projectUpdated()';
+  return 'SesoriSseEvent.projectUpdated(projectID: $projectID, updatedAt: $updatedAt)';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $SesoriProjectUpdatedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriProjectUpdatedCopyWith(SesoriProjectUpdated value, $Res Function(SesoriProjectUpdated) _then) = _$SesoriProjectUpdatedCopyWithImpl;
+@useResult
+$Res call({
+ String? projectID, int? updatedAt
+});
 
 
+
+
+}
+/// @nodoc
+class _$SesoriProjectUpdatedCopyWithImpl<$Res>
+    implements $SesoriProjectUpdatedCopyWith<$Res> {
+  _$SesoriProjectUpdatedCopyWithImpl(this._self, this._then);
+
+  final SesoriProjectUpdated _self;
+  final $Res Function(SesoriProjectUpdated) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? projectID = freezed,Object? updatedAt = freezed,}) {
+  return _then(SesoriProjectUpdated(
+projectID: freezed == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
+as String?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
 
 /// @nodoc
 @JsonSerializable()

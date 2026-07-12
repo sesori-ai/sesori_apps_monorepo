@@ -310,9 +310,20 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
 
     final List<Widget> children = [];
 
-    final labelWidget = Padding(
-      padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xxs),
-      child: Text(widget.label ?? '', style: textStyle),
+    // Flexible + ellipsis so a label wider than the button's constraints
+    // truncates on one line instead of overflowing the Row. Loose fit in a
+    // min-size Row stays legal in unbounded-width parents, where the label
+    // keeps its intrinsic width as before.
+    final labelWidget = Flexible(
+      child: Padding(
+        padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xxs),
+        child: Text(
+          widget.label ?? '',
+          style: textStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
     );
 
     if (widget.isLoading) {

@@ -9,12 +9,15 @@ part "projects_dao.g.dart";
 class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin {
   ProjectsDao(super.attachedDatabase);
 
-  // Every insert below stamps the project id as the row's `path`: the id has
-  // always been the project's directory path for every shipped plugin. If ids
-  // ever stop being paths, insert sites must take an explicit path instead.
+  // `path` is the project's live directory; `projectId` is its stable
+  // identifier (for every shipped plugin: the directory the project was FIRST
+  // opened at). They diverge when a folder is moved on disk and re-opened —
+  // [recordOpenedProject] is the only writer that stores a meaningful path.
+  // Every other insert below stamps the project id as the row's `path` purely
+  // as the new-row default (correct until a move is recorded); none of their
+  // conflict clauses touch `path`, so an existing recorded path is preserved.
 
-  /// Returns every stored project row. Used by the bridge-derived project path
-  /// to read paths, display-name overrides, and opened-folder timestamps.
+  /// Returns every stored project row.
   Future<List<ProjectDto>> getAllProjects() async {
     return select(projectsTable).get();
   }
@@ -24,26 +27,55 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     return (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
   }
 
-  /// Records [projectId] as an explicitly-opened folder by stamping [openedAt],
-  /// creating the row if missing. Updates only openedAt on conflict, preserving
-  /// hidden/baseBranch/displayName/worktreeCounter. Lets a folder with no
-  /// sessions yet resurface with a fresh time when the user re-opens it.
-  Future<void> recordOpenedProject({required String projectId, required int openedAt}) async {
+  /// The live directory stored for [projectId], or null when the bridge has no
+  /// recorded project with that id. `path` is non-nullable in the schema, so a
+  /// present row is authoritative — never infer a directory from the id.
+  Future<String?> getResolvedPath({required String projectId}) async {
+    final row = await getProject(projectId: projectId);
+    return row?.path;
+  }
+
+  /// Records [projectId] as an explicitly-opened folder by storing [path] and
+  /// the exact timestamps, creating the row if missing. On conflict only
+  /// [path], [createdAt] and [updatedAt] are replaced with the supplied values,
+  /// preserving other user-set fields. Lets a folder with no sessions yet
+  /// survive a refresh and refreshes the stored path when a moved folder is
+  /// re-opened.
+  Future<void> recordOpenedProject({
+    required String projectId,
+    required String path,
+    required int createdAt,
+    required int updatedAt,
+  }) async {
     await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, openedAt: Value(openedAt)),
+      ProjectsTableCompanion.insert(
+        projectId: projectId,
+        path: path,
+        createdAt: Value(createdAt),
+        updatedAt: Value(updatedAt),
+      ),
       onConflict: DoUpdate(
-        (old) => ProjectsTableCompanion(openedAt: Value(openedAt)),
+        (old) => ProjectsTableCompanion(
+          path: Value(path),
+          createdAt: Value(createdAt),
+          updatedAt: Value(updatedAt),
+        ),
         target: [projectsTable.projectId],
       ),
     );
   }
 
   /// Sets the bridge-persisted display-name override for [projectId], creating
-  /// the row if missing. Updates only displayName on conflict. Used to persist a
-  /// rename for a bridge-derived plugin that has no backend to store the name.
+  /// the row if missing. Updates only displayName on conflict, preserving all
+  /// other fields. Used to persist a rename for a bridge-derived plugin that
+  /// has no backend to store the name.
   Future<void> setDisplayName({required String projectId, required String displayName}) async {
     await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, displayName: Value(displayName)),
+      ProjectsTableCompanion.insert(
+        projectId: projectId,
+        path: projectId,
+        displayName: Value(displayName),
+      ),
       onConflict: DoUpdate(
         (old) => ProjectsTableCompanion(displayName: Value(displayName)),
         target: [projectsTable.projectId],
@@ -68,7 +100,11 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// update ONLY the hidden column on conflict, preserving all other fields.
   Future<void> hideProject({required String projectId}) async {
     await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, hidden: const Value(true)),
+      ProjectsTableCompanion.insert(
+        projectId: projectId,
+        path: projectId,
+        hidden: const Value(true),
+      ),
       onConflict: DoUpdate(
         (old) => const ProjectsTableCompanion(hidden: Value(true)),
         target: [projectsTable.projectId],
@@ -81,7 +117,11 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// baseBranch and worktreeCounter on existing rows.
   Future<void> unhideProject({required String projectId}) async {
     await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, hidden: const Value(false)),
+      ProjectsTableCompanion.insert(
+        projectId: projectId,
+        path: projectId,
+        hidden: const Value(false),
+      ),
       onConflict: DoUpdate(
         (old) => const ProjectsTableCompanion(hidden: Value(false)),
         target: [projectsTable.projectId],
@@ -138,19 +178,76 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     await (delete(projectsTable)..where((t) => t.projectId.equals(projectId))).go();
   }
 
-  /// Inserts a minimal project row if none exists for [projectId].
+  /// Inserts a minimal project row if none exists for each id in [projectIds].
   /// Preserves all fields of existing rows — uses InsertMode.insertOrIgnore.
-  /// Use this to satisfy FK constraints (and to seed a just-discovered or
-  /// just-opened folder, whose openedAt stamps at insert) without clobbering
-  /// user-set state.
+  /// Use this to satisfy FK constraints without clobbering user-set state.
   Future<void> insertProjectsIfMissing({required List<String> projectIds}) async {
     if (projectIds.isEmpty) return;
     await batch((b) {
       b.insertAll(
         projectsTable,
-        projectIds.map((id) => ProjectsTableCompanion.insert(projectId: id, path: id)).toList(),
+        projectIds
+            .map(
+              (id) => ProjectsTableCompanion.insert(projectId: id, path: id),
+            )
+            .toList(),
         mode: InsertMode.insertOrIgnore,
       );
+    });
+  }
+
+  /// Inserts project rows with the exact [activities] for ids that are missing.
+  /// Existing rows are untouched.
+  Future<void> insertMissingProjectsWithActivity({
+    required Map<String, ({int createdAt, int updatedAt})> activities,
+  }) async {
+    if (activities.isEmpty) return;
+    await batch((b) {
+      b.insertAll(
+        projectsTable,
+        activities.entries.map((e) {
+          return ProjectsTableCompanion.insert(
+            projectId: e.key,
+            path: e.key,
+            createdAt: Value(e.value.createdAt),
+            updatedAt: Value(e.value.updatedAt),
+          );
+        }).toList(),
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+  }
+
+  Future<void> setActivity({required String projectId, required int createdAt, required int updatedAt}) async {
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(
+        projectId: projectId,
+        path: projectId,
+        createdAt: Value(createdAt),
+        updatedAt: Value(updatedAt),
+      ),
+      onConflict: DoUpdate(
+        (old) => ProjectsTableCompanion(
+          createdAt: Value(createdAt),
+          updatedAt: Value(updatedAt),
+        ),
+        target: [projectsTable.projectId],
+      ),
+    );
+  }
+
+  /// Replaces the activity for every entry in [activities] in a single
+  /// transaction. Rows are created if missing; existing rows are overwritten.
+  Future<void> setAllActivities({required Map<String, ({int createdAt, int updatedAt})> activities}) async {
+    if (activities.isEmpty) return;
+    await transaction(() async {
+      for (final entry in activities.entries) {
+        await setActivity(
+          projectId: entry.key,
+          createdAt: entry.value.createdAt,
+          updatedAt: entry.value.updatedAt,
+        );
+      }
     });
   }
 }

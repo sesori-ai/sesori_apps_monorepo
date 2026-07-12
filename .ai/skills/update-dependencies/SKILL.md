@@ -17,7 +17,9 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 - `client/module_auth/pubspec.yaml`
 - `client/module_core/pubspec.yaml`
 - `client/module_prego/pubspec.yaml` (Flutter package — theme/assets)
+- `client/module_desktop_core/pubspec.yaml` (pure Dart desktop business logic)
 - `client/app/pubspec.yaml` (Flutter app — Firebase, flutter_bloc, etc.)
+- `client/desktop/pubspec.yaml` (Flutter desktop app)
 
 **Bridge workspace** (`bridge/pubspec.yaml` is the workspace root, pure Dart):
 
@@ -27,6 +29,8 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 - `bridge/sesori_plugin_runtime/pubspec.yaml` (depends on `sesori_plugin_interface`)
 - `bridge/sesori_plugin_opencode/pubspec.yaml`
 - `bridge/sesori_plugin_codex/pubspec.yaml`
+- `bridge/sesori_plugin_acp/pubspec.yaml`
+- `bridge/sesori_plugin_cursor/pubspec.yaml`
 - `bridge/app/pubspec.yaml` (CLI relay server)
 
 **Standalone packages** (NOT in any workspace — resolve independently with their own lockfile):
@@ -129,6 +133,8 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `client/module_auth/pubspec.yaml` | ✅ | — | caret |
 | `client/module_core/pubspec.yaml` | ✅ | — | caret |
 | `client/module_prego/pubspec.yaml` | ✅ | — | caret |
+| `client/module_desktop_core/pubspec.yaml` | ✅ | — | caret |
+| `client/desktop/pubspec.yaml` | ✅ | — | caret |
 | `bridge/pubspec.yaml` | ✅ | — | caret |
 | `bridge/app/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_interface/pubspec.yaml` | ✅ | — | caret |
@@ -136,6 +142,8 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `bridge/sesori_plugin_runtime/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_opencode/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_codex/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_plugin_acp/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_plugin_cursor/pubspec.yaml` | ✅ | — | caret |
 | `shared/sesori_shared/pubspec.yaml` | ✅ | — | caret |
 
 Example:
@@ -193,8 +201,10 @@ set -e
 (cd client && flutter pub get)
 (cd client/module_auth && dart pub outdated)       # pure Dart
 (cd client/module_core && dart pub outdated)       # pure Dart
-(cd client/module_prego && flutter pub outdated)    # Flutter (flutter: sdk: flutter)
+(cd client/module_prego && flutter pub outdated)   # Flutter (flutter: sdk: flutter)
+(cd client/module_desktop_core && dart pub outdated) # pure Dart
 (cd client/app && flutter pub outdated)            # Flutter app
+(cd client/desktop && flutter pub outdated)        # Flutter desktop app
 ```
 
 **Bridge workspace** (pure Dart):
@@ -207,6 +217,8 @@ set -e
 (cd bridge/sesori_plugin_runtime && dart pub outdated)
 (cd bridge/sesori_plugin_opencode && dart pub outdated)
 (cd bridge/sesori_plugin_codex && dart pub outdated)
+(cd bridge/sesori_plugin_acp && dart pub outdated)
+(cd bridge/sesori_plugin_cursor && dart pub outdated)
 (cd bridge/app && dart pub outdated)
 ```
 
@@ -234,8 +246,8 @@ set -e
 <step name="3.1">For each pubspec.yaml, in this order:
 
 1. `shared/sesori_shared/pubspec.yaml` (consumed by both workspaces)
-2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/app`
-3. Client workspace members: `client/module_auth`, `client/module_core`, `client/module_prego`, `client/app`
+2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_cursor`, `bridge/app`
+3. Client workspace members (dependency order): `client/module_auth`, `client/module_core`, `client/module_prego`, `client/module_desktop_core`, `client/app`, `client/desktop`
 
 **SKIP** `shared/no_slop_linter/pubspec.yaml` — analyzer-plugin constraints are bumped manually (see the project structure note). Do not edit it here even if `pub outdated` reports newer versions.
 
@@ -297,8 +309,8 @@ For each, confirm one of two outcomes: either (a) its pubspec(s) appear in the d
 ```bash
 set -e
 (cd shared && make analyze)   # sesori_shared + no_slop_linter
-(cd bridge && make analyze)   # sesori_plugin_interface, sesori_bridge_foundation, sesori_plugin_runtime, sesori_plugin_opencode, sesori_plugin_codex, app
-(cd client && make analyze)   # module_auth, module_core, module_prego, app (with --fatal-infos)
+(cd bridge && make analyze)   # all 8 bridge members, in workspace dependency order
+(cd client && make analyze)   # all 6 client members, in workspace dependency order (with --fatal-infos)
 ```
 
 </step>
@@ -327,8 +339,8 @@ set -e
 ```bash
 set -e
 (cd shared && make codegen)   # sesori_shared
-(cd bridge && make codegen)   # sesori_plugin_interface, sesori_plugin_runtime, sesori_plugin_opencode, app
-(cd client && make codegen)   # module_auth, module_core, module_prego, app
+(cd bridge && make codegen)   # all bridge members with build_runner dependencies
+(cd client && make codegen)   # all 6 client members
 ```
 
 If a generator dependency is later added to a currently-skipped package, update `CODEGEN_MODULES` in the matching Makefile rather than re-introducing per-package commands here.
@@ -457,10 +469,10 @@ Report this list at the end of the update process for visibility.
 <success_criteria>
 
 - Preflight discovery (Phase 0) ran; every discovered source pubspec and workspace member is accounted for, with none silently skipped
-- Environment constraints (sdk, flutter) updated in 13 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely — the count INCLUDES `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, and `bridge/sesori_plugin_codex`)
+- Environment constraints (sdk, flutter) updated in 17 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely — 9 bridge, 7 client, and `shared/sesori_shared`)
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All three workspaces (shared, bridge, client) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
-- All pubspec.lock files regenerated (workspace roots + 2 standalone packages = 4 lockfiles)
+- All in-scope pubspec.lock files regenerated (bridge workspace, client workspace, and `shared/sesori_shared` = 3 lockfiles); `shared/no_slop_linter/pubspec.lock` remains untouched
 - iOS + macOS SwiftPM `Package.resolved` re-resolved via `flutter build --config-only` (the 2 authoritative `Runner.xcodeproj/project.xcworkspace` lockfiles), or recorded as deferred if no Xcode toolchain
 - `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd client && make analyze)` all pass
 - `(cd shared && make test)`, `(cd bridge && make test)`, `(cd client && make test)` all pass

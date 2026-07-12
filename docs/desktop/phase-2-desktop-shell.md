@@ -203,7 +203,13 @@ Findings log · Plan-deltas.
   "Linux desktop"), device name = computerName (macOS/Windows) /
   `Platform.localHostname` (Linux), never throws (degrades to fallback names,
   `logw` with error args), clamped to the server schema limits (120/40). The
-  shell's `configureDesktopDependencies()` gained `@InjectableInit` +
+  review follow-up centralized those auth-schema rules in
+  `sesori_shared`: typed `AuthClientType` values replace raw wire strings, and
+  pure `AuthDeviceInfoBuilder` owns fallback names, trimming, and length
+  limits. Mobile, desktop, and bridge now feed their platform-specific facts
+  into that builder; `device_info_plus`/`package_info_plus` and bridge
+  `dart:io` remain data sources only. The shell's
+  `configureDesktopDependencies()` gained `@InjectableInit` +
   `getIt.init()` as phase 1. `desktop-ci.yml` Linux apt deps gained
   `libsecret-1-dev` (flutter_secure_storage_linux compile requirement). DI
   acceptance asserted by test: full 4-phase bootstrap then
@@ -212,7 +218,10 @@ Findings log · Plan-deltas.
   plugin packages already resolved by mobile at the same versions). Verified:
   analyze + tests green across all 6 modules (desktop now 6 tests);
   `flutter build macos` OK; Windows/Linux legs on the PR's CI.
-- **Deltas:** none structural. Naming uses the `Desktop*` adapter prefix
+- **Deltas:** the device-descriptor normalization moved from each product into
+  `sesori_shared`, and `AuthInitRequest.clientType` is now the shared
+  `AuthClientType` enum rather than an unconstrained string. Platform reads
+  remain in product adapters. Naming uses the `Desktop*` adapter prefix
   (mobile uses `Flutter*`/`App*`) to keep the two products' adapters
   distinguishable in cross-package searches. A Linux distro without a secret
   service fails loudly at first secure-storage use (libsecret
@@ -310,10 +319,16 @@ Findings log · Plan-deltas.
   unanswerable after a drop — the bridge resolves them `nonInteractive` on
   channel loss). No timers, no polling, no Flutter, no relay resolution.
   11 new dart tests (19 total in the module); analyze clean; shell untouched.
+  Follow-up workspace inventory updated the dependency-maintenance skill,
+  launch configurations, repository/client docs, and test-command guidance for
+  the desktop packages; the same audit added the already-current ACP and Cursor
+  bridge plugins where hard-coded package lists had also fallen behind.
 - **Deltas:** the status model gained an explicit `helperOnline` flag beyond
   the raw DTO fields — the control-channel link state is GUI-side knowledge
   (the helper can't push "I'm gone"), and the offline baseline the acceptance
-  requires needs it.
+  requires needs it. Repository tooling and developer docs were also refreshed
+  to treat the desktop packages as current workspace members; no runtime scope
+  changed.
 
 ## PR 2.5a — Re-export `AuthTokenProvider` from `module_core` (seam, precursor)
 - **Goal:** `sesori_dart_core` re-exports `AuthSession`/`OAuthFlowProvider` but

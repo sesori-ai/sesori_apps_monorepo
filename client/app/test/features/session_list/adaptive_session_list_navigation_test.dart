@@ -96,7 +96,7 @@ void main() {
             Project(
               id: "p1",
               name: "Project One",
-              time: ProjectTime(created: 1700000000000, updated: 1700000000000, initialized: null),
+              time: ProjectTime(created: 1700000000000, updated: 1700000000000),
             ),
           ],
         ),
@@ -265,7 +265,7 @@ void main() {
             Project(
               id: "p1",
               name: "Project One",
-              time: ProjectTime(created: 1700000000000, updated: 1700000000000, initialized: null),
+              time: ProjectTime(created: 1700000000000, updated: 1700000000000),
             ),
           ],
         ),
@@ -318,7 +318,7 @@ void main() {
             Project(
               id: "p1",
               name: "Project One",
-              time: ProjectTime(created: 1700000000000, updated: 1700000000000, initialized: null),
+              time: ProjectTime(created: 1700000000000, updated: 1700000000000),
             ),
           ],
         ),

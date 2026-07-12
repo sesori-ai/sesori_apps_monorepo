@@ -1,9 +1,11 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_question_mapper.dart";
+import "models/project_not_found_exception.dart";
 
 /// Layer 2 repository wrapping [BridgePluginApi] for question operations.
 ///
@@ -14,16 +16,29 @@ class QuestionRepository {
 
   final BridgePluginApi _plugin;
   final SessionDao _sessionDao;
+  final ProjectsDao _projectsDao;
 
-  QuestionRepository({required BridgePluginApi plugin, required SessionDao sessionDao})
-    : _plugin = plugin,
-      _sessionDao = sessionDao;
+  QuestionRepository({
+    required BridgePluginApi plugin,
+    required SessionDao sessionDao,
+    required ProjectsDao projectsDao,
+  }) : _plugin = plugin,
+       _sessionDao = sessionDao,
+       _projectsDao = projectsDao;
 
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingQuestion>> getPendingQuestions({required String sessionId}) async {
+    Set<String>? tombstoned;
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) return const [];
+    }
     final pluginQuestions = await _plugin.getPendingQuestions(sessionId: sessionId);
-    return pluginQuestions.map((q) => q.toSharedPendingQuestion()).toList();
+    return [
+      for (final question in pluginQuestions)
+        if (tombstoned == null || _isVisible(question, tombstoned)) question.toSharedPendingQuestion(),
+    ];
   }
 
   /// All pending questions for [projectId].
@@ -46,12 +61,19 @@ class QuestionRepository {
   Future<List<PendingQuestion>> getProjectQuestions({required String projectId}) async {
     switch (_plugin) {
       case final NativeProjectsPluginApi plugin:
-        final pluginQuestions = await plugin.getProjectQuestions(projectId: projectId);
+        // The plugin scopes questions by directory, so hand it the project's
+        // live directory rather than the (possibly moved-away-from) id.
+        final directory = await _projectsDao.getResolvedPath(projectId: projectId);
+        if (directory == null) {
+          throw ProjectNotFoundException(projectId: projectId);
+        }
+        final pluginQuestions = await plugin.getProjectQuestions(projectId: directory);
         return pluginQuestions.map((q) => q.toSharedPendingQuestion()).toList();
 
       case final BridgeDerivedProjectsPluginApi plugin:
-        final (sessionProjectPaths, ownScopedQuestions) = await (
+        final (sessionProjectPaths, tombstoned, ownScopedQuestions) = await (
           _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+          _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
           plugin.getProjectQuestions(projectId: projectId),
         ).wait;
         final allSessions = await plugin.listAllSessions(
@@ -67,10 +89,11 @@ class QuestionRepository {
         // plugin enumeration, so a question raised in a fresh worktree session
         // (attributed to this project by its row, but not yet in the backend's
         // on-disk enumeration and scoped to its worktree cwd by the plugin's
-        // own query) still surfaces here.
+        // own query) still surfaces here. Tombstoned (deleted) sessions are
+        // excluded — a backend without session deletion still enumerates them.
         final sessionIds = _derivedSessionBuilder.buildSessionIds(
           projectId: projectId,
-          sessions: allSessions,
+          sessions: allSessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
           projectPathBySessionId: {
             for (final row in sessionProjectPaths) row.sessionId: row.projectPath,
           },
@@ -78,11 +101,13 @@ class QuestionRepository {
 
         final questionsByKey = <String, PendingQuestion>{
           for (final question in ownScopedQuestions)
-            "${question.sessionID}:${question.id}": question.toSharedPendingQuestion(),
+            if (_isVisible(question, tombstoned))
+              "${question.sessionID}:${question.id}": question.toSharedPendingQuestion(),
         };
         for (final sessionId in sessionIds) {
           final pluginQuestions = await plugin.getPendingQuestions(sessionId: sessionId);
           for (final question in pluginQuestions) {
+            if (!_isVisible(question, tombstoned)) continue;
             questionsByKey["${question.sessionID}:${question.id}"] = question.toSharedPendingQuestion();
           }
         }
@@ -90,21 +115,75 @@ class QuestionRepository {
     }
   }
 
+  static bool _isVisible(PluginPendingQuestion question, Set<String> tombstoned) {
+    return !tombstoned.contains(question.sessionID) &&
+        (question.displaySessionId == null || !tombstoned.contains(question.displaySessionId));
+  }
+
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,
     required List<ReplyAnswer> answers,
-  }) => _plugin.replyToQuestion(
-    questionId: questionId,
-    sessionId: sessionId,
-    answers: answers.map((answer) => answer.values).toList(),
-  );
+  }) async {
+    await _throwIfMutationTargetTombstoned(
+      questionId: questionId,
+      sessionId: sessionId,
+      operation: "replyToQuestion",
+    );
+    return _plugin.replyToQuestion(
+      questionId: questionId,
+      sessionId: sessionId,
+      answers: answers.map((answer) => answer.values).toList(),
+    );
+  }
 
   Future<void> rejectQuestion({
     required String questionId,
     required String? sessionId,
-  }) => _plugin.rejectQuestion(
-    questionId: questionId,
-    sessionId: sessionId,
-  );
+  }) async {
+    if (sessionId != null) {
+      await _throwIfMutationTargetTombstoned(
+        questionId: questionId,
+        sessionId: sessionId,
+        operation: "rejectQuestion",
+      );
+    }
+    return _plugin.rejectQuestion(
+      questionId: questionId,
+      sessionId: sessionId,
+    );
+  }
+
+  Future<void> _throwIfMutationTargetTombstoned({
+    required String questionId,
+    required String sessionId,
+    required String operation,
+  }) async {
+    if (_plugin case final BridgeDerivedProjectsPluginApi plugin) {
+      final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+      if (tombstoned.contains(sessionId)) {
+        throw PluginOperationException.notFound(
+          operation,
+          message: "session $sessionId was deleted",
+        );
+      }
+      final pending = await plugin.getPendingQuestions(sessionId: sessionId);
+      for (final question in pending) {
+        if (question.id != questionId) continue;
+        if (tombstoned.contains(question.sessionID)) {
+          throw PluginOperationException.notFound(
+            operation,
+            message: "session ${question.sessionID} was deleted",
+          );
+        }
+        if (question.displaySessionId case final displaySessionId? when tombstoned.contains(displaySessionId)) {
+          throw PluginOperationException.notFound(
+            operation,
+            message: "display session $displaySessionId was deleted",
+          );
+        }
+        break;
+      }
+    }
+  }
 }

@@ -8,7 +8,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -30,24 +30,20 @@ void main() {
       operationLog = [];
       plugin = _TrackingFakeBridgePlugin(operationLog: operationLog);
       worktreeService = _FakeWorktreeService(database: db, operationLog: operationLog);
-      handler = DeleteSessionHandler(
+      final sessionRepository = SessionRepository(
         plugin: plugin,
-        worktreeService: worktreeService,
-        sessionRepository: SessionRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          pullRequestRepository: PullRequestRepository(
-            pullRequestDao: db.pullRequestDao,
-            projectsDao: db.projectsDao,
-          ),
-          unseenCalculator: const SessionUnseenCalculator(),
-        ),
-        sessionPersistenceService: SessionPersistenceService(
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          db: db,
-          pluginId: "opencode",
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      handler = DeleteSessionHandler(
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
       );
     });
 
@@ -105,6 +101,30 @@ void main() {
       expect(operationLog, equals(["pluginDelete"]));
     });
 
+    test("a delete records a tombstone even for a rowless session", () async {
+      // No stored row (e.g. a backend-only session never persisted): the
+      // delete must still tombstone it, or a backend without session deletion
+      // resurrects it on the next enumeration.
+      final response = await handler.handle(
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "ghost",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response, isA<SuccessEmptyResponse>());
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
+        contains("ghost"),
+      );
+    });
+
     test("2) deleteWorktree=true on clean worktree: safety check then plugin then worktree", () async {
       await _insertSession(
         db: db,
@@ -133,7 +153,7 @@ void main() {
       expect(worktreeService.lastCheckWorktreePath, equals("/repo/.worktrees/session-002"));
       expect(worktreeService.lastCheckExpectedBranch, equals("session-002"));
       expect(worktreeService.removeCallCount, equals(1));
-      expect(worktreeService.lastRemoveProjectPath, equals("/repo"));
+      expect(worktreeService.lastRemoveProjectId, equals("/repo"));
       expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-002"));
       expect(worktreeService.lastRemoveForce, isFalse);
       expect(worktreeService.deleteBranchCallCount, equals(0));
@@ -168,7 +188,7 @@ void main() {
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(1));
-      expect(worktreeService.lastDeleteBranchProjectPath, equals("/repo"));
+      expect(worktreeService.lastDeleteBranchProjectId, equals("/repo"));
       expect(worktreeService.lastDeleteBranchName, equals("session-003"));
       expect(worktreeService.lastDeleteBranchForce, isFalse);
       expect(plugin.lastDeleteSessionId, equals("s3"));
@@ -460,10 +480,10 @@ class _FakeWorktreeService extends WorktreeService {
 
   String? lastCheckWorktreePath;
   String? lastCheckExpectedBranch;
-  String? lastRemoveProjectPath;
+  String? lastRemoveProjectId;
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
-  String? lastDeleteBranchProjectPath;
+  String? lastDeleteBranchProjectId;
   String? lastDeleteBranchName;
   bool? lastDeleteBranchForce;
 
@@ -495,13 +515,12 @@ class _FakeWorktreeService extends WorktreeService {
   @override
   Future<bool> removeWorktree({
     required String projectId,
-    required String projectPath,
     required String worktreePath,
     required bool force,
   }) async {
     removeCallCount++;
     operationLog.add("removeWorktree");
-    lastRemoveProjectPath = projectPath;
+    lastRemoveProjectId = projectId;
     lastRemoveWorktreePath = worktreePath;
     lastRemoveForce = force;
     return removeResult;
@@ -509,13 +528,13 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<bool> deleteBranch({
-    required String projectPath,
+    required String projectId,
     required String branchName,
     required bool force,
   }) async {
     deleteBranchCallCount++;
     operationLog.add("deleteBranch");
-    lastDeleteBranchProjectPath = projectPath;
+    lastDeleteBranchProjectId = projectId;
     lastDeleteBranchName = branchName;
     lastDeleteBranchForce = force;
     return deleteBranchResult;

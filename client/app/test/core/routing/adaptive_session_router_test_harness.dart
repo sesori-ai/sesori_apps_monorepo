@@ -29,7 +29,7 @@ class AdaptiveSessionRouterTestHarness {
   late final MockRegisteredBridgesService registeredBridgesService;
   late final MockSessionRepository sessionRepository;
   late final MockConnectionService connectionService;
-  late final MockSseEventRepository sseEventRepository;
+  late final MockSseEventTracker sseEventTracker;
   late final MockRouteSource routeSource;
   late final MockFailureReporter failureReporter;
   late final MockPermissionRepository permissionRepository;
@@ -59,7 +59,7 @@ class AdaptiveSessionRouterTestHarness {
     registeredBridgesService = MockRegisteredBridgesService();
     sessionRepository = MockSessionRepository();
     connectionService = MockConnectionService();
-    sseEventRepository = MockSseEventRepository();
+    sseEventTracker = MockSseEventTracker();
     routeSource = MockRouteSource(initialRoute: currentRouteDef);
     failureReporter = MockFailureReporter();
     permissionRepository = MockPermissionRepository();
@@ -84,6 +84,7 @@ class AdaptiveSessionRouterTestHarness {
     ).thenAnswer((_) async => ApiResponse.success(const <BridgeSummary>[]));
 
     when(() => registeredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
+    when(() => registeredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
     when(
       () => projectService.listSessions(
@@ -167,7 +168,7 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<SessionService>(SessionService(repository: sessionRepository));
     getIt.registerSingleton<SessionRepository>(sessionRepository);
     getIt.registerSingleton<ConnectionService>(connectionService);
-    getIt.registerSingleton<SseEventRepository>(sseEventRepository);
+    getIt.registerSingleton<SseEventTracker>(sseEventTracker);
     getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
     getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
     getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());

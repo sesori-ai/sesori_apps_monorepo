@@ -9,6 +9,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginMessagePartType,
         PluginMessageTime,
         PluginMessageWithParts,
+        PluginOperationException,
         PluginToolState,
         PluginToolStatus;
 
@@ -339,10 +340,15 @@ class SessionRolloutReader {
     final List<String> lines;
     try {
       lines = file.readAsLinesSync();
-    } catch (_) {
-      // Permission/IO error reading the transcript: fail soft so the message
-      // fetch returns empty rather than throwing through getSessionMessages.
-      return const [];
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          "read Codex session transcript",
+          message: "history read for $sessionId failed",
+          cause: error,
+        ),
+        stackTrace,
+      );
     }
 
     // Pre-scan: a tool call (`function_call`) and its result

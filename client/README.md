@@ -1,103 +1,138 @@
-# Sesori Mobile
+# Sesori Client Workspace
 
-Flutter workspace containing the Sesori mobile client — an app that connects to the Bridge to interact with AI coding sessions on the go.
+Flutter workspace containing the mobile product, the in-development desktop
+product, and the shared client modules they consume.
 
 ## Modules
 
 | Module | Purpose |
 |--------|---------|
-| `app/` | Flutter UI shell. Screens, routing, DI setup, platform adapters. All business logic delegates to `module_core`. |
-| `module_core/` | Pure Dart business logic. Zero Flutter dependency. Cubits, services, relay client, platform interfaces. |
-| `module_auth/` | Authentication. OAuth PKCE flow, token refresh, authenticated HTTP client. |
+| `app/` | Mobile Flutter shell: screens, routing, DI, and platform adapters. |
+| `desktop/` | Desktop Flutter shell: presentation, DI, and concrete desktop platform adapters. |
+| `module_core/` | Pure Dart shared business logic: transport, APIs, repositories, services, cubits, and routing models. |
+| `module_desktop_core/` | Pure Dart desktop business logic: bridge supervision, control orchestration, trackers, services, and cubits. |
+| `module_auth/` | Authentication, OAuth, token lifecycle, secure storage seams, and authenticated HTTP. |
+| `module_prego/` | Shared Flutter design system: theme, fonts, icons, and components. |
+
+`module_app_ui` is planned for Phase 4. It will hold shared Flutter screens and
+widgets without owning product-shell DI or desktop process supervision.
+
+## Dependency Direction
+
+```mermaid
+graph TD
+  mobile[client/app] --> core[client/module_core]
+  mobile --> prego[client/module_prego]
+  mobile -. "Phase 4" .-> app_ui[client/module_app_ui planned]
+
+  desktop[client/desktop] --> core
+  desktop --> desktop_core[client/module_desktop_core]
+  desktop --> prego
+  desktop -. "Phase 4" .-> app_ui
+
+  app_ui -. "Phase 4" .-> core
+  desktop_core --> core
+  desktop_core --> shared[shared/sesori_shared]
+  core --> auth[client/module_auth]
+  auth --> shared
+```
+
+Never reverse these dependencies. The product shells may depend on
+`module_auth` in their pubspecs only to call `configureAuthDependencies(getIt)`;
+all other auth access goes through interfaces exported by `module_core`.
 
 ## Architecture
 
-**Dependency direction**: `app` -> `module_core` -> `module_auth` -> `sesori_shared`. Never reverse, never skip layers.
+`module_core` follows the repository-wide layers:
 
-```
-app/
-  lib/
-  ├── core/
-  │   ├── di/         DI setup — 3-phase init (platform → auth → core)
-  │   ├── routing/    GoRouter routes, deep link handling
-  │   └── widgets/    Shared widgets (ConnectionOverlay, modal sheets)
-  └── features/       Screens: Login, ProjectList, SessionList, SessionDetail
-
-module_core/
-  lib/src/
-  ├── cubits/         LoginCubit, ProjectListCubit, SessionListCubit, SessionDetailCubit, ConnectionOverlayCubit
-  ├── services/       ProjectService, SessionService, ConnectionService
-  ├── relay/          RelayClient (WebSocket relay connection)
-  └── platform/       Abstract interfaces (UrlLauncher, DeepLinkSource, LifecycleSource)
-
-module_auth/
-  lib/src/
-  ├── auth_manager/   AuthManager — owns token lifecycle, OAuth flow, auth state
-  ├── client/         AuthenticatedHttpApiClient (Bearer token + 401 retry)
-  ├── interfaces/     AuthTokenProvider, OAuthFlowProvider, AuthSession
-  └── storage/        TokenStorageService
+```text
+module_core/lib/src/
+├── foundation/    platform and transport abstractions, logging, concurrency
+├── api/           relay/auth-server data access
+├── repositories/  aggregation and DTO-to-domain mapping
+├── services/      shared business logic and event processing
+├── cubits/        feature state management
+└── routing/       surface-independent route models and auth redirects
 ```
 
-### DI initialization (3 phases)
+`module_desktop_core` uses the same dependency direction for desktop concerns:
 
-Defined in `app/lib/core/di/injection.dart`, called once from `main()`:
+```text
+module_desktop_core/lib/src/
+├── foundation/    desktop platform interfaces and control transport
+├── api/           process, instance, update, and storage boundaries
+├── repositories/  desktop data aggregation and mapping
+├── trackers/      state derived from control/process events
+├── services/      desktop supervision and lifecycle decisions
+├── control/       Layer-4 control-message dispatch
+└── cubits/        desktop state management
+```
 
-1. `getIt.init()` — Flutter platform deps (SecureStorage, http.Client, platform adapters)
-2. `configureAuthDependencies(getIt)` — auth module deps
-3. `configureCoreDependencies(getIt)` — core module deps
+Flutter widgets and platform plugins stay in `app/` or `desktop/`. Cubits stay
+in the appropriate pure Dart module, not in either product shell.
 
-### State management
+## Dependency Injection
 
-BLoC/Cubit throughout. Cubits live in `module_core` (pure Dart, testable without Flutter). Widgets in `app/` consume them via `BlocProvider`.
+Mobile initializes three phases:
 
-### Authentication
+1. Mobile platform adapters
+2. `configureAuthDependencies(getIt)`
+3. `configureCoreDependencies(getIt)`
 
-`AuthManager` in `module_auth` is the single owner of token state. It implements three narrow interfaces consumed by the rest of the app:
+Desktop initializes four phases:
 
-- `AuthTokenProvider` — fresh token access for WebSocket auth
-- `OAuthFlowProvider` — drives OAuth PKCE login
-- `AuthSession` — auth state stream, logout, current user
+1. Desktop platform adapters for `module_core` and `module_desktop_core`
+2. `configureAuthDependencies(getIt)`
+3. `configureCoreDependencies(getIt)`
+4. `configureDesktopCoreDependencies(getIt)`
 
-## Prerequisites
-
-- Flutter 3.41.4-stable via [asdf](https://asdf-vm.com/) (`.tool-versions` at workspace root)
-
-## Getting started
+## Getting Started
 
 ```bash
-# Install dependencies for all modules
-dart pub get   # run from client/
+# From client/: resolve the complete workspace.
+dart pub get
 
-# Run the app
-cd app && flutter run
+# Run a product shell.
+(cd app && flutter run)
+(cd desktop && flutter run -d macos)
 ```
 
-## Testing
+The exact Flutter version is pinned in the repository root `.tool-versions`.
+
+## Analyze And Test
+
+Run all workspace checks through the Makefile:
 
 ```bash
-cd app && flutter test
-cd module_core && dart test
-cd module_auth && dart test
+make analyze
+make test
 ```
 
-## Code generation
-
-After modifying `freezed` models or `injectable`-annotated classes, run from each affected module:
+Target individual members when needed:
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs
+(cd app && flutter test)
+(cd desktop && flutter test)
+(cd module_core && dart test)
+(cd module_desktop_core && dart test)
+(cd module_auth && dart test)
+(cd module_prego && flutter test)
 ```
+
+## Code Generation
+
+After modifying Freezed models or injectable annotations, run `make codegen`
+from `client/`, or run `dart run build_runner build` in the affected member.
+Generated `*.freezed.dart`, `*.g.dart`, and `*.config.dart` files must not be
+edited manually.
 
 ## Related
 
-- [Bridge workspace](../bridge/README.md) — laptop-side CLI and plugin system in this monorepo
+- [Bridge workspace](../bridge/README.md) - laptop-side CLI and plugin system
+- [Client agent rules](AGENTS.md) - detailed boundaries and conventions
 
 ## License
 
-This workspace is source-available under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`).
-
-You may use it for permitted purposes, but you may not use it to launch a competing product or service.
-
-On the second anniversary of the date this version is made available, it automatically becomes available under Apache License 2.0.
-
-See the repo root [LICENSE](../LICENSE) for the full terms.
+This workspace is source-available under the Functional Source License, Version
+1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`). See the repository root
+[LICENSE](../LICENSE) for the full terms.
