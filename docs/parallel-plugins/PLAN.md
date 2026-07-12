@@ -1,10 +1,11 @@
 # Bridge-Owned Project and Session Catalog
 
-> Status: **direction approved; implementation deferred and not started**.
+> Status: **direction and execution plan approved; implementation not started**.
 > This document records durable product and architecture decisions for parallel
-> plugin support. It is intentionally not an execution plan. Before work starts,
-> re-audit the current code, write a concrete implementation plan with data flow,
-> migration, rollout, and verification steps, and run `aristotle-plan-review`.
+> plugin support. It is intentionally not an execution plan. The concrete data
+> flow, migration, rollout, verification, and staged PR sequence now live in
+> [`IMPLEMENTATION.md`](IMPLEMENTATION.md) and must pass `aristotle-plan-review`
+> before implementation starts.
 
 ## 1. Decision
 

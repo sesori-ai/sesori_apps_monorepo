@@ -1,13 +1,13 @@
 # Parallel Plugin Support — Pre-Scoping Considerations
 
-> Status: **direction captured; implementation not started**. The durable
+> Status: **direction captured; execution planned; implementation not started**. The durable
 > ownership and catalog direction is recorded in [`PLAN.md`](PLAN.md). This
 > document remains the pre-scoping code audit gathered while building
 > bridge-derived project tracking (PR #360). Its live-aggregation assumptions
 > are superseded by the bridge-owned catalog decision, but its inventory of
 > current seams remains useful. Before implementation, read both documents and
-> re-verify every code reference because the implementation plan is deliberately
-> deferred until the work starts.
+> re-verify every code reference. The current re-audit, concrete decisions, and
+> staged execution are tracked in [`IMPLEMENTATION.md`](IMPLEMENTATION.md).
 
 ## 1. Target
 
