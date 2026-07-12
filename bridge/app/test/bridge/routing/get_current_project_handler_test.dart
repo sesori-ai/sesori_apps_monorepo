@@ -55,7 +55,7 @@ void main() {
       expect(
         () => handler.handle(
           makeRequest("POST", "/project/current"),
-          body: const ProjectIdRequest(projectId: ""),
+          body: const ProjectIdRequest(projectId: "", pluginId: null),
           pathParams: {},
           queryParams: {},
           fragment: null,
@@ -67,7 +67,7 @@ void main() {
     test("returns typed project", () async {
       final response = await handler.handle(
         makeRequest("POST", "/project/current"),
-        body: const ProjectIdRequest(projectId: "/tmp/project"),
+        body: const ProjectIdRequest(projectId: "/tmp/project", pluginId: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -79,13 +79,14 @@ void main() {
     test("maps fields", () async {
       plugin.currentProjectResult = const PluginProject(
         id: "p1",
+        directory: "/tmp/project",
         name: "My Project",
         activity: PluginProjectActivity(createdAt: 11, updatedAt: 22),
       );
 
       final response = await handler.handle(
         makeRequest("POST", "/project/current"),
-        body: const ProjectIdRequest(projectId: "/tmp/project"),
+        body: const ProjectIdRequest(projectId: "/tmp/project", pluginId: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -104,7 +105,7 @@ void main() {
         makeRequest(
           "POST",
           "/project/current",
-          body: jsonEncode(const ProjectIdRequest(projectId: "/unknown").toJson()),
+          body: jsonEncode(const ProjectIdRequest(projectId: "/unknown", pluginId: null).toJson()),
         ),
         pathParams: {},
         queryParams: {},

@@ -22,6 +22,6 @@ class PostAgentsHandler extends BodyRequestHandler<ProjectIdRequest, Agents> {
     required Map<String, String> queryParams,
     required String? fragment,
   }) {
-    return _repository.getAgents(projectId: body.projectId);
+    return _repository.getAgents(projectId: body.projectId, pluginId: body.pluginId);
   }
 }

@@ -528,6 +528,7 @@ class AcpEventMapper {
     final updated = snapshot?.updatedMs ?? created;
     return shared.Session(
       id: id,
+      pluginId: null,
       projectID: project,
       directory: project,
       parentID: null,

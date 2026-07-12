@@ -70,7 +70,7 @@ class SessionRepository {
       limit: limit,
     );
 
-    return enrichSessions(sessions: pluginSessions.toSharedSessions());
+    return enrichSessions(sessions: pluginSessions.toSharedSessions(pluginId: _plugin.id));
   }
 
   /// The plugin sessions that belong to [projectId].
@@ -164,7 +164,7 @@ class SessionRepository {
   }
 
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) {
-    return enrichSession(session: pluginSession.toSharedSession());
+    return enrichSession(session: pluginSession.toSharedSession(pluginId: _plugin.id));
   }
 
   Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) {
@@ -172,6 +172,7 @@ class SessionRepository {
   }
 
   Future<Session> createSession({
+    required String? pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -179,6 +180,7 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
+    _validatePluginSelection(pluginId: pluginId, operation: "createSession");
     final created = await _plugin.createSession(
       directory: directory,
       parentSessionId: parentSessionId,
@@ -190,7 +192,7 @@ class SessionRepository {
         null => null,
       },
     );
-    return created.toSharedSession();
+    return created.toSharedSession(pluginId: _plugin.id);
   }
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
@@ -198,10 +200,11 @@ class SessionRepository {
       await _throwIfTombstoned(sessionId: sessionId, operation: "renameSession");
     }
     final updated = await _plugin.renameSession(sessionId: sessionId, title: title);
-    return updated.toSharedSession();
+    return updated.toSharedSession(pluginId: _plugin.id);
   }
 
-  Future<CommandListResponse> getCommands({required String? projectId}) async {
+  Future<CommandListResponse> getCommands({required String? projectId, required String? pluginId}) async {
+    _validatePluginSelection(pluginId: pluginId, operation: "getCommands");
     final normalizedProjectId = projectId?.trim();
     final commands = await _plugin.getCommands(
       // The plugin reads commands from the project's directory, so resolve
@@ -306,6 +309,7 @@ class SessionRepository {
     projectId ??= "";
     final deletionSnapshot = Session(
       id: sessionId,
+      pluginId: _plugin.id,
       projectID: projectId,
       directory: stored?.worktreePath ?? projectId,
       parentID: null,
@@ -494,6 +498,7 @@ class SessionRepository {
 
     return enrichSharedSessions(
       sessions: sessions,
+      pluginId: _plugin.id,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: _unseenCalculator,
@@ -541,10 +546,19 @@ class SessionRepository {
         );
       }
       final pluginSessions = await plugin.getChildSessions(sessionId);
-      return pluginSessions.where((session) => !tombstoned.contains(session.id)).toSharedSessions();
+      return pluginSessions.where((session) => !tombstoned.contains(session.id)).toSharedSessions(pluginId: _plugin.id);
     }
     final pluginSessions = await _plugin.getChildSessions(sessionId);
-    return pluginSessions.toSharedSessions();
+    return pluginSessions.toSharedSessions(pluginId: _plugin.id);
+  }
+
+  void _validatePluginSelection({required String? pluginId, required String operation}) {
+    if (pluginId == null || pluginId == _plugin.id) return;
+    throw PluginOperationException(
+      operation,
+      statusCode: 400,
+      message: "requested plugin is not active",
+    );
   }
 
   Future<void> _throwIfTombstoned({required String sessionId, required String operation}) async {

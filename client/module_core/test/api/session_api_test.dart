@@ -20,6 +20,7 @@ void main() {
     test("createSessionWithMessage builds a request body with null variant when omitted", () async {
       const session = Session(
         id: "session-1",
+        pluginId: "plugin-1",
         projectID: "project-1",
         directory: "/tmp/project-1",
         parentID: null,
@@ -40,6 +41,7 @@ void main() {
 
       await api.createSessionWithMessage(
         projectId: "project-1",
+        pluginId: "plugin-1",
         text: "hello",
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
@@ -57,6 +59,7 @@ void main() {
       )..called(1);
       final request = verification.captured.single as CreateSessionRequest;
       expect(request.variant, isNull);
+      expect(request.pluginId, "plugin-1");
     });
 
     test("sendMessage builds a request body with null variant when omitted", () async {
@@ -97,13 +100,13 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
 
-      await api.listCommands(projectId: "project-1");
+      await api.listCommands(projectId: "project-1", pluginId: "plugin-1");
 
       verify(
         () => client.post<CommandListResponse>(
           "/command",
           fromJson: any(named: "fromJson"),
-          body: const ProjectIdRequest(projectId: "project-1"),
+          body: const ProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
         ),
       ).called(1);
     });

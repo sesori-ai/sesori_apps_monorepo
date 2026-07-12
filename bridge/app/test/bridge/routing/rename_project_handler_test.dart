@@ -56,6 +56,7 @@ void main() {
     test("extracts projectId and name from typed body", () async {
       plugin.renameProjectResult = const PluginProject(
         id: "p1",
+        directory: "p1",
         name: "New Name",
         activity: null,
       );
@@ -75,6 +76,7 @@ void main() {
     test("returns mapped Project", () async {
       plugin.renameProjectResult = const PluginProject(
         id: "p1",
+        directory: "p1",
         name: "Renamed Project",
         activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
       );

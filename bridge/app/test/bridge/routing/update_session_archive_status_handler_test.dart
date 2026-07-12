@@ -456,7 +456,7 @@ void main() {
     });
 
     test("archive pre-migration session auto-inserts DB row", () async {
-      plugin.projectsResult = const [PluginProject(id: "/repo")];
+      plugin.projectsResult = const [PluginProject(id: "/repo", directory: "/repo")];
       plugin.sessionsResult = const [
         PluginSession(
           id: "s-pre-migration",
@@ -500,7 +500,7 @@ void main() {
 
     test("archives first-time project (no prior projects_table row) without FK violation", () async {
       // Empty projects_table — no pre-seeding at all.
-      plugin.projectsResult = const [PluginProject(id: "brand-new")];
+      plugin.projectsResult = const [PluginProject(id: "brand-new", directory: "brand-new")];
       plugin.sessionsResult = const [
         PluginSession(
           id: "s-brand-new",

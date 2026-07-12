@@ -206,6 +206,7 @@ class OpenCodeRepository {
       return (
         project: _pluginModelMapper.mapProject(
           worktree: project.worktree,
+          directory: project.worktree,
           name: project.name,
           activity: _deriveActivityFromSessions(sessions),
         ),
@@ -467,6 +468,7 @@ class OpenCodeRepository {
       virtual.add((
         project: _pluginModelMapper.mapProject(
           worktree: directory,
+          directory: directory,
           name: null,
           activity: activity,
         ),

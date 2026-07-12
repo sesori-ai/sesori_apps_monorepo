@@ -29,12 +29,20 @@ void main() {
       (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
     );
     when(
-      () => api.listAgents(projectId: any(named: "projectId")),
+      () => api.listAgents(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
     ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: <AgentInfo>[])));
-    when(() => api.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => api.listProviders(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer(
       (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
     );
-    when(() => api.listCommands(projectId: "project-1")).thenAnswer(
+    when(() => api.listCommands(projectId: "project-1", pluginId: "plugin-1")).thenAnswer(
       (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
     );
     when(
@@ -67,9 +75,9 @@ void main() {
     await repository.getPendingPermissions(sessionId: "session-1");
     await repository.getChildren(sessionId: "session-1");
     await repository.getSessionStatuses();
-    await repository.listAgents(projectId: "project-1");
-    await repository.listProviders(projectId: "project-1");
-    await repository.listCommands(projectId: "project-1");
+    await repository.listAgents(projectId: "project-1", pluginId: "plugin-1");
+    await repository.listProviders(projectId: "project-1", pluginId: "plugin-1");
+    await repository.listCommands(projectId: "project-1", pluginId: "plugin-1");
     await repository.sendMessage(
       sessionId: "session-1",
       text: "hello",
@@ -92,9 +100,9 @@ void main() {
     verify(() => api.getPendingPermissions(sessionId: "session-1")).called(1);
     verify(() => api.getChildren(sessionId: "session-1")).called(1);
     verify(api.getSessionStatuses).called(1);
-    verify(() => api.listAgents(projectId: "project-1")).called(1);
-    verify(() => api.listProviders(projectId: "project-1")).called(1);
-    verify(() => api.listCommands(projectId: "project-1")).called(1);
+    verify(() => api.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    verify(() => api.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    verify(() => api.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(
       () => api.sendMessage(
         sessionId: "session-1",
@@ -147,24 +155,24 @@ void main() {
     // First fetch returns an empty catalog (e.g. the ACP backend has not warmed
     // its model list yet); later fetches return the populated catalog.
     var calls = 0;
-    when(() => api.listProviders(projectId: "p1")).thenAnswer((_) async {
+    when(() => api.listProviders(projectId: "p1", pluginId: null)).thenAnswer((_) async {
       calls++;
       return ApiResponse.success(calls == 1 ? emptyProviders : populatedProviders);
     });
 
-    final first = await repository.listProviders(projectId: "p1");
+    final first = await repository.listProviders(projectId: "p1", pluginId: null);
     expect((first as SuccessResponse<ProviderListResponse>).data.items, isEmpty);
 
     // The empty result must NOT be cached: the second fetch hits the API again
     // and returns the now-populated catalog (the regression being guarded).
-    final second = await repository.listProviders(projectId: "p1");
+    final second = await repository.listProviders(projectId: "p1", pluginId: null);
     expect((second as SuccessResponse<ProviderListResponse>).data.items, isNotEmpty);
-    verify(() => api.listProviders(projectId: "p1")).called(2);
+    verify(() => api.listProviders(projectId: "p1", pluginId: null)).called(2);
 
     // The populated result IS cached: the third fetch is served without the API.
-    final third = await repository.listProviders(projectId: "p1");
+    final third = await repository.listProviders(projectId: "p1", pluginId: null);
     expect((third as SuccessResponse<ProviderListResponse>).data.items, isNotEmpty);
-    verifyNever(() => api.listProviders(projectId: "p1"));
+    verifyNever(() => api.listProviders(projectId: "p1", pluginId: null));
   });
 
   test("listProviders does not cache a partially populated multi-provider response", () async {
@@ -172,55 +180,61 @@ void main() {
     final repository = SessionRepository(api: api);
 
     ProviderInfo provider({required String id, required bool withModels}) => ProviderInfo(
-          id: id,
-          name: id,
-          defaultModelID: withModels ? "$id-default" : null,
-          models: withModels
-              ? {
-                  "$id-default": ProviderModel(
-                    id: "$id-default",
-                    providerID: id,
-                    name: "$id default",
-                    variants: <String>[],
-                    family: null,
-                    releaseDate: null,
-                  ),
-                }
-              : const <String, ProviderModel>{},
-        );
+      id: id,
+      name: id,
+      defaultModelID: withModels ? "$id-default" : null,
+      models: withModels
+          ? {
+              "$id-default": ProviderModel(
+                id: "$id-default",
+                providerID: id,
+                name: "$id default",
+                variants: <String>[],
+                family: null,
+                releaseDate: null,
+              ),
+            }
+          : const <String, ProviderModel>{},
+    );
 
     // A fast provider is already populated while a slow one (e.g. Cursor/ACP) is
     // still warming up with an empty models map; once warmed, both are populated.
     const connectedOnly = true;
     final partialProviders = ProviderListResponse(
       connectedOnly: connectedOnly,
-      items: [provider(id: "openai", withModels: true), provider(id: "cursor", withModels: false)],
+      items: [
+        provider(id: "openai", withModels: true),
+        provider(id: "cursor", withModels: false),
+      ],
     );
     final fullProviders = ProviderListResponse(
       connectedOnly: connectedOnly,
-      items: [provider(id: "openai", withModels: true), provider(id: "cursor", withModels: true)],
+      items: [
+        provider(id: "openai", withModels: true),
+        provider(id: "cursor", withModels: true),
+      ],
     );
 
     var calls = 0;
-    when(() => api.listProviders(projectId: "p1")).thenAnswer((_) async {
+    when(() => api.listProviders(projectId: "p1", pluginId: null)).thenAnswer((_) async {
       calls++;
       return ApiResponse.success(calls == 1 ? partialProviders : fullProviders);
     });
 
     // The partial response must NOT be cached, even though one provider has
     // models — otherwise the warming provider's picker would stay blank forever.
-    final first = await repository.listProviders(projectId: "p1");
+    final first = await repository.listProviders(projectId: "p1", pluginId: null);
     final firstItems = (first as SuccessResponse<ProviderListResponse>).data.items;
     expect(firstItems.firstWhere((p) => p.id == "cursor").models, isEmpty);
 
     // Next fetch hits the API again and returns the now-fully-populated catalog.
-    final second = await repository.listProviders(projectId: "p1");
+    final second = await repository.listProviders(projectId: "p1", pluginId: null);
     final secondItems = (second as SuccessResponse<ProviderListResponse>).data.items;
     expect(secondItems.firstWhere((p) => p.id == "cursor").models, isNotEmpty);
-    verify(() => api.listProviders(projectId: "p1")).called(2);
+    verify(() => api.listProviders(projectId: "p1", pluginId: null)).called(2);
 
     // The fully-populated result IS cached: the third fetch is served from cache.
-    await repository.listProviders(projectId: "p1");
-    verifyNever(() => api.listProviders(projectId: "p1"));
+    await repository.listProviders(projectId: "p1", pluginId: null);
+    verifyNever(() => api.listProviders(projectId: "p1", pluginId: null));
   });
 }

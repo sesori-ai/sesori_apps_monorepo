@@ -166,7 +166,11 @@ void main() {
 
   test("ordinary project listing seeds with now without reconciling", () async {
     plugin.projectsResult = const [
-      PluginProject(id: "project", activity: PluginProjectActivity(createdAt: 10, updatedAt: 20)),
+      PluginProject(
+        id: "project",
+        directory: "project",
+        activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+      ),
     ];
 
     final projects = await service.getProjects();
@@ -251,6 +255,7 @@ void main() {
       const SesoriSseEvent.sessionCreated(
         info: Session(
           id: "new-session",
+          pluginId: "fake",
           projectID: "project",
           directory: "/project",
           parentID: null,
@@ -312,8 +317,16 @@ void main() {
     await database.projectsDao.setActivity(projectId: "created-only", createdAt: 100, updatedAt: 500);
     await database.projectsDao.setActivity(projectId: "advanced", createdAt: 100, updatedAt: 500);
     plugin.projectsResult = const [
-      PluginProject(id: "created-only", activity: PluginProjectActivity(createdAt: 50, updatedAt: 400)),
-      PluginProject(id: "advanced", activity: PluginProjectActivity(createdAt: 80, updatedAt: 600)),
+      PluginProject(
+        id: "created-only",
+        directory: "created-only",
+        activity: PluginProjectActivity(createdAt: 50, updatedAt: 400),
+      ),
+      PluginProject(
+        id: "advanced",
+        directory: "advanced",
+        activity: PluginProjectActivity(createdAt: 80, updatedAt: 600),
+      ),
     ];
     final changes = <ProjectActivityChange>[];
     final subscription = service.changes.listen(changes.add);
@@ -335,7 +348,11 @@ void main() {
   });
 
   test("opening preserves canonical identity and emits only timestamp changes", () async {
-    plugin.currentProjectResult = const PluginProject(id: "canonical", name: "Project");
+    plugin.currentProjectResult = const PluginProject(
+      id: "canonical",
+      directory: "/new/path",
+      name: "Project",
+    );
     await database.projectsDao.recordOpenedProject(
       projectId: "canonical",
       path: "/old/path",

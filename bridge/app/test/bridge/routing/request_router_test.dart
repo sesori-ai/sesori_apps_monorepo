@@ -182,7 +182,7 @@ void main() {
 
     test("routes GET /projects to GetProjectsHandler", () async {
       plugin.projectsResult = [
-        const PluginProject(id: "p1", name: "P"),
+        const PluginProject(id: "p1", directory: "p1", name: "P"),
       ];
       final response = await router.route(makeRequest("GET", "/projects"));
       expect(response.status, equals(200));
@@ -400,7 +400,7 @@ void main() {
     });
 
     test("integrates PR merge and background refresh trigger for session list", () async {
-      plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
+      plugin.currentProjectResult = const PluginProject(id: "/tmp/project", directory: "/tmp/project");
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",

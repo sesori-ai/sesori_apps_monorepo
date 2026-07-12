@@ -45,7 +45,7 @@ void main() {
     test("returns 200 and stores hidden project id", () async {
       final response = await handler.handle(
         makeRequest("POST", "/project/hide"),
-        body: const ProjectIdRequest(projectId: "p1"),
+        body: const ProjectIdRequest(projectId: "p1", pluginId: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -60,7 +60,7 @@ void main() {
       expect(
         () => handler.handle(
           makeRequest("POST", "/project/hide"),
-          body: const ProjectIdRequest(projectId: ""),
+          body: const ProjectIdRequest(projectId: "", pluginId: null),
           pathParams: {},
           queryParams: {},
           fragment: null,
@@ -73,7 +73,7 @@ void main() {
       const projectId = "/Users/alex/projects/my-app";
       final response = await handler.handle(
         makeRequest("POST", "/project/hide"),
-        body: const ProjectIdRequest(projectId: projectId),
+        body: const ProjectIdRequest(projectId: projectId, pluginId: null),
         pathParams: {},
         queryParams: {},
         fragment: null,

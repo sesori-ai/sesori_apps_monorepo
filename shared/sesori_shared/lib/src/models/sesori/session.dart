@@ -35,6 +35,8 @@ sealed class Session with _$Session {
   // ignore: no_slop_linter/prefer_required_named_parameters, optional nullable field must remain omittable for backward-compatible JSON.
   const factory Session({
     required String id,
+    // Nullable so payloads from older peers without plugin routing metadata remain compatible.
+    required String? pluginId,
     required String projectID,
     required String directory,
     required String? parentID,

@@ -1013,7 +1013,7 @@ void main() {
     });
 
     test("triggers PR refresh in background when waitForPrData is false", () async {
-      plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
+      plugin.currentProjectResult = const PluginProject(id: "/tmp/project", directory: "/tmp/project");
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
@@ -1029,7 +1029,7 @@ void main() {
     });
 
     test("triggers PR refresh with project path resolved from plugin.getProject", () async {
-      plugin.currentProjectResult = const PluginProject(id: "/tmp/project");
+      plugin.currentProjectResult = const PluginProject(id: "/tmp/project", directory: "/tmp/project");
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null, waitForPrData: true),

@@ -482,6 +482,7 @@ class CodexEventMapper {
     final projectId = _projectIdForThread(id, cwd: thread["cwd"] as String?);
     return shared.Session(
       id: id,
+      pluginId: null,
       projectID: projectId,
       directory: projectId,
       parentID: null,
@@ -501,6 +502,7 @@ class CodexEventMapper {
     final projectId = _projectIdForThread(id);
     return shared.Session(
       id: id,
+      pluginId: null,
       projectID: projectId,
       directory: projectId,
       parentID: null,

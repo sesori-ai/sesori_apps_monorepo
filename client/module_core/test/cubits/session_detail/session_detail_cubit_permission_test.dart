@@ -97,7 +97,12 @@ void main() {
       when(() => mockProjectRepository.findSessionContext(sessionId: sessionId)).thenAnswer(
         (_) async => const ProjectSessionContext(projectId: "test-project", sessionTitle: null),
       );
-      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
@@ -278,8 +283,8 @@ void main() {
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null)).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null)).called(1);
     });
 
     test("non-loaded state buffers permission events and replays after loaded", () async {
@@ -537,10 +542,20 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
       ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
     ),
   );
-  when(() => service.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+  when(
+    () => service.listAgents(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
+  ).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
-  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+  when(
+    () => service.listProviders(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
+  ).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(ApiResponse.success(_providers())),
   );
 }

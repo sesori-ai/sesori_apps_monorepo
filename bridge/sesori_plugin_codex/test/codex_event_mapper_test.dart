@@ -56,6 +56,7 @@ void main() {
       final created = events.single as BridgeSseSessionCreated;
       final session = shared.Session.fromJson(created.info);
       expect(session.id, "t-1");
+      expect(session.pluginId, isNull);
       expect(session.projectID, projectCwd);
       expect(session.directory, "/repo/app");
       expect(session.title, "Plan the theme");
@@ -89,6 +90,7 @@ void main() {
       expect(updated.titleChanged, isTrue);
       final session = shared.Session.fromJson(updated.info);
       expect(session.id, "t-1");
+      expect(session.pluginId, isNull);
       expect(session.title, "Welcome session");
       expect(session.projectID, projectCwd);
       expect(parseAsSesori(updated), isA<shared.SesoriSessionUpdated>());

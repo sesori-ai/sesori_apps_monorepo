@@ -525,6 +525,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     if (changed) _emitProjectsSummary();
     return _pluginModelMapper.mapProject(
       worktree: project.worktree,
+      directory: projectId,
       name: project.name,
       activity: null,
     );
@@ -559,7 +560,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
 
   @override
   Future<PluginProject> renameProject({required String projectId, required String name}) async {
-    // CRITICAL: projectId is the worktree path (PluginProject.id = worktree, see project.dart:33)
+    // projectId is the live directory used to resolve the OpenCode project UUID.
     // Must resolve the real OpenCode project UUID before calling PATCH
     final project = await _call(
       () => _service.repository.api.getProject(directory: projectId),
@@ -573,6 +574,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     );
     return _pluginModelMapper.mapProject(
       worktree: updated.worktree,
+      directory: projectId,
       name: updated.name,
       activity: null,
     );

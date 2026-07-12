@@ -144,7 +144,7 @@ void main() {
         () => mockClient.post<void>(
           "/project/hide",
           fromJson: any(named: "fromJson"),
-          body: const ProjectIdRequest(projectId: "proj-1"),
+          body: const ProjectIdRequest(projectId: "proj-1", pluginId: null),
         ),
       ).called(1);
     });

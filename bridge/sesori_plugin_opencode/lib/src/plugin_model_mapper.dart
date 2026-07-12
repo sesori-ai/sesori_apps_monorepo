@@ -52,11 +52,13 @@ class PluginModelMapper {
 
   PluginProject mapProject({
     required String worktree,
+    required String directory,
     required String? name,
     required PluginProjectActivity? activity,
   }) {
     return PluginProject(
       id: worktree,
+      directory: directory,
       name: _effectiveProjectName(worktree: worktree, name: name),
       activity: activity,
     );

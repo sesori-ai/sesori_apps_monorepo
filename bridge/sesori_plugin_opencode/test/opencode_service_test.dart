@@ -1982,7 +1982,11 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     return _projects
         .map(
           (project) => (
-            project: PluginProject(id: project.worktree, name: project.name),
+            project: PluginProject(
+              id: project.worktree,
+              directory: project.worktree,
+              name: project.name,
+            ),
             sandboxes: project.sandboxes,
           ),
         )

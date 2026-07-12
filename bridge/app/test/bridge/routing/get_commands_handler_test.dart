@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -43,6 +45,22 @@ void main() {
       expect(handler.canHandle(makeRequest("POST", "/command")), isTrue);
     });
 
+    test("accepts a request body without pluginId", () async {
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/command",
+          body: jsonEncode({"projectId": "/repo"}),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(200));
+      expect(plugin.lastGetCommandsProjectId, equals("/repo"));
+    });
+
     test("maps commands through repository mapper", () async {
       plugin.commandsResult = [
         const PluginCommand(
@@ -60,7 +78,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/command"),
-        body: const ProjectIdRequest(projectId: "/repo"),
+        body: const ProjectIdRequest(projectId: "/repo", pluginId: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -87,6 +105,32 @@ void main() {
           ),
         ),
       );
+    });
+
+    test("accepts the active plugin selection", () async {
+      await handler.handle(
+        makeRequest("POST", "/command"),
+        body: const ProjectIdRequest(projectId: "/repo", pluginId: "fake"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastGetCommandsProjectId, equals("/repo"));
+    });
+
+    test("rejects another plugin before plugin I/O", () async {
+      await expectLater(
+        handler.handle(
+          makeRequest("POST", "/command"),
+          body: const ProjectIdRequest(projectId: "/repo", pluginId: "other"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 400)),
+      );
+      expect(plugin.lastGetCommandsProjectId, isNull);
     });
   });
 }

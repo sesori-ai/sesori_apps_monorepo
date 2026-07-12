@@ -8,8 +8,8 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 1A - pre-change baseline harness
-- **Next up:** Stage 1B - additive compatibility contracts
+- **Last completed stage:** Stage 1B - additive compatibility contracts
+- **Next up:** Stage 2 - catalog schema and indexed DAO queries
 - **Runtime default:** one selected plugin until Stage 7
 - **Catalog projection version:** not assigned until the schema migration lands
 
@@ -597,7 +597,7 @@ selection.
 |---|---|---|---|
 | ☑ | 0 | Execution plan approved | `aristotle-plan-review`; docs consistency |
 | ☑ | 1A | Pre-change baseline harness | AOT baseline JSON; app/Codex analysis |
-| ☐ | 1B | Additive compatibility contracts | Shared/plugin/client round trips |
+| ☑ | 1B | Additive compatibility contracts | Shared/plugin/client round trips |
 | ☐ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
 | ☐ | 3 | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☐ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
@@ -830,6 +830,13 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 1B:** `PluginProject.directory` now declares the native plugin's live
+  directory independently from its backend id. Shared session/create/composer
+  contracts carry nullable plugin identity for older-peer compatibility. The
+  single-plugin bridge stamps every outgoing session and rejects a mismatched
+  requested plugin before plugin I/O; no plugin map or selection UI was added.
+  Plugin metadata/import DTOs remain deferred to their first consumers in
+  Stages 5 and 7.
 - **Stage 1A:** The approved five-executable baseline scope included three paths
   that do not exist yet: event projection, import publication, and multi-plugin
   startup. Stage 1 was split into cohesive 1A benchmark and 1B contract PRs.

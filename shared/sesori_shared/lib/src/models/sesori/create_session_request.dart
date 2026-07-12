@@ -11,6 +11,8 @@ part "create_session_request.g.dart";
 sealed class CreateSessionRequest with _$CreateSessionRequest {
   const factory CreateSessionRequest({
     required String projectId,
+    // Nullable so requests remain compatible with older peers that do not identify plugins.
+    required String? pluginId,
     required List<PromptPart> parts,
     required String? agent,
     required PromptModel? model,

@@ -127,9 +127,9 @@ void main() {
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
-        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(1);
-        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
-        verify(() => mockSessionService.listCommands(projectId: "project-1")).called(1);
+        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null)).called(1);
+        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null)).called(1);
+        verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: null)).called(1);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
@@ -189,9 +189,9 @@ void main() {
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
-        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(2);
-        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(2);
-        verify(() => mockSessionService.listCommands(projectId: "project-1")).called(2);
+        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null)).called(2);
+        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null)).called(2);
+        verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: null)).called(2);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(2);
       },
     );
@@ -379,7 +379,10 @@ void main() {
       "selectVariant updates selectedAgentModel variant",
       build: () {
         when(
-          () => mockSessionService.listProviders(projectId: any(named: "projectId")),
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
             const ProviderListResponse(
@@ -439,7 +442,10 @@ void main() {
       "selectVariant to null clears selectedAgentModel variant",
       build: () {
         when(
-          () => mockSessionService.listProviders(projectId: any(named: "projectId")),
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
             const ProviderListResponse(
@@ -1959,21 +1965,30 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.listAgents(projectId: any(named: "projectId")),
+    () => service.listAgents(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
   ).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(
       ApiResponse.success(Agents(agents: [testAgentInfo()])),
     ),
   );
   when(
-    () => service.listProviders(projectId: any(named: "projectId")),
+    () => service.listProviders(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
   ).thenAnswer(
     (_) => Future<ApiResponse<ProviderListResponse>>.value(
       ApiResponse.success(testProviderListResponse()),
     ),
   );
   when(
-    () => sessionService.listCommands(projectId: any(named: "projectId")),
+    () => sessionService.listCommands(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
   ).thenAnswer(
     (_) => Future<ApiResponse<CommandListResponse>>.value(
       ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),

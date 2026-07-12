@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
@@ -87,6 +88,30 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/session/create")), isFalse);
     });
 
+    test("accepts a request body without pluginId", () async {
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/create",
+          body: jsonEncode({
+            "projectId": "/repo",
+            "parts": <Object>[],
+            "agent": null,
+            "model": null,
+            "command": null,
+            "variant": null,
+            "dedicatedWorktree": false,
+          }),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(200));
+      expect(plugin.lastCreateSessionDirectory, equals("/repo"));
+    });
+
     test("dedicated=true and WorktreeSuccess injects system prompt and stores worktree metadata", () async {
       plugin.createSessionResult = const PluginSession(
         id: "s1",
@@ -108,6 +133,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: SessionVariant(id: "xhigh"),
@@ -166,6 +192,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: SessionVariant(id: "xhigh"),
@@ -207,6 +234,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -259,6 +287,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -305,6 +334,7 @@ void main() {
           makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "/repo",
+            pluginId: null,
             dedicatedWorktree: true,
             parts: [PromptPart.text(text: "Start")],
             variant: null,
@@ -355,6 +385,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: true,
           parts: <PromptPart>[],
           variant: null,
@@ -425,6 +456,7 @@ void main() {
           makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "/repo",
+            pluginId: null,
             dedicatedWorktree: true,
             parts: [PromptPart.text(text: "Start")],
             variant: null,
@@ -459,6 +491,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: "fake",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -472,6 +505,7 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
+      expect(result.pluginId, equals("fake"));
       // The created session belongs to the requested project by construction,
       // so the response is re-keyed to the request's stable projectId — the
       // plugin can only echo the directory it created the session in.
@@ -524,6 +558,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -556,6 +591,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -590,6 +626,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -610,6 +647,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/tmp",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -663,6 +701,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Fix the login bug")],
           variant: null,
@@ -703,6 +742,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -736,6 +776,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.fileData(mime: "image/png", base64: "abc", filename: "img.png")],
           variant: null,
@@ -768,6 +809,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "   ")],
           variant: null,
@@ -799,6 +841,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Review this code")],
           variant: SessionVariant(id: "low"),
@@ -843,6 +886,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Review this code")],
           variant: null,
@@ -896,6 +940,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Review this code")],
           variant: null,
@@ -934,6 +979,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Review this")],
           variant: SessionVariant(id: "xhigh"),
@@ -964,6 +1010,7 @@ void main() {
           makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "brand-new-proj",
+            pluginId: null,
             dedicatedWorktree: false,
             parts: [PromptPart.text(text: "Hello")],
             variant: null,
@@ -983,6 +1030,29 @@ void main() {
       expect(await db.sessionDao.getSession(sessionId: "new-sess-1"), isNull);
     });
 
+    test("rejects another plugin before plugin I/O", () async {
+      await expectLater(
+        handler.handle(
+          makeRequest("POST", "/session/create"),
+          body: const CreateSessionRequest(
+            projectId: "/repo",
+            pluginId: "other",
+            dedicatedWorktree: false,
+            parts: [],
+            variant: null,
+            agent: null,
+            model: null,
+            command: null,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 400)),
+      );
+      expect(plugin.lastCreateSessionDirectory, isNull);
+    });
+
     test("no command — sendCommand not called", () async {
       plugin.createSessionResult = const PluginSession(
         id: "no-cmd-1",
@@ -998,6 +1068,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -1029,6 +1100,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -1085,6 +1157,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
+          pluginId: null,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Fix the login bug")],
           variant: null,

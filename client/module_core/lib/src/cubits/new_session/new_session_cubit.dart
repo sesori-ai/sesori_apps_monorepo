@@ -44,9 +44,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         ApiResponse<ProviderListResponse> providersResponse,
         ApiResponse<CommandListResponse> commandsResponse,
       ) = await wait3(
-        _sessionService.listAgents(projectId: _projectId),
-        _sessionService.listProviders(projectId: _projectId),
-        _sessionService.listCommands(projectId: _projectId),
+        _sessionService.listAgents(projectId: _projectId, pluginId: null),
+        _sessionService.listProviders(projectId: _projectId, pluginId: null),
+        _sessionService.listCommands(projectId: _projectId, pluginId: null),
       );
 
       if (isClosed) return;
@@ -406,6 +406,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
     final response = await _sessionService.createSessionWithMessage(
       projectId: _projectId,
+      pluginId: null,
       text: trimmed,
       agent: config?.agent,
       providerID: config?.agentModel?.providerID,

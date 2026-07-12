@@ -75,6 +75,7 @@ void main() {
     test('serializes and deserializes Session info correctly', () {
       const session = Session(
         id: 'ses_001',
+        pluginId: null,
         projectID: 'proj_001',
         directory: '/home/user/project',
         parentID: null,
@@ -106,6 +107,7 @@ void main() {
     test('serializes and deserializes correctly', () {
       const session = Session(
         id: 'ses_002',
+        pluginId: null,
         projectID: 'proj_002',
         directory: '/home/user/other',
         parentID: null,
@@ -135,6 +137,7 @@ void main() {
     test('serializes and deserializes correctly', () {
       const session = Session(
         id: 'ses_003',
+        pluginId: null,
         projectID: 'proj_003',
         directory: '/deleted/path',
         parentID: null,
@@ -422,6 +425,7 @@ void main() {
       const created = SesoriSseEvent.sessionCreated(
         info: Session(
           id: 'x',
+          pluginId: null,
           projectID: 'p',
           directory: '/d',
           parentID: null,
@@ -439,6 +443,7 @@ void main() {
       const updated = SesoriSseEvent.sessionUpdated(
         info: Session(
           id: 'x',
+          pluginId: null,
           projectID: 'p',
           directory: '/d',
           parentID: null,
@@ -456,6 +461,7 @@ void main() {
       const deleted = SesoriSseEvent.sessionDeleted(
         info: Session(
           id: 'x',
+          pluginId: null,
           projectID: 'p',
           directory: '/d',
           parentID: null,
@@ -664,6 +670,7 @@ void main() {
       final json = const SesoriSseEvent.sessionCreated(
         info: Session(
           id: 'i',
+          pluginId: null,
           projectID: 'p',
           directory: '/d',
           parentID: null,
@@ -681,6 +688,7 @@ void main() {
       final json = const SesoriSseEvent.sessionUpdated(
         info: Session(
           id: 'i',
+          pluginId: null,
           projectID: 'p',
           directory: '/d',
           parentID: null,
@@ -698,6 +706,7 @@ void main() {
       final json = const SesoriSseEvent.sessionDeleted(
         info: Session(
           id: 'i',
+          pluginId: null,
           projectID: 'p',
           directory: '/d',
           parentID: null,

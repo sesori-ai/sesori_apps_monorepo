@@ -304,7 +304,12 @@ void _stubLoadApis(MockSessionService service) {
   when(() => service.getSessionStatuses()).thenAnswer(
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );
-  when(() => service.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+  when(
+    () => service.listAgents(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
+  ).thenAnswer(
     (_) async => ApiResponse.success(
       const Agents(
         agents: [
@@ -313,12 +318,17 @@ void _stubLoadApis(MockSessionService service) {
       ),
     ),
   );
-  when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+  when(
+    () => service.listProviders(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
+  ).thenAnswer(
     (_) async => ApiResponse.success(
       const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]),
     ),
   );
-  when(() => service.listCommands(projectId: "project-1")).thenAnswer(
+  when(() => service.listCommands(projectId: "project-1", pluginId: null)).thenAnswer(
     (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
   );
 }

@@ -150,7 +150,7 @@ class SessionDetailLoadService {
       );
     }
 
-    return _repository.listAgents(projectId: normalizedProjectId);
+    return _repository.listAgents(projectId: normalizedProjectId, pluginId: null);
   }
 
   Future<ApiResponse<CommandListResponse>> _listCommands({required String? projectId}) {
@@ -161,7 +161,7 @@ class SessionDetailLoadService {
       );
     }
 
-    return _repository.listCommands(projectId: normalizedProjectId);
+    return _repository.listCommands(projectId: normalizedProjectId, pluginId: null);
   }
 
   Future<ApiResponse<ProviderListResponse>> _listProviders({required String? projectId}) {
@@ -174,7 +174,7 @@ class SessionDetailLoadService {
       );
     }
 
-    return _repository.listProviders(projectId: normalizedProjectId);
+    return _repository.listProviders(projectId: normalizedProjectId, pluginId: null);
   }
 
   Future<ProjectSessionContext?> _loadProjectSessionContext({required String sessionId}) async {

@@ -678,6 +678,7 @@ Session _session({
 }) {
   return Session(
     id: id,
+    pluginId: "fake",
     projectID: projectID,
     directory: directory,
     parentID: parentID,

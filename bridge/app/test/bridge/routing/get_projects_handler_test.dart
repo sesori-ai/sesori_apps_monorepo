@@ -81,6 +81,7 @@ void main() {
       plugin.projectsResult = [
         const PluginProject(
           id: "p1",
+          directory: "p1",
           name: "My Project",
         ),
       ];
@@ -101,6 +102,7 @@ void main() {
       plugin.projectsResult = [
         const PluginProject(
           id: "p1",
+          directory: "p1",
           activity: PluginProjectActivity(createdAt: 1000, updatedAt: 2000),
         ),
       ];
@@ -119,7 +121,7 @@ void main() {
 
     test("time uses the persisted insertion timestamp when plugin activity is absent", () async {
       plugin.projectsResult = [
-        const PluginProject(id: "p1"),
+        const PluginProject(id: "p1", directory: "p1"),
       ];
 
       final response = await handler.handle(
@@ -135,9 +137,9 @@ void main() {
 
     test("returns all projects when plugin returns multiple", () async {
       plugin.projectsResult = [
-        const PluginProject(id: "p1"),
-        const PluginProject(id: "p2"),
-        const PluginProject(id: "p3"),
+        const PluginProject(id: "p1", directory: "p1"),
+        const PluginProject(id: "p2", directory: "p2"),
+        const PluginProject(id: "p3", directory: "p3"),
       ];
 
       final response = await handler.handle(
@@ -152,9 +154,9 @@ void main() {
 
     test("filters out hidden project ids", () async {
       plugin.projectsResult = [
-        const PluginProject(id: "visible-1"),
-        const PluginProject(id: "hidden-1"),
-        const PluginProject(id: "visible-2"),
+        const PluginProject(id: "visible-1", directory: "visible-1"),
+        const PluginProject(id: "hidden-1", directory: "hidden-1"),
+        const PluginProject(id: "visible-2", directory: "visible-2"),
       ];
       await projectsDao.hideProject(projectId: "hidden-1");
 

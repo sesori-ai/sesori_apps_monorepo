@@ -3,6 +3,7 @@ import "package:opencode_plugin/src/models/openapi/session.g.dart";
 import "package:opencode_plugin/src/models/sse_event_data.g.dart";
 import "package:opencode_plugin/src/sse_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 AssistantMessage _assistantMessage({required Object? error}) {
@@ -96,6 +97,7 @@ void main() {
       final event = result! as BridgeSseSessionCreated;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
+      expect(shared.Session.fromJson(event.info).pluginId, isNull);
     });
 
     test("maps session.updated using provided canonical projectID", () {

@@ -493,7 +493,8 @@ as int,
 /// @nodoc
 mixin _$ProjectIdRequest {
 
- String get projectId;
+ String get projectId;// Nullable so requests remain compatible with older peers that do not identify plugins.
+ String? get pluginId;
 /// Create a copy of ProjectIdRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -506,16 +507,16 @@ $ProjectIdRequestCopyWith<ProjectIdRequest> get copyWith => _$ProjectIdRequestCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId);
+int get hashCode => Object.hash(runtimeType,projectId,pluginId);
 
 @override
 String toString() {
-  return 'ProjectIdRequest(projectId: $projectId)';
+  return 'ProjectIdRequest(projectId: $projectId, pluginId: $pluginId)';
 }
 
 
@@ -526,7 +527,7 @@ abstract mixin class $ProjectIdRequestCopyWith<$Res>  {
   factory $ProjectIdRequestCopyWith(ProjectIdRequest value, $Res Function(ProjectIdRequest) _then) = _$ProjectIdRequestCopyWithImpl;
 @useResult
 $Res call({
- String projectId
+ String projectId, String? pluginId
 });
 
 
@@ -543,10 +544,11 @@ class _$ProjectIdRequestCopyWithImpl<$Res>
 
 /// Create a copy of ProjectIdRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? pluginId = freezed,}) {
   return _then(_self.copyWith(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
-as String,
+as String,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -558,10 +560,12 @@ as String,
 @JsonSerializable()
 
 class _ProjectIdRequest implements ProjectIdRequest {
-  const _ProjectIdRequest({required this.projectId});
+  const _ProjectIdRequest({required this.projectId, required this.pluginId});
   factory _ProjectIdRequest.fromJson(Map<String, dynamic> json) => _$ProjectIdRequestFromJson(json);
 
 @override final  String projectId;
+// Nullable so requests remain compatible with older peers that do not identify plugins.
+@override final  String? pluginId;
 
 /// Create a copy of ProjectIdRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -576,16 +580,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId);
+int get hashCode => Object.hash(runtimeType,projectId,pluginId);
 
 @override
 String toString() {
-  return 'ProjectIdRequest(projectId: $projectId)';
+  return 'ProjectIdRequest(projectId: $projectId, pluginId: $pluginId)';
 }
 
 
@@ -596,7 +600,7 @@ abstract mixin class _$ProjectIdRequestCopyWith<$Res> implements $ProjectIdReque
   factory _$ProjectIdRequestCopyWith(_ProjectIdRequest value, $Res Function(_ProjectIdRequest) _then) = __$ProjectIdRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId
+ String projectId, String? pluginId
 });
 
 
@@ -613,10 +617,11 @@ class __$ProjectIdRequestCopyWithImpl<$Res>
 
 /// Create a copy of ProjectIdRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? pluginId = freezed,}) {
   return _then(_ProjectIdRequest(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
-as String,
+as String,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

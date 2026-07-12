@@ -79,10 +79,11 @@ void main() {
 
     test("valid new path creates directory, runs git init, calls plugin, returns 200", () async {
       final path = "${tempDir.path}/new-project";
-      plugin.currentProjectResult = const PluginProject(
+      plugin.currentProjectResult = PluginProject(
         id: "p-1",
+        directory: path,
         name: "New Project",
-        activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        activity: const PluginProjectActivity(createdAt: 10, updatedAt: 20),
       );
 
       final result = await handler.handle(
@@ -103,10 +104,11 @@ void main() {
 
     test(".gitignore is created with .worktrees/ entry after git init", () async {
       final path = "${tempDir.path}/new-project-with-gitignore";
-      plugin.currentProjectResult = const PluginProject(
+      plugin.currentProjectResult = PluginProject(
         id: "p-2",
+        directory: path,
         name: "Project With Gitignore",
-        activity: PluginProjectActivity(createdAt: 30, updatedAt: 40),
+        activity: const PluginProjectActivity(createdAt: 30, updatedAt: 40),
       );
 
       final result = await handler.handle(

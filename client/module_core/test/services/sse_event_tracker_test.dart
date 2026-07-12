@@ -422,6 +422,7 @@ void main() {
         data: const SesoriSessionCreated(
           info: Session(
             id: "s1",
+            pluginId: null,
             projectID: "p1",
             directory: "/foo",
             parentID: null,

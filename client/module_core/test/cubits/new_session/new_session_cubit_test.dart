@@ -21,14 +21,27 @@ void main() {
       selectionTracker = NewSessionSelectionTracker();
 
       when(
-        () => mockSessionService.listAgents(projectId: any(named: "projectId")),
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
       ).thenAnswer((_) async => ApiResponse<Agents>.success(const Agents(agents: <AgentInfo>[])));
-      when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+      when(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse<ProviderListResponse>.success(
           const ProviderListResponse(items: [], connectedOnly: false),
         ),
       );
-      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse<CommandListResponse>.success(const CommandListResponse(items: <CommandInfo>[])),
       );
     });
@@ -52,7 +65,12 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "loads available commands into idle state",
       build: () {
-        when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const CommandListResponse(
               items: <CommandInfo>[
@@ -86,6 +104,7 @@ void main() {
         when(
           () => mockSessionService.createSessionWithMessage(
             projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
@@ -113,6 +132,7 @@ void main() {
         verify(
           () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
+            pluginId: null,
             text: "hello",
             agent: null,
             providerID: null,
@@ -131,6 +151,7 @@ void main() {
         when(
           () => mockSessionService.createSessionWithMessage(
             projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
@@ -162,6 +183,7 @@ void main() {
         verify(
           () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
+            pluginId: null,
             text: "",
             agent: null,
             providerID: null,
@@ -177,7 +199,12 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectVariant updates state and createSession forwards variant",
       build: () {
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -194,6 +221,7 @@ void main() {
         when(
           () => mockSessionService.createSessionWithMessage(
             projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
@@ -236,6 +264,7 @@ void main() {
         verify(
           () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
+            pluginId: null,
             text: "hello",
             agent: "build",
             providerID: "openai",
@@ -251,7 +280,12 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectAgent changes agent without affecting selected model variant",
       build: () {
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -298,7 +332,12 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectModel updates selectedAgentModel to the chosen model variant",
       build: () {
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -341,7 +380,12 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectVariant updates selectedAgentModel variant",
       build: () {
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -355,7 +399,12 @@ void main() {
             ),
           ),
         );
-        when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const ProviderListResponse(
               connectedOnly: false,
@@ -402,7 +451,12 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectVariant to null clears selectedAgentModel variant",
       build: () {
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -416,7 +470,12 @@ void main() {
             ),
           ),
         );
-        when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const ProviderListResponse(
               connectedOnly: false,
@@ -465,7 +524,12 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "persists the chosen variant to the selection store",
       build: () {
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -498,7 +562,12 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "persists the chosen model to the selection store",
       build: () {
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -540,7 +609,12 @@ void main() {
           agent: null,
           agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
         );
-        when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const ProviderListResponse(
               connectedOnly: false,
@@ -602,7 +676,12 @@ void main() {
           agent: null,
           agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "legacy"),
         );
-        when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const ProviderListResponse(
               connectedOnly: false,
@@ -657,7 +736,12 @@ void main() {
       "restores a persisted non-default agent on load",
       build: () {
         selectionTracker.write(projectId: "project-1", agent: "plan", agentModel: null);
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -692,7 +776,12 @@ void main() {
       "falls back to the default agent when the persisted agent is gone",
       build: () {
         selectionTracker.write(projectId: "project-1", agent: "ghost", agentModel: null);
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -725,7 +814,12 @@ void main() {
           agent: null,
           agentModel: const AgentModel(providerID: "ghost", modelID: "gone", variant: null),
         );
-        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -761,6 +855,7 @@ void main() {
         when(
           () => mockSessionService.createSessionWithMessage(
             projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
             providerID: any(named: "providerID"),
@@ -790,6 +885,7 @@ void main() {
       when(
         () => mockSessionService.createSessionWithMessage(
           projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
           providerID: any(named: "providerID"),
@@ -817,6 +913,7 @@ void main() {
       when(
         () => mockSessionService.createSessionWithMessage(
           projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
           providerID: any(named: "providerID"),

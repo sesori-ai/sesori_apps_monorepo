@@ -234,14 +234,38 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
-  when(() => repository.listAgents(projectId: any(named: "projectId"))).thenAnswer(
-    (invocation) => service.listAgents(projectId: invocation.namedArguments[#projectId] as String),
+  when(
+    () => repository.listAgents(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
+  ).thenAnswer(
+    (invocation) => service.listAgents(
+      projectId: invocation.namedArguments[#projectId] as String,
+      pluginId: invocation.namedArguments[#pluginId] as String?,
+    ),
   );
-  when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
-    (invocation) => service.listProviders(projectId: invocation.namedArguments[#projectId] as String),
+  when(
+    () => repository.listProviders(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
+  ).thenAnswer(
+    (invocation) => service.listProviders(
+      projectId: invocation.namedArguments[#projectId] as String,
+      pluginId: invocation.namedArguments[#pluginId] as String?,
+    ),
   );
-  when(() => repository.listCommands(projectId: any(named: "projectId"))).thenAnswer(
-    (invocation) => service.listCommands(projectId: invocation.namedArguments[#projectId] as String?),
+  when(
+    () => repository.listCommands(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
+  ).thenAnswer(
+    (invocation) => service.listCommands(
+      projectId: invocation.namedArguments[#projectId] as String?,
+      pluginId: invocation.namedArguments[#pluginId] as String?,
+    ),
   );
   when(
     () => repository.sendMessage(
@@ -296,6 +320,7 @@ Project testProject({String? id, String? path, String? name}) {
 Session testSession({String? id, String? title, DateTime? archivedAt, bool unseen = false}) {
   return Session(
     id: id ?? "session-1",
+    pluginId: null,
     projectID: "project-1",
     directory: "/home/user/my-project",
     parentID: null,

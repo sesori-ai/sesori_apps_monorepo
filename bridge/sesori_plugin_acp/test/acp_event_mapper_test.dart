@@ -526,6 +526,7 @@ void main() {
       expect(updated.titleChanged, isTrue);
       final session = shared.Session.fromJson(updated.info);
       expect(session.id, "s1");
+      expect(session.pluginId, isNull);
       expect(session.title, "Fix the parser");
       // No per-session project recorded -> falls back to the launch cwd.
       expect(session.projectID, "/repo");

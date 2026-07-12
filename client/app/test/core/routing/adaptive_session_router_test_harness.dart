@@ -109,13 +109,22 @@ class AdaptiveSessionRouterTestHarness {
       return ApiResponse.success(SessionDiffsResponse(diffs: diffsBySession[sessionId] ?? const []));
     });
     when(
-      () => sessionRepository.listAgents(projectId: any(named: "projectId")),
+      () => sessionRepository.listAgents(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
     ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [testAgentInfo()])));
     when(
-      () => sessionRepository.listProviders(projectId: any(named: "projectId")),
+      () => sessionRepository.listProviders(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
     ).thenAnswer((_) async => ApiResponse.success(testProviderListResponse()));
     when(
-      () => sessionRepository.listCommands(projectId: any(named: "projectId")),
+      () => sessionRepository.listCommands(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
     ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: [])));
 
     Future<SessionDetailLoadResult> loadSnapshot(Invocation invocation) async {
@@ -239,6 +248,7 @@ Session adaptiveTestSession({
 }) {
   return Session(
     id: id,
+    pluginId: null,
     projectID: projectId,
     directory: "/tmp/$projectId",
     parentID: null,

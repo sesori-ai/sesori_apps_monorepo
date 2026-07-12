@@ -86,25 +86,26 @@ class SessionService {
     return _repository.getSessionStatuses();
   }
 
-  Future<ApiResponse<Agents>> listAgents({required String projectId}) {
-    return _repository.listAgents(projectId: projectId);
+  Future<ApiResponse<Agents>> listAgents({required String projectId, required String? pluginId}) {
+    return _repository.listAgents(projectId: projectId, pluginId: pluginId);
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) {
-    return _repository.listProviders(projectId: projectId);
+  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId, required String? pluginId}) {
+    return _repository.listProviders(projectId: projectId, pluginId: pluginId);
   }
 
-  Future<ApiResponse<CommandListResponse>> listCommands({required String? projectId}) {
+  Future<ApiResponse<CommandListResponse>> listCommands({required String? projectId, required String? pluginId}) {
     final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null) {
       return Future.value(ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
     }
 
-    return _repository.listCommands(projectId: normalizedProjectId);
+    return _repository.listCommands(projectId: normalizedProjectId, pluginId: pluginId);
   }
 
   Future<ApiResponse<Session>> createSessionWithMessage({
     required String projectId,
+    required String? pluginId,
     required String text,
     required String? agent,
     required String? providerID,
@@ -114,6 +115,7 @@ class SessionService {
     required bool dedicatedWorktree,
   }) => _repository.createSessionWithMessage(
     projectId: projectId,
+    pluginId: pluginId,
     text: text,
     agent: agent,
     model: _resolveModel(providerID: providerID, modelID: modelID),

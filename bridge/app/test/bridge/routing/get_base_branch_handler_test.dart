@@ -49,7 +49,7 @@ void main() {
     test("returns baseBranch null for unknown project", () async {
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),
-        body: const ProjectIdRequest(projectId: "unknown-project"),
+        body: const ProjectIdRequest(projectId: "unknown-project", pluginId: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -63,7 +63,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),
-        body: const ProjectIdRequest(projectId: "/Users/dev/my-app"),
+        body: const ProjectIdRequest(projectId: "/Users/dev/my-app", pluginId: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -77,7 +77,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),
-        body: const ProjectIdRequest(projectId: "proj-1"),
+        body: const ProjectIdRequest(projectId: "proj-1", pluginId: null),
         pathParams: {},
         queryParams: {},
         fragment: null,

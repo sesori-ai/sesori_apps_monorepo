@@ -6,9 +6,10 @@ import "../session_unseen_calculator.dart";
 
 /// Maps a [PluginSession] to the shared [Session] type used in relay responses.
 extension PluginSessionMapper on PluginSession {
-  Session toSharedSession() {
+  Session toSharedSession({required String pluginId}) {
     return Session(
       id: id,
+      pluginId: pluginId,
       projectID: projectID,
       directory: directory,
       parentID: parentID,
@@ -36,19 +37,20 @@ extension PluginSessionMapper on PluginSession {
 }
 
 extension PluginSessionsMapper on Iterable<PluginSession> {
-  List<Session> toSharedSessions() {
-    return map((session) => session.toSharedSession()).toList(growable: false);
+  List<Session> toSharedSessions({required String pluginId}) {
+    return map((session) => session.toSharedSession(pluginId: pluginId)).toList(growable: false);
   }
 }
 
 Session enrichSharedSession({
   required Session session,
+  required String pluginId,
   required SessionDto? storedSession,
   required PullRequestInfo? pullRequest,
   required SessionUnseenCalculator unseenCalculator,
   required bool adoptStoredProjectId,
 }) {
-  var result = session;
+  var result = session.copyWith(pluginId: pluginId);
 
   if (storedSession != null) {
     final currentTime = session.time;
@@ -107,6 +109,7 @@ SessionPromptDefaults? _promptDefaultsFromStoredSession(SessionDto storedSession
 
 List<Session> enrichSharedSessions({
   required List<Session> sessions,
+  required String pluginId,
   required Map<String, SessionDto> storedSessionsById,
   required Map<String, PullRequestInfo> pullRequestsBySessionId,
   required SessionUnseenCalculator unseenCalculator,
@@ -116,6 +119,7 @@ List<Session> enrichSharedSessions({
       .map(
         (session) => enrichSharedSession(
           session: session,
+          pluginId: pluginId,
           storedSession: storedSessionsById[session.id],
           pullRequest: pullRequestsBySessionId[session.id],
           unseenCalculator: unseenCalculator,

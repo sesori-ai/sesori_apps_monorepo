@@ -54,6 +54,7 @@ Widget _buildApp({
 Session _childSession({required String id, String? title}) {
   return Session(
     id: id,
+    pluginId: null,
     projectID: "project-1",
     directory: "/home/user/my-project",
     parentID: "session-parent",

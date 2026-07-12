@@ -222,6 +222,7 @@ Session _session({
 }) {
   return Session(
     id: id,
+    pluginId: "fake",
     projectID: projectId,
     directory: "/tmp/$projectId",
     parentID: null,

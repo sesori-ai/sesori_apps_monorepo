@@ -44,11 +44,16 @@ _ProjectTime _$ProjectTimeFromJson(Map json) => _ProjectTime(
 Map<String, dynamic> _$ProjectTimeToJson(_ProjectTime instance) =>
     <String, dynamic>{'created': instance.created, 'updated': instance.updated};
 
-_ProjectIdRequest _$ProjectIdRequestFromJson(Map json) =>
-    _ProjectIdRequest(projectId: json['projectId'] as String);
+_ProjectIdRequest _$ProjectIdRequestFromJson(Map json) => _ProjectIdRequest(
+  projectId: json['projectId'] as String,
+  pluginId: json['pluginId'] as String?,
+);
 
 Map<String, dynamic> _$ProjectIdRequestToJson(_ProjectIdRequest instance) =>
-    <String, dynamic>{'projectId': instance.projectId};
+    <String, dynamic>{
+      'projectId': instance.projectId,
+      'pluginId': ?instance.pluginId,
+    };
 
 _ProjectPathRequest _$ProjectPathRequestFromJson(Map json) =>
     _ProjectPathRequest(path: json['path'] as String);

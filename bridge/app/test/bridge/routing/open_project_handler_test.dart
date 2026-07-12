@@ -146,7 +146,7 @@ void main() {
     // ── Successful discovery ─────────────────────────────────────────────────
 
     test("calls plugin.getProject with the given path", () async {
-      plugin.currentProjectResult = PluginProject(id: tempDir.path);
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       await handler.handle(
         makeRequest("POST", "/project/open"),
@@ -160,7 +160,7 @@ void main() {
     });
 
     test("returns 200 with application/json content-type", () async {
-      plugin.currentProjectResult = PluginProject(id: tempDir.path);
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
@@ -176,6 +176,7 @@ void main() {
     test("maps project id and name fields", () async {
       plugin.currentProjectResult = PluginProject(
         id: tempDir.path,
+        directory: tempDir.path,
         name: "My Project",
       );
 
@@ -194,6 +195,7 @@ void main() {
     test("maps ProjectTime from the persisted open timestamp", () async {
       plugin.currentProjectResult = PluginProject(
         id: tempDir.path,
+        directory: tempDir.path,
         activity: const PluginProjectActivity(createdAt: 1000, updatedAt: 2000),
       );
 
@@ -209,7 +211,7 @@ void main() {
     });
 
     test("time is non-null when plugin returns no activity", () async {
-      plugin.currentProjectResult = PluginProject(id: tempDir.path);
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
@@ -244,6 +246,7 @@ void main() {
     test("idempotent: calling twice with same path returns same result", () async {
       plugin.currentProjectResult = PluginProject(
         id: tempDir.path,
+        directory: tempDir.path,
         name: "Stable Project",
       );
 
@@ -267,7 +270,7 @@ void main() {
     });
 
     test("unhides discovered project id", () async {
-      plugin.currentProjectResult = PluginProject(id: tempDir.path);
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
       await db.projectsDao.hideProject(projectId: tempDir.path);
 
       await handler.handle(

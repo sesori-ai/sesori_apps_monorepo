@@ -1801,7 +1801,7 @@ class _SummaryPlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", directory: "");
 
   @override
   Future<bool> healthCheck() async => true;
@@ -1989,7 +1989,7 @@ class _NoopPlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => PluginProject(id: projectId);
+  Future<PluginProject> getProject(String projectId) async => PluginProject(id: projectId, directory: projectId);
 
   @override
   Future<bool> healthCheck() async => true;
@@ -2163,6 +2163,7 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 
 Session _deletedSession(String sessionId) => Session(
   id: sessionId,
+  pluginId: "fake",
   projectID: "",
   directory: "",
   parentID: null,
@@ -2194,6 +2195,7 @@ class _NoopSessionRepository implements SessionRepository {
 
   @override
   Future<Session> createSession({
+    required String? pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -2202,6 +2204,7 @@ class _NoopSessionRepository implements SessionRepository {
     required PromptModel? model,
   }) async => const Session(
     id: "",
+    pluginId: "fake",
     projectID: "",
     directory: "",
     parentID: null,
@@ -2286,7 +2289,8 @@ class _NoopSessionRepository implements SessionRepository {
   }) async {}
 
   @override
-  Future<CommandListResponse> getCommands({required String? projectId}) async => const CommandListResponse(items: []);
+  Future<CommandListResponse> getCommands({required String? projectId, required String? pluginId}) async =>
+      const CommandListResponse(items: []);
 
   @override
   Future<void> sendPrompt({
@@ -2300,6 +2304,7 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
     id: "",
+    pluginId: "fake",
     projectID: "",
     directory: "",
     parentID: null,
@@ -2360,6 +2365,7 @@ class _DelayingSessionRepository implements SessionRepository {
 
   @override
   Future<Session> createSession({
+    required String? pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -2368,6 +2374,7 @@ class _DelayingSessionRepository implements SessionRepository {
     required PromptModel? model,
   }) {
     return _base.createSession(
+      pluginId: pluginId,
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts,
@@ -2397,8 +2404,8 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<CommandListResponse> getCommands({required String? projectId}) {
-    return _base.getCommands(projectId: projectId);
+  Future<CommandListResponse> getCommands({required String? projectId, required String? pluginId}) {
+    return _base.getCommands(projectId: projectId, pluginId: pluginId);
   }
 
   @override

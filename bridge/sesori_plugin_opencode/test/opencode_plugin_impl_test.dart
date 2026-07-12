@@ -54,10 +54,12 @@ void main() {
 
       final real = projects.firstWhere((p) => p.id == "/repo");
       expect(real.id, equals("/repo"));
+      expect(real.directory, equals("/repo"));
       expect(real.name, equals("Main Repo"));
       expect(real.activity, const PluginProjectActivity(createdAt: 100, updatedAt: 200));
 
       final virtual = projects.firstWhere((p) => p.id == "/virtual");
+      expect(virtual.directory, equals("/virtual"));
       expect(virtual.name, equals("virtual"));
     });
 
@@ -123,6 +125,7 @@ void main() {
       await plugin.getProjects();
       final project = await plugin.getProject("/moved/repo");
       expect(project.id, equals("/repo"));
+      expect(project.directory, equals("/moved/repo"));
       expect(project.activity, isNull);
 
       final sessions = await plugin.getSessions("/moved/repo");
@@ -562,6 +565,7 @@ void main() {
 
         // PluginProject.id is always the worktree path, not the OpenCode UUID
         expect(project.id, equals("/repo"));
+        expect(project.directory, equals("/repo"));
         expect(project.name, equals("Renamed Repo"));
         expect(project.activity, isNull);
         expect(
