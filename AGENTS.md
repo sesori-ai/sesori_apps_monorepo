@@ -594,4 +594,8 @@ This applies in every workspace (bridge, mobile, shared).
 
 - Don't modify `shared/sesori_shared` without considering impact on all consumers:
   bridge, mobile, desktop core, and shared app UI.
+- When bridge and client adapters produce the same shared DTO under the same
+  schema limits/fallback rules, centralize that pure normalization in
+  `sesori_shared`; keep Flutter plugins, `dart:io`, and other platform reads in
+  the product adapters and pass only plain values into shared code.
 - Don't create a root-level `pubspec.yaml`. There is no root workspace.

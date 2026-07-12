@@ -22,9 +22,9 @@ class MockOAuthStorageService extends Mock implements OAuthStorageService {}
 class FakeOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider {
   @override
   Future<OAuthDeviceDescriptor> describe() async => const OAuthDeviceDescriptor(
-        clientType: "app_ios",
-        device: DeviceInfo(name: "Test iPhone", osVersion: "iOS 17.5", appVersion: "1.2.0"),
-      );
+    clientType: AuthClientType.appIos,
+    device: DeviceInfo(name: "Test iPhone", osVersion: "iOS 17.5", appVersion: "1.2.0"),
+  );
 }
 
 void main() {
@@ -821,7 +821,12 @@ void main() {
         mockHttpClient = MockHttpClient();
         mockTokenStorage = MockTokenStorageService();
         mockOAuthStorage = MockOAuthStorageService();
-    authManager = AuthManager(mockHttpClient, mockTokenStorage, mockOAuthStorage, FakeOAuthDeviceDescriptorProvider());
+        authManager = AuthManager(
+          mockHttpClient,
+          mockTokenStorage,
+          mockOAuthStorage,
+          FakeOAuthDeviceDescriptorProvider(),
+        );
         await arrangeStartedFlow(statusResponse: statusResponse);
 
         await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
