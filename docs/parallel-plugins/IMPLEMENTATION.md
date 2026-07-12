@@ -353,7 +353,10 @@ Rules:
 - An unresolved child waits in a bounded in-memory map keyed by
   `(pluginId, backendParentId)`. Committing a parent drains resolvable
   descendants recursively. Overflow drops the oldest unresolved entry with a
-  warning; there is no global enumeration or durable unresolved sentinel.
+  warning; there is no global enumeration or durable unresolved sentinel. The
+  bound is an internal safety limit, not user configuration, and Stage 4 sizes
+  it from the largest concurrent out-of-order event fixture. Import does not use
+  this map: it validates ancestry inside its complete snapshot.
 - Backend deletion does not delete catalog history and does not emit a client
   deletion that would contradict the next catalog read. A targeted operation
   later surfaces typed backend not-found.
@@ -646,7 +649,8 @@ durable before response; failed delete leaves catalog state intact.
 
 Acceptance: unknown roots are ignored; cross-plugin parent links fail; out-of-
 order descendants drain when ancestry arrives; backend deletion preserves
-history; blocked plugin A normalization does not block plugin B.
+history; the pending-child bound retains the largest expected event burst;
+blocked plugin A normalization does not block plugin B.
 
 ### Stage 5 - Explicit Import and Automatic Hydration
 
@@ -739,6 +743,8 @@ for each changed workspace. In addition:
   tombstones, parent cascade, and plugin failures.
 - Event tests table-drive every `BridgeSseEvent` variant containing a session
   reference and prove no backend handle or plugin id reaches shared events.
+- Child-event tests include an out-of-order burst at the configured tracker
+  bound and an explicit overflow case that verifies warning/eviction semantics.
 - Import tests cover first hydration, version bump, explicit re-import,
   duplicate triggers, cancellation boundaries, failure, non-destructive
   absence, stale-write guards, and progress terminality.
