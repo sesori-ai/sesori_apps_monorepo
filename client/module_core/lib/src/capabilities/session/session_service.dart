@@ -86,15 +86,15 @@ class SessionService {
     return _repository.getSessionStatuses();
   }
 
-  Future<ApiResponse<Agents>> listAgents({required String projectId, required String? pluginId}) {
+  Future<ApiResponse<Agents>> listAgents({required String projectId, required String pluginId}) {
     return _repository.listAgents(projectId: projectId, pluginId: pluginId);
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId, required String? pluginId}) {
+  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId, required String pluginId}) {
     return _repository.listProviders(projectId: projectId, pluginId: pluginId);
   }
 
-  Future<ApiResponse<CommandListResponse>> listCommands({required String? projectId, required String? pluginId}) {
+  Future<ApiResponse<CommandListResponse>> listCommands({required String? projectId, required String pluginId}) {
     final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null) {
       return Future.value(ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
@@ -105,7 +105,7 @@ class SessionService {
 
   Future<ApiResponse<Session>> createSessionWithMessage({
     required String projectId,
-    required String? pluginId,
+    required String pluginId,
     required String text,
     required String? agent,
     required String? providerID,

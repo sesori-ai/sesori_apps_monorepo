@@ -242,7 +242,7 @@ void delegateSessionRepositoryToService({
   ).thenAnswer(
     (invocation) => service.listAgents(
       projectId: invocation.namedArguments[#projectId] as String,
-      pluginId: invocation.namedArguments[#pluginId] as String?,
+      pluginId: invocation.namedArguments[#pluginId] as String,
     ),
   );
   when(
@@ -253,7 +253,7 @@ void delegateSessionRepositoryToService({
   ).thenAnswer(
     (invocation) => service.listProviders(
       projectId: invocation.namedArguments[#projectId] as String,
-      pluginId: invocation.namedArguments[#pluginId] as String?,
+      pluginId: invocation.namedArguments[#pluginId] as String,
     ),
   );
   when(
@@ -264,7 +264,7 @@ void delegateSessionRepositoryToService({
   ).thenAnswer(
     (invocation) => service.listCommands(
       projectId: invocation.namedArguments[#projectId] as String?,
-      pluginId: invocation.namedArguments[#pluginId] as String?,
+      pluginId: invocation.namedArguments[#pluginId] as String,
     ),
   );
   when(
@@ -317,10 +317,16 @@ Project testProject({String? id, String? path, String? name}) {
   });
 }
 
-Session testSession({String? id, String? title, DateTime? archivedAt, bool unseen = false}) {
+Session testSession({
+  String? id,
+  String? title,
+  DateTime? archivedAt,
+  bool unseen = false,
+  String pluginId = "plugin-1",
+}) {
   return Session(
     id: id ?? "session-1",
-    pluginId: null,
+    pluginId: pluginId,
     projectID: "project-1",
     directory: "/home/user/my-project",
     parentID: null,

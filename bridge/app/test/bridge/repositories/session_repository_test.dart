@@ -716,7 +716,7 @@ void main() {
       }
     });
 
-    test("enrichSessionJson stamps the active plugin on missing and null attribution", () async {
+    test("enrichPluginEventSessionJson stamps the active plugin on missing and null attribution", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       final repository = SessionRepository(
@@ -731,7 +731,7 @@ void main() {
       );
       final sessionJson = const Session(
         id: "event-session",
-        pluginId: null,
+        pluginId: legacyMissingPluginId,
         projectID: "/repo",
         directory: "/repo",
         parentID: null,
@@ -742,8 +742,8 @@ void main() {
         promptDefaults: null,
       ).toJson();
 
-      final missing = await repository.enrichSessionJson(sessionJson: sessionJson);
-      final explicitNull = await repository.enrichSessionJson(
+      final missing = await repository.enrichPluginEventSessionJson(sessionJson: sessionJson);
+      final explicitNull = await repository.enrichPluginEventSessionJson(
         sessionJson: {...sessionJson, "pluginId": null},
       );
 

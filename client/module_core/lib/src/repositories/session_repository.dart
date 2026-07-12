@@ -7,7 +7,7 @@ import "../api/session_api.dart";
 @lazySingleton
 class SessionRepository {
   final SessionApi _api;
-  final _providerCache = <(String?, String), ProviderListResponse>{};
+  final _providerCache = <({String pluginId, String projectId}), ProviderListResponse>{};
 
   SessionRepository({
     required SessionApi api,
@@ -97,15 +97,15 @@ class SessionRepository {
     return _api.getSession(sessionId: sessionId);
   }
 
-  Future<ApiResponse<Agents>> listAgents({required String projectId, required String? pluginId}) {
+  Future<ApiResponse<Agents>> listAgents({required String projectId, required String pluginId}) {
     return _api.listAgents(projectId: projectId, pluginId: pluginId);
   }
 
   Future<ApiResponse<ProviderListResponse>> listProviders({
     required String projectId,
-    required String? pluginId,
+    required String pluginId,
   }) async {
-    final cacheKey = (pluginId, projectId);
+    final cacheKey = (pluginId: pluginId, projectId: projectId);
     if (_providerCache[cacheKey] case final providersCache?) {
       return ApiResponse.success(providersCache);
     }
@@ -132,13 +132,13 @@ class SessionRepository {
     return response;
   }
 
-  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId, required String? pluginId}) {
+  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId, required String pluginId}) {
     return _api.listCommands(projectId: projectId, pluginId: pluginId);
   }
 
   Future<ApiResponse<Session>> createSessionWithMessage({
     required String projectId,
-    required String? pluginId,
+    required String pluginId,
     required String text,
     required String? agent,
     required PromptModel? model,

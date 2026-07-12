@@ -31,6 +31,8 @@ import "session_rollout_reader.dart";
 ///
 /// Approval/permission flows still throw — those land in Phase 5.
 class CodexPlugin implements CodexManagedApi {
+  static const String pluginId = "codex";
+
   final String _serverUrl;
   // Passed to the default client built in [_createClient]; retained for future
   // non-loopback (`--ws-auth`) support.
@@ -133,6 +135,7 @@ class CodexPlugin implements CodexManagedApi {
       eventMapper:
           eventMapper ??
           CodexEventMapper(
+            pluginId: pluginId,
             projectCwd: resolvedProjectCwd,
             config: resolvedConfigReader.readDefaults(),
           ),
@@ -171,7 +174,7 @@ class CodexPlugin implements CodexManagedApi {
   String get serverUrl => _serverUrl;
 
   @override
-  String get id => "codex";
+  String get id => pluginId;
 
   @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;

@@ -132,7 +132,7 @@ void main() {
         verify(
           () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
-            pluginId: null,
+            pluginId: legacyMissingPluginId,
             text: "hello",
             agent: null,
             providerID: null,
@@ -183,7 +183,7 @@ void main() {
         verify(
           () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
-            pluginId: null,
+            pluginId: legacyMissingPluginId,
             text: "",
             agent: null,
             providerID: null,
@@ -264,7 +264,7 @@ void main() {
         verify(
           () => mockSessionService.createSessionWithMessage(
             projectId: "project-1",
-            pluginId: null,
+            pluginId: legacyMissingPluginId,
             text: "hello",
             agent: "build",
             providerID: "openai",

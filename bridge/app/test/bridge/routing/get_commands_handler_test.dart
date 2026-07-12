@@ -78,7 +78,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/command"),
-        body: const ProjectIdRequest(projectId: "/repo", pluginId: null),
+        body: const PluginProjectIdRequest(projectId: "/repo"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -110,7 +110,7 @@ void main() {
     test("accepts the active plugin selection", () async {
       await handler.handle(
         makeRequest("POST", "/command"),
-        body: const ProjectIdRequest(projectId: "/repo", pluginId: "fake"),
+        body: const PluginProjectIdRequest(projectId: "/repo", pluginId: "fake"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -118,6 +118,5 @@ void main() {
 
       expect(plugin.lastGetCommandsProjectId, equals("/repo"));
     });
-
   });
 }

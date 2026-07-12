@@ -324,6 +324,25 @@ class ProjectRepository {
     switch (_plugin) {
       case final NativeProjectsPluginApi plugin:
         final pluginProjects = await plugin.getProjects();
+        await _projectsDao.insertProjectsWithPathsIfMissing(
+          projects: {
+            for (final project in pluginProjects)
+              project.id: (
+                path: project.directory,
+                createdAt: project.activity?.createdAt,
+                updatedAt: project.activity?.updatedAt,
+              ),
+          },
+        );
+        for (final project in pluginProjects) {
+          if (project.id != project.directory) {
+            await _projectsDao.replacePathIfMatches(
+              projectId: project.id,
+              expectedPath: project.id,
+              replacementPath: project.directory,
+            );
+          }
+        }
         final storedProjects = await _projectsDao.getAllProjects();
         return ProjectActivityReconciliationData(
           evidence: [

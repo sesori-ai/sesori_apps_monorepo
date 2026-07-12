@@ -146,8 +146,8 @@ void main() {
         verifyNever(() => mockSessionService.getPendingQuestions(sessionId: sessionId));
         verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
-        verifyNever(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null));
-        verifyNever(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null));
+        verifyNever(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1"));
+        verifyNever(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1"));
 
         connectionStatus.add(connectedStatus);
         await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -197,8 +197,8 @@ void main() {
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null)).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null)).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
 
       expect(emitted.first, isA<SessionDetailLoaded>().having((s) => s.isRefreshing, "isRefreshing", isTrue));
       expect(
@@ -464,8 +464,8 @@ void main() {
       verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null)).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null)).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
 
       messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
       await _awaitLoaded(cubit);
@@ -609,8 +609,8 @@ void main() {
       verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null)).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null)).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
     });
   });
 }

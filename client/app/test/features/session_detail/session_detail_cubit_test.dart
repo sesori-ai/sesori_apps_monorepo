@@ -127,9 +127,9 @@ void main() {
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
-        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null)).called(1);
-        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null)).called(1);
-        verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: null)).called(1);
+        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+        verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
         verify(() => mockConnectionService.events).called(1);
@@ -189,9 +189,9 @@ void main() {
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
-        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null)).called(2);
-        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null)).called(2);
-        verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: null)).called(2);
+        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(2);
+        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(2);
+        verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(2);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(2);
       },
     );

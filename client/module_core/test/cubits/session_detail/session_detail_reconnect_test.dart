@@ -328,7 +328,7 @@ void _stubLoadApis(MockSessionService service) {
       const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]),
     ),
   );
-  when(() => service.listCommands(projectId: "project-1", pluginId: null)).thenAnswer(
+  when(() => service.listCommands(projectId: "project-1", pluginId: "plugin-1")).thenAnswer(
     (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
   );
 }

@@ -11,7 +11,7 @@ import "package:test/test.dart";
 void main() {
   group("CodexEventMapper", () {
     const projectCwd = "/repo/app";
-    final mapper = CodexEventMapper(projectCwd: projectCwd);
+    final mapper = CodexEventMapper(pluginId: CodexPlugin.pluginId, projectCwd: projectCwd);
 
     /// Replicates `BridgeEventMapper`'s payload construction and runs the
     /// bridge's `SesoriSseEvent.fromJson`. Throwing here is exactly the bug
@@ -56,7 +56,7 @@ void main() {
       final created = events.single as BridgeSseSessionCreated;
       final session = shared.Session.fromJson(created.info);
       expect(session.id, "t-1");
-      expect(session.pluginId, isNull);
+      expect(session.pluginId, CodexPlugin.pluginId);
       expect(session.projectID, projectCwd);
       expect(session.directory, "/repo/app");
       expect(session.title, "Plan the theme");
@@ -90,7 +90,7 @@ void main() {
       expect(updated.titleChanged, isTrue);
       final session = shared.Session.fromJson(updated.info);
       expect(session.id, "t-1");
-      expect(session.pluginId, isNull);
+      expect(session.pluginId, CodexPlugin.pluginId);
       expect(session.title, "Welcome session");
       expect(session.projectID, projectCwd);
       expect(parseAsSesori(updated), isA<shared.SesoriSessionUpdated>());
@@ -118,7 +118,7 @@ void main() {
     test("thread/name/updated uses the plugin-fed directory for its project id", () {
       // A thread/name/updated notification carries no cwd, so the mapper relies
       // on the directory the plugin learned when the thread was started/resumed.
-      final scopedMapper = CodexEventMapper(projectCwd: projectCwd)
+      final scopedMapper = CodexEventMapper(pluginId: CodexPlugin.pluginId, projectCwd: projectCwd)
         ..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
       final events = scopedMapper.map(
@@ -247,6 +247,7 @@ void main() {
 
     test("agentMessage falls back to config model when no per-thread model set", () {
       final richMapper = CodexEventMapper(
+        pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
@@ -282,6 +283,7 @@ void main() {
 
     test("agentMessage uses the per-thread model the plugin recorded", () {
       final richMapper = CodexEventMapper(
+        pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );

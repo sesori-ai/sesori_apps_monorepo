@@ -35,7 +35,7 @@ Map<String, dynamic> _$SessionListRequestToJson(_SessionListRequest instance) =>
 
 _Session _$SessionFromJson(Map json) => _Session(
   id: json['id'] as String,
-  pluginId: json['pluginId'] as String?,
+  pluginId: json['pluginId'] as String? ?? legacyMissingPluginId,
   projectID: json['projectID'] as String,
   directory: json['directory'] as String,
   parentID: json['parentID'] as String?,
@@ -64,7 +64,7 @@ _Session _$SessionFromJson(Map json) => _Session(
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'id': instance.id,
-  'pluginId': ?instance.pluginId,
+  'pluginId': instance.pluginId,
   'projectID': instance.projectID,
   'directory': instance.directory,
   'parentID': ?instance.parentID,

@@ -17,33 +17,33 @@ class SessionApi {
 
   SessionApi({required RelayHttpApiClient client}) : _client = client;
 
-  Future<ApiResponse<Agents>> listAgents({required String projectId, required String? pluginId}) {
+  Future<ApiResponse<Agents>> listAgents({required String projectId, required String pluginId}) {
     return _client.post(
       "/agent",
       fromJson: Agents.fromJson,
-      body: ProjectIdRequest(projectId: projectId, pluginId: pluginId),
+      body: PluginProjectIdRequest(projectId: projectId, pluginId: pluginId),
     );
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId, required String? pluginId}) {
+  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId, required String pluginId}) {
     return _client.post(
       "/provider",
       fromJson: ProviderListResponse.fromJson,
-      body: ProjectIdRequest(projectId: projectId, pluginId: pluginId),
+      body: PluginProjectIdRequest(projectId: projectId, pluginId: pluginId),
     );
   }
 
-  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId, required String? pluginId}) {
+  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId, required String pluginId}) {
     return _client.post(
       "/command",
       fromJson: CommandListResponse.fromJson,
-      body: ProjectIdRequest(projectId: projectId, pluginId: pluginId),
+      body: PluginProjectIdRequest(projectId: projectId, pluginId: pluginId),
     );
   }
 
   Future<ApiResponse<Session>> createSessionWithMessage({
     required String projectId,
-    required String? pluginId,
+    required String pluginId,
     required String text,
     required String? agent,
     required PromptModel? model,

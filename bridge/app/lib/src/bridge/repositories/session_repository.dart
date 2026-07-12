@@ -167,7 +167,7 @@ class SessionRepository {
     return enrichSession(session: pluginSession.toSharedSession(pluginId: _plugin.id));
   }
 
-  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) {
+  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) {
     return enrichSession(
       session: Session.fromJson(sessionJson).copyWith(pluginId: _plugin.id),
     );

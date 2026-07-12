@@ -22,7 +22,7 @@ class ProjectService {
     return _client.post(
       "/project/current",
       fromJson: Project.fromJson,
-      body: ProjectIdRequest(projectId: projectId, pluginId: null),
+      body: ProjectIdRequest(projectId: projectId),
     );
   }
 
@@ -48,7 +48,7 @@ class ProjectService {
   Future<ApiResponse<void>> hideProject({required String projectId}) {
     return _client.post(
       "/project/hide",
-      body: ProjectIdRequest(projectId: projectId, pluginId: null),
+      body: ProjectIdRequest(projectId: projectId),
       fromJson: SuccessEmptyResponse.fromJson,
     );
   }
@@ -72,7 +72,7 @@ class ProjectService {
   Future<ApiResponse<BaseBranchResponse>> getBaseBranch({required String projectId}) {
     return _client.post(
       "/project/base-branch",
-      body: ProjectIdRequest(projectId: projectId, pluginId: null),
+      body: ProjectIdRequest(projectId: projectId),
       fromJson: BaseBranchResponse.fromJson,
     );
   }

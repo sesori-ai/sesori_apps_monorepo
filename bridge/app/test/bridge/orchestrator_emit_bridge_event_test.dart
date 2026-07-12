@@ -2226,7 +2226,8 @@ class _NoopSessionRepository implements SessionRepository {
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
       Session.fromJson(pluginSession.toJson());
   @override
-  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async => Session.fromJson(sessionJson);
+  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async =>
+      Session.fromJson(sessionJson);
   @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
@@ -2289,7 +2290,7 @@ class _NoopSessionRepository implements SessionRepository {
   }) async {}
 
   @override
-  Future<CommandListResponse> getCommands({required String? projectId, required String? pluginId}) async =>
+  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async =>
       const CommandListResponse(items: []);
 
   @override
@@ -2425,7 +2426,7 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async {
+  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async {
     return enrichSession(session: Session.fromJson(sessionJson));
   }
 

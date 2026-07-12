@@ -196,6 +196,28 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     });
   }
 
+  Future<void> insertProjectsWithPathsIfMissing({
+    required Map<String, ({String path, int? createdAt, int? updatedAt})> projects,
+  }) async {
+    if (projects.isEmpty) return;
+    await batch((b) {
+      b.insertAll(
+        projectsTable,
+        projects.entries
+            .map(
+              (entry) => ProjectsTableCompanion.insert(
+                projectId: entry.key,
+                path: entry.value.path,
+                createdAt: Value.absentIfNull(entry.value.createdAt),
+                updatedAt: Value.absentIfNull(entry.value.updatedAt),
+              ),
+            )
+            .toList(),
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+  }
+
   /// Inserts project rows with the exact [activities] for ids that are missing.
   /// Existing rows are untouched.
   Future<void> insertMissingProjectsWithActivity({

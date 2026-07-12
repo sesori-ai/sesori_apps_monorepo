@@ -44,7 +44,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/agent"),
-        body: const ProjectIdRequest(projectId: "/repo", pluginId: "fake"),
+        body: const PluginProjectIdRequest(projectId: "/repo", pluginId: "fake"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -53,6 +53,5 @@ void main() {
       expect(plugin.lastAgentsProjectId, equals("/repo"));
       expect(response.agents.single.name, equals("planner"));
     });
-
   });
 }

@@ -4,27 +4,27 @@ import "../repositories/agent_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /agent` — returns the agents available for the project.
-class PostAgentsHandler extends BodyRequestHandler<ProjectIdRequest, Agents> {
+class PostAgentsHandler extends BodyRequestHandler<PluginProjectIdRequest, Agents> {
   final AgentRepository _repository;
 
   PostAgentsHandler(this._repository)
     : super(
         HttpMethod.post,
         "/agent",
-        fromJson: ProjectIdRequest.fromJson,
+        fromJson: PluginProjectIdRequest.fromJson,
       );
 
   @override
   Future<Agents> handle(
     RelayRequest request, {
-    required ProjectIdRequest body,
+    required PluginProjectIdRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,
   }) {
     return _repository.getAgents(
       projectId: body.projectId,
-      pluginId: body.pluginId ?? _repository.pluginId,
+      pluginId: body.pluginId == legacyMissingPluginId ? _repository.pluginId : body.pluginId,
     );
   }
 }

@@ -55,8 +55,6 @@ sealed class ProjectTime with _$ProjectTime {
 sealed class ProjectIdRequest with _$ProjectIdRequest {
   const factory ProjectIdRequest({
     required String projectId,
-    // Nullable so requests remain compatible with older peers that do not identify plugins.
-    required String? pluginId,
   }) = _ProjectIdRequest;
 
   factory ProjectIdRequest.fromJson(Map<String, dynamic> json) => _$ProjectIdRequestFromJson(json);

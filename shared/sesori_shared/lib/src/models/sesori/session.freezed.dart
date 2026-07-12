@@ -298,8 +298,7 @@ as bool,
 /// @nodoc
 mixin _$Session {
 
- String get id;// Nullable so payloads from older peers without plugin routing metadata remain compatible.
- String? get pluginId; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionSummary? get summary; PullRequestInfo? get pullRequest; SessionPromptDefaults? get promptDefaults; bool get hasWorktree;// Whether this session has unseen activity (new changes the user has not
+ String get id; String get pluginId; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionSummary? get summary; PullRequestInfo? get pullRequest; SessionPromptDefaults? get promptDefaults; bool get hasWorktree;// Whether this session has unseen activity (new changes the user has not
 // viewed). Backend-computed; advances on activity and is cleared by viewing
 // the session or an explicit mark-as-read. Defaults to false so older
 // payloads (and the baseline) deserialize as "seen".
@@ -336,7 +335,7 @@ abstract mixin class $SessionCopyWith<$Res>  {
   factory $SessionCopyWith(Session value, $Res Function(Session) _then) = _$SessionCopyWithImpl;
 @useResult
 $Res call({
- String id, String? pluginId, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest, SessionPromptDefaults? promptDefaults, bool hasWorktree, bool unseen
+ String id, String pluginId, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest, SessionPromptDefaults? promptDefaults, bool hasWorktree, bool unseen
 });
 
 
@@ -353,11 +352,11 @@ class _$SessionCopyWithImpl<$Res>
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? pluginId = freezed,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,Object? promptDefaults = freezed,Object? hasWorktree = null,Object? unseen = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? pluginId = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,Object? promptDefaults = freezed,Object? hasWorktree = null,Object? unseen = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
-as String?,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
+as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
 as String,directory: null == directory ? _self.directory : directory // ignore: cast_nullable_to_non_nullable
 as String,parentID: freezed == parentID ? _self.parentID : parentID // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -427,12 +426,11 @@ $SessionPromptDefaultsCopyWith<$Res>? get promptDefaults {
 @JsonSerializable()
 
 class _Session implements Session {
-  const _Session({required this.id, required this.pluginId, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary, required this.pullRequest, required this.promptDefaults, this.hasWorktree = false, this.unseen = false});
+  const _Session({required this.id, this.pluginId = legacyMissingPluginId, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary, required this.pullRequest, required this.promptDefaults, this.hasWorktree = false, this.unseen = false});
   factory _Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
 
 @override final  String id;
-// Nullable so payloads from older peers without plugin routing metadata remain compatible.
-@override final  String? pluginId;
+@override@JsonKey() final  String pluginId;
 @override final  String projectID;
 @override final  String directory;
 @override final  String? parentID;
@@ -481,7 +479,7 @@ abstract mixin class _$SessionCopyWith<$Res> implements $SessionCopyWith<$Res> {
   factory _$SessionCopyWith(_Session value, $Res Function(_Session) _then) = __$SessionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? pluginId, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest, SessionPromptDefaults? promptDefaults, bool hasWorktree, bool unseen
+ String id, String pluginId, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionSummary? summary, PullRequestInfo? pullRequest, SessionPromptDefaults? promptDefaults, bool hasWorktree, bool unseen
 });
 
 
@@ -498,11 +496,11 @@ class __$SessionCopyWithImpl<$Res>
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? pluginId = freezed,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,Object? promptDefaults = freezed,Object? hasWorktree = null,Object? unseen = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? pluginId = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,Object? pullRequest = freezed,Object? promptDefaults = freezed,Object? hasWorktree = null,Object? unseen = null,}) {
   return _then(_Session(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
-as String?,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
+as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
 as String,directory: null == directory ? _self.directory : directory // ignore: cast_nullable_to_non_nullable
 as String,parentID: freezed == parentID ? _self.parentID : parentID // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable

@@ -40,55 +40,23 @@ it exists, and the exact cleanup to perform on the recorded date.
      fallbacks and assume the fields are present.
    4. Regenerate shared code and verify event round-trips.
 
-## `Session.pluginId` is nullable
+## Legacy payloads may omit plugin identity
 
-- **Location:** `shared/sesori_shared/lib/src/models/sesori/session.dart`
-- **Debt:** `Session.pluginId` is declared as `required String? pluginId`.
-- **Reason:** Bridges released before parallel-plugin attribution do not include
-  the field. New bridges always stamp their active plugin id, while clients must
-  continue accepting older responses during the compatibility window.
+- **Location:** `shared/sesori_shared/lib/src/models/sesori/session.dart`,
+  `create_session_request.dart`, and `plugin_project_id_request.dart`.
+- **Debt:** Missing or null plugin identity decodes to
+  `legacyMissingPluginId` so plugin identity remains non-null internally.
+- **Reason:** Peers released before parallel-plugin attribution may omit the
+  field from responses or requests. New peers always carry plugin identity,
+  while the compatibility window still includes older wire payloads.
 - **Cleanup date:** 2027-01-12
 - **Exact cleanup:**
-  1. Change `Session.pluginId` to `required String pluginId`.
-  2. Remove client fallbacks that treat a null session plugin as the bridge
-     default.
-  3. Remove bridge/plugin fixtures that construct relay-facing sessions with a
-     null plugin id; plugin-internal payloads must be attributed before crossing
-     the bridge boundary.
+  1. Remove `legacyMissingPluginId` and its shared export.
+  2. Remove the `@Default(legacyMissingPluginId)` compatibility defaults from
+     `Session`, `CreateSessionRequest`, and `PluginProjectIdRequest`.
+  3. Require plugin identity in JSON from every supported peer and remove the
+     bridge's sentinel-to-active-plugin normalization.
   4. Regenerate shared code and verify bridge, mobile, and desktop round-trips.
-
-## `CreateSessionRequest.pluginId` is nullable
-
-- **Location:** `shared/sesori_shared/lib/src/models/sesori/create_session_request.dart`
-- **Debt:** `CreateSessionRequest.pluginId` is declared as
-  `required String? pluginId`; null selects the bridge's only/default plugin.
-- **Reason:** Clients released before explicit plugin selection omit the field.
-  Until multi-plugin routing lands, the single-plugin bridge assumes a non-null
-  id identifies its active plugin.
-- **Cleanup date:** 2027-01-12
-- **Exact cleanup:**
-  1. Change `CreateSessionRequest.pluginId` to `required String pluginId`.
-  2. Remove the bridge's null-to-default selection fallback.
-  3. Require every client create-session call to send its selected plugin id.
-  4. Regenerate shared code and verify bridge and client request round-trips.
-
-## Composer requests allow a missing plugin id
-
-- **Location:** `shared/sesori_shared/lib/src/models/sesori/project.dart` and
-  bridge handlers/repositories for `POST /agent`, `POST /provider`, and
-  `POST /command`.
-- **Debt:** These composer routes accept `ProjectIdRequest.pluginId == null` and
-  use the bridge's only/default plugin.
-- **Reason:** Older clients send only `projectId`. `ProjectIdRequest.pluginId`
-  remains structurally nullable because non-composer project routes also use
-  this generic DTO and do not require plugin selection.
-- **Cleanup date:** 2027-01-12
-- **Exact cleanup:**
-  1. Make the three composer routes reject a null plugin id while leaving the
-     shared DTO nullable for non-composer routes.
-   2. Remove null-to-default fallback from the composer route handlers.
-  3. Require module-core composer calls to send the selected plugin id.
-   4. Verify older-client support has ended before removing the fallback.
 
 ## Native project rows may store the backend id as their path
 

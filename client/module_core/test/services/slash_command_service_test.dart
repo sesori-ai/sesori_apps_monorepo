@@ -18,7 +18,7 @@ void main() {
     });
 
     test("listCommands returns empty response without transport when projectId is null", () async {
-      final result = await service.listCommands(projectId: null, pluginId: null);
+      final result = await service.listCommands(projectId: null, pluginId: legacyMissingPluginId);
 
       expect(result, isA<SuccessResponse<CommandListResponse>>());
       expect((result as SuccessResponse<CommandListResponse>).data.items, isEmpty);
@@ -264,7 +264,7 @@ void main() {
 Session _session() {
   return const Session(
     id: "session-1",
-    pluginId: null,
+    pluginId: legacyMissingPluginId,
     projectID: "project-1",
     directory: "/tmp/project-1",
     parentID: null,

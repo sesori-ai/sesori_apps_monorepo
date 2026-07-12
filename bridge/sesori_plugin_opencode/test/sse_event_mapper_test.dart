@@ -97,7 +97,7 @@ void main() {
       final event = result! as BridgeSseSessionCreated;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
-      expect(shared.Session.fromJson(event.info).pluginId, isNull);
+      expect(shared.Session.fromJson(event.info).pluginId, shared.legacyMissingPluginId);
     });
 
     test("maps session.updated using provided canonical projectID", () {

@@ -248,7 +248,7 @@ Session adaptiveTestSession({
 }) {
   return Session(
     id: id,
-    pluginId: null,
+    pluginId: "plugin-1",
     projectID: projectId,
     directory: "/tmp/$projectId",
     parentID: null,

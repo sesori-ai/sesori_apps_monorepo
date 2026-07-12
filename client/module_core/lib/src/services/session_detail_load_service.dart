@@ -41,31 +41,14 @@ class SessionDetailLoadService {
     try {
       final routeProjectId = projectId.normalize();
       final projectContextFuture = _loadProjectSessionContext(sessionId: sessionId);
-      final commandsFuture = routeProjectId == null ? null : _listCommands(projectId: routeProjectId);
-      final agentsFuture = routeProjectId == null ? null : _listAgents(projectId: routeProjectId);
-      final providersFuture = routeProjectId == null ? null : _listProviders(projectId: routeProjectId);
-      final (
-        messagesResponse,
-        questionsResponse,
-        permissionsResponse,
-        childrenResponse,
-        statusesResponse,
-        sessionResponse,
-      ) = await (
-        _repository.getMessages(sessionId: sessionId),
-        _repository.getPendingQuestions(sessionId: sessionId),
-        _repository.getPendingPermissions(sessionId: sessionId),
-        _repository.getChildren(sessionId: sessionId),
-        _repository.getSessionStatuses(),
-        _repository.getSession(sessionId: sessionId),
-      ).wait;
+      final messagesFuture = _repository.getMessages(sessionId: sessionId);
+      final questionsFuture = _repository.getPendingQuestions(sessionId: sessionId);
+      final permissionsFuture = _repository.getPendingPermissions(sessionId: sessionId);
+      final childrenFuture = _repository.getChildren(sessionId: sessionId);
+      final statusesFuture = _repository.getSessionStatuses();
+      final sessionResponse = await _repository.getSession(sessionId: sessionId);
       final projectContext = await projectContextFuture;
       final effectiveProjectId = routeProjectId ?? projectContext?.projectId;
-      // When the route carries no project id, resolve it from the session
-      // context so agents, commands, and providers are still project-scoped.
-      final commandsResponse = await (commandsFuture ?? _listCommands(projectId: effectiveProjectId));
-      final agentsResponse = await (agentsFuture ?? _listAgents(projectId: effectiveProjectId));
-      final providersResponse = await (providersFuture ?? _listProviders(projectId: effectiveProjectId));
       final session = switch (sessionResponse) {
         SuccessResponse(:final data) => data,
         ErrorResponse(:final error) => () {
@@ -73,6 +56,28 @@ class SessionDetailLoadService {
           return null;
         }(),
       };
+      final pluginId = session?.pluginId ?? legacyMissingPluginId;
+      final commandsFuture = _listCommands(projectId: effectiveProjectId, pluginId: pluginId);
+      final agentsFuture = _listAgents(projectId: effectiveProjectId, pluginId: pluginId);
+      final providersFuture = _listProviders(projectId: effectiveProjectId, pluginId: pluginId);
+      final (
+        messagesResponse,
+        questionsResponse,
+        permissionsResponse,
+        childrenResponse,
+        statusesResponse,
+      ) = await (
+        messagesFuture,
+        questionsFuture,
+        permissionsFuture,
+        childrenFuture,
+        statusesFuture,
+      ).wait;
+      final (commandsResponse, agentsResponse, providersResponse) = await (
+        commandsFuture,
+        agentsFuture,
+        providersFuture,
+      ).wait;
       final promptDefaults = session?.promptDefaults;
 
       final messages = switch (messagesResponse) {
@@ -140,7 +145,7 @@ class SessionDetailLoadService {
     }
   }
 
-  Future<ApiResponse<Agents>> _listAgents({required String? projectId}) {
+  Future<ApiResponse<Agents>> _listAgents({required String? projectId, required String pluginId}) {
     final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null) {
       // Without any project context there is no way to scope the agent list;
@@ -150,10 +155,10 @@ class SessionDetailLoadService {
       );
     }
 
-    return _repository.listAgents(projectId: normalizedProjectId, pluginId: null);
+    return _repository.listAgents(projectId: normalizedProjectId, pluginId: pluginId);
   }
 
-  Future<ApiResponse<CommandListResponse>> _listCommands({required String? projectId}) {
+  Future<ApiResponse<CommandListResponse>> _listCommands({required String? projectId, required String pluginId}) {
     final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null) {
       return Future<ApiResponse<CommandListResponse>>.value(
@@ -161,10 +166,10 @@ class SessionDetailLoadService {
       );
     }
 
-    return _repository.listCommands(projectId: normalizedProjectId, pluginId: null);
+    return _repository.listCommands(projectId: normalizedProjectId, pluginId: pluginId);
   }
 
-  Future<ApiResponse<ProviderListResponse>> _listProviders({required String? projectId}) {
+  Future<ApiResponse<ProviderListResponse>> _listProviders({required String? projectId, required String pluginId}) {
     final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null) {
       // Without any project context there is no project to scope providers to;
@@ -174,7 +179,7 @@ class SessionDetailLoadService {
       );
     }
 
-    return _repository.listProviders(projectId: normalizedProjectId, pluginId: null);
+    return _repository.listProviders(projectId: normalizedProjectId, pluginId: pluginId);
   }
 
   Future<ProjectSessionContext?> _loadProjectSessionContext({required String sessionId}) async {
@@ -199,6 +204,7 @@ class SessionDetailSnapshot {
   final List<CommandInfo> commands;
   final String? canonicalSessionTitle;
   final SessionPromptDefaults? promptDefaults;
+
   /// Whether this session is a root (main) session. `true` when the session
   /// metadata confirms `parentID == null`; `false` when `parentID != null`;
   /// `null` when the session metadata lookup failed, so we cannot tell.

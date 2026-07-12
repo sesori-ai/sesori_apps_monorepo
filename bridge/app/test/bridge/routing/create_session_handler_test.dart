@@ -133,7 +133,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: SessionVariant(id: "xhigh"),
@@ -192,7 +192,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: SessionVariant(id: "xhigh"),
@@ -234,7 +234,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -287,7 +287,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -334,7 +334,7 @@ void main() {
           makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "/repo",
-            pluginId: null,
+            pluginId: legacyMissingPluginId,
             dedicatedWorktree: true,
             parts: [PromptPart.text(text: "Start")],
             variant: null,
@@ -385,7 +385,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: true,
           parts: <PromptPart>[],
           variant: null,
@@ -456,7 +456,7 @@ void main() {
           makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "/repo",
-            pluginId: null,
+            pluginId: legacyMissingPluginId,
             dedicatedWorktree: true,
             parts: [PromptPart.text(text: "Start")],
             variant: null,
@@ -558,7 +558,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -591,7 +591,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -626,7 +626,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -647,7 +647,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/tmp",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -701,7 +701,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Fix the login bug")],
           variant: null,
@@ -742,7 +742,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -776,7 +776,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.fileData(mime: "image/png", base64: "abc", filename: "img.png")],
           variant: null,
@@ -809,7 +809,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "   ")],
           variant: null,
@@ -841,7 +841,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Review this code")],
           variant: SessionVariant(id: "low"),
@@ -886,7 +886,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Review this code")],
           variant: null,
@@ -940,7 +940,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Review this code")],
           variant: null,
@@ -979,7 +979,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Review this")],
           variant: SessionVariant(id: "xhigh"),
@@ -1010,7 +1010,7 @@ void main() {
           makeRequest("POST", "/session/create"),
           body: const CreateSessionRequest(
             projectId: "brand-new-proj",
-            pluginId: null,
+            pluginId: legacyMissingPluginId,
             dedicatedWorktree: false,
             parts: [PromptPart.text(text: "Hello")],
             variant: null,
@@ -1045,7 +1045,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -1077,7 +1077,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -1134,7 +1134,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Fix the login bug")],
           variant: null,

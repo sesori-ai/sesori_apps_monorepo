@@ -173,7 +173,7 @@ void main() {
       // Emit a global child-session event while still loading
       const childSession = Session(
         id: "child-1",
-        pluginId: null,
+        pluginId: "plugin-1",
         projectID: "project-1",
         directory: "/home/user/my-project",
         parentID: _sessionId,

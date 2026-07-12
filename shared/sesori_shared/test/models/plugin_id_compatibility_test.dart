@@ -20,7 +20,7 @@ void main() {
       expect(Session.fromJson(session.toJson()).pluginId, "opencode");
     });
 
-    test("decodes a missing key as null", () {
+    test("normalizes missing and null keys to the legacy sentinel", () {
       final session = Session.fromJson({
         "id": "session-1",
         "projectID": "project-1",
@@ -32,29 +32,13 @@ void main() {
         "pullRequest": null,
       });
 
-      expect(session.pluginId, isNull);
-    });
-
-    test("omits a null value", () {
-      const session = Session(
-        id: "session-1",
-        pluginId: null,
-        projectID: "project-1",
-        directory: "/tmp/project-1",
-        parentID: null,
-        title: null,
-        time: null,
-        summary: null,
-        pullRequest: null,
-        promptDefaults: null,
-      );
-
-      expect(session.toJson(), isNot(contains("pluginId")));
+      expect(session.pluginId, legacyMissingPluginId);
+      expect(Session.fromJson({...session.toJson(), "pluginId": null}).pluginId, legacyMissingPluginId);
     });
   });
 
   group("CreateSessionRequest.pluginId", () {
-    CreateSessionRequest request({required String? pluginId}) => CreateSessionRequest(
+    CreateSessionRequest request({required String pluginId}) => CreateSessionRequest(
       projectId: "project-1",
       pluginId: pluginId,
       parts: const [PromptPart.text(text: "hello")],
@@ -71,7 +55,7 @@ void main() {
       expect(CreateSessionRequest.fromJson(value.toJson()).pluginId, "opencode");
     });
 
-    test("decodes a missing key as null", () {
+    test("normalizes missing and null keys to the legacy sentinel", () {
       final value = CreateSessionRequest.fromJson({
         "projectId": "project-1",
         "parts": const [
@@ -84,31 +68,41 @@ void main() {
         "dedicatedWorktree": false,
       });
 
-      expect(value.pluginId, isNull);
-    });
-
-    test("omits a null value", () {
-      expect(request(pluginId: null).toJson(), isNot(contains("pluginId")));
+      expect(value.pluginId, legacyMissingPluginId);
+      expect(CreateSessionRequest.fromJson({...value.toJson(), "pluginId": null}).pluginId, legacyMissingPluginId);
     });
   });
 
-  group("ProjectIdRequest.pluginId", () {
-    test("round-trips a non-null value", () {
-      const request = ProjectIdRequest(projectId: "project-1", pluginId: "opencode");
+  group("ProjectIdRequest", () {
+    test("contains only project identity", () {
+      const request = ProjectIdRequest(projectId: "project-1");
 
-      expect(ProjectIdRequest.fromJson(request.toJson()).pluginId, "opencode");
+      expect(ProjectIdRequest.fromJson(request.toJson()), request);
+      expect(request.toJson(), {"projectId": "project-1"});
+    });
+  });
+
+  group("PluginProjectIdRequest.pluginId", () {
+    test("round-trips a non-legacy value", () {
+      const request = PluginProjectIdRequest(projectId: "project-1", pluginId: "opencode");
+
+      expect(PluginProjectIdRequest.fromJson(request.toJson()), request);
     });
 
-    test("decodes a missing key as null", () {
-      final request = ProjectIdRequest.fromJson({"projectId": "project-1"});
+    test("normalizes missing and null keys to the legacy sentinel", () {
+      final request = PluginProjectIdRequest.fromJson({"projectId": "project-1"});
 
-      expect(request.pluginId, isNull);
+      expect(request.pluginId, legacyMissingPluginId);
+      expect(
+        PluginProjectIdRequest.fromJson({"projectId": "project-1", "pluginId": null}).pluginId,
+        legacyMissingPluginId,
+      );
     });
 
-    test("omits a null value", () {
-      const request = ProjectIdRequest(projectId: "project-1", pluginId: null);
+    test("serializes the sentinel explicitly", () {
+      const request = PluginProjectIdRequest(projectId: "project-1");
 
-      expect(request.toJson(), isNot(contains("pluginId")));
+      expect(request.toJson(), {"projectId": "project-1", "pluginId": legacyMissingPluginId});
     });
   });
 }

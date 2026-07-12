@@ -17,6 +17,13 @@ preserve a hypothetical backend distinction. Require a concrete wire trace,
 shipped behavior, or explicit product requirement before making that state
 durable; otherwise use the simpler observable semantics.
 
+Compatibility sentinels are wire-boundary values, not nullable internal
+identity. Normalize missing legacy plugin identity to the shared
+`legacyMissingPluginId` constant, keep internal `pluginId` parameters non-null,
+and resolve the sentinel at the bridge routing boundary when an active plugin is
+available. Project-only request DTOs must not carry `pluginId`; use a dedicated
+plugin-scoped DTO for operations whose routing depends on plugin identity.
+
 **Directional invariants (don't weld these doors shut):**
 
 - **Plugin boundary is sacred** — no backend specifics leak past `BridgePluginApi` into `shared/`, the relay protocol, or the client; our own harness is *just a plugin*; differing abilities are optional, declared capabilities.

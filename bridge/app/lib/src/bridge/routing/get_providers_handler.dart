@@ -4,27 +4,27 @@ import "../repositories/provider_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /provider` — returns providers and their models.
-class GetProvidersHandler extends BodyRequestHandler<ProjectIdRequest, ProviderListResponse> {
+class GetProvidersHandler extends BodyRequestHandler<PluginProjectIdRequest, ProviderListResponse> {
   final ProviderRepository _repository;
 
   GetProvidersHandler(this._repository)
     : super(
         HttpMethod.post,
         "/provider",
-        fromJson: ProjectIdRequest.fromJson,
+        fromJson: PluginProjectIdRequest.fromJson,
       );
 
   @override
   Future<ProviderListResponse> handle(
     RelayRequest request, {
-    required ProjectIdRequest body,
+    required PluginProjectIdRequest body,
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,
   }) {
     return _repository.getProviders(
       projectId: body.projectId,
-      pluginId: body.pluginId ?? _repository.pluginId,
+      pluginId: body.pluginId == legacyMissingPluginId ? _repository.pluginId : body.pluginId,
     );
   }
 }

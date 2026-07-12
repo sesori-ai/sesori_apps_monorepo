@@ -735,7 +735,7 @@ class _NoopSessionRepository implements SessionRepository {
 
   @override
   Future<Session> createSession({
-    required String? pluginId,
+    required String pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -766,7 +766,8 @@ class _NoopSessionRepository implements SessionRepository {
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
       pluginSession.toSharedSession(pluginId: "fake");
   @override
-  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async => Session.fromJson(sessionJson);
+  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async =>
+      Session.fromJson(sessionJson);
   @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
@@ -830,7 +831,7 @@ class _NoopSessionRepository implements SessionRepository {
   }) async {}
 
   @override
-  Future<CommandListResponse> getCommands({required String? projectId, required String? pluginId}) async =>
+  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async =>
       const CommandListResponse(items: []);
 
   @override
@@ -925,7 +926,7 @@ class FakeSessionRepository implements SessionRepository {
 
   @override
   Future<Session> createSession({
-    required String? pluginId,
+    required String pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -996,7 +997,7 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async {
+  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async {
     return enrichSession(session: Session.fromJson(sessionJson));
   }
 
@@ -1161,7 +1162,7 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<CommandListResponse> getCommands({required String? projectId, required String? pluginId}) async {
+  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async {
     final normalizedProjectId = projectId?.trim();
     final commands = await _plugin.getCommands(
       projectId: normalizedProjectId == null || normalizedProjectId.isEmpty ? null : normalizedProjectId,

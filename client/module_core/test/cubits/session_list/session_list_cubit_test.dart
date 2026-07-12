@@ -1021,7 +1021,7 @@ void main() {
       build: () {
         const existing = Session(
           id: "s1",
-          pluginId: null,
+          pluginId: legacyMissingPluginId,
           projectID: projectId,
           directory: "/home/user/my-project",
           parentID: null,
@@ -1048,7 +1048,7 @@ void main() {
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
                 id: "s2",
-                pluginId: null,
+                pluginId: legacyMissingPluginId,
                 projectID: projectId,
                 directory: "/home/user/my-project",
                 parentID: null,
@@ -1174,7 +1174,7 @@ void main() {
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
                 id: "child-1",
-                pluginId: null,
+                pluginId: legacyMissingPluginId,
                 projectID: projectId,
                 parentID: "s1",
                 directory: "/home/user/my-project",
@@ -1413,7 +1413,7 @@ void main() {
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
                 id: "foreign-session",
-                pluginId: null,
+                pluginId: legacyMissingPluginId,
                 projectID: "project-other",
                 directory: "/other/project",
                 parentID: null,
@@ -1453,7 +1453,7 @@ void main() {
             data: const SesoriSseEvent.sessionUpdated(
               info: Session(
                 id: "foreign-session",
-                pluginId: null,
+                pluginId: legacyMissingPluginId,
                 projectID: "project-other",
                 directory: "/other/project",
                 parentID: null,
@@ -1491,7 +1491,7 @@ void main() {
             data: const SesoriSseEvent.sessionDeleted(
               info: Session(
                 id: "foreign-session",
-                pluginId: null,
+                pluginId: legacyMissingPluginId,
                 projectID: "project-other",
                 directory: "/other/project",
                 parentID: null,
@@ -1520,7 +1520,7 @@ void main() {
         const sessions = [
           Session(
             id: "s1",
-            pluginId: null,
+            pluginId: legacyMissingPluginId,
             projectID: "global",
             directory: "/tmp/foo",
             parentID: null,
@@ -1532,7 +1532,7 @@ void main() {
           ),
           Session(
             id: "s2",
-            pluginId: null,
+            pluginId: legacyMissingPluginId,
             projectID: "global",
             directory: "/home/bar",
             parentID: null,

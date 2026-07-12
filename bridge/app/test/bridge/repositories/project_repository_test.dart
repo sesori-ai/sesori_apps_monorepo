@@ -109,6 +109,49 @@ void main() {
       );
     });
 
+    test("activity reconciliation seeds native directories, repairs legacy paths, and preserves moved paths", () async {
+      plugin.projectsResult = const [
+        PluginProject(
+          id: "new-project",
+          directory: "/projects/new",
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+        PluginProject(
+          id: "legacy-project",
+          directory: "/projects/legacy",
+          activity: PluginProjectActivity(createdAt: 30, updatedAt: 40),
+        ),
+        PluginProject(
+          id: "moved-project",
+          directory: "/projects/backend-path",
+          activity: PluginProjectActivity(createdAt: 50, updatedAt: 60),
+        ),
+      ];
+      await db.projectsDao.recordOpenedProject(
+        projectId: "legacy-project",
+        path: "legacy-project",
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      await db.projectsDao.recordOpenedProject(
+        projectId: "moved-project",
+        path: "/projects/moved",
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
+      addTearDown(service.dispose);
+
+      await service.reconcile();
+
+      final newProject = await db.projectsDao.getProject(projectId: "new-project");
+      expect(newProject?.path, "/projects/new");
+      expect(newProject?.createdAt, 10);
+      expect(newProject?.updatedAt, 20);
+      expect((await db.projectsDao.getProject(projectId: "legacy-project"))?.path, "/projects/legacy");
+      expect((await db.projectsDao.getProject(projectId: "moved-project"))?.path, "/projects/moved");
+    });
+
     test("getProjects rethrows PluginApiException when plugin throws", () async {
       plugin.getProjectsError = PluginApiException("/project", 500);
 

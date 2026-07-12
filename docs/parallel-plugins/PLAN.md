@@ -198,10 +198,10 @@ default. Duplicates, unknown ids, and an explicitly empty set fail validation.
 
 Older clients omit `pluginId`. During the compatibility window the bridge uses
 the first enabled plugin for session creation and project-scoped composer data.
-New clients always send `pluginId`. `Session.pluginId` is nullable only while
-new clients may read sessions from an older bridge. This debt is recorded in
-`docs/COMPATIBILITY_DEBT.md` when the additive fields land, with exact removal
-steps and a dated target.
+New clients always send `pluginId`. Missing legacy identity normalizes to the
+shared `legacyMissingPluginId` wire sentinel; the bridge resolves that sentinel
+to its active plugin. Runtime identity remains non-null. This debt is recorded
+in `docs/COMPATIBILITY_DEBT.md` with exact removal steps and a dated target.
 
 ## 4. Catalog Schema
 
@@ -504,8 +504,10 @@ new-session selection.
 
 Shared request changes are additive:
 
-- nullable `pluginId` on create-session and project-scoped composer requests;
-- nullable `pluginId` on `Session` during the compatibility window; and
+- non-null `pluginId` with a legacy-missing sentinel on create-session,
+  plugin-scoped composer requests, and `Session`;
+- a dedicated plugin-scoped request DTO, while project-only requests carry no
+  plugin identity; and
 - typed plugin list, runtime state, health, import status, and import progress
   DTOs.
 
@@ -527,8 +529,8 @@ NewSessionCubit
 
 Saved agent/model/variant selection is keyed by project and plugin so backend-
 local ids never bleed between selections. Existing-session composer requests
-use `Session.pluginId`; the nullable old-bridge fallback uses the server default
-only during the compatibility window.
+use `Session.pluginId`; an old bridge's missing identity normalizes to the
+legacy sentinel and is resolved by the bridge during the compatibility window.
 
 Presentation remains in product UI. The chooser lives in
 `client/app/lib/features/new_session/`, alongside the current mobile new-session
@@ -625,8 +627,9 @@ the default fixed-host fixtures without changing production behavior.
 ### Stage 1B - Additive Compatibility Contracts
 
 - Add required `PluginProject.directory` and update all implementations/fakes.
-- Add nullable compatibility `pluginId` fields to `Session`,
-  `CreateSessionRequest`, and `ProjectIdRequest`.
+- Add non-null compatibility `pluginId` fields with a shared legacy-missing
+  sentinel to `Session`, `CreateSessionRequest`, and a dedicated plugin-scoped
+  project request DTO. Keep `ProjectIdRequest` project-only.
 - Stamp plugin identity at the existing single-plugin repository/service
   boundary. Carry request `pluginId` through the compatibility contract, but
   assume it identifies the active plugin until multi-plugin routing lands.

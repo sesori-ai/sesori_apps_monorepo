@@ -283,8 +283,8 @@ void main() {
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: null)).called(1);
-      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: null)).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+      verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
     });
 
     test("non-loaded state buffers permission events and replays after loaded", () async {

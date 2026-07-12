@@ -15,8 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreateSessionRequest {
 
- String get projectId;// Nullable so requests remain compatible with older peers that do not identify plugins.
- String? get pluginId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; SessionVariant? get variant; bool get dedicatedWorktree;
+ String get projectId; String get pluginId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; SessionVariant? get variant; bool get dedicatedWorktree;
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,7 +48,7 @@ abstract mixin class $CreateSessionRequestCopyWith<$Res>  {
   factory $CreateSessionRequestCopyWith(CreateSessionRequest value, $Res Function(CreateSessionRequest) _then) = _$CreateSessionRequestCopyWithImpl;
 @useResult
 $Res call({
- String projectId, String? pluginId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionVariant? variant, bool dedicatedWorktree
+ String projectId, String pluginId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionVariant? variant, bool dedicatedWorktree
 });
 
 
@@ -66,11 +65,11 @@ class _$CreateSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? pluginId = freezed,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? variant = freezed,Object? dedicatedWorktree = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? pluginId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? variant = freezed,Object? dedicatedWorktree = null,}) {
   return _then(_self.copyWith(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
-as String,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
-as String?,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
+as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,parts: null == parts ? _self.parts : parts // ignore: cast_nullable_to_non_nullable
 as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PromptModel?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
@@ -112,12 +111,11 @@ $SessionVariantCopyWith<$Res>? get variant {
 @JsonSerializable()
 
 class _CreateSessionRequest implements CreateSessionRequest {
-  const _CreateSessionRequest({required this.projectId, required this.pluginId, required final  List<PromptPart> parts, required this.agent, required this.model, required this.command, required this.variant, required this.dedicatedWorktree}): _parts = parts;
+  const _CreateSessionRequest({required this.projectId, this.pluginId = legacyMissingPluginId, required final  List<PromptPart> parts, required this.agent, required this.model, required this.command, required this.variant, required this.dedicatedWorktree}): _parts = parts;
   factory _CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);
 
 @override final  String projectId;
-// Nullable so requests remain compatible with older peers that do not identify plugins.
-@override final  String? pluginId;
+@override@JsonKey() final  String pluginId;
  final  List<PromptPart> _parts;
 @override List<PromptPart> get parts {
   if (_parts is EqualUnmodifiableListView) return _parts;
@@ -164,7 +162,7 @@ abstract mixin class _$CreateSessionRequestCopyWith<$Res> implements $CreateSess
   factory _$CreateSessionRequestCopyWith(_CreateSessionRequest value, $Res Function(_CreateSessionRequest) _then) = __$CreateSessionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, String? pluginId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionVariant? variant, bool dedicatedWorktree
+ String projectId, String pluginId, List<PromptPart> parts, String? agent, PromptModel? model, String? command, SessionVariant? variant, bool dedicatedWorktree
 });
 
 
@@ -181,11 +179,11 @@ class __$CreateSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? pluginId = freezed,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? variant = freezed,Object? dedicatedWorktree = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? pluginId = null,Object? parts = null,Object? agent = freezed,Object? model = freezed,Object? command = freezed,Object? variant = freezed,Object? dedicatedWorktree = null,}) {
   return _then(_CreateSessionRequest(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
-as String,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
-as String?,parts: null == parts ? _self._parts : parts // ignore: cast_nullable_to_non_nullable
+as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,parts: null == parts ? _self._parts : parts // ignore: cast_nullable_to_non_nullable
 as List<PromptPart>,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as PromptModel?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable

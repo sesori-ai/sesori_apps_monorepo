@@ -122,7 +122,7 @@ void main() {
           () => mockClient.post<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            body: const ProjectIdRequest(projectId: "/home/user/current-project", pluginId: null),
+            body: const ProjectIdRequest(projectId: "/home/user/current-project"),
           ),
         ).called(1);
       });
@@ -150,7 +150,7 @@ void main() {
           () => mockClient.post<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            body: const ProjectIdRequest(projectId: "/home/user/current-project", pluginId: null),
+            body: const ProjectIdRequest(projectId: "/home/user/current-project"),
           ),
         ).called(1);
       });
@@ -173,7 +173,7 @@ void main() {
           () => mockClient.post<Project>(
             "/project/current",
             fromJson: any(named: "fromJson"),
-            body: const ProjectIdRequest(projectId: "/home/user/current-project", pluginId: null),
+            body: const ProjectIdRequest(projectId: "/home/user/current-project"),
           ),
         ).called(1);
       });

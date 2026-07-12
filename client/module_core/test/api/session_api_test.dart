@@ -106,7 +106,7 @@ void main() {
         () => client.post<CommandListResponse>(
           "/command",
           fromJson: any(named: "fromJson"),
-          body: const ProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
+          body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
         ),
       ).called(1);
     });

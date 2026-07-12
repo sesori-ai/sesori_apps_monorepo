@@ -41,7 +41,7 @@ void main() {
     test("returns typed response on success", () async {
       final response = await handler.handle(
         makeRequest("POST", "/project/questions"),
-        body: const ProjectIdRequest(projectId: "/tmp/project", pluginId: null),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -73,7 +73,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/project/questions"),
-        body: const ProjectIdRequest(projectId: "/tmp/project", pluginId: null),
+        body: const ProjectIdRequest(projectId: "/tmp/project"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -101,7 +101,7 @@ void main() {
       expect(
         () => handler.handle(
           makeRequest("POST", "/project/questions"),
-          body: const ProjectIdRequest(projectId: "", pluginId: null),
+          body: const ProjectIdRequest(projectId: ""),
           pathParams: {},
           queryParams: {},
           fragment: null,
