@@ -830,8 +830,8 @@ Layer 3 — Services (business logic)
 
         ▲ consumed by
 
-Layer 4 — Request Handling, Control, & Event Delivery
-└─ Three independent sub-groups — NO cross-dependency between them:
+Layer 4 — Request Handling, Trigger Listening, Control, & Event Delivery
+└─ Four independent sub-groups — NO cross-dependency between them:
 │
 ├─ Routing:
 │  └─ RequestRouter — ordered handler chain (first match wins, ~30 handlers)
@@ -847,6 +847,15 @@ Layer 4 — Request Handling, Control, & Event Delivery
 │  └─ May depend downward on foundation/services/auth interfaces
 │  └─ Is part of the core layered app, NOT a self-contained subsystem
 │  └─ Location: app/lib/src/control/
+│
+├─ Listeners:
+│  └─ Reactive/scheduled trigger consumers; each owns one trigger's subscription/
+│     timer lifecycle and trigger-specific bookkeeping
+│  └─ Delegate business decisions downward to repositories/services
+│  └─ Listener peers MUST NOT depend on each other
+│  └─ MUST NOT emit transport/SSE messages directly; expose typed output for the
+│     Orchestrator to wire to delivery
+│  └─ Location: app/lib/src/listeners/
 │
 └─ SSE:
    └─ SseService — manages subscriber queues, orphan replay on reconnect
@@ -875,6 +884,7 @@ app/lib/src/
 ├── services/            # Layer 3
 ├── routing/             # Layer 4
 ├── control/             # Layer 4
+├── listeners/           # Layer 4
 ├── sse/                 # Layer 4
 ├── orchestrator.dart    # Layer 5
 ├── auth/                # Subsystem

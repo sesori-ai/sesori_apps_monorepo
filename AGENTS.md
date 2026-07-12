@@ -177,6 +177,8 @@ app/lib/src/
 │
 ├── control/                 # Layer 4 — supervised-mode control-channel consumers/listeners
 │
+├── listeners/               # Layer 4 — reactive/scheduled trigger consumers
+│
 ├── sse/                     # Layer 4 — event delivery
 │   ├── sse_service.dart          # subscriber queues, orphan replay
 │   └── bridge_event_mapper.dart  # BridgeSseEvent → SesoriSseEvent
@@ -208,6 +210,11 @@ app/lib/src/
   `ControlChannelClient`; it still must not bypass repositories for data access.
 - For bridge session lifecycle flows, routing handlers MUST NOT depend on `BridgePlugin` directly. Treat `BridgePlugin` as Layer 1/API. Thin plugin-backed session commands and lookups belong in `SessionRepository`; multi-step session orchestration (create, archive, unarchive) belongs in services.
 - All mappers belong in `repositories/mappers/`, NOT in `routing/`
+- Layer 4 listeners live in `listeners/`, own one trigger's subscription/timer
+  lifecycle and trigger-specific bookkeeping, and delegate business decisions to
+  repositories/services. Listener peers do not depend on each other, and they do
+  not emit transport/SSE messages directly; the orchestrator wires their typed
+  output to delivery.
 - `auth/`, `push/`, `server/` are self-contained subsystems outside the layer hierarchy
 - **New push triggers** (another stream, another timer) MUST be added as a new Listener class. `PushDispatcher` remains the outbound push choke point, while each listener owns its own trigger-specific bookkeeping, scheduling, and pre-send state handling before delegating outbound sends to the dispatcher. Do not grow a single class to own multiple triggers.
 
