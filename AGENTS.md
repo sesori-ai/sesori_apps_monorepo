@@ -370,7 +370,8 @@ desktop/lib/
 ├── core/di/                 # DI wiring: platform → auth → core → desktop_core
 ├── core/routing/            # window/router composition
 ├── core/widgets/            # desktop-only presentation
-└── main_desktop.dart
+├── app.dart                 # root widget
+└── main.dart
 ```
 
 - `client/desktop` is a Flutter product shell. It wires DI, owns presentation,

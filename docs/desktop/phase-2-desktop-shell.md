@@ -93,6 +93,56 @@ Findings log · Plan-deltas.
   on a desktop-relevant PR, reports success (skipped-internally) on a
   non-desktop PR so it is safe as a required check, and does not gate
   CLI/mobile releases.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `desktop-impl-plan-review`).
+- **Findings:** Package names: `sesori_desktop_core` (module_desktop_core) and
+  `sesori_desktop` (desktop), following the dir≠package-name precedent
+  (`module_core`→`sesori_dart_core`). `module_desktop_core` ships as a true
+  empty skeleton: only the `@InjectableInit` `configureDesktopCoreDependencies`
+  entry (+ committed empty generated config) and a DI smoke test — deps are
+  `get_it`/`injectable` ONLY; `sesori_dart_core`/`sesori_shared` deps arrive
+  when first used (PRs 2.4/2.5). The shell wires the 4-phase DI bootstrap in
+  `lib/core/di/injection.dart` with phases 2–4 live (`configureAuthDependencies`
+  → `configureCoreDependencies` → `configureDesktopCoreDependencies`): verified
+  every registration in both modules is lazy, so the adapter-less bootstrap is
+  safe until PR 2.2 fills phase 1 (`getIt.init()`); the placeholder window
+  resolves nothing. Branding: bundle id `com.sesori.desktop` (mobile is
+  `com.sesori.app`), `PRODUCT_NAME = Sesori`, window titles "Sesori" on all 3
+  OSes. Workspace: `client/pubspec.yaml` gains both members; **lockfile
+  unchanged** (no new external deps); `client/Makefile` MODULES order
+  `module_auth module_core module_prego module_desktop_core app desktop` and
+  the flutter-test branch covers `desktop`. Both packages get `build_runner`
+  dev-deps so the `make codegen` loop stays green (verified: all 6 modules).
+  AGENTS.md files added for both packages; `client/AGENTS.md` links them.
+  `desktop-ci.yml` concretes: `dorny/paths-filter@v3` in-job gating (workflow
+  triggers on all PRs + push to main), `subosito/flutter-action@v2` reading
+  `.tool-versions` (the mobile-ci pattern), 3-OS `flutter build` matrix
+  (`fail-fast: false`), Linux GTK/ninja apt deps, and a `status` aggregator
+  (`if: always()`, jq over `toJSON(needs)`) that fails on failure/cancelled and
+  passes on success/skipped — mark ONLY `status` as the required check
+  (branch-protection change is a manual repo-settings step). Verified locally:
+  analyze + tests green for all 6 modules (app 550, desktop 1,
+  module_desktop_core 1, prego 53), `flutter build macos` produces
+  `Sesori.app`; Windows/Linux legs prove on this PR's own CI run (the workflow
+  + desktop paths are in its filter set). actionlint clean.
+- **Deltas:** (1) Entrypoint realized as standard `lib/main.dart` (+
+  `lib/app.dart` for the root widget) instead of the sketch's
+  `main_desktop.dart` — the package has exactly one entrypoint and only
+  desktop platforms, so default `flutter run`/`build` tooling works without
+  `-t` everywhere; root `AGENTS.md` sketch updated. (2) CI installs Flutter via
+  `subosito/flutter-action@v2`, NOT the asdf-based `setup-flutter` composite
+  (asdf doesn't run on Windows runners); the goal text's
+  `.github/actions/setup-flutter/**` path entry is therefore not an input of
+  this workflow and is omitted from the filter set. (3) `sesori_desktop`
+  pubspec `version: 0.1.0` placeholder — deliberately NOT the synced product
+  version until PR 3.10 teaches `make bump-version` + the release guards about
+  the desktop package. (4) Drive-by fix in the same Makefile branch this PR
+  edits: `module_prego` (a Flutter package) was run with `dart test`, which
+  crashes at compile (`dart:ffi` transform) since its widget tests landed —
+  pre-existing on main, masked because mobile CI never runs module_prego tests
+  (the §"scope boundary" coverage gap). Now runs `flutter test` (53 tests
+  pass). Mobile CI still doesn't run module_prego's own tests; that gap stays
+  open and tracked in the PR-2.1 CI scope note. (5) The shell also carries a
+  direct `get_it` dep (the DI container type its injection.dart references).
 
 ## PR 2.2 — Desktop platform adapters (module_core + module_desktop_core prerequisites)
 - **Goal:** Register desktop implementations before any DI slice resolves the

@@ -8,9 +8,9 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — MT-1 bridge supervised mode end-to-end manual checkpoint complete (PR 1.16 findings/fixes raised as #421)
-- **Next up:** Phase 2 — PR 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes
-- **Branch:** one feature branch per PR, cut from `main`
+- **Last completed phase:** Phase 2 — PR 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI — PR raised on branch `desktop-impl-plan-review` (PR 1.15 merged as #390)
+- **Next up:** Phase 2 — PR 2.2 Desktop platform adapters. Phase 1's MT-1 manual checkpoint is complete; its findings/fixes merged in PR #421.
+- **Branch:** one feature branch per PR; Phase 2 is being raised as **stacked branches** (each PR's base = the previous PR's branch, retargeted to `main` as predecessors merge)
 
 > **Tracking lives in four places that MUST move together in the same PR.**
 > When you open a PR, update ALL of these in that PR's own diff — never in a
@@ -356,7 +356,7 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | Item | Status | Owner | Notes |
 |---|---|---|---|
 | Windows code-signing cert | **OPEN — lead time, START PROCUREMENT NOW** | TBD | blocks PR 3.4 (signed Windows); EV clears SmartScreen faster. Non-code and parallelizable — do not serialize behind Phase 2; if it slips, ship macOS-first (phase-3 preamble allows per-OS v1). |
-| Relay single-slot replace war (cross-machine) | **RESOLVED in bridge PR 1.14 (relay deploy gate open → `sesori_relay_server#7`)** | TBD | Relay keeps ONE bridge slot per account and closed the displaced bridge with 1000/`"replaced"`; the bridge treated that as a generic drop and reconnected on a backoff that resets to 1s — two always-on bridges mutually kick forever, phones see flapping. PR 1.12's mutex only covers same-machine. PR 1.14 (ADR A22) adds `RelayCloseCodes.bridgeReplaced = 4007` + `isBridgeReplaced` detection (code-authoritative, `1000/"replaced"` rollout fallback), a minutes-order takeover backoff in the orchestrator reconnect loop (standalone `Console.warning`), and a `ControlRelayConnectionState.takenOver` status push (supervised). **Relay prerequisite `sesori-ai/sesori_relay_server#7` must be merged AND deployed to prod before the bridge PR merges** — the bridge's `1000/"replaced"` fallback keeps an older relay safe during rollout. Verified in MT-1/MT-3. Stage C multi-bridge dissolves the problem properly. |
+| Relay single-slot replace war (cross-machine) | **RESOLVED — bridge PR 1.14 merged (#385); relay `sesori-ai/sesori_relay_server#7` merged 2026-07-07** | TBD | Relay keeps ONE bridge slot per account and closed the displaced bridge with 1000/`"replaced"`; the bridge treated that as a generic drop and reconnected on a backoff that resets to 1s — two always-on bridges mutually kick forever, phones see flapping. PR 1.12's mutex only covers same-machine. PR 1.14 (ADR A22) adds `RelayCloseCodes.bridgeReplaced = 4007` + `isBridgeReplaced` detection (code-authoritative, `1000/"replaced"` rollout fallback), a minutes-order takeover backoff in the orchestrator reconnect loop (standalone `Console.warning`), and a `ControlRelayConnectionState.takenOver` status push (supervised). The relay half landed one day after the bridge half, so the rollout window ran on the `1000/"replaced"` fallback as designed. Live cross-machine takeover re-verified in MT-1 item 13 / MT-3. Stage C multi-bridge dissolves the problem properly. |
 | Linux tray availability (GNOME) | OPEN | TBD | `tray_manager` needs AppIndicator; stock GNOME hides tray icons without an extension → tray-only `--hidden` boot = running but unreachable app. PR 2.9 adds windowed fallback, PR 2.11 refuses hidden boot without a tray (ADR A24); verified on GNOME in MT-3/MT-4. |
 | GUI crash → helper self-exits (A9) → bridge silently down | OPEN — accepted for v1 | TBD | Login items don't relaunch crashed apps (macOS `SMAppService`, Windows run keys), so a 2am GUI crash kills the bridge until the user notices a missing tray icon. Deliberate v1 trade against orphaned helpers; revisit post-v1 (watchdog / `KeepAlive`-style relaunch) if telemetry (PR 2.14) shows it matters. |
 | Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.6 |
@@ -406,7 +406,7 @@ them). Only the user checks an MT box.
 - ☑ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
 
 ### Phase 2 — Desktop shell + supervisor → `phase-2-desktop-shell.md`
-- ☐ 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes — Med / M
+- ☑ 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes — Med / M
 - ☐ 2.2 Desktop platform adapters (module_core + module_desktop_core prerequisites) — Low-Med / S-M
 - ☐ 2.3 Login reuse (`AuthManager` browser-poll OAuth) — Med / M
 - ☐ 2.4 Control status/prompt trackers baseline (no relay client yet) — Low-Med / S-M
