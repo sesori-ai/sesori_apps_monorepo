@@ -91,6 +91,21 @@ void main() {
       expect(session?.pluginId, "opencode");
     });
 
+    test("native session creation repairs an existing id-as-path placeholder", () async {
+      const projectId = "0190f4c6-opaque-project-id";
+      const directory = "/projects/native-repository";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+
+      await service.recordSessionCreated(
+        sessionId: "native-session",
+        projectId: projectId,
+        sessionDirectory: directory,
+        parentId: null,
+      );
+
+      expect((await db.projectsDao.getProject(projectId: projectId))?.path, directory);
+    });
+
     test("derived project placeholder keeps owner attribution for a worktree session", () async {
       final plugin = _FakeDerivedPlugin();
       final derivedViewTracker = SessionViewTracker();

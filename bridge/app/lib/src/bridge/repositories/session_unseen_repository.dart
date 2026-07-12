@@ -128,6 +128,13 @@ class SessionUnseenRepository {
     };
     await _db.transaction(() async {
       await _projectsDao.insertProjectIfMissing(projectId: projectId, path: projectPath);
+      if (_plugin is NativeProjectsPluginApi && projectPath != projectId) {
+        await _projectsDao.replacePathIfMatches(
+          projectId: projectId,
+          expectedPath: projectId,
+          replacementPath: projectPath,
+        );
+      }
       await _sessionDao.insertSessionsIfMissing(
         pluginId: _plugin.id,
         sessions: [(sessionId: sessionId, projectId: projectId, createdAt: createdAt, archivedAt: null)],
