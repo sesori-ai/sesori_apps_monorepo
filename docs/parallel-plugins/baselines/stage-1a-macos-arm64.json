@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 2,
+  "recordedAt": "2026-07-12T18:29:29Z",
+  "productionBase": "c674f89a750b063670d201e315b4ef01a9203310",
+  "measuredCommit": "fe5b7b4a7b64d8be18f686b16c3a205dab05fc34",
+  "benchmarkWorktreeDirty": false,
+  "classification": "directional-non-gating",
+  "host": {
+    "operatingSystem": "macos",
+    "operatingSystemVersion": "Version 26.5.1 (Build 25F80)",
+    "architecture": "macos_arm64",
+    "logicalProcessors": 14,
+    "cpuModel": "Apple M4 Pro"
+  },
+  "runtime": {
+    "dartVersion": "3.12.2",
+    "productMode": true
+  },
+  "liveList": {
+    "driftSchemaVersion": 10,
+    "databaseBytes": 155648,
+    "warmupCount": 25,
+    "sampleCount": 2000,
+    "rssBytes": {
+      "before": 17022976,
+      "after": 80019456
+    },
+    "scenarios": [
+      {
+        "name": "derived_1_project_from_10000_sessions",
+        "p50Micros": 868,
+        "p95Micros": 943,
+        "p99Micros": 1026,
+        "maxMicros": 1217,
+        "pluginRowsEnumeratedPerSample": 10000,
+        "rowsReturnedPerSample": 1
+      },
+      {
+        "name": "native_500_projects",
+        "p50Micros": 1622,
+        "p95Micros": 1728,
+        "p99Micros": 1795,
+        "maxMicros": 2006,
+        "pluginRowsEnumeratedPerSample": 500,
+        "rowsReturnedPerSample": 500
+      },
+      {
+        "name": "native_100_of_10000_endpoint_core_without_pr_refresh",
+        "p50Micros": 944,
+        "p95Micros": 988,
+        "p99Micros": 1013,
+        "maxMicros": 1264,
+        "pluginRowsEnumeratedPerSample": 10000,
+        "rowsReturnedPerSample": 100
+      },
+      {
+        "name": "native_1000_unpaginated_endpoint_core_without_pr_refresh",
+        "p50Micros": 7336,
+        "p95Micros": 7693,
+        "p99Micros": 8170,
+        "maxMicros": 8589,
+        "pluginRowsEnumeratedPerSample": 1000,
+        "rowsReturnedPerSample": 1000
+      },
+      {
+        "name": "derived_100_of_10000_endpoint_core_without_pr_refresh",
+        "p50Micros": 1657,
+        "p95Micros": 1729,
+        "p99Micros": 1790,
+        "maxMicros": 1969,
+        "pluginRowsEnumeratedPerSample": 10000,
+        "rowsReturnedPerSample": 100
+      },
+      {
+        "name": "derived_1000_unpaginated_endpoint_core_without_pr_refresh",
+        "p50Micros": 7547,
+        "p95Micros": 7756,
+        "p99Micros": 8101,
+        "maxMicros": 9097,
+        "pluginRowsEnumeratedPerSample": 1000,
+        "rowsReturnedPerSample": 1000
+      }
+    ]
+  },
+  "codexRolloutEnumeration": [
+    {
+      "sessions": 1000,
+      "projects": 50,
+      "transcriptBytesPerSession": 4096,
+      "fixtureBytes": 4727000,
+      "samples": 100,
+      "warmup": 2,
+      "listRolloutFiles": {
+        "p50Micros": 6019,
+        "p95Micros": 6261,
+        "p99Micros": 6485,
+        "maxMicros": 6532
+      },
+      "readIndex": {
+        "p50Micros": 1085,
+        "p95Micros": 1130,
+        "p99Micros": 1201,
+        "maxMicros": 1207
+      },
+      "listSessions": {
+        "p50Micros": 34079,
+        "p95Micros": 35490,
+        "p99Micros": 36798,
+        "maxMicros": 37172
+      },
+      "schedulingLag": {
+        "p50Micros": 34091,
+        "p95Micros": 35501,
+        "p99Micros": 36811,
+        "maxMicros": 37181
+      },
+      "rssBytes": {
+        "processStart": 14958592,
+        "afterFixture": 19021824,
+        "afterWarmup": 28262400,
+        "afterMeasurements": 60162048
+      }
+    },
+    {
+      "sessions": 10000,
+      "projects": 500,
+      "transcriptBytesPerSession": 4096,
+      "fixtureBytes": 47270000,
+      "samples": 100,
+      "warmup": 2,
+      "listRolloutFiles": {
+        "p50Micros": 22983,
+        "p95Micros": 23803,
+        "p99Micros": 24298,
+        "maxMicros": 24424
+      },
+      "readIndex": {
+        "p50Micros": 11562,
+        "p95Micros": 12750,
+        "p99Micros": 12899,
+        "maxMicros": 13006
+      },
+      "listSessions": {
+        "p50Micros": 342251,
+        "p95Micros": 350815,
+        "p99Micros": 355986,
+        "maxMicros": 386513
+      },
+      "schedulingLag": {
+        "p50Micros": 342267,
+        "p95Micros": 350830,
+        "p99Micros": 356001,
+        "maxMicros": 386534
+      },
+      "rssBytes": {
+        "processStart": 14893056,
+        "afterFixture": 33603584,
+        "afterWarmup": 60981248,
+        "afterMeasurements": 68222976
+      }
+    }
+  ]
+}

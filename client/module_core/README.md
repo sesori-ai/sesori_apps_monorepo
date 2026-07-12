@@ -24,7 +24,7 @@ See the [root README](../README.md) for the full monorepo overview.
 | `SessionService` | Session creation, listing, and message fetching |
 | `ConnectionService` | Manages the relay WebSocket lifecycle |
 | `RelayClient` | Low-level relay WebSocket client with E2E encryption |
-| `SseEventRepository` | Buffers and dispatches SSE events from the relay |
+| `SseEventTracker` | Tracks SSE events from the relay: project activity, session activity, and project timestamp updates |
 
 **Concurrency** (re-exported from `sesori_shared`)
 

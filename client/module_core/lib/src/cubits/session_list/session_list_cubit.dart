@@ -11,13 +11,13 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../capabilities/session/session_service.dart";
-import "../../capabilities/sse/session_activity_info.dart";
-import "../../capabilities/sse/sse_event_repository.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
+import "../../services/models/session_activity_info.dart";
 import "../../services/session_unseen_tracker.dart";
+import "../../services/sse_event_tracker.dart";
 import "session_list_state.dart";
 
 class SessionListCubit extends Cubit<SessionListState> {
@@ -26,7 +26,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final SessionService _sessionService;
   final ProjectService _projectService;
   final ConnectionService _connectionService;
-  final SseEventRepository _sseEventRepository;
+  final SseEventTracker _sseEventTracker;
   final SessionUnseenTracker _sessionUnseenTracker;
   final RouteSource _routeSource;
   final String _projectId;
@@ -45,7 +45,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     required SessionService sessionService,
     required ProjectService projectService,
     required ConnectionService connectionService,
-    required SseEventRepository sseEventRepository,
+    required SseEventTracker sseEventTracker,
     required SessionUnseenTracker sessionUnseenTracker,
     required RouteSource routeSource,
     required String projectId,
@@ -53,7 +53,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   }) : _sessionService = sessionService,
        _projectService = projectService,
        _connectionService = connectionService,
-       _sseEventRepository = sseEventRepository,
+       _sseEventTracker = sseEventTracker,
        _sessionUnseenTracker = sessionUnseenTracker,
        _routeSource = routeSource,
        _projectId = projectId,
@@ -78,7 +78,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     // we only want to react to actual transitions (e.g. disconnected → connected).
     _subscriptions.add(_connectionService.status.skip(1).listen(_onConnectionStatusChanged));
     _subscriptions.add(
-      _sseEventRepository.sessionActivity.listen(_onSessionActivityUpdated),
+      _sseEventTracker.sessionActivity.listen(_onSessionActivityUpdated),
     );
     _subscriptions.add(
       _sessionUnseenTracker.sessionUnseen.listen((_) => _onUnseenUpdated()),
@@ -166,7 +166,9 @@ class SessionListCubit extends Cubit<SessionListState> {
               reason: "Failed to handle session list event",
               information: [event.data.runtimeType.toString()],
             )
-            .catchError((_) {}),
+            .catchError((Object error, StackTrace stackTrace) {
+              loge("Failed to report session list SSE handler error", error, stackTrace);
+            }),
       );
     }
   }
@@ -566,7 +568,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     final sorted = visible.toList()..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
 
     if (isClosed) return;
-    final projectActivity = _sseEventRepository.currentSessionActivity[_projectId] ?? <String, SessionActivityInfo>{};
+    final projectActivity = _sseEventTracker.currentSessionActivity[_projectId] ?? <String, SessionActivityInfo>{};
     final currentState = state;
     final isRefreshing = currentState is SessionListLoaded ? currentState.isRefreshing : false;
     emit(

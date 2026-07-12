@@ -38,19 +38,42 @@ void main() {
         }));
 
       final messages = collector.build();
-      expect(messages, hasLength(2));
+      expect(messages, hasLength(3));
 
       final user = messages.first;
       expect(user.info, isA<PluginMessageUser>());
       expect(user.parts.single.text, "list md files");
 
-      final assistant = messages.last;
-      expect(assistant.info, isA<PluginMessageAssistant>());
-      final toolPart = assistant.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
+      final toolMessage = messages[1];
+      expect(toolMessage.info, isA<PluginMessageAssistant>());
+      final toolPart = toolMessage.parts.single;
       expect(toolPart.state?.status, PluginToolStatus.completed);
       expect(toolPart.state?.output, "README.md");
-      final textPart = assistant.parts.firstWhere((p) => p.type == PluginMessagePartType.text);
-      expect(textPart.text, "There is 1 file.");
+      expect(messages.last.parts.single.text, "There is 1 file.");
+    });
+
+    test("id-less text after a tool stays chronologically after the tool", () {
+      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor")
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Before"},
+        }))
+        ..consume(upd({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "t1",
+          "kind": "read",
+          "status": "completed",
+        }))
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "After"},
+        }));
+
+      final messages = collector.build();
+      expect(messages, hasLength(3));
+      expect(messages[0].parts.single.text, "Before");
+      expect(messages[1].parts.single.type, PluginMessagePartType.tool);
+      expect(messages[2].parts.single.text, "After");
     });
 
     test("a partial (output-only) update does not reset a completed tool to pending", () {

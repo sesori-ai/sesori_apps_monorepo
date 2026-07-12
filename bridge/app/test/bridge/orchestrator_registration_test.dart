@@ -24,8 +24,11 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -287,10 +290,19 @@ class _RegistrationHarness {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
+    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -305,7 +317,30 @@ class _RegistrationHarness {
         bridgeIdProvider: registrationService,
       ),
       plugin: plugin,
-      metadataService: FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: FakeMetadataService(),
+        worktreeService: WorktreeService(
+          worktreeRepository: WorktreeRepository(
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            gitApi: GitCliApi(
+              processRunner: FakeProcessRunner((
+                String executable,
+                List<String> arguments, {
+                Map<String, String>? environment,
+                String? workingDirectory,
+                Duration timeout = const Duration(seconds: 15),
+              }) async {
+                return ProcessResult(0, 127, "", "command not found");
+              }),
+              gitPathExists: ({required String gitPath}) => true,
+            ),
+            plugin: plugin,
+          ),
+        ),
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionMutationDispatcher,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -315,13 +350,7 @@ class _RegistrationHarness {
       failureReporter: FakeFailureReporter(),
       prSyncService: FakePrSyncService(),
       sessionRepository: sessionRepository,
-      projectRepository: ProjectRepository(
-        plugin: plugin,
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-      ),
+      projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
           pluginId: "opencode",
@@ -330,13 +359,7 @@ class _RegistrationHarness {
           db: database,
           calculator: const SessionUnseenCalculator(),
         ),
-        projectRepository: ProjectRepository(
-          plugin: plugin,
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
+        projectRepository: projectRepository,
         viewTracker: SessionViewTracker(),
       ),
       sessionViewTracker: SessionViewTracker(),
@@ -359,15 +382,23 @@ class _RegistrationHarness {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
-      permissionRepository: PermissionRepository(plugin: plugin),
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
+      permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: SessionPersistenceService(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
@@ -395,8 +426,10 @@ class _RegistrationHarness {
       ),
       sessionEventEnrichmentService: SessionEventEnrichmentService(
         sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionMutationDispatcher,
         failureReporter: FakeFailureReporter(),
       ),
+      sessionMutationDispatcher: sessionMutationDispatcher,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );

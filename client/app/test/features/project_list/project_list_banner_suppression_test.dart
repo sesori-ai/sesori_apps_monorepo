@@ -44,10 +44,11 @@ void main() {
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
+    when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
-    getIt.registerLazySingleton<SseEventRepository>(MockSseEventRepository.new);
+    getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);
     getIt.registerLazySingleton<SessionUnseenTracker>(FakeSessionUnseenTracker.new);
     getIt.registerLazySingleton<RegisteredBridgesService>(() => mockRegisteredBridgesService);
@@ -83,7 +84,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // The dedicated "turn on your bridge" view owns the messaging …
-    expect(find.text("Bridge disconnected"), findsOneWidget);
+    expect(find.text("Disconnected"), findsOneWidget);
     // … and the nav banner stays out of it.
     expect(find.byType(ConnectionBanner), findsNothing);
   });

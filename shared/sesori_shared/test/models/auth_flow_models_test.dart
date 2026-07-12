@@ -3,9 +3,33 @@ import "package:test/test.dart";
 
 void main() {
   group("AuthInitRequest", () {
+    test("serializes every auth-server client type", () {
+      const expectedWireValues = <AuthClientType, String>{
+        AuthClientType.bridge: "bridge",
+        AuthClientType.app: "app",
+        AuthClientType.bridgeMacos: "bridge_macos",
+        AuthClientType.bridgeWindows: "bridge_windows",
+        AuthClientType.bridgeLinux: "bridge_linux",
+        AuthClientType.appIos: "app_ios",
+        AuthClientType.appAndroid: "app_android",
+        AuthClientType.appMacos: "app_macos",
+        AuthClientType.appWindows: "app_windows",
+        AuthClientType.appLinux: "app_linux",
+      };
+
+      for (final MapEntry(key: clientType, value: wireValue) in expectedWireValues.entries) {
+        final json = AuthInitRequest(
+          clientType: clientType,
+          device: const DeviceInfo(name: "Device", osVersion: null, appVersion: null),
+        ).toJson();
+
+        expect(json["clientType"], wireValue);
+      }
+    });
+
     test("round-trips through JSON with a full device", () {
       const original = AuthInitRequest(
-        clientType: "app_ios",
+        clientType: AuthClientType.appIos,
         device: DeviceInfo(name: "Alex's iPhone", osVersion: "iOS 17.5", appVersion: "1.2.0"),
       );
 
@@ -24,7 +48,7 @@ void main() {
 
     test("omits null device version fields from the wire payload", () {
       const original = AuthInitRequest(
-        clientType: "bridge_macos",
+        clientType: AuthClientType.bridgeMacos,
         device: DeviceInfo(name: "Alex's MacBook Pro", osVersion: null, appVersion: null),
       );
 

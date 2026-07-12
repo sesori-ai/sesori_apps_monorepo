@@ -1,24 +1,31 @@
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/reply_to_permission_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("ReplyToPermissionHandler", () {
     late FakeBridgePlugin plugin;
+    late AppDatabase db;
     late PermissionRepository permissionRepository;
     late ReplyToPermissionHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      permissionRepository = PermissionRepository(plugin: plugin);
+      db = createTestDatabase();
+      permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
       handler = ReplyToPermissionHandler(permissionRepository: permissionRepository);
     });
 
-    tearDown(() => plugin.close());
+    tearDown(() async {
+      await plugin.close();
+      await db.close();
+    });
 
     test("canHandle POST /permission/reply", () {
       expect(handler.canHandle(makeRequest("POST", "/permission/reply")), isTrue);

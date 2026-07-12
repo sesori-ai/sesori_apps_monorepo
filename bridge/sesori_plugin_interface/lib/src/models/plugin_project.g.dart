@@ -10,12 +10,12 @@ Map<String, dynamic> _$PluginProjectToJson(_PluginProject instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': ?instance.name,
-      'time': ?instance.time?.toJson(),
+      'activity': ?instance.activity?.toJson(),
     };
 
-Map<String, dynamic> _$PluginProjectTimeToJson(_PluginProjectTime instance) =>
-    <String, dynamic>{
-      'created': instance.created,
-      'updated': instance.updated,
-      'initialized': ?instance.initialized,
-    };
+Map<String, dynamic> _$PluginProjectActivityToJson(
+  _PluginProjectActivity instance,
+) => <String, dynamic>{
+  'createdAt': instance.createdAt,
+  'updatedAt': instance.updatedAt,
+};

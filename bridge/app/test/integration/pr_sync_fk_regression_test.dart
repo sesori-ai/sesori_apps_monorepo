@@ -53,7 +53,7 @@ void main() {
             PluginProject(
               id: "proj-X",
               name: "Project X",
-              time: PluginProjectTime(created: 0, updated: 100),
+              activity: PluginProjectActivity(createdAt: 0, updatedAt: 100),
             ),
           ],
         );
@@ -71,7 +71,7 @@ void main() {
         );
 
         // Primary fix (T5): getProjects persists the project row.
-        await projectRepo.getProjects();
+        await projectRepo.getProjects(defaultTimestamp: 1234);
 
         final projectRows = await db.select(db.projectsTable).get();
         expect(
@@ -172,11 +172,9 @@ void main() {
           _session(id: "sess-3", projectId: "sess-proj", createdAt: 3000),
         ];
 
-        // T7 fix: ensureProject creates the project row.
-        // Direct await — if an exception were thrown, the test would fail here.
-        await service.ensureProject(projectId: "sess-proj");
-
-        // T7 fix: persistSessionsForProject inserts all 3 session rows.
+        // persistSessionsForProject inserts the project and all 3 session rows
+        // atomically, satisfying the session→project FK without a separate
+        // placeholder write.
         await service.persistSessionsForProject(
           projectId: "sess-proj",
           sessions: sessions,
@@ -187,7 +185,7 @@ void main() {
         expect(
           projectRows.map((r) => r.projectId).toList(),
           contains("sess-proj"),
-          reason: "ensureProject must create the project row",
+          reason: "persistSessionsForProject must create the project row",
         );
 
         // session_table has 3 placeholder rows.

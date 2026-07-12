@@ -9,8 +9,6 @@ import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
-import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
-import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
@@ -18,9 +16,11 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/registered_bridges_store.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
+import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
+import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 /// A [LifecycleSource] seeded as resumed, for cubits that subscribe to
@@ -148,11 +148,12 @@ class MockRouteSource extends Mock implements RouteSource {
   void emitRoute(AppRouteDef? route) => _currentRoute.add(route);
 }
 
-class MockSseEventRepository extends Mock implements SseEventRepository {
+class MockSseEventTracker extends Mock implements SseEventTracker {
   final BehaviorSubject<Map<String, int>> _projectActivity = BehaviorSubject.seeded(const {});
   final BehaviorSubject<Map<String, Map<String, SessionActivityInfo>>> _sessionActivity = BehaviorSubject.seeded(
     const {},
   );
+  final BehaviorSubject<Map<String, int>> _projectTimestampUpdates = BehaviorSubject.seeded(const {});
 
   @override
   ValueStream<Map<String, int>> get projectActivity => _projectActivity.stream;
@@ -166,9 +167,17 @@ class MockSseEventRepository extends Mock implements SseEventRepository {
   @override
   Map<String, Map<String, SessionActivityInfo>> get currentSessionActivity => _sessionActivity.value;
 
+  @override
+  ValueStream<Map<String, int>> get projectTimestampUpdates => _projectTimestampUpdates.stream;
+
+  @override
+  Map<String, int> get currentProjectTimestampUpdates => _projectTimestampUpdates.value;
+
   void emitProjectActivity(Map<String, int> activity) => _projectActivity.add(activity);
 
   void emitSessionActivity(Map<String, Map<String, SessionActivityInfo>> activity) => _sessionActivity.add(activity);
+
+  void emitProjectTimestampUpdate(Map<String, int> update) => _projectTimestampUpdates.add(update);
 }
 
 class FakeUri extends Fake implements Uri {}
@@ -273,12 +282,9 @@ void registerAllFallbackValues() {
 }
 
 Project testProject({String? id, String? path, String? name}) {
-  const projectPathField =
-      "work"
-      "tree";
   return Project.fromJson({
     "id": id ?? "project-1",
-    projectPathField: path ?? "/home/user/my-project",
+    "path": path ?? "/home/user/my-project",
     "name": name,
     "time": {
       "created": 1700000000000,
@@ -310,13 +316,13 @@ HealthResponse testHealthResponse() {
   return const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
 }
 
-BridgeSummary testBridgeSummary({String? id, String? name}) {
+BridgeSummary testBridgeSummary({String? id, String? name, DateTime? addedAt, DateTime? lastSeenAt}) {
   return BridgeSummary(
     id: id ?? "br_test1234",
     name: name ?? "test-macbook",
     platform: "macos",
-    addedAt: DateTime.utc(2026, 1, 1),
-    lastSeenAt: null,
+    addedAt: addedAt ?? DateTime.utc(2026, 1, 1),
+    lastSeenAt: lastSeenAt,
   );
 }
 

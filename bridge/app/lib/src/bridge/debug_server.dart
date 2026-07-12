@@ -172,7 +172,9 @@ class DebugServer {
       _sseClients.add(response);
 
       _pluginEventsSub ??= _plugin.events
-          .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
+          .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
+          .where((event) => event != null)
+          .cast<BridgeSseEvent>()
           // Mirrors the orchestrator: a project update rebuilds the full
           // summary from repository data; everything else maps 1:1.
           .asyncMap<SesoriSseEvent?>(

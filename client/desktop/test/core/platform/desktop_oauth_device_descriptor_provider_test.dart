@@ -4,6 +4,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:package_info_plus/package_info_plus.dart";
 import "package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_provider.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 class _MockDeviceInfoPlugin extends Mock implements DeviceInfoPlugin {}
 
@@ -54,7 +55,7 @@ void main() {
 
     final descriptor = await provider.describe();
 
-    expect(descriptor.clientType, "app_macos");
+    expect(descriptor.clientType, AuthClientType.appMacos);
     expect(descriptor.device.name, "Alex's MacBook Pro");
     expect(descriptor.device.osVersion, "macOS 14.5.0");
     expect(descriptor.device.appVersion, "1.2.3");
@@ -73,7 +74,7 @@ void main() {
 
     final descriptor = await provider.describe();
 
-    expect(descriptor.clientType, "app_linux");
+    expect(descriptor.clientType, AuthClientType.appLinux);
     expect(descriptor.device.name, isNotEmpty);
     expect(descriptor.device.osVersion, "Ubuntu 24.04 LTS");
   });
@@ -84,7 +85,7 @@ void main() {
 
     final descriptor = await provider.describe();
 
-    expect(descriptor.clientType, "app_windows");
+    expect(descriptor.clientType, AuthClientType.appWindows);
     expect(descriptor.device.name, "Windows device");
     expect(descriptor.device.osVersion, isNull);
     expect(descriptor.device.appVersion, "1.2.3");

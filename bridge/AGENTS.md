@@ -10,6 +10,10 @@ From `bridge/`:
 - `make test` — run tests in all modules that have a `test/` directory
 - `make analyze` — static analysis across all modules
 
+One-off benchmark executables belong under the owning package's
+`tool/benchmarks/` directory, never under `lib/`, `bin/`, or another production
+source directory.
+
 Bridge CI runs `dart analyze --fatal-infos`, which is stricter than `make analyze` — info-level lints (e.g. `directives_ordering` import sorting) fail CI. Before pushing, run `dart analyze --fatal-infos` from each changed module dir (e.g. `bridge/app/`).
 
 From `bridge/app/`:
@@ -52,6 +56,10 @@ The managed runtime is pinned in `sesori_plugin_opencode/lib/src/runtime/open_co
 ## Testing
 
 - `dart test` from `app/`, `sesori_plugin_opencode/`, and `sesori_plugin_interface/`
+
+For Drift conflicts, preserve every schema version already merged to `main`.
+Move branch-local schema changes to the next version and generate a new
+migration/snapshot; never fold them into the merged version.
 
 ## Conventions
 
@@ -103,6 +111,15 @@ One API class wraps one external binary/tool. Use separate classes for separate 
 
 DAOs execute raw queries and return raw data. No decision-making logic, no selection algorithms, no business rules. All mapping and selection logic belongs in the Repository layer.
 
+Durable timestamp columns should be non-null when a stable baseline can be backfilled. Prefer a migration that writes
+that baseline for every existing row over nullable persistence whose only purpose is avoiding migration work.
+
+When a durable entity has separate identity and location fields, do not infer
+the location from an unknown identifier. Non-null persisted fields are
+authoritative; a missing row remains missing (`null`) and the repository or
+service decides whether to return 404, rather than manufacturing a path from
+the id.
+
 ### No Default-Constructed Dependencies
 
 Constructor parameters for injected dependencies (services, runners, checkers) must be `required` with no default values. Never do `ProcessRunner? processRunner` with `?? ProcessRunner()` — if a test forgets to pass the dependency, it silently uses a real implementation instead of failing fast. This ties into the class-cohesion rules in root: if defaults tempt you to avoid threading a dependency, you likely have pass-through parameters or a peer-as-child problem higher up.
@@ -123,11 +140,19 @@ When a class owns more than one long-lived `StreamSubscription`, prefer a single
 
 Do not extract a bridge collaborator only to make a file shorter. The extracted class must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods on the cohesive owner.
 
+Name a coordinator for the full invariant it owns. A class that orders title updates against session deletion is a session-mutation dispatcher, not a title service; names that mention only one field hide lifecycle responsibilities and invite misplaced callers.
+
+Keep bridge review fixes proportional. Do not add cross-repository locks, new lifecycle machinery, or broad routing changes for a rare timing window unless a realistic bridge/client flow demonstrates meaningful user impact that simpler existing semantics cannot handle.
+
 In the push subsystem, `PushDispatcher` owns only outbound push sends. `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
 
 ### Backend Quirks Live In The Plugin
 
 Backend-specific endpoint semantics and the workarounds they require (synchronous vs async endpoints, dispatch timeouts compensating for upstream API shape, retry quirks) belong inside the plugin that implements `BridgePluginApi` — never in bridge `app/` services or handlers. Bridge `app/` code must stay plugin-agnostic: it programs against the `BridgePluginApi` contract, and the contract's doc comments define the semantics (e.g., `sendCommand` completes on acceptance, not on run completion). If a fix requires knowing how a specific backend behaves, it goes in that backend's plugin.
+
+Do not persist a backend edge case merely because its schema permits it. A
+sentinel, presence bit, or tri-state column needs evidence that the backend
+actually emits the distinction and that users observe different behavior.
 
 ### Orchestrator Owns SSE Decisions
 

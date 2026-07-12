@@ -23,14 +23,21 @@ The bridge talks to the AI assistant over localhost HTTP and SSE, wraps everythi
 
 ```
 bridge/                     # Dart workspace — Bridge CLI + plugin system
-  app/                      # CLI relay server
+  app/                      # Bridge CLI and plugin-agnostic orchestration
+  sesori_bridge_foundation/ # Bridge-wide runtime acquisition primitives
   sesori_plugin_interface/  # Abstract plugin contract
+  sesori_plugin_runtime/    # Managed backend runtime supervision
   sesori_plugin_opencode/   # OpenCode backend plugin
-client/                     # Flutter workspace — mobile client
-  app/                      # Flutter UI shell
+  sesori_plugin_codex/      # Codex backend plugin
+  sesori_plugin_acp/        # Agent Client Protocol backend plugin
+  sesori_plugin_cursor/     # Cursor ACP backend plugin
+client/                     # Flutter workspace — mobile + in-development desktop shells
+  app/                      # Mobile Flutter UI shell
+  desktop/                  # Desktop Flutter product shell
   module_core/              # Pure Dart business logic
+  module_desktop_core/      # Pure Dart desktop supervision and state
   module_auth/              # Auth & token lifecycle
-  module_prego/              # Prego design system — theme, fonts, icons, UI components
+  module_prego/             # Prego design system — theme, fonts, icons, UI components
 shared/
   sesori_shared/            # Shared crypto & protocol types
   no_slop_linter/           # Custom Dart lint rules (dev tooling)
@@ -43,16 +50,40 @@ shared/
 ```mermaid
 graph TD
   bridge_app[bridge/app] --> sesori_plugin_interface[bridge/sesori_plugin_interface]
+  bridge_app --> sesori_bridge_foundation[bridge/sesori_bridge_foundation]
   bridge_app --> sesori_plugin_opencode[bridge/sesori_plugin_opencode]
+  bridge_app --> sesori_plugin_codex[bridge/sesori_plugin_codex]
+  bridge_app --> sesori_plugin_acp[bridge/sesori_plugin_acp]
+  bridge_app --> sesori_plugin_cursor[bridge/sesori_plugin_cursor]
   bridge_app --> sesori_shared[shared/sesori_shared]
+  sesori_bridge_foundation --> sesori_plugin_interface
+  sesori_plugin_runtime[bridge/sesori_plugin_runtime] --> sesori_plugin_interface
   sesori_plugin_opencode --> sesori_plugin_interface
+  sesori_plugin_opencode --> sesori_bridge_foundation
+  sesori_plugin_opencode --> sesori_plugin_runtime
   sesori_plugin_opencode --> sesori_shared
+  sesori_plugin_codex --> sesori_plugin_interface
+  sesori_plugin_codex --> sesori_bridge_foundation
+  sesori_plugin_codex --> sesori_plugin_runtime
+  sesori_plugin_codex --> sesori_shared
+  sesori_plugin_acp --> sesori_plugin_interface
+  sesori_plugin_acp --> sesori_bridge_foundation
+  sesori_plugin_acp --> sesori_shared
+  sesori_plugin_cursor --> sesori_plugin_interface
+  sesori_plugin_cursor --> sesori_bridge_foundation
+  sesori_plugin_cursor --> sesori_plugin_acp
+
   mobile_app[client/app] --> module_core[client/module_core]
-  mobile_app --> module_auth[client/module_auth]
   mobile_app --> module_prego[client/module_prego]
-  mobile_app --> sesori_shared
+  mobile_app -. "Phase 4" .-> module_app_ui[client/module_app_ui planned]
+  desktop_app[client/desktop] --> module_core
+  desktop_app --> module_desktop_core[client/module_desktop_core]
+  desktop_app --> module_prego
+  desktop_app -. "Phase 4" .-> module_app_ui
+  module_app_ui -. "Phase 4" .-> module_core
+  module_desktop_core --> module_core
+  module_desktop_core --> sesori_shared
   module_core --> module_auth
-  module_core --> sesori_shared
   module_auth --> sesori_shared
 ```
 
@@ -104,7 +135,7 @@ When a phone connects, it performs an **X25519 Diffie-Hellman key exchange** wit
 
 ## Prerequisites
 
-- **Flutter** — mobile workspace; the exact version is pinned in [`.tool-versions`](.tool-versions)
+- **Flutter** — mobile and desktop client workspace; the exact version is pinned in [`.tool-versions`](.tool-versions)
 - **Dart SDK** — bridge workspace (a pure Dart workspace); ships with the pinned Flutter version, so no separate install is needed
 - **asdf** — recommended for version management; reads [`.tool-versions`](.tool-versions) automatically
 
@@ -117,7 +148,7 @@ cd sesori_apps_monorepo
 # Install bridge dependencies
 cd bridge && dart pub get
 
-# Install mobile dependencies
+# Install client dependencies
 cd ../client && flutter pub get
 ```
 

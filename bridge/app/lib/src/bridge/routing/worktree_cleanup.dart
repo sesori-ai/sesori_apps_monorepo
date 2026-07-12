@@ -67,7 +67,6 @@ Future<CleanupResult> performWorktreeCleanup({
   if (deleteWorktree) {
     final removed = await worktreeService.removeWorktree(
       projectId: projectId,
-      projectPath: projectId, // for opencode plugin, project path == project id
       worktreePath: worktreePath,
       force: force,
     );
@@ -80,7 +79,7 @@ Future<CleanupResult> performWorktreeCleanup({
 
   if (deleteBranch) {
     final deleted = await worktreeService.deleteBranch(
-      projectPath: projectId,
+      projectId: projectId,
       branchName: branchName,
       force: deleteWorktree || force,
     );

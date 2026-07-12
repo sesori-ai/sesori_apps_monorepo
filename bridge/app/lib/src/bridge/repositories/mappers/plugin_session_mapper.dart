@@ -69,6 +69,13 @@ Session enrichSharedSession({
       // owns its own attribution, so its reported projectID is kept. The
       // directory intentionally stays the session's real cwd either way.
       projectID: adoptStoredProjectId ? storedSession.projectId : session.projectID,
+      // A derived backend doesn't persist renames, so the bridge's stored
+      // title copy (kept fresh by renames AND by the backend's own title
+      // events, captured before enrichment) wins over the enumeration title.
+      // Known accepted edge: a backend title generated while the bridge was
+      // down isn't reflected until its next title event or rename. Native
+      // backends stay authoritative for their own titles.
+      title: adoptStoredProjectId ? (storedSession.title ?? session.title) : session.title,
       time: mergedTime,
       hasWorktree: storedSession.worktreePath != null,
       promptDefaults: _promptDefaultsFromStoredSession(storedSession),

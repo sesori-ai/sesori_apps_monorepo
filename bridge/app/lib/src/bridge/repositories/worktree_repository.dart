@@ -5,6 +5,7 @@ import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
 import "../worktree_types.dart";
+import "models/project_not_found_exception.dart";
 
 const _worktreeDir = ".worktrees";
 
@@ -89,11 +90,27 @@ class WorktreeRepository {
     return _projectsDao.incrementAndGetWorktreeCounter(projectId: projectId);
   }
 
+  /// The live directory for [projectId] — where git operations for the
+  /// project must run. Unknown ids are rejected: an id is not a directory.
+  Future<String> resolveProjectPath({required String projectId}) async {
+    final path = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (path == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
+    return path;
+  }
+
+  /// Resolves the branch and commit that new worktrees should be based on.
+  ///
+  /// [projectId] keys the stored base-branch override; [projectPath] is the
+  /// live directory the git queries run in. They differ once a project's
+  /// folder has moved since it was first opened.
   Future<({String baseBranch, String baseCommit, String startPoint})?> resolveBaseBranchAndCommit({
+    required String projectId,
     required String projectPath,
   }) async {
     try {
-      final storedBranch = await _projectsDao.getBaseBranch(projectId: projectPath);
+      final storedBranch = await _projectsDao.getBaseBranch(projectId: projectId);
       final baseBranch = await _resolveBaseBranch(
         projectPath: projectPath,
         storedBranch: storedBranch,
@@ -153,7 +170,6 @@ class WorktreeRepository {
   }
 
   Future<bool> removeWorktree({
-    required String projectId,
     required String projectPath,
     required String worktreePath,
     required bool force,
@@ -168,9 +184,11 @@ class WorktreeRepository {
     );
 
     if (removed) {
+      // The backend resolves the workspace by directory, so it gets the live
+      // project path — the same root the worktree was just removed under.
       _plugin
           .deleteWorkspace(
-            projectId: projectId,
+            projectId: projectPath,
             worktreePath: worktreePath,
           )
           .catchError(

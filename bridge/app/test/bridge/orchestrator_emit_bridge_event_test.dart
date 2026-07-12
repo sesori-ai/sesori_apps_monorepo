@@ -32,8 +32,11 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -60,7 +63,7 @@ import "../helpers/test_helpers.dart";
 import "routing/get_session_diffs_handler_test_helpers.dart";
 
 void main() {
-  test("pr sync stream enqueues sessions.updated SSE event for subscribers", () async {
+  test("activity and PR streams are emitted as SSE only by the orchestrator", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final plugin = _NoopPlugin();
@@ -73,6 +76,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -83,7 +87,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -106,11 +110,17 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
+    final projectActivityService = ProjectActivityService(
+      projectRepository: projectRepository,
+      now: () => 1234,
+    );
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -120,7 +130,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -168,18 +183,24 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: projectActivityService,
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -215,6 +236,14 @@ void main() {
     bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
+    await projectActivityService.openProject(path: "project-activity");
+    final projectUpdated = await _waitForEventType(
+      messages: messages,
+      roomKey: roomKey,
+      expectedType: "project.updated",
+    );
+    expect(projectUpdated, isTrue);
+
     fakePrSyncService.emitProjectChange(projectId: "project-123");
 
     final found = await _waitForEventType(
@@ -223,6 +252,14 @@ void main() {
       expectedType: "sessions.updated",
     );
     expect(found, isTrue);
+
+    await sessionTitleService.deleteSession(sessionId: "rowless-session");
+    final deleted = await _waitForEventType(
+      messages: messages,
+      roomKey: roomKey,
+      expectedType: "session.deleted",
+    );
+    expect(deleted, isTrue);
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
@@ -255,6 +292,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -263,8 +301,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
     final projectRepository = ProjectRepository(
@@ -274,7 +314,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -302,7 +342,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
+      ),
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
@@ -350,18 +395,27 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -426,6 +480,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -436,7 +491,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -459,8 +514,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
     // Wired exactly like the supervised composition root: the notifier
@@ -484,7 +541,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -526,18 +588,27 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: statusNotifier,
     );
@@ -599,6 +670,7 @@ void main() {
     final baseSessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -614,7 +686,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -669,8 +741,10 @@ void main() {
       ),
     );
 
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -683,7 +757,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
+      ),
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
@@ -731,18 +810,27 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -838,6 +926,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -848,7 +937,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -871,8 +960,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -885,7 +976,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
+      ),
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
@@ -933,18 +1029,27 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -987,6 +1092,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -997,7 +1103,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -1020,8 +1126,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -1034,7 +1142,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -1082,18 +1195,27 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -1161,6 +1283,7 @@ void main() {
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
       pullRequestRepository: pullRequestRepository,
       unseenCalculator: const SessionUnseenCalculator(),
     );
@@ -1171,7 +1294,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
-    final permissionRepository = PermissionRepository(plugin: plugin);
+    final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -1194,8 +1317,10 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
+    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
       failureReporter: FakeFailureReporter(),
     );
 
@@ -1208,7 +1333,12 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
-      metadataService: _FakeMetadataService(),
+      sessionCreationService: SessionCreationService(
+        metadataService: _FakeMetadataService(),
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
+      ),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
@@ -1256,18 +1386,27 @@ void main() {
           permissionValidator: const FilesystemPermissionValidator(),
         ),
       ),
+      projectActivityService: ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
       healthRepository: HealthRepository(
         plugin: plugin,
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       ),
-      providerRepository: ProviderRepository(plugin: plugin),
-      agentRepository: AgentRepository(plugin: plugin),
+      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
+      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
     );
@@ -1724,8 +1863,7 @@ class _RecordingControlChannelClient implements ControlChannelClient {
   Stream<String> get inbound => const Stream<String>.empty();
 
   @override
-  Stream<ControlChannelConnectionState> get connectionState =>
-      const Stream<ControlChannelConnectionState>.empty();
+  Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();
 
   @override
   void send(String frame) => sentFrames.add(frame);
@@ -1851,7 +1989,7 @@ class _NoopPlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
+  Future<PluginProject> getProject(String projectId) async => PluginProject(id: projectId);
 
   @override
   Future<bool> healthCheck() async => true;
@@ -2023,9 +2161,30 @@ class _NoopPullRequestRepository implements PullRequestRepository {
   Future<void> upsertPullRequest({required PullRequestDto record}) async {}
 }
 
+Session _deletedSession(String sessionId) => Session(
+  id: sessionId,
+  projectID: "",
+  directory: "",
+  parentID: null,
+  title: null,
+  time: null,
+  summary: null,
+  pullRequest: null,
+  promptDefaults: null,
+);
+
 class _NoopSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
+
+  @override
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
+
+  @override
+  Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
+
+  @override
+  Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
@@ -2150,11 +2309,24 @@ class _NoopSessionRepository implements SessionRepository {
     pullRequest: null,
     promptDefaults: null,
   );
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
 class _DelayingSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
+
+  @override
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) =>
+      _base.setSessionTitleIfStored(sessionId: sessionId, title: title);
+
+  @override
+  Future<Session> deleteSession({required String sessionId}) => _base.deleteSession(sessionId: sessionId);
+
+  @override
+  Future<bool> isSessionTombstoned({required String sessionId}) => _base.isSessionTombstoned(sessionId: sessionId);
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) =>
@@ -2363,4 +2535,8 @@ class _DelayingSessionRepository implements SessionRepository {
   Future<Session> renameSession({required String sessionId, required String title}) {
     return _base.renameSession(sessionId: sessionId, title: title);
   }
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) =>
+      _base.resolveProjectDirectory(projectId: projectId);
 }

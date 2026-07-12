@@ -1,20 +1,20 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
-import "../repositories/project_repository.dart";
+import "../services/project_activity_service.dart";
 import "../services/project_initialization_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/create` — creates a new project directory with git init.
 class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project> {
   final ProjectInitializationService _projectInitializationService;
-  final ProjectRepository _projectRepository;
+  final ProjectActivityService _projectActivityService;
 
   CreateProjectHandler({
     required ProjectInitializationService projectInitializationService,
-    required ProjectRepository projectRepository,
+    required ProjectActivityService projectActivityService,
   }) : _projectInitializationService = projectInitializationService,
-       _projectRepository = projectRepository,
+       _projectActivityService = projectActivityService,
        super(
          HttpMethod.post,
          "/project/create",
@@ -53,6 +53,6 @@ class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Projec
       throw buildErrorResponse(request, 500, "git init failed");
     }
 
-    return _projectRepository.openProject(path: path);
+    return _projectActivityService.openProject(path: path);
   }
 }

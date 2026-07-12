@@ -21,10 +21,12 @@ import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -45,13 +47,17 @@ void main() {
     late RequestRouter router;
     late AppDatabase db;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       metadataService = FakeMetadataService();
       db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(
+        projectIds: ["/repo", "/tmp", "/tmp/project"],
+      );
       final sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
         unseenCalculator: const SessionUnseenCalculator(),
       );
@@ -83,10 +89,14 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       );
-      final agentRepository = AgentRepository(plugin: plugin);
-      final providerRepository = ProviderRepository(plugin: plugin);
-      final permissionRepository = PermissionRepository(plugin: plugin);
-      final questionRepository = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final agentRepository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final providerRepository = ProviderRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final questionRepository = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -108,10 +118,16 @@ void main() {
         sessionRepository: sessionRepository,
         processRunner: FakeProcessRunner(),
       );
+      final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
+      final projectActivityService = ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      );
       final sessionCreationService = SessionCreationService(
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionMutationDispatcher,
       );
       final sessionArchiveService = SessionArchiveService(
         worktreeService: worktreeService,
@@ -139,10 +155,12 @@ void main() {
         projectRepository: projectRepository,
         filesystemRepository: filesystemRepository,
         projectInitializationService: projectInitializationService,
+        projectActivityService: projectActivityService,
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
+        sessionMutationDispatcher: sessionMutationDispatcher,
         permissionRepository: permissionRepository,
         questionRepository: questionRepository,
         sessionPersistenceService: sessionPersistenceService,
@@ -448,9 +466,9 @@ void main() {
         bridgeVersion: "0.0.0-test",
         filesystemAccessOk: true,
       );
-      final agentRepository = AgentRepository(plugin: plugin);
-      final providerRepository = ProviderRepository(plugin: plugin);
-      final permissionRepository = PermissionRepository(plugin: plugin);
+      final agentRepository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final providerRepository = ProviderRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -472,6 +490,7 @@ void main() {
         sessionRepository: SessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
           pullRequestRepository: PullRequestRepository(
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
@@ -479,6 +498,11 @@ void main() {
           unseenCalculator: const SessionUnseenCalculator(),
         ),
         processRunner: FakeProcessRunner(),
+      );
+      final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
+      final projectActivityService = ProjectActivityService(
+        projectRepository: projectRepository,
+        now: () => DateTime.now().millisecondsSinceEpoch,
       );
 
       router = RequestRouter(
@@ -494,6 +518,7 @@ void main() {
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
+          sessionMutationDispatcher: sessionMutationDispatcher,
         ),
         sessionArchiveService: SessionArchiveService(
           worktreeService: worktreeService,
@@ -510,12 +535,14 @@ void main() {
         projectRepository: projectRepository,
         filesystemRepository: filesystemRepository,
         projectInitializationService: projectInitializationService,
+        projectActivityService: projectActivityService,
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
+        sessionMutationDispatcher: sessionMutationDispatcher,
         permissionRepository: permissionRepository,
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,
