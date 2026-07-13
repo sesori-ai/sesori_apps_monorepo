@@ -117,8 +117,10 @@ Before the chosen PR, process any applicable advisory manual files:
 4. Implement the smallest correct change for this PR only.
 5. Run every command and acceptance check named by the step plus repository
    instructions. Regenerate generated artifacts only through their generators.
-6. Update `TRACKER.md` findings and authoritative `PLAN.md`, stage GOAL, or
-   future step files in this same PR whenever evidence changes future work.
+6. When the implementation repository is the plan host, update `TRACKER.md`
+   findings and authoritative `PLAN.md`, stage GOAL, or future step files in
+   this same PR whenever evidence changes future work. For an external
+   repository, use the companion transaction under Cross-Repository Steps.
 7. Run the repository implementation review. Treat rejection as blocking and
    iterate until approved.
 8. Inspect status, diff, and recent log; commit only intended files; push; open
@@ -140,8 +142,10 @@ State and design have different homes:
   assumptions, scope, dependencies, compatibility, risk, acceptance, or later
   steps.
 
-Make both updates in the PR that discovers the finding. Do not defer plan truth
-to a later cleanup.
+For plan-host implementation PRs, make both updates in the PR that discovers
+the finding. For external repositories, make both updates in the companion
+tracking transaction and link that commit from the implementation PR. Do not
+defer plan truth to a later cleanup.
 
 You may clarify future mechanics or split an oversized future PR without asking
 only when user intent, backward compatibility, user-visible behavior, stage
@@ -175,11 +179,16 @@ The plan-host repository owns the central tracker.
 For a PR in another repository:
 
 1. Create or update `plan/<plan-slug>/tracking` in the plan-host repository.
-2. Commit/push the optimistic checkbox, branch, findings, and later PR URL there
-   as companion tracker commits; do not open a tracker PR per implementation PR.
-3. Open only the implementation PR in the target repository.
-4. Treat the tracking branch as active central state during execution.
-5. The final closure PR reconciles tracking history into the plan-host base and
+2. Before target-repository implementation, commit/push the optimistic checkbox
+   and branch there.
+3. Commit/push findings and authoritative future-plan corrections there before
+   opening the target PR, then link the tracking commit in the target PR body.
+4. Open only the implementation PR in the target repository.
+5. After opening it, push a final companion commit with the PR URL and concise
+   verification note.
+6. Treat the tracking branch as active central state during execution; do not
+   open a tracker PR per implementation PR.
+7. The final closure PR reconciles tracking history into the plan-host base and
    archived plan.
 
 ## Plan Closure
@@ -212,11 +221,11 @@ multi-bridge addressing, thin product shells, headless bridge support, separate
 trust postures, one session-control surface, and autonomy at the bridge seam.
 Do not add speculative product abstractions.
 
-For Dart/Freezed transport compatibility, strongly prefer `@Default` with the
-honest legacy identity. Missing legacy `pluginId` maps to OpenCode because old
-unattributed peers could only target it. Keep repository/service/handler/cubit/
-connector `pluginId` parameters required and non-null. Nullable transport state
-is allowed only when absence is meaningful or there is no honest fallback.
+For Dart/Freezed transport compatibility, strongly prefer `@Default` when one
+honest legacy meaning exists. Normalize at the transport/repository boundary
+and keep values required and non-null through modern internal APIs whenever the
+new contract requires them. Nullable transport state is allowed only when
+absence is meaningful or there is no honest fallback.
 
 Apply generated-file and Drift migration workflows exactly. Shared-model
 changes verify bridge, mobile, desktop core, desktop shell, and shared app UI
@@ -224,10 +233,8 @@ consumers. Never hand-edit generated files. Recovered errors remain observable
 without double logging surfaced failures.
 
 For a changed current step, use `aristotle-plan-review`. Before every PR, use
-`aristotle-impl-review`. If a pinned reviewer provider is unavailable, delegate
-to a `general` subagent with a read-only prompt requiring it to read and apply
-the corresponding `.opencode/agents/aristotle-*.md` specification verbatim.
-Never launch a nested OpenCode CLI process as reviewer fallback.
+`aristotle-impl-review`. If a required reviewer is unavailable, report the
+blocker rather than bypassing the gate.
 
 Before creating a PR, follow the repository's Git inspection rules. After PR
 creation, load the `monitor-pr` skill, start `pr_monitor`, and follow its

@@ -10,23 +10,10 @@ permission:
     ".plan/**": allow
   bash:
     "*": ask
-    "git status*": allow
-    "git diff*": allow
-    "git log*": allow
-    "git show*": allow
-    "git branch --show-current*": allow
-    "git rev-parse*": allow
-    "git rev-list*": allow
-    "git merge-base*": allow
-    "git ls-files*": allow
-    "gh pr list*": allow
-    "gh pr view*": allow
-    "gh api*": allow
   task:
     "*": deny
     "explore": allow
     "aristotle-plan-review": allow
-    "general": allow
 ---
 
 # Plan Maker
@@ -124,6 +111,30 @@ Owns durable intent and architecture:
   verification strategies where relevant;
 - invariants, risks, deferrals, cleanup, and stage map.
 
+Use this heading order so every plan is scannable, then put any shape that does
+not fit the common schema in the final free-form section:
+
+```markdown
+# <Plan Title>
+## 0. Plan Metadata
+## 1. Goal
+## 2. Success Criteria
+## 3. Scope
+### In Scope
+### Non-Goals
+## 4. Audited Baseline
+## 5. Architecture and Data Flow
+## 6. Locked Decisions
+## 7. Backward Compatibility and Migration
+## 8. Rollout and Verification
+## 9. Risks and Deferrals
+## 10. Stage Map
+## 11. Plan-Specific Detail
+```
+
+`Plan-Specific Detail` is intentionally free-form. Rename or subdivide it to
+fit the domain, but keep it last and do not duplicate earlier sections.
+
 Use the version currently declared in the repository when a version is needed.
 Do not query tags, releases, or remote stores to find a "latest" version.
 
@@ -137,6 +148,22 @@ Owns one cohesive milestone:
 - strict wave table with every PR and manual step;
 - stage-level integration and manual verification;
 - exit criteria.
+
+Use this heading order, with a final free-form section:
+
+```markdown
+# Stage SNN: <Stage Goal>
+## 0. Stage Metadata
+## 1. Outcome
+## 2. Entry Criteria and Baseline
+## 3. Invariants and Non-Goals
+## 4. Execution Waves
+## 5. Integration and Manual Verification
+## 6. Exit Criteria
+## 7. Stage-Specific Detail
+```
+
+`Stage-Specific Detail` is free-form and remains last.
 
 Stages may contain multiple PRs. Waves are strict merge barriers. PRs in one
 wave may run in parallel because they are independent. Every PR in wave N must
@@ -192,6 +219,25 @@ Owns concise mutable execution state only:
 - separate User/Worker checkbox rows for manual checks;
 - blockers and stale-review decisions;
 - milestone-level findings and plan deltas, newest first.
+
+Use this fixed structure:
+
+```markdown
+# <Plan Title>: Tracker
+## Plan State
+## Current Pointer
+## Plan Review
+## PR Steps
+| Done | ID | Stage | Wave | PR | Branch | Notes |
+## Manual Checkpoints
+| User | Worker | ID | Check | Evidence |
+## Blockers and Staleness
+## Findings and Plan Deltas
+```
+
+`Current Pointer` always names the current stage, wave, and next action. Keep
+the tables complete and put free-form milestone notes only under the final
+`Findings and Plan Deltas` section.
 
 Do not write routine commands, chat summaries, debugging diaries, or duplicate
 the design. A PR row is binary: unchecked on its shared baseline, checked
@@ -297,22 +343,19 @@ and bridge-seam autonomy. Do not build speculative teams, permissions,
 offline-first caching, metering, or cross-plugin migration abstractions.
 
 For Dart/Freezed transport contracts, strongly prefer an honest `@Default`
-legacy fallback over nullable modern identity. Missing legacy `pluginId` maps to
-the concrete OpenCode identity because released unattributed peers could only
-target OpenCode. Normalize at the transport/repository boundary and require
-non-null `pluginId` in repository, service, handler, cubit, and connector APIs.
-Use nullable fields only when absence is meaningful or no honest fallback
-exists. Plan verification across every shared consumer: bridge, mobile,
-desktop core, desktop shell, and shared app UI where present.
+legacy fallback over nullable modern state when one concrete legacy meaning is
+known. Normalize at the transport/repository boundary and keep values required
+and non-null throughout modern internal APIs whenever the new contract requires
+them. Use nullable fields only when absence is meaningful or no honest fallback
+exists. Plan verification across every shared consumer: bridge, mobile, desktop
+core, desktop shell, and shared app UI where present.
 
 Sesori plans must include exact generated-code and Drift migration workflows
 when relevant, preserve every merged schema version, use required migration
 tests, and never hand-edit generated files. Error recovery that continues must
 remain observable without double logging surfaced failures.
 
-The configured plan gate is `aristotle-plan-review`. If its pinned provider is
-unavailable, delegate to a `general` subagent with a read-only prompt requiring
-it to read and apply `.opencode/agents/aristotle-plan-review.md` verbatim. Never
-use a nested OpenCode CLI process as the fallback. Record the actual reviewer in
-`TRACKER.md`.
+The configured plan gate is `aristotle-plan-review`. If it is unavailable,
+report the blocker rather than delegating plan edits or bypassing the gate.
+Record the actual reviewer in `TRACKER.md`.
 <!-- REPOSITORY-SPECIFIC: SESORI END -->

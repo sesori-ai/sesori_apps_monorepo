@@ -104,6 +104,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       help: "Port for opencode server to listen on",
       defaultsTo: null,
       valueHelp: null,
+      // COMPATIBILITY 2026-06-22 (v1.1.1): Existing scripts may use --port. Remove this alias when pre-namespaced bridge CLI flags are unsupported.
       deprecatedAliases: ["port"],
     ),
     PluginValueOption(
@@ -124,6 +125,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       help: "Skip auto-starting opencode server (use existing server)",
       defaultsTo: false,
       negatable: true,
+      // COMPATIBILITY 2026-06-22 (v1.1.1): Existing scripts may use --no-auto-start. Remove this alias when pre-namespaced bridge CLI flags are unsupported.
       deprecatedAliases: ["no-auto-start"],
     ),
     PluginValueOption(
@@ -133,6 +135,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       allowedValues: null,
       valueHelp: null,
       validate: null,
+      // COMPATIBILITY 2026-06-22 (v1.1.1): Existing scripts may use --password. Remove this alias when pre-namespaced bridge CLI flags are unsupported.
       deprecatedAliases: ["password"],
     ),
     PluginFlagOption(

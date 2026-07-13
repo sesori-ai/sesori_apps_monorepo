@@ -2382,6 +2382,7 @@ class SesoriProjectUpdated implements SesoriSseEvent {
   const SesoriProjectUpdated({required this.projectID, required this.updatedAt, final  String? $type}): $type = $type ?? 'project.updated';
   factory SesoriProjectUpdated.fromJson(Map<String, dynamic> json) => _$SesoriProjectUpdatedFromJson(json);
 
+// COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges emit no payload. Require both fields and remove fallbacks.
  final  String? projectID;
  final  int? updatedAt;
 

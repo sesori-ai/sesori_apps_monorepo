@@ -186,6 +186,7 @@ void _emitVariant(StringBuffer out, Map<String, dynamic> ev) {
   final deprecatedMsg = ev['deprecated_message'] as String?;
 
   // Class header.
+  // COMPATIBILITY 2026-05-18 (v0.7.0): Deprecated manifest events remain generated for older OpenCode runtimes. Remove deprecated-event generation when those runtimes are unsupported.
   if (isDeprecated) {
     final msg = deprecatedMsg ?? 'Deprecated event.';
     out.writeln('/// Deprecated event. $msg');

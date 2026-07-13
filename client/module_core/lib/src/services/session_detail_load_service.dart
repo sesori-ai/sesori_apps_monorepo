@@ -56,6 +56,7 @@ class SessionDetailLoadService {
           return null;
         }(),
       };
+      // COMPATIBILITY 2026-07-13 (v1.5.0): A failed legacy session lookup has no plugin identity. Remove this fallback when every load path supplies concrete identity.
       final pluginId = session?.pluginId ?? legacyMissingPluginId;
       final commandsFuture = _listCommands(projectId: effectiveProjectId, pluginId: pluginId);
       final agentsFuture = _listAgents(projectId: effectiveProjectId, pluginId: pluginId);
