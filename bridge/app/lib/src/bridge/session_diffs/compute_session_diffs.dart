@@ -129,18 +129,18 @@ Future<List<FileDiff>> computeSessionDiffs({
 
     final before = contentOrEmpty(beforeResult);
     final after = contentOrEmpty(afterResult);
-    final lineCounts = switch (entry.status) {
-      FileDiffStatus.added
-          when counts.additions == 0 && counts.deletions == 0 && after.isNotEmpty =>
-        (additions: _countLines(after), deletions: 0),
-      FileDiffStatus.modified
-          when counts.additions == 0 &&
-              after.isNotEmpty &&
-              before != after &&
-              (counts.deletions == 0 || !_isDeletionOnlyChange(before, after)) =>
-        (additions: _countLines(after), deletions: counts.deletions > 0 ? counts.deletions : _countLines(before)),
-      _ => counts,
-    };
+    final isUntracked = !statsByFile.containsKey(entry.file);
+    final lineCounts = isUntracked && after.isNotEmpty
+        ? (additions: _countLines(after), deletions: 0)
+        : switch (entry.status) {
+            FileDiffStatus.modified
+                when counts.additions == 0 &&
+                    after.isNotEmpty &&
+                    before != after &&
+                    (counts.deletions == 0 || !_isDeletionOnlyChange(before, after)) =>
+              (additions: _countLines(after), deletions: counts.deletions > 0 ? counts.deletions : _countLines(before)),
+            _ => counts,
+          };
     if (before.length + after.length > maxFileContentBytes) {
       diffs.add(
         FileDiff.skipped(
