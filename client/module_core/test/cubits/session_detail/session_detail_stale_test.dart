@@ -632,7 +632,12 @@ void main() {
       await _awaitLoaded(cubit);
       reset(mockSessionService);
       _stubLoadApis(mockSessionService, sessionId: sessionId);
-      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
