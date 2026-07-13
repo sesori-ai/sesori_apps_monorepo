@@ -271,6 +271,24 @@ void main() {
     expect(find.text("Choose a release channel"), findsNothing);
   });
 
+  testWidgets("dismisses a question when navigation changes before the sheet builds", (tester) async {
+    final questions = StreamController<SesoriQuestionAsked>.broadcast(sync: true);
+    addTearDown(questions.close);
+    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
+    final router = _createRouter(cubit: cubit);
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit, router: router));
+    await tester.pumpAndSettle();
+
+    questions.add(_question);
+    unawaited(router.push<void>(_newSessionPath));
+    await tester.pumpAndSettle();
+
+    expect(find.text("New session"), findsOneWidget);
+    expect(find.text("Choose a release channel"), findsNothing);
+  });
+
   testWidgets("dismisses a permission sheet when navigating to another session", (tester) async {
     final permissions = StreamController<SesoriPermissionAsked>.broadcast();
     addTearDown(permissions.close);
