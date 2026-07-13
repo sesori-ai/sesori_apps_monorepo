@@ -7,6 +7,7 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
 import "anchored_flat_panel.dart";
+import "anchored_spotlight_backdrop.dart";
 
 /// A single entry in a [PregoAnchorMenu].
 ///
@@ -66,6 +67,32 @@ class PregoMenuCustom extends PregoMenuEntry {
 /// path, toggles) the popup — wire it to the trigger's tap handler.
 typedef PregoMenuTriggerBuilder = Widget Function(BuildContext context, VoidCallback toggle);
 
+/// Blurs and dims the page behind an open [PregoAnchorMenu], cutting a sharp
+/// hole around the trigger so it stays legible and reads as lifted out of the
+/// blur — the iOS context-menu treatment for a long-pressed list row.
+///
+/// Only the flat path can spotlight. The glass path's [GlassMenu] hides its own
+/// trigger while the popup is up and morphs the popup out of the trigger's
+/// bounds, so there is nothing left to keep sharp; [PregoAnchorMenu] asserts the
+/// pairing rather than letting the option silently do nothing.
+class PregoMenuSpotlight {
+  const PregoMenuSpotlight({
+    required this.borderRadius,
+    this.inset = EdgeInsets.zero,
+  });
+
+  /// Corner radius of the sharp cut-out.
+  final double borderRadius;
+
+  /// Shrinks the cut-out relative to the trigger's bounds. A full-width list row
+  /// insets horizontally so the sharp region reads as a lifted card rather than
+  /// a full-bleed band running into the screen edges.
+  final EdgeInsets inset;
+
+  /// The region to keep sharp for a trigger occupying [triggerRect].
+  Rect resolveRect({required Rect triggerRect}) => inset.deflateRect(triggerRect);
+}
+
 /// A popup menu that anchors to its trigger, rendered platform-appropriately.
 ///
 /// On Apple platforms it is the `liquid_glass_widgets` [GlassMenu] — the
@@ -88,7 +115,12 @@ class PregoAnchorMenu extends StatefulWidget {
     this.menuBorderRadius = 24,
     this.menuScreenPadding = const EdgeInsets.all(12),
     this.flat = false,
-  });
+    this.spotlight,
+  }) : assert(
+         spotlight == null || flat,
+         "A spotlight needs the flat path (flat: true): GlassMenu hides its trigger while the "
+         "popup is up, so there is no trigger left to keep sharp.",
+       );
 
   /// Builds the tappable trigger. The provided callback opens the menu.
   final PregoMenuTriggerBuilder triggerBuilder;
@@ -114,6 +146,12 @@ class PregoAnchorMenu extends StatefulWidget {
   /// (the default) the path follows [glassEffectsEnabled] — glass on Apple,
   /// flat on Android.
   final bool flat;
+
+  /// When set, the open menu blurs and dims the page behind it while keeping the
+  /// trigger sharp. Null (the default) leaves the backdrop untouched — right for
+  /// a menu hung off a button, where the page behind it is not the subject.
+  /// Requires [flat]; see [PregoMenuSpotlight].
+  final PregoMenuSpotlight? spotlight;
 
   @override
   State<PregoAnchorMenu> createState() => _PregoAnchorMenuState();
@@ -196,6 +234,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
   // ── Flat path (Android) ────────────────────────────────────────────────────
 
   Widget _buildFlat(BuildContext context) {
+    final spotlight = widget.spotlight;
     return CueModalTransition(
       barrierColor: Colors.transparent,
       motion: const Spring.smooth(),
@@ -204,24 +243,45 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
       // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
       triggerBuilder: (context, showModal) =>
           widget.triggerBuilder(context, () => unawaited(showModal())),
-      builder: (context, triggerRect) => AnchoredFlatPanel(
-        triggerRect: triggerRect,
-        width: widget.menuWidth,
-        height: widget.menuHeight,
-        borderRadius: widget.menuBorderRadius,
-        screenPadding: widget.menuScreenPadding,
-        // AnchoredFlatPanel owns the scroll, so this supplies just the padded
-        // column of entries; the panel scrolls it when the menu is taller than
-        // the room beside the trigger.
-        childBuilder: (context, close) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final entry in widget.entries) _flatEntry(context, entry: entry, close: close),
-            ],
-          ),
+      builder: (context, triggerRect) {
+        final panel = _flatPanel(context, triggerRect: triggerRect);
+        if (spotlight == null) return panel;
+        // The backdrop is stacked here rather than passed as CueModalTransition's
+        // `backdrop`, which is a plain widget and so cannot see the trigger rect
+        // it must cut its hole around. Both children fill the route; the panel
+        // paints last, over the blur.
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            AnchoredSpotlightBackdrop(
+              spotlightRect: spotlight.resolveRect(triggerRect: triggerRect),
+              borderRadius: spotlight.borderRadius,
+            ),
+            panel,
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _flatPanel(BuildContext context, {required Rect triggerRect}) {
+    return AnchoredFlatPanel(
+      triggerRect: triggerRect,
+      width: widget.menuWidth,
+      height: widget.menuHeight,
+      borderRadius: widget.menuBorderRadius,
+      screenPadding: widget.menuScreenPadding,
+      // AnchoredFlatPanel owns the scroll, so this supplies just the padded
+      // column of entries; the panel scrolls it when the menu is taller than
+      // the room beside the trigger.
+      childBuilder: (context, close) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final entry in widget.entries) _flatEntry(context, entry: entry, close: close),
+          ],
         ),
       ),
     );

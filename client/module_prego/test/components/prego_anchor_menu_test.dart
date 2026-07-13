@@ -1,9 +1,10 @@
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:theme_prego/components/menus/anchored_spotlight_backdrop.dart";
 import "package:theme_prego/module_prego.dart";
 
-Widget _harness(List<PregoMenuEntry> entries, {bool flat = false}) {
+Widget _harness(List<PregoMenuEntry> entries, {bool flat = false, PregoMenuSpotlight? spotlight}) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     home: Scaffold(
@@ -11,6 +12,7 @@ Widget _harness(List<PregoMenuEntry> entries, {bool flat = false}) {
         child: PregoAnchorMenu(
           menuWidth: 240,
           flat: flat,
+          spotlight: spotlight,
           entries: entries,
           triggerBuilder: (context, toggle) => ElevatedButton(
             onPressed: toggle,
@@ -187,4 +189,88 @@ void main() {
       expect(find.text("Alpha"), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   });
+
+  group("Spotlight", () {
+    const entries = [
+      PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: _noop),
+    ];
+
+    const spotlight = PregoMenuSpotlight(
+      borderRadius: 16,
+      inset: EdgeInsets.symmetric(horizontal: 8),
+    );
+
+    testWidgets("cuts the hole around the trigger and releases it on dismiss", (tester) async {
+      await tester.pumpWidget(_harness(entries, flat: true, spotlight: spotlight));
+
+      // The page is untouched until the menu is open.
+      expect(find.byType(AnchoredSpotlightBackdrop), findsNothing);
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      // The sharp region tracks the trigger's on-screen bounds, inset as asked —
+      // otherwise the backdrop would cover the very row the menu is acting on.
+      final backdrop = tester.widget<AnchoredSpotlightBackdrop>(find.byType(AnchoredSpotlightBackdrop));
+      final triggerRect = tester.getRect(find.byType(ElevatedButton));
+      expect(backdrop.spotlightRect, equals(spotlight.inset.deflateRect(triggerRect)));
+      expect(backdrop.borderRadius, equals(spotlight.borderRadius));
+
+      // It must not eat the tap-outside: the dismiss barrier lives beneath it.
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Alpha"), findsNothing);
+      expect(find.byType(AnchoredSpotlightBackdrop), findsNothing);
+    });
+
+    testWidgets("blurs the page on Apple platforms", (tester) async {
+      await tester.pumpWidget(_harness(entries, flat: true, spotlight: spotlight));
+
+      expect(find.byType(BackdropFilter), findsNothing);
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BackdropFilter), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("spotlights without blurring on Android, where a full-screen BackdropFilter janks", (
+      tester,
+    ) async {
+      await tester.pumpWidget(_harness(entries, flat: true, spotlight: spotlight));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      // The scrim and the cut-out still run — the page recedes and the trigger
+      // still reads as lifted — but the Gaussian pass is skipped.
+      expect(find.byType(AnchoredSpotlightBackdrop), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+    testWidgets("is off by default, leaving the page behind the menu untouched", (tester) async {
+      await tester.pumpWidget(_harness(entries, flat: true));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Alpha"), findsOneWidget);
+      expect(find.byType(AnchoredSpotlightBackdrop), findsNothing);
+      expect(find.byType(BackdropFilter), findsNothing);
+    });
+
+    test("cannot be paired with the glass path, which hides its own trigger", () {
+      expect(
+        () => PregoAnchorMenu(
+          entries: entries,
+          spotlight: const PregoMenuSpotlight(borderRadius: 16),
+          triggerBuilder: (context, toggle) => const SizedBox.shrink(),
+        ),
+        throwsAssertionError,
+      );
+    });
+  });
 }
+
+void _noop() {}
