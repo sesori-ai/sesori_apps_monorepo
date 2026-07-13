@@ -20,6 +20,7 @@ class SessionDiffsScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => DiffCubit(
         sessionRepository: getIt<SessionRepository>(),
+        connectionService: getIt<ConnectionService>(),
         sessionId: sessionId,
       ),
       // SessionDiffsBody owns the PregoGlassScaffold so its bar subtitle can

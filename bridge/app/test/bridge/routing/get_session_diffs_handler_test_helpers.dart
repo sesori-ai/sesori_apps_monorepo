@@ -27,6 +27,18 @@ class FakeProcessRunner implements ProcessRunner {
   ProcessResult Function({required List<String> arguments}) responder = _defaultResponder;
   final List<Invocation> invocations = <Invocation>[];
 
+  /// Shared responder for git commands introduced alongside session diff
+  /// collection (e.g. untracked file listing).
+  static ProcessResult? supportGitDiffCalls(List<String> arguments, {String untrackedOutput = ""}) {
+    if (arguments.length >= 3 &&
+        arguments[0] == "ls-files" &&
+        arguments[1] == "--others" &&
+        arguments[2] == "--exclude-standard") {
+      return ProcessResult(1, 0, untrackedOutput, "");
+    }
+    return null;
+  }
+
   @override
   Future<ProcessResult> run(
     String executable,
