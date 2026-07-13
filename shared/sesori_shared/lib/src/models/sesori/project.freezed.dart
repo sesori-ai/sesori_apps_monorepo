@@ -161,14 +161,18 @@ mixin _$Project {
 // pinned at first open). Defaults to "" so payloads from older bridges
 // (which don't send a path) still decode; clients fall back to [id] when
 // empty.
- String get path; ProjectTime? get time;// Whether this project has at least one non-archived session with unseen
+// COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit path. Require path and remove the client id fallback once those bridges are unsupported.
+ String get path;// COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
+ ProjectTime? get time;// Whether this project has at least one non-archived session with unseen
 // activity. Backend-derived from its sessions. Defaults to false so older
 // payloads (and the baseline) deserialize as "seen".
+// COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
  bool get hasUnseenChanges;// Whether the project's directory no longer exists on disk at its recorded
 // location (the folder was moved or deleted). The bridge stamps this from a
 // filesystem check; the client renders such projects as "folder not found"
 // instead of driving into a dead path. Defaults to false so older payloads
 // deserialize as "present".
+// COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
  bool get directoryMissing;
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
@@ -262,17 +266,21 @@ class _Project implements Project {
 // pinned at first open). Defaults to "" so payloads from older bridges
 // (which don't send a path) still decode; clients fall back to [id] when
 // empty.
+// COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit path. Require path and remove the client id fallback once those bridges are unsupported.
 @override@JsonKey() final  String path;
+// COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
 @override final  ProjectTime? time;
 // Whether this project has at least one non-archived session with unseen
 // activity. Backend-derived from its sessions. Defaults to false so older
 // payloads (and the baseline) deserialize as "seen".
+// COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
 @override@JsonKey() final  bool hasUnseenChanges;
 // Whether the project's directory no longer exists on disk at its recorded
 // location (the folder was moved or deleted). The bridge stamps this from a
 // filesystem check; the client renders such projects as "folder not found"
 // instead of driving into a dead path. Defaults to false so older payloads
 // deserialize as "present".
+// COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
 @override@JsonKey() final  bool directoryMissing;
 
 /// Create a copy of Project

@@ -28,6 +28,7 @@ class CodexConfigDefaults {
 /// are read. Profile-scoped model overrides (`[profiles.*]`) are not resolved
 /// — rollouts are the authoritative per-session source, and this is only a
 /// fallback for sessions that predate `turn_context` records.
+// COMPATIBILITY 2026-06-25 (v1.1.2): Old Codex rollouts omit turn_context model metadata. Remove config fallback reads when those rollouts are unsupported.
 class CodexConfigReader {
   CodexConfigReader({Map<String, String>? environment})
     : _environment = environment ?? Platform.environment;

@@ -10,6 +10,7 @@ import "bridge_id_storage.dart";
 /// only copy and force a duplicate registration. [migrate] must therefore run
 /// before the first authentication, and its failures propagate so startup
 /// retries the copy instead of proceeding with an empty storage.
+// COMPATIBILITY 2026-06-30 (v1.3.0): Old installs persist bridgeId inside token.json. Remove this service and startup invocation once those installs are unsupported.
 class BridgeIdMigrationService {
   final BridgeIdStorage _bridgeIdStorage;
   final Future<String?> Function() _readLegacyBridgeId;

@@ -56,6 +56,7 @@ String bridgeIdPath() => '${sesoriDataDirectory()}/bridge_id';
 /// upgraded bridge adopt the legacy id once instead of re-registering and
 /// minting a duplicate entry. Returns null when the token file is absent,
 /// corrupt, or has no `bridgeId` key.
+// COMPATIBILITY 2026-06-30 (v1.3.0): Old installs persist bridgeId inside token.json. Remove this reader with BridgeIdMigrationService once those installs are unsupported.
 Future<String?> readLegacyBridgeId() async {
   final file = File(tokenPath());
 
