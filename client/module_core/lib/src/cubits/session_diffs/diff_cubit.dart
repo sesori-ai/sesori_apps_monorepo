@@ -40,10 +40,11 @@ class DiffCubit extends Cubit<DiffState> {
   Future<void> refresh() => _refresh(showLoading: true);
 
   Future<void> _refresh({required bool showLoading}) {
-    _activeRefresh = (_activeRefresh ?? Future<void>.value())
+    final queued = (_activeRefresh ?? Future<void>.value())
         .catchError((_) {})
         .then((_) => _fetchAndEmit(showLoading: showLoading));
-    return _activeRefresh!;
+    _activeRefresh = queued;
+    return queued;
   }
 
   Future<void> _fetchAndEmit({required bool showLoading}) async {
