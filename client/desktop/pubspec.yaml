@@ -1,0 +1,48 @@
+name: sesori_desktop
+description: Sesori desktop app — supervises the bundled sesori-bridge from the tray/menu bar.
+publish_to: none
+resolution: workspace
+
+# Placeholder version: the desktop app ships no artifact before Phase 3, and
+# `make bump-version` learns about this package in PR 3.10. Until then this
+# version is deliberately NOT synced to the product version.
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  device_info_plus: ^13.2.0
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  flutter_secure_storage: ^10.3.1
+  get_it: ^9.2.1
+  http: ^1.6.0
+  injectable: ^3.0.0
+  package_info_plus: ^10.2.0
+  rxdart: ^0.28.0
+  # DI-call only (configureAuthDependencies) — sesori_auth types MUST NOT be
+  # imported outside lib/core/di/ (see client/AGENTS.md).
+  sesori_auth:
+    path: ../module_auth
+  sesori_dart_core:
+    path: ../module_core
+  sesori_desktop_core:
+    path: ../module_desktop_core
+  sesori_shared:
+    path: ../../shared/sesori_shared
+  url_launcher: ^6.3.2
+
+dev_dependencies:
+  no_slop_linter:
+    path: "../../shared/no_slop_linter"
+  bloc_test: ^10.0.0
+  build_runner: any
+  flutter_test:
+    sdk: flutter
+  injectable_generator: ^3.0.2
+  mocktail: ^1.0.5
+
+flutter:
+  uses-material-design: true

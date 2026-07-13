@@ -422,7 +422,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       try {
         for (final info in await _listSessionPages(client, cwd: null)) {
           if (info.sessionId.isEmpty) continue;
-          sessionsById[info.sessionId] = _toPluginSession(info, fallbackDirectory: launchDirectory);
+          sessionsById[info.sessionId] = _toPluginSession(
+            info,
+            fallbackDirectory: launchDirectory,
+            fallbackIsAuthoritative: false,
+          );
           final hasCwd = info.cwd != null && info.cwd!.trim().isNotEmpty;
           if (!hasCwd) fallbackAttributed.add(info.sessionId);
         }
@@ -448,7 +452,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           // it fills a session not seen yet AND repairs one the unfiltered
           // pass could only attribute to the launch fallback.
           if (!sessionsById.containsKey(info.sessionId) || fallbackAttributed.remove(info.sessionId)) {
-            sessionsById[info.sessionId] = _toPluginSession(info, fallbackDirectory: directory);
+            sessionsById[info.sessionId] = _toPluginSession(
+              info,
+              fallbackDirectory: directory,
+              fallbackIsAuthoritative: true,
+            );
           }
         }
       } on Object catch (error, stack) {
@@ -476,7 +484,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     try {
       final mapped = [
         for (final info in await _listSessionPages(client, cwd: target))
-          _toPluginSession(info, fallbackDirectory: target),
+          _toPluginSession(
+            info,
+            fallbackDirectory: target,
+            fallbackIsAuthoritative: true,
+          ),
       ];
       final from = start ?? 0;
       if (from >= mapped.length) return const [];
@@ -536,7 +548,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     return infos;
   }
 
-  PluginSession _toPluginSession(AcpSessionInfo info, {required String fallbackDirectory}) {
+  PluginSession _toPluginSession(
+    AcpSessionInfo info, {
+    required String fallbackDirectory,
+    required bool fallbackIsAuthoritative,
+  }) {
     // The session belongs to its own cwd, canonicalized so it matches the
     // project id the bridge derives from the same value. A missing OR blank cwd
     // falls back to the directory that was scanned — the same `trim().isNotEmpty`
@@ -545,14 +561,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final rawCwd = info.cwd;
     final hasCwd = rawCwd != null && rawCwd.trim().isNotEmpty;
     final directory = normalizeProjectDirectory(directory: hasCwd ? rawCwd : fallbackDirectory);
+    final directoryIsAuthoritative = hasCwd || fallbackIsAuthoritative;
     final id = info.sessionId;
-    // Remember the session's directory so a later turn/history load uses its
-    // own cwd and events/activity attribute to the right project. The
-    // title/time snapshot keeps `session_info_update` emissions full-fidelity
-    // (the mobile list replaces the whole session on session.updated).
+    // A cwd-scoped response is authoritative even when its item omits cwd. Only
+    // the unfiltered launch fallback remains eligible for a stored bridge prime
+    // to repair.
     if (id.isNotEmpty) {
-      _sessionDirectories[id] = directory;
-      eventMapper.setSessionProject(id, directory);
+      if (directoryIsAuthoritative) _sessionDirectories[id] = directory;
+      eventMapper.setSessionProject(id, _sessionDirectories[id] ?? directory);
       eventMapper.setSessionSnapshot(
         sessionId: id,
         title: info.title,
@@ -661,6 +677,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
+    eventMapper
+        .mapSentPrompt(sessionId: sessionId, parts: parts)
+        .forEach(_eventBuffer.add);
     _enqueueTurn(
       sessionId: sessionId,
       parts: parts,
@@ -693,6 +712,20 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// directory when known, else the launch directory.
   String _directoryForSession(String sessionId) =>
       _sessionDirectories[sessionId] ?? launchDirectory;
+
+  @override
+  void primeSessionDirectory({required String sessionId, required String directory}) {
+    if (sessionId.isEmpty || directory.trim().isEmpty) return;
+    final canonical = normalizeProjectDirectory(directory: directory);
+    // Remember the directory for internal warm-up scans regardless — the hint
+    // set widens future enumerations even when this session is already known.
+    _hintedDirectories.add(canonical);
+    // A hint, not an override: a directory learned from the agent itself
+    // (enumeration hit, session/new) stays authoritative.
+    if (_sessionDirectories.containsKey(sessionId)) return;
+    _sessionDirectories[sessionId] = canonical;
+    eventMapper.setSessionProject(sessionId, canonical);
+  }
 
   /// Ensures [sessionId] is resident in the agent process before a turn. A
   /// session created/resumed this run is already resident; one from a prior
@@ -1123,8 +1156,15 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     try {
       await replayClient.connect();
       final replayInit = await _initialize(replayClient);
-      if (!replayClient.isConnected || !replayInit.agentCapabilities.loadSession) {
+      if (!replayInit.agentCapabilities.loadSession) {
+        // History is genuinely unavailable on this agent — an empty thread,
+        // not a failure: the session must stay usable for new prompts.
         return const [];
+      }
+      if (!replayClient.isConnected) {
+        // The replay agent died right after the handshake — a failure, not an
+        // empty thread (wrapped into the typed failure below).
+        throw StateError("replay agent exited during initialization");
       }
       var received = 0;
       BridgeSseSessionsUpdated? deferredCommandRefresh;
@@ -1166,12 +1206,19 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       collector.modelId = eventMapper.modelForSession(sessionId);
       collector.providerId = eventMapper.providerForSession(sessionId);
       return collector.build();
-    } on Object catch (error, stack) {
-      // A broken replay (connect/init/auth/load failure) returns no messages;
-      // the phone can't tell that from a truly empty thread, so at least log
-      // it rather than silently swallowing the failure.
-      Log.w("[$id] history replay for $sessionId failed; returning no messages", error, stack);
-      return const [];
+    } on Object catch (error, stackTrace) {
+      // A broken replay (connect/init/auth/load failure) must stay
+      // distinguishable from a genuinely empty thread: surface it as a typed
+      // failure (the bridge router maps it to a 502 and the phone renders a
+      // retry state) instead of swallowing it into an empty list.
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          "session/load history replay",
+          message: "history replay for $sessionId failed",
+          cause: error,
+        ),
+        stackTrace,
+      );
     } finally {
       try {
         await sub?.cancel();

@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -19,6 +20,54 @@ void main() {
       plugin = _FakeBridgePlugin();
     });
 
+    test("deleteSession records a plugin-scoped tombstone and removes the stored row", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["proj-tomb"]);
+      await db.sessionDao.insertSession(
+        pluginId: plugin.id,
+        sessionId: "sess-tomb",
+        projectId: "proj-tomb",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      await repository.deleteSession(sessionId: "sess-tomb");
+
+      expect(await db.sessionDao.getSession(sessionId: "sess-tomb"), isNull);
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
+        contains("sess-tomb"),
+      );
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: "other"),
+        isNot(contains("sess-tomb")),
+      );
+
+      // Re-deleting the rowless session remains idempotent.
+      await repository.deleteSession(sessionId: "sess-tomb");
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
+        contains("sess-tomb"),
+      );
+    });
+
     test("enrichSession merges stored archive and selected PR metadata", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -26,6 +75,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -131,6 +181,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -179,6 +230,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -264,6 +316,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -307,6 +360,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -353,6 +407,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -394,6 +449,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -436,6 +492,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -478,13 +535,14 @@ void main() {
       expect(row.lastAgentModel?.variant, isNull);
     });
 
-    test("renameSession delegates to plugin and returns enriched shared session", () async {
+    test("renameSession delegates to plugin and maps its shared session", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -537,8 +595,8 @@ void main() {
       expect(plugin.lastRenameSessionId, equals("s1"));
       expect(plugin.lastRenameSessionTitle, equals("Renamed"));
       expect(result.title, equals("Renamed"));
-      expect(result.hasWorktree, isTrue);
-      expect(result.pullRequest?.number, equals(12));
+      expect(result.hasWorktree, isFalse);
+      expect(result.pullRequest, isNull);
     });
 
     test("findProjectIdForSession returns stored project id without scanning plugin", () async {
@@ -548,6 +606,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -583,6 +642,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -612,6 +672,8 @@ void main() {
       final result = await repository.findProjectIdForSession(sessionId: "s-target");
 
       expect(result, equals("/repo-b"));
+      expect(await db.projectsDao.getProject(projectId: "/repo-a"), isNotNull);
+      expect(await db.projectsDao.getProject(projectId: "/repo-b"), isNotNull);
     });
 
     test("createSession passes variant directly to plugin", () async {
@@ -621,6 +683,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -644,6 +707,132 @@ void main() {
       }
     });
 
+    group("moved project (stable id, new live path)", () {
+      test("getSessionsForProject hands the plugin the live directory and re-keys sessions to the id", () async {
+        final db = createTestDatabase();
+        addTearDown(db.close);
+        await db.projectsDao.recordOpenedProject(
+          projectId: "/projects/a",
+          path: "/moved/a",
+          createdAt: 1,
+          updatedAt: 1,
+        );
+        plugin.sessionsByWorktree = {
+          "/moved/a": const [
+            PluginSession(
+              id: "s-live",
+              // The plugin can only echo the directory it was asked about —
+              // it has no notion of the bridge's stable identifier.
+              projectID: "/moved/a",
+              directory: "/moved/a",
+              parentID: null,
+              title: "Session",
+              time: null,
+              summary: null,
+            ),
+          ],
+        };
+
+        final repository = SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+
+        final sessions = await repository.getSessionsForProject(
+          projectId: "/projects/a",
+          start: null,
+          limit: null,
+        );
+
+        expect(plugin.lastGetSessionsWorktree, equals("/moved/a"));
+        expect(sessions.single.id, equals("s-live"));
+        expect(sessions.single.projectID, equals("/projects/a"));
+      });
+
+      test("getCommands resolves the project id to the live directory", () async {
+        final db = createTestDatabase();
+        addTearDown(db.close);
+        await db.projectsDao.recordOpenedProject(
+          projectId: "/projects/a",
+          path: "/moved/a",
+          createdAt: 1,
+          updatedAt: 1,
+        );
+
+        final repository = SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+
+        await repository.getCommands(projectId: "/projects/a");
+        expect(plugin.lastGetCommandsProjectId, equals("/moved/a"));
+
+        // Null/blank keeps the plugin's own fallback untouched.
+        await repository.getCommands(projectId: "  ");
+        expect(plugin.lastGetCommandsProjectId, isNull);
+      });
+
+      test("getProjectPath returns the live directory, probing the plugin for availability", () async {
+        final db = createTestDatabase();
+        addTearDown(db.close);
+        await db.projectsDao.recordOpenedProject(
+          projectId: "/projects/a",
+          path: "/moved/a",
+          createdAt: 1,
+          updatedAt: 1,
+        );
+
+        final repository = SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+
+        final path = await repository.getProjectPath(projectId: "/projects/a");
+
+        expect(path, equals("/moved/a"));
+        expect(plugin.lastGetProjectDirectory, equals("/moved/a"));
+      });
+
+      test("resolveProjectDirectory rejects an unknown project id", () async {
+        final db = createTestDatabase();
+        addTearDown(db.close);
+
+        final repository = SessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+
+        await expectLater(
+          () => repository.resolveProjectDirectory(projectId: "/projects/a"),
+          throwsA(isA<ProjectNotFoundException>()),
+        );
+      });
+    });
+
     test("sendPrompt and sendCommand pass variant directly to plugin", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -651,6 +840,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -726,11 +916,15 @@ void main() {
       const worktree = "/tmp/proj/alpha/.worktrees/session-001";
       final plugin = _FakeDerivedPlugin(
         launchDirectory: parent,
-        allSessions: [pluginSession(parent, id: "s1"), pluginSession(worktree, id: "w1")],
+        allSessions: [
+          pluginSession(parent, id: "s1"),
+          pluginSession(worktree, id: "w1"),
+        ],
       );
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -773,6 +967,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -799,6 +994,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -824,6 +1020,7 @@ void main() {
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -834,6 +1031,339 @@ void main() {
       await repository.findProjectIdForSession(sessionId: "missing");
 
       expect(plugin.receivedKnownDirectories, contains(opened));
+    });
+
+    test("sendPrompt/sendCommand/getSessionMessages prime a derived plugin with the stored directory", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      final plugin = _FakeDerivedPlugin(launchDirectory: parent, allSessions: const []);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      // One dedicated-worktree session and one plain in-project session.
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
+      await db.sessionDao.insertSession(
+        sessionId: "p1",
+        projectId: parent,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: "codex",
+      );
+
+      // The worktree session primes with its worktree path...
+      await repository.sendPrompt(sessionId: "w1", parts: const [], variant: null, agent: null, model: null);
+      expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
+
+      // ...a plain session primes with the owning project directory...
+      await repository.getSessionMessages(sessionId: "p1");
+      expect(plugin.primedDirectories.last, (sessionId: "p1", directory: parent));
+
+      await repository.sendCommand(
+        sessionId: "w1",
+        command: "review",
+        arguments: "",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
+
+      // ...and a rowless session primes nothing (there is no stored attribution).
+      final primesBefore = plugin.primedDirectories.length;
+      await repository.sendPrompt(sessionId: "ghost", parts: const [], variant: null, agent: null, model: null);
+      expect(plugin.primedDirectories.length, primesBefore);
+    });
+
+    test("getProjectActivitySummaries folds a worktree session under its stored parent project", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      final plugin = _FakeDerivedPlugin(launchDirectory: parent, allSessions: const []);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
+      // The plugin groups the active worktree session under its own cwd (the
+      // worktree) — exactly what the ACP plugin reports — plus a rowless
+      // session under its own directory.
+      plugin.activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: worktree,
+          activeSessions: [
+            PluginActiveSession(
+              id: "w1",
+              mainAgentRunning: true,
+              awaitingInput: false,
+              isRetrying: false,
+              childSessionIds: [],
+            ),
+          ],
+        ),
+        PluginProjectActivitySummary(
+          id: "/tmp/proj/beta",
+          activeSessions: [
+            PluginActiveSession(
+              id: "b1",
+              mainAgentRunning: false,
+              awaitingInput: true,
+              isRetrying: false,
+              childSessionIds: [],
+            ),
+          ],
+        ),
+      ];
+
+      final summaries = await repository.getProjectActivitySummaries();
+
+      // The worktree session's badge lands on the stored parent project — the
+      // id the phone's project list actually shows.
+      final byId = {for (final s in summaries) s.id: s};
+      expect(byId.keys, containsAll(<String>[parent, "/tmp/proj/beta"]));
+      expect(byId.keys, isNot(contains(worktree)));
+      expect(byId[parent]!.activeSessions.single.id, "w1");
+      expect(byId[parent]!.activeSessions.single.mainAgentRunning, isTrue);
+      // A rowless session keeps the plugin's own grouping.
+      expect(byId["/tmp/proj/beta"]!.activeSessions.single.id, "b1");
+      expect(byId["/tmp/proj/beta"]!.activeSessions.single.awaitingInput, isTrue);
+    });
+
+    test("setSessionTitleIfStored makes a derived title win over enumeration", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        // The backend keeps reporting its own auto-generated title — a rename
+        // never reaches it (ACP has no rename RPC).
+        allSessions: [
+          const PluginSession(
+            id: "s1",
+            projectID: parent,
+            directory: parent,
+            parentID: null,
+            title: "Backend auto-title",
+            time: PluginSessionTime(created: 1, updated: 1, archived: null),
+            summary: null,
+          ),
+        ],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      await db.sessionDao.insertSession(
+        sessionId: "s1",
+        projectId: parent,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: "codex",
+      );
+
+      expect(
+        await repository.setSessionTitleIfStored(sessionId: "s1", title: "My rename"),
+        isTrue,
+      );
+
+      // The next enumeration keeps serving the rename, not the backend's
+      // auto-title: the stored copy wins for derived plugins.
+      final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
+      expect(sessions.single.title, "My rename");
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "My rename");
+    });
+
+    test("renameSession rejects a tombstoned session before plugin access", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone",
+        pluginId: plugin.id,
+        deletedAt: 1,
+      );
+
+      await expectLater(
+        repository.renameSession(sessionId: "gone", title: "Resurrected"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(plugin.lastRenameSessionId, isNull);
+
+      final guardedOperations = <Future<void> Function()>[
+        () => repository.sendCommand(
+          sessionId: "gone",
+          command: "test",
+          arguments: "",
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        () => repository.sendPrompt(
+          sessionId: "gone",
+          parts: const [],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        () async => repository.getSessionMessages(sessionId: "gone"),
+        () => repository.notifySessionArchived(sessionId: "gone"),
+        () => repository.abortSession(sessionId: "gone"),
+        () async => repository.getChildSessions(sessionId: "gone"),
+      ];
+      for (final operation in guardedOperations) {
+        await expectLater(
+          operation(),
+          throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+        );
+      }
+    });
+
+    test("getChildSessions filters tombstoned derived children", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final plugin =
+          _FakeDerivedPlugin(
+              launchDirectory: "/repo",
+              allSessions: const [],
+            )
+            ..childSessions = [
+              pluginSession("/repo", id: "live-child"),
+              pluginSession("/repo", id: "gone-child"),
+            ];
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone-child",
+        pluginId: plugin.id,
+        deletedAt: 1,
+      );
+
+      final children = await repository.getChildSessions(sessionId: "live-parent");
+
+      expect(children.map((session) => session.id), ["live-child"]);
+    });
+
+    test("deleteSession survives rowless project discovery failure", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+      )..listAllSessionsError = StateError("enumeration failed");
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final deleted = await repository.deleteSession(sessionId: "rowless");
+
+      expect(deleted.projectID, isEmpty);
+      expect(plugin.deleteCalls, 1);
+      expect(
+        await db.sessionDao.isSessionTombstoned(sessionId: "rowless", pluginId: plugin.id),
+        isTrue,
+      );
+    });
+
+    test("tombstoned sessions are filtered from enumeration and resolution", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        // The backend has no session deletion, so it keeps enumerating the
+        // deleted session forever.
+        allSessions: [
+          pluginSession(parent, id: "deleted-s"),
+          pluginSession(parent, id: "kept-s"),
+        ],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "deleted-s",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
+
+      final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
+      expect(sessions.map((s) => s.id), ["kept-s"]);
+
+      expect(await repository.findProjectIdForSession(sessionId: "deleted-s"), isNull);
+      expect(await repository.findProjectIdForSession(sessionId: "kept-s"), parent);
     });
 
     test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {
@@ -847,12 +1377,14 @@ void main() {
       final derived = SessionRepository(
         plugin: _FakeDerivedPlugin(launchDirectory: "/tmp/proj/alpha", allSessions: const []),
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: pullRequestRepository,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final native = SessionRepository(
         plugin: _FakeBridgePlugin(),
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: pullRequestRepository,
         unseenCalculator: const SessionUnseenCalculator(),
       );
@@ -877,6 +1409,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -910,6 +1443,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastCreateSessionVariant;
   String? lastSendPromptVariant;
   String? lastSendCommandVariant;
+  String? lastGetSessionsWorktree;
+  String? lastGetCommandsProjectId;
+  String? lastGetProjectDirectory;
 
   @override
   String get id => "fake";
@@ -918,11 +1454,27 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
 
   @override
+  Future<void> deleteSession(String sessionId) async {}
+
+  @override
   Future<List<PluginProject>> getProjects() async => projectsResult;
 
   @override
   Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async {
+    lastGetSessionsWorktree = worktree;
     return sessionsByWorktree[worktree] ?? sessionsResult;
+  }
+
+  @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    lastGetCommandsProjectId = projectId;
+    return const [];
+  }
+
+  @override
+  Future<PluginProject> getProject(String projectId) async {
+    lastGetProjectDirectory = projectId;
+    return PluginProject(id: projectId);
   }
 
   @override
@@ -989,18 +1541,83 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   final String launchDirectory;
 
   List<PluginSession> allSessions;
+  String? lastRenameSessionId;
+  List<PluginSession> childSessions = const [];
+  Object? listAllSessionsError;
+  int deleteCalls = 0;
 
   /// The hint set received on the most recent [listAllSessions] call.
   Set<String>? receivedKnownDirectories;
+
+  /// Every stored-directory prime the bridge fed this plugin, in order.
+  final List<({String sessionId, String directory})> primedDirectories = [];
+
+  /// Configurable activity summaries (the plugin's own grouping — for a
+  /// worktree session that is the worktree cwd).
+  List<PluginProjectActivitySummary> activitySummaries = const [];
 
   @override
   String get id => "codex";
 
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    if (listAllSessionsError case final error?) throw error;
     receivedKnownDirectories = knownDirectories;
     return allSessions;
   }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    deleteCalls++;
+  }
+
+  @override
+  void primeSessionDirectory({required String sessionId, required String directory}) {
+    primedDirectories.add((sessionId: sessionId, directory: directory));
+  }
+
+  /// Echo-only rename, mirroring the ACP contract (no backend rename RPC).
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    lastRenameSessionId = sessionId;
+    return PluginSession(
+      id: sessionId,
+      projectID: launchDirectory,
+      directory: launchDirectory,
+      parentID: null,
+      title: title,
+      time: null,
+      summary: null,
+    );
+  }
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => childSessions;
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() => activitySummaries;
+
+  @override
+  Future<void> sendPrompt({
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
+
+  @override
+  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => const [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

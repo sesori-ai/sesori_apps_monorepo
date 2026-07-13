@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:share_plus/share_plus.dart";
@@ -32,6 +33,18 @@ part "widgets/bridge_offline_view.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";
 
+/// The user-facing directory of [project]: its live path on disk, falling
+/// back to the id for payloads from older bridges that don't send a path
+/// (there the id is the directory).
+String _projectDisplayPath(Project project) => project.path.isEmpty ? project.id : project.path;
+
+/// The last segment of [project]'s directory, used as the display-name
+/// fallback when the project has no stored name. The directory comes from the
+/// bridge's host platform, not the phone's, so both separator styles must
+/// parse — the platform-local basename would return a Windows path unchanged.
+String _projectDirectoryBasename(Project project) =>
+    p.posix.basename(_projectDisplayPath(project).replaceAll(r"\", "/"));
+
 class ProjectListScreen extends StatelessWidget {
   const ProjectListScreen({super.key});
 
@@ -41,7 +54,7 @@ class ProjectListScreen extends StatelessWidget {
       create: (_) => ProjectListCubit(
         getIt<ProjectService>(),
         getIt<ConnectionService>(),
-        getIt<SseEventRepository>(),
+        getIt<SseEventTracker>(),
         getIt<RouteSource>(),
         sessionUnseenTracker: getIt<SessionUnseenTracker>(),
         registeredBridgesService: getIt<RegisteredBridgesService>(),
@@ -85,7 +98,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final loc = context.loc;
     // Same display-name resolution as _ProjectTile, so the sheet is titled
     // by the project it acts on.
-    final lastSegment = project.id.split("/").last;
+    final lastSegment = _projectDirectoryBasename(project);
     final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
 
     showPregoBottomSheet<void>(
@@ -134,8 +147,9 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
 
   /// The scaffold's bottom-right floating action for the current [state]: the
   /// add-project FAB once projects exist, the onboarding "Need help?" support
-  /// menu in the two empty states (never-registered setup and connected-but-
-  /// empty), and nothing otherwise.
+  /// menu on the never-registered setup surface, and nothing otherwise — the
+  /// connected-but-empty state anchors its own add-project call to action at
+  /// the bottom ([_ConnectedEmptyView]), so a floating pill would collide.
   Widget? _floatingAction({required BuildContext context, required ProjectListState state}) {
     if (state is ProjectListLoaded && state.projects.isNotEmpty) {
       return PregoButtonsIconGlass(
@@ -145,13 +159,12 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
       );
     }
-    // The two onboarding surfaces get the same pill but report distinct
+    // The onboarding/recovery surfaces get the same pill but report distinct
     // analytics surfaces, so help-seeking is attributable to the funnel step.
-    if (state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges) {
-      return const _NeedHelpMenu(surface: OnboardingSurface.connectSetup);
-    }
-    if (state is ProjectListLoaded && state.projects.isEmpty) {
-      return const _NeedHelpMenu(surface: OnboardingSurface.connectedEmpty);
+    if (state is ProjectListBridgeDisconnected) {
+      return _NeedHelpMenu(
+        surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
+      );
     }
     return null;
   }
@@ -180,8 +193,8 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         ),
       ],
       // Bottom-right floating action, resolved per state: the add-project FAB
-      // once projects exist, the onboarding "Need help?" support menu in the two
-      // empty states, and nothing while loading/offline/errored.
+      // once projects exist, the "Need help?" support menu on the onboarding
+      // and bridge-offline surfaces, and nothing while loading/errored.
       floatingActionButton: _floatingAction(context: context, state: state),
       onRefresh: _refreshFor(context: context, state: state),
       slivers: _buildContentSlivers(context: context, state: state, isRefreshing: isRefreshing),
@@ -205,8 +218,8 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   /// The top-nav connection banner for [state], or `null` when it should be
   /// suppressed.
   ///
-  /// A non-empty loaded list always hosts it. The empty onboarding list
-  /// normally owns the screen full-screen (its checklist would contradict an
+  /// A non-empty loaded list always hosts it. The empty list normally owns
+  /// the screen full-screen (its "Connected" caption would contradict an
   /// offline banner, and a bridge-offline empty list transitions to the
   /// dedicated offline flow instead) — but a terminal `ConnectionLost` keeps
   /// the list loaded-empty with no other recovery surface, so surface the
@@ -239,25 +252,25 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       // shorter than the viewport sit still while a taller one — the offline
       // view with its install commands expanded — scrolls the page.
       // SafeArea(top: false) keeps the last box clear of the home indicator.
-      ProjectListBridgeDisconnected(:final hasRegisteredBridges) => [
+      ProjectListBridgeDisconnected(:final hasRegisteredBridges, :final bridges) => [
         SliverFillRemaining(
           hasScrollBody: false,
           child: SafeArea(
             top: false,
-            child: hasRegisteredBridges ? const _BridgeOfflineView() : const _ConnectBridgeChecklist(),
+            child: hasRegisteredBridges ? _BridgeOfflineView(bridges: bridges) : const _ConnectBridgeChecklist(),
           ),
         ),
       ],
-      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => [
+      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId, :final bridges) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         if (projects.isEmpty)
-          // Same shape as the disconnected bodies above: the onboarding joins
+          // Same shape as the disconnected bodies above: the empty state joins
           // the page scroll rather than nesting one of its own.
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: SafeArea(
               top: false,
-              child: _OnboardingChecklist(),
+              child: _ConnectedEmptyView(bridges: bridges),
             ),
           )
         else ...[

@@ -3,6 +3,7 @@ import "dart:async";
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
@@ -51,6 +52,13 @@ class RegisteredBridgesService {
   /// In-flight resolution, used to coalesce concurrent [hasRegisteredBridges]
   /// callers onto a single lookup.
   Future<bool>? _activeLookup;
+
+  /// In-flight bridge-list fetch, used to coalesce concurrent
+  /// [getRegisteredBridges] callers onto a single network request.
+  Future<List<BridgeSummary>>? _activeFetch;
+
+  /// Last successful bridge-list result, sorted in display order.
+  List<BridgeSummary>? _cachedBridges;
 
   /// Auth generation, bumped on every logout. A lookup or connection-driven
   /// latch captures this when it starts; if a logout bumps it while the
@@ -115,42 +123,77 @@ class RegisteredBridgesService {
     return _lookup();
   }
 
-  Future<bool> _lookup() async {
-    // Invoked fire-and-forget from the connection listener, so an unexpected
-    // throw (network timeout, deserialization) — rather than an ErrorResponse —
-    // would otherwise surface as an uncaught async error. Fail soft to `false`,
-    // the safe default for an account we can't classify yet.
+  Future<bool> _lookup() async => (await getRegisteredBridges()).isNotEmpty;
+
+  /// Fetches the account's registered bridges from the auth server, most
+  /// recently seen first, latching the positive has-registered answer as a
+  /// side effect. Concurrent calls are coalesced into a single request.
+  ///
+  /// Fail-soft: an error response, an unexpected throw, or a logout racing the
+  /// request all yield an empty list, so callers degrade (e.g. hide the
+  /// machine-name row) instead of surfacing a failure. Reached fire-and-forget
+  /// from the connection listener via [hasRegisteredBridges], so an unexpected
+  /// throw (network timeout, deserialization) — rather than an ErrorResponse —
+  /// would otherwise surface as an uncaught async error.
+  Future<List<BridgeSummary>> getRegisteredBridges() {
+    final cached = _cachedBridges;
+    if (cached != null) return Future.value(cached);
+    return _activeFetch ??= _fetchRegisteredBridges().whenComplete(() => _activeFetch = null);
+  }
+
+  Future<List<BridgeSummary>> _fetchRegisteredBridges() async {
     final generation = _authGeneration;
     try {
       final response = await _bridgeRepository.getRegisteredBridges();
       // A logout during the in-flight request retires this result: the account
-      // that asked is gone, so latching its answer would leak onto the device
-      // and the next account would inherit it.
-      if (generation != _authGeneration) return false;
+      // that asked is gone, so latching or reporting its answer would leak onto
+      // the device and the next account would inherit it.
+      if (generation != _authGeneration) return const [];
       switch (response) {
         case SuccessResponse(:final data):
-          if (data.isEmpty) return false;
+          if (data.isEmpty) return const [];
           // Latch the positive answer so future transitions skip the network.
           await _latch(generation);
           // A logout may have raced the latch: it abandons (and undoes) the
-          // write, so reporting success here would still leak the old account's
-          // answer to the caller. Retire the result to match the latch.
-          if (generation != _authGeneration) return false;
-          return true;
+          // write, so reporting the bridges here would still leak the old
+          // account's answer to the caller. Retire the result to match.
+          if (generation != _authGeneration) return const [];
+          final sorted = List<BridgeSummary>.unmodifiable(_sortedByRecency(bridges: data));
+          _cachedBridges = sorted;
+          return sorted;
         case ErrorResponse(:final error):
           logw("Failed to fetch registered bridges: ${error.toString()}");
-          return false;
+          return const [];
       }
     } on Object catch (error, stackTrace) {
       logw("Failed to fetch registered bridges (unexpected error)", error, stackTrace);
-      return false;
+      return const [];
     }
+  }
+
+  /// Most recently seen bridge first; never-seen bridges sort after seen ones,
+  /// newest registration first among themselves. The first entry is what a
+  /// consumer should name when it has room for only one machine.
+  static List<BridgeSummary> _sortedByRecency({required List<BridgeSummary> bridges}) {
+    return [...bridges]..sort((a, b) {
+      final aSeen = a.lastSeenAt;
+      final bSeen = b.lastSeenAt;
+      if (aSeen != null && bSeen != null) {
+        final seenCompare = bSeen.compareTo(aSeen);
+        if (seenCompare != 0) return seenCompare;
+        return b.addedAt.compareTo(a.addedAt);
+      }
+      if (aSeen != null) return -1;
+      if (bSeen != null) return 1;
+      return b.addedAt.compareTo(a.addedAt);
+    });
   }
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     switch (status) {
       // A live E2E connection proves a bridge exists — latch without a lookup.
       case ConnectionConnected():
+        _cachedBridges = null;
         unawaited(_latch());
       // Parked offline: (re)resolve so a consumer of [isRegistered] alone — the
       // overlay — gets the right answer. Coalesced, and a no-op once latched.
@@ -195,6 +238,7 @@ class RegisteredBridgesService {
   }
 
   void _reset() {
+    _cachedBridges = null;
     if (!_isRegistered.isClosed && _isRegistered.value) _isRegistered.add(false);
   }
 

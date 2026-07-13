@@ -6,7 +6,6 @@ import "models/openapi/agent.g.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/message.g.dart";
 import "models/openapi/permission_request.g.dart";
-import "models/openapi/project.g.dart";
 import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
 import "models/openapi/session_messages_response_item.g.dart";
@@ -51,15 +50,15 @@ class PluginModelMapper {
     );
   }
 
-  PluginProject mapProject(Project project) {
-    final time = project.time;
+  PluginProject mapProject({
+    required String worktree,
+    required String? name,
+    required PluginProjectActivity? activity,
+  }) {
     return PluginProject(
-      id: project.worktree,
-      name: _effectiveProjectName(project),
-      time: PluginProjectTime(
-        created: time.created.toInt(),
-        updated: time.updated.toInt(),
-      ),
+      id: worktree,
+      name: _effectiveProjectName(worktree: worktree, name: name),
+      activity: activity,
     );
   }
 
@@ -145,11 +144,10 @@ class PluginModelMapper {
     return PluginMessageTime(created: time.created.toInt(), completed: null);
   }
 
-  String? _effectiveProjectName(Project project) {
-    final name = project.name;
+  String? _effectiveProjectName({required String worktree, required String? name}) {
     if (name != null && name.isNotEmpty) return name;
-    if (project.worktree.isEmpty) return null;
-    final normalized = project.worktree.replaceAll(r"\", "/");
+    if (worktree.isEmpty) return null;
+    final normalized = worktree.replaceAll(r"\", "/");
     final segments = normalized.split("/").where((segment) => segment.isNotEmpty);
     return segments.isEmpty ? null : segments.last;
   }

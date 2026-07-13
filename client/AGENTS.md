@@ -1,6 +1,6 @@
 # Client Workspace — Agent Rules
 
-This file covers client-specific guidance for the mobile app, future desktop app,
+This file covers client-specific guidance for the mobile and desktop apps,
 and shared client modules. For general architecture, layering, class suffixes,
 cohesion rules, commit discipline, and review workflow, see the repo-root
 `AGENTS.md`.
@@ -9,12 +9,13 @@ cohesion rules, commit discipline, and review workflow, see the repo-root
 
 ```bash
 dart pub get                                              # from client/ — installs all modules
-dart analyze                                              # run per module (app/, module_core/, module_auth/, and module_desktop_core/ when present)
+dart analyze                                              # run per module (app/, desktop/, module_core/, module_auth/, module_prego/, module_desktop_core/)
 cd app && flutter test                                    # Flutter tests
-cd desktop && flutter test                                # desktop Flutter tests, when present
+cd desktop && flutter test                                # desktop Flutter tests
 cd module_core && dart test                               # pure Dart tests
 cd module_auth && dart test                               # pure Dart tests
-cd module_desktop_core && dart test                       # pure Dart tests, when present
+cd module_prego && flutter test                           # shared Flutter design-system tests
+cd module_desktop_core && dart test                       # pure Dart desktop tests
 dart run build_runner build --delete-conflicting-outputs  # per module, after modifying annotated classes
 ```
 
@@ -51,7 +52,8 @@ import product shells or `module_desktop_core`.
 
 - `flutter test` from `app/`
 - `dart test` from `module_core/` and `module_auth/`
-- `flutter test` from `desktop/` and `dart test` from `module_desktop_core/` when those packages exist or are touched
+- `flutter test` from `module_prego/`
+- `flutter test` from `desktop/` and `dart test` from `module_desktop_core/`
 - Cubits in `module_core/` and `module_desktop_core/` must be testable without Flutter. Use fake streams and fake services, not `WidgetTester`.
 
 ## DI
@@ -177,12 +179,13 @@ or single-instance business logic in `client/desktop`.
 - `dart analyze` exits 0 in touched modules
 - All relevant tests pass (`flutter test` for product shells, `dart test` for pure Dart modules)
 - Shared-module changes also validate affected downstream product shells: mobile
-  for `module_core`/`module_auth`/`module_prego`, and desktop once
-  `client/desktop` or `module_desktop_core` exists.
+  for `module_core`/`module_auth`/`module_prego`, and desktop for
+  `client/desktop` or `module_desktop_core` changes.
 
 ## Per-Module Details
 
 - [`app/AGENTS.md`](app/AGENTS.md) — Flutter shell conventions, routing, widget patterns
 - [`module_core/AGENTS.md`](module_core/AGENTS.md) — pure Dart conventions, cubit/service patterns
 - [`module_auth/AGENTS.md`](module_auth/AGENTS.md) — auth package public API, token lifecycle
-- `desktop/AGENTS.md` and `module_desktop_core/AGENTS.md` should be added when those packages are created.
+- [`desktop/AGENTS.md`](desktop/AGENTS.md) — desktop Flutter shell conventions, 4-phase DI
+- [`module_desktop_core/AGENTS.md`](module_desktop_core/AGENTS.md) — pure Dart desktop business module, target layer structure

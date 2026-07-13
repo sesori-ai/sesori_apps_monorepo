@@ -25,7 +25,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ServerClock,
         StartAbortController,
         StartAbortSignal;
-import "package:sesori_shared/sesori_shared.dart" show DeviceInfo;
+import "package:sesori_shared/sesori_shared.dart" show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo;
 
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
@@ -239,6 +239,7 @@ class BridgeRuntimeRunner {
     );
     shutdownCoordinator.add(disposable: httpClient.close);
 
+    final bridgeClientType = _bridgeClientType();
     final runtimeAuthService = BridgeRuntimeAuthService(
       loginEmailRepository: LoginEmailRepository(
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
@@ -248,8 +249,8 @@ class BridgeRuntimeRunner {
         api: LoginOAuthApi(
           authBackendUrl: options.authBackendUrl,
           client: httpClient,
-          clientType: "bridge_${PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem).value}",
-          device: _bridgeDeviceInfo(),
+          clientType: bridgeClientType,
+          device: _bridgeDeviceInfo(clientType: bridgeClientType),
         ),
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
@@ -387,8 +388,19 @@ class BridgeRuntimeRunner {
         Log.w("Failed to resolve release track; defaulting to stable: $error");
       }
       final releaseTrack = configuredTrack ?? ReleaseTrack.stable;
+      // Resolve the shared policy once so startup diagnostics and update
+      // lifecycle gating cannot disagree about whether this run may update.
+      final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
+        environment: environment,
+        executablePath: io.Platform.resolvedExecutable,
+        managedExecutablePath: managedRuntimePaths.binaryPath,
+        isSupervised: options.isSupervised,
+      );
       if (releaseTrack == ReleaseTrack.internal) {
-        Log.w("Release track: internal (pre-release auto-updates enabled)");
+        final updateStatus = updatesEnabledForThisInstall
+            ? "pre-release auto-updates enabled"
+            : "auto-updates disabled for this run";
+        Log.w("Release track: internal ($updateStatus)");
       } else {
         Log.d("Release track: ${releaseTrack.wireValue}");
       }
@@ -408,12 +420,6 @@ class BridgeRuntimeRunner {
       // non-managed binary (npm payload, dev build, CI, or updates disabled)
       // must not touch the managed install's attempt/residue state, and a
       // supervised (GUI-bundled) bridge must never rewrite itself.
-      final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
-        environment: environment,
-        executablePath: io.Platform.resolvedExecutable,
-        managedExecutablePath: managedRuntimePaths.binaryPath,
-        isSupervised: options.isSupervised,
-      );
       if (updatesEnabledForThisInstall) {
         try {
           await updateLifecycle.reconcile();
@@ -1209,11 +1215,17 @@ class BridgeRuntimeRunner {
   /// we fall back to a constant so the server's required, non-empty `name` is
   /// always satisfied, and clamp to the 120-char server limit. The cosmetic OS
   /// version is omitted when it can't be derived.
-  static DeviceInfo _bridgeDeviceInfo() {
-    final hostname = _localHostname().trim();
-    final name = hostname.isEmpty ? "Sesori Bridge" : hostname;
-    return DeviceInfo(
-      name: name.length > 120 ? name.substring(0, 120).trim() : name,
+  static AuthClientType _bridgeClientType() =>
+      switch (PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem)) {
+        PlatformOs.macos => AuthClientType.bridgeMacos,
+        PlatformOs.windows => AuthClientType.bridgeWindows,
+        PlatformOs.linux => AuthClientType.bridgeLinux,
+      };
+
+  static DeviceInfo _bridgeDeviceInfo({required AuthClientType clientType}) {
+    return const AuthDeviceInfoBuilder().build(
+      clientType: clientType,
+      detectedName: _localHostname(),
       osVersion: const OsVersionFormatter().format(
         operatingSystem: io.Platform.operatingSystem,
         operatingSystemVersion: io.Platform.operatingSystemVersion,

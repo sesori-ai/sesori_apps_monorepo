@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginProject {
 
- String get id; String? get name; PluginProjectTime? get time;
+ String get id; String? get name; PluginProjectActivity? get activity;
 /// Create a copy of PluginProject
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +27,16 @@ $PluginProjectCopyWith<PluginProject> get copyWith => _$PluginProjectCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.activity, activity) || other.activity == activity));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,time);
+int get hashCode => Object.hash(runtimeType,id,name,activity);
 
 @override
 String toString() {
-  return 'PluginProject(id: $id, name: $name, time: $time)';
+  return 'PluginProject(id: $id, name: $name, activity: $activity)';
 }
 
 
@@ -47,11 +47,11 @@ abstract mixin class $PluginProjectCopyWith<$Res>  {
   factory $PluginProjectCopyWith(PluginProject value, $Res Function(PluginProject) _then) = _$PluginProjectCopyWithImpl;
 @useResult
 $Res call({
- String id, String? name, PluginProjectTime? time
+ String id, String? name, PluginProjectActivity? activity
 });
 
 
-$PluginProjectTimeCopyWith<$Res>? get time;
+$PluginProjectActivityCopyWith<$Res>? get activity;
 
 }
 /// @nodoc
@@ -64,25 +64,25 @@ class _$PluginProjectCopyWithImpl<$Res>
 
 /// Create a copy of PluginProject
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? activity = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
-as PluginProjectTime?,
+as String?,activity: freezed == activity ? _self.activity : activity // ignore: cast_nullable_to_non_nullable
+as PluginProjectActivity?,
   ));
 }
 /// Create a copy of PluginProject
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$PluginProjectTimeCopyWith<$Res>? get time {
-    if (_self.time == null) {
+$PluginProjectActivityCopyWith<$Res>? get activity {
+    if (_self.activity == null) {
     return null;
   }
 
-  return $PluginProjectTimeCopyWith<$Res>(_self.time!, (value) {
-    return _then(_self.copyWith(time: value));
+  return $PluginProjectActivityCopyWith<$Res>(_self.activity!, (value) {
+    return _then(_self.copyWith(activity: value));
   });
 }
 }
@@ -93,12 +93,12 @@ $PluginProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable(createFactory: false)
 
 class _PluginProject implements PluginProject {
-  const _PluginProject({required this.id, this.name, this.time});
+  const _PluginProject({required this.id, this.name, this.activity});
   
 
 @override final  String id;
 @override final  String? name;
-@override final  PluginProjectTime? time;
+@override final  PluginProjectActivity? activity;
 
 /// Create a copy of PluginProject
 /// with the given fields replaced by the non-null parameter values.
@@ -113,16 +113,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.activity, activity) || other.activity == activity));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,time);
+int get hashCode => Object.hash(runtimeType,id,name,activity);
 
 @override
 String toString() {
-  return 'PluginProject(id: $id, name: $name, time: $time)';
+  return 'PluginProject(id: $id, name: $name, activity: $activity)';
 }
 
 
@@ -133,11 +133,11 @@ abstract mixin class _$PluginProjectCopyWith<$Res> implements $PluginProjectCopy
   factory _$PluginProjectCopyWith(_PluginProject value, $Res Function(_PluginProject) _then) = __$PluginProjectCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? name, PluginProjectTime? time
+ String id, String? name, PluginProjectActivity? activity
 });
 
 
-@override $PluginProjectTimeCopyWith<$Res>? get time;
+@override $PluginProjectActivityCopyWith<$Res>? get activity;
 
 }
 /// @nodoc
@@ -150,12 +150,12 @@ class __$PluginProjectCopyWithImpl<$Res>
 
 /// Create a copy of PluginProject
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? activity = freezed,}) {
   return _then(_PluginProject(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
-as PluginProjectTime?,
+as String?,activity: freezed == activity ? _self.activity : activity // ignore: cast_nullable_to_non_nullable
+as PluginProjectActivity?,
   ));
 }
 
@@ -163,54 +163,54 @@ as PluginProjectTime?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$PluginProjectTimeCopyWith<$Res>? get time {
-    if (_self.time == null) {
+$PluginProjectActivityCopyWith<$Res>? get activity {
+    if (_self.activity == null) {
     return null;
   }
 
-  return $PluginProjectTimeCopyWith<$Res>(_self.time!, (value) {
-    return _then(_self.copyWith(time: value));
+  return $PluginProjectActivityCopyWith<$Res>(_self.activity!, (value) {
+    return _then(_self.copyWith(activity: value));
   });
 }
 }
 
 /// @nodoc
-mixin _$PluginProjectTime {
+mixin _$PluginProjectActivity {
 
- int get created; int get updated; int? get initialized;
-/// Create a copy of PluginProjectTime
+ int get createdAt; int get updatedAt;
+/// Create a copy of PluginProjectActivity
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$PluginProjectTimeCopyWith<PluginProjectTime> get copyWith => _$PluginProjectTimeCopyWithImpl<PluginProjectTime>(this as PluginProjectTime, _$identity);
+$PluginProjectActivityCopyWith<PluginProjectActivity> get copyWith => _$PluginProjectActivityCopyWithImpl<PluginProjectActivity>(this as PluginProjectActivity, _$identity);
 
-  /// Serializes this PluginProjectTime to a JSON map.
+  /// Serializes this PluginProjectActivity to a JSON map.
   Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.initialized, initialized) || other.initialized == initialized));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProjectActivity&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,initialized);
+int get hashCode => Object.hash(runtimeType,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'PluginProjectTime(created: $created, updated: $updated, initialized: $initialized)';
+  return 'PluginProjectActivity(createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $PluginProjectTimeCopyWith<$Res>  {
-  factory $PluginProjectTimeCopyWith(PluginProjectTime value, $Res Function(PluginProjectTime) _then) = _$PluginProjectTimeCopyWithImpl;
+abstract mixin class $PluginProjectActivityCopyWith<$Res>  {
+  factory $PluginProjectActivityCopyWith(PluginProjectActivity value, $Res Function(PluginProjectActivity) _then) = _$PluginProjectActivityCopyWithImpl;
 @useResult
 $Res call({
- int created, int updated, int? initialized
+ int createdAt, int updatedAt
 });
 
 
@@ -218,21 +218,20 @@ $Res call({
 
 }
 /// @nodoc
-class _$PluginProjectTimeCopyWithImpl<$Res>
-    implements $PluginProjectTimeCopyWith<$Res> {
-  _$PluginProjectTimeCopyWithImpl(this._self, this._then);
+class _$PluginProjectActivityCopyWithImpl<$Res>
+    implements $PluginProjectActivityCopyWith<$Res> {
+  _$PluginProjectActivityCopyWithImpl(this._self, this._then);
 
-  final PluginProjectTime _self;
-  final $Res Function(PluginProjectTime) _then;
+  final PluginProjectActivity _self;
+  final $Res Function(PluginProjectActivity) _then;
 
-/// Create a copy of PluginProjectTime
+/// Create a copy of PluginProjectActivity
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? created = null,Object? updated = null,Object? initialized = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_self.copyWith(
-created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
-as int,updated: null == updated ? _self.updated : updated // ignore: cast_nullable_to_non_nullable
-as int,initialized: freezed == initialized ? _self.initialized : initialized // ignore: cast_nullable_to_non_nullable
-as int?,
+createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as int,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -243,48 +242,47 @@ as int?,
 /// @nodoc
 @JsonSerializable(createFactory: false)
 
-class _PluginProjectTime implements PluginProjectTime {
-  const _PluginProjectTime({required this.created, required this.updated, this.initialized});
+class _PluginProjectActivity implements PluginProjectActivity {
+  const _PluginProjectActivity({required this.createdAt, required this.updatedAt});
   
 
-@override final  int created;
-@override final  int updated;
-@override final  int? initialized;
+@override final  int createdAt;
+@override final  int updatedAt;
 
-/// Create a copy of PluginProjectTime
+/// Create a copy of PluginProjectActivity
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$PluginProjectTimeCopyWith<_PluginProjectTime> get copyWith => __$PluginProjectTimeCopyWithImpl<_PluginProjectTime>(this, _$identity);
+_$PluginProjectActivityCopyWith<_PluginProjectActivity> get copyWith => __$PluginProjectActivityCopyWithImpl<_PluginProjectActivity>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$PluginProjectTimeToJson(this, );
+  return _$PluginProjectActivityToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.initialized, initialized) || other.initialized == initialized));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProjectActivity&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,initialized);
+int get hashCode => Object.hash(runtimeType,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'PluginProjectTime(created: $created, updated: $updated, initialized: $initialized)';
+  return 'PluginProjectActivity(createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$PluginProjectTimeCopyWith<$Res> implements $PluginProjectTimeCopyWith<$Res> {
-  factory _$PluginProjectTimeCopyWith(_PluginProjectTime value, $Res Function(_PluginProjectTime) _then) = __$PluginProjectTimeCopyWithImpl;
+abstract mixin class _$PluginProjectActivityCopyWith<$Res> implements $PluginProjectActivityCopyWith<$Res> {
+  factory _$PluginProjectActivityCopyWith(_PluginProjectActivity value, $Res Function(_PluginProjectActivity) _then) = __$PluginProjectActivityCopyWithImpl;
 @override @useResult
 $Res call({
- int created, int updated, int? initialized
+ int createdAt, int updatedAt
 });
 
 
@@ -292,21 +290,20 @@ $Res call({
 
 }
 /// @nodoc
-class __$PluginProjectTimeCopyWithImpl<$Res>
-    implements _$PluginProjectTimeCopyWith<$Res> {
-  __$PluginProjectTimeCopyWithImpl(this._self, this._then);
+class __$PluginProjectActivityCopyWithImpl<$Res>
+    implements _$PluginProjectActivityCopyWith<$Res> {
+  __$PluginProjectActivityCopyWithImpl(this._self, this._then);
 
-  final _PluginProjectTime _self;
-  final $Res Function(_PluginProjectTime) _then;
+  final _PluginProjectActivity _self;
+  final $Res Function(_PluginProjectActivity) _then;
 
-/// Create a copy of PluginProjectTime
+/// Create a copy of PluginProjectActivity
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? created = null,Object? updated = null,Object? initialized = freezed,}) {
-  return _then(_PluginProjectTime(
-created: null == created ? _self.created : created // ignore: cast_nullable_to_non_nullable
-as int,updated: null == updated ? _self.updated : updated // ignore: cast_nullable_to_non_nullable
-as int,initialized: freezed == initialized ? _self.initialized : initialized // ignore: cast_nullable_to_non_nullable
-as int?,
+@override @pragma('vm:prefer-inline') $Res call({Object? createdAt = null,Object? updatedAt = null,}) {
+  return _then(_PluginProjectActivity(
+createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as int,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

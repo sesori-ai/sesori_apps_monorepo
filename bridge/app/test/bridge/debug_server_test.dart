@@ -29,6 +29,7 @@ _DebugServerHarness _createDebugServerHarness({
   required BridgePluginApi plugin,
   required AppDatabase db,
   required int port,
+  required FailureReporter failureReporter,
   BridgeRestartService? restartService,
 }) {
   final httpClient = http.Client();
@@ -51,7 +52,7 @@ _DebugServerHarness _createDebugServerHarness({
     bridgeRegistrationService: createFakeBridgeRegistrationService(),
     database: db,
     processRunner: ProcessRunner(),
-    failureReporter: FakeFailureReporter(),
+    failureReporter: failureReporter,
     restartService: restartService ?? buildTestRestartService(),
     filesystemAccessOk: true,
     statusNotifier: null,
@@ -74,7 +75,12 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      harness = _createDebugServerHarness(
+        plugin: plugin,
+        db: db,
+        port: 0,
+        failureReporter: FakeFailureReporter(),
+      );
       debugServer = harness.debugServer;
       await debugServer.start();
     });
@@ -184,6 +190,7 @@ void main() {
         plugin: trackingPlugin,
         db: trackingDb,
         port: 0,
+        failureReporter: FakeFailureReporter(),
       );
       final trackingServer = trackingHarness.debugServer;
       await trackingServer.start();
@@ -204,6 +211,36 @@ void main() {
       await trackingServer.stop();
       expect(trackingPlugin.unsubscribeCount, equals(1));
     });
+
+    test("a failed projects summary is reported and later events still flow", () async {
+      final failureReporter = CapturingFailureReporter();
+      final failingPlugin = _FakeBridgePlugin()..throwOnActiveSummary = true;
+      final failingDb = createTestDatabase();
+      final failingHarness = _createDebugServerHarness(
+        plugin: failingPlugin,
+        db: failingDb,
+        port: 0,
+        failureReporter: failureReporter,
+      );
+      final failingServer = failingHarness.debugServer;
+      await failingServer.start();
+      addTearDown(failingHarness.close);
+      addTearDown(failingPlugin.close);
+
+      final client = await _SseTestClient.connect(failingServer.boundPort!);
+      addTearDown(client.close);
+      failingPlugin.add(const BridgeSseProjectUpdated());
+      failingPlugin.add(const BridgeSseServerConnected());
+
+      expect(await client.nextEvent(), contains("server.connected"));
+      final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
+      while (!failureReporter.recordedIdentifiers.contains("bridge.debug_server.projects_summary")) {
+        if (DateTime.now().isAfter(timeoutAt)) {
+          fail("Timed out waiting for projects-summary failure reporting");
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
   });
 
   group("DebugServer HTTP requests", () {
@@ -215,7 +252,13 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      harness = _createDebugServerHarness(plugin: plugin, db: db, port: 0);
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
+      harness = _createDebugServerHarness(
+        plugin: plugin,
+        db: db,
+        port: 0,
+        failureReporter: FakeFailureReporter(),
+      );
       debugServer = harness.debugServer;
       await debugServer.start();
     });
@@ -363,6 +406,7 @@ void main() {
         plugin: plugin,
         db: db,
         port: 0,
+        failureReporter: FakeFailureReporter(),
         restartService: _spawnableRestartService(
           binaryPath: binaryPath,
           processRunner: processRunner,
@@ -413,6 +457,7 @@ void main() {
         plugin: plugin,
         db: db,
         port: 0,
+        failureReporter: FakeFailureReporter(),
         restartService: _spawnableRestartService(
           binaryPath: binaryPath,
           processRunner: processRunner,
@@ -447,6 +492,7 @@ void main() {
         plugin: plugin,
         db: db,
         port: 0,
+        failureReporter: FakeFailureReporter(),
         restartService: _spawnableRestartService(
           binaryPath: p.join(tempDir.path, "missing"),
           processRunner: processRunner,
@@ -558,6 +604,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginSession> sessionsResult = [];
   List<PluginMessageWithParts> messagesResult = [];
   bool throwOnGetProjects = false;
+  bool throwOnActiveSummary = false;
 
   @override
   String get id => "fake";
@@ -682,7 +729,10 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<bool> healthCheck() async => true;
 
   @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    if (throwOnActiveSummary) throw StateError("summary failed");
+    return [];
+  }
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>

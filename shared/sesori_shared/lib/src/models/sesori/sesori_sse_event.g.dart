@@ -388,11 +388,19 @@ Map<String, dynamic> _$SesoriProjectsSummaryToJson(
 };
 
 SesoriProjectUpdated _$SesoriProjectUpdatedFromJson(Map json) =>
-    SesoriProjectUpdated($type: json['type'] as String?);
+    SesoriProjectUpdated(
+      projectID: json['projectID'] as String?,
+      updatedAt: (json['updatedAt'] as num?)?.toInt(),
+      $type: json['type'] as String?,
+    );
 
 Map<String, dynamic> _$SesoriProjectUpdatedToJson(
   SesoriProjectUpdated instance,
-) => <String, dynamic>{'type': instance.$type};
+) => <String, dynamic>{
+  'projectID': ?instance.projectID,
+  'updatedAt': ?instance.updatedAt,
+  'type': instance.$type,
+};
 
 SesoriVcsBranchUpdated _$SesoriVcsBranchUpdatedFromJson(Map json) =>
     SesoriVcsBranchUpdated($type: json['type'] as String?);

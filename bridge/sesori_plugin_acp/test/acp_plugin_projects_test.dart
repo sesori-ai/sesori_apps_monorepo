@@ -379,16 +379,33 @@ void main() {
         },
         byCwd: {
           home: [
-            {"sessionId": "s1", "cwd": home, "title": "One"},
+            {"sessionId": "s1", "title": "One"},
           ],
         },
       );
       final sessions = await plugin.listAllSessions(knownDirectories: const {home});
-      stop();
 
       final s1 = sessions.singleWhere((s) => s.id == "s1");
       expect(s1.directory, home, reason: "the cwd-scoped hit must replace the launch fallback");
       expect(s1.projectID, home);
+
+      final sending = plugin.sendPrompt(
+        sessionId: "s1",
+        parts: const [PluginPromptPart.text(text: "resume me")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      stop();
+      expect(
+        (loadFrame["params"] as Map)["cwd"],
+        home,
+        reason: "a cwd-scoped hit stays authoritative when the item omits cwd",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
     });
 
     test("a blank cwd falls back to the launch directory, not the process cwd", () async {
@@ -594,6 +611,156 @@ void main() {
       await respond("session/prompt", {"stopReason": "end_turn"});
     });
 
+    test("a primed directory is used for the resume-load without any enumeration", () async {
+      await connect(sessionCapabilities: true);
+      const stored = "/Users/x/kustos";
+
+      // The bridge feeds its stored attribution (worktree/project path) before
+      // the prompt — no warm-up enumeration is needed for the load to run in
+      // the session's own cwd.
+      plugin.primeSessionDirectory(sessionId: "cold-s", directory: stored);
+
+      final sending = plugin.sendPrompt(
+        sessionId: "cold-s",
+        parts: const [PluginPromptPart.text(text: "resume me")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      expect((loadFrame["params"] as Map)["cwd"], stored);
+      expect(
+        fake().written.where((f) => f["method"] == "session/list"),
+        isEmpty,
+        reason: "a primed directory removes the need for the warm-up enumeration",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
+    });
+
+    test("a prime repairs a launch-directory fallback from enumeration", () async {
+      await connect(sessionCapabilities: true);
+      const stored = "/Users/x/kustos";
+
+      final stop = autoListResponder(
+        bare: () => {
+          "sessions": [
+            {"sessionId": "cold-s", "title": "Cold"},
+          ],
+        },
+      );
+      final sessions = await plugin.listAllSessions(knownDirectories: const {});
+      stop();
+      expect(sessions.single.directory, cwd);
+
+      plugin.primeSessionDirectory(sessionId: "cold-s", directory: stored);
+      final stopAgain = autoListResponder(
+        bare: () => {
+          "sessions": [
+            {"sessionId": "cold-s", "title": "Cold"},
+          ],
+        },
+      );
+      await plugin.listAllSessions(knownDirectories: const {});
+      stopAgain();
+      expect(
+        plugin.eventMapper.projectForSession("cold-s"),
+        stored,
+        reason: "an unfiltered fallback must not replace established event attribution",
+      );
+
+      final sending = plugin.sendPrompt(
+        sessionId: "cold-s",
+        parts: const [PluginPromptPart.text(text: "resume me")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      expect(
+        (loadFrame["params"] as Map)["cwd"],
+        stored,
+        reason: "the stored bridge prime must repair a scan-only fallback",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
+    });
+
+    test("a prime does not override an agent-reported directory", () async {
+      await connect(sessionCapabilities: true);
+      const opened = "/Users/x/kustos";
+
+      // The agent itself reported the session's cwd via enumeration…
+      final listing = plugin.getSessions(opened);
+      await respond("session/list", {
+        "sessions": [
+          {"sessionId": "old-s", "cwd": opened, "title": "Prior"},
+        ],
+      });
+      await listing;
+
+      // …so a later (hypothetically stale) bridge prime must not replace it.
+      plugin.primeSessionDirectory(sessionId: "old-s", directory: "/somewhere/stale");
+
+      final sending = plugin.sendPrompt(
+        sessionId: "old-s",
+        parts: const [PluginPromptPart.text(text: "again")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      expect(
+        (loadFrame["params"] as Map)["cwd"],
+        opened,
+        reason: "the agent-reported cwd stays authoritative over a bridge hint",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
+    });
+
+    test("a broken history replay surfaces as a typed failure, not an empty thread", () async {
+      final failingPlugin = AcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        processFactory: _throwReplayProcess,
+      );
+      addTearDown(failingPlugin.dispose);
+      // Prime the directory so the replay needs no warm-up enumeration (and
+      // therefore no main-client connection).
+      failingPlugin.primeSessionDirectory(sessionId: "s-x", directory: cwd);
+
+      try {
+        await failingPlugin.getSessionMessages("s-x");
+        fail("Expected history replay to fail");
+      } on PluginOperationException catch (_, stackTrace) {
+        expect(
+          stackTrace.toString(),
+          contains("_throwReplayProcess"),
+          reason: "the typed wrapper must retain the original replay failure stack",
+        );
+      }
+    });
+
+    test("an agent without loadSession serves an empty thread, not a failure", () async {
+      plugin.primeSessionDirectory(sessionId: "s-x", directory: cwd);
+
+      final loading = plugin.getSessionMessages("s-x");
+      await respond("initialize", {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+
+      expect(await loading, isEmpty, reason: "no history capability = empty thread; the session stays usable");
+    });
+
     test("catalog probe scans the launch directory and every extra directory", () async {
       await connect(sessionCapabilities: true);
       const opened = "/Users/x/kustos";
@@ -662,6 +829,10 @@ void main() {
       expect(openedQuestions.map((q) => q.sessionID).toSet(), {"s-opened"});
     });
   });
+}
+
+Future<AcpProcessHandle> _throwReplayProcess(AcpLaunchSpec _) async {
+  throw StateError("replay process failed to start");
 }
 
 /// [AcpPlugin] that captures the approval registry built at connect so tests

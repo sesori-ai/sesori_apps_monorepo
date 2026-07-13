@@ -12,6 +12,13 @@ class ActiveSessionTracker {
   final OpenCodeRepository _repository;
 
   final Set<String> _projectWorktrees = {};
+
+  /// Directories the backend resolves to a project rooted elsewhere, keyed by
+  /// normalized directory → canonical worktree. A moved folder re-opened at a
+  /// new location keeps its original worktree as the backend's project root,
+  /// so sessions running under the live location would otherwise never match
+  /// a known worktree. Learned from project lookups by directory.
+  final Map<String, String> _worktreeAliases = {};
   final Map<String, String> _sessionWorktrees = {};
   final Map<String, String> _sessionDirectories = {}; // directory where the session is located
   final Map<String, SessionStatus> _sessionStatuses = {};
@@ -33,21 +40,34 @@ class ActiveSessionTracker {
 
     _projectWorktrees
       ..clear()
-      ..addAll(projects.map((p) => p.worktree));
+      ..addAll(projects.map((p) => p.project.id));
+
+    // Each sandbox is a directory the backend has resolved to the project —
+    // for a moved folder, its live location. Seeding the aliases up front
+    // keeps sessions under those locations groupable from the first summary,
+    // without waiting for a per-directory project lookup.
+    _worktreeAliases.clear();
+    for (final project in projects) {
+      for (final sandbox in project.sandboxes) {
+        _putWorktreeAlias(directory: sandbox, worktree: project.project.id);
+      }
+    }
 
     _sessionWorktrees.clear();
     _sessionDirectories.clear();
     _sessionParentIds.clear();
 
-    // List sessions for the OpenCode server's cwd instance AND every project
-    // worktree. An unscoped `listSessions(directory: null)` only targets the cwd
-    // instance, while a per-worktree query covers each project — querying both
-    // (and de-duplicating by id below) ensures every session and its parent
-    // attribution is hydrated regardless of whether the cwd is itself a listed
-    // worktree. Without complete parent attribution a child session's parent
-    // stays unknown, so its pending input never rolls up to (or surfaces on) its
-    // root until the session is opened later.
-    final sessionQueryDirectories = <String?>{null, ..._projectWorktrees}.toList();
+    // List sessions for the OpenCode server's cwd instance AND every directory
+    // sessions may run under: project worktrees plus moved-location aliases
+    // (sessions at a moved project's live location only surface from that
+    // instance's query). An unscoped `listSessions(directory: null)` only
+    // targets the cwd instance, while a per-directory query covers each
+    // project — querying all (and de-duplicating by id below) ensures every
+    // session and its parent attribution is hydrated regardless of whether the
+    // cwd is itself a listed worktree. Without complete parent attribution a
+    // child session's parent stays unknown, so its pending input never rolls
+    // up to (or surfaces on) its root until the session is opened later.
+    final sessionQueryDirectories = <String?>{null, ...sessionDiscoveryDirectories}.toList();
     final sessionLists = await Future.wait(
       sessionQueryDirectories.map((directory) async {
         try {
@@ -70,20 +90,23 @@ class ActiveSessionTracker {
       ..clear()
       ..addAll(sessionDirectories);
 
-    // Fetch statuses per-project-directory so each call targets the correct
-    // OpenCode Instance. Errors for individual directories are logged and
-    // skipped so that one unavailable project doesn't block the rest.
+    // Fetch statuses per-directory so each call targets the correct OpenCode
+    // Instance — including moved-location aliases, whose sessions only surface
+    // from their own instance. Errors for individual directories are logged
+    // and skipped so that one unavailable project doesn't block the rest.
     final allStatuses = <String, SessionStatus>{};
-    final statusFutures = _projectWorktrees.map((worktree) async {
+    final statusFutures = sessionDiscoveryDirectories.map((directory) async {
       try {
-        final statuses = await _repository.api.getSessionStatuses(directory: worktree);
+        final statuses = await _repository.api.getSessionStatuses(directory: directory);
+        // Map session → worktree from the call context; an alias directory
+        // groups under its canonical worktree.
+        final worktree = _resolveWorktree(directory) ?? directory;
         for (final entry in statuses.entries) {
           allStatuses[entry.key] = entry.value;
-          // Map session → worktree directly from the call context.
           _sessionWorktrees[entry.key] = worktree;
         }
       } catch (e) {
-        Log.w("coldStart: failed to fetch session statuses for $worktree: $e");
+        Log.w("coldStart: failed to fetch session statuses for $directory: $e");
       }
     });
     await Future.wait(statusFutures);
@@ -240,6 +263,7 @@ class ActiveSessionTracker {
 
   void reset() {
     _projectWorktrees.clear();
+    _worktreeAliases.clear();
     _sessionWorktrees.clear();
     _sessionDirectories.clear();
     _sessionStatuses.clear();
@@ -268,7 +292,7 @@ class ActiveSessionTracker {
   /// Replaces the set of known project worktrees and re-resolves worktree
   /// mappings for any active sessions that currently lack one.
   ///
-  /// Called from [OpenCodePlugin.getProjects] to keep the tracker's worktree
+  /// Called from [OpenCodeService.getProjects] to keep the tracker's worktree
   /// knowledge in sync with the latest project list. This is important because
   /// [coldStart] may run before all projects are known (e.g. fresh OpenCode
   /// install), and new projects discovered later would otherwise be invisible
@@ -277,8 +301,45 @@ class ActiveSessionTracker {
     _projectWorktrees
       ..clear()
       ..addAll(worktrees);
+    return _resummarizeAfterWorktreeKnowledgeChange();
+  }
 
-    // Re-resolve worktrees for active sessions that don't have one yet.
+  /// Records that the backend resolves [directory] to the project rooted at
+  /// [worktree] — a moved folder re-opened at a new location keeps its
+  /// original worktree as the backend's project root. With the alias in
+  /// place, sessions running under [directory] resolve to [worktree] like any
+  /// other session of that project, so activity summaries and event
+  /// projectIDs group under the canonical project.
+  ///
+  /// Called when project listing or lookup pairs a requested directory with the
+  /// backend's canonical project root. Returns `true` when the alias changed the
+  /// activity summary.
+  bool registerWorktreeAlias({required String directory, required String worktree}) {
+    if (!_putWorktreeAlias(directory: directory, worktree: worktree)) {
+      return false;
+    }
+    return _resummarizeAfterWorktreeKnowledgeChange();
+  }
+
+  /// Stores the alias when it is meaningful and new: self-aliases and empty
+  /// worktrees carry no information. Returns whether the alias map changed.
+  bool _putWorktreeAlias({required String directory, required String worktree}) {
+    final normalizedDirectory = _normalizePath(directory);
+    if (worktree.isEmpty || normalizedDirectory == _normalizePath(worktree)) {
+      return false;
+    }
+    if (_worktreeAliases[normalizedDirectory] == worktree) {
+      return false;
+    }
+    _worktreeAliases[normalizedDirectory] = worktree;
+    return true;
+  }
+
+  /// Re-resolves worktrees for active sessions that lack one — new knowledge
+  /// (a fresh project list, a new directory alias) can make a previously
+  /// unresolvable session directory groupable. Returns `true` when the
+  /// activity summary changed as a result.
+  bool _resummarizeAfterWorktreeKnowledgeChange() {
     for (final sessionId in _sessionStatuses.keys.toList()) {
       if (_sessionWorktrees.containsKey(sessionId)) continue;
       final directory = _sessionDirectories[sessionId];
@@ -387,10 +448,14 @@ class ActiveSessionTracker {
     return _resolveWorktree(directory);
   }
 
-  /// Project worktree directories discovered at cold start. Exposed so the
-  /// service can hydrate pending input per worktree — an unscoped query only
-  /// covers the OpenCode server's cwd instance.
-  Set<String> get projectWorktrees => Set.unmodifiable(_projectWorktrees);
+  /// Every directory sessions may be running under: project worktrees plus
+  /// moved-location aliases (each targets its own OpenCode instance). Exposed
+  /// so the service can hydrate pending input per directory — an unscoped
+  /// query only covers the OpenCode server's cwd instance.
+  Set<String> get sessionDiscoveryDirectories => Set.unmodifiable({
+    ..._projectWorktrees,
+    ..._worktreeAliases.keys,
+  });
 
   /// Returns the current status of every session the tracker considers
   /// active (busy or retry).
@@ -535,7 +600,21 @@ class ActiveSessionTracker {
         }
       }
     }
-    return bestMatch;
+    if (bestMatch != null) {
+      return bestMatch;
+    }
+    // No known worktree contains the directory — it may be the live location
+    // of a moved project. An alias maps the directory (and anything under it)
+    // back to the project's canonical worktree.
+    String? bestAliasRoot;
+    for (final aliasRoot in _worktreeAliases.keys) {
+      if (normalizedDirectory == aliasRoot || normalizedDirectory.startsWith("$aliasRoot/")) {
+        if (bestAliasRoot == null || aliasRoot.length > bestAliasRoot.length) {
+          bestAliasRoot = aliasRoot;
+        }
+      }
+    }
+    return bestAliasRoot == null ? null : _worktreeAliases[bestAliasRoot];
   }
 
   String _normalizePath(String path) => path.replaceAll(r"\", "/");

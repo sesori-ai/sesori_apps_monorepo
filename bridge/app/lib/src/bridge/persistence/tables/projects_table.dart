@@ -9,9 +9,8 @@ part "projects_table.freezed.dart";
 class ProjectsTable extends Table {
   TextColumn get projectId => text()();
 
-  /// The project's directory on disk. Every shipped plugin uses the directory
-  /// path as the project id today, so inserts stamp the id here too; keeping
-  /// it as its own column lets ids stop being paths without a schema change.
+  /// The project's live directory on disk. This may differ from [projectId]
+  /// after a folder move; the id remains the stable bridge/client handle.
   TextColumn get path => text()();
   BoolColumn get hidden => boolean().withDefault(const Constant(false))();
   TextColumn get baseBranch => text().nullable()();
@@ -22,11 +21,17 @@ class ProjectsTable extends Table {
   /// null means fall back to the directory basename.
   TextColumn get displayName => text().nullable()();
 
-  /// Wall-clock ms when this project row was recorded — the folder was opened
-  /// or the project was first discovered. Lets a folder with no sessions yet
-  /// survive a refresh, and doubles as the project's time until a session
-  /// supplies one. Stamped at insert time; re-opening a folder bumps it.
-  IntColumn get openedAt => integer().clientDefault(() => DateTime.now().millisecondsSinceEpoch)();
+  /// Wall-clock ms when this project row was first recorded — the folder was
+  /// opened or the project was first discovered. Stamped at insert time and
+  /// never advanced by later opens; it is the authoritative project creation
+  /// time for REST responses.
+  IntColumn get createdAt => integer().clientDefault(() => DateTime.now().millisecondsSinceEpoch)();
+
+  /// Wall-clock ms of the last recorded activity for this project. Advanced by
+  /// the project-activity service from plugin activity, session evidence, and
+  /// user-facing events. The repository writes exact values supplied by the
+  /// service and performs no min/max itself.
+  IntColumn get updatedAt => integer().clientDefault(() => DateTime.now().millisecondsSinceEpoch)();
 
   @override
   bool get withoutRowId => true;
@@ -44,7 +49,8 @@ sealed class ProjectDto with _$ProjectDto, $ProjectsTableTableToColumns {
     String? baseBranch,
     @Default(0) int worktreeCounter,
     String? displayName,
-    required int openedAt,
+    required int createdAt,
+    required int updatedAt,
   }) = _ProjectDto;
 
   const ProjectDto._();

@@ -68,13 +68,47 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
       expect(questions.map((q) => q.id), contains("q-w1"));
       // It resolved the question by asking the worktree session, not the parent dir.
       expect(plugin.queriedSessionIds, contains("w1"));
+    });
+
+    test("getProjectQuestions skips tombstoned sessions", () async {
+      const parent = "/tmp/proj/alpha";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      // The backend still enumerates the deleted session (no session/delete):
+      // its questions must not surface — and must not be queried at all.
+      await db.sessionDao.insertSessionTombstone(sessionId: "gone", pluginId: "codex", deletedAt: 1);
+
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: parent,
+        allSessions: [
+          _session(parent, id: "s1"),
+          _session(parent, id: "gone"),
+        ],
+        questionsBySession: {
+          "gone": const [
+            PluginPendingQuestion(id: "q-gone", sessionID: "gone", displaySessionId: null, questions: []),
+          ],
+        },
+        ownProjectQuestions: const [
+          PluginPendingQuestion(id: "q-gone", sessionID: "gone", displaySessionId: null, questions: []),
+        ],
+      );
+      final repo = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      final questions = await repo.getProjectQuestions(projectId: parent);
+
+      expect(questions.map((q) => q.id), isNot(contains("q-gone")));
+      expect(plugin.queriedSessionIds, isNot(contains("gone")));
     });
 
     test("getProjectQuestions surfaces a question from a session only the plugin's live scoping knows", () async {
@@ -99,7 +133,7 @@ void main() {
           PluginPendingQuestion(id: "q-fresh", sessionID: "s-fresh", displaySessionId: null, questions: []),
         ],
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -125,7 +159,7 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -141,7 +175,10 @@ void main() {
       // must key by session id + question id rather than question id alone.
       final plugin = _FakeDerivedQuestionPlugin(
         launchDirectory: parent,
-        allSessions: [_session(parent, id: "s1"), _session(parent, id: "s2")],
+        allSessions: [
+          _session(parent, id: "s1"),
+          _session(parent, id: "s2"),
+        ],
         questionsBySession: {
           "s1": const [
             PluginPendingQuestion(id: "q-1", sessionID: "s1", displaySessionId: null, questions: []),
@@ -151,7 +188,7 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -176,12 +213,210 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
       expect(questions, isEmpty);
       expect(plugin.queriedSessionIds, isNot(contains("s2")));
+    });
+
+    test("getPendingQuestions skips a tombstoned derived session", () async {
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+        questionsBySession: {
+          "gone": const [
+            PluginPendingQuestion(
+              id: "q-gone",
+              sessionID: "gone",
+              displaySessionId: null,
+              questions: [],
+            ),
+          ],
+        },
+      );
+      final repository = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      expect(await repository.getPendingQuestions(sessionId: "gone"), isEmpty);
+      expect(plugin.queriedSessionIds, isNot(contains("gone")));
+
+      await expectLater(
+        repository.replyToQuestion(questionId: "q-gone", sessionId: "gone", answers: const []),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      await expectLater(
+        repository.rejectQuestion(questionId: "q-gone", sessionId: "gone"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+    });
+
+    test("getPendingQuestions filters tombstoned child and displayed sessions", () async {
+      for (final sessionId in ["gone-child", "gone-root"]) {
+        await db.sessionDao.insertSessionTombstone(
+          sessionId: sessionId,
+          pluginId: "codex",
+          deletedAt: 1,
+        );
+      }
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+        questionsBySession: {
+          "root": const [
+            PluginPendingQuestion(
+              id: "deleted-child",
+              sessionID: "gone-child",
+              displaySessionId: "root",
+              questions: [],
+            ),
+            PluginPendingQuestion(
+              id: "deleted-root",
+              sessionID: "live-child",
+              displaySessionId: "gone-root",
+              questions: [],
+            ),
+            PluginPendingQuestion(
+              id: "visible",
+              sessionID: "live-child",
+              displaySessionId: "root",
+              questions: [],
+            ),
+          ],
+        },
+      );
+      final repository = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      final questions = await repository.getPendingQuestions(sessionId: "root");
+
+      expect(questions.map((question) => question.id), ["visible"]);
+    });
+
+    test("question mutations reject a tombstoned displayed root", () async {
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone-root",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+        questionsBySession: {
+          "live-child": const [
+            PluginPendingQuestion(
+              id: "q-stale",
+              sessionID: "live-child",
+              displaySessionId: "gone-root",
+              questions: [],
+            ),
+          ],
+        },
+      );
+      final repository = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      await expectLater(
+        repository.replyToQuestion(questionId: "q-stale", sessionId: "live-child", answers: const []),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      await expectLater(
+        repository.rejectQuestion(questionId: "q-stale", sessionId: "live-child"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(plugin.questionMutationCalls, isZero);
+    });
+
+    test("question mutations reject a tombstoned owning descendant", () async {
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone-child",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: "/repo",
+        allSessions: const [],
+        questionsBySession: {
+          "live-root": const [
+            PluginPendingQuestion(
+              id: "q-stale-child",
+              sessionID: "gone-child",
+              displaySessionId: "live-root",
+              questions: [],
+            ),
+          ],
+        },
+      );
+      final repository = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      await expectLater(
+        repository.replyToQuestion(questionId: "q-stale-child", sessionId: "live-root", answers: const []),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      await expectLater(
+        repository.rejectQuestion(questionId: "q-stale-child", sessionId: "live-root"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(plugin.questionMutationCalls, isZero);
+    });
+
+    test("getProjectQuestions filters display tombstones from both aggregation paths", () async {
+      const parent = "/repo";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      await db.sessionDao.insertSessionTombstone(
+        sessionId: "gone-root",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: parent,
+        allSessions: [_session(parent, id: "s1")],
+        questionsBySession: {
+          "s1": const [
+            PluginPendingQuestion(
+              id: "aggregated",
+              sessionID: "child-a",
+              displaySessionId: "gone-root",
+              questions: [],
+            ),
+          ],
+        },
+        ownProjectQuestions: const [
+          PluginPendingQuestion(
+            id: "own",
+            sessionID: "child-b",
+            displaySessionId: "gone-root",
+            questions: [],
+          ),
+        ],
+      );
+      final repository = QuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      expect(await repository.getProjectQuestions(projectId: parent), isEmpty);
+      expect(plugin.queriedSessionIds, contains("s1"));
     });
   });
 }
@@ -216,6 +451,7 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
   /// view, which can know sessions that `listAllSessions` (disk) does not yet.
   final List<PluginPendingQuestion> ownProjectQuestions;
   final List<String> queriedSessionIds = [];
+  int questionMutationCalls = 0;
 
   @override
   String get id => "codex";
@@ -230,8 +466,21 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async =>
-      ownProjectQuestions;
+  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => ownProjectQuestions;
+
+  @override
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String sessionId,
+    required List<List<String>> answers,
+  }) async {
+    questionMutationCalls++;
+  }
+
+  @override
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
+    questionMutationCalls++;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

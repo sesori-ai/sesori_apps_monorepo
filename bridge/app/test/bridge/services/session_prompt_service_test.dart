@@ -24,6 +24,7 @@ void main() {
       sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
         pullRequestRepository: PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
@@ -66,9 +67,13 @@ void main() {
       // surfaces whatever the plugin throws.
       final completer = Completer<void>();
       plugin.sendCommandCompleter = completer;
-      completer.completeError(StateError("unknown command"));
 
-      await expectLater(sendCommand(), throwsA(isA<StateError>()));
+      // Attach the expectation before failing the completer: sendCommand has
+      // async steps ahead of the plugin call, so a pre-completed error future
+      // would count as unhandled before anyone listens.
+      final pending = expectLater(sendCommand(), throwsA(isA<StateError>()));
+      completer.completeError(StateError("unknown command"));
+      await pending;
     });
 
     test("updates prompt defaults after the command is dispatched", () async {

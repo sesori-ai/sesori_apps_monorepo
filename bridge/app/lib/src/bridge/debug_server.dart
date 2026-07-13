@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../server/services/bridge_restart_service.dart";
+import "repositories/session_repository.dart";
 import "routing/request_router.dart";
 import "services/session_event_enrichment_service.dart";
 import "sse/bridge_event_mapper.dart";
@@ -15,6 +16,7 @@ class DebugServer {
   final BridgePluginApi _plugin;
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
+  final SessionRepository _sessionRepository;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final FailureReporter _failureReporter;
   final BridgeRestartService _restartService;
@@ -34,15 +36,16 @@ class DebugServer {
     required this.port,
     required FailureReporter failureReporter,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required SessionRepository sessionRepository,
     required BridgeRestartService restartService,
     required Future<void> Function() restartHandoff,
   }) : _plugin = plugin,
        _router = router,
        _failureReporter = failureReporter,
+       _sessionRepository = sessionRepository,
        _restartService = restartService,
        _restartHandoff = restartHandoff,
        _mapper = BridgeEventMapper(
-         plugin: plugin,
          failureReporter: failureReporter,
        ),
        _sessionEventEnrichmentService = sessionEventEnrichmentService;
@@ -169,8 +172,16 @@ class DebugServer {
       _sseClients.add(response);
 
       _pluginEventsSub ??= _plugin.events
-          .asyncMap<BridgeSseEvent>(_sessionEventEnrichmentService.enrich)
-          .map<SesoriSseEvent?>(_mapper.map)
+          .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
+          .where((event) => event != null)
+          .cast<BridgeSseEvent>()
+          // Mirrors the orchestrator: a project update rebuilds the full
+          // summary from repository data; everything else maps 1:1.
+          .asyncMap<SesoriSseEvent?>(
+            (event) async => event is BridgeSseProjectUpdated
+                ? _buildProjectsSummary()
+                : _mapper.map(event),
+          )
           .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
           .listen(
             (_) {},
@@ -226,6 +237,35 @@ class DebugServer {
           Log.d("fan-out cleanup: client close failed (ignored): $e");
         }
       }
+    }
+  }
+
+  Future<SesoriSseEvent?> _buildProjectsSummary() async {
+    try {
+      return _mapper.buildProjectsSummaryEvent(
+        projects: await _sessionRepository.getProjectActivitySummaries(),
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("debug SSE projects-summary rebuild failed", error, stackTrace);
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: error,
+              stackTrace: stackTrace,
+              uniqueIdentifier: "bridge.debug_server.projects_summary",
+              fatal: false,
+              reason: "debug SSE projects-summary rebuild failed",
+              information: const [],
+            )
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w(
+                "debug SSE projects-summary failure report failed",
+                reportError,
+                reportStackTrace,
+              );
+            }),
+      );
+      return null;
     }
   }
 

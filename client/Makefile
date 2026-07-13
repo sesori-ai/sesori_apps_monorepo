@@ -7,8 +7,8 @@ FLUTTER := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/flutter
 # right Flutter even when the shell exports a stale FLUTTER_ROOT (e.g. asdf global).
 export FLUTTER_ROOT := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)
 
-# Dependency order: module_auth -> module_core -> module_prego -> app
-MODULES := module_auth module_core module_prego app
+# Dependency order: module_auth -> module_core -> module_prego -> module_desktop_core -> app -> desktop
+MODULES := module_auth module_core module_prego module_desktop_core app desktop
 
 .PHONY: codegen pub-get test analyze generate-assets generate-tokens
 
@@ -25,7 +25,7 @@ test:
 	@for mod in $(MODULES); do \
 		if [ -d "$$mod/test" ]; then \
 			echo "=== test: $$mod ==="; \
-			if [ "$$mod" = "app" ]; then \
+			if [ "$$mod" = "app" ] || [ "$$mod" = "desktop" ] || [ "$$mod" = "module_prego" ]; then \
 				(cd $$mod && $(FLUTTER) test) || exit 1; \
 			else \
 				(cd $$mod && $(DART) test) || exit 1; \

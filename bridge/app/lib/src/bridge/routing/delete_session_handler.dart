@@ -1,31 +1,27 @@
 import "dart:convert";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../persistence/tables/session_table.dart";
 import "../repositories/session_repository.dart";
-import "../services/session_persistence_service.dart";
+import "../services/session_mutation_dispatcher.dart";
 import "../services/worktree_service.dart";
 import "request_handler.dart";
 import "worktree_cleanup.dart";
 
 /// Handles `DELETE /session/delete` — deletes a session.
 class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
-  final BridgePluginApi _plugin;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
-  final SessionPersistenceService _sessionPersistenceService;
+  final SessionMutationDispatcher _sessionMutationDispatcher;
 
   DeleteSessionHandler({
-    required BridgePluginApi plugin,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
-    required SessionPersistenceService sessionPersistenceService,
-  }) : _plugin = plugin,
-       _worktreeService = worktreeService,
+    required SessionMutationDispatcher sessionMutationDispatcher,
+  }) : _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
-       _sessionPersistenceService = sessionPersistenceService,
+       _sessionMutationDispatcher = sessionMutationDispatcher,
        super(
          HttpMethod.delete,
          "/session/delete",
@@ -77,17 +73,10 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
       }
     }
 
-    try {
-      await _plugin.deleteSession(sessionId);
-    } on PluginOperationException catch (error) {
-      if (!error.isNotFound) {
-        rethrow;
-      }
-    }
-
-    if (sessionDto != null) {
-      await _sessionPersistenceService.deleteSession(sessionId: sessionId);
-    }
+    // Unconditional (not gated on a stored row): the repository delete also
+    // records the tombstone, and a rowless-but-enumerable backend session
+    // still needs one or it reappears from the next enumeration.
+    await _sessionMutationDispatcher.deleteSession(sessionId: sessionId);
 
     return const SuccessEmptyResponse();
   }

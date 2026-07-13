@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
@@ -5,6 +7,7 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -23,6 +26,7 @@ void main() {
     late FakeSessionRepository sessionRepository;
     late AppDatabase db;
     late SessionPersistenceService sessionPersistenceService;
+    late _TrackingSessionMutationDispatcher sessionTitleService;
     late SessionUnseenService unseenService;
     late GetSessionsHandler handler;
 
@@ -43,11 +47,13 @@ void main() {
         db: db,
         pluginId: "opencode",
       );
+      sessionTitleService = _TrackingSessionMutationDispatcher();
       unseenService = buildTestSessionUnseenService(db, plugin);
       handler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionMutationDispatcher: sessionTitleService,
         sessionUnseenService: unseenService,
       );
     });
@@ -82,6 +88,41 @@ void main() {
       );
     });
 
+    test("returns 404 for an unknown project without creating state or calling the plugin", () async {
+      final realRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final realHandler = GetSessionsHandler(
+        sessionRepository: realRepository,
+        prSyncService: prSyncService,
+        sessionPersistenceService: sessionPersistenceService,
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: realRepository),
+        sessionUnseenService: unseenService,
+      );
+
+      final response = await realHandler.handleInternal(
+        makeRequest(
+          "POST",
+          "/sessions",
+          body: jsonEncode(const SessionListRequest(projectId: "/unknown", start: null, limit: null).toJson()),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, equals(404));
+      expect(await db.projectsDao.getProject(projectId: "/unknown"), isNull);
+      expect(plugin.lastGetSessionsWorktree, isNull);
+    });
+
     test("forwards projectId to plugin.getSessions", () async {
       await handler.handle(
         makeRequest("POST", "/sessions"),
@@ -105,7 +146,7 @@ void main() {
       expect(plugin.lastGetSessionsLimit, equals(20));
     });
 
-    test("ensures project exists before calling SessionRepository", () async {
+    test("persists the project and sessions after a successful repository fetch", () async {
       plugin.sessionsResult = [
         const PluginSession(
           id: "s1",
@@ -238,6 +279,7 @@ void main() {
     });
 
     test("persists sessions after successful fetch", () async {
+      sessionTitleService.failSessionIds.add("s2");
       plugin.sessionsResult = [
         const PluginSession(
           id: "s1",
@@ -278,6 +320,43 @@ void main() {
 
       final rows = await db.select(db.sessionTable).get();
       expect(rows.map((row) => row.sessionId).toList()..sort(), equals(["s1", "s2", "s3"]));
+      expect(sessionTitleService.appliedSessionIds, ["s1", "s3"]);
+    });
+
+    test("returns sessions re-enriched after pending titles are applied", () async {
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "project-1",
+          directory: "/tmp/project-1",
+          parentID: null,
+          title: "Backend title",
+          time: null,
+          summary: null,
+        ),
+      ];
+      final titleService = _TrackingSessionMutationDispatcher(
+        onApply: (sessionId) {
+          sessionRepository.enrichedTitleOverrides[sessionId] = "Pending title";
+        },
+      );
+      final localHandler = GetSessionsHandler(
+        sessionRepository: sessionRepository,
+        prSyncService: prSyncService,
+        sessionPersistenceService: sessionPersistenceService,
+        sessionMutationDispatcher: titleService,
+        sessionUnseenService: unseenService,
+      );
+
+      final response = await localHandler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.items.single.title, "Pending title");
     });
 
     test("start and limit are null when absent from body", () async {
@@ -441,6 +520,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 
@@ -515,6 +595,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 
@@ -580,6 +661,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
       sessionDao.setSession(
@@ -599,6 +681,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 
@@ -646,6 +729,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 
@@ -690,6 +774,7 @@ void main() {
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
+          title: null,
         ),
       );
 
@@ -777,18 +862,21 @@ void main() {
     });
 
     test("preserves stored pull request metadata when plugin list replaces the session payload", () async {
-      final realHandler = GetSessionsHandler(
-        sessionRepository: SessionRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          pullRequestRepository: PullRequestRepository(
-            pullRequestDao: db.pullRequestDao,
-            projectsDao: db.projectsDao,
-          ),
-          unseenCalculator: const SessionUnseenCalculator(),
+      final realRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final realHandler = GetSessionsHandler(
+        sessionRepository: realRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: realRepository),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -997,6 +1085,7 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: slowPrSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         prRefreshTimeout: const Duration(milliseconds: 50),
       );
@@ -1047,6 +1136,7 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: fastPrSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
 
@@ -1065,4 +1155,34 @@ void main() {
       expect(sessionRepository.getSessionsCallCount, equals(1));
     });
   });
+}
+
+class _TrackingSessionMutationDispatcher implements SessionMutationDispatcher {
+  final List<String> appliedSessionIds = [];
+  final Set<String> failSessionIds = {};
+  final void Function(String sessionId)? onApply;
+
+  _TrackingSessionMutationDispatcher({this.onApply});
+
+  @override
+  Stream<Session> get deletedSessions => const Stream.empty();
+
+  @override
+  Future<void> applyPendingTitle({required String sessionId}) async {
+    if (failSessionIds.contains(sessionId)) throw StateError("title write failed");
+    appliedSessionIds.add(sessionId);
+    onApply?.call(sessionId);
+  }
+
+  @override
+  Future<void> captureTitle({required String sessionId, required String? title}) async {}
+
+  @override
+  Future<void> deleteSession({required String sessionId}) async {}
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  Future<Session> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
 }

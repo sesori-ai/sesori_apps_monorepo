@@ -10,6 +10,7 @@ export "package:sesori_auth/sesori_auth.dart"
         AuthInitial,
         AuthSession,
         AuthState,
+        AuthTokenProvider,
         AuthUnauthenticated,
         OAuthDeviceDescriptor,
         OAuthDeviceDescriptorProvider,
@@ -45,8 +46,6 @@ export "src/capabilities/server_connection/models/sse_event.dart";
 export "src/capabilities/server_connection/server_connection_config.dart";
 export "src/capabilities/session/session_service.dart";
 // Capabilities
-export "src/capabilities/sse/session_activity_info.dart";
-export "src/capabilities/sse/sse_event_repository.dart";
 export "src/capabilities/voice/voice_api.dart";
 // Cubits
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
@@ -103,12 +102,14 @@ export "src/routing/notification_open_dispatcher.dart";
 // Services
 export "src/services/draft_store.dart";
 export "src/services/foreground_notification_dispatcher.dart";
+export "src/services/models/session_activity_info.dart";
 export "src/services/new_session_selection_tracker.dart";
 export "src/services/notification_registration_service.dart";
 export "src/services/registered_bridges_service.dart";
 export "src/services/session_detail_load_service.dart";
 export "src/services/session_unseen_tracker.dart";
 export "src/services/session_viewing_service.dart";
+export "src/services/sse_event_tracker.dart";
 // Utils
 export "src/utils/command_filter/command_picker_entry_builder.dart";
 export "src/utils/diff/diff_engine.dart";

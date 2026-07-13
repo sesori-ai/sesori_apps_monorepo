@@ -93,6 +93,56 @@ Findings log · Plan-deltas.
   on a desktop-relevant PR, reports success (skipped-internally) on a
   non-desktop PR so it is safe as a required check, and does not gate
   CLI/mobile releases.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `desktop-impl-plan-review`).
+- **Findings:** Package names: `sesori_desktop_core` (module_desktop_core) and
+  `sesori_desktop` (desktop), following the dir≠package-name precedent
+  (`module_core`→`sesori_dart_core`). `module_desktop_core` ships as a true
+  empty skeleton: only the `@InjectableInit` `configureDesktopCoreDependencies`
+  entry (+ committed empty generated config) and a DI smoke test — deps are
+  `get_it`/`injectable` ONLY; `sesori_dart_core`/`sesori_shared` deps arrive
+  when first used (PRs 2.4/2.5). The shell wires the 4-phase DI bootstrap in
+  `lib/core/di/injection.dart` with phases 2–4 live (`configureAuthDependencies`
+  → `configureCoreDependencies` → `configureDesktopCoreDependencies`): verified
+  every registration in both modules is lazy, so the adapter-less bootstrap is
+  safe until PR 2.2 fills phase 1 (`getIt.init()`); the placeholder window
+  resolves nothing. Branding: bundle id `com.sesori.desktop` (mobile is
+  `com.sesori.app`), `PRODUCT_NAME = Sesori`, window titles "Sesori" on all 3
+  OSes. Workspace: `client/pubspec.yaml` gains both members; **lockfile
+  unchanged** (no new external deps); `client/Makefile` MODULES order
+  `module_auth module_core module_prego module_desktop_core app desktop` and
+  the flutter-test branch covers `desktop`. Both packages get `build_runner`
+  dev-deps so the `make codegen` loop stays green (verified: all 6 modules).
+  AGENTS.md files added for both packages; `client/AGENTS.md` links them.
+  `desktop-ci.yml` concretes: `dorny/paths-filter@v3` in-job gating (workflow
+  triggers on all PRs + push to main), `subosito/flutter-action@v2` reading
+  `.tool-versions` (the mobile-ci pattern), 3-OS `flutter build` matrix
+  (`fail-fast: false`), Linux GTK/ninja apt deps, and a `status` aggregator
+  (`if: always()`, jq over `toJSON(needs)`) that fails on failure/cancelled and
+  passes on success/skipped — mark ONLY `status` as the required check
+  (branch-protection change is a manual repo-settings step). Verified locally:
+  analyze + tests green for all 6 modules (app 550, desktop 1,
+  module_desktop_core 1, prego 53), `flutter build macos` produces
+  `Sesori.app`; Windows/Linux legs prove on this PR's own CI run (the workflow
+  + desktop paths are in its filter set). actionlint clean.
+- **Deltas:** (1) Entrypoint realized as standard `lib/main.dart` (+
+  `lib/app.dart` for the root widget) instead of the sketch's
+  `main_desktop.dart` — the package has exactly one entrypoint and only
+  desktop platforms, so default `flutter run`/`build` tooling works without
+  `-t` everywhere; root `AGENTS.md` sketch updated. (2) CI installs Flutter via
+  `subosito/flutter-action@v2`, NOT the asdf-based `setup-flutter` composite
+  (asdf doesn't run on Windows runners); the goal text's
+  `.github/actions/setup-flutter/**` path entry is therefore not an input of
+  this workflow and is omitted from the filter set. (3) `sesori_desktop`
+  pubspec `version: 0.1.0` placeholder — deliberately NOT the synced product
+  version until PR 3.10 teaches `make bump-version` + the release guards about
+  the desktop package. (4) Drive-by fix in the same Makefile branch this PR
+  edits: `module_prego` (a Flutter package) was run with `dart test`, which
+  crashes at compile (`dart:ffi` transform) since its widget tests landed —
+  pre-existing on main, masked because mobile CI never runs module_prego tests
+  (the §"scope boundary" coverage gap). Now runs `flutter test` (53 tests
+  pass). Mobile CI still doesn't run module_prego's own tests; that gap stays
+  open and tracked in the PR-2.1 CI scope note. (5) The shell also carries a
+  direct `get_it` dep (the DI container type its injection.dart references).
 
 ## PR 2.2 — Desktop platform adapters (module_core + module_desktop_core prerequisites)
 - **Goal:** Register desktop implementations before any DI slice resolves the
@@ -130,6 +180,53 @@ Findings log · Plan-deltas.
   missing-registration errors, but the cubit itself is not registered in DI;
   desktop-core adapters used by this PR resolve through DI; no relay
   `ConnectionService` resolution is required before Phase 4.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `desktop-phase-2.2-platform-adapters`).
+- **Findings:** The minimal phase-1 set is exactly five registrations —
+  `http.Client`, `SecureStorage`, `UrlLauncher`, `LifecycleSource`,
+  `OAuthDeviceDescriptorProvider` (plus `DeviceInfoPlugin`/`FlutterSecureStorage`
+  providers in the shell's `RegisterModule`). Verified by tracing LoginCubit's
+  transitive DI closure: it touches NONE of `FailureReporter`/
+  `ConnectionService`/`RelayCryptoService`/`DeepLinkSource`/`RouteSource`/
+  `RouteDispatcher`/`PushMessagingSource`/`LocalNotificationClient`, so the
+  goal's "a no-op `FailureReporter` may still land here" clause resolved to NOT
+  NEEDED — nothing eagerly requires it (deferred to the PR that first resolves
+  it). Adapters (all in `client/desktop/lib/core/platform/`, `Desktop*` names):
+  `DesktopSecureStorageAdapter` (flutter_secure_storage — macOS Keychain with
+  the same "Sesori" service label as mobile; differing bundle ids keep the
+  products' keychain items isolated; Windows Credential Manager; Linux
+  libsecret), `DesktopUrlLauncher` (system browser, ADR A11),
+  `DesktopLifecycleObserver` (`@Singleton` — eager, mirrors mobile's documented
+  WidgetsBinding-observer-at-startup reason), and
+  `DesktopOAuthDeviceDescriptorProvider` — sends **`app_macos` /
+  `app_windows` / `app_linux`** clientTypes (auth-server enum verified; the
+  confirmation interstitial then labels "macOS desktop"/"Windows desktop"/
+  "Linux desktop"), device name = computerName (macOS/Windows) /
+  `Platform.localHostname` (Linux), never throws (degrades to fallback names,
+  `logw` with error args), clamped to the server schema limits (120/40). The
+  review follow-up centralized those auth-schema rules in
+  `sesori_shared`: typed `AuthClientType` values replace raw wire strings, and
+  pure `AuthDeviceInfoBuilder` owns fallback names, trimming, and length
+  limits. Mobile, desktop, and bridge now feed their platform-specific facts
+  into that builder; `device_info_plus`/`package_info_plus` and bridge
+  `dart:io` remain data sources only. The shell's
+  `configureDesktopDependencies()` gained `@InjectableInit` +
+  `getIt.init()` as phase 1. `desktop-ci.yml` Linux apt deps gained
+  `libsecret-1-dev` (flutter_secure_storage_linux compile requirement). DI
+  acceptance asserted by test: full 4-phase bootstrap then
+  `LoginCubit(getIt(), getIt(), getIt(), getIt())` constructs, and
+  `getIt.isRegistered<LoginCubit>()` is false. Lockfile unchanged (all four
+  plugin packages already resolved by mobile at the same versions). Verified:
+  analyze + tests green across all 6 modules (desktop now 6 tests);
+  `flutter build macos` OK; Windows/Linux legs on the PR's CI.
+- **Deltas:** the device-descriptor normalization moved from each product into
+  `sesori_shared`, and `AuthInitRequest.clientType` is now the shared
+  `AuthClientType` enum rather than an unconstrained string. Platform reads
+  remain in product adapters. Naming uses the `Desktop*` adapter prefix
+  (mobile uses `Flutter*`/`App*`) to keep the two products' adapters
+  distinguishable in cross-package searches. A Linux distro without a secret
+  service fails loudly at first secure-storage use (libsecret
+  `PlatformException`) — surfaced, not corrupted; revisit copy in Phase 3
+  packaging if support tickets appear.
 
 ## PR 2.3 — Login reuse (browser-poll OAuth)
 - **Goal:** Wire login via `configureAuthDependencies` + exported interfaces
@@ -147,6 +244,42 @@ Findings log · Plan-deltas.
   through `module_core` interfaces only (no `module_auth` import outside DI).
 - **Acceptance:** can log in via the system browser; auth state observed via
   interfaces; no import of bridge internals.
+- **Aristotle:** plan ☑ (approved with 3 mechanical completions — deps +
+  barrel exports — folded in) · impl ☑ (PR raised on branch
+  `desktop-phase-2.3-login`).
+- **Findings:** Two units. (1) **`AuthGateCubit`** (`module_desktop_core`
+  Layer 4, first real code in the module — §6 row added): restores the local
+  session at startup (`hasLocallyValidSession` → `restoreLocalSession`,
+  local-only like mobile's splash; failures logged and degrade to the live
+  stream), then maps `AuthSession.authStateStream` → checking/signedOut/
+  signedIn(user). Mid-login `authenticating` deliberately does NOT flip the
+  gate (the login surface owns its progress UI), and later `initial`
+  emissions can't regress it. `signOut()` = `logoutCurrentDevice()` (the
+  device-local terminal step PR 2.13's coordinated flow keeps). `SplashCubit`
+  was deliberately not reused: it is one-shot and emits mobile `AppRoute`s;
+  the desktop gate needs live flips (sign-out → login without navigation
+  infra). module_desktop_core gains `bloc`/`freezed_annotation`/
+  `sesori_dart_core`/`sesori_shared` deps — the planned graph edges' first
+  use. 8 cubit tests (mocktail + BehaviorSubject fake). (2) **Shell login
+  surface** (plain Material for now — Prego adoption deferred to the window-
+  contents slice): `AuthGate`/`AuthGateView` root gate; `LoginScreen`/
+  `LoginView` reusing module_core's `LoginCubit` unmodified (GitHub + Google
+  buttons, exhaustive per-state status incl. timeout + failed(reason)); no
+  success navigation — the gate flips reactively off `authStateStream`;
+  `HomePlaceholder` shows the signed-in account + sign-out. Screen/View split
+  so tests drive views with stubbed cubits (8 widget tests + DI smoke test
+  updated: full 4-phase DI with an in-memory SecureStorage override — the
+  plugin has no platform channel under flutter_test). `module_auth`/
+  `module_core` untouched (zero diffs). Desktop clientType labels verified in
+  2.2. Analyze/tests green across all modules; `flutter build macos` OK.
+- **Deltas:** Apple sign-in omitted (mobile's flow is native-iOS-only;
+  browser-Apple is untested server-side from our clients — revisit with the
+  window-contents slice if wanted). Email login omitted (not part of the
+  browser-poll goal). Note: docs referencing an `AuthRedirectService` in
+  module_core are drift — no such class exists; startup routing lives in
+  `SplashCubit` (mobile) and now `AuthGateCubit` (desktop). Real-browser
+  login end-to-end is user-verified at MT-2 item 1 (automated coverage stops
+  at the cubit/DI seam).
 
 ## PR 2.4 — Control status/prompt trackers baseline (no relay client yet)
 - **Goal:** Add `BridgeStatusTracker` and `BridgePromptTracker` in
@@ -163,6 +296,39 @@ Findings log · Plan-deltas.
 - **Acceptance:** trackers are pure Dart, push-based, testable without Flutter,
   and do not resolve `ConnectionService`; v1 UI can render bridge offline from the
   tracker baseline before the control channel is available.
+- **Aristotle:** plan ☑ (approved with 2 mechanical fixes folded in: `rxdart`
+  promoted to a runtime dep; status model renamed to avoid a collision) ·
+  impl ☑ (PR raised on branch `desktop-phase-2.4-trackers`).
+- **Findings:** Two Layer-2 trackers in `module_desktop_core/lib/src/trackers/`,
+  both `@lazySingleton` with `@disposeMethod`, both `BehaviorSubject`-backed
+  (stream + snapshot, seeded defaults — the "render bridge offline before any
+  control channel" acceptance is the seed itself). (1) **`BridgeStatusTracker`**
+  holds a Freezed **`BridgeControlStatus`** snapshot — named that (not
+  `BridgeStatus`) because `sesori_dart_core` already exports a relay-side
+  `BridgeStatus` enum; fields `{helperOnline, relay, plugin,
+  activeSessionCount, bridgeId}` reuse the shared PR-1.2 enums directly
+  (ADR A4; unknown fallbacks flow through untouched — asserted by test). Write
+  API for the PR-2.5 dispatcher: `markHelperConnected` /
+  `markHelperDisconnected` (resets to baseline but **retains `bridgeId`** —
+  ADR A13, the offline-unregister fallback needs the id exactly when the
+  helper is gone; disk persistence stays PR 2.13) / `applyStatus` /
+  `handleRegistered`. (2) **`BridgePromptTracker`** holds
+  `List<ControlPromptRequest>` (wire DTO stored directly — a duplicate local
+  model + mapper would be pure ceremony): `addPrompt` (same-id resend
+  replaces), `removePrompt`, `clear` (prompts are per-connection and
+  unanswerable after a drop — the bridge resolves them `nonInteractive` on
+  channel loss). No timers, no polling, no Flutter, no relay resolution.
+  11 new dart tests (19 total in the module); analyze clean; shell untouched.
+  Follow-up workspace inventory updated the dependency-maintenance skill,
+  launch configurations, repository/client docs, and test-command guidance for
+  the desktop packages; the same audit added the already-current ACP and Cursor
+  bridge plugins where hard-coded package lists had also fallen behind.
+- **Deltas:** the status model gained an explicit `helperOnline` flag beyond
+  the raw DTO fields — the control-channel link state is GUI-side knowledge
+  (the helper can't push "I'm gone"), and the offline baseline the acceptance
+  requires needs it. Repository tooling and developer docs were also refreshed
+  to treat the desktop packages as current workspace members; no runtime scope
+  changed.
 
 ## PR 2.5a — Re-export `AuthTokenProvider` from `module_core` (seam, precursor)
 - **Goal:** `sesori_dart_core` re-exports `AuthSession`/`OAuthFlowProvider` but
@@ -179,6 +345,12 @@ Findings log · Plan-deltas.
   a mobile-product change (it is one — the CI gates must run).
 - **Acceptance:** `module_core` exposes `AuthTokenProvider`; mobile build + tests
   green.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch
+  `desktop-phase-2.5a-token-provider-reexport`).
+- **Findings:** One line: `AuthTokenProvider` added to the module_core barrel's
+  existing sesori_auth `show` list (alphabetical slot). No export-name
+  collision (full-workspace analyze clean); mobile tests green (550). No
+  consumers in this PR — PR 2.5's dispatcher is the first. **Deltas:** —
 
 ## PR 2.5 — `ControlChannelServer` + `ControlMessageDispatcher` + token responder
 - **Goal:** GUI-hosted loopback WS host + off-argv per-spawn secret.
@@ -196,16 +368,58 @@ Findings log · Plan-deltas.
   compatibility with the already-shipped bridge side. Check: (1) wire behaviour
   matches PR 1.1–1.5 exactly — secret as `Authorization: Bearer` on the WS
   **upgrade request**, id-correlated `token_response`, non-null-only
-  `token_update`, null token for signed-out; verify against a **real locally
+  `token_update`, null token for signed-out, and `token_request.forceRefresh`
+  forwarded to `AuthTokenProvider.getFreshAccessToken(forceRefresh:)` so a 401
+  retry receives a genuinely rotated token; verify against a **real locally
   built bridge**, not only the fake helper; (2) unknown/undecodable inbound
   frames warn+skip (forward compat); (3) port is ephemeral (bind :0) — no fixed
   port that could collide; (4) mobile untouched.
 - **Acceptance:** a fake helper connects with the secret, requests + receives a
   token; loopback-only bind; per-spawn secret rotated; bad secret rejected; only
   one authenticated helper is accepted per spawn; null/unavailable token returns a
-  structured auth-required response; prompts/status surface via trackers; no
-  dispatcher→cubit dependency and no same-level dispatcher↔service edge; no direct
-  `module_auth` import in non-DI source.
+  structured auth-required response; forced token requests invoke a real auth
+  refresh and return the newly persisted access token; prompts/status surface
+  via trackers; no dispatcher→cubit dependency and no same-level
+  dispatcher↔service edge; no direct `module_auth` import in non-DI source.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch
+  `desktop-phase-2.5-control-server`).
+- **Findings:** Two units. (1) **`ControlChannelServer`** (Layer 0
+  `foundation/`, `Server` suffix per ADR A5): dart:io loopback host, ephemeral
+  port, fresh 32-byte `Random.secure` secret per `start()`; upgrade auth = 401
+  on bad/missing bearer, 400 on non-upgrade, 409 on a concurrent second helper;
+  a dropped socket is cleared so the helper's auto-reconnect is accepted.
+  **Transport events are a single ordered stream** —
+  `Stream<ControlChannelEvent>` (sealed
+  connected/disconnected/frame) fed from one socket's callbacks — so a
+  consumer can never observe a frame on the wrong side of its
+  connect/disconnect (this also closes the review race found on PR 2.4's
+  tracker guards, which remain as defense-in-depth); a derived
+  `helperConnectionStream` `ValueStream<bool>` stays as a snapshot
+  convenience. (2) **`ControlMessageDispatcher`** (Layer 4 `control/`):
+  single subscriber of `events`; decodes each frame once (undecodable →
+  warn+skip); routes token_request → `AuthTokenProvider` (2.5a re-export),
+  forwarding `forceRefresh` so a 401 retry reaches the real auth-refresh seam
+  (provider throw → logged null = structured auth-required), status/registered
+  → `BridgeStatusTracker`, prompt_request → `BridgePromptTracker`;
+  provision_progress/restart are debug-ignored (no consumer yet / exit codes
+  are authoritative); GUI-direction variants arriving inbound are ignored,
+  never commands. Sends are best-effort (typed
+  `ControlHelperNotConnectedException` caught + logged — the helper re-pulls
+  after reconnecting). 23 new tests (11 server incl. true-order stream, 12
+  dispatcher over real loopback sockets + real trackers). **Real-bridge wire
+  verification** (regression guide): built the CLI and drove it with a
+  throwaway driver — secret handshake ✓, `helperOnline` ✓, token_request →
+  null answered ✓, real `loginNeeded` prompt landed in the tracker ✓, exit
+  **87** ✓, disconnect reset + prompt clear ✓. Full wire contract confirmed
+  against the shipped Phase-1 bridge. Dispatcher tests additionally pin
+  forced-refresh forwarding and the rotated token response; MT-1 records why
+  the dev harness itself cannot mint a genuinely fresh token.
+- **Deltas:** the server's inbound API is the ordered `events` stream rather
+  than the sketched separate inbound-stream + connection-stream pair
+  (ordering correctness; §6 wording "inbound-as-stream + send" still holds).
+  GUI→helper send paths beyond `token_response` are explicitly deferred (§8
+  row): prompt answers land with their consumer (2.7/2.9), unregister with
+  2.13, token_update push when first needed.
 
 ## PR 2.6 — `BridgeProcessService`: spawn/kill/path + expected-stop boundary + helper log capture
 - **Goal:** Spawn the bridge binary (path resolution dev + packaged) passing
@@ -288,6 +502,11 @@ Findings log · Plan-deltas.
 - **Acceptance:** each exit class drives the correct action; give-up after N rapid
   crashes surfaces an error with recent helper log lines; exit policy does not
   live in a Layer-2 tracker.
+  **Carried from PR 2.5 (deferral, shared with PR 2.9):** if this PR's
+  Take-over slice is the first to answer a helper prompt, it designs the
+  GUI→helper `prompt_response` sender seam at its plan review (2.5 landed
+  inbound-to-tracker only; a cubit must not call the Layer-4 dispatcher) and
+  strikes that sub-item from the §8 "GUI→helper send paths" row.
 - **Carried from PR 1.12 (deferral):** map exit 88 (`SupervisedExitCode.bridgeContention`,
   ADR A25) to an "another Sesori bridge is running on this machine" state instead
   of the crash backoff — the incumbent bridge kept the machine and respawning
@@ -343,6 +562,13 @@ Findings log · Plan-deltas.
   GNOME-without-AppIndicator the windowed fallback engages (no unreachable
   hidden app); toggle starts/stops the bridge; status updates live; `SystemTray`
   has no dependency on desktop-core services, trackers, or cubits.
+  **Carried from PR 2.5 (deferral, shared with PR 2.7):** the GUI→helper
+  `prompt_response` send path does not exist yet (2.5 landed
+  inbound-to-tracker only, and a cubit must not call the Layer-4 dispatcher) —
+  this PR (or 2.7's Take-over slice, whichever lands the first prompt answer)
+  designs the answer sender seam at its plan review and strikes that sub-item
+  from the §8 "GUI→helper send paths" row (the row itself stays until all its
+  sub-items are owned/landed).
 
 ## PR 2.10 — `WindowHost` single window + v1 window contents
 - **Goal:** `window_manager` single window (show/hide/focus). v1 window contents:
@@ -496,6 +722,14 @@ Findings log · Plan-deltas.
 - **Acceptance:** the full happy path passes as an automated/scripted test using
   local fakes; the helper proves it can authenticate to the fake relay with the
   GUI-supplied token before restart/logout; failures are deterministic in CI.
+  **Carried from PR 2.5 (deferral):** this PR owns the GUI→helper
+  `token_update` push send path (its goal already exercises token push/pull;
+  the bridge is correct pull-only until then) and strikes that sub-item from
+  the §8 "GUI→helper send paths" row.
+  With those flows covered by the real GUI host plus E2E suite, remove the
+  PR-1.15 `dev_control_host.dart` pseudo-GUI unless a concrete bridge-isolation
+  diagnostic remains unavailable elsewhere; any retained scope must be
+  documented so its token/protocol behavior cannot silently drift from the GUI.
 
 ## PR 2.16 — First-run provisioning progress UI + degraded state
 - **Goal:** Render `RuntimeProvisionProgress` (download bar/status) from the

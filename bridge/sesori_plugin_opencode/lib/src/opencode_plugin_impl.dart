@@ -205,14 +205,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }
 
   @override
-  Future<List<PluginProject>> getProjects() async {
-    final projects = await _call(_service.getProjects);
-    final changed = _service.tracker.updateProjectWorktrees(
-      worktrees: projects.map((p) => p.worktree).toSet(),
-    );
-    if (changed) _emitProjectsSummary();
-    return projects.map(_pluginModelMapper.mapProject).toList();
-  }
+  Future<List<PluginProject>> getProjects() => _call(_service.getProjects);
 
   @override
   Future<List<PluginSession>> getSessions(
@@ -407,9 +400,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     final pending = await _call(
       () => _service.getPendingQuestionsForSession(sessionId: sessionId),
     );
-    return pending
-        .map((e) => _pluginModelMapper.mapQuestion(e.request, displaySessionId: e.displaySessionId))
-        .toList();
+    return pending.map((e) => _pluginModelMapper.mapQuestion(e.request, displaySessionId: e.displaySessionId)).toList();
   }
 
   @override
@@ -523,7 +514,20 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         directory: projectId,
       ),
     );
-    return _pluginModelMapper.mapProject(project);
+    // A moved folder re-opened at a new location resolves to a project whose
+    // root worktree is still the original path. Teach the tracker the alias
+    // so sessions running under the live location group under the canonical
+    // project — activity summaries and event projectIDs both key off it.
+    final changed = _service.tracker.registerWorktreeAlias(
+      directory: projectId,
+      worktree: project.worktree,
+    );
+    if (changed) _emitProjectsSummary();
+    return _pluginModelMapper.mapProject(
+      worktree: project.worktree,
+      name: project.name,
+      activity: null,
+    );
   }
 
   @override
@@ -567,7 +571,11 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         body: {"name": name},
       ),
     );
-    return _pluginModelMapper.mapProject(updated);
+    return _pluginModelMapper.mapProject(
+      worktree: updated.worktree,
+      name: updated.name,
+      activity: null,
+    );
   }
 
   void _handleRawSseEvent(String rawData) {

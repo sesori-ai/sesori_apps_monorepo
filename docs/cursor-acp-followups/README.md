@@ -46,98 +46,105 @@ than observed Cursor bugs. That is called out per item.
 | #  | Theme                                                | Why it matters                                                  | Status |
 |----|------------------------------------------------------|----------------------------------------------------------------|------------|
 | H  | Resume-load & per-session turn robustness            | **User-facing:** stuck conversations, dropped queued prompts, replay leak | **Resolved** |
-| A  | Bridge↔plugin stored-directory / attribution seam    | Real worktree flows on restart; one hook resolves three threads | Open (Medium) |
-| B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | Open (Medium) |
+| J  | Live user messages and id-less envelope ordering     | **User-facing:** missing prompts and chronologically misplaced replies | **Resolved** |
+| A  | Bridge↔plugin stored-directory / attribution seam    | Real worktree flows on restart; one hook resolves three threads | **Resolved** |
+| B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | **Resolved** |
 | C  | ACP protocol completeness in the mapper / parsers    | Correctness for the next ACP backend                            | **Resolved** |
 | G  | Concurrent multi-session turn attribution            | Wrong-conversation routing of `sessionId`-less requests         | **Resolved** |
 | I  | Lossy `session.updated` payload on title changes     | List row loses time/summary/defaults until refresh             | **Resolved** |
 | E  | Typed ACP/Cursor boundary DTOs                        | Enabler / safety net for C and F                                | Blocked on traces (Large) |
-| F  | `getSessionMessages` richer failure contract         | "Broken replay" vs "empty thread" on the phone                  | Open (Small–Med) |
+| F  | `getSessionMessages` richer failure contract         | "Broken replay" vs "empty thread" on the phone                  | **Resolved** |
 | D  | Cursor decisions needing a trace / product call      | Small, but blocked on evidence                                  | D2 resolved; D1 blocked on a trace |
 
 ---
 
-## Theme A — The bridge↔plugin stored-directory / attribution seam
+## Theme J — Live user messages and id-less envelope ordering ✅ Resolved
 
-**One root cause, raised three times.** A directory-scoped derived plugin needs
-the bridge's stored attribution before an operation it cannot self-resolve. The
-plugin has no DB access and the call carries only a `sessionId`, so this cannot
-be fixed inside the plugin.
+**Resolved.** `AcpPlugin` now emits each accepted prompt as the canonical live
+user message instead of waiting for an unreliable agent echo. The live mapper
+ignores duplicate `user_message_chunk` echoes; `session/load` replay continues
+to reconstruct persisted user messages independently.
 
-- **A1 — resume `sendPrompt` cwd.** After a bridge restart, a prompt opened
-  directly from a push/deep link for a bridge-created dedicated-worktree session
-  can leave `_sessionDirectories` empty; `_directoryForSession()` falls back to
-  the launch directory and `session/load` resumes against the wrong cwd (or
-  fails). Partially mitigated in-plugin (`_hintedDirectories` accumulation +
-  unfiltered `session/list`, which Cursor supports); the residual gap is a cold
-  restart + push-first prompt on a non-compliant agent.
-  Source: [#332 r3536171402](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536171402)
-
-- **A2 — `getSessionMessages` history replay cwd.** Same warm-up gap on the
-  history-replay path: an empty hint set means only the launch directory is
-  scanned before `session/load` replays, so a directory-scoped agent can replay
-  the wrong thread or fail. Covered for Cursor via unfiltered `session/list`.
-  Source: [#332 r3537566944](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3537566944)
-
-- **A3 — worktree activity attribution.** `getActiveSessionsSummary` reports the
-  active/awaiting session under the *worktree* cwd, but the repositories fold
-  that session back under the stored *parent* project row. So project activity
-  badges can vanish for Cursor worktree sessions. This is the same seam viewed
-  from the summary side (remap, not prime).
-  Source: [#332 r3536293277](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536293277)
-
-**Recommended root fix.**
-
-- For A1/A2: add a no-op-default
-  `primeSessionDirectory({required String sessionId, required String directory})`
-  on `BridgeDerivedProjectsPluginApi`. The bridge resolves `worktreePath ??
-  projectId` from the stored session row (in `SessionRepository`) and calls it
-  before delegating `sendPrompt` / `getSessionMessages`. Codex inherits the
-  no-op default and is unaffected.
-- For A3: remap **bridge-side** in `BridgeEventMapper.buildProjectsSummaryEvent`
-  / the repository layer, which today passes the plugin's id straight through.
-  The join already exists (`SessionDao.getSessionProjectPaths`,
-  sessions⋈projects filtered by `plugin_id`).
-
-**Affected surfaces.** `sesori_plugin_interface` (`BridgeDerivedProjectsPluginApi`),
-`sesori_plugin_codex` (no-op), `sesori_plugin_acp`, bridge `SessionRepository`
-(+ a `getSessionMessages` repository method), routing/handler wiring,
-`BridgeEventMapper`, bridge-app tests.
-
-**Design note.** This is a `sesori_plugin_interface` evolution, as is
-"events carry plugin identity" from `parallel-plugins/CONSIDERATIONS.md` §3.4.
-If both land near each other, design the interface change once. Respect the
-`plugin_id` routing datum (CONSIDERATIONS §2) — never resolve a session's
-directory/parent across plugin boundaries.
+When an agent omits ACP `messageId` (Cursor's current behavior), a first-seen
+tool now closes preceding assistant text so later text opens a new envelope
+below the tool. `AcpReplayCollector` applies the same id-less boundary rule,
+preserving text → tool → text chronology after reload. Explicit ACP
+`messageId` grouping remains unchanged.
 
 ---
 
-## Theme B — Durable derive-plugin session state the backend won't persist
+## Theme A — The bridge↔plugin stored-directory / attribution seam ✅ Resolved
 
-The bridge must hold session state that a derived backend does not. Both items
-are Drift schema migrations plus reconciliation-path changes; both must keep the
-existing `plugin_id` scoping so one plugin's reconcile never touches another's
-rows (CONSIDERATIONS §2).
+**Resolved with the recommended root fix.** One root cause (a directory-scoped
+derived plugin needing the bridge's stored attribution it cannot self-resolve),
+one seam:
 
-- **B1 — ACP session title persistence.** Both explicit `PATCH /session/title`
-  and the post-create generated title flow through `renameSession`, which only
-  echoes the title in its immediate response. The bridge session table has no
-  title column and no ACP rename is performed, so the next `/session`
-  enumeration loses the title. Options: a bridge-side title-override column, or
-  report rename unsupported (which breaks the app's optimistic rename UX). Today
-  the mobile DB is authoritative, consistent with `renameSession`'s best-effort
-  contract.
+- **A1/A2 — `primeSessionDirectory` seam.** `BridgeDerivedProjectsPluginApi`
+  gained `primeSessionDirectory({required String sessionId, required String
+  directory})` with a no-op default. `SessionRepository` resolves
+  `worktreePath ?? projectId` from the stored session row and primes the
+  plugin at the top of `sendPrompt`, `sendCommand`, and the new repository
+  `getSessionMessages` — so a cold restart + push-first prompt (or a
+  history replay as the first plugin call) runs `session/load` in the
+  session's own cwd on any agent, compliant or not, with no warm-up
+  enumeration. The ACP plugin treats the prime as a hint (an agent-reported
+  cwd stays authoritative) and adds it to its scan-hint set; codex spells out
+  an explicit no-op (it `implements` the interface, and its global rollout
+  index self-resolves). The messages handler now goes through
+  `SessionRepository.getSessionMessages` (which also moved the
+  plugin→shared message mapping out of the routing layer, closing a known
+  Layer-1 leak).
+  Sources: [#332 r3536171402](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536171402),
+  [r3537566944](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3537566944)
+
+- **A3 — worktree activity attribution.** The SSE `projects.summary` path now
+  matches the REST grouping: `SessionRepository.getProjectActivitySummaries()`
+  regroups a derived plugin's active sessions under the stored parent project
+  (via the existing pluginId-scoped `SessionDao.getSessionProjectPaths` join)
+  before mapping to the shared model; `BridgeEventMapper` became a pure
+  builder over that data (its direct plugin dependency is gone) and the
+  orchestrator owns fetching + building the summary event, per "Orchestrator
+  Owns SSE Decisions". Project activity badges no longer vanish for worktree
+  sessions.
+  Source: [#332 r3536293277](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536293277)
+
+The `plugin_id` routing datum is respected throughout (the DAO join is
+pluginId-filtered; no cross-plugin resolution) — the seam stays compatible
+with the parallel-plugins direction in `parallel-plugins/CONSIDERATIONS.md`.
+
+---
+
+## Theme B — Durable derive-plugin session state the backend won't persist ✅ Resolved
+
+**Resolved** — schema v10 (`title` column on `sessions_table` + a new
+`deleted_sessions_table`), migrated with structural + data-integrity tests per
+the Drift workflow, and `plugin_id`-scoped throughout so one plugin's state
+never touches another's rows (CONSIDERATIONS §2).
+
+- **B1 — session title persistence.** The bridge now keeps the authoritative
+  title copy for derived-plugin sessions: `renameSession` persists the title
+  (covering both the explicit `PATCH /session/title` and the bridge's
+  post-create generated title), and a title-bearing `session.updated` from the
+  backend itself (ACP's `session_info_update` and codex's
+  `thread/name/updated`) is captured into the stored row *before* enrichment.
+  A null title removes the stored copy rather than adding durable tri-state
+  semantics. Reads overlay non-null stored titles for derived
+  plugins, so a rename survives enumeration even though the backend keeps
+  reporting its own auto-title, while the backend's newer auto-titles still
+  flow through the event capture. Native backends (OpenCode) stay fully
+  authoritative for their own titles — nothing is stored or overlaid.
   Source: [#332 r3536171429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536171429)
 
-- **B2 — session-delete tombstone.** Cursor does not advertise `session/delete`,
-  so a deleted session reappears from `session/list`. A capability-guarded call
-  wouldn't stop it. The robust fix is a bridge-side tombstone so a deleted
-  derive-plugin session is filtered from enumeration after its row is removed.
+- **B2 — session-delete tombstone.** `SessionRepository.deleteSession`
+  records a tombstone with the row removal in one transaction (written even
+  for rowless-but-enumerable sessions — the delete handler no longer gates on
+  a stored row), and every derived enumeration path filters tombstoned ids
+  right after `listAllSessions`: session lists, project derivation, rowless
+  session resolution, and project-question scoping. Because the filter runs
+  upstream, `persistSessionsForProject` never re-inserts a tombstoned
+  placeholder row. Tombstones are permanent (session ids are UUIDs, never
+  reused) and bounded by actual deletions.
   Source: [#332 r3536293271](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536293271)
-
-**Affected surfaces.** Bridge persistence (new column/table + migration +
-migration tests — see the Drift workflow in root `AGENTS.md`), `SessionDao` /
-reconcile paths, `SessionRepository`, derived-session enumeration filtering.
 
 ---
 
@@ -313,18 +320,18 @@ Source: [#332 r3481369047](https://github.com/sesori-ai/sesori_apps_monorepo/pul
 
 ---
 
-## Theme F — `getSessionMessages` richer failure contract
+## Theme F — `getSessionMessages` richer failure contract ✅ Resolved
 
-History replay currently returns a plain `List`, so a **broken replay**
-(connect/init/auth/`session/load` failure) is indistinguishable from a
-**genuinely empty thread** to the phone. The replay catch was widened to
-`on Object catch` + `Log.w` so failures are diagnosable server-side, but the
-phone still can't tell the two apart. Distinguishing them needs a
-`getSessionMessages` contract change (a typed result instead of a bare list).
-This pairs naturally with the `getSessionMessages` repository method from
-Theme A and the typing effort in Theme E.
+**Resolved without a signature change.** The `BridgePluginApi.getSessionMessages`
+contract now states that implementations MUST throw (e.g.
+`PluginOperationException`) when history retrieval fails — an empty list means
+a genuinely empty thread. The ACP plugin's replay catch-all stops swallowing
+failures into `[]` and throws a typed `PluginOperationException` instead;
+the bridge router already forwards it as a 502, and the phone already renders
+a failed messages load as a full-screen retry state — so "broken replay" and
+"empty thread" are distinguishable end to end with zero client changes. An
+agent that doesn't advertise `loadSession` still serves `[]` (history is
+genuinely unavailable, and the session must stay usable for new prompts).
+This landed together with the `getSessionMessages` repository method from
+Theme A.
 Source: [#332 r3536171443](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3536171443)
-
-**Affected surfaces.** Plugin-interface `getSessionMessages` signature,
-`SessionRepository`, routing handler, client-side rendering of the failure
-state.
