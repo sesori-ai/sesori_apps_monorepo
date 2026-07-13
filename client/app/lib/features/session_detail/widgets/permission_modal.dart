@@ -44,6 +44,7 @@ class PermissionModal extends StatelessWidget {
   static Future<void> show(
     BuildContext context, {
     required SesoriPermissionAsked permission,
+    required ValueChanged<ModalRoute<void>> onPresented,
     required void Function({
       required String requestId,
       required String sessionId,
@@ -60,11 +61,16 @@ class PermissionModal extends StatelessWidget {
       // transparent. The sheet caps itself below the status bar.
       backgroundColor: Colors.transparent,
       useSafeArea: false,
-      builder: (_) => PermissionModal(
-        permission: permission,
-        onReply: onReply,
-        topInset: topInset,
-      ),
+      builder: (modalContext) {
+        final modalRoute = ModalRoute.of<void>(modalContext);
+        if (modalRoute == null) throw StateError("Permission modal requires a ModalRoute");
+        onPresented(modalRoute);
+        return PermissionModal(
+          permission: permission,
+          onReply: onReply,
+          topInset: topInset,
+        );
+      },
     );
   }
 
