@@ -236,8 +236,8 @@ void main() {
       final agents = await plugin.getAgents(projectId: "/repo");
       expect(agents.map((a) => a.name), ["agent", "plan", "ask"]);
       expect(agents.map((a) => a.description), ["Agent", "Plan", "Ask"]);
-      expect(agents.first.model?.modelID, "gpt-5.4");
-      expect(agents.first.model?.providerID, "cursor");
+      // Mode agents omit model so mobile mode switches preserve model/effort.
+      expect(agents.every((a) => a.model == null), isTrue);
     });
 
     Map<String, dynamic> modelCatalog(String currentValue, {bool includeMode = true}) => {
@@ -367,6 +367,49 @@ void main() {
       await client.dispose();
     });
 
+    test("applyTurnSelection re-applies the same effort after a model switch", () async {
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+      await client.connect();
+
+      final first = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "s1",
+        model: (providerID: "cursor", modelID: "gpt-5.4"),
+        variant: const PluginSessionVariant(id: "high"),
+        agent: "agent",
+      );
+      await respond("session/set_config_option", const {}); // model
+      await respond("session/set_config_option", const {}); // mode
+      await respond("session/set_config_option", const {}); // effort high
+      await first;
+
+      final second = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "s1",
+        model: (providerID: "cursor", modelID: "sonnet-4.6"),
+        variant: const PluginSessionVariant(id: "high"),
+        agent: "agent",
+      );
+      await respond("session/set_config_option", const {}); // model sonnet
+      await respond("session/set_config_option", const {}); // effort high again
+      await second;
+
+      final effortSets = fake.written
+          .where((f) => f["method"] == "session/set_config_option")
+          .map((f) => (f["params"] as Map).cast<String, dynamic>())
+          .where((p) => p["configId"] == "effort")
+          .map((p) => p["value"])
+          .toList();
+      expect(effortSets, ["high", "high"],
+          reason: "the same effort string must be re-pushed after a model change");
+
+      await client.dispose();
+    });
+
     test("applyTurnSelection never pushes an unknown model", () async {
       plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
@@ -454,6 +497,7 @@ void main() {
         agent: null,
       );
       await respond("session/set_config_option", const {}); // model=gpt-5.4
+      await respond("session/set_config_option", const {}); // effort re-applied after model change
       await defaulting;
 
       final modelSets = fake.written
@@ -494,7 +538,8 @@ void main() {
         variant: null,
         agent: null,
       );
-      await respond("session/set_config_option", const {});
+      await respond("session/set_config_option", const {}); // model
+      await respond("session/set_config_option", const {}); // effort re-applied
       await b;
 
       final aAgain = plugin.applyTurnSelection(
@@ -504,7 +549,8 @@ void main() {
         variant: null,
         agent: null,
       );
-      await respond("session/set_config_option", const {});
+      await respond("session/set_config_option", const {}); // model
+      await respond("session/set_config_option", const {}); // effort re-applied
       await aAgain;
 
       final modelSets = fake.written

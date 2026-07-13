@@ -185,15 +185,17 @@ class _AgentMenu extends StatelessWidget {
 }
 
 /// Short human label for an agent pill/menu row. Prefers [AgentInfo.description]
-/// only when it is compact enough to fit a glass pill; otherwise [AgentInfo.name].
+/// only when it is a compact single-token label (e.g. Cursor's "Plan"); sentence
+/// descriptions fall back to [AgentInfo.name] so OpenCode pills stay on the
+/// stable agent id.
 String? _agentDisplayLabel(AgentInfo? agent) {
   if (agent == null) return null;
   final description = agent.description?.trim();
   if (description != null &&
       description.isNotEmpty &&
       description.length <= 24 &&
-      !description.contains("\n") &&
-      !description.contains(". ")) {
+      !description.contains(" ") &&
+      !description.contains("\n")) {
     return description;
   }
   return agent.name;

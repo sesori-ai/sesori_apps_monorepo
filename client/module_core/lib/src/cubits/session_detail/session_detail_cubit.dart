@@ -1131,7 +1131,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return;
 
     final agentInfo = current.availableAgents.firstWhereOrNull((a) => a.name == agent);
-    final agentModel = agentInfo?.model;
+    // Agents that omit a model (Cursor modes) must not wipe the user's current
+    // model/effort selection — keep the prior AgentModel in that case.
+    final agentModel = agentInfo?.model ?? current.selectedAgentModel;
 
     if (isClosed) return;
     emit(
