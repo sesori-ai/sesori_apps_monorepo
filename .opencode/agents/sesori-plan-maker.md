@@ -309,11 +309,13 @@ After approval, ask one question with exactly these choices:
 
 For a plan PR, first inspect the worktree and require every change outside the
 selected plan tree to be clean. Create `plan/<plan-slug>/definition` from the
-exact reviewed base commit recorded in `PLAN.md`, not from the current branch
-tip; stop rather than carrying unrelated commits or changes if that branch
-cannot be created safely. Stage only that plan tree, commit, push, and open a
-plan-only PR. Then add the PR URL to `TRACKER.md` in a follow-up commit, push,
-start repository PR monitoring, and stop. For later plan-PR feedback, use
+current tip of the base branch recorded in `PLAN.md`, unless the user explicitly
+requests another branch point. The recorded reviewed commit is audit and
+staleness metadata, not the branch point. Stop rather than carrying unrelated
+commits or changes if the branch cannot be created safely. Stage only that plan
+tree, commit, push, and open a plan-only PR. Then add the PR URL to `TRACKER.md`
+in a follow-up commit, push it, start repository PR monitoring, and stop. For
+later plan-PR feedback, use
 `pr-inline-comments` to fetch unresolved threads and follow
 `address-pr-comments`, changing only that plan tree. Before its commit/push and
 reply steps, rerun full `aristotle-plan-review` over the updated plan tree to

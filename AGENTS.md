@@ -520,6 +520,10 @@ remove old marked compatibility code.
 
 Conventional commits: `fix:`, `feat:`, `ci:`, `docs:`, `chore:`.
 
+Create new branches from the current tip of their intended base branch unless
+the user explicitly requests a historical branch point. A commit recorded for
+plan review or audit is staleness metadata, not the default branch point.
+
 `.gitattributes` marks generated code and test directories as `linguist-generated` so GitHub collapses their diffs. Lockfiles (`pubspec.lock`, `Gemfile.lock`, `Podfile.lock`) must NEVER be marked as generated — the user always reviews lockfile diffs.
 
 ## PR Monitoring
