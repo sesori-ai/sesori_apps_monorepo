@@ -174,8 +174,8 @@ int _countLines(String content) {
 
 bool _isDeletionOnlyChange(String before, String after) {
   if (after.isEmpty) return true;
-  final beforeLines = before.split("\n");
-  final afterLines = after.split("\n");
+  final beforeLines = _normalizedLines(before);
+  final afterLines = _normalizedLines(after);
   var beforeIndex = 0;
   for (final line in afterLines) {
     while (beforeIndex < beforeLines.length && beforeLines[beforeIndex] != line) {
@@ -185,6 +185,10 @@ bool _isDeletionOnlyChange(String before, String after) {
     beforeIndex++;
   }
   return true;
+}
+
+List<String> _normalizedLines(String content) {
+  return content.replaceAll("\r\n", "\n").split("\n").map((line) => line.replaceAll("\r", "")).toList();
 }
 
 /// Parses stdout that should contain exactly one non-empty SHA line.
