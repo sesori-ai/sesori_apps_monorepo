@@ -5,6 +5,18 @@ mode: primary
 temperature: 0.1
 permission:
   question: allow
+  edit: allow
+  bash:
+    "*": ask
+  task:
+    "*": deny
+    "aristotle-impl-review": allow
+    "aristotle-plan-review": allow
+    "pr-comments-provider": allow
+  skill:
+    "*": deny
+    "address-pr-comments": allow
+    "monitor-pr": allow
 ---
 
 # Plan Worker
