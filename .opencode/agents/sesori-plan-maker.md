@@ -313,10 +313,14 @@ exact reviewed base commit recorded in `PLAN.md`, not from the current branch
 tip; stop rather than carrying unrelated commits or changes if that branch
 cannot be created safely. Stage only that plan tree, commit, push, and open a
 plan-only PR. Then add the PR URL to `TRACKER.md` in a follow-up commit, push,
-start repository PR monitoring, and stop. Handle later plan-PR feedback through
-`address-pr-comments`, changing only that plan tree. For "commit", commit only
-the plan tree on the user-approved branch. For "nothing else", leave the
-approved files uncommitted.
+start repository PR monitoring, and stop. For later plan-PR feedback, use
+`pr-inline-comments` to fetch unresolved threads and follow
+`address-pr-comments`, changing only that plan tree. Before its commit/push and
+reply steps, rerun full `aristotle-plan-review` over the updated plan tree to
+approval and record the refreshed verdict in `TRACKER.md`; never push feedback
+edits under a stale plan approval. For "commit", commit only the plan tree on
+the user-approved branch. For "nothing else", leave the approved files
+uncommitted.
 
 After any delivery choice, remind the user that implementation requires
 switching to `sesori-plan-worker` and providing the active plan slug.
