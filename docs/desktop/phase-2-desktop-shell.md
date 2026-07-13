@@ -345,6 +345,12 @@ Findings log · Plan-deltas.
   a mobile-product change (it is one — the CI gates must run).
 - **Acceptance:** `module_core` exposes `AuthTokenProvider`; mobile build + tests
   green.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch
+  `desktop-phase-2.5a-token-provider-reexport`).
+- **Findings:** One line: `AuthTokenProvider` added to the module_core barrel's
+  existing sesori_auth `show` list (alphabetical slot). No export-name
+  collision (full-workspace analyze clean); mobile tests green (550). No
+  consumers in this PR — PR 2.5's dispatcher is the first. **Deltas:** —
 
 ## PR 2.5 — `ControlChannelServer` + `ControlMessageDispatcher` + token responder
 - **Goal:** GUI-hosted loopback WS host + off-argv per-spawn secret.
@@ -375,6 +381,45 @@ Findings log · Plan-deltas.
   refresh and return the newly persisted access token; prompts/status surface
   via trackers; no dispatcher→cubit dependency and no same-level
   dispatcher↔service edge; no direct `module_auth` import in non-DI source.
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch
+  `desktop-phase-2.5-control-server`).
+- **Findings:** Two units. (1) **`ControlChannelServer`** (Layer 0
+  `foundation/`, `Server` suffix per ADR A5): dart:io loopback host, ephemeral
+  port, fresh 32-byte `Random.secure` secret per `start()`; upgrade auth = 401
+  on bad/missing bearer, 400 on non-upgrade, 409 on a concurrent second helper;
+  a dropped socket is cleared so the helper's auto-reconnect is accepted.
+  **Transport events are a single ordered stream** —
+  `Stream<ControlChannelEvent>` (sealed
+  connected/disconnected/frame) fed from one socket's callbacks — so a
+  consumer can never observe a frame on the wrong side of its
+  connect/disconnect (this also closes the review race found on PR 2.4's
+  tracker guards, which remain as defense-in-depth); a derived
+  `helperConnectionStream` `ValueStream<bool>` stays as a snapshot
+  convenience. (2) **`ControlMessageDispatcher`** (Layer 4 `control/`):
+  single subscriber of `events`; decodes each frame once (undecodable →
+  warn+skip); routes token_request → `AuthTokenProvider` (2.5a re-export),
+  forwarding `forceRefresh` so a 401 retry reaches the real auth-refresh seam
+  (provider throw → logged null = structured auth-required), status/registered
+  → `BridgeStatusTracker`, prompt_request → `BridgePromptTracker`;
+  provision_progress/restart are debug-ignored (no consumer yet / exit codes
+  are authoritative); GUI-direction variants arriving inbound are ignored,
+  never commands. Sends are best-effort (typed
+  `ControlHelperNotConnectedException` caught + logged — the helper re-pulls
+  after reconnecting). 23 new tests (11 server incl. true-order stream, 12
+  dispatcher over real loopback sockets + real trackers). **Real-bridge wire
+  verification** (regression guide): built the CLI and drove it with a
+  throwaway driver — secret handshake ✓, `helperOnline` ✓, token_request →
+  null answered ✓, real `loginNeeded` prompt landed in the tracker ✓, exit
+  **87** ✓, disconnect reset + prompt clear ✓. Full wire contract confirmed
+  against the shipped Phase-1 bridge. Dispatcher tests additionally pin
+  forced-refresh forwarding and the rotated token response; MT-1 records why
+  the dev harness itself cannot mint a genuinely fresh token.
+- **Deltas:** the server's inbound API is the ordered `events` stream rather
+  than the sketched separate inbound-stream + connection-stream pair
+  (ordering correctness; §6 wording "inbound-as-stream + send" still holds).
+  GUI→helper send paths beyond `token_response` are explicitly deferred (§8
+  row): prompt answers land with their consumer (2.7/2.9), unregister with
+  2.13, token_update push when first needed.
 
 ## PR 2.6 — `BridgeProcessService`: spawn/kill/path + expected-stop boundary + helper log capture
 - **Goal:** Spawn the bridge binary (path resolution dev + packaged) passing
@@ -457,6 +502,11 @@ Findings log · Plan-deltas.
 - **Acceptance:** each exit class drives the correct action; give-up after N rapid
   crashes surfaces an error with recent helper log lines; exit policy does not
   live in a Layer-2 tracker.
+  **Carried from PR 2.5 (deferral, shared with PR 2.9):** if this PR's
+  Take-over slice is the first to answer a helper prompt, it designs the
+  GUI→helper `prompt_response` sender seam at its plan review (2.5 landed
+  inbound-to-tracker only; a cubit must not call the Layer-4 dispatcher) and
+  strikes that sub-item from the §8 "GUI→helper send paths" row.
 - **Carried from PR 1.12 (deferral):** map exit 88 (`SupervisedExitCode.bridgeContention`,
   ADR A25) to an "another Sesori bridge is running on this machine" state instead
   of the crash backoff — the incumbent bridge kept the machine and respawning
@@ -512,6 +562,13 @@ Findings log · Plan-deltas.
   GNOME-without-AppIndicator the windowed fallback engages (no unreachable
   hidden app); toggle starts/stops the bridge; status updates live; `SystemTray`
   has no dependency on desktop-core services, trackers, or cubits.
+  **Carried from PR 2.5 (deferral, shared with PR 2.7):** the GUI→helper
+  `prompt_response` send path does not exist yet (2.5 landed
+  inbound-to-tracker only, and a cubit must not call the Layer-4 dispatcher) —
+  this PR (or 2.7's Take-over slice, whichever lands the first prompt answer)
+  designs the answer sender seam at its plan review and strikes that sub-item
+  from the §8 "GUI→helper send paths" row (the row itself stays until all its
+  sub-items are owned/landed).
 
 ## PR 2.10 — `WindowHost` single window + v1 window contents
 - **Goal:** `window_manager` single window (show/hide/focus). v1 window contents:
@@ -665,6 +722,10 @@ Findings log · Plan-deltas.
 - **Acceptance:** the full happy path passes as an automated/scripted test using
   local fakes; the helper proves it can authenticate to the fake relay with the
   GUI-supplied token before restart/logout; failures are deterministic in CI.
+  **Carried from PR 2.5 (deferral):** this PR owns the GUI→helper
+  `token_update` push send path (its goal already exercises token push/pull;
+  the bridge is correct pull-only until then) and strikes that sub-item from
+  the §8 "GUI→helper send paths" row.
   With those flows covered by the real GUI host plus E2E suite, remove the
   PR-1.15 `dev_control_host.dart` pseudo-GUI unless a concrete bridge-isolation
   diagnostic remains unavailable elsewhere; any retained scope must be

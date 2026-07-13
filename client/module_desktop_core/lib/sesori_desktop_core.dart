@@ -6,9 +6,11 @@ library;
 // so shell consumers don't need a direct sesori_shared import for it).
 export "package:sesori_shared/sesori_shared.dart" show AuthUser;
 
+export "src/control/control_message_dispatcher.dart";
 export "src/cubits/auth_gate/auth_gate_cubit.dart";
 export "src/cubits/auth_gate/auth_gate_state.dart";
 export "src/di/injection.dart";
+export "src/foundation/control_channel_server.dart";
 export "src/trackers/bridge_control_status.dart";
 export "src/trackers/bridge_prompt_tracker.dart";
 export "src/trackers/bridge_status_tracker.dart";
