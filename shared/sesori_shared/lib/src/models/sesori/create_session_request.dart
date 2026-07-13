@@ -12,6 +12,7 @@ part "create_session_request.g.dart";
 sealed class CreateSessionRequest with _$CreateSessionRequest {
   const factory CreateSessionRequest({
     required String projectId,
+    // COMPATIBILITY 2026-07-13 (v1.5.0): Old create requests omit pluginId and mean OpenCode. Remove default; require it.
     @Default(legacyMissingPluginId) String pluginId,
     required List<PromptPart> parts,
     required String? agent,

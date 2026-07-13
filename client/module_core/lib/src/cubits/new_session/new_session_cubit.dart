@@ -44,6 +44,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         ApiResponse<ProviderListResponse> providersResponse,
         ApiResponse<CommandListResponse> commandsResponse,
       ) = await wait3(
+        // COMPATIBILITY 2026-07-13 (v1.5.0): Project-only composer routes lack plugin identity and historically target OpenCode. Pass selected plugin identity once the composer owns it.
         _sessionService.listAgents(projectId: _projectId, pluginId: legacyMissingPluginId),
         _sessionService.listProviders(projectId: _projectId, pluginId: legacyMissingPluginId),
         _sessionService.listCommands(projectId: _projectId, pluginId: legacyMissingPluginId),
@@ -404,6 +405,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       ),
     );
 
+    // COMPATIBILITY 2026-07-13 (v1.5.0): Project-only composer routes lack plugin identity and historically target OpenCode. Pass selected plugin identity once the composer owns it.
     final response = await _sessionService.createSessionWithMessage(
       projectId: _projectId,
       pluginId: legacyMissingPluginId,

@@ -199,8 +199,8 @@ default. Duplicates, unknown ids, and an explicitly empty set fail validation.
 Older clients omit `pluginId`. Missing legacy identity defaults to OpenCode,
 the only backend those clients could target; it is never substituted with the
 first enabled plugin. New clients always send `pluginId`. Runtime identity
-remains non-null. This debt is recorded in `docs/COMPATIBILITY_DEBT.md` with
-exact removal steps and a dated target.
+remains non-null. Every compatibility-only default carries a code-local
+`COMPATIBILITY` marker with its introduction date/version and exact cleanup.
 
 ## 4. Catalog Schema
 
