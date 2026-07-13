@@ -12,11 +12,11 @@ permission:
     "*": deny
     "aristotle-impl-review": allow
     "aristotle-plan-review": allow
-    "pr-comments-provider": allow
   skill:
     "*": deny
     "address-pr-comments": allow
     "monitor-pr": allow
+    "pr-inline-comments": allow
 ---
 
 # Plan Worker
@@ -28,6 +28,10 @@ them to `sesori-plan-maker`.
 Require an explicit plan slug. Resolve it only as `.plan/active/<slug>/`; never
 infer it from branch names or whichever plan looks active. Work on an archived
 plan only after explicit user reactivation and maker re-review.
+
+Do not run this agent with OpenCode `--auto`. Its implementation and Git/GitHub
+workflow depends on explicit approval for shell commands. If the user says auto
+mode is active, stop and ask them to disable it before continuing.
 
 ## Required Plan State
 
@@ -133,8 +137,10 @@ Before the chosen PR, process any applicable advisory manual files:
    findings and authoritative `PLAN.md`, stage GOAL, or future step files in
    this same PR whenever evidence changes future work. For an external
    repository, use the companion transaction under Cross-Repository Steps.
-7. Run the repository implementation review. Treat rejection as blocking and
-   iterate until approved.
+7. Collect the branch, base, complete changed-file list, full diff, and any
+   history evidence needed to distinguish legacy lines, then include that
+   evidence in the read-only repository implementation-review request. Treat
+   rejection as blocking and iterate until approved.
 8. Inspect status, diff, and recent log; commit only intended files; push; open
    the PR.
 9. Add the PR URL and final concise verification note to the checked tracker row

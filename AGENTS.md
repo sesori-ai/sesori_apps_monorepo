@@ -587,6 +587,12 @@ Two review agents enforce the rules above. Both reject on any violation — no w
 - **Before implementation**: send the plan to `aristotle-plan-review` (agent file at `.opencode/agents/aristotle-plan-review.md`). A plan needs a clear goal, specific classes/files/layers, and stated data flow. Vague plans are rejected on the gate without further review.
 - **Before opening a PR**: send the branch/PR to `aristotle-impl-review` (agent file at `.opencode/agents/aristotle-impl-review.md`). It reviews only new and changed code — preexisting legacy patterns are not flagged unless the change extends them.
 
+Both reviewers are shell-denied and read-only. Implementation-review requests
+must include the branch, base commit or branch, complete changed-file list,
+full diff, and any Git history evidence needed to distinguish changed lines
+from legacy code. The reviewer rejects incomplete scope rather than running Git
+commands or guessing.
+
 Do not skip either step. The reviewers exist because violations compound — one bypass in a handler becomes three bypasses in the handlers that copy it.
 
 ## Learning From Feedback
