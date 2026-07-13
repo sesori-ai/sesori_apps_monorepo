@@ -20,19 +20,19 @@ class ProcessRunner {
       workingDirectory: workingDirectory,
       environment: environment,
     );
-    final stdout = StringBuffer();
-    final stderr = StringBuffer();
-    process.stdout.transform(const SystemEncoding().decoder).listen(stdout.write);
-    process.stderr.transform(const SystemEncoding().decoder).listen(stderr.write);
-
-    final exitCode = await process.exitCode.timeout(
-      timeout,
-      onTimeout: () {
-        process.kill();
-        throw TimeoutException("$executable timed out after $timeout", timeout);
-      },
-    );
-    return ProcessResult(process.pid, exitCode, stdout.toString(), stderr.toString());
+    final (exitCode, stdout, stderr) =
+        await (
+          process.exitCode,
+          process.stdout.transform(const SystemEncoding().decoder).join(),
+          process.stderr.transform(const SystemEncoding().decoder).join(),
+        ).wait.timeout(
+          timeout,
+          onTimeout: () {
+            process.kill();
+            throw TimeoutException("$executable timed out after $timeout", timeout);
+          },
+        );
+    return ProcessResult(process.pid, exitCode, stdout, stderr);
   }
 
   /// Spawns [executable] and returns its pid without waiting for it to exit.

@@ -242,6 +242,7 @@ class OrchestratorSession {
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  final Set<({String requestId, String sessionId})> _autoApprovedPermissions = {};
   final Random _backoffJitter = Random();
 
   bool _cancelled = false;
@@ -683,6 +684,10 @@ class OrchestratorSession {
     try {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
 
+      if (event is BridgeSsePermissionReplied) {
+        _autoApprovedPermissions.remove((requestId: event.requestID, sessionId: event.sessionID));
+      }
+
       if (config.yolo && event is BridgeSsePermissionAsked) {
         if (_cancelled) return;
         await _autoApprovePermission(
@@ -699,6 +704,10 @@ class OrchestratorSession {
         await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
           Log.w("ProjectActivityService: server-connected reconciliation failed", e, st);
         });
+        await _autoApprovePendingPermissions();
+      }
+
+      if (config.yolo && event is BridgeSseProjectUpdated) {
         await _autoApprovePendingPermissions();
       }
 
@@ -762,8 +771,6 @@ class OrchestratorSession {
         for (final session in summary.activeSessions)
           if (session.awaitingInput) session.id,
     };
-    final seenRequestIds = <String>{};
-
     for (final rootSessionId in rootSessionIds) {
       if (_cancelled) return;
 
@@ -780,7 +787,6 @@ class OrchestratorSession {
       }
 
       for (final permission in permissions) {
-        if (!seenRequestIds.add(permission.id)) continue;
         if (_cancelled) return;
 
         try {
@@ -799,13 +805,21 @@ class OrchestratorSession {
     }
   }
 
-  Future<void> _autoApprovePermission({required String requestId, required String sessionId}) {
+  Future<void> _autoApprovePermission({required String requestId, required String sessionId}) async {
+    final key = (requestId: requestId, sessionId: sessionId);
+    if (!_autoApprovedPermissions.add(key)) return;
+
     Log.i("[permissions] auto-approving request $requestId");
-    return _permissionRepository.replyToPermission(
-      requestId: requestId,
-      sessionId: sessionId,
-      reply: PermissionReply.once,
-    );
+    try {
+      await _permissionRepository.replyToPermission(
+        requestId: requestId,
+        sessionId: sessionId,
+        reply: PermissionReply.once,
+      );
+    } on Object {
+      _autoApprovedPermissions.remove(key);
+      rethrow;
+    }
   }
 
   /// Builds the projects-summary SSE event: fetches the activity summary with

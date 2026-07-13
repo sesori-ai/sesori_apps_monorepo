@@ -264,6 +264,44 @@ void main() {
 
     final sentByteCounts = <int>[];
     final sentBytesSubscription = session.bytesSent.listen(sentByteCounts.add);
+
+    plugin.pendingPermissions.add(
+      const PluginPendingPermission(
+        id: "summary-permission",
+        sessionID: "pending-child-session",
+        displaySessionId: "pending-root-session",
+        tool: "bash",
+        description: "update the project summary",
+      ),
+    );
+    final projectsSummaryFuture = _waitForEventType(
+      messages: messages,
+      roomKey: roomKey,
+      expectedType: "projects.summary",
+    );
+    plugin.add(const BridgeSseProjectUpdated());
+
+    await _waitForCondition(
+      check: () => plugin.permissionReplies.length == 2,
+      failureMessage: "Timed out waiting for project-summary permission auto-approval",
+    );
+    expect(await projectsSummaryFuture, isTrue);
+    final bytesAfterSummary = sentByteCounts.length;
+
+    plugin.add(
+      const BridgeSsePermissionAsked(
+        requestID: "summary-permission",
+        sessionID: "pending-child-session",
+        displaySessionId: "pending-root-session",
+        tool: "bash",
+        description: "update the project summary",
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(plugin.permissionReplies, hasLength(2), reason: "queued permission events must not reply twice");
+    expect(sentByteCounts, hasLength(bytesAfterSummary));
+
     plugin.add(
       const BridgeSsePermissionAsked(
         requestID: "permission-1",
@@ -275,7 +313,7 @@ void main() {
     );
 
     await _waitForCondition(
-      check: () => plugin.permissionReplies.length == 2,
+      check: () => plugin.permissionReplies.length == 3,
       failureMessage: "Timed out waiting for permission auto-approval",
     );
     await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -289,13 +327,22 @@ void main() {
           reply: PluginPermissionReply.once,
         ),
         (
+          requestId: "summary-permission",
+          sessionId: "pending-child-session",
+          reply: PluginPermissionReply.once,
+        ),
+        (
           requestId: "permission-1",
           sessionId: "child-session",
           reply: PluginPermissionReply.once,
         ),
       ]),
     );
-    expect(sentByteCounts, isEmpty, reason: "YOLO permission requests must not reach clients");
+    expect(
+      sentByteCounts,
+      hasLength(bytesAfterSummary),
+      reason: "YOLO permission requests must not reach clients",
+    );
     await sentBytesSubscription.cancel();
 
     await projectActivityService.openProject(path: "project-activity");
