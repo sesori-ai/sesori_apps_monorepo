@@ -15,7 +15,9 @@ permission:
     "aristotle-plan-review": allow
   skill:
     "*": deny
+    "address-pr-comments": allow
     "monitor-pr": allow
+    "pr-inline-comments": allow
 ---
 
 # Plan Maker
@@ -305,11 +307,16 @@ After approval, ask one question with exactly these choices:
 2. Commit the plan.
 3. Nothing else.
 
-For a plan PR, use `plan/<plan-slug>/definition`, stage only that plan tree,
-commit, push, and open a plan-only PR. Then add the PR URL to `TRACKER.md` in a
-follow-up commit, push, start repository PR monitoring, and stop. For "commit",
-commit only the plan tree on the user-approved branch. For "nothing else",
-leave the approved files uncommitted.
+For a plan PR, first inspect the worktree and require every change outside the
+selected plan tree to be clean. Create `plan/<plan-slug>/definition` from the
+exact reviewed base commit recorded in `PLAN.md`, not from the current branch
+tip; stop rather than carrying unrelated commits or changes if that branch
+cannot be created safely. Stage only that plan tree, commit, push, and open a
+plan-only PR. Then add the PR URL to `TRACKER.md` in a follow-up commit, push,
+start repository PR monitoring, and stop. Handle later plan-PR feedback through
+`address-pr-comments`, changing only that plan tree. For "commit", commit only
+the plan tree on the user-approved branch. For "nothing else", leave the
+approved files uncommitted.
 
 After any delivery choice, remind the user that implementation requires
 switching to `sesori-plan-worker` and providing the active plan slug.
