@@ -470,8 +470,18 @@ void _runGenerate() {
 
 /// Formats the emitted files so a regenerate never shows up as whitespace-only
 /// churn against the formatted files already in the repo.
+///
+/// Cosmetic, and it runs after the files are on disk, so a failure here warns
+/// rather than failing the generate.
 void _formatGeneratedFiles() {
-  final result = Process.runSync("dart", ["format", _outputDir]);
+  final ProcessResult result;
+  try {
+    result = Process.runSync("dart", ["format", _outputDir]);
+  } on ProcessException catch (e) {
+    print("Warning: could not run `dart format $_outputDir`: ${e.message}");
+    return;
+  }
+
   if (result.exitCode != 0) {
     print("Warning: `dart format $_outputDir` failed: ${result.stderr}");
     return;
