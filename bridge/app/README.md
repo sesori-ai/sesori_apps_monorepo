@@ -150,6 +150,20 @@ In addition to flags, the bridge supports subcommands:
 | `config edit` | Open the bridge configuration file in your default editor |
 | `logout` | Clear stored authentication tokens. You will be asked to log in again on next start. |
 
+`config edit` opens `~/.config/sesori/config.json`. A generated config includes:
+
+```json
+{
+  "sleepPrevention": "always",
+  "yolo": false,
+  "releaseTrack": "stable"
+}
+```
+
+Setting `"yolo": true` makes the bridge approve every permission request
+without sending the request to connected clients. The bridge prints a warning
+at startup whenever this mode is active.
+
 ## Examples
 
 ```bash

@@ -8,6 +8,10 @@ enum SleepPreventionMode {
 class BridgeSettings {
   final SleepPreventionMode sleepPrevention;
 
+  /// Automatically approves permission requests at the bridge without
+  /// forwarding them to connected clients.
+  final bool yolo;
+
   /// Plugin ids enabled to run (the `--plugin <id>` namespace). Null means
   /// unset — the bridge then defaults to opencode, so existing installs see
   /// zero change. Until the orchestrator supports multiple concurrently
@@ -21,6 +25,7 @@ class BridgeSettings {
 
   const BridgeSettings({
     this.sleepPrevention = SleepPreventionMode.always,
+    this.yolo = false,
     this.enabledPlugins,
     this.releaseTrack = ReleaseTrack.stable,
   });
@@ -28,6 +33,7 @@ class BridgeSettings {
   factory BridgeSettings.fromJson(Map<String, dynamic> json) {
     return BridgeSettings(
       sleepPrevention: _parseSleepPrevention(json['sleepPrevention']),
+      yolo: json['yolo'] == true,
       enabledPlugins: _parseEnabledPlugins(json['enabledPlugins']),
       releaseTrack: _parseReleaseTrack(json['releaseTrack']),
     );
@@ -39,6 +45,7 @@ class BridgeSettings {
         SleepPreventionMode.off => 'off',
         SleepPreventionMode.always => 'always',
       },
+      'yolo': yolo,
       // Always written (like sleepPrevention) so the option is discoverable
       // via `config edit`. Existing valid configs are only rewritten on
       // create/repair, so untouched installs do not churn.
@@ -51,11 +58,13 @@ class BridgeSettings {
 
   BridgeSettings copyWith({
     SleepPreventionMode? sleepPrevention,
+    bool? yolo,
     List<String>? enabledPlugins,
     ReleaseTrack? releaseTrack,
   }) {
     return BridgeSettings(
       sleepPrevention: sleepPrevention ?? this.sleepPrevention,
+      yolo: yolo ?? this.yolo,
       enabledPlugins: enabledPlugins ?? this.enabledPlugins,
       releaseTrack: releaseTrack ?? this.releaseTrack,
     );

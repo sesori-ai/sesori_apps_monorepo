@@ -41,7 +41,7 @@ void main() {
 
       expect(
         settings.toJson(),
-        equals({'sleepPrevention': 'always', 'releaseTrack': 'stable'}),
+        equals({'sleepPrevention': 'always', 'yolo': false, 'releaseTrack': 'stable'}),
       );
     });
 
@@ -50,8 +50,27 @@ void main() {
 
       expect(
         settings.toJson(),
-        equals({'sleepPrevention': 'off', 'releaseTrack': 'stable'}),
+        equals({'sleepPrevention': 'off', 'yolo': false, 'releaseTrack': 'stable'}),
       );
+    });
+
+    test('yolo defaults to disabled', () {
+      const settings = BridgeSettings();
+
+      expect(settings.yolo, isFalse);
+    });
+
+    test('fromJson enables yolo only for boolean true', () {
+      expect(BridgeSettings.fromJson({'yolo': true}).yolo, isTrue);
+      expect(BridgeSettings.fromJson({'yolo': false}).yolo, isFalse);
+      expect(BridgeSettings.fromJson({'yolo': 'true'}).yolo, isFalse);
+      expect(BridgeSettings.fromJson({}).yolo, isFalse);
+    });
+
+    test('toJson serializes yolo mode', () {
+      const settings = BridgeSettings(yolo: true);
+
+      expect(settings.toJson()['yolo'], isTrue);
     });
 
     test('enabledPlugins defaults to unset', () {
@@ -93,7 +112,7 @@ void main() {
 
       expect(
         settings.toJson(),
-        equals({'sleepPrevention': 'always', 'releaseTrack': 'stable'}),
+        equals({'sleepPrevention': 'always', 'yolo': false, 'releaseTrack': 'stable'}),
       );
     });
 
@@ -104,6 +123,7 @@ void main() {
         settings.toJson(),
         equals({
           'sleepPrevention': 'always',
+          'yolo': false,
           'releaseTrack': 'stable',
           'enabledPlugins': ['opencode'],
         }),
@@ -157,6 +177,21 @@ void main() {
       expect(updated.releaseTrack, ReleaseTrack.internal);
       expect(updated.sleepPrevention, SleepPreventionMode.off);
       expect(updated.enabledPlugins, equals(['opencode']));
+    });
+
+    test('copyWith changes only yolo and preserves other fields', () {
+      const settings = BridgeSettings(
+        sleepPrevention: SleepPreventionMode.off,
+        enabledPlugins: ['opencode'],
+        releaseTrack: ReleaseTrack.internal,
+      );
+
+      final updated = settings.copyWith(yolo: true);
+
+      expect(updated.yolo, isTrue);
+      expect(updated.sleepPrevention, SleepPreventionMode.off);
+      expect(updated.enabledPlugins, equals(['opencode']));
+      expect(updated.releaseTrack, ReleaseTrack.internal);
     });
   });
 }

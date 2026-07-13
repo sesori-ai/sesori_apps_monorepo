@@ -63,10 +63,10 @@ import "../helpers/test_helpers.dart";
 import "routing/get_session_diffs_handler_test_helpers.dart";
 
 void main() {
-  test("activity and PR streams are emitted as SSE only by the orchestrator", () async {
+  test("orchestrator routes activity and silently auto-approves yolo permissions", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
-    final plugin = _NoopPlugin();
+    final plugin = _EventPlugin();
     final pushSubsystem = _createPushSubsystem();
     final fakePrSyncService = _FakePrSyncService();
     final pullRequestRepository = PullRequestRepository(
@@ -127,6 +127,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -236,6 +237,37 @@ void main() {
     bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
+    final sentByteCounts = <int>[];
+    final sentBytesSubscription = session.bytesSent.listen(sentByteCounts.add);
+    plugin.add(
+      const BridgeSsePermissionAsked(
+        requestID: "permission-1",
+        sessionID: "child-session",
+        displaySessionId: "root-session",
+        tool: "bash",
+        description: "run a command",
+      ),
+    );
+
+    await _waitForCondition(
+      check: () => plugin.permissionReplies.isNotEmpty,
+      failureMessage: "Timed out waiting for permission auto-approval",
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(
+      plugin.permissionReplies,
+      equals([
+        (
+          requestId: "permission-1",
+          sessionId: "child-session",
+          reply: PluginPermissionReply.once,
+        ),
+      ]),
+    );
+    expect(sentByteCounts, isEmpty, reason: "YOLO permission requests must not reach clients");
+    await sentBytesSubscription.cancel();
+
     await projectActivityService.openProject(path: "project-activity");
     final projectUpdated = await _waitForEventType(
       messages: messages,
@@ -339,6 +371,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -538,6 +571,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -754,6 +788,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -996,6 +1031,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -1162,6 +1198,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -1353,6 +1390,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -2042,6 +2080,7 @@ class _NoopPlugin implements NativeProjectsPluginApi {
 
 class _EventPlugin extends _NoopPlugin {
   int subscribeCount = 0;
+  final List<({String requestId, String sessionId, PluginPermissionReply reply})> permissionReplies = [];
 
   @override
   Stream<BridgeSseEvent> get events {
@@ -2058,6 +2097,15 @@ class _EventPlugin extends _NoopPlugin {
 
   void add(BridgeSseEvent event) {
     _controller.add(event);
+  }
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) async {
+    permissionReplies.add((requestId: requestId, sessionId: sessionId, reply: reply));
   }
 
   Future<void> waitForSubscription() async {

@@ -15,6 +15,7 @@ void main() {
       final settings = await repository.loadSettings();
 
       expect(settings.sleepPrevention, SleepPreventionMode.always);
+      expect(settings.yolo, isFalse);
       expect(api.lastWrittenConfig, equals(_defaultJson));
     });
 
@@ -150,7 +151,7 @@ void main() {
 
       expect(
         api.lastWrittenConfig,
-        equals('{\n  "sleepPrevention": "off",\n  "releaseTrack": "stable"\n}'),
+        equals('{\n  "sleepPrevention": "off",\n  "yolo": false,\n  "releaseTrack": "stable"\n}'),
       );
     });
 
@@ -162,7 +163,7 @@ void main() {
 
       expect(
         api.lastWrittenConfig,
-        equals('{\n  "sleepPrevention": "off",\n  "releaseTrack": "internal"\n}'),
+        equals('{\n  "sleepPrevention": "off",\n  "yolo": false,\n  "releaseTrack": "internal"\n}'),
       );
     });
 
@@ -178,7 +179,7 @@ void main() {
   });
 }
 
-const _defaultJson = '{\n  "sleepPrevention": "always",\n  "releaseTrack": "stable"\n}';
+const _defaultJson = '{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable"\n}';
 
 /// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
 class _CapturingStdout implements Stdout {

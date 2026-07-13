@@ -234,6 +234,7 @@ class OrchestratorSession {
   final SessionUnseenService _sessionUnseenService;
   final SessionViewTracker _sessionViewTracker;
   final SessionRepository _sessionRepository;
+  final PermissionRepository _permissionRepository;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionAbortService _sessionAbortService;
@@ -315,6 +316,7 @@ class OrchestratorSession {
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
        _sessionRepository = sessionRepository,
+       _permissionRepository = permissionRepository,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
@@ -679,6 +681,16 @@ class OrchestratorSession {
   Future<void> _processPluginEvent(BridgeSseEvent event) async {
     try {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
+
+      if (config.yolo && event is BridgeSsePermissionAsked) {
+        Log.i("[permissions] auto-approving request ${event.requestID}");
+        await _permissionRepository.replyToPermission(
+          requestId: event.requestID,
+          sessionId: event.sessionID,
+          reply: PermissionReply.once,
+        );
+        return;
+      }
 
       // A server (re)connect means the plugin may have just loaded a new set of
       // sessions. Reconcile persisted project activity so we don't miss
