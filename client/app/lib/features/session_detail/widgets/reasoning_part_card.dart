@@ -21,6 +21,32 @@ class ReasoningPartCard extends StatefulWidget {
 
   @override
   State<ReasoningPartCard> createState() => _ReasoningPartCardState();
+
+  /// The streaming preview is bottom-aligned and clipped to 56px, so only the
+  /// last few lines are ever visible — but laying out the whole accumulated
+  /// reasoning document costs O(text) under a saveLayer on every streaming
+  /// flush. Hand the layout only a tail slice that comfortably overfills the
+  /// viewport at the preview's small text size.
+  static const int _kStreamingTailChars = 700;
+
+  @visibleForTesting
+  static String streamingTail({required String text}) {
+    if (text.length <= _kStreamingTailChars) return text;
+    var start = text.length - _kStreamingTailChars;
+    // Never start the slice on the low half of a UTF-16 surrogate pair
+    // (emoji etc.): an orphaned low surrogate is malformed and renders as a
+    // replacement character. Dropping the split character entirely is
+    // invisible in a tail preview, and stays O(1) where grapheme-aware
+    // slicing would re-walk the whole document on every flush.
+    if (_isLowSurrogate(text.codeUnitAt(start))) start++;
+    final slice = text.substring(start);
+    // Start at a line boundary when one exists so the slice doesn't begin
+    // with a mid-line fragment that wraps differently from the real text.
+    final newline = slice.indexOf('\n');
+    return newline >= 0 && newline + 1 < slice.length ? slice.substring(newline + 1) : slice;
+  }
+
+  static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;
 }
 
 class _ReasoningPartCardState extends State<ReasoningPartCard> {
@@ -118,7 +144,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                         alignment: Alignment.bottomLeft,
                         maxHeight: double.infinity,
                         child: Text(
-                          _streamingTail(widget.text),
+                          ReasoningPartCard.streamingTail(text: widget.text),
                           style: prego.textTheme.textXs.regular.copyWith(
                             color: prego.colors.textSecondary,
                           ),
@@ -148,22 +174,6 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
 
   void _showFullText({required BuildContext context}) {
     ReasoningModal.show(context, partId: widget.partId, messageId: widget.messageId);
-  }
-
-  /// The streaming preview is bottom-aligned and clipped to 56px, so only the
-  /// last few lines are ever visible — but laying out the whole accumulated
-  /// reasoning document costs O(text) under a saveLayer on every streaming
-  /// flush. Hand the layout only a tail slice that comfortably overfills the
-  /// viewport at the preview's small text size.
-  static const int _kStreamingTailChars = 700;
-
-  static String _streamingTail(String text) {
-    if (text.length <= _kStreamingTailChars) return text;
-    final slice = text.substring(text.length - _kStreamingTailChars);
-    // Start at a line boundary when one exists so the slice doesn't begin
-    // with a mid-line fragment that wraps differently from the real text.
-    final newline = slice.indexOf('\n');
-    return newline >= 0 && newline + 1 < slice.length ? slice.substring(newline + 1) : slice;
   }
 
   /// Returns the first non-empty physical line of [text], or the empty

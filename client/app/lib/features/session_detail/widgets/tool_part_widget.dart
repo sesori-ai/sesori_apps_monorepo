@@ -4,7 +4,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
-import "../../../core/widgets/throttled_activity_indicator.dart";
+import "../../../core/widgets/isolated_activity_indicator.dart";
 import "../../../l10n/app_localizations.dart";
 
 class ToolPartWidget extends StatelessWidget {
@@ -85,7 +85,7 @@ class ToolPartWidget extends StatelessWidget {
     ToolStatus.pending || ToolStatus.running => SizedBox(
       width: 16,
       height: 16,
-      child: ThrottledActivityIndicator(
+      child: IsolatedActivityIndicator(
         strokeWidth: 2,
         color: prego.colors.bgBrandSolid,
       ),
@@ -142,6 +142,8 @@ class _ToolOutputBlockState extends State<_ToolOutputBlock> {
   String? _measuredOutput;
   double? _measuredWidth;
   TextScaler? _measuredScaler;
+  TextStyle? _measuredStyle;
+  TextDirection? _measuredDirection;
   bool _isExpandable = false;
 
   bool _measureIsExpandable({
@@ -151,18 +153,25 @@ class _ToolOutputBlockState extends State<_ToolOutputBlock> {
     required TextStyle monoStyle,
   }) {
     final textScaler = MediaQuery.textScalerOf(context);
-    if (output == _measuredOutput && textWidth == _measuredWidth && textScaler == _measuredScaler) {
+    final textDirection = Directionality.of(context);
+    if (output == _measuredOutput &&
+        textWidth == _measuredWidth &&
+        textScaler == _measuredScaler &&
+        monoStyle == _measuredStyle &&
+        textDirection == _measuredDirection) {
       return _isExpandable;
     }
     final painter = TextPainter(
       text: TextSpan(text: output, style: monoStyle),
       maxLines: _collapsedMaxLines,
-      textDirection: Directionality.of(context),
+      textDirection: textDirection,
       textScaler: textScaler,
     )..layout(maxWidth: textWidth);
     _measuredOutput = output;
     _measuredWidth = textWidth;
     _measuredScaler = textScaler;
+    _measuredStyle = monoStyle;
+    _measuredDirection = textDirection;
     _isExpandable = painter.didExceedMaxLines;
     painter.dispose();
     return _isExpandable;

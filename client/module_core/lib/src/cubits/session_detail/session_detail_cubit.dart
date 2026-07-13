@@ -186,6 +186,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       _eventRefreshQueued = true;
       return;
     }
+    if (_activeRefresh != null) {
+      // A refresh is already in flight (e.g. the reconnect path): its
+      // snapshot may predate this signal, so queue a trailing refresh behind
+      // a cooldown window instead of letting _silentRefresh coalesce the
+      // signal into the stale in-flight run.
+      _eventRefreshQueued = true;
+      _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
+      return;
+    }
     _silentRefresh();
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
@@ -193,8 +202,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   void _onEventRefreshCooldownElapsed() {
     _eventRefreshCooldown = null;
     if (!_eventRefreshQueued) return;
+    if (isClosed || state is! SessionDetailLoaded) {
+      _eventRefreshQueued = false;
+      return;
+    }
+    if (_activeRefresh != null) {
+      // The previous refresh is still in flight: keep the signal queued and
+      // check again after another window so it is never silently dropped.
+      _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
+      return;
+    }
     _eventRefreshQueued = false;
-    if (isClosed || state is! SessionDetailLoaded) return;
     _silentRefresh();
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }

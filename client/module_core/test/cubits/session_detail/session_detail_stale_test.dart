@@ -658,6 +658,65 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 150));
       verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId")));
     });
+
+    test("a queued signal survives a refresh that outlives the cooldown window", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+        eventRefreshMinInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      reset(mockSessionService);
+      _stubLoadApis(mockSessionService, sessionId: sessionId);
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
+
+      // Hold the first refresh's message fetch so the refresh itself spans
+      // the entire cooldown window.
+      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
+      when(
+        () => mockSessionService.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) => messagesCompleter.future);
+
+      mockConnectionService.emitDataMayBeStale();
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+
+      // The cooldown elapses while the first refresh is still in flight; the
+      // queued signal must be retained, not silently coalesced into the
+      // stale in-flight run.
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      when(
+        () => mockSessionService.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
+      );
+      messagesCompleter.complete(
+        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
+      );
+
+      // Once the next window elapses, the retained signal produces the
+      // trailing refresh against fresh data.
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+    });
   });
 }
 
