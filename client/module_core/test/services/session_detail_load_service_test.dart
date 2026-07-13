@@ -74,7 +74,7 @@ void main() {
       verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     });
 
-    test("load uses the legacy sentinel when session identity is unavailable", () async {
+    test("load uses the legacy OpenCode default when session identity is unavailable", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
       when(

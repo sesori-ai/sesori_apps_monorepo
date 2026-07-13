@@ -701,7 +701,3 @@ class SessionRepository {
     return null;
   }
 }
-
-extension SessionRepositoryIdentity on SessionRepository {
-  String get pluginId => _plugin.id;
-}

@@ -24,7 +24,7 @@ class GetProvidersHandler extends BodyRequestHandler<PluginProjectIdRequest, Pro
   }) {
     return _repository.getProviders(
       projectId: body.projectId,
-      pluginId: body.pluginId == legacyMissingPluginId ? _repository.pluginId : body.pluginId,
+      pluginId: body.pluginId,
     );
   }
 }

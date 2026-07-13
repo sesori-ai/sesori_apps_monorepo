@@ -22,11 +22,13 @@ have written. Before repairing a historical shape, identify the shipped writer,
 the exact inputs that produced it, and a reachable persisted example; a schema
 default or hypothetical future plugin is not evidence of compatibility debt.
 
-Compatibility sentinels are wire-boundary values, not nullable internal
-identity. Normalize missing legacy plugin identity to the shared
-`legacyMissingPluginId` constant, keep internal `pluginId` parameters non-null,
-and resolve the sentinel at the bridge routing boundary when an active plugin is
-available. Project-only request DTOs must not carry `pluginId`; use a dedicated
+Legacy payloads that omit plugin identity default to OpenCode because it was the
+only backend those released peers could target. Keep internal `pluginId`
+parameters non-null and forward this concrete compatibility identity unchanged;
+do not substitute whichever plugin happens to be active. This historical wire
+default is the sole backend-specific compatibility exception in shared models,
+not permission to expose backend capabilities or behavior past the plugin
+boundary. Project-only request DTOs must not carry `pluginId`; use a dedicated
 plugin-scoped DTO for operations whose routing depends on plugin identity.
 
 **Directional invariants (don't weld these doors shut):**

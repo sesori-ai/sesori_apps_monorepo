@@ -43,6 +43,10 @@ lib/
 - **Null keys omitted from wire payloads**: `build.yaml` sets `json_serializable` `include_if_null: false`, so nullable fields are dropped from `toJson()` output by default. Do **NOT** add `@JsonKey(includeIfNull: false)` explicitly — it is already the default here. (Decoding is unaffected: a missing key deserializes to `null`.)
 - **Strict analysis**: `strict-casts`, `strict-inference`, `strict-raw-types` all ON
 - **Barrel export**: All public API re-exported from `lib/sesori_shared.dart`
+- **Legacy plugin attribution**: Missing `pluginId` fields default to `opencode`
+  because released peers without attribution could only target OpenCode. This
+  is a narrow historical wire default, not a general licence for backend
+  behavior or capabilities in shared models.
 - **Platform-derived DTOs**: platform adapters gather facts through Flutter
   plugins or `dart:io`; shared builders accept plain values and own common wire
   schema normalization such as trimming, fallbacks, and length limits. Never

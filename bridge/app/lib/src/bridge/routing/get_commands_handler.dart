@@ -25,7 +25,7 @@ class GetCommandsHandler extends BodyRequestHandler<PluginProjectIdRequest, Comm
   }) async {
     return _sessionRepository.getCommands(
       projectId: body.projectId,
-      pluginId: body.pluginId == legacyMissingPluginId ? _sessionRepository.pluginId : body.pluginId,
+      pluginId: body.pluginId,
     );
   }
 }

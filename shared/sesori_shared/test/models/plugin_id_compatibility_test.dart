@@ -20,7 +20,7 @@ void main() {
       expect(Session.fromJson(session.toJson()).pluginId, "opencode");
     });
 
-    test("normalizes missing and null keys to the legacy sentinel", () {
+    test("attributes missing and null keys to OpenCode", () {
       final session = Session.fromJson({
         "id": "session-1",
         "projectID": "project-1",
@@ -32,8 +32,9 @@ void main() {
         "pullRequest": null,
       });
 
-      expect(session.pluginId, legacyMissingPluginId);
-      expect(Session.fromJson({...session.toJson(), "pluginId": null}).pluginId, legacyMissingPluginId);
+      expect(legacyMissingPluginId, "opencode");
+      expect(session.pluginId, "opencode");
+      expect(Session.fromJson({...session.toJson(), "pluginId": null}).pluginId, "opencode");
     });
   });
 
@@ -55,7 +56,7 @@ void main() {
       expect(CreateSessionRequest.fromJson(value.toJson()).pluginId, "opencode");
     });
 
-    test("normalizes missing and null keys to the legacy sentinel", () {
+    test("attributes missing and null keys to OpenCode", () {
       final value = CreateSessionRequest.fromJson({
         "projectId": "project-1",
         "parts": const [
@@ -68,8 +69,8 @@ void main() {
         "dedicatedWorktree": false,
       });
 
-      expect(value.pluginId, legacyMissingPluginId);
-      expect(CreateSessionRequest.fromJson({...value.toJson(), "pluginId": null}).pluginId, legacyMissingPluginId);
+      expect(value.pluginId, "opencode");
+      expect(CreateSessionRequest.fromJson({...value.toJson(), "pluginId": null}).pluginId, "opencode");
     });
   });
 
@@ -89,20 +90,20 @@ void main() {
       expect(PluginProjectIdRequest.fromJson(request.toJson()), request);
     });
 
-    test("normalizes missing and null keys to the legacy sentinel", () {
+    test("attributes missing and null keys to OpenCode", () {
       final request = PluginProjectIdRequest.fromJson({"projectId": "project-1"});
 
-      expect(request.pluginId, legacyMissingPluginId);
+      expect(request.pluginId, "opencode");
       expect(
         PluginProjectIdRequest.fromJson({"projectId": "project-1", "pluginId": null}).pluginId,
-        legacyMissingPluginId,
+        "opencode",
       );
     });
 
-    test("serializes the sentinel explicitly", () {
+    test("serializes the legacy OpenCode default explicitly", () {
       const request = PluginProjectIdRequest(projectId: "project-1");
 
-      expect(request.toJson(), {"projectId": "project-1", "pluginId": legacyMissingPluginId});
+      expect(request.toJson(), {"projectId": "project-1", "pluginId": "opencode"});
     });
   });
 }

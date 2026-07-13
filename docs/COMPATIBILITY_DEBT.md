@@ -44,16 +44,15 @@ it exists, and the exact cleanup to perform on the recorded date.
 
 - **Location:** `shared/sesori_shared/lib/src/models/sesori/session.dart`,
   `create_session_request.dart`, and `plugin_project_id_request.dart`.
-- **Debt:** Missing or null plugin identity decodes to
-  `legacyMissingPluginId` so plugin identity remains non-null internally.
+- **Debt:** Missing or null plugin identity decodes to the concrete OpenCode
+  identity through `legacyMissingPluginId` so identity remains non-null.
 - **Reason:** Peers released before parallel-plugin attribution may omit the
-  field from responses or requests. New peers always carry plugin identity,
-  while the compatibility window still includes older wire payloads.
+  field from responses or requests, and those peers could only target OpenCode.
+  New peers always carry plugin identity.
 - **Cleanup date:** 2027-01-12
 - **Exact cleanup:**
   1. Remove `legacyMissingPluginId` and its shared export.
   2. Remove the `@Default(legacyMissingPluginId)` compatibility defaults from
      `Session`, `CreateSessionRequest`, and `PluginProjectIdRequest`.
-  3. Require plugin identity in JSON from every supported peer and remove the
-     bridge's sentinel-to-active-plugin normalization.
+  3. Require plugin identity in JSON from every supported peer.
   4. Regenerate shared code and verify bridge, mobile, and desktop round-trips.
