@@ -498,11 +498,23 @@ or combine new work into the already-merged N migration or schema snapshot.
 - Prefer non-null columns for durable timestamps when a stable migration baseline exists. Backfill existing rows during
   migration instead of introducing a permanent nullable state solely to avoid the backfill.
 
-## Compatibility Debt
+## Backward Compatibility
 
-Temporary wire nullability or fallback behavior added only for old-version interoperability must be recorded in
-`docs/COMPATIBILITY_DEBT.md` with its supported scenario, a dated removal target, and exact cleanup steps. Do not let
-compatibility branches become undocumented permanent behavior.
+Preserve backwards compatibility unless the user explicitly directs otherwise. Prefer an honest transport-model
+`@Default` when a missing legacy value has one concrete meaning, then keep repository, service, handler, cubit, and
+connector parameters required and non-null. Use nullable wire state only when absence is meaningful or no honest
+fallback exists, and normalize it immediately at the transport/repository boundary.
+
+Every default, nullable field, fallback branch, alias, dual-read/write path, or repair path that exists only for
+old-version interoperability must have a comment immediately above it in this exact form:
+
+```dart
+// COMPATIBILITY YYYY-MM-DD (vX.Y.Z): <legacy scenario and rationale>. <Exact mechanical cleanup>.
+```
+
+Use the introduction date and version currently declared by the app; do not query releases for a newer version.
+Ordinary domain defaults do not receive this marker. A direct user cleanup command is sufficient authorization to
+remove old marked compatibility code.
 
 ## Git
 

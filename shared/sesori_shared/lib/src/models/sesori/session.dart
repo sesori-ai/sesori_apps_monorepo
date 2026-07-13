@@ -35,6 +35,7 @@ sealed class SessionListRequest with _$SessionListRequest {
 sealed class Session with _$Session {
   const factory Session({
     required String id,
+    // COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove default; require pluginId.
     @Default(legacyMissingPluginId) String pluginId,
     required String projectID,
     required String directory,

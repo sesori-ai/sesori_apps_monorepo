@@ -25,6 +25,7 @@ sealed class Project with _$Project {
     // (which don't send a path) still decode; clients fall back to [id] when
     // empty.
     @Default("") String path,
+    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit time. Require it and remove bridge/client fallbacks.
     required ProjectTime? time,
     // Whether this project has at least one non-archived session with unseen
     // activity. Backend-derived from its sessions. Defaults to false so older
