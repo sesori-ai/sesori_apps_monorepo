@@ -821,6 +821,66 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 300));
       verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId")));
     });
+
+    test("a signal queued behind an in-flight refresh survives a pause/resume cycle", () async {
+      final lifecycle = FakeLifecycleSource();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+        eventRefreshMinInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      reset(mockSessionService);
+      _stubLoadApis(mockSessionService, sessionId: sessionId);
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
+
+      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
+      when(
+        () => mockSessionService.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) => messagesCompleter.future);
+
+      // Refresh A starts and stays in flight; a second signal queues.
+      mockConnectionService.emitDataMayBeStale();
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+
+      // Pause cancels the cooldown (the only armed trailing trigger); the
+      // resume bypass finds A still in flight and cannot start a refresh.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      // When A finally completes, the queued signal must still produce the
+      // trailing refresh instead of being stranded.
+      when(
+        () => mockSessionService.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
+      );
+      messagesCompleter.complete(
+        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+    });
   });
 }
 

@@ -166,12 +166,33 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   void _silentRefresh() {
     if (state is! SessionDetailLoaded) return;
-    if (_activeRefresh != null) return;
+    final active = _activeRefresh;
+    if (active != null) {
+      // This call raced an in-flight refresh. If a staleness signal is
+      // queued with no cooldown armed to drain it (the pause path cancels
+      // the timer), chain the trailing refresh onto the in-flight completion
+      // so the signal is never stranded.
+      if (_eventRefreshQueued && _eventRefreshCooldown == null) {
+        _drainQueueWhenRefreshCompletes(active);
+      }
+      return;
+    }
     // Any refresh that starts now will fetch a snapshot covering every
     // staleness signal seen so far, so it consumes the queued flag. Signals
     // that arrive while this refresh is in flight re-queue behind it.
     _eventRefreshQueued = false;
     _activeRefresh = _doSilentRefresh().whenComplete(() => _activeRefresh = null);
+  }
+
+  void _drainQueueWhenRefreshCompletes(Future<void> activeRefresh) {
+    unawaited(
+      activeRefresh.whenComplete(() {
+        // A newer signal may have armed its own cooldown in the meantime;
+        // that timer owns the queue.
+        if (isClosed || _eventRefreshCooldown != null) return;
+        _onEventRefreshCooldownElapsed();
+      }),
+    );
   }
 
   /// Coalesces event-driven staleness signals (sessions.updated,
@@ -223,14 +244,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (active != null) {
       // The minimum interval has already elapsed, so run the queued refresh
       // as soon as the in-flight one completes instead of waiting another
-      // full window — unless a newer signal armed its own cooldown while we
-      // waited, in which case that timer owns the queue.
-      unawaited(
-        active.whenComplete(() {
-          if (isClosed || _eventRefreshCooldown != null) return;
-          _onEventRefreshCooldownElapsed();
-        }),
-      );
+      // full window.
+      _drainQueueWhenRefreshCompletes(active);
       return;
     }
     _silentRefresh();
