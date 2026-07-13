@@ -41,7 +41,7 @@ abstract final class PregoColorPrimitives {
   static const Color gray50 = Color(0xFFFCFCFC);
 
   /// Figma: Gray/100
-  static const Color gray100 = Color(0xFFF5F5F5);
+  static const Color gray100 = Color(0xFFFAFAFA);
 
   /// Figma: Gray/200
   static const Color gray200 = Color(0xFFF0F0F0);
@@ -59,28 +59,28 @@ abstract final class PregoColorPrimitives {
   static const Color gray425 = Color(0xFF999999);
 
   /// Figma: Gray/450
-  static const Color gray450 = Color(0xFF8C8C8C);
+  static const Color gray450 = Color(0xFF5C5C5C);
 
   /// Figma: Gray/525
-  static const Color gray525 = Color(0xFF6E6E6E);
+  static const Color gray525 = Color(0xFF474747);
 
   /// Figma: Gray/500
   static const Color gray500 = Color(0xFF3D3D3D);
 
   /// Figma: Gray/600
-  static const Color gray600 = Color(0xFF2D2D2D);
+  static const Color gray600 = Color(0xFF333333);
 
   /// Figma: Gray/700
-  static const Color gray700 = Color(0xFF242424);
+  static const Color gray700 = Color(0xFF2C2C2C);
 
   /// Figma: Gray/800
-  static const Color gray800 = Color(0xFF242424);
+  static const Color gray800 = Color(0xFF252525);
 
   /// Figma: Gray/900
-  static const Color gray900 = Color(0xFF181818);
+  static const Color gray900 = Color(0xFF1E1E1E);
 
   /// Figma: Gray/950
-  static const Color gray950 = Color(0xFF0C0C0C);
+  static const Color gray950 = Color(0xFF141414);
 
   // ===========================================================================
   // Alpha White

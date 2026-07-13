@@ -10,7 +10,6 @@
 /// Do not use primitives directly in widgets — use semantic tokens via
 /// `context.prego.spacing.*` instead.
 abstract final class PregoSpacingPrimitives {
-
   /// 0px - Figma: Spacing/0 (0px)
   static const double spacing0 = 0;
 

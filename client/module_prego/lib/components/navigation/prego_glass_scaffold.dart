@@ -77,7 +77,10 @@ class PregoGlassScaffold extends StatefulWidget {
     this.extendBodyBehindBar = true,
     this.reserveBarSpace = true,
     this.scrollable = true,
-  }) : assert(scrollable || onRefresh == null, "onRefresh requires scrollable to be true (RefreshIndicator needs a draggable page)");
+  }) : assert(
+         scrollable || onRefresh == null,
+         "onRefresh requires scrollable to be true (RefreshIndicator needs a draggable page)",
+       );
 
   /// Primary title — shown large below the bar and, once collapsed, inline.
   final String title;
@@ -137,7 +140,7 @@ class PregoGlassScaffold extends StatefulWidget {
   /// When set, the scroll view is wrapped in a [RefreshIndicator].
   final Future<void> Function()? onRefresh;
 
-  /// Page background painted behind the glass. Defaults to `bg-primary`.
+  /// Page background painted behind the glass. Defaults to `bg-surface 1`.
   final Color? backgroundColor;
 
   /// Whether the body scrolls behind the bar. Defaults to `true`. Set `false`
@@ -190,7 +193,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = widget.backgroundColor ?? context.prego.colors.bgPrimary;
+    final backgroundColor = widget.backgroundColor ?? context.prego.colors.bgSurface1;
     final topPad = MediaQuery.paddingOf(context).top;
     final extendBehind = widget.extendBodyBehindBar;
     final inline = widget.inlineTitle;

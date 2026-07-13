@@ -38,12 +38,13 @@ import "dart:io";
 
 final _projectRoot = _findProjectRoot();
 final _jsonPath = "$_projectRoot/scripts/figma_tokens/figma_tokens.json";
-final _primitivesPath = "$_projectRoot/lib/theme/primitives/prego_color_primitives.g.dart";
-final _colorsPath = "$_projectRoot/lib/theme/primitives/prego_colors.g.dart";
-final _spacingPrimitivesPath = "$_projectRoot/lib/theme/primitives/prego_spacing_primitives.g.dart";
-final _spacingPath = "$_projectRoot/lib/theme/primitives/prego_spacing.g.dart";
-final _radiusPath = "$_projectRoot/lib/theme/primitives/prego_radius.g.dart";
-final _widthsPath = "$_projectRoot/lib/theme/primitives/prego_widths.g.dart";
+final _outputDir = "$_projectRoot/lib/theme/primitives";
+final _primitivesPath = "$_outputDir/prego_color_primitives.g.dart";
+final _colorsPath = "$_outputDir/prego_colors.g.dart";
+final _spacingPrimitivesPath = "$_outputDir/prego_spacing_primitives.g.dart";
+final _spacingPath = "$_outputDir/prego_spacing.g.dart";
+final _radiusPath = "$_outputDir/prego_radius.g.dart";
+final _widthsPath = "$_outputDir/prego_widths.g.dart";
 
 // =============================================================================
 // Naming exceptions — Figma semantic names that don't follow pure kebab→camel
@@ -463,6 +464,19 @@ void _runGenerate() {
     _generateWidthsFile(widthTokens, spacingPrimitiveDartNames);
     print("Generated $_widthsPath");
   }
+
+  _formatGeneratedFiles();
+}
+
+/// Formats the emitted files so a regenerate never shows up as whitespace-only
+/// churn against the formatted files already in the repo.
+void _formatGeneratedFiles() {
+  final result = Process.runSync("dart", ["format", _outputDir]);
+  if (result.exitCode != 0) {
+    print("Warning: `dart format $_outputDir` failed: ${result.stderr}");
+    return;
+  }
+  print("Formatted $_outputDir");
 }
 
 // =============================================================================
@@ -655,7 +669,7 @@ void _writeSemanticColorClass(
   buf.writeln("/// Usage via `context.prego`:");
   buf.writeln("/// ```dart");
   buf.writeln("/// Container(");
-  buf.writeln("///   color: context.prego.colors.bgPrimary,");
+  buf.writeln("///   color: context.prego.colors.bgSurface1,");
   buf.writeln("///   child: Text(");
   buf.writeln("///     'Hello',");
   buf.writeln("///     style: TextStyle(color: context.prego.colors.textPrimary),");
