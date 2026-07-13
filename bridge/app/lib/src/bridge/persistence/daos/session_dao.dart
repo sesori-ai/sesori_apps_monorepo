@@ -42,7 +42,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     await into(deletedSessionsTable).insert(
       DeletedSessionsTableCompanion.insert(
         ownerIdentity: const Value(_ownerIdentity),
-        sessionId: sessionId,
+        backendSessionId: sessionId,
         pluginId: pluginId,
         deletedAt: deletedAt,
       ),
@@ -56,13 +56,14 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     final query = select(deletedSessionsTable)
       ..where((t) => t.ownerIdentity.equals(_ownerIdentity) & t.pluginId.equals(pluginId));
     final rows = await query.get();
-    return {for (final row in rows) row.sessionId};
+    return {for (final row in rows) row.backendSessionId};
   }
 
   Future<bool> isSessionTombstoned({required String sessionId, required String pluginId}) async {
     final query = select(deletedSessionsTable)
       ..where(
-        (t) => t.ownerIdentity.equals(_ownerIdentity) & t.pluginId.equals(pluginId) & t.sessionId.equals(sessionId),
+        (t) =>
+            t.ownerIdentity.equals(_ownerIdentity) & t.pluginId.equals(pluginId) & t.backendSessionId.equals(sessionId),
       );
     return await query.getSingleOrNull() != null;
   }
@@ -87,10 +88,21 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required AgentModel? lastAgentModel,
     required String pluginId,
   }) async {
+    final project = await (select(
+      projectsTable,
+    )..where((table) => table.projectId.equals(projectId))).getSingleOrNull();
+    if (project == null) {
+      throw StateError("Cannot insert session for unknown project $projectId");
+    }
+    final directory = worktreePath ?? project.path;
     await into(sessionTable).insert(
       SessionTableCompanion(
         sessionId: Value(sessionId),
+        ownerIdentity: const Value(_ownerIdentity),
+        backendSessionId: Value(sessionId),
         projectId: Value(projectId),
+        parentSessionId: const Value(null),
+        directory: Value(directory),
         worktreePath: Value(worktreePath),
         branchName: Value(branchName),
         isDedicated: Value(isDedicated),
@@ -100,6 +112,8 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         lastAgent: Value(lastAgent),
         lastAgentModel: Value(lastAgentModel),
         createdAt: Value(createdAt),
+        updatedAt: Value(createdAt),
+        projectionUpdatedAt: Value(createdAt),
         pluginId: Value(pluginId),
       ),
       onConflict: DoUpdate(
@@ -112,6 +126,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
           // not count toward the original project's aggregate. The canonical
           // project row is inserted in the same transaction, so the FK holds.
           projectId: Value(projectId),
+          directory: Value(directory),
           // Only the worktree/agent state the create flow owns — never clobber
           // created_at or the unseen timestamps that a placeholder may have set.
           worktreePath: Value(worktreePath),
@@ -142,6 +157,71 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   Future<SessionDto?> getSession({required String sessionId}) async {
     return (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
+  }
+
+  Future<SessionDto?> getSessionByBinding({
+    required String ownerIdentity,
+    required String pluginId,
+    required String backendSessionId,
+  }) {
+    return (select(sessionTable)..where(
+          (table) =>
+              table.ownerIdentity.equals(ownerIdentity) &
+              table.pluginId.equals(pluginId) &
+              table.backendSessionId.equals(backendSessionId),
+        ))
+        .getSingleOrNull();
+  }
+
+  Future<List<SessionDto>> getRootCatalogSessions({
+    required String ownerIdentity,
+    required String projectId,
+    required int offset,
+    required int limit,
+  }) {
+    return (select(sessionTable)
+          ..where(
+            (table) =>
+                table.ownerIdentity.equals(ownerIdentity) &
+                table.projectId.equals(projectId) &
+                table.parentSessionId.isNull(),
+          )
+          ..orderBy([
+            (table) => OrderingTerm.desc(table.updatedAt),
+            (table) => OrderingTerm.desc(table.sessionId),
+          ])
+          ..limit(limit, offset: offset))
+        .get();
+  }
+
+  Future<List<SessionDto>> getChildCatalogSessions({
+    required String ownerIdentity,
+    required String parentSessionId,
+  }) {
+    return (select(sessionTable)
+          ..where(
+            (table) => table.ownerIdentity.equals(ownerIdentity) & table.parentSessionId.equals(parentSessionId),
+          )
+          ..orderBy([
+            (table) => OrderingTerm.desc(table.updatedAt),
+            (table) => OrderingTerm.desc(table.sessionId),
+          ]))
+        .get();
+  }
+
+  Future<List<SessionDto>> getArchivedCatalogSessions({
+    required String ownerIdentity,
+    required int offset,
+    required int limit,
+  }) {
+    return (select(sessionTable)
+          ..where((table) => table.ownerIdentity.equals(ownerIdentity) & table.archivedAt.isNotNull())
+          ..orderBy([
+            (table) => OrderingTerm.desc(table.updatedAt),
+            (table) => OrderingTerm.desc(table.sessionId),
+          ])
+          ..limit(limit, offset: offset))
+        .get();
   }
 
   Future<void> setArchived({required String sessionId, required int archivedAt}) async {
@@ -312,6 +392,13 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String pluginId,
   }) async {
     if (sessions.isEmpty) return;
+    final projectIds = {for (final session in sessions) session.projectId};
+    final projects = await (select(projectsTable)..where((table) => table.projectId.isIn(projectIds))).get();
+    final pathByProjectId = {for (final project in projects) project.projectId: project.path};
+    final unknownProjectIds = projectIds.difference(pathByProjectId.keys.toSet());
+    if (unknownProjectIds.isNotEmpty) {
+      throw StateError("Cannot insert sessions for unknown projects $unknownProjectIds");
+    }
     await batch((b) {
       b.insertAll(
         sessionTable,
@@ -319,11 +406,17 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
           for (final s in sessions)
             SessionTableCompanion(
               sessionId: Value(s.sessionId),
+              ownerIdentity: const Value(_ownerIdentity),
+              backendSessionId: Value(s.sessionId),
               projectId: Value(s.projectId),
+              parentSessionId: const Value(null),
+              directory: Value(pathByProjectId[s.projectId]!),
               // isDedicated hardcoded false — placeholders are non-dedicated by default.
               // Callers (plugin-sourced sessions) never have meaningful worktree state.
               isDedicated: const Value(false),
               createdAt: Value(s.createdAt),
+              updatedAt: Value(s.createdAt),
+              projectionUpdatedAt: Value(s.createdAt),
               archivedAt: Value(s.archivedAt),
               pluginId: Value(pluginId),
               // worktreePath, branchName, baseBranch, baseCommit intentionally

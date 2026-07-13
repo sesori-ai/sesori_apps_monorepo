@@ -3,7 +3,6 @@ import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:sqlite3/sqlite3.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_database.dart";
@@ -95,9 +94,13 @@ void main() {
             SessionTableCompanion.insert(
               pluginId: "opencode",
               sessionId: "ses-defaults",
+              backendSessionId: "ses-defaults",
               projectId: "proj-1",
+              directory: "proj-1",
               isDedicated: false,
               createdAt: 1234,
+              updatedAt: 1234,
+              projectionUpdatedAt: 1234,
               lastAgent: const Value("opencode"),
               lastAgentModel: const Value(
                 AgentModel(
@@ -252,14 +255,16 @@ void main() {
     });
 
     test("tombstone reads are scoped to the current owner", () async {
-      await db.into(db.deletedSessionsTable).insert(
-        DeletedSessionsTableCompanion.insert(
-          ownerIdentity: const Value("other-owner"),
-          sessionId: "shared-id",
-          pluginId: "codex",
-          deletedAt: 1,
-        ),
-      );
+      await db
+          .into(db.deletedSessionsTable)
+          .insert(
+            DeletedSessionsTableCompanion.insert(
+              ownerIdentity: const Value("other-owner"),
+              backendSessionId: "shared-id",
+              pluginId: "codex",
+              deletedAt: 1,
+            ),
+          );
 
       expect(await dao.isSessionTombstoned(sessionId: "shared-id", pluginId: "codex"), isFalse);
       expect(await dao.getTombstonedSessionIds(pluginId: "codex"), isEmpty);
@@ -708,7 +713,7 @@ void main() {
     });
 
     test(
-      "insertSessionsIfMissing throws SqliteException with FK violation when projectId does not exist",
+      "insertSessionsIfMissing rejects an unknown project",
       () async {
         // Fresh in-memory AppDatabase at v5 with FK enforced.
         // projects_table is empty — no row for "nonexistent".
@@ -726,7 +731,7 @@ void main() {
               ),
             ],
           ),
-          throwsA(isA<SqliteException>()),
+          throwsA(isA<StateError>()),
         );
       },
     );
@@ -827,7 +832,7 @@ void main() {
     });
 
     test(
-      "insertSession throws SqliteException with FK violation when projectId does not exist",
+      "insertSession rejects an unknown project",
       () async {
         // Same FK enforcement proof but via the existing insertSession path.
         // Proves the v5 FK constraint catches BOTH session insert paths.
@@ -846,7 +851,7 @@ void main() {
             lastAgent: null,
             lastAgentModel: null,
           ),
-          throwsA(isA<SqliteException>()),
+          throwsA(isA<StateError>()),
         );
       },
     );

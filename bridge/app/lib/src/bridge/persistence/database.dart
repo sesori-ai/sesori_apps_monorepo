@@ -5,7 +5,9 @@ import "package:drift/native.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/database/daos/catalog_hydrations_dao.dart";
 import "../api/database/daos/pull_request_dao.dart";
+import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/pull_requests_table.dart";
 import "daos/projects_dao.dart";
 import "daos/session_dao.dart";
@@ -20,14 +22,14 @@ part "database.g.dart";
 ///
 /// New tables and DAOs should be registered here as the persistence layer grows.
 @DriftDatabase(
-  tables: [ProjectsTable, SessionTable, DeletedSessionsTable, PullRequestsTable],
-  daos: [ProjectsDao, SessionDao, PullRequestDao],
+  tables: [ProjectsTable, SessionTable, DeletedSessionsTable, PullRequestsTable, CatalogHydrationsTable],
+  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -179,6 +181,72 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.title);
         // Tombstones stop backends without deletion from resurrecting sessions.
         await m.createTable(schema.deletedSessionsTable);
+      },
+      from10To11: (m, schema) async {
+        await m.alterTable(
+          TableMigration(
+            schema.projectsTable,
+            newColumns: [
+              schema.projectsTable.ownerIdentity,
+              schema.projectsTable.catalogName,
+              schema.projectsTable.projectionUpdatedAt,
+            ],
+            columnTransformer: {
+              schema.projectsTable.ownerIdentity: const Constant<String>("local"),
+              schema.projectsTable.projectionUpdatedAt: const CustomExpression<int>("updated_at"),
+            },
+          ),
+        );
+
+        const updatedAt = CustomExpression<int>("MAX(COALESCE(last_activity_at, created_at), created_at)");
+        await m.alterTable(
+          TableMigration(
+            schema.sessionsTable,
+            newColumns: [
+              schema.sessionsTable.ownerIdentity,
+              schema.sessionsTable.backendSessionId,
+              schema.sessionsTable.parentSessionId,
+              schema.sessionsTable.directory,
+              schema.sessionsTable.updatedAt,
+              schema.sessionsTable.projectionUpdatedAt,
+              schema.sessionsTable.catalogTitle,
+              schema.sessionsTable.summaryAdditions,
+              schema.sessionsTable.summaryDeletions,
+              schema.sessionsTable.summaryFiles,
+            ],
+            columnTransformer: {
+              schema.sessionsTable.ownerIdentity: const Constant<String>("local"),
+              schema.sessionsTable.backendSessionId: const CustomExpression<String>("session_id"),
+              schema.sessionsTable.directory: const CustomExpression<String>(
+                "COALESCE(worktree_path, (SELECT path FROM projects_table WHERE project_id = sessions_table.project_id))",
+              ),
+              schema.sessionsTable.updatedAt: updatedAt,
+              schema.sessionsTable.projectionUpdatedAt: updatedAt,
+            },
+          ),
+        );
+
+        await m.alterTable(
+          TableMigration(
+            schema.deletedSessionsTable,
+            newColumns: [schema.deletedSessionsTable.backendSessionId],
+            columnTransformer: {
+              schema.deletedSessionsTable.backendSessionId: const CustomExpression<String>("session_id"),
+            },
+          ),
+        );
+
+        await m.createTable(schema.catalogHydrationsTable);
+        await m.createIndex(schema.idxProjectsOwnerPath);
+        await m.createIndex(schema.idxSessionsOwnerPluginBackend);
+        await m.createIndex(schema.idxSessionsRoots);
+        await m.createIndex(schema.idxSessionsChildren);
+        await m.createIndex(schema.idxSessionsArchive);
+
+        final violations = await m.database.customSelect("PRAGMA foreign_key_check").get();
+        if (violations.isNotEmpty) {
+          throw StateError("Migration v10->v11 left foreign key violations: ${violations.map((row) => row.data)}");
+        }
       },
     ),
     beforeOpen: (details) async {

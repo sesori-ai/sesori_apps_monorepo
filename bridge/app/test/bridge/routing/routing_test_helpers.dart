@@ -442,7 +442,10 @@ class FakeSessionDao {
   }) async {
     _sessions[sessionId] = SessionDto(
       sessionId: sessionId,
+      backendSessionId: sessionId,
       projectId: projectId,
+      parentSessionId: null,
+      directory: worktreePath ?? projectId,
       worktreePath: worktreePath,
       branchName: branchName,
       isDedicated: isDedicated,
@@ -452,11 +455,17 @@ class FakeSessionDao {
       lastAgent: lastAgent,
       lastAgentModel: lastAgentModel,
       createdAt: createdAt,
+      updatedAt: createdAt,
+      projectionUpdatedAt: createdAt,
       lastActivityAt: null,
       lastSeenAt: null,
       lastUserMessageAt: null,
       pluginId: pluginId,
       title: null,
+      catalogTitle: null,
+      summaryAdditions: null,
+      summaryDeletions: null,
+      summaryFiles: null,
     );
   }
 

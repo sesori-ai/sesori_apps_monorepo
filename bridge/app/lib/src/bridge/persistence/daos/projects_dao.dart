@@ -28,6 +28,23 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     return (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
   }
 
+  Future<List<ProjectDto>> getCatalogProjects({required String ownerIdentity}) {
+    return (select(projectsTable)
+          ..where((table) => table.ownerIdentity.equals(ownerIdentity))
+          ..orderBy([
+            (table) => OrderingTerm.desc(table.updatedAt),
+            (table) => OrderingTerm.desc(table.projectId),
+          ]))
+        .get();
+  }
+
+  Future<List<ProjectDto>> getProjectsByOwnerAndPath({required String ownerIdentity, required String path}) {
+    return (select(projectsTable)..where(
+          (table) => table.ownerIdentity.equals(ownerIdentity) & table.path.equals(path),
+        ))
+        .get();
+  }
+
   /// The live directory stored for [projectId], or null when the bridge has no
   /// recorded project with that id. `path` is non-nullable in the schema, so a
   /// present row is authoritative — never infer a directory from the id.
@@ -54,12 +71,14 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
         path: path,
         createdAt: Value(createdAt),
         updatedAt: Value(updatedAt),
+        projectionUpdatedAt: updatedAt,
       ),
       onConflict: DoUpdate(
         (old) => ProjectsTableCompanion(
           path: Value(path),
           createdAt: Value(createdAt),
           updatedAt: Value(updatedAt),
+          projectionUpdatedAt: Value(updatedAt),
         ),
         target: [projectsTable.projectId],
       ),
@@ -71,11 +90,15 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// other fields. Used to persist a rename for a bridge-derived plugin that
   /// has no backend to store the name.
   Future<void> setDisplayName({required String projectId, required String displayName}) async {
+    final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(
       ProjectsTableCompanion.insert(
         projectId: projectId,
         path: projectId,
         displayName: Value(displayName),
+        createdAt: Value(insertedAt),
+        updatedAt: Value(insertedAt),
+        projectionUpdatedAt: insertedAt,
       ),
       onConflict: DoUpdate(
         (old) => ProjectsTableCompanion(displayName: Value(displayName)),
@@ -100,11 +123,15 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// Marks a project as hidden. Creates the row if missing. Uses DoUpdate to
   /// update ONLY the hidden column on conflict, preserving all other fields.
   Future<void> hideProject({required String projectId}) async {
+    final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(
       ProjectsTableCompanion.insert(
         projectId: projectId,
         path: projectId,
         hidden: const Value(true),
+        createdAt: Value(insertedAt),
+        updatedAt: Value(insertedAt),
+        projectionUpdatedAt: insertedAt,
       ),
       onConflict: DoUpdate(
         (old) => const ProjectsTableCompanion(hidden: Value(true)),
@@ -117,11 +144,15 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// Uses DoUpdate to update ONLY the hidden column on conflict, preserving
   /// baseBranch and worktreeCounter on existing rows.
   Future<void> unhideProject({required String projectId}) async {
+    final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(
       ProjectsTableCompanion.insert(
         projectId: projectId,
         path: projectId,
         hidden: const Value(false),
+        createdAt: Value(insertedAt),
+        updatedAt: Value(insertedAt),
+        projectionUpdatedAt: insertedAt,
       ),
       onConflict: DoUpdate(
         (old) => const ProjectsTableCompanion(hidden: Value(false)),
@@ -145,8 +176,16 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
         );
         return newCounter;
       } else {
+        final insertedAt = DateTime.now().millisecondsSinceEpoch;
         await into(projectsTable).insert(
-          ProjectsTableCompanion.insert(projectId: projectId, path: projectId, worktreeCounter: const Value(1)),
+          ProjectsTableCompanion.insert(
+            projectId: projectId,
+            path: projectId,
+            worktreeCounter: const Value(1),
+            createdAt: Value(insertedAt),
+            updatedAt: Value(insertedAt),
+            projectionUpdatedAt: insertedAt,
+          ),
         );
         return 1;
       }
@@ -164,8 +203,16 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// If no row exists, inserts one with the given [baseBranch].
   /// If a row exists, updates only [baseBranch], preserving [hidden] and [worktreeCounter].
   Future<void> setBaseBranch({required String projectId, required String? baseBranch}) async {
+    final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, baseBranch: Value(baseBranch)),
+      ProjectsTableCompanion.insert(
+        projectId: projectId,
+        path: projectId,
+        baseBranch: Value(baseBranch),
+        createdAt: Value(insertedAt),
+        updatedAt: Value(insertedAt),
+        projectionUpdatedAt: insertedAt,
+      ),
       onConflict: DoUpdate(
         (old) => ProjectsTableCompanion(baseBranch: Value(baseBranch)),
         target: [projectsTable.projectId],
@@ -184,12 +231,19 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// Use this to satisfy FK constraints without clobbering user-set state.
   Future<void> insertProjectsIfMissing({required List<String> projectIds}) async {
     if (projectIds.isEmpty) return;
+    final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await batch((b) {
       b.insertAll(
         projectsTable,
         projectIds
             .map(
-              (id) => ProjectsTableCompanion.insert(projectId: id, path: id),
+              (id) => ProjectsTableCompanion.insert(
+                projectId: id,
+                path: id,
+                createdAt: Value(insertedAt),
+                updatedAt: Value(insertedAt),
+                projectionUpdatedAt: insertedAt,
+              ),
             )
             .toList(),
         mode: InsertMode.insertOrIgnore,
@@ -200,8 +254,15 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// Inserts one project with its explicit [path] when it does not exist.
   /// Existing rows are untouched.
   Future<void> insertProjectIfMissing({required String projectId, required String path}) async {
+    final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(projectId: projectId, path: path),
+      ProjectsTableCompanion.insert(
+        projectId: projectId,
+        path: path,
+        createdAt: Value(insertedAt),
+        updatedAt: Value(insertedAt),
+        projectionUpdatedAt: insertedAt,
+      ),
       mode: InsertMode.insertOrIgnore,
     );
   }
@@ -210,19 +271,23 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     required Map<String, ({String path, int? createdAt, int? updatedAt})> projects,
   }) async {
     if (projects.isEmpty) return;
+    final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await batch((b) {
       b.insertAll(
         projectsTable,
-        projects.entries
-            .map(
-              (entry) => ProjectsTableCompanion.insert(
-                projectId: entry.key,
-                path: entry.value.path,
-                createdAt: Value.absentIfNull(entry.value.createdAt),
-                updatedAt: Value.absentIfNull(entry.value.updatedAt),
-              ),
-            )
-            .toList(),
+        projects.entries.map(
+          (entry) {
+            final createdAt = entry.value.createdAt ?? insertedAt;
+            final updatedAt = entry.value.updatedAt ?? insertedAt;
+            return ProjectsTableCompanion.insert(
+              projectId: entry.key,
+              path: entry.value.path,
+              createdAt: Value(createdAt),
+              updatedAt: Value(updatedAt),
+              projectionUpdatedAt: updatedAt,
+            );
+          },
+        ).toList(),
         mode: InsertMode.insertOrIgnore,
       );
     });
@@ -243,6 +308,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
             path: e.value.path,
             createdAt: Value(e.value.createdAt),
             updatedAt: Value(e.value.updatedAt),
+            projectionUpdatedAt: e.value.updatedAt,
           );
         }).toList(),
         mode: InsertMode.insertOrIgnore,
@@ -257,11 +323,13 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
         path: projectId,
         createdAt: Value(createdAt),
         updatedAt: Value(updatedAt),
+        projectionUpdatedAt: updatedAt,
       ),
       onConflict: DoUpdate(
         (old) => ProjectsTableCompanion(
           createdAt: Value(createdAt),
           updatedAt: Value(updatedAt),
+          projectionUpdatedAt: Value(updatedAt),
         ),
         target: [projectsTable.projectId],
       ),

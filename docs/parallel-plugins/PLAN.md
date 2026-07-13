@@ -8,10 +8,10 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 1B - additive compatibility contracts
-- **Next up:** Stage 2 - catalog schema and indexed DAO queries
+- **Last completed stage:** Stage 2 - catalog schema and indexed DAO queries
+- **Next up:** Stage 3 - catalog write-through and stable session binding
 - **Runtime default:** one selected plugin until Stage 7
-- **Catalog projection version:** not assigned until the schema migration lands
+- **Catalog projection version:** 1
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -599,7 +599,7 @@ selection.
 | ☑ | 0 | Execution plan approved | `aristotle-plan-review`; docs consistency |
 | ☑ | 1A | Pre-change baseline harness | AOT baseline JSON; app/Codex analysis |
 | ☑ | 1B | Additive compatibility contracts | Shared/plugin/client round trips |
-| ☐ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
+| ☑ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
 | ☐ | 3 | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☐ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
 | ☐ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |

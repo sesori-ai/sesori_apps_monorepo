@@ -30,6 +30,7 @@ void main() {
       displayName: displayName,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      projectionUpdatedAt: updatedAt,
     );
   }
 
