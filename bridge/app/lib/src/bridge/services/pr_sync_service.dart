@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:clock/clock.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../repositories/models/stored_session.dart";
@@ -11,6 +12,7 @@ class PrSyncService {
   final PrSourceRepository _prSource;
   final PullRequestRepository _pullRequestRepository;
   final SessionRepository _sessionRepository;
+  final Clock _clock;
   final Duration _debounceWindow;
   final StreamController<String> _prChangesController = StreamController<String>.broadcast();
 
@@ -18,54 +20,84 @@ class PrSyncService {
       <String, ({bool value, DateTime cachedAt})>{};
   final Map<String, DateTime> _lastRefreshTimes = <String, DateTime>{};
   final Set<String> _activeRefreshes = <String>{};
+  ({bool capable, DateTime checkedAt})? _githubCliCapabilityCache;
+  Future<bool>? _githubCliCapabilityCheck;
 
   static const _remoteCacheTtl = Duration(minutes: 10);
+  static const _githubCliCapabilityCacheTtl = Duration(seconds: 30);
 
   PrSyncService({
     required PrSourceRepository prSource,
     required PullRequestRepository pullRequestRepository,
     required SessionRepository sessionRepository,
+    required Clock clock,
     Duration debounceWindow = const Duration(seconds: 30),
   }) : _prSource = prSource,
        _pullRequestRepository = pullRequestRepository,
        _sessionRepository = sessionRepository,
+       _clock = clock,
        _debounceWindow = debounceWindow;
 
   Stream<String> get prChanges => _prChangesController.stream;
 
   Future<void> triggerRefresh({required String projectId, required String projectPath}) async {
-    final ghAvailable = await _prSource.isGithubCliAvailable();
-    if (!ghAvailable) {
-      return;
-    }
-
-    final ghAuthenticated = await _prSource.isGithubCliAuthenticated();
-    if (!ghAuthenticated) {
-      return;
-    }
-
-    final cached = _hasGitHubRemoteCache[projectPath];
-    final cacheCheckTime = DateTime.now();
-    if (cached == null || cacheCheckTime.difference(cached.cachedAt) > _remoteCacheTtl) {
-      final hasRemote = await _prSource.hasGitHubRemote(projectPath: projectPath);
-      _hasGitHubRemoteCache[projectPath] = (value: hasRemote, cachedAt: cacheCheckTime);
-    }
-    if (_hasGitHubRemoteCache[projectPath] case final cachedRemote? when !cachedRemote.value) {
-      return;
-    }
-
     if (_activeRefreshes.contains(projectId)) {
       return;
     }
 
-    final now = DateTime.now();
     final lastRefreshAt = _lastRefreshTimes[projectId];
-    if (lastRefreshAt != null && now.difference(lastRefreshAt) < _debounceWindow) {
+    if (lastRefreshAt != null && _clock.now().difference(lastRefreshAt) < _debounceWindow) {
       return;
     }
 
+    // Claim the project before the first async gap so concurrent requests for
+    // one project cannot start duplicate preflight or refresh work.
     _activeRefreshes.add(projectId);
-    await _refresh(projectId: projectId, projectPath: projectPath);
+    try {
+      if (!await _hasGithubCliCapability()) {
+        return;
+      }
+
+      final cached = _hasGitHubRemoteCache[projectPath];
+      if (cached == null || _clock.now().difference(cached.cachedAt) > _remoteCacheTtl) {
+        final hasRemote = await _prSource.hasGitHubRemote(projectPath: projectPath);
+        _hasGitHubRemoteCache[projectPath] = (value: hasRemote, cachedAt: _clock.now());
+      }
+      if (_hasGitHubRemoteCache[projectPath] case final cachedRemote? when !cachedRemote.value) {
+        return;
+      }
+
+      await _refresh(projectId: projectId, projectPath: projectPath);
+    } finally {
+      _activeRefreshes.remove(projectId);
+    }
+  }
+
+  Future<bool> _hasGithubCliCapability() async {
+    final inFlight = _githubCliCapabilityCheck;
+    if (inFlight != null) return inFlight;
+
+    final cached = _githubCliCapabilityCache;
+    if (cached != null && _clock.now().difference(cached.checkedAt) < _githubCliCapabilityCacheTtl) {
+      return cached.capable;
+    }
+
+    final check = _checkGithubCliCapability();
+    _githubCliCapabilityCheck = check;
+    try {
+      return await check;
+    } finally {
+      if (identical(_githubCliCapabilityCheck, check)) {
+        _githubCliCapabilityCheck = null;
+      }
+    }
+  }
+
+  Future<bool> _checkGithubCliCapability() async {
+    final available = await _prSource.isGithubCliAvailable();
+    final capable = available && await _prSource.isGithubCliAuthenticated();
+    _githubCliCapabilityCache = (capable: capable, checkedAt: _clock.now());
+    return capable;
   }
 
   Future<void> _refresh({required String projectId, required String projectPath}) async {
@@ -79,7 +111,7 @@ class PrSyncService {
       final sessionsByBranch = _indexSessionsByBranch(sessions: storedSessions);
 
       var hasChanges = false;
-      final nowEpochMs = DateTime.now().millisecondsSinceEpoch;
+      final nowEpochMs = _clock.now().millisecondsSinceEpoch;
 
       final matchedOpenPrs = openPrs
           .where((pr) => !pr.isCrossRepository && sessionsByBranch.containsKey(pr.headRefName))
@@ -141,11 +173,9 @@ class PrSyncService {
         _prChangesController.add(projectId);
       }
 
-      _lastRefreshTimes[projectId] = DateTime.now();
+      _lastRefreshTimes[projectId] = _clock.now();
     } catch (e, st) {
       Log.e("[PrSync] refresh failed for $projectId: $e\n$st");
-    } finally {
-      _activeRefreshes.remove(projectId);
     }
   }
 

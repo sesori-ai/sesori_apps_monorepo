@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:clock/clock.dart";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
@@ -621,6 +622,7 @@ class FakePrSyncService extends PrSyncService {
          prSource: prSource ?? _AlwaysReadyPrSource(),
          pullRequestRepository: pullRequestRepository ?? _NoopPullRequestRepository(),
          sessionRepository: sessionRepository ?? _NoopSessionRepository(),
+         clock: const Clock(),
        );
 
   @override
