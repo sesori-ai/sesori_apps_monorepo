@@ -270,7 +270,7 @@ void main() {
 
     test("GET /projects returns project list as JSON", () async {
       plugin.projectsResult = [
-        const PluginProject(id: "p1", name: "My Project"),
+        const PluginProject(id: "p1", directory: "p1", name: "My Project"),
       ];
 
       final client = HttpClient();
@@ -656,7 +656,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<PluginProject> renameProject({required String projectId, required String name}) async =>
-      const PluginProject(id: "");
+      const PluginProject(id: "", directory: "");
 
   @override
   Future<void> deleteSession(String sessionId) async {}
@@ -723,7 +723,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", directory: "");
 
   @override
   Future<bool> healthCheck() async => true;
@@ -824,7 +824,7 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<PluginProject> renameProject({required String projectId, required String name}) async =>
-      const PluginProject(id: "");
+      const PluginProject(id: "", directory: "");
 
   @override
   Future<void> deleteSession(String sessionId) async {}
@@ -891,7 +891,7 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", directory: "");
 
   @override
   Future<bool> healthCheck() async => true;

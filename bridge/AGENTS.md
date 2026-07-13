@@ -154,6 +154,16 @@ Do not persist a backend edge case merely because its schema permits it. A
 sentinel, presence bit, or tri-state column needs evidence that the backend
 actually emits the distinction and that users observe different behavior.
 
+Do not mutate existing rows to repair a hypothetical legacy shape. Name the
+released bridge/plugin path that wrote the bad value and the concrete condition
+that triggered it first; if every shipped plugin wrote the same identity and
+directory, keep existing rows authoritative and seed only genuinely new rows.
+
+Plugin-local collaborators must reuse the plugin identity supplied by their
+composer instead of repeating its string literal. Prefer an injected identity
+when importing the plugin implementation would create a composer/collaborator
+dependency cycle.
+
 ### Orchestrator Owns SSE Decisions
 
 No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams (`plugin.events`, `prSyncService.prChanges`) and decides what to emit to phones. No `emitBridgeEvent()` or similar public methods on the Orchestrator.

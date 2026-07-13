@@ -69,6 +69,7 @@ class ProjectRepository {
         await _projectsDao.insertMissingProjectsWithActivity(
           activities: {
             normalizeProjectDirectory(directory: plugin.launchDirectory): (
+              path: normalizeProjectDirectory(directory: plugin.launchDirectory),
               createdAt: defaultTimestamp,
               updatedAt: defaultTimestamp,
             ),
@@ -101,7 +102,7 @@ class ProjectRepository {
           for (final p in pluginProjects)
             (
               project: p.toSharedProject(
-                path: p.id,
+                path: p.directory,
                 hasUnseenChanges: false,
                 directoryMissing: false,
                 time: null,
@@ -121,7 +122,7 @@ class ProjectRepository {
         );
         final activityById = _mapActivities(storedProjects);
         final projects = visible.map((p) {
-          final path = pathById[p.id] ?? p.id;
+          final path = pathById[p.id] ?? p.directory;
           return p.toSharedProject(
             path: path,
             hasUnseenChanges: unseenById[p.id] ?? false,
@@ -314,6 +315,16 @@ class ProjectRepository {
     switch (_plugin) {
       case final NativeProjectsPluginApi plugin:
         final pluginProjects = await plugin.getProjects();
+        await _projectsDao.insertProjectsWithPathsIfMissing(
+          projects: {
+            for (final project in pluginProjects)
+              project.id: (
+                path: project.directory,
+                createdAt: project.activity?.createdAt,
+                updatedAt: project.activity?.updatedAt,
+              ),
+          },
+        );
         final storedProjects = await _projectsDao.getAllProjects();
         return ProjectActivityReconciliationData(
           evidence: [
@@ -428,6 +439,7 @@ class ProjectRepository {
       activities: {
         for (final item in projects)
           item.project.id: (
+            path: item.project.path,
             createdAt: item.directActivity?.createdAt ?? defaultTimestamp,
             updatedAt: item.directActivity?.updatedAt ?? defaultTimestamp,
           ),

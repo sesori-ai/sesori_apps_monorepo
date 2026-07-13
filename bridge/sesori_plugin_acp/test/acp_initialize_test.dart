@@ -19,7 +19,7 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
         processFactory: (_) async {
           final fake = FakeAcpProcess();
           fakes.add(fake);

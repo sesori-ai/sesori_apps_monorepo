@@ -57,7 +57,7 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
         processFactory: (_) async => fake,
       );
       emitted.clear();
@@ -271,7 +271,7 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
         processFactory: (_) async => fake,
       );
       addTearDown(gated.dispose);
@@ -482,7 +482,7 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
         processFactory: (_) async {
           final next = fakes.removeAt(0);
           spawned.add(next);

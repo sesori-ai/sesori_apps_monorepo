@@ -46,6 +46,8 @@ export "src/models/sesori/notification_data.dart";
 export "src/models/sesori/pending_permission.dart";
 export "src/models/sesori/pending_question.dart";
 export "src/models/sesori/permission_reply.dart";
+export "src/models/sesori/plugin_identity.dart";
+export "src/models/sesori/plugin_project_id_request.dart";
 export "src/models/sesori/pr_enums.dart";
 export "src/models/sesori/project.dart";
 export "src/models/sesori/project_activity_summary.dart";

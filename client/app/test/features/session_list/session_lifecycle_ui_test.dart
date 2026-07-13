@@ -78,6 +78,7 @@ Widget _buildScreenApp({required Widget child}) {
 Session _testSessionWithPullRequest() {
   return const Session(
     id: "session-pr-1",
+    pluginId: "plugin-1",
     projectID: "project-1",
     directory: "/home/user/my-project",
     parentID: null,

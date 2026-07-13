@@ -15,7 +15,9 @@ class AgentRepository {
     : _plugin = plugin,
       _projectsDao = projectsDao;
 
-  Future<Agents> getAgents({required String? projectId}) async {
+  String get pluginId => _plugin.id;
+
+  Future<Agents> getAgents({required String? projectId, required String pluginId}) async {
     // A null/blank projectId comes from the deprecated GET /agent route,
     // which carries no project context. Fall back to the bridge CWD, which
     // plugins treat as the active project. A real id resolves to the

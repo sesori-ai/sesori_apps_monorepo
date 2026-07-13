@@ -48,6 +48,13 @@ shell-owned presentation. `module_app_ui` may depend on `module_core`,
 `module_prego`, `sesori_shared`, and direct Flutter UI dependencies; it must not
 import product shells or `module_desktop_core`.
 
+Plugin identity is non-null inside client APIs, repositories, services, and
+cubits. `legacyMissingPluginId` is the concrete OpenCode identity because only
+OpenCode predates plugin attribution; use it only at flows that genuinely have
+no plugin identity context. Otherwise pass the selected or session-derived id
+through unchanged. Project-only request DTOs carry only `projectId`; composer
+operations use the dedicated plugin-scoped request DTO.
+
 ## Testing
 
 - `flutter test` from `app/`

@@ -7,11 +7,11 @@ import "request_handler.dart";
 ///
 /// Carries no project context, so the repository falls back to the bridge
 /// CWD as the active project.
-@Deprecated("Use POST /agent with a ProjectIdRequest body (PostAgentsHandler)")
+@Deprecated("Use POST /agent with a PluginProjectIdRequest body (PostAgentsHandler)")
 class GetAgentsHandler extends GetRequestHandler<Agents> {
   final AgentRepository _repository;
 
-  @Deprecated("Use POST /agent with a ProjectIdRequest body (PostAgentsHandler)")
+  @Deprecated("Use POST /agent with a PluginProjectIdRequest body (PostAgentsHandler)")
   GetAgentsHandler(this._repository) : super("/agent");
 
   @override
@@ -21,6 +21,6 @@ class GetAgentsHandler extends GetRequestHandler<Agents> {
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    return _repository.getAgents(projectId: null);
+    return _repository.getAgents(projectId: null, pluginId: _repository.pluginId);
   }
 }

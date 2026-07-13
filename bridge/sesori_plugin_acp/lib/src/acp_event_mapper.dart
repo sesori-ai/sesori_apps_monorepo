@@ -25,7 +25,7 @@ import "acp_stdio_client.dart";
 /// Harness-specific notifications (e.g. Cursor's `cursor/*`) are routed to
 /// [mapExtension], which subclasses override.
 class AcpEventMapper {
-  AcpEventMapper({required String launchDirectory, required this.agentId})
+  AcpEventMapper({required String launchDirectory, required this.agentId, required this.pluginId})
     : launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
   /// The bridge launch directory (canonicalized) — the fallback project
@@ -35,6 +35,8 @@ class AcpEventMapper {
 
   /// Agent name stamped on assistant messages (e.g. "cursor").
   final String agentId;
+
+  final String pluginId;
 
   /// Global fallback model/provider stamped on assistant messages when a
   /// session has no specific model recorded. The plugin sets these once the
@@ -528,6 +530,7 @@ class AcpEventMapper {
     final updated = snapshot?.updatedMs ?? created;
     return shared.Session(
       id: id,
+      pluginId: pluginId,
       projectID: project,
       directory: project,
       parentID: null,

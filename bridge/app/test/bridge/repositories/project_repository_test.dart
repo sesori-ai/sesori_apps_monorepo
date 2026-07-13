@@ -37,9 +37,9 @@ void main() {
 
     test("getProjects fetches plugin projects, persists each, filters hidden, sorts by updated desc", () async {
       plugin.projectsResult = const [
-        PluginProject(id: "p1", name: "P1"),
-        PluginProject(id: "p2", name: "P2"),
-        PluginProject(id: "p3", name: "P3"),
+        PluginProject(id: "p1", directory: "p1", name: "P1"),
+        PluginProject(id: "p2", directory: "p2", name: "P2"),
+        PluginProject(id: "p3", directory: "p3", name: "P3"),
       ];
 
       // Pre-hide p2 and stamp each visible project's persisted updatedAt so
@@ -74,6 +74,52 @@ void main() {
       expect(result.map((p) => p.id).toList(), equals(["p3", "p1"]));
     });
 
+    test("getProjects persists a native project's declared directory instead of its id", () async {
+      plugin.projectsResult = const [
+        PluginProject(id: "backend-project-1", directory: "/projects/one", name: "One"),
+      ];
+
+      final result = await repo.getProjects(defaultTimestamp: 9999);
+
+      expect(result.single.id, "backend-project-1");
+      expect(result.single.path, "/projects/one");
+      expect(
+        (await db.projectsDao.getProject(projectId: "backend-project-1"))!.path,
+        "/projects/one",
+      );
+    });
+
+    test("activity reconciliation seeds native directories and preserves existing paths", () async {
+      plugin.projectsResult = const [
+        PluginProject(
+          id: "new-project",
+          directory: "/projects/new",
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+        PluginProject(
+          id: "moved-project",
+          directory: "/projects/backend-path",
+          activity: PluginProjectActivity(createdAt: 50, updatedAt: 60),
+        ),
+      ];
+      await db.projectsDao.recordOpenedProject(
+        projectId: "moved-project",
+        path: "/projects/moved",
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
+      addTearDown(service.dispose);
+
+      await service.reconcile();
+
+      final newProject = await db.projectsDao.getProject(projectId: "new-project");
+      expect(newProject?.path, "/projects/new");
+      expect(newProject?.createdAt, 10);
+      expect(newProject?.updatedAt, 20);
+      expect((await db.projectsDao.getProject(projectId: "moved-project"))?.path, "/projects/moved");
+    });
+
     test("getProjects rethrows PluginApiException when plugin throws", () async {
       plugin.getProjectsError = PluginApiException("/project", 500);
 
@@ -92,10 +138,10 @@ void main() {
       // Verify that all N plugin projects are persisted in a single batch call.
       // The batch API is internally atomic — all rows land or none do.
       plugin.projectsResult = const [
-        PluginProject(id: "p1"),
-        PluginProject(id: "p2"),
-        PluginProject(id: "p3"),
-        PluginProject(id: "p4"),
+        PluginProject(id: "p1", directory: "p1"),
+        PluginProject(id: "p2", directory: "p2"),
+        PluginProject(id: "p3", directory: "p3"),
+        PluginProject(id: "p4", directory: "p4"),
       ];
 
       await repo.getProjects(defaultTimestamp: 9999);
@@ -110,8 +156,12 @@ void main() {
 
     test("getProjects seeds direct activity and one now default for missing evidence", () async {
       plugin.projectsResult = const [
-        PluginProject(id: "direct", activity: PluginProjectActivity(createdAt: 10, updatedAt: 20)),
-        PluginProject(id: "default"),
+        PluginProject(
+          id: "direct",
+          directory: "direct",
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+        PluginProject(id: "default", directory: "default"),
       ];
 
       final result = await repo.getProjects(defaultTimestamp: 1234);
@@ -126,7 +176,11 @@ void main() {
 
     test("getProjects reuses one post-seed project snapshot for paths and activity", () async {
       plugin.projectsResult = const [
-        PluginProject(id: "new", activity: PluginProjectActivity(createdAt: 10, updatedAt: 20)),
+        PluginProject(
+          id: "new",
+          directory: "new",
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
       ];
       final projectsDao = _CountingProjectsDao(database: db);
       final countingRepo = ProjectRepository(
@@ -145,9 +199,9 @@ void main() {
 
     test("getProjects sorts equal timestamps by name and then id", () async {
       plugin.projectsResult = const [
-        PluginProject(id: "z", name: "Beta"),
-        PluginProject(id: "b", name: "Alpha"),
-        PluginProject(id: "a", name: "Alpha"),
+        PluginProject(id: "z", directory: "z", name: "Beta"),
+        PluginProject(id: "b", directory: "b", name: "Alpha"),
+        PluginProject(id: "a", directory: "a", name: "Alpha"),
       ];
       for (final id in ["z", "b", "a"]) {
         await db.projectsDao.setActivity(projectId: id, createdAt: 1, updatedAt: 10);
@@ -159,7 +213,11 @@ void main() {
     });
 
     test("openProject discovers via plugin, unhides stored row, and maps result", () async {
-      plugin.projectResult = const PluginProject(id: "p-open", name: "Opened");
+      plugin.projectResult = const PluginProject(
+        id: "p-open",
+        directory: "/tmp/p-open",
+        name: "Opened",
+      );
       await db.projectsDao.hideProject(projectId: "p-open");
 
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-open");
@@ -182,7 +240,7 @@ void main() {
         // OpenCode-style backend: the folder moved from /projects/a to
         // /moved/a, and the backend keeps reporting the pinned original
         // worktree as the project id.
-        plugin.projectResult = const PluginProject(id: "/projects/a", name: "A");
+        plugin.projectResult = const PluginProject(id: "/projects/a", directory: "/moved/a", name: "A");
         await db.projectsDao.hideProject(projectId: "/projects/a");
         await db.projectsDao.setBaseBranch(projectId: "/projects/a", baseBranch: "develop");
 
@@ -210,9 +268,9 @@ void main() {
         // Regression: remapping the id to the opened directory (instead of
         // storing a path) made the next list refresh drop the project — the
         // plugin list still reported the old id, which stayed hidden.
-        plugin.projectResult = const PluginProject(id: "/projects/a", name: "A");
+        plugin.projectResult = const PluginProject(id: "/projects/a", directory: "/moved/a", name: "A");
         plugin.projectsResult = const [
-          PluginProject(id: "/projects/a", name: "A"),
+          PluginProject(id: "/projects/a", directory: "/projects/a", name: "A"),
         ];
         await db.projectsDao.hideProject(projectId: "/projects/a");
         await db.projectsDao.setActivity(
@@ -235,8 +293,10 @@ void main() {
       });
 
       test("getProjects computes directoryMissing against the live path, not the id", () async {
-        plugin.projectResult = const PluginProject(id: "/projects/a", name: "A");
-        plugin.projectsResult = const [PluginProject(id: "/projects/a", name: "A")];
+        plugin.projectResult = const PluginProject(id: "/projects/a", directory: "/moved/a", name: "A");
+        plugin.projectsResult = const [
+          PluginProject(id: "/projects/a", directory: "/projects/a", name: "A"),
+        ];
         final repoWithMissing = ProjectRepository(
           plugin: plugin,
           projectsDao: db.projectsDao,
@@ -258,7 +318,7 @@ void main() {
       });
 
       test("getProject and renameProject hand the plugin the live path", () async {
-        plugin.projectResult = const PluginProject(id: "/projects/a", name: "A");
+        plugin.projectResult = const PluginProject(id: "/projects/a", directory: "/moved/a", name: "A");
         await db.projectsDao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
@@ -300,8 +360,8 @@ void main() {
 
     test("getProjects flags a project whose directory no longer exists on disk", () async {
       plugin.projectsResult = const [
-        PluginProject(id: "/present", name: "Present"),
-        PluginProject(id: "/moved", name: "Moved"),
+        PluginProject(id: "/present", directory: "/present", name: "Present"),
+        PluginProject(id: "/moved", directory: "/moved", name: "Moved"),
       ];
       final repoWithMissing = ProjectRepository(
         plugin: plugin,
@@ -328,7 +388,7 @@ void main() {
     });
 
     test("getProject flags a since-deleted directory as missing", () async {
-      plugin.projectResult = const PluginProject(id: "/gone", name: "Gone");
+      plugin.projectResult = const PluginProject(id: "/gone", directory: "/gone", name: "Gone");
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/gone"]);
       final repoWithMissing = ProjectRepository(
         plugin: plugin,
@@ -344,7 +404,9 @@ void main() {
     });
 
     test("a directory whose existence probe throws is treated as present, not missing", () async {
-      plugin.projectsResult = const [PluginProject(id: "/denied", name: "Denied")];
+      plugin.projectsResult = const [
+        PluginProject(id: "/denied", directory: "/denied", name: "Denied"),
+      ];
       final repoWithThrow = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -634,7 +696,7 @@ PluginSession _session(
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   Object? getProjectsError;
-  PluginProject projectResult = const PluginProject(id: "project-id");
+  PluginProject projectResult = const PluginProject(id: "project-id", directory: "project-id");
   String? lastGetProjectId;
   String? lastRenameProjectId;
 

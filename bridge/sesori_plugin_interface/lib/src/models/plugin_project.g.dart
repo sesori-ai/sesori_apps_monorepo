@@ -9,6 +9,7 @@ part of 'plugin_project.dart';
 Map<String, dynamic> _$PluginProjectToJson(_PluginProject instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'directory': instance.directory,
       'name': ?instance.name,
       'activity': ?instance.activity?.toJson(),
     };

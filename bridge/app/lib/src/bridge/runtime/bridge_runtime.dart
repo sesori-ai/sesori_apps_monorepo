@@ -134,7 +134,7 @@ class BridgeRuntime {
       projectsDao: database.projectsDao,
       db: database,
       calculator: unseenCalculator,
-      pluginId: plugin.id,
+      plugin: plugin,
     );
     final sessionViewTracker = SessionViewTracker();
     final sessionUnseenService = SessionUnseenService(

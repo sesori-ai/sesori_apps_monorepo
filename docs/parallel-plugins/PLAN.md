@@ -8,8 +8,8 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 1A - pre-change baseline harness
-- **Next up:** Stage 1B - additive compatibility contracts
+- **Last completed stage:** Stage 1B - additive compatibility contracts
+- **Next up:** Stage 2 - catalog schema and indexed DAO queries
 - **Runtime default:** one selected plugin until Stage 7
 - **Catalog projection version:** not assigned until the schema migration lands
 
@@ -196,12 +196,11 @@ Enabled plugin order is stable. Repeated `--plugin` flags override persisted
 `enabledPlugins`; otherwise settings win; otherwise OpenCode remains the sole
 default. Duplicates, unknown ids, and an explicitly empty set fail validation.
 
-Older clients omit `pluginId`. During the compatibility window the bridge uses
-the first enabled plugin for session creation and project-scoped composer data.
-New clients always send `pluginId`. `Session.pluginId` is nullable only while
-new clients may read sessions from an older bridge. This debt is recorded in
-`docs/COMPATIBILITY_DEBT.md` when the additive fields land, with exact removal
-steps and a dated target.
+Older clients omit `pluginId`. Missing legacy identity defaults to OpenCode,
+the only backend those clients could target; it is never substituted with the
+first enabled plugin. New clients always send `pluginId`. Runtime identity
+remains non-null. This debt is recorded in `docs/COMPATIBILITY_DEBT.md` with
+exact removal steps and a dated target.
 
 ## 4. Catalog Schema
 
@@ -504,8 +503,10 @@ new-session selection.
 
 Shared request changes are additive:
 
-- nullable `pluginId` on create-session and project-scoped composer requests;
-- nullable `pluginId` on `Session` during the compatibility window; and
+- non-null `pluginId` with an OpenCode legacy default on create-session,
+  plugin-scoped composer requests, and `Session`;
+- a dedicated plugin-scoped request DTO, while project-only requests carry no
+  plugin identity; and
 - typed plugin list, runtime state, health, import status, and import progress
   DTOs.
 
@@ -527,8 +528,8 @@ NewSessionCubit
 
 Saved agent/model/variant selection is keyed by project and plugin so backend-
 local ids never bleed between selections. Existing-session composer requests
-use `Session.pluginId`; the nullable old-bridge fallback uses the server default
-only during the compatibility window.
+use `Session.pluginId`; missing identity from an old bridge defaults to OpenCode
+during the compatibility window.
 
 Presentation remains in product UI. The chooser lives in
 `client/app/lib/features/new_session/`, alongside the current mobile new-session
@@ -597,7 +598,7 @@ selection.
 |---|---|---|---|
 | ☑ | 0 | Execution plan approved | `aristotle-plan-review`; docs consistency |
 | ☑ | 1A | Pre-change baseline harness | AOT baseline JSON; app/Codex analysis |
-| ☐ | 1B | Additive compatibility contracts | Shared/plugin/client round trips |
+| ☑ | 1B | Additive compatibility contracts | Shared/plugin/client round trips |
 | ☐ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
 | ☐ | 3 | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☐ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
@@ -625,10 +626,12 @@ the default fixed-host fixtures without changing production behavior.
 ### Stage 1B - Additive Compatibility Contracts
 
 - Add required `PluginProject.directory` and update all implementations/fakes.
-- Add nullable compatibility `pluginId` fields to `Session`,
-  `CreateSessionRequest`, and `ProjectIdRequest`.
-- Stamp and validate plugin identity at the existing single-plugin repository/
-  service boundary. A non-null id for another plugin is rejected, never ignored.
+- Add non-null compatibility `pluginId` fields with an OpenCode legacy default
+  to `Session`, `CreateSessionRequest`, and a dedicated plugin-scoped project
+  request DTO. Keep `ProjectIdRequest` project-only.
+- Stamp plugin identity at the existing single-plugin repository/service
+  boundary. Carry request `pluginId` through the compatibility contract, but
+  assume it identifies the active plugin until multi-plugin routing lands.
 - Add compatibility-debt entries and regenerate all affected Freezed code.
 - Defer plugin metadata/import DTOs and SSE variants until Stages 5 and 7, when
   their first production consumers land.
@@ -654,6 +657,9 @@ use the intended indexes.
 
 - Teach `SessionRepository` to resolve Sesori ids to backend bindings and route
   every targeted operation through the selected plugin API.
+- Start consuming request `pluginId` to select the owning plugin. Until this
+  stage, the single-plugin bridge deliberately carries but does not validate or
+  route on that field.
 - Allocate independent Sesori ids for newly created sessions while preserving
   migrated ids.
 - Write complete project/session projections on create/open/rename/archive/
@@ -830,6 +836,13 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 1B:** `PluginProject.directory` now declares the native plugin's live
+  directory independently from its backend id. Shared session/create/composer
+  contracts carry nullable plugin identity for older-peer compatibility. The
+  single-plugin bridge stamps every outgoing session and rejects a mismatched
+  requested plugin before plugin I/O; no plugin map or selection UI was added.
+  Plugin metadata/import DTOs remain deferred to their first consumers in
+  Stages 5 and 7.
 - **Stage 1A:** The approved five-executable baseline scope included three paths
   that do not exist yet: event projection, import publication, and multi-plugin
   startup. Stage 1 was split into cohesive 1A benchmark and 1B contract PRs.

@@ -179,7 +179,8 @@ void main() {
         isNull,
       );
       const deleted = BridgeSseSessionDeleted(info: info);
-      expect(await service.enrich(deleted), same(deleted));
+      final attributedDeleted = (await service.enrich(deleted))! as BridgeSseSessionDeleted;
+      expect(attributedDeleted.info["pluginId"], "fake");
       expect(
         await service.enrich(
           const BridgeSseMessagePartDelta(

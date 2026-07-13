@@ -17,32 +17,33 @@ class SessionApi {
 
   SessionApi({required RelayHttpApiClient client}) : _client = client;
 
-  Future<ApiResponse<Agents>> listAgents({required String projectId}) {
+  Future<ApiResponse<Agents>> listAgents({required String projectId, required String pluginId}) {
     return _client.post(
       "/agent",
       fromJson: Agents.fromJson,
-      body: ProjectIdRequest(projectId: projectId),
+      body: PluginProjectIdRequest(projectId: projectId, pluginId: pluginId),
     );
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) {
+  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId, required String pluginId}) {
     return _client.post(
       "/provider",
       fromJson: ProviderListResponse.fromJson,
-      body: ProjectIdRequest(projectId: projectId),
+      body: PluginProjectIdRequest(projectId: projectId, pluginId: pluginId),
     );
   }
 
-  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId}) {
+  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId, required String pluginId}) {
     return _client.post(
       "/command",
       fromJson: CommandListResponse.fromJson,
-      body: ProjectIdRequest(projectId: projectId),
+      body: PluginProjectIdRequest(projectId: projectId, pluginId: pluginId),
     );
   }
 
   Future<ApiResponse<Session>> createSessionWithMessage({
     required String projectId,
+    required String pluginId,
     required String text,
     required String? agent,
     required PromptModel? model,
@@ -55,6 +56,7 @@ class SessionApi {
       fromJson: Session.fromJson,
       body: CreateSessionRequest(
         projectId: projectId,
+        pluginId: pluginId,
         parts: [PromptPart.text(text: text)],
         agent: agent,
         model: model,

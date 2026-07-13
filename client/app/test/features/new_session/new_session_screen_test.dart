@@ -82,7 +82,12 @@ void main() {
     sessionService = MockSessionService();
     voiceTranscriptionService = MockVoiceTranscriptionService();
 
-    when(() => sessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => sessionService.listAgents(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer(
       (_) async => ApiResponse.success(
         Agents(
           agents: [
@@ -92,10 +97,20 @@ void main() {
         ),
       ),
     );
-    when(() => sessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => sessionService.listProviders(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer(
       (_) async => ApiResponse.success(testProviderListResponse()),
     );
-    when(() => sessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => sessionService.listCommands(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer(
       (_) async => ApiResponse.success(const CommandListResponse(items: [])),
     );
 
@@ -133,7 +148,12 @@ void main() {
   });
 
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
-    when(() => sessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => sessionService.listProviders(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer(
       (_) async => ApiResponse.success(
         const ProviderListResponse(
           connectedOnly: false,
@@ -178,7 +198,12 @@ void main() {
   });
 
   testWidgets("selecting Default clears the displayed variant", (tester) async {
-    when(() => sessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+    when(
+      () => sessionService.listProviders(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer(
       (_) async => ApiResponse.success(
         const ProviderListResponse(
           connectedOnly: false,
@@ -251,6 +276,7 @@ void main() {
     when(
       () => sessionService.createSessionWithMessage(
         projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
         providerID: any(named: "providerID"),
@@ -281,6 +307,7 @@ void main() {
     when(
       () => sessionService.createSessionWithMessage(
         projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
         providerID: any(named: "providerID"),
@@ -310,6 +337,7 @@ void main() {
     verify(
       () => sessionService.createSessionWithMessage(
         projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
         providerID: any(named: "providerID"),
@@ -326,6 +354,7 @@ void main() {
     when(
       () => sessionService.createSessionWithMessage(
         projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
         providerID: any(named: "providerID"),
@@ -369,6 +398,7 @@ void main() {
     when(
       () => sessionService.createSessionWithMessage(
         projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
         providerID: any(named: "providerID"),
@@ -416,6 +446,7 @@ void main() {
     when(
       () => sessionService.createSessionWithMessage(
         projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
         providerID: any(named: "providerID"),
@@ -452,6 +483,7 @@ void main() {
     when(
       () => sessionService.createSessionWithMessage(
         projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
         providerID: any(named: "providerID"),
@@ -486,6 +518,7 @@ void main() {
     when(
       () => sessionService.createSessionWithMessage(
         projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
         providerID: any(named: "providerID"),

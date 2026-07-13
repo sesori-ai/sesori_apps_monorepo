@@ -9,6 +9,7 @@ part of 'create_session_request.dart';
 _CreateSessionRequest _$CreateSessionRequestFromJson(Map json) =>
     _CreateSessionRequest(
       projectId: json['projectId'] as String,
+      pluginId: json['pluginId'] as String? ?? legacyMissingPluginId,
       parts: (json['parts'] as List<dynamic>)
           .map((e) => PromptPart.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList(),
@@ -31,6 +32,7 @@ Map<String, dynamic> _$CreateSessionRequestToJson(
   _CreateSessionRequest instance,
 ) => <String, dynamic>{
   'projectId': instance.projectId,
+  'pluginId': instance.pluginId,
   'parts': instance.parts.map((e) => e.toJson()).toList(),
   'agent': ?instance.agent,
   'model': ?instance.model?.toJson(),

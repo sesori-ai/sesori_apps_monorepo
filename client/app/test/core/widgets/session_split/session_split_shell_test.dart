@@ -176,6 +176,7 @@ void main() {
       when(
         () => harness.sessionRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
           model: any(named: "model"),

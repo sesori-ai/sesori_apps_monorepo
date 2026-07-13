@@ -65,7 +65,7 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
         processFactory: (_) async => fake,
       );
       plugin.events.listen((_) {});
@@ -175,7 +175,7 @@ void main() {
       agentDisplayName: "ACP",
       launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
       launchDirectory: "/repo",
-      eventMapper: AcpEventMapper(launchDirectory: "/repo", agentId: "acp"),
+      eventMapper: AcpEventMapper(launchDirectory: "/repo", agentId: "acp", pluginId: "acp"),
       processFactory: (_) async => processes.removeAt(0),
     );
     plugin.events.listen(emitted.add);

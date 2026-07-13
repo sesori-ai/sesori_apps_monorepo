@@ -7,7 +7,7 @@ import "../api/session_api.dart";
 @lazySingleton
 class SessionRepository {
   final SessionApi _api;
-  final _providerCache = <String, ProviderListResponse>{};
+  final _providerCache = <({String pluginId, String projectId}), ProviderListResponse>{};
 
   SessionRepository({
     required SessionApi api,
@@ -97,16 +97,20 @@ class SessionRepository {
     return _api.getSession(sessionId: sessionId);
   }
 
-  Future<ApiResponse<Agents>> listAgents({required String projectId}) {
-    return _api.listAgents(projectId: projectId);
+  Future<ApiResponse<Agents>> listAgents({required String projectId, required String pluginId}) {
+    return _api.listAgents(projectId: projectId, pluginId: pluginId);
   }
 
-  Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) async {
-    if (_providerCache[projectId] case final providersCache?) {
+  Future<ApiResponse<ProviderListResponse>> listProviders({
+    required String projectId,
+    required String pluginId,
+  }) async {
+    final cacheKey = (pluginId: pluginId, projectId: projectId);
+    if (_providerCache[cacheKey] case final providersCache?) {
       return ApiResponse.success(providersCache);
     }
 
-    final response = await _api.listProviders(projectId: projectId);
+    final response = await _api.listProviders(projectId: projectId, pluginId: pluginId);
 
     // Only cache once every provider in the response actually carries models.
     // Some backends build their model catalog asynchronously (e.g. the
@@ -122,18 +126,19 @@ class SessionRepository {
     if (response is SuccessResponse<ProviderListResponse> &&
         response.data.items.isNotEmpty &&
         response.data.items.every((provider) => provider.models.isNotEmpty)) {
-      _providerCache[projectId] = response.data;
+      _providerCache[cacheKey] = response.data;
     }
 
     return response;
   }
 
-  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId}) {
-    return _api.listCommands(projectId: projectId);
+  Future<ApiResponse<CommandListResponse>> listCommands({required String projectId, required String pluginId}) {
+    return _api.listCommands(projectId: projectId, pluginId: pluginId);
   }
 
   Future<ApiResponse<Session>> createSessionWithMessage({
     required String projectId,
+    required String pluginId,
     required String text,
     required String? agent,
     required PromptModel? model,
@@ -143,6 +148,7 @@ class SessionRepository {
   }) {
     return _api.createSessionWithMessage(
       projectId: projectId,
+      pluginId: pluginId,
       text: text,
       agent: agent,
       model: model,

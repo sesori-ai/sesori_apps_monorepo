@@ -28,11 +28,14 @@ class SessionEventEnrichmentService {
       }
       return switch (event) {
         BridgeSseSessionCreated(:final info) => BridgeSseSessionCreated(
-          info: (await _sessionRepository.enrichSessionJson(sessionJson: info)).toJson(),
+          info: (await _sessionRepository.enrichPluginEventSessionJson(sessionJson: info)).toJson(),
         ),
         BridgeSseSessionUpdated(:final info, :final titleChanged) => BridgeSseSessionUpdated(
           info: (await _captureTitleAndEnrich(info: info, titleChanged: titleChanged)).toJson(),
           titleChanged: titleChanged,
+        ),
+        BridgeSseSessionDeleted(:final info) => BridgeSseSessionDeleted(
+          info: (await _sessionRepository.enrichPluginEventSessionJson(sessionJson: info)).toJson(),
         ),
         BridgeSseSessionsUpdated(:final sessionID, :final projectID) => BridgeSseSessionsUpdated(
           sessionID: sessionID,
@@ -72,7 +75,7 @@ class SessionEventEnrichmentService {
     if (titleChanged) {
       await _sessionMutationDispatcher.captureTitle(sessionId: session.id, title: session.title);
     }
-    return _sessionRepository.enrichSession(session: session);
+    return _sessionRepository.enrichPluginEventSessionJson(sessionJson: session.toJson());
   }
 
   List<String> _sessionIds(BridgeSseEvent event) {

@@ -37,6 +37,7 @@ void main() {
     test("serializes hasWorktree to JSON", () {
       const session = Session(
         id: "ses_1",
+        pluginId: legacyMissingPluginId,
         projectID: "proj_1",
         directory: "/tmp",
         parentID: null,

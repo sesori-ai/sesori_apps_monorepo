@@ -52,6 +52,7 @@ void main() {
           projects: const [
             PluginProject(
               id: "proj-X",
+              directory: "proj-X",
               name: "Project X",
               activity: PluginProjectActivity(createdAt: 0, updatedAt: 100),
             ),
@@ -231,6 +232,7 @@ Session _session({
   required int createdAt,
 }) => Session(
   id: id,
+  pluginId: "fake",
   projectID: projectId,
   directory: "/tmp/$projectId",
   parentID: null,

@@ -27,6 +27,8 @@ import "cursor_model_probe.dart";
 /// from what was last pushed to the agent ([_appliedModelId]/[_appliedModeId]),
 /// which both avoids redundant calls and self-corrects interleaved sessions.
 class CursorPlugin extends AcpPlugin {
+  static const String pluginId = "cursor";
+
   factory CursorPlugin({
     String binaryPath = CursorBinary.defaultBinary,
     String? launchDirectory,
@@ -41,7 +43,7 @@ class CursorPlugin extends AcpPlugin {
         apiEndpoint: apiEndpoint,
       ),
       launchDirectory: cwd,
-      mapper: CursorEventMapper(launchDirectory: cwd),
+      mapper: CursorEventMapper(launchDirectory: cwd, pluginId: pluginId),
       processFactory: processFactory,
     );
   }
@@ -51,7 +53,7 @@ class CursorPlugin extends AcpPlugin {
     required super.launchDirectory,
     required CursorEventMapper mapper,
     super.processFactory,
-  }) : super(id: "cursor", agentDisplayName: "Cursor", eventMapper: mapper);
+  }) : super(id: pluginId, agentDisplayName: "Cursor", eventMapper: mapper);
 
   static const String _providerId = "cursor";
 

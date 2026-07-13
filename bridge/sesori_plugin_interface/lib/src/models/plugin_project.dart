@@ -6,12 +6,16 @@ part "plugin_project.g.dart";
 
 /// A project as exposed to the bridge.
 ///
+/// [id] is the plugin-defined project identity. [directory] is the plugin's
+/// declared live directory for the project and may differ from [id].
+///
 /// The [activity] field carries session-derived timestamps only; it is never
 /// populated from upstream project metadata.
 @freezed
 sealed class PluginProject with _$PluginProject {
   const factory PluginProject({
     required String id,
+    required String directory,
     String? name,
     PluginProjectActivity? activity,
   }) = _PluginProject;

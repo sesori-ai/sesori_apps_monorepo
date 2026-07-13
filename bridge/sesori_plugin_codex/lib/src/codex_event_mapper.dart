@@ -23,9 +23,12 @@ import "codex_config_reader.dart";
 /// representation today.
 class CodexEventMapper {
   CodexEventMapper({
+    required this.pluginId,
     required this.projectCwd,
     this.config = const CodexConfigDefaults.empty(),
   });
+
+  final String pluginId;
 
   /// The bridge launch CWD — codex's single synthesised project id. Used as
   /// the `projectID` for sessions, and as the `directory` fallback when a
@@ -482,6 +485,7 @@ class CodexEventMapper {
     final projectId = _projectIdForThread(id, cwd: thread["cwd"] as String?);
     return shared.Session(
       id: id,
+      pluginId: pluginId,
       projectID: projectId,
       directory: projectId,
       parentID: null,
@@ -501,6 +505,7 @@ class CodexEventMapper {
     final projectId = _projectIdForThread(id);
     return shared.Session(
       id: id,
+      pluginId: pluginId,
       projectID: projectId,
       directory: projectId,
       parentID: null,

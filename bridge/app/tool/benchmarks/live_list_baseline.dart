@@ -123,6 +123,7 @@ class _LiveListBenchmark {
       500,
       (index) => PluginProject(
         id: "/benchmark/project-${index.toString().padLeft(4, "0")}",
+        directory: "/benchmark/project-${index.toString().padLeft(4, "0")}",
         name: "project-${index.toString().padLeft(4, "0")}",
         activity: PluginProjectActivity(
           createdAt: _defaultTimestamp + index,
@@ -194,7 +195,11 @@ class _LiveListBenchmark {
 
     await database.projectsDao.insertMissingProjectsWithActivity(
       activities: const {
-        _projectDirectory: (createdAt: _defaultTimestamp, updatedAt: _defaultTimestamp),
+        _projectDirectory: (
+          path: _projectDirectory,
+          createdAt: _defaultTimestamp,
+          updatedAt: _defaultTimestamp,
+        ),
       },
     );
     final nativeLargeRepository = _sessionRepository(database: database, plugin: nativeLarge);

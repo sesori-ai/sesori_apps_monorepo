@@ -70,7 +70,7 @@ class SessionRepository {
       limit: limit,
     );
 
-    return enrichSessions(sessions: pluginSessions.toSharedSessions());
+    return enrichSessions(sessions: pluginSessions.toSharedSessions(pluginId: _plugin.id));
   }
 
   /// The plugin sessions that belong to [projectId].
@@ -164,14 +164,17 @@ class SessionRepository {
   }
 
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) {
-    return enrichSession(session: pluginSession.toSharedSession());
+    return enrichSession(session: pluginSession.toSharedSession(pluginId: _plugin.id));
   }
 
-  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) {
-    return enrichSession(session: Session.fromJson(sessionJson));
+  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) {
+    return enrichSession(
+      session: Session.fromJson(sessionJson).copyWith(pluginId: _plugin.id),
+    );
   }
 
   Future<Session> createSession({
+    required String pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -190,7 +193,7 @@ class SessionRepository {
         null => null,
       },
     );
-    return created.toSharedSession();
+    return created.toSharedSession(pluginId: _plugin.id);
   }
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
@@ -198,10 +201,10 @@ class SessionRepository {
       await _throwIfTombstoned(sessionId: sessionId, operation: "renameSession");
     }
     final updated = await _plugin.renameSession(sessionId: sessionId, title: title);
-    return updated.toSharedSession();
+    return updated.toSharedSession(pluginId: _plugin.id);
   }
 
-  Future<CommandListResponse> getCommands({required String? projectId}) async {
+  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async {
     final normalizedProjectId = projectId?.trim();
     final commands = await _plugin.getCommands(
       // The plugin reads commands from the project's directory, so resolve
@@ -306,6 +309,7 @@ class SessionRepository {
     projectId ??= "";
     final deletionSnapshot = Session(
       id: sessionId,
+      pluginId: _plugin.id,
       projectID: projectId,
       directory: stored?.worktreePath ?? projectId,
       parentID: null,
@@ -449,8 +453,15 @@ class SessionRepository {
         final projects = await plugin.getProjects();
         // The plugin's authoritative list makes these known projects. Persist
         // them before probing sessions so id→path resolution never guesses.
-        await _projectsDao.insertProjectsIfMissing(
-          projectIds: [for (final project in projects) project.id],
+        await _projectsDao.insertProjectsWithPathsIfMissing(
+          projects: {
+            for (final project in projects)
+              project.id: (
+                path: project.directory,
+                createdAt: project.activity?.createdAt,
+                updatedAt: project.activity?.updatedAt,
+              ),
+          },
         );
         for (final project in projects) {
           final projectId = project.id;
@@ -541,10 +552,10 @@ class SessionRepository {
         );
       }
       final pluginSessions = await plugin.getChildSessions(sessionId);
-      return pluginSessions.where((session) => !tombstoned.contains(session.id)).toSharedSessions();
+      return pluginSessions.where((session) => !tombstoned.contains(session.id)).toSharedSessions(pluginId: _plugin.id);
     }
     final pluginSessions = await _plugin.getChildSessions(sessionId);
-    return pluginSessions.toSharedSessions();
+    return pluginSessions.toSharedSessions(pluginId: _plugin.id);
   }
 
   Future<void> _throwIfTombstoned({required String sessionId, required String operation}) async {

@@ -44,7 +44,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/agent"),
-        body: const ProjectIdRequest(projectId: "/repo"),
+        body: const PluginProjectIdRequest(projectId: "/repo", pluginId: "fake"),
         pathParams: {},
         queryParams: {},
         fragment: null,

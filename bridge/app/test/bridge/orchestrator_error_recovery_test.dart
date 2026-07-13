@@ -131,7 +131,7 @@ void main() {
         projectRepository: projectRepository,
         sessionUnseenService: SessionUnseenService(
           unseenRepository: SessionUnseenRepository(
-            pluginId: "opencode",
+            plugin: plugin,
             sessionDao: database.sessionDao,
             projectsDao: database.projectsDao,
             db: database,
@@ -407,7 +407,7 @@ class _TestHarness {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -626,7 +626,7 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
   Future<PluginProject> renameProject({
     required String projectId,
     required String name,
-  }) async => const PluginProject(id: "");
+  }) async => const PluginProject(id: "", directory: "");
 
   @override
   Future<void> deleteSession(String sessionId) async {}
@@ -699,7 +699,7 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", directory: "");
 
   @override
   Future<bool> healthCheck() async => true;

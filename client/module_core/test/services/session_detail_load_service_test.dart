@@ -56,6 +56,9 @@ void main() {
       expect(loaded.snapshot.messages, hasLength(1));
       expect(loaded.snapshot.commands, hasLength(1));
       expect(loaded.snapshot.canonicalSessionTitle, "Canonical title");
+      verify(() => repository.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
+      verify(() => repository.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
+      verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     });
 
     test("load uses route projectId to fetch commands when context lookup fails", () async {
@@ -68,7 +71,25 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
       expect(loaded.snapshot.commands, hasLength(1));
-      verify(() => repository.listCommands(projectId: "project-1")).called(1);
+      verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+    });
+
+    test("load uses the legacy OpenCode default when session identity is unavailable", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
+      when(
+        () => repository.getSession(sessionId: "session-1"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      when(
+        () => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId),
+      ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
+
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      verify(() => repository.listAgents(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
+      verify(() => repository.listProviders(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
+      verify(() => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
     });
 
     test("initial load waits for connection readiness and then loads", () async {
@@ -100,15 +121,23 @@ void main() {
         (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
       );
       when(
-        () => repository.listAgents(projectId: any(named: "projectId")),
+        () => repository.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
       ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: <AgentInfo>[])));
-      when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+      when(
+        () => repository.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
       );
       when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
         (_) async => const ProjectSessionContext(projectId: "project-1", sessionTitle: "Canonical title"),
       );
-      when(() => repository.listCommands(projectId: "project-1")).thenAnswer(
+      when(() => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId)).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
@@ -143,8 +172,8 @@ void main() {
       // Providers must be requested with the project resolved from the session
       // context — never the raw blank route id, which backends would normalize
       // to the bridge process CWD (the wrong project).
-      verify(() => repository.listProviders(projectId: "project-1")).called(1);
-      verifyNever(() => repository.listProviders(projectId: ""));
+      verify(() => repository.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
+      verifyNever(() => repository.listProviders(projectId: "", pluginId: "plugin-1"));
     });
 
     test("no route project and no session context loads empty providers without a request", () async {
@@ -157,7 +186,12 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
       expect(loaded.snapshot.providerData?.items, isEmpty);
-      verifyNever(() => repository.listProviders(projectId: any(named: "projectId")));
+      verifyNever(
+        () => repository.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
     });
 
     test("project session context lookup failure is non-fatal when required reads succeed", () async {
@@ -195,7 +229,12 @@ void _stubRepositorySnapshot({
   when(() => repository.getSessionStatuses()).thenAnswer(
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );
-  when(() => repository.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+  when(
+    () => repository.listAgents(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
+  ).thenAnswer(
     (_) async => ApiResponse.success(
       const Agents(
         agents: [
@@ -204,7 +243,12 @@ void _stubRepositorySnapshot({
       ),
     ),
   );
-  when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
+  when(
+    () => repository.listProviders(
+      projectId: any(named: "projectId"),
+      pluginId: any(named: "pluginId"),
+    ),
+  ).thenAnswer(
     (_) async => ApiResponse.success(
       const ProviderListResponse(
         connectedOnly: false,
@@ -228,7 +272,7 @@ void _stubRepositorySnapshot({
       ),
     ),
   );
-  when(() => repository.listCommands(projectId: "project-1")).thenAnswer(
+  when(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).thenAnswer(
     (_) async => ApiResponse.success(
       const CommandListResponse(
         items: <CommandInfo>[

@@ -79,6 +79,7 @@ void main() {
     test("maps fields", () async {
       plugin.currentProjectResult = const PluginProject(
         id: "p1",
+        directory: "/tmp/project",
         name: "My Project",
         activity: PluginProjectActivity(createdAt: 11, updatedAt: 22),
       );

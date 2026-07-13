@@ -148,7 +148,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -360,7 +360,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -559,7 +559,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -775,7 +775,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -900,6 +900,29 @@ void main() {
       equals(["projects.summary", "session.diff"]),
     );
 
+    plugin.add(
+      const BridgeSseSessionCreated(
+        info: {
+          "id": "opaque-session",
+          "projectID": "0190f4c6-opaque-project-id",
+          "directory": "/projects/native-repository",
+          "parentID": null,
+          "title": "opaque project session",
+          "time": {"created": 3, "updated": 3, "archived": null},
+          "summary": null,
+        },
+      ),
+    );
+    final persistenceTimeoutAt = DateTime.now().add(const Duration(seconds: 2));
+    while (await database.projectsDao.getProject(projectId: "0190f4c6-opaque-project-id") == null) {
+      if (DateTime.now().isAfter(persistenceTimeoutAt)) {
+        fail("Timed out waiting for the native project placeholder");
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    final nativeProject = await database.projectsDao.getProject(projectId: "0190f4c6-opaque-project-id");
+    expect(nativeProject?.path, "/projects/native-repository");
+
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
     await plugin.close();
@@ -994,7 +1017,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -1160,7 +1183,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -1351,7 +1374,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
-          pluginId: "opencode",
+          plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -1801,7 +1824,7 @@ class _SummaryPlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "");
+  Future<PluginProject> getProject(String projectId) async => const PluginProject(id: "", directory: "");
 
   @override
   Future<bool> healthCheck() async => true;
@@ -1989,7 +2012,7 @@ class _NoopPlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<PluginProject> getProject(String projectId) async => PluginProject(id: projectId);
+  Future<PluginProject> getProject(String projectId) async => PluginProject(id: projectId, directory: projectId);
 
   @override
   Future<bool> healthCheck() async => true;
@@ -2163,6 +2186,7 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 
 Session _deletedSession(String sessionId) => Session(
   id: sessionId,
+  pluginId: "fake",
   projectID: "",
   directory: "",
   parentID: null,
@@ -2194,6 +2218,7 @@ class _NoopSessionRepository implements SessionRepository {
 
   @override
   Future<Session> createSession({
+    required String pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -2202,6 +2227,7 @@ class _NoopSessionRepository implements SessionRepository {
     required PromptModel? model,
   }) async => const Session(
     id: "",
+    pluginId: "fake",
     projectID: "",
     directory: "",
     parentID: null,
@@ -2223,7 +2249,8 @@ class _NoopSessionRepository implements SessionRepository {
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
       Session.fromJson(pluginSession.toJson());
   @override
-  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async => Session.fromJson(sessionJson);
+  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async =>
+      Session.fromJson(sessionJson);
   @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
@@ -2286,7 +2313,8 @@ class _NoopSessionRepository implements SessionRepository {
   }) async {}
 
   @override
-  Future<CommandListResponse> getCommands({required String? projectId}) async => const CommandListResponse(items: []);
+  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async =>
+      const CommandListResponse(items: []);
 
   @override
   Future<void> sendPrompt({
@@ -2300,6 +2328,7 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
     id: "",
+    pluginId: "fake",
     projectID: "",
     directory: "",
     parentID: null,
@@ -2360,6 +2389,7 @@ class _DelayingSessionRepository implements SessionRepository {
 
   @override
   Future<Session> createSession({
+    required String pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -2368,6 +2398,7 @@ class _DelayingSessionRepository implements SessionRepository {
     required PromptModel? model,
   }) {
     return _base.createSession(
+      pluginId: pluginId,
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts,
@@ -2397,8 +2428,8 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<CommandListResponse> getCommands({required String? projectId}) {
-    return _base.getCommands(projectId: projectId);
+  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) {
+    return _base.getCommands(projectId: projectId, pluginId: pluginId);
   }
 
   @override
@@ -2418,7 +2449,7 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async {
+  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async {
     return enrichSession(session: Session.fromJson(sessionJson));
   }
 

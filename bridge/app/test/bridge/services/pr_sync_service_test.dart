@@ -407,6 +407,7 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   Future<Session> deleteSession({required String sessionId}) async => Session(
     id: sessionId,
+    pluginId: "fake",
     projectID: "",
     directory: "",
     parentID: null,
@@ -432,6 +433,7 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<Session> createSession({
+    required String pluginId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
@@ -440,6 +442,7 @@ class _FakeSessionRepository implements SessionRepository {
     required PromptModel? model,
   }) async => const Session(
     id: "",
+    pluginId: "fake",
     projectID: "",
     directory: "",
     parentID: null,
@@ -465,7 +468,8 @@ class _FakeSessionRepository implements SessionRepository {
       Session.fromJson(pluginSession.toJson());
 
   @override
-  Future<Session> enrichSessionJson({required Map<String, dynamic> sessionJson}) async => Session.fromJson(sessionJson);
+  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async =>
+      Session.fromJson(sessionJson);
 
   @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
@@ -536,7 +540,8 @@ class _FakeSessionRepository implements SessionRepository {
   }) async {}
 
   @override
-  Future<CommandListResponse> getCommands({required String? projectId}) async => const CommandListResponse(items: []);
+  Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async =>
+      const CommandListResponse(items: []);
 
   @override
   Future<void> sendPrompt({
@@ -550,6 +555,7 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
     id: "",
+    pluginId: "fake",
     projectID: "",
     directory: "",
     parentID: null,

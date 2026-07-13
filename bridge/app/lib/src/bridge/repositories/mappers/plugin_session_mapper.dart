@@ -6,9 +6,10 @@ import "../session_unseen_calculator.dart";
 
 /// Maps a [PluginSession] to the shared [Session] type used in relay responses.
 extension PluginSessionMapper on PluginSession {
-  Session toSharedSession() {
+  Session toSharedSession({required String pluginId}) {
     return Session(
       id: id,
+      pluginId: pluginId,
       projectID: projectID,
       directory: directory,
       parentID: parentID,
@@ -36,8 +37,8 @@ extension PluginSessionMapper on PluginSession {
 }
 
 extension PluginSessionsMapper on Iterable<PluginSession> {
-  List<Session> toSharedSessions() {
-    return map((session) => session.toSharedSession()).toList(growable: false);
+  List<Session> toSharedSessions({required String pluginId}) {
+    return map((session) => session.toSharedSession(pluginId: pluginId)).toList(growable: false);
   }
 }
 

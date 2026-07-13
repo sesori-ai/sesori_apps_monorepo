@@ -47,7 +47,7 @@ void main() {
     test("passes projectId from body to plugin", () async {
       await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "fake"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -60,7 +60,7 @@ void main() {
     test("returns typed provider list response", () async {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -71,7 +71,7 @@ void main() {
     test("returns empty items list when plugin has no providers", () async {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -96,7 +96,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -123,7 +123,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -148,7 +148,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -176,7 +176,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -231,7 +231,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -269,7 +269,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -299,7 +299,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -327,7 +327,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -351,7 +351,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -389,7 +389,7 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const ProjectIdRequest(projectId: "project-1"),
+        body: const PluginProjectIdRequest(projectId: "project-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,

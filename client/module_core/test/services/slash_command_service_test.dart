@@ -18,27 +18,36 @@ void main() {
     });
 
     test("listCommands returns empty response without transport when projectId is null", () async {
-      final result = await service.listCommands(projectId: null);
+      final result = await service.listCommands(projectId: null, pluginId: legacyMissingPluginId);
 
       expect(result, isA<SuccessResponse<CommandListResponse>>());
       expect((result as SuccessResponse<CommandListResponse>).data.items, isEmpty);
-      verifyNever(() => mockRepository.listCommands(projectId: any(named: "projectId")));
+      verifyNever(
+        () => mockRepository.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
     });
 
     test("listCommands trims projectId before repository call", () async {
       when(
-        () => mockRepository.listCommands(projectId: any(named: "projectId")),
+        () => mockRepository.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
       ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
 
-      await service.listCommands(projectId: "  project-1  ");
+      await service.listCommands(projectId: "  project-1  ", pluginId: "plugin-1");
 
-      verify(() => mockRepository.listCommands(projectId: "project-1")).called(1);
+      verify(() => mockRepository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     });
 
     test("createSessionWithMessage forwards raw variant", () async {
       when(
         () => mockRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
           model: any(named: "model"),
@@ -50,6 +59,7 @@ void main() {
 
       await service.createSessionWithMessage(
         projectId: "project-1",
+        pluginId: "plugin-1",
         text: "lib/main.dart",
         agent: "build",
         providerID: "openai",
@@ -62,6 +72,7 @@ void main() {
       verify(
         () => mockRepository.createSessionWithMessage(
           projectId: "project-1",
+          pluginId: "plugin-1",
           text: "lib/main.dart",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
@@ -212,6 +223,7 @@ void main() {
       when(
         () => mockRepository.createSessionWithMessage(
           projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
           model: any(named: "model"),
@@ -223,6 +235,7 @@ void main() {
 
       await service.createSessionWithMessage(
         projectId: "project-1",
+        pluginId: "plugin-1",
         text: "hello",
         agent: "build",
         providerID: "openai",
@@ -235,6 +248,7 @@ void main() {
       verify(
         () => mockRepository.createSessionWithMessage(
           projectId: "project-1",
+          pluginId: "plugin-1",
           text: "hello",
           agent: "build",
           model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
@@ -250,6 +264,7 @@ void main() {
 Session _session() {
   return const Session(
     id: "session-1",
+    pluginId: legacyMissingPluginId,
     projectID: "project-1",
     directory: "/tmp/project-1",
     parentID: null,
