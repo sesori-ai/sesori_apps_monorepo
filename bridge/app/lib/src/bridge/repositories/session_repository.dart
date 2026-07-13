@@ -453,18 +453,16 @@ class SessionRepository {
         final projects = await plugin.getProjects();
         // The plugin's authoritative list makes these known projects. Persist
         // them before probing sessions so id→path resolution never guesses.
-        await _projectsDao.insertProjectsIfMissing(
-          projectIds: [for (final project in projects) project.id],
+        await _projectsDao.insertProjectsWithPathsIfMissing(
+          projects: {
+            for (final project in projects)
+              project.id: (
+                path: project.directory,
+                createdAt: project.activity?.createdAt,
+                updatedAt: project.activity?.updatedAt,
+              ),
+          },
         );
-        for (final project in projects) {
-          if (project.id != project.directory) {
-            await _projectsDao.replacePathIfMatches(
-              projectId: project.id,
-              expectedPath: project.id,
-              replacementPath: project.directory,
-            );
-          }
-        }
         for (final project in projects) {
           final projectId = project.id;
           if (await _getPluginSession(projectId: projectId, sessionId: sessionId) != null) {

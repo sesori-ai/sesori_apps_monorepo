@@ -17,6 +17,11 @@ preserve a hypothetical backend distinction. Require a concrete wire trace,
 shipped behavior, or explicit product requirement before making that state
 durable; otherwise use the simpler observable semantics.
 
+Do not add compatibility repair code for rows that no released producer could
+have written. Before repairing a historical shape, identify the shipped writer,
+the exact inputs that produced it, and a reachable persisted example; a schema
+default or hypothetical future plugin is not evidence of compatibility debt.
+
 Compatibility sentinels are wire-boundary values, not nullable internal
 identity. Normalize missing legacy plugin identity to the shared
 `legacyMissingPluginId` constant, keep internal `pluginId` parameters non-null,

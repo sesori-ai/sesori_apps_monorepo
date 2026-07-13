@@ -108,17 +108,8 @@ class ProjectRepository {
                 time: null,
               ),
               directActivity: p.activity,
-          ),
+            ),
         ], defaultTimestamp: defaultTimestamp);
-        for (final project in pluginProjects) {
-          if (project.id != project.directory) {
-            await _projectsDao.replacePathIfMatches(
-              projectId: project.id,
-              expectedPath: project.id,
-              replacementPath: project.directory,
-            );
-          }
-        }
         final storedProjects = await _projectsDao.getAllProjects();
         final pathById = {
           for (final stored in storedProjects)
@@ -334,15 +325,6 @@ class ProjectRepository {
               ),
           },
         );
-        for (final project in pluginProjects) {
-          if (project.id != project.directory) {
-            await _projectsDao.replacePathIfMatches(
-              projectId: project.id,
-              expectedPath: project.id,
-              replacementPath: project.directory,
-            );
-          }
-        }
         final storedProjects = await _projectsDao.getAllProjects();
         return ProjectActivityReconciliationData(
           evidence: [
