@@ -134,7 +134,10 @@ Future<List<FileDiff>> computeSessionDiffs({
           when counts.additions == 0 && counts.deletions == 0 && after.isNotEmpty =>
         (additions: _countLines(after), deletions: 0),
       FileDiffStatus.modified
-          when counts.additions == 0 && after.isNotEmpty && before != after =>
+          when counts.additions == 0 &&
+              after.isNotEmpty &&
+              before != after &&
+              (counts.deletions == 0 || !_isDeletionOnlyChange(before, after)) =>
         (additions: _countLines(after), deletions: counts.deletions > 0 ? counts.deletions : _countLines(before)),
       _ => counts,
     };
@@ -167,6 +170,21 @@ Future<List<FileDiff>> computeSessionDiffs({
 int _countLines(String content) {
   if (content.isEmpty) return 0;
   return "\n".allMatches(content).length + (content.endsWith("\n") ? 0 : 1);
+}
+
+bool _isDeletionOnlyChange(String before, String after) {
+  if (after.isEmpty) return true;
+  final beforeLines = before.split("\n");
+  final afterLines = after.split("\n");
+  var beforeIndex = 0;
+  for (final line in afterLines) {
+    while (beforeIndex < beforeLines.length && beforeLines[beforeIndex] != line) {
+      beforeIndex++;
+    }
+    if (beforeIndex >= beforeLines.length) return false;
+    beforeIndex++;
+  }
+  return true;
 }
 
 /// Parses stdout that should contain exactly one non-empty SHA line.

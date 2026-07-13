@@ -114,6 +114,42 @@ void main() {
       expect(content.additions, equals(0));
       expect(content.deletions, equals(0));
     });
+
+    test("does not inflate additions for deletion-only tracked changes", () async {
+      final deletionRepo = await Directory.systemTemp.createTemp("compute_session_diffs_deletion_");
+      final deletionWorktree = Directory("${deletionRepo.path}/session-wt");
+      addTearDown(() async {
+        await _runGit(processRunner, deletionRepo.path, ["worktree", "remove", "--force", deletionWorktree.path]);
+        if (deletionRepo.existsSync()) {
+          await deletionRepo.delete(recursive: true);
+        }
+      });
+
+      await _runGit(processRunner, deletionRepo.path, ["init"]);
+      await _runGit(processRunner, deletionRepo.path, ["config", "user.email", "test@example.com"]);
+      await _runGit(processRunner, deletionRepo.path, ["config", "user.name", "Test"]);
+      File("${deletionRepo.path}/tracked.txt")
+        ..createSync(recursive: true)
+        ..writeAsStringSync("line one\nline two\n");
+      await _runGit(processRunner, deletionRepo.path, ["add", "."]);
+      await _runGit(processRunner, deletionRepo.path, ["commit", "-m", "base"]);
+      await _runGit(processRunner, deletionRepo.path, ["branch", "-M", "main"]);
+      await _runGit(processRunner, deletionRepo.path, ["worktree", "add", deletionWorktree.path, "-b", "session-branch"]);
+      File("${deletionWorktree.path}/tracked.txt").writeAsStringSync("line one\n");
+
+      final diffs = await computeSessionDiffs(
+        worktreePath: deletionWorktree.path,
+        baseBranch: "main",
+        processRunner: processRunner,
+      );
+
+      final tracked = diffs.singleWhere((diff) => diff.file == "tracked.txt");
+      expect(tracked, isA<FileDiffContent>());
+      final content = tracked as FileDiffContent;
+      expect(content.after, equals("line one\n"));
+      expect(content.additions, equals(0));
+      expect(content.deletions, equals(1));
+    });
   });
 }
 
