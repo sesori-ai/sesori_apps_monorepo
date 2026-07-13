@@ -79,7 +79,7 @@ void main() {
     test("does not query a derived plugin for a tombstoned session", () async {
       final derivedPlugin = _DerivedPermissionPlugin();
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone",
+        backendSessionId: "gone",
         pluginId: derivedPlugin.id,
         deletedAt: 1,
       );
@@ -138,7 +138,7 @@ void main() {
         ];
       for (final sessionId in ["gone-child", "gone-root"]) {
         await db.sessionDao.insertSessionTombstone(
-          sessionId: sessionId,
+          backendSessionId: sessionId,
           pluginId: derivedPlugin.id,
           deletedAt: 1,
         );
@@ -173,7 +173,7 @@ void main() {
           ),
         ];
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone-root",
+        backendSessionId: "gone-root",
         pluginId: derivedPlugin.id,
         deletedAt: 1,
       );
@@ -205,7 +205,7 @@ void main() {
           ),
         ];
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone-child",
+        backendSessionId: "gone-child",
         pluginId: derivedPlugin.id,
         deletedAt: 1,
       );

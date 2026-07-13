@@ -32,17 +32,17 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     );
   }
 
-  /// Records a delete tombstone for [sessionId]. Idempotent — re-deleting an
+  /// Records a delete tombstone for [backendSessionId]. Idempotent — re-deleting an
   /// already-tombstoned session keeps the original timestamp.
   Future<void> insertSessionTombstone({
-    required String sessionId,
+    required String backendSessionId,
     required String pluginId,
     required int deletedAt,
   }) async {
     await into(deletedSessionsTable).insert(
       DeletedSessionsTableCompanion.insert(
         ownerIdentity: const Value(_ownerIdentity),
-        backendSessionId: sessionId,
+        backendSessionId: backendSessionId,
         pluginId: pluginId,
         deletedAt: deletedAt,
       ),
@@ -59,11 +59,13 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return {for (final row in rows) row.backendSessionId};
   }
 
-  Future<bool> isSessionTombstoned({required String sessionId, required String pluginId}) async {
+  Future<bool> isSessionTombstoned({required String backendSessionId, required String pluginId}) async {
     final query = select(deletedSessionsTable)
       ..where(
         (t) =>
-            t.ownerIdentity.equals(_ownerIdentity) & t.pluginId.equals(pluginId) & t.backendSessionId.equals(sessionId),
+            t.ownerIdentity.equals(_ownerIdentity) &
+            t.pluginId.equals(pluginId) &
+            t.backendSessionId.equals(backendSessionId),
       );
     return await query.getSingleOrNull() != null;
   }

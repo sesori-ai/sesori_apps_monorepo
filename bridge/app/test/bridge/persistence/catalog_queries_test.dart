@@ -53,6 +53,17 @@ void main() {
   }
 
   test("catalog DAOs return ordered roots, children, bindings, and archived rows", () async {
+    await db
+        .into(db.projectsTable)
+        .insert(
+          ProjectsTableCompanion.insert(
+            projectId: "project-2",
+            path: "/projects/two",
+            createdAt: const Value(2),
+            updatedAt: const Value(30),
+            projectionUpdatedAt: 30,
+          ),
+        );
     await insertSession(
       id: "root-old",
       backendId: "backend-old",
@@ -108,6 +119,10 @@ void main() {
       (await db.projectsDao.getProjectsByOwnerAndPath(ownerIdentity: "local", path: "/projects/one")).single.projectId,
       "project-1",
     );
+    expect(
+      (await db.projectsDao.getCatalogProjects(ownerIdentity: "local")).map((row) => row.projectId),
+      ["project-2", "project-1"],
+    );
   });
 
   test("hydration completion access is exact and replaceable", () async {
@@ -144,6 +159,13 @@ void main() {
     );
     expect(
       await plan(
+        "SELECT * FROM projects_table WHERE owner_identity = 'local' "
+        "ORDER BY updated_at DESC, project_id DESC",
+      ),
+      allOf(contains("idx_projects_owner_updated"), isNot(contains("USE TEMP B-TREE"))),
+    );
+    expect(
+      await plan(
         "SELECT * FROM sessions_table WHERE owner_identity = 'local' AND plugin_id = 'codex' "
         "AND backend_session_id = 'backend'",
       ),
@@ -168,7 +190,7 @@ void main() {
         "SELECT * FROM sessions_table WHERE owner_identity = 'local' AND archived_at IS NOT NULL "
         "ORDER BY updated_at DESC, session_id DESC",
       ),
-      contains("idx_sessions_archive"),
+      allOf(contains("idx_sessions_archive"), isNot(contains("USE TEMP B-TREE"))),
     );
   });
 }

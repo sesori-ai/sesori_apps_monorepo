@@ -1151,6 +1151,7 @@ final class Schema11 extends i0.VersionedSchema {
     pullRequestsTable,
     catalogHydrationsTable,
     idxProjectsOwnerPath,
+    idxProjectsOwnerUpdated,
     idxSessionsOwnerPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
@@ -1270,6 +1271,10 @@ final class Schema11 extends i0.VersionedSchema {
     'idx_projects_owner_path',
     'CREATE INDEX idx_projects_owner_path ON projects_table (owner_identity, path)',
   );
+  final i1.Index idxProjectsOwnerUpdated = i1.Index(
+    'idx_projects_owner_updated',
+    'CREATE INDEX idx_projects_owner_updated ON projects_table (owner_identity, updated_at DESC, project_id DESC)',
+  );
   final i1.Index idxSessionsOwnerPluginBackend = i1.Index(
     'idx_sessions_owner_plugin_backend',
     'CREATE UNIQUE INDEX idx_sessions_owner_plugin_backend ON sessions_table (owner_identity, plugin_id, backend_session_id)',
@@ -1284,7 +1289,7 @@ final class Schema11 extends i0.VersionedSchema {
   );
   final i1.Index idxSessionsArchive = i1.Index(
     'idx_sessions_archive',
-    'CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, archived_at, updated_at, session_id)',
+    'CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
   );
 }
 

@@ -239,19 +239,19 @@ void main() {
 
     test("tombstones scope the same session id independently by plugin", () async {
       await dao.insertSessionTombstone(
-        sessionId: "shared-id",
+        backendSessionId: "shared-id",
         pluginId: "acp",
         deletedAt: 1,
       );
       await dao.insertSessionTombstone(
-        sessionId: "shared-id",
+        backendSessionId: "shared-id",
         pluginId: "codex",
         deletedAt: 2,
       );
 
-      expect(await dao.isSessionTombstoned(sessionId: "shared-id", pluginId: "acp"), isTrue);
-      expect(await dao.isSessionTombstoned(sessionId: "shared-id", pluginId: "codex"), isTrue);
-      expect(await dao.isSessionTombstoned(sessionId: "shared-id", pluginId: "other"), isFalse);
+      expect(await dao.isSessionTombstoned(backendSessionId: "shared-id", pluginId: "acp"), isTrue);
+      expect(await dao.isSessionTombstoned(backendSessionId: "shared-id", pluginId: "codex"), isTrue);
+      expect(await dao.isSessionTombstoned(backendSessionId: "shared-id", pluginId: "other"), isFalse);
     });
 
     test("tombstone reads are scoped to the current owner", () async {
@@ -266,7 +266,7 @@ void main() {
             ),
           );
 
-      expect(await dao.isSessionTombstoned(sessionId: "shared-id", pluginId: "codex"), isFalse);
+      expect(await dao.isSessionTombstoned(backendSessionId: "shared-id", pluginId: "codex"), isFalse);
       expect(await dao.getTombstonedSessionIds(pluginId: "codex"), isEmpty);
     });
 

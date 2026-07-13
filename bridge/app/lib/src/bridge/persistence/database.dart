@@ -238,6 +238,7 @@ class AppDatabase extends _$AppDatabase {
 
         await m.createTable(schema.catalogHydrationsTable);
         await m.createIndex(schema.idxProjectsOwnerPath);
+        await m.createIndex(schema.idxProjectsOwnerUpdated);
         await m.createIndex(schema.idxSessionsOwnerPluginBackend);
         await m.createIndex(schema.idxSessionsRoots);
         await m.createIndex(schema.idxSessionsChildren);

@@ -2976,6 +2976,10 @@ class DatabaseAtV11 extends GeneratedDatabase {
     'idx_projects_owner_path',
     'CREATE INDEX idx_projects_owner_path ON projects_table (owner_identity, path)',
   );
+  late final Index idxProjectsOwnerUpdated = Index(
+    'idx_projects_owner_updated',
+    'CREATE INDEX idx_projects_owner_updated ON projects_table (owner_identity, updated_at DESC, project_id DESC)',
+  );
   late final Index idxSessionsOwnerPluginBackend = Index(
     'idx_sessions_owner_plugin_backend',
     'CREATE UNIQUE INDEX idx_sessions_owner_plugin_backend ON sessions_table (owner_identity, plugin_id, backend_session_id)',
@@ -2990,7 +2994,7 @@ class DatabaseAtV11 extends GeneratedDatabase {
   );
   late final Index idxSessionsArchive = Index(
     'idx_sessions_archive',
-    'CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, archived_at, updated_at, session_id)',
+    'CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3003,6 +3007,7 @@ class DatabaseAtV11 extends GeneratedDatabase {
     pullRequestsTable,
     catalogHydrationsTable,
     idxProjectsOwnerPath,
+    idxProjectsOwnerUpdated,
     idxSessionsOwnerPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,

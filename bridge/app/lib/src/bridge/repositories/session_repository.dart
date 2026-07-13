@@ -290,7 +290,7 @@ class SessionRepository {
   }
 
   Future<bool> isSessionTombstoned({required String sessionId}) {
-    return _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: _plugin.id);
+    return _sessionDao.isSessionTombstoned(backendSessionId: sessionId, pluginId: _plugin.id);
   }
 
   /// Deletes the backend session, then records its tombstone and removes the
@@ -327,7 +327,7 @@ class SessionRepository {
     }
     await _sessionDao.transaction(() async {
       await _sessionDao.insertSessionTombstone(
-        sessionId: sessionId,
+        backendSessionId: stored?.backendSessionId ?? sessionId,
         pluginId: _plugin.id,
         deletedAt: DateTime.now().millisecondsSinceEpoch,
       );

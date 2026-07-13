@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:drift/drift.dart" hide isNotNull, isNull;
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
@@ -1273,7 +1274,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone",
+        backendSessionId: "gone",
         pluginId: plugin.id,
         deletedAt: 1,
       );
@@ -1336,7 +1337,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone-child",
+        backendSessionId: "gone-child",
         pluginId: plugin.id,
         deletedAt: 1,
       );
@@ -1370,9 +1371,45 @@ void main() {
       expect(deleted.projectID, isEmpty);
       expect(plugin.deleteCalls, 1);
       expect(
-        await db.sessionDao.isSessionTombstoned(sessionId: "rowless", pluginId: plugin.id),
+        await db.sessionDao.isSessionTombstoned(backendSessionId: "rowless", pluginId: plugin.id),
         isTrue,
       );
+    });
+
+    test("deleteSession tombstones the stored backend identity", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final plugin = _FakeDerivedPlugin(launchDirectory: "/repo", allSessions: const []);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await repository.insertStoredSession(
+        sessionId: "sesori-id",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      await (db.update(db.sessionTable)..where((table) => table.sessionId.equals("sesori-id"))).write(
+        const SessionTableCompanion(backendSessionId: Value("backend-id")),
+      );
+
+      await repository.deleteSession(sessionId: "sesori-id");
+
+      expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "backend-id", pluginId: plugin.id), isTrue);
+      expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "sesori-id", pluginId: plugin.id), isFalse);
     });
 
     test("tombstoned sessions are filtered from enumeration and resolution", () async {
@@ -1400,7 +1437,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "deleted-s",
+        backendSessionId: "deleted-s",
         pluginId: "codex",
         deletedAt: 1,
       );

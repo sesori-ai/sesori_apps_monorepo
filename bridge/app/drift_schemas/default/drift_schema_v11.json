@@ -763,6 +763,33 @@
     {
       "id": 6,
       "references": [
+        0
+      ],
+      "type": "index",
+      "data": {
+        "on": 0,
+        "name": "idx_projects_owner_updated",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "owner_identity",
+            "order_by": null
+          },
+          {
+            "column": "updated_at",
+            "order_by": "descending"
+          },
+          {
+            "column": "project_id",
+            "order_by": "descending"
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "references": [
         1
       ],
       "type": "index",
@@ -788,7 +815,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 8,
       "references": [
         1
       ],
@@ -823,7 +850,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 9,
       "references": [
         1
       ],
@@ -854,7 +881,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 10,
       "references": [
         1
       ],
@@ -862,26 +889,9 @@
       "data": {
         "on": 1,
         "name": "idx_sessions_archive",
-        "sql": null,
+        "sql": "CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL",
         "unique": false,
-        "columns": [
-          {
-            "column": "owner_identity",
-            "order_by": null
-          },
-          {
-            "column": "archived_at",
-            "order_by": null
-          },
-          {
-            "column": "updated_at",
-            "order_by": null
-          },
-          {
-            "column": "session_id",
-            "order_by": null
-          }
-        ]
+        "columns": []
       }
     }
   ],
@@ -941,6 +951,15 @@
       ]
     },
     {
+      "name": "idx_projects_owner_updated",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_projects_owner_updated ON projects_table (owner_identity, updated_at DESC, project_id DESC)"
+        }
+      ]
+    },
+    {
       "name": "idx_sessions_owner_plugin_backend",
       "sql": [
         {
@@ -972,7 +991,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, archived_at, updated_at, session_id)"
+          "sql": "CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL"
         }
       ]
     }

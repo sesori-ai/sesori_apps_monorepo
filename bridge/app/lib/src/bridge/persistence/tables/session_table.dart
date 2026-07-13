@@ -40,9 +40,9 @@ class AgentModelConverter extends TypeConverter<AgentModel, String> {
   name: "idx_sessions_children",
   columns: {#ownerIdentity, #parentSessionId, #updatedAt, #sessionId},
 )
-@TableIndex(
-  name: "idx_sessions_archive",
-  columns: {#ownerIdentity, #archivedAt, #updatedAt, #sessionId},
+@TableIndex.sql(
+  "CREATE INDEX idx_sessions_archive ON sessions_table "
+  "(owner_identity, updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL",
 )
 @UseRowClass(SessionDto)
 class SessionTable extends Table {

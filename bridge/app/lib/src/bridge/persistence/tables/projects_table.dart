@@ -6,6 +6,14 @@ import "../database.dart";
 part "projects_table.freezed.dart";
 
 @TableIndex(name: "idx_projects_owner_path", columns: {#ownerIdentity, #path})
+@TableIndex(
+  name: "idx_projects_owner_updated",
+  columns: {
+    #ownerIdentity,
+    IndexedColumn(#updatedAt, orderBy: OrderingMode.desc),
+    IndexedColumn(#projectId, orderBy: OrderingMode.desc),
+  },
+)
 @UseRowClass(ProjectDto)
 class ProjectsTable extends Table {
   TextColumn get projectId => text()();
