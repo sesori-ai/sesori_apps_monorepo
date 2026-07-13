@@ -37,6 +37,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final PromptSendQueue _promptQueue = PromptSendQueue();
   bool _isSending = false;
 
+  /// Cooldown between silent refreshes triggered by staleness events.
+  /// Overridable so tests can exercise the coalescing without real waits.
+  final Duration eventRefreshMinInterval;
+
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<SseEvent> _globalEventSubscription;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
@@ -44,6 +48,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
+  Timer? _eventRefreshCooldown;
+  bool _eventRefreshQueued = false;
   bool _needsStaleRefresh = false;
   bool _waitingForConnection = false;
   bool _wasPaused = false;
@@ -91,6 +97,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
+    this.eventRefreshMinInterval = const Duration(seconds: 5),
   }) : _loadService = loadService,
        _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
@@ -160,6 +167,36 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   void _silentRefresh() {
     if (state is! SessionDetailLoaded) return;
     _activeRefresh ??= _doSilentRefresh().whenComplete(() => _activeRefresh = null);
+  }
+
+  /// Coalesces event-driven staleness signals (sessions.updated,
+  /// command.executed, dataMayBeStale) into at most one silent refresh per
+  /// [eventRefreshMinInterval]. While the agent works, the bridge can emit
+  /// these in sustained bursts (e.g. sessions.updated on every PR-sync tick),
+  /// and each silent refresh refetches the whole session snapshot — ~10
+  /// encrypted relay round-trips — so refreshing per event keeps the radio
+  /// and main isolate busy for the entire turn. The first signal after a
+  /// quiet period still refreshes immediately; follow-ups within the cooldown
+  /// collapse into a single trailing refresh. Reconnect and app-resume
+  /// refreshes bypass this on purpose: they must run promptly and re-assert
+  /// the bridge-side view declaration.
+  void _requestEventDrivenRefresh() {
+    if (state is! SessionDetailLoaded) return;
+    if (_eventRefreshCooldown != null) {
+      _eventRefreshQueued = true;
+      return;
+    }
+    _silentRefresh();
+    _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
+  }
+
+  void _onEventRefreshCooldownElapsed() {
+    _eventRefreshCooldown = null;
+    if (!_eventRefreshQueued) return;
+    _eventRefreshQueued = false;
+    if (isClosed || state is! SessionDetailLoaded) return;
+    _silentRefresh();
+    _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
 
   Future<void> _doSilentRefresh() async {
@@ -536,7 +573,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           break;
         case SesoriSessionsUpdated(:final projectID):
           if (projectID.isNotEmpty && projectID == _projectId) {
-            _silentRefresh();
+            _requestEventDrivenRefresh();
           }
       }
     } catch (e, st) {
@@ -793,7 +830,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (state is! SessionDetailLoaded) return;
     final status = _connectionService.status.value;
     if (status is ConnectionConnected) {
-      _silentRefresh();
+      _requestEventDrivenRefresh();
     } else {
       _needsStaleRefresh = true;
     }
@@ -1396,6 +1433,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _connectionStatusSubscription.cancel();
     _staleSubscription.cancel();
     _lifecycleSubscription.cancel();
+    _eventRefreshCooldown?.cancel();
     _streamingBuffer.dispose();
     _questionStream.close();
     _permissionStream.close();

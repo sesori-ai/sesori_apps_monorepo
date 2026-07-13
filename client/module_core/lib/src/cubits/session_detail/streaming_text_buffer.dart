@@ -45,9 +45,30 @@ class StreamingTextBuffer {
   }
 
   void _scheduleFlush() {
-    _timer ??= Timer(_throttle, () {
+    _timer ??= Timer(_flushInterval(), () {
       _timer = null;
       _onFlush();
     });
+  }
+
+  /// Buffered text above which the flush interval starts stretching.
+  static const int _relaxedFlushThresholdChars = 8192;
+
+  /// Upper bound for the stretched flush interval.
+  static const Duration _maxFlushInterval = Duration(milliseconds: 300);
+
+  /// Each flush makes consumers re-render the full accumulated text (the
+  /// markdown of a streaming part is re-parsed and re-laid-out whole), so a
+  /// fixed interval turns long streams quadratic. Stretch the interval as the
+  /// buffered text grows: the base throttle while parts are small, up to
+  /// [_maxFlushInterval] for very long ones.
+  Duration _flushInterval() {
+    var total = 0;
+    for (final buffer in _buffers.values) {
+      total += buffer.length;
+    }
+    if (total <= _relaxedFlushThresholdChars) return _throttle;
+    final scaled = _throttle * (total / _relaxedFlushThresholdChars);
+    return scaled > _maxFlushInterval ? _maxFlushInterval : scaled;
   }
 }

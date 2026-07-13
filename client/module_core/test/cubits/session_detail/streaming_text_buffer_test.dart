@@ -146,6 +146,36 @@ void main() {
       buffer.dispose();
     });
 
+    test("flush interval stretches as the buffered text grows, capped at 300ms", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        // Small buffers flush at the base throttle.
+        buffer.appendDelta(partId: "p1", delta: "small");
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 1);
+
+        // Past the relaxed threshold (8 KiB) the next flush waits
+        // proportionally longer than the base throttle (~16 KB → ~98ms).
+        buffer.appendDelta(partId: "p1", delta: "x" * 16000);
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 1);
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 2);
+
+        // No matter how large the part grows, the interval caps at 300ms.
+        buffer.appendDelta(partId: "p1", delta: "x" * 1000000);
+        async.elapse(const Duration(milliseconds: 300));
+        expect(flushCount, 3);
+
+        buffer.dispose();
+      });
+    });
+
     test("appendDelta() after clear() works normally (buffer is reusable)", () {
       fakeAsync((async) {
         var flushCount = 0;

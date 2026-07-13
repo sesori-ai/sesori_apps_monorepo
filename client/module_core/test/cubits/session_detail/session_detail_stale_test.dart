@@ -612,6 +612,47 @@ void main() {
       verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
       verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
     });
+
+    test("staleness bursts inside the cooldown collapse into one immediate and one trailing refresh", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+        eventRefreshMinInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      reset(mockSessionService);
+      _stubLoadApis(mockSessionService, sessionId: sessionId);
+      when(() => mockSessionService.listCommands(projectId: any(named: "projectId"))).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
+
+      // A burst of staleness signals: the first refreshes immediately, the
+      // rest queue behind the cooldown.
+      mockConnectionService.emitDataMayBeStale();
+      mockConnectionService.emitDataMayBeStale();
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+
+      // Once the cooldown elapses, the queued signals collapse into exactly
+      // one trailing refresh...
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+
+      // ...and a drained queue schedules nothing further.
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId")));
+    });
   });
 }
 
