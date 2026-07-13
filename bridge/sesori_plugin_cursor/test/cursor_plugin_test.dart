@@ -410,6 +410,92 @@ void main() {
       await client.dispose();
     });
 
+    test("applyTurnSelection uses per-model thought_level config ids", () async {
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+      await client.connect();
+
+      final first = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "s1",
+        model: (providerID: "cursor", modelID: "gpt-5.4"),
+        variant: const PluginSessionVariant(id: "high"),
+        agent: "agent",
+      );
+      await respond("session/set_config_option", {
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "gpt-5.4",
+            "options": [
+              {"value": "gpt-5.4", "name": "GPT-5.4"},
+              {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
+            ],
+          },
+          {
+            "id": "reasoning",
+            "category": "thought_level",
+            "currentValue": "medium",
+            "options": [
+              {"value": "low", "name": "Low"},
+              {"value": "medium", "name": "Medium"},
+              {"value": "high", "name": "High"},
+            ],
+          },
+        ],
+      }); // model -> stamps reasoning for gpt
+      await respond("session/set_config_option", const {}); // mode
+      await respond("session/set_config_option", const {}); // effort/reasoning high
+      await first;
+
+      final second = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "s1",
+        model: (providerID: "cursor", modelID: "sonnet-4.6"),
+        variant: const PluginSessionVariant(id: "high"),
+        agent: "agent",
+      );
+      await respond("session/set_config_option", {
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "sonnet-4.6",
+            "options": [
+              {"value": "gpt-5.4", "name": "GPT-5.4"},
+              {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
+            ],
+          },
+          {
+            "id": "effort",
+            "category": "thought_level",
+            "currentValue": "medium",
+            "options": [
+              {"value": "low", "name": "Low"},
+              {"value": "medium", "name": "Medium"},
+              {"value": "high", "name": "High"},
+            ],
+          },
+        ],
+      }); // model -> stamps effort for sonnet
+      await respond("session/set_config_option", const {}); // high on effort
+      await second;
+
+      final thoughtSets = fake.written
+          .where((f) => f["method"] == "session/set_config_option")
+          .map((f) => (f["params"] as Map).cast<String, dynamic>())
+          .where((p) => p["configId"] == "effort" || p["configId"] == "reasoning")
+          .map((p) => "${p["configId"]}=${p["value"]}")
+          .toList();
+      expect(thoughtSets, ["reasoning=high", "effort=high"]);
+
+      await client.dispose();
+    });
+
     test("applyTurnSelection never pushes an unknown model", () async {
       plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(

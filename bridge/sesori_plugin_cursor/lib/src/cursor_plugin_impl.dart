@@ -67,8 +67,10 @@ class CursorPlugin extends AcpPlugin {
   List<Map<String, dynamic>> _modes = const [];
   String? _defaultModeId;
 
-  /// Cached thought-level config (effort/reasoning — id varies per model).
+  /// Cached thought-level config. The option id varies per model (`effort` vs
+  /// `reasoning`), so we keep both the last-seen id and a per-model map.
   String? _thoughtLevelConfigId;
+  final Map<String, String> _thoughtLevelConfigIdByModel = {};
   String? _defaultThoughtLevelId;
 
   /// Per-model effort/reasoning variant lists. A key present with an empty list
@@ -166,7 +168,12 @@ class CursorPlugin extends AcpPlugin {
       return;
     }
 
-    if (thoughtConfig["id"] case final String id) _thoughtLevelConfigId = id;
+    if (thoughtConfig["id"] case final String id) {
+      _thoughtLevelConfigId = id;
+      if (forModelId != null && forModelId.isNotEmpty) {
+        _thoughtLevelConfigIdByModel[forModelId] = id;
+      }
+    }
     final variants = _thoughtLevelVariants(thoughtConfig);
     if (fromNewSession) {
       _defaultThoughtLevelId =
@@ -258,12 +265,14 @@ class CursorPlugin extends AcpPlugin {
     final effortModelId =
         eventMapper.modelForSession(sessionId) ?? _currentModelId ?? "";
     final effortOptions = _effortVariantsForModel(effortModelId);
+    final thoughtConfigId =
+        _thoughtLevelConfigIdByModel[effortModelId] ?? _thoughtLevelConfigId;
     if (requestedEffort != null &&
-        _thoughtLevelConfigId != null &&
+        thoughtConfigId != null &&
         requestedEffort != _appliedThoughtLevelId &&
         effortOptions.isNotEmpty &&
         effortOptions.contains(requestedEffort)) {
-      if (await _setConfig(client, sessionId, _thoughtLevelConfigId!, requestedEffort)) {
+      if (await _setConfig(client, sessionId, thoughtConfigId, requestedEffort)) {
         _appliedThoughtLevelId = requestedEffort;
       }
     }
