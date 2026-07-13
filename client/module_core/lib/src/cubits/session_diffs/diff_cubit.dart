@@ -24,28 +24,7 @@ class DiffCubit extends Cubit<DiffState> {
        _connectionService = connectionService,
        super(const DiffState.loading()) {
     _eventSubscription = _connectionService.sessionEvents(sessionId).listen(_handleEvent);
-    _init();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Initialization
-  // ---------------------------------------------------------------------------
-
-  Future<void> _init() async {
-    try {
-      final response = await _sessionRepository.getSessionDiffs(sessionId: sessionId);
-      if (isClosed) return;
-
-      switch (response) {
-        case SuccessResponse(:final data):
-          emit(DiffState.loaded(files: data.diffs));
-        case ErrorResponse(:final error):
-          emit(DiffState.failed(error: error));
-      }
-    } catch (e) {
-      if (isClosed) return;
-      emit(DiffState.failed(error: e));
-    }
+    unawaited(_refresh(showLoading: false));
   }
 
   void _handleEvent(SesoriSessionEvent event) {
@@ -60,28 +39,31 @@ class DiffCubit extends Cubit<DiffState> {
   /// Re-fetches diffs from the server.
   Future<void> refresh() => _refresh(showLoading: true);
 
-  Future<void> _refresh({required bool showLoading}) async {
-    final previous = _activeRefresh;
-    if (previous != null) {
-      await previous;
-    }
-
-    final refresh = _refreshNow(showLoading: showLoading);
-    _activeRefresh = refresh;
-    try {
-      await refresh;
-    } finally {
-      if (identical(_activeRefresh, refresh)) {
-        _activeRefresh = null;
-      }
-    }
+  Future<void> _refresh({required bool showLoading}) {
+    _activeRefresh = (_activeRefresh ?? Future<void>.value())
+        .catchError((_) {})
+        .then((_) => _fetchAndEmit(showLoading: showLoading));
+    return _activeRefresh!;
   }
 
-  Future<void> _refreshNow({required bool showLoading}) async {
+  Future<void> _fetchAndEmit({required bool showLoading}) async {
     if (showLoading) {
       emit(const DiffState.loading());
     }
-    await _init();
+    try {
+      final response = await _sessionRepository.getSessionDiffs(sessionId: sessionId);
+      if (isClosed) return;
+
+      switch (response) {
+        case SuccessResponse(:final data):
+          emit(DiffState.loaded(files: data.diffs));
+        case ErrorResponse(:final error):
+          emit(DiffState.failed(error: error));
+      }
+    } catch (e) {
+      if (isClosed) return;
+      emit(DiffState.failed(error: e));
+    }
   }
 
   @override

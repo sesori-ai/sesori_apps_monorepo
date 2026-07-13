@@ -72,6 +72,48 @@ void main() {
       expect(untracked.status, FileDiffStatus.added);
       expect(untracked.additions, equals(1));
     });
+
+    test("shows replacement content when a deleted file is recreated untracked", () async {
+      await _runGit(processRunner, worktreeDir.path, ["rm", "-f", "tracked.txt"]);
+      await _runGit(processRunner, worktreeDir.path, ["commit", "-m", "delete tracked"]);
+      File("${worktreeDir.path}/tracked.txt")
+        ..createSync(recursive: true)
+        ..writeAsStringSync("replacement tracked\n");
+
+      final diffs = await computeSessionDiffs(
+        worktreePath: worktreeDir.path,
+        baseBranch: "main",
+        processRunner: processRunner,
+      );
+
+      final replacement = diffs.singleWhere((diff) => diff.file == "tracked.txt");
+      expect(replacement, isA<FileDiffContent>());
+      final content = replacement as FileDiffContent;
+      expect(content.status, FileDiffStatus.modified);
+      expect(content.after, equals("replacement tracked\n"));
+      expect(content.additions, equals(1));
+      expect(content.deletions, greaterThan(0));
+    });
+
+    test("keeps zero line counts for mode-only tracked changes", () async {
+      await _runGit(processRunner, worktreeDir.path, ["checkout", "--", "."]);
+      await _runGit(processRunner, worktreeDir.path, ["clean", "-fd"]);
+
+      await Process.run("chmod", ["711", "${worktreeDir.path}/untouched.txt"]);
+
+      final diffs = await computeSessionDiffs(
+        worktreePath: worktreeDir.path,
+        baseBranch: "main",
+        processRunner: processRunner,
+      );
+
+      final modeOnly = diffs.singleWhere((diff) => diff.file == "untouched.txt");
+      expect(modeOnly, isA<FileDiffContent>());
+      final content = modeOnly as FileDiffContent;
+      expect(content.status, FileDiffStatus.modified);
+      expect(content.additions, equals(0));
+      expect(content.deletions, equals(0));
+    });
   });
 }
 

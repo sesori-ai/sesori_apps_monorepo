@@ -203,5 +203,42 @@ void main() {
         isA<DiffStateLoaded>().having((s) => s.files.single.file, "refreshed file", "lib/src/new.dart"),
       ],
     );
+
+    blocTest<DiffCubit, DiffState>(
+      "session.diff SSE burst: serializes refreshes and keeps latest result",
+      build: () {
+        var requestCount = 0;
+        when(() => mockSessionRepository.getSessionDiffs(sessionId: sessionId)).thenAnswer((_) async {
+          requestCount++;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          return ApiResponse.success(
+            SessionDiffsResponse(
+              diffs: [
+                testFileDiff(file: "lib/src/request-$requestCount.dart"),
+              ],
+            ),
+          );
+        });
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        sessionEvents.add(const SesoriSessionDiff(sessionID: sessionId));
+        sessionEvents.add(const SesoriSessionDiff(sessionID: sessionId));
+        sessionEvents.add(const SesoriSessionDiff(sessionID: sessionId));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      },
+      skip: 1,
+      verify: (cubit) {
+        expect(
+          cubit.state,
+          isA<DiffStateLoaded>().having(
+            (state) => state.files.single.file,
+            "latest refresh wins",
+            "lib/src/request-4.dart",
+          ),
+        );
+      },
+    );
   });
 }
