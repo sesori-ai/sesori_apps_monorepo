@@ -176,6 +176,68 @@ void main() {
       });
     });
 
+    test("a finalized large part stops throttling the next part", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        // The large part schedules the capped 300ms interval, then finalizes
+        // before that timer fires.
+        buffer.appendDelta(partId: "p1", delta: "x" * 1000000);
+        buffer.removePart("p1");
+
+        // The next (small) part must get its normal 50ms flush, not inherit
+        // the stale 300ms timer.
+        buffer.appendDelta(partId: "p2", delta: "small");
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 1);
+        expect(buffer.snapshot(), {"p2": "small"});
+
+        buffer.dispose();
+      });
+    });
+
+    test("removing the last part cancels the pending flush", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        buffer.appendDelta(partId: "p1", delta: "data");
+        buffer.removePart("p1");
+
+        async.elapse(const Duration(milliseconds: 400));
+        expect(flushCount, 0);
+
+        buffer.dispose();
+      });
+    });
+
+    test("removing one part reschedules the flush for the remaining parts", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        buffer.appendDelta(partId: "p1", delta: "x" * 1000000);
+        buffer.appendDelta(partId: "p2", delta: "small");
+        buffer.removePart("p1");
+
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 1);
+        expect(buffer.snapshot(), {"p2": "small"});
+
+        buffer.dispose();
+      });
+    });
+
     test("appendDelta() after clear() works normally (buffer is reusable)", () {
       fakeAsync((async) {
         var flushCount = 0;

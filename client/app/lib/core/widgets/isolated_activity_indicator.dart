@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter/semantics.dart";
 
 import "../extensions/build_context_x.dart";
 
@@ -29,14 +30,28 @@ class IsolatedActivityIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: CircularProgressIndicator(
-        value: context.isReducedMotion ? _staticArcSweep : null,
-        strokeWidth: strokeWidth,
-        strokeCap: StrokeCap.round,
-        color: color,
-        backgroundColor: Colors.transparent,
-      ),
+    if (context.isReducedMotion) {
+      // The static arc has no measurable completion: strip the determinate
+      // progress semantics Flutter derives from a non-null value (a
+      // progress-bar role stuck at 75%) and expose the same loading-spinner
+      // role the animated variant carries.
+      return Semantics(
+        role: SemanticsRole.loadingSpinner,
+        child: ExcludeSemantics(
+          child: RepaintBoundary(child: _arc(sweep: _staticArcSweep)),
+        ),
+      );
+    }
+    return RepaintBoundary(child: _arc(sweep: null));
+  }
+
+  CircularProgressIndicator _arc({required double? sweep}) {
+    return CircularProgressIndicator(
+      value: sweep,
+      strokeWidth: strokeWidth,
+      strokeCap: StrokeCap.round,
+      color: color,
+      backgroundColor: Colors.transparent,
     );
   }
 }

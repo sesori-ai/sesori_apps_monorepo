@@ -25,7 +25,19 @@ class StreamingTextBuffer {
   }
 
   /// Remove a part's buffer (e.g. when the part is finalized or removed).
-  void removePart(String partId) => _buffers.remove(partId);
+  ///
+  /// Recomputes any pending flush: a large finalized part must not leave its
+  /// stretched interval throttling the remaining small parts, and an empty
+  /// buffer set needs no flush at all (callers emit their own state when
+  /// finalizing a part).
+  void removePart(String partId) {
+    if (_buffers.remove(partId) == null) return;
+    final pending = _timer;
+    if (pending == null) return;
+    pending.cancel();
+    _timer = null;
+    if (_buffers.isNotEmpty) _scheduleFlush();
+  }
 
   /// Returns the current accumulated text as an immutable snapshot.
   Map<String, String> snapshot() => _buffers.map((key, value) => MapEntry(key, value.toString()));

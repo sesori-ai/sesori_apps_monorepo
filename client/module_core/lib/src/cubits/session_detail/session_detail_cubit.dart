@@ -166,7 +166,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   void _silentRefresh() {
     if (state is! SessionDetailLoaded) return;
-    _activeRefresh ??= _doSilentRefresh().whenComplete(() => _activeRefresh = null);
+    if (_activeRefresh != null) return;
+    // Any refresh that starts now will fetch a snapshot covering every
+    // staleness signal seen so far, so it consumes the queued flag. Signals
+    // that arrive while this refresh is in flight re-queue behind it.
+    _eventRefreshQueued = false;
+    _activeRefresh = _doSilentRefresh().whenComplete(() => _activeRefresh = null);
   }
 
   /// Coalesces event-driven staleness signals (sessions.updated,
@@ -182,6 +187,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   /// the bridge-side view declaration.
   void _requestEventDrivenRefresh() {
     if (state is! SessionDetailLoaded) return;
+    if (_wasPaused) {
+      // Don't spend the radio while backgrounded: hold the signal and let
+      // the resume path's bypass refresh consume it.
+      _eventRefreshQueued = true;
+      return;
+    }
     if (_eventRefreshCooldown != null) {
       _eventRefreshQueued = true;
       return;
@@ -206,13 +217,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       _eventRefreshQueued = false;
       return;
     }
-    if (_activeRefresh != null) {
-      // The previous refresh is still in flight: keep the signal queued and
-      // check again after another window so it is never silently dropped.
-      _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
+    // While backgrounded the queue is held for the resume bypass refresh.
+    if (_wasPaused) return;
+    final active = _activeRefresh;
+    if (active != null) {
+      // The minimum interval has already elapsed, so run the queued refresh
+      // as soon as the in-flight one completes instead of waiting another
+      // full window — unless a newer signal armed its own cooldown while we
+      // waited, in which case that timer owns the queue.
+      unawaited(
+        active.whenComplete(() {
+          if (isClosed || _eventRefreshCooldown != null) return;
+          _onEventRefreshCooldownElapsed();
+        }),
+      );
       return;
     }
-    _eventRefreshQueued = false;
     _silentRefresh();
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
@@ -859,6 +879,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case LifecycleState.paused:
       case LifecycleState.hidden:
         _wasPaused = true;
+        // Don't let a queued trailing refresh spend radio/CPU while hidden;
+        // the queue is preserved and consumed by the resume bypass refresh.
+        _eventRefreshCooldown?.cancel();
+        _eventRefreshCooldown = null;
       case LifecycleState.resumed:
         if (!_wasPaused) return;
         _wasPaused = false;

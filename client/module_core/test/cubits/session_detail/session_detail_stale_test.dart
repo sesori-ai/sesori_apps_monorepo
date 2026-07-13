@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -716,6 +717,109 @@ void main() {
       // trailing refresh against fresh data.
       await Future<void>.delayed(const Duration(milliseconds: 150));
       verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+    });
+
+    test("the trailing refresh runs as soon as a slow refresh completes, not a window later", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+        eventRefreshMinInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      reset(mockSessionService);
+      _stubLoadApis(mockSessionService, sessionId: sessionId);
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
+
+      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
+      when(
+        () => mockSessionService.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) => messagesCompleter.future);
+
+      mockConnectionService.emitDataMayBeStale();
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+
+      // The minimum interval elapsed mid-refresh; when the slow refresh
+      // finally completes, the queued trailing refresh must start right away
+      // rather than waiting out another full cooldown window.
+      when(
+        () => mockSessionService.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
+      );
+      messagesCompleter.complete(
+        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+    });
+
+    test("the queue is held while hidden and consumed by the resume refresh", () async {
+      final lifecycle = FakeLifecycleSource();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+        eventRefreshMinInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      reset(mockSessionService);
+      _stubLoadApis(mockSessionService, sessionId: sessionId);
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
+
+      mockConnectionService.emitDataMayBeStale();
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+
+      // Backgrounding cancels the cooldown: the queued trailing refresh must
+      // not spend the radio while the app is hidden.
+      lifecycle.emitState(LifecycleState.paused);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId")));
+
+      // The resume bypass refresh consumes the held signal...
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"))).called(1);
+
+      // ...so nothing further fires afterwards.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId")));
     });
   });
 }

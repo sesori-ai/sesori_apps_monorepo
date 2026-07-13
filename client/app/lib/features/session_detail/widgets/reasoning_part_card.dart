@@ -41,10 +41,18 @@ class ReasoningPartCard extends StatefulWidget {
     if (_isLowSurrogate(text.codeUnitAt(start))) start++;
     final slice = text.substring(start);
     // Start at a line boundary when one exists so the slice doesn't begin
-    // with a mid-line fragment that wraps differently from the real text.
+    // with a mid-line fragment that wraps differently from the real text —
+    // but only while enough text remains to fill the preview. A newline near
+    // the end of the window would otherwise collapse the preview to a nearly
+    // blank sliver, which reads far worse than a leading fragment.
     final newline = slice.indexOf('\n');
-    return newline >= 0 && newline + 1 < slice.length ? slice.substring(newline + 1) : slice;
+    final aligned = newline >= 0 ? slice.length - newline - 1 : 0;
+    return aligned >= _kMinAlignedTailChars ? slice.substring(newline + 1) : slice;
   }
+
+  /// Minimum text kept after aligning the tail to a line boundary; half the
+  /// tail budget still comfortably overfills the 56px preview.
+  static const int _kMinAlignedTailChars = _kStreamingTailChars ~/ 2;
 
   static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;
 }

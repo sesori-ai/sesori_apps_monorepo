@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter/semantics.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/core/widgets/isolated_activity_indicator.dart";
 
@@ -51,5 +52,23 @@ void main() {
     // A determinate arc schedules no animation frames.
     await tester.pump(const Duration(seconds: 1));
     expect(tester.hasRunningAnimations, isFalse);
+  });
+
+  testWidgets("reduced-motion arc keeps loading-spinner semantics, not determinate progress", (tester) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      wrap(
+        const IsolatedActivityIndicator(strokeWidth: 2, color: Colors.blue),
+        reduceMotion: true,
+      ),
+    );
+
+    // The static arc is purely visual: assistive technology must not be
+    // told this is a progress bar stuck at 75%.
+    final data = tester.getSemantics(find.byType(IsolatedActivityIndicator)).getSemanticsData();
+    expect(data.role, SemanticsRole.loadingSpinner);
+    expect(data.value, isEmpty);
+
+    handle.dispose();
   });
 }
