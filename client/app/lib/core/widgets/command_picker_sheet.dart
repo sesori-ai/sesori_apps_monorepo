@@ -136,7 +136,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: prego.colors.bgPrimary,
+                fillColor: prego.colors.bgSurface1,
               ),
               onChanged: (value) => setState(() {
                 _query = value;
