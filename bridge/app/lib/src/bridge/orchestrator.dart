@@ -406,6 +406,7 @@ class OrchestratorSession {
       await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
         Log.w("ProjectActivityService: startup reconciliation failed", e, st);
       });
+      await _autoApprovePendingPermissions();
       final startupSummary = await _buildProjectsSummary();
       if (startupSummary != null) {
         _completionListener.handleSseEvent(startupSummary);
@@ -683,11 +684,10 @@ class OrchestratorSession {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
 
       if (config.yolo && event is BridgeSsePermissionAsked) {
-        Log.i("[permissions] auto-approving request ${event.requestID}");
-        await _permissionRepository.replyToPermission(
+        if (_cancelled) return;
+        await _autoApprovePermission(
           requestId: event.requestID,
           sessionId: event.sessionID,
-          reply: PermissionReply.once,
         );
         return;
       }
@@ -699,6 +699,7 @@ class OrchestratorSession {
         await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
           Log.w("ProjectActivityService: server-connected reconciliation failed", e, st);
         });
+        await _autoApprovePendingPermissions();
       }
 
       // A project update means "activity changed" — rebuild the full summary
@@ -743,6 +744,68 @@ class OrchestratorSession {
             .catchError((_) {}),
       );
     }
+  }
+
+  Future<void> _autoApprovePendingPermissions() async {
+    if (!config.yolo || _cancelled) return;
+
+    List<ProjectActivitySummary> summaries;
+    try {
+      summaries = await _sessionRepository.getProjectActivitySummaries();
+    } on Object catch (error, stackTrace) {
+      Log.w("[permissions] failed to discover pending permissions for auto-approval", error, stackTrace);
+      return;
+    }
+
+    final rootSessionIds = {
+      for (final summary in summaries)
+        for (final session in summary.activeSessions)
+          if (session.awaitingInput) session.id,
+    };
+    final seenRequestIds = <String>{};
+
+    for (final rootSessionId in rootSessionIds) {
+      if (_cancelled) return;
+
+      List<PendingPermission> permissions;
+      try {
+        permissions = await _permissionRepository.getPendingPermissions(sessionId: rootSessionId);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "[permissions] failed to list pending permissions for session $rootSessionId",
+          error,
+          stackTrace,
+        );
+        continue;
+      }
+
+      for (final permission in permissions) {
+        if (!seenRequestIds.add(permission.id)) continue;
+        if (_cancelled) return;
+
+        try {
+          await _autoApprovePermission(
+            requestId: permission.id,
+            sessionId: permission.sessionID,
+          );
+        } on Object catch (error, stackTrace) {
+          Log.w(
+            "[permissions] failed to auto-approve pending request ${permission.id}",
+            error,
+            stackTrace,
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _autoApprovePermission({required String requestId, required String sessionId}) {
+    Log.i("[permissions] auto-approving request $requestId");
+    return _permissionRepository.replyToPermission(
+      requestId: requestId,
+      sessionId: sessionId,
+      reply: PermissionReply.once,
+    );
   }
 
   /// Builds the projects-summary SSE event: fetches the activity summary with

@@ -66,7 +66,17 @@ void main() {
   test("orchestrator routes activity and silently auto-approves yolo permissions", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
-    final plugin = _EventPlugin();
+    final plugin = _EventPlugin(
+      pendingPermissions: const [
+        PluginPendingPermission(
+          id: "pending-permission",
+          sessionID: "pending-child-session",
+          displaySessionId: "pending-root-session",
+          tool: "bash",
+          description: "resume a command",
+        ),
+      ],
+    );
     final pushSubsystem = _createPushSubsystem();
     final fakePrSyncService = _FakePrSyncService();
     final pullRequestRepository = PullRequestRepository(
@@ -212,6 +222,21 @@ void main() {
     final bridgeSocket = await relayServer.nextClient();
     final messages = bridgeSocket.asBroadcastStream();
 
+    await _waitForCondition(
+      check: () => plugin.permissionReplies.length == 1,
+      failureMessage: "Timed out waiting for pending permission auto-approval",
+    );
+    expect(
+      plugin.permissionReplies.single,
+      equals(
+        (
+          requestId: "pending-permission",
+          sessionId: "pending-child-session",
+          reply: PluginPermissionReply.once,
+        ),
+      ),
+    );
+
     const connID = 7;
     bridgeSocket.add(jsonEncode(<String, Object>{"type": "phone_connected", "connId": connID}));
 
@@ -250,7 +275,7 @@ void main() {
     );
 
     await _waitForCondition(
-      check: () => plugin.permissionReplies.isNotEmpty,
+      check: () => plugin.permissionReplies.length == 2,
       failureMessage: "Timed out waiting for permission auto-approval",
     );
     await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -258,6 +283,11 @@ void main() {
     expect(
       plugin.permissionReplies,
       equals([
+        (
+          requestId: "pending-permission",
+          sessionId: "pending-child-session",
+          reply: PluginPermissionReply.once,
+        ),
         (
           requestId: "permission-1",
           sessionId: "child-session",
@@ -688,7 +718,7 @@ void main() {
   test("session SSE events stay ordered while async enrichment completes", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
-    final plugin = _EventPlugin();
+    final plugin = _EventPlugin(pendingPermissions: const []);
     final pushDispatcher = _CapturingPushDispatcher();
     final pushListeners = _createPushListeners(
       tracker: pushDispatcher.tracker,
@@ -1724,6 +1754,8 @@ class _AbortEventPlugin extends _EventPlugin {
   Completer<void>? abortStartedCompleter;
   Object? abortError;
 
+  _AbortEventPlugin() : super(pendingPermissions: const []);
+
   @override
   Future<void> abortSession({required String sessionId}) async {
     abortedSessionIds.add(sessionId);
@@ -2081,6 +2113,10 @@ class _NoopPlugin implements NativeProjectsPluginApi {
 class _EventPlugin extends _NoopPlugin {
   int subscribeCount = 0;
   final List<({String requestId, String sessionId, PluginPermissionReply reply})> permissionReplies = [];
+  final List<PluginPendingPermission> pendingPermissions;
+
+  _EventPlugin({required List<PluginPendingPermission> pendingPermissions})
+    : pendingPermissions = List<PluginPendingPermission>.of(pendingPermissions);
 
   @override
   Stream<BridgeSseEvent> get events {
@@ -2100,12 +2136,38 @@ class _EventPlugin extends _NoopPlugin {
   }
 
   @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    if (pendingPermissions.isEmpty) return super.getActiveSessionsSummary();
+    return const [
+      PluginProjectActivitySummary(
+        id: "pending-project",
+        activeSessions: [
+          PluginActiveSession(
+            id: "pending-root-session",
+            mainAgentRunning: true,
+            awaitingInput: true,
+            childSessionIds: ["pending-child-session"],
+          ),
+        ],
+      ),
+    ];
+  }
+
+  @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async {
+    return pendingPermissions
+        .where((permission) => (permission.displaySessionId ?? permission.sessionID) == sessionId)
+        .toList();
+  }
+
+  @override
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
     required PluginPermissionReply reply,
   }) async {
     permissionReplies.add((requestId: requestId, sessionId: sessionId, reply: reply));
+    pendingPermissions.removeWhere((permission) => permission.id == requestId);
   }
 
   Future<void> waitForSubscription() async {
