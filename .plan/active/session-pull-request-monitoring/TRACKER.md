@@ -2,16 +2,17 @@
 
 ## Plan State
 
-- **Status:** Approved — ready for delivery on plan PR #436
+- **Status:** Approved — delivered on plan PR #436; awaiting merge
 - **Implementation base:** `main`
 - **Plan slug:** `session-pull-request-monitoring`
+- **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/436
 - **Execution ordering:** Complete this plan before resuming parallel-plugin Stage 2.
 
 ## Current Pointer
 
 - **Stage:** S01 — Additive contracts
 - **Wave:** W01
-- **Next action:** Deliver the approved plan as selected. Then pin the then-current `main` baseline for S01/W01 and implement S01-W01-P01 with `sesori-plan-worker`.
+- **Next action:** Merge plan PR #436. Then pin the then-current `main` baseline for S01/W01 and implement S01-W01-P01 with `sesori-plan-worker`.
 
 ## Plan Review
 
@@ -51,6 +52,7 @@
 
 ## Findings and Plan Deltas
 
+- **2026-07-14 — Plan delivery:** The approved canonical plan tree was pushed to plan PR https://github.com/sesori-ai/sesori_apps_monorepo/pull/436.
 - **2026-07-14 — Pre-delivery approval refresh:** `aristotle-plan-review` approved the complete tree against latest audited `main` tip `e766684e0fdc22256419b7b99691021c9f14732d`; architecture, compatibility, migrations, lifecycle ownership, verification, tracker state, and audit references were execution-ready.
 - **2026-07-14 — Pre-delivery drift audit:** `main` advanced from `2f4adf2dec643f44db231f88d09672499a8a8619` to `e766684e0fdc22256419b7b99691021c9f14732d` only through iOS TestFlight workflow/Fastfile fixes. No planned path, contract, schema, architecture, or product decision changed.
 - **2026-07-14 — Full-plan approval:** `aristotle-plan-review` approved the complete canonical tree after the architecture corrections below; no violations remained across bridge, shared, or client workspaces.
