@@ -74,4 +74,48 @@ abstract final class CursorModelProbe {
   /// Alias of [hasOption] for the model list.
   static bool hasModel(List<Map<String, dynamic>> models, String value) =>
       hasOption(models, value);
+
+  /// Cursor's per-model effort/reasoning knob under `thought_level` (id varies:
+  /// `effort` on Claude, `reasoning` on GPT, etc.). Skips binary on/off knobs
+  /// like `thinking` that are not effort-level pickers.
+  static Map<String, dynamic>? findThoughtLevelConfig(AcpNewSessionResult session) {
+    Map<String, dynamic>? effort;
+    Map<String, dynamic>? reasoning;
+    for (final option in session.configOptions) {
+      if (option["category"] != "thought_level") continue;
+      final id = option["id"];
+      if (id == "effort") effort = option;
+      if (id == "reasoning") reasoning = option;
+    }
+    if (reasoning != null && _hasMultiLevelOptions(reasoning)) return reasoning;
+    if (effort != null && _hasMultiLevelOptions(effort)) return effort;
+    return reasoning ?? effort;
+  }
+
+  /// Resolves a mode id from either the ACP `value` or the human `name`.
+  static String? resolveModeId(
+    List<Map<String, dynamic>> modes,
+    String? agent,
+  ) {
+    if (agent == null || agent.isEmpty) return null;
+    if (hasOption(modes, agent)) return agent;
+    for (final mode in modes) {
+      if (mode["name"] == agent && mode["value"] is String) {
+        return mode["value"] as String;
+      }
+    }
+    return null;
+  }
+
+  static bool _hasMultiLevelOptions(Map<String, dynamic> config) {
+    final opts = options(config);
+    if (opts.length <= 1) return false;
+    if (opts.length == 2) {
+      final values = opts.map((o) => o["value"]).whereType<String>().toSet();
+      if (values.containsAll({"true", "false"}) || values.containsAll({"on", "off"})) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
