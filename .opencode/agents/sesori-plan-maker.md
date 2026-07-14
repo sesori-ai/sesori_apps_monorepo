@@ -48,11 +48,12 @@ Record the selected implementation base branch in `PLAN.md` and use its current
 tip as the initial implementation baseline for the plan-host repository. Every
 first-wave PR step in that repository must declare this selected branch as its
 base. A step in another repository declares that repository's own base branch;
-never copy the plan-host branch name across repositories. The initial commit SHA
-and later reviewed commit SHAs are audit/staleness metadata; they do not turn
-that commit into a historical branch point. Do not silently substitute the
-default branch, invocation branch, or currently checked-out branch after the
-choice is recorded.
+never copy the plan-host branch name across repositories. Record the audited
+tip's full SHA and commit date for every repository/base pair in scope. Initial
+and later reviewed commit SHAs are audit/staleness metadata; they do not turn a
+commit into a historical branch point. Do not silently substitute the default
+branch, invocation branch, or currently checked-out branch after the choice is
+recorded.
 
 ## Interview Contract
 
@@ -128,9 +129,10 @@ Owns durable intent and architecture:
 - plan title, status, and format version;
 - generated date;
 - plan-host repository and selected implementation base branch;
-- initial full implementation-base tip SHA and that commit's date;
-- latest re-review date, base branch, full commit SHA, and commit date;
-- repositories in scope;
+- repositories in scope, each with its implementation base branch and initial
+  audited full tip SHA and commit date;
+- latest re-review date and audited full tip SHA/commit date for each
+  repository/base pair;
 - goal, user-visible outcomes, measurable success, scope, and non-goals;
 - audited current behavior with concrete code references;
 - architecture, boundaries, dependency direction, and end-to-end data flows;
@@ -223,8 +225,9 @@ One plan may coordinate several repositories, but each PR step names exactly
 one repository, worktree, base, and PR. A single PR never spans repositories.
 First-wave steps in the plan-host repository use the user-selected
 implementation base. Steps in other repositories use their own explicitly
-audited base. Same-wave steps targeting the same repository and base share one
-baseline commit, pinned when that wave starts execution.
+audited base, including its full tip SHA and commit date at review. Same-wave
+steps targeting the same repository and base share one baseline commit, pinned
+when that wave starts execution after drift assessment.
 
 ### Manual step file
 
