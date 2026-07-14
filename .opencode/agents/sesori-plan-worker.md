@@ -39,6 +39,8 @@ Before implementation, verify:
 
 - the complete canonical plan tree exists;
 - `TRACKER.md` records an approved full-plan review;
+- `PLAN.md` records every repository/base pair in scope with its initial audited
+  full tip SHA and commit date, including the user-selected plan-host base;
 - the current stage, wave, and candidate PR files are concrete;
 - the candidate PR names one repository and base;
 - prior waves are merged;
@@ -61,12 +63,13 @@ user or monitor reports, missing commits, branch/base mismatch, an open tracker
 PR, or contradictory local facts. Git and GitHub facts win; repair tracker drift
 in the current plan change.
 
-At each stage boundary, compare `PLAN.md`'s last-reviewed base commit to the
-current intended base. Use commit count, elapsed time, changed planned paths,
-architecture docs, contracts, schemas, and user-visible behavior as evidence.
-If drift is material, recommend switching to `sesori-plan-maker` for explicit
-stale-plan re-review. The user decides. If they decline, record one concise
-tracker note and proceed.
+At each stage boundary, and before pinning a repository/base pair for its first
+PR in a wave, resolve that base's current full tip SHA once and compare that
+exact commit with the pair's latest audited tip in `PLAN.md`. Use commit count,
+elapsed time, changed planned paths, architecture docs, contracts, schemas, and
+user-visible behavior as evidence. If drift is material, recommend switching to
+`sesori-plan-maker` for explicit stale-plan re-review. The user decides. If they
+decline, record one concise tracker note and proceed.
 
 If an active plan PR has failing CI or actionable review feedback, fix that PR
 before opening more work. If several active PRs need attention, ask which one
@@ -78,13 +81,34 @@ Inspect current workspace topology on every run. Ask one question recommending
 whether to reuse the current worktree or create/use a dedicated worktree. Never
 switch or create worktrees without that answer.
 
-Waves are strict merge barriers and implementation PRs are never stacked. All
-same-wave PRs branch from the same merged prior-wave baseline. If several
-same-wave PRs are ready, show active and ready steps, recommend the
+Waves are strict merge barriers and implementation PRs are never stacked. For
+each repository/base pair in a wave, pin the exact tip SHA used by the drift
+assessment when the first PR for that pair starts. Do not resolve the branch tip
+again between assessment and pinning. Record the SHA and drift decision in the
+`TRACKER.md` `Wave Baselines` table; that row is authoritative for later runs.
+All same-wave siblings for that repository/base pair branch from the same
+pinned commit. Different repositories have independent pinned commits. If
+several same-wave PRs are ready, show active and ready steps, recommend the
 lowest-numbered safe step, and ask which one to execute.
 
+Before creating any implementation branch for a parallel wave:
+
+1. Fetch or create `plan/<plan-slug>/tracking` in the plan-host repository.
+2. Resolve and assess every repository/base pair used by the wave, then write
+   all missing `Wave Baselines` rows in one tracker commit.
+3. Push that commit before any sibling branch is created. If another worker wins
+   the push race, fetch and reuse its rows; add only missing pairs. If existing
+   rows disagree, stop for reconciliation. Never force-push or overwrite them.
+4. Every sibling run fetches the remote tracking branch and treats its rows as
+   authoritative, copying them into branch-relative tracker state as needed.
+
 Use branch `plan/<plan-slug>/sNN-wNN-pNN-step-slug` exactly as declared by the
-step file.
+step file. Resolve its baseline in the step-declared repository from the
+step-declared base, then use the pinned commit for that repository/base pair.
+For first-wave steps in the plan-host repository, the step-declared base must
+match the user-selected implementation base recorded by the plan. Do not use a
+plan-host branch name for a step in another repository, and do not infer a base
+from the worker's current branch or worktree.
 
 One run implements exactly one PR step in one repository, opens that PR, starts
 monitoring, and stops. Do not combine ready steps, even when the user asks to
@@ -136,7 +160,7 @@ Before the chosen PR, process any applicable advisory manual files:
 6. When the implementation repository is the plan host, update `TRACKER.md`
    findings and authoritative `PLAN.md`, stage GOAL, or future step files in
    this same PR whenever evidence changes future work. For an external
-   repository, use the companion transaction under Cross-Repository Steps.
+   repository, use the companion transaction under Central Tracking Branch.
 7. Collect the branch, base, complete changed-file list, full diff, and any
    history evidence needed to distinguish legacy lines, then include that
    evidence in the read-only repository implementation-review request. Treat
@@ -189,24 +213,23 @@ Use the implementation date and currently declared app version. Do not query
 releases. Do not mark ordinary domain defaults. A direct user cleanup command
 authorizes removal of old marked compatibility code.
 
-## Cross-Repository Steps
+## Central Tracking Branch
 
 A plan may coordinate multiple repositories, but one PR changes one repository.
-The plan-host repository owns the central tracker.
+The plan-host repository's `plan/<plan-slug>/tracking` branch owns central state
+for cross-repository execution and the authoritative `Wave Baselines` rows for
+parallel waves. Do not open a tracker PR per implementation PR.
 
 For a PR in another repository:
 
-1. Create or update `plan/<plan-slug>/tracking` in the plan-host repository.
-2. Before target-repository implementation, commit/push the optimistic checkbox
-   and branch there.
-3. Commit/push findings and authoritative future-plan corrections there before
+1. Before target-repository implementation, commit/push the optimistic checkbox
+   and branch to the tracking branch.
+2. Commit/push findings and authoritative future-plan corrections there before
    opening the target PR, then link the tracking commit in the target PR body.
-4. Open only the implementation PR in the target repository.
-5. After opening it, push a final companion commit with the PR URL and concise
+3. Open only the implementation PR in the target repository.
+4. After opening it, push a final companion commit with the PR URL and concise
    verification note.
-6. Treat the tracking branch as active central state during execution; do not
-   open a tracker PR per implementation PR.
-7. The final closure PR reconciles tracking history into the plan-host base and
+5. The final closure PR reconciles tracking history into the plan-host base and
    archived plan.
 
 ## Plan Closure
@@ -214,7 +237,7 @@ For a PR in another repository:
 Every plan ends with one final serial closure PR after all implementation waves
 merge. It must:
 
-- reconcile Git/PR facts and the cross-repo tracking branch;
+- reconcile Git/PR facts and the central tracking branch;
 - record final findings and manual User/Worker audit state;
 - run final integration/verification named by the plan;
 - update durable repository docs affected by shipped behavior;

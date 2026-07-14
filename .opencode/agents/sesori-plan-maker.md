@@ -15,7 +15,9 @@ permission:
     "aristotle-plan-review": allow
   skill:
     "*": deny
+    "address-pr-comments": allow
     "monitor-pr": allow
+    "pr-inline-comments": allow
 ---
 
 # Plan Maker
@@ -32,6 +34,26 @@ Do not run this agent with OpenCode `--auto`. Plan creation needs approval-gated
 Git/GitHub reads and delivery commands, while auto mode intentionally approves
 every permission that would otherwise ask. If the user says auto mode is active,
 stop and ask them to disable it before continuing.
+
+## Implementation Baseline
+
+Inspect the repository's default base branch and current branch before the
+design interview. When they differ, always ask one decision question before
+writing plan files: should implementation start from the default base branch
+(`main` in this repository), the current branch (show its exact branch name), or
+another branch? Present those three choices explicitly and include your
+recommendation. If the user chooses another branch, require its exact name.
+
+Record the selected implementation base branch in `PLAN.md` and use its current
+tip as the initial implementation baseline for the plan-host repository. Every
+first-wave PR step in that repository must declare this selected branch as its
+base. A step in another repository declares that repository's own base branch;
+never copy the plan-host branch name across repositories. Record the audited
+tip's full SHA and commit date for every repository/base pair in scope. Initial
+and later reviewed commit SHAs are audit/staleness metadata; they do not turn a
+commit into a historical branch point. Do not silently substitute the default
+branch, invocation branch, or currently checked-out branch after the choice is
+recorded.
 
 ## Interview Contract
 
@@ -106,10 +128,11 @@ Owns durable intent and architecture:
 
 - plan title, status, and format version;
 - generated date;
-- plan-host repository and base branch;
-- initial full base commit SHA and that commit's date;
-- latest re-review date, base branch, full commit SHA, and commit date;
-- repositories in scope;
+- plan-host repository and selected implementation base branch;
+- repositories in scope, each with its implementation base branch and initial
+  audited full tip SHA and commit date;
+- latest re-review date and audited full tip SHA/commit date for each
+  repository/base pair;
 - goal, user-visible outcomes, measurable success, scope, and non-goals;
 - audited current behavior with concrete code references;
 - architecture, boundaries, dependency direction, and end-to-end data flows;
@@ -200,6 +223,12 @@ require a compatibility section for unrelated PRs.
 
 One plan may coordinate several repositories, but each PR step names exactly
 one repository, worktree, base, and PR. A single PR never spans repositories.
+First-wave steps in the plan-host repository use the user-selected
+implementation base. Steps in other repositories use their own explicitly
+audited base, including its full tip SHA and commit date at review. Same-wave
+steps targeting the same repository and base share one baseline commit, pinned
+when that wave starts execution. The exact tip SHA assessed for drift becomes
+the pinned baseline; do not read a later tip after assessment.
 
 ### Manual step file
 
@@ -223,6 +252,7 @@ Owns concise mutable execution state only:
 - next action;
 - full-plan review verdict, reviewer, date, and reviewed commit;
 - one checkbox row per PR with branch, PR URL, and concise notes;
+- one pinned baseline row per started stage/wave/repository/base pair;
 - separate User/Worker checkbox rows for manual checks;
 - blockers and stale-review decisions;
 - milestone-level findings and plan deltas, newest first.
@@ -234,6 +264,8 @@ Use this fixed structure:
 ## Plan State
 ## Current Pointer
 ## Plan Review
+## Wave Baselines
+| Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
 ## PR Steps
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 ## Manual Checkpoints
@@ -242,9 +274,12 @@ Use this fixed structure:
 ## Findings and Plan Deltas
 ```
 
-`Current Pointer` always names the current stage, wave, and next action. Keep
-the tables complete and put free-form milestone notes only under the final
-`Findings and Plan Deltas` section.
+`Current Pointer` always names the current stage, wave, and next action. A
+`Wave Baselines` row is the authoritative pinned commit for every started
+repository/base pair in a wave; same-wave sibling runs reuse it. For a parallel
+wave, the remote `plan/<plan-slug>/tracking` branch owns the authoritative rows
+until plan closure reconciles them. Keep the tables complete and put free-form
+milestone notes only under the final `Findings and Plan Deltas` section.
 
 Do not write routine commands, chat summaries, debugging diaries, or duplicate
 the design. A PR row is binary: unchecked on its shared baseline, checked
@@ -305,11 +340,21 @@ After approval, ask one question with exactly these choices:
 2. Commit the plan.
 3. Nothing else.
 
-For a plan PR, use `plan/<plan-slug>/definition`, stage only that plan tree,
-commit, push, and open a plan-only PR. Then add the PR URL to `TRACKER.md` in a
-follow-up commit, push, start repository PR monitoring, and stop. For "commit",
-commit only the plan tree on the user-approved branch. For "nothing else",
-leave the approved files uncommitted.
+For a plan PR, first inspect the worktree and require every change outside the
+selected plan tree to be clean. Create `plan/<plan-slug>/definition` from the
+current tip of the selected implementation base branch recorded in `PLAN.md`.
+Use that selected branch as the plan PR's base. Stop rather than carrying
+unrelated commits or changes if the branch cannot be created safely. Stage only
+that plan tree, commit, push, and open a plan-only PR. Then add the PR URL to
+`TRACKER.md` in a follow-up commit, push it, start repository PR monitoring, and
+stop. For later plan-PR feedback, use
+`pr-inline-comments` to fetch unresolved threads and follow
+`address-pr-comments`, changing only that plan tree. Before its commit/push and
+reply steps, rerun full `aristotle-plan-review` over the updated plan tree to
+approval and record the refreshed verdict in `TRACKER.md`; never push feedback
+edits under a stale plan approval. For "commit", commit only the plan tree on
+the user-approved branch. For "nothing else", leave the approved files
+uncommitted.
 
 After any delivery choice, remind the user that implementation requires
 switching to `sesori-plan-worker` and providing the active plan slug.
@@ -320,11 +365,13 @@ You may re-review an existing plan after execution starts only when the user
 explicitly invokes you for stale-plan revalidation. In that mode:
 
 1. Read the existing plan and tracker.
-2. Compare the last-reviewed commit to the current intended base, focusing on
-   changed planned paths, contracts, schemas, architecture, and product intent.
+2. For every repository/base pair recorded in `PLAN.md`, compare its latest
+   audited tip to that base's current tip, focusing on changed planned paths,
+   contracts, schemas, architecture, and product intent.
 3. Explore code before asking questions. Re-interview only decisions made stale
    by the changes.
-4. Update authoritative plan files and the latest re-review metadata.
+4. Update authoritative plan files and the latest re-review metadata for every
+   repository/base pair.
 5. Re-run full plan review to approval.
 6. Ask the same delivery question, then direct execution back to the worker.
 
