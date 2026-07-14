@@ -305,21 +305,29 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
   }
 
   Widget _flatPanel(BuildContext context, {required Rect triggerRect}) {
+    final entries = widget.entriesBuilder();
+    final edgePadding = EdgeInsets.only(
+      top: entries.isEmpty || entries.first is! PregoMenuItem ? 6 : 0,
+      bottom: entries.isEmpty || entries.last is! PregoMenuItem ? 6 : 0,
+    );
     return AnchoredFlatPanel(
       triggerRect: triggerRect,
       width: widget.menuWidth,
       height: widget.menuHeight,
       borderRadius: widget.menuBorderRadius,
       screenPadding: widget.menuScreenPadding,
-      // AnchoredFlatPanel owns the scroll and clips this column to the panel's
-      // rounded shape. Keeping the column flush with that clip lets the first
-      // and last item highlights reach the menu edges.
-      childBuilder: (context, close) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final entry in widget.entriesBuilder()) _flatEntry(context, entry: entry, close: close),
-        ],
+      // Menu items meet the panel clip so their ink reaches its outer edges.
+      // Labels, dividers, and custom content keep the original edge breathing
+      // room when they bookend the menu.
+      childBuilder: (context, close) => Padding(
+        padding: edgePadding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final entry in entries) _flatEntry(context, entry: entry, close: close),
+          ],
+        ),
       ),
     );
   }
@@ -392,7 +400,9 @@ class _FlatMenuTile extends StatelessWidget {
     final leadingIcon = this.leadingIcon;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      // The enclosing Material clips the menu to its configured radius. A
+      // second radius here would round the shared edges between adjacent rows.
+      borderRadius: BorderRadius.zero,
       child: ConstrainedBox(
         // Matches GlassMenuItem's 44px iOS/Material touch target.
         constraints: const BoxConstraints(minHeight: 44),

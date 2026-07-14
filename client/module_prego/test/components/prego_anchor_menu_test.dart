@@ -77,11 +77,39 @@ void main() {
       await tester.pumpAndSettle();
 
       final panelRect = tester.getRect(find.byType(SingleChildScrollView));
-      final firstItemRect = tester.getRect(find.widgetWithText(InkWell, "Alpha"));
-      final lastItemRect = tester.getRect(find.widgetWithText(InkWell, "Beta"));
+      final firstItem = find.widgetWithText(InkWell, "Alpha");
+      final lastItem = find.widgetWithText(InkWell, "Beta");
+      final firstItemRect = tester.getRect(firstItem);
+      final lastItemRect = tester.getRect(lastItem);
 
       expect(firstItemRect.top, panelRect.top);
       expect(lastItemRect.bottom, panelRect.bottom);
+      expect(tester.widget<InkWell>(firstItem).borderRadius, BorderRadius.zero);
+      expect(tester.widget<InkWell>(lastItem).borderRadius, BorderRadius.zero);
+    });
+
+    testWidgets("custom entries keep the original inset at panel edges", (tester) async {
+      await tester.pumpWidget(
+        _harness([
+          PregoMenuCustom(
+            builder: (context, close) => const SizedBox(key: ValueKey("first-custom"), height: 12),
+          ),
+          PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
+          PregoMenuCustom(
+            builder: (context, close) => const SizedBox(key: ValueKey("last-custom"), height: 12),
+          ),
+        ], flat: true),
+      );
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      final panelRect = tester.getRect(find.byType(SingleChildScrollView));
+      final firstCustomRect = tester.getRect(find.byKey(const ValueKey("first-custom")));
+      final lastCustomRect = tester.getRect(find.byKey(const ValueKey("last-custom")));
+
+      expect(firstCustomRect.top - panelRect.top, 6);
+      expect(panelRect.bottom - lastCustomRect.bottom, 6);
     });
 
     testWidgets("a custom entry can close the menu via its close callback", (tester) async {
