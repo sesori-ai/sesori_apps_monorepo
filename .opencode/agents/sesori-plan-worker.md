@@ -64,11 +64,12 @@ PR, or contradictory local facts. Git and GitHub facts win; repair tracker drift
 in the current plan change.
 
 At each stage boundary, and before pinning a repository/base pair for its first
-PR in a wave, compare that pair's latest audited tip in `PLAN.md` to its current
-tip. Use commit count, elapsed time, changed planned paths, architecture docs,
-contracts, schemas, and user-visible behavior as evidence. If drift is material,
-recommend switching to `sesori-plan-maker` for explicit stale-plan re-review.
-The user decides. If they decline, record one concise tracker note and proceed.
+PR in a wave, resolve that base's current full tip SHA once and compare that
+exact commit with the pair's latest audited tip in `PLAN.md`. Use commit count,
+elapsed time, changed planned paths, architecture docs, contracts, schemas, and
+user-visible behavior as evidence. If drift is material, recommend switching to
+`sesori-plan-maker` for explicit stale-plan re-review. The user decides. If they
+decline, record one concise tracker note and proceed.
 
 If an active plan PR has failing CI or actionable review feedback, fix that PR
 before opening more work. If several active PRs need attention, ask which one
@@ -81,12 +82,13 @@ whether to reuse the current worktree or create/use a dedicated worktree. Never
 switch or create worktrees without that answer.
 
 Waves are strict merge barriers and implementation PRs are never stacked. For
-each repository/base pair in a wave, pin one baseline commit from that base's
-current tip after the drift assessment when the first PR for that pair starts.
-Record it in `TRACKER.md`; all same-wave siblings for that repository/base
-branch from the same pinned commit. Different repositories have independent
-pinned commits. If several same-wave PRs are ready, show active and ready steps,
-recommend the lowest-numbered safe step, and ask which one to execute.
+each repository/base pair in a wave, pin the exact tip SHA used by the drift
+assessment when the first PR for that pair starts. Do not resolve the branch tip
+again between assessment and pinning. Record the SHA in `TRACKER.md`; all
+same-wave siblings for that repository/base branch from the same pinned commit.
+Different repositories have independent pinned commits. If several same-wave
+PRs are ready, show active and ready steps, recommend the lowest-numbered safe
+step, and ask which one to execute.
 
 Use branch `plan/<plan-slug>/sNN-wNN-pNN-step-slug` exactly as declared by the
 step file. Resolve its baseline in the step-declared repository from the

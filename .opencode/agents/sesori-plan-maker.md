@@ -227,7 +227,8 @@ First-wave steps in the plan-host repository use the user-selected
 implementation base. Steps in other repositories use their own explicitly
 audited base, including its full tip SHA and commit date at review. Same-wave
 steps targeting the same repository and base share one baseline commit, pinned
-when that wave starts execution after drift assessment.
+when that wave starts execution. The exact tip SHA assessed for drift becomes
+the pinned baseline; do not read a later tip after assessment.
 
 ### Manual step file
 
