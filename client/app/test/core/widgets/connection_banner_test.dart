@@ -197,7 +197,7 @@ void main() {
           value: sessionListCubit,
           child: SessionListScaffold(
             onSessionTap: (_) {},
-            onSessionLongPress: (_) {},
+            sessionMenuEntries: (_, _) => const [],
             onSessionSwipe: (_) {},
             onNewSession: () {},
             onBack: null,
