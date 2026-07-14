@@ -1,8 +1,8 @@
 ---
 description: Reviews implemented code (branches, PRs, changed files) against strict architectural rules for the Sesori monorepo. Validates layer boundaries, dependency direction, class cohesion, naming discipline, and simplicity in actual code. Rejects god classes, pass-through parameters, peer-as-child dependency patterns, asymmetric trigger handling, and misuse of class suffixes. Also flags new code that forecloses the documented product-direction invariants in docs/VISION.md, such as backend specifics leaking past the plugin boundary. Only flags new or changed code — preexisting legacy patterns are not flagged unless the change extends them. Always invoke before opening a PR.
 mode: subagent
-model: kimi-for-coding/k2p7
-variant: max
+model: openai/gpt-5.6-sol
+variant: high
 temperature: 0.1
 permission:
   "*": deny
