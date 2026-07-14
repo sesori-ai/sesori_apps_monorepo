@@ -145,12 +145,6 @@ abstract class AppLocalizations {
   /// **'Loading projects'**
   String get projectListLoadingSemantics;
 
-  /// No description provided for @projectListUpdated.
-  ///
-  /// In en, this message translates to:
-  /// **'Updated {timestamp}'**
-  String projectListUpdated(String timestamp);
-
   /// No description provided for @projectListDefaultName.
   ///
   /// In en, this message translates to:
@@ -181,11 +175,17 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get projectListRetry;
 
-  /// No description provided for @projectListActiveSessions.
+  /// Status shown beside the animated sparkle on a project row that has at least one session an agent is currently working in.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 active session} other{{count} active sessions}}'**
-  String projectListActiveSessions(int count);
+  /// **'{count, plural, =1{Running} other{{count} running}}'**
+  String projectListRunning(int count);
+
+  /// Status shown beside a static sparkle on a project row with unseen agent activity the user hasn't opened yet.
+  ///
+  /// In en, this message translates to:
+  /// **'New activity'**
+  String get projectListNewActivity;
 
   /// Status caption under the connection graphic on the connected-but-empty Projects screen, rendered in the success color with a check icon.
   ///
@@ -1219,10 +1219,10 @@ abstract class AppLocalizations {
   /// **'Hide Project'**
   String get hideProject;
 
-  /// No description provided for @projectFolderMissing.
+  /// Status shown on a project row whose folder no longer exists on disk. The row is greyed out and cannot be opened.
   ///
   /// In en, this message translates to:
-  /// **'Folder not found'**
+  /// **'Unavailable'**
   String get projectFolderMissing;
 
   /// No description provided for @projectFolderMissingMessage.

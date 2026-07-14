@@ -4,7 +4,6 @@ import "package:flutter/cupertino.dart" show CupertinoColors, CupertinoDynamicCo
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:path/path.dart" as p;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:share_plus/share_plus.dart";
@@ -24,26 +23,15 @@ import "../../core/support_links.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/connection_graphic.dart";
 import "add_project_dialog.dart";
-import "rename_project_dialog.dart";
+import "widgets/project_tile.dart";
 
 part "onboarding/onboarding_view.dart";
 part "onboarding/why_bridge_info_sheet.dart";
 part "widgets/bridge_offline_view.dart";
 part "widgets/error_view.dart";
-part "widgets/project_tile.dart";
 
-/// The user-facing directory of [project]: its live path on disk, falling
-/// back to the id for payloads from older bridges that don't send a path
-/// (there the id is the directory).
-// COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit Project.path. Remove this fallback when the shared path default is removed.
-String _projectDisplayPath(Project project) => project.path.isEmpty ? project.id : project.path;
-
-/// The last segment of [project]'s directory, used as the display-name
-/// fallback when the project has no stored name. The directory comes from the
-/// bridge's host platform, not the phone's, so both separator styles must
-/// parse — the platform-local basename would return a Windows path unchanged.
-String _projectDirectoryBasename(Project project) =>
-    p.posix.basename(_projectDisplayPath(project).replaceAll(r"\", "/"));
+/// Enough placeholder rows to fill a phone screen while the first page loads.
+const int _skeletonRows = 6;
 
 class ProjectListScreen extends StatelessWidget {
   const ProjectListScreen({super.key});
@@ -187,7 +175,14 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     return switch (state) {
       ProjectListLoading() => [
         SliverToBoxAdapter(
-          child: PregoSkeletonList(semanticLabel: context.loc.projectListLoadingSemantics),
+          child: PregoShimmer(
+            semanticLabel: context.loc.projectListLoadingSemantics,
+            child: Column(
+              children: [
+                for (var i = 0; i < _skeletonRows; i++) const ProjectTileSkeleton(),
+              ],
+            ),
+          ),
         ),
       ],
       // No bridge has ever been registered → setup onboarding; a bridge exists
@@ -219,19 +214,18 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
             ),
           )
         else ...[
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            sliver: SliverList.builder(
-              itemCount: projects.length,
-              itemBuilder: (context, index) {
-                final project = projects[index];
-                return _ProjectTile(
-                  project: project,
-                  activeSessions: activityById[project.id] ?? 0,
-                  unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
-                );
-              },
-            ),
+          // The rows carry their own padding and hairline, and the design sets
+          // them flush against each other.
+          SliverList.builder(
+            itemCount: projects.length,
+            itemBuilder: (context, index) {
+              final project = projects[index];
+              return ProjectTile(
+                project: project,
+                activeSessions: activityById[project.id] ?? 0,
+                unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
+              );
+            },
           ),
           // Clear the floating folder FAB and the home indicator.
           SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 96)),
