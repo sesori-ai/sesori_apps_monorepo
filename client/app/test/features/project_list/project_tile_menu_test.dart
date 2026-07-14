@@ -1,3 +1,4 @@
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -118,6 +119,20 @@ void main() {
 
     // The row it is anchored to stays on screen behind the menu — the whole
     // point of a popover over a sheet.
+    expect(find.widgetWithText(ListTile, "my-app"), findsOneWidget);
+  });
+
+  testWidgets("right-clicking a project opens the same anchored menu without navigating", (tester) async {
+    await pumpScreen(tester);
+
+    // The mouse counterpart of the long-press, for the desktop app.
+    await tester.tap(find.widgetWithText(ListTile, "my-app"), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Hide Project"), findsOneWidget);
+    // A secondary click must not double as the row's tap — the list is still
+    // here, not the sessions route.
     expect(find.widgetWithText(ListTile, "my-app"), findsOneWidget);
   });
 

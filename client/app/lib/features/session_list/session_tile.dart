@@ -14,10 +14,10 @@ typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext c
 
 /// A single session row.
 ///
-/// Tapping opens the session; long-pressing opens its actions in a
-/// [PregoAnchorMenu] anchored to the row, which blurs the rest of the list back
-/// and holds this row sharp so the session being acted on stays in view. Swiping
-/// still archives, as before.
+/// Tapping opens the session; long-pressing — or right-clicking with a mouse —
+/// opens its actions in a [PregoAnchorMenu] anchored to the row, which blurs
+/// the rest of the list back and holds this row sharp so the session being
+/// acted on stays in view. Swiping still archives, as before.
 class SessionTile extends StatelessWidget {
   final Session session;
   final bool isArchived;
@@ -63,11 +63,11 @@ class SessionTile extends StatelessWidget {
       // session the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
       entriesBuilder: () => menuEntries(context),
-      triggerBuilder: (context, openMenu) => _buildRow(context: context, onLongPress: openMenu),
+      triggerBuilder: (context, openMenu) => _buildRow(context: context, openMenu: openMenu),
     );
   }
 
-  Widget _buildRow({required BuildContext context, required VoidCallback onLongPress}) {
+  Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
     final loc = context.loc;
     final updatedAt = session.time?.updated;
     final filesChanged = session.summary?.files ?? 0;
@@ -92,65 +92,70 @@ class SessionTile extends StatelessWidget {
           ),
         ),
       ),
-      child: ListTile(
-        selected: selected,
-        selectedTileColor: context.prego.colors.bgBrandSolid.withValues(alpha: 0.08),
-        leading: CircleAvatar(
-          backgroundColor: context.prego.colors.bgBrandSolid,
-          child: Icon(
-            Icons.chat_outlined,
-            color: context.prego.colors.fgWhite,
+      // Right-click is the mouse counterpart of long-press; ListTile has no
+      // secondary-tap slot of its own, so a detector wraps it.
+      child: GestureDetector(
+        onSecondaryTap: openMenu,
+        child: ListTile(
+          selected: selected,
+          selectedTileColor: context.prego.colors.bgBrandSolid.withValues(alpha: 0.08),
+          leading: CircleAvatar(
+            backgroundColor: context.prego.colors.bgBrandSolid,
+            child: Icon(
+              Icons.chat_outlined,
+              color: context.prego.colors.fgWhite,
+            ),
           ),
-        ),
-        title: Text(
-          session.title ?? loc.sessionListUntitled,
-          style: unseen ? context.prego.textTheme.textMd.bold : null,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (updatedAt != null)
-              Text(
-                loc.sessionListUpdated(context.formatTimestamp(updatedAt)),
-                style: context.prego.textTheme.textXs.regular.copyWith(
-                  color: context.prego.colors.textSecondary,
-                ),
-              ),
-            if (filesChanged > 0)
-              Text(
-                loc.sessionListFilesChanged(filesChanged),
-                style: context.prego.textTheme.textXs.regular,
-              ),
-            if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
-            if (isActive)
-              _ActivityRow(
-                awaitingInput: awaitingInput,
-                isRetrying: isRetrying,
-                backgroundTaskCount: backgroundTaskCount,
-              ),
-          ],
-        ),
-        isThreeLine:
-            [
-              updatedAt != null,
-              filesChanged > 0,
-              session.pullRequest != null,
-              isActive,
-            ].where((v) => v).length >=
-            2,
-        trailing: switch (unseen) {
-          true => Row(
-            mainAxisSize: MainAxisSize.min,
+          title: Text(
+            session.title ?? loc.sessionListUntitled,
+            style: unseen ? context.prego.textTheme.textMd.bold : null,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.circle, size: 10, color: context.prego.colors.bgBrandSolid),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right),
+              if (updatedAt != null)
+                Text(
+                  loc.sessionListUpdated(context.formatTimestamp(updatedAt)),
+                  style: context.prego.textTheme.textXs.regular.copyWith(
+                    color: context.prego.colors.textSecondary,
+                  ),
+                ),
+              if (filesChanged > 0)
+                Text(
+                  loc.sessionListFilesChanged(filesChanged),
+                  style: context.prego.textTheme.textXs.regular,
+                ),
+              if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
+              if (isActive)
+                _ActivityRow(
+                  awaitingInput: awaitingInput,
+                  isRetrying: isRetrying,
+                  backgroundTaskCount: backgroundTaskCount,
+                ),
             ],
           ),
-          false => const Icon(Icons.chevron_right),
-        },
-        onTap: onTap,
-        onLongPress: onLongPress,
+          isThreeLine:
+              [
+                updatedAt != null,
+                filesChanged > 0,
+                session.pullRequest != null,
+                isActive,
+              ].where((v) => v).length >=
+              2,
+          trailing: switch (unseen) {
+            true => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.circle, size: 10, color: context.prego.colors.bgBrandSolid),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+            false => const Icon(Icons.chevron_right),
+          },
+          onTap: onTap,
+          onLongPress: openMenu,
+        ),
       ),
     );
   }

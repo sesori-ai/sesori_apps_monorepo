@@ -1,4 +1,5 @@
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -83,6 +84,19 @@ void main() {
 
     // …and the row it is anchored to stays on screen behind the menu.
     expect(find.widgetWithText(ListTile, "My Session"), findsOneWidget);
+  });
+
+  testWidgets("right-clicking a session opens the same anchored menu", (tester) async {
+    final session = testSession(title: "My Session");
+
+    await pumpPanel(tester, session: session);
+
+    // The mouse counterpart of the long-press, for the desktop app.
+    await tester.tap(find.widgetWithText(ListTile, "My Session"), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Delete"), findsOneWidget);
   });
 
   testWidgets("Delete is the only entry tinted as destructive", (tester) async {

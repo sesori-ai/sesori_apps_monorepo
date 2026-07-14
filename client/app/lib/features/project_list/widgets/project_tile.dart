@@ -2,10 +2,10 @@ part of "../project_list_screen.dart";
 
 /// A single project row in the connected project list.
 ///
-/// Tapping opens the project's sessions. Long-pressing opens the row's actions
-/// — rename, hide — in a [PregoAnchorMenu] anchored to the row, so the project
-/// being acted on stays visible beside the menu instead of being covered by a
-/// bottom sheet.
+/// Tapping opens the project's sessions. Long-pressing — or right-clicking with
+/// a mouse — opens the row's actions — rename, hide — in a [PregoAnchorMenu]
+/// anchored to the row, so the project being acted on stays visible beside the
+/// menu instead of being covered by a bottom sheet.
 ///
 /// The menu is forced flat on every platform ([PregoAnchorMenu.flat]), like the
 /// onboarding support menu ([_NeedHelpMenu]): the glass popup morphs out of its
@@ -36,7 +36,7 @@ class _ProjectTile extends StatelessWidget {
       // stays sharp, so which project the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
       entriesBuilder: () => _actionEntries(context: context),
-      triggerBuilder: (context, openMenu) => _buildRow(context: context, onLongPress: openMenu),
+      triggerBuilder: (context, openMenu) => _buildRow(context: context, openMenu: openMenu),
     );
   }
 
@@ -85,7 +85,7 @@ class _ProjectTile extends StatelessWidget {
     );
   }
 
-  Widget _buildRow({required BuildContext context, required VoidCallback onLongPress}) {
+  Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
     final loc = context.loc;
     final prego = context.prego;
     // Display the live directory; the id is a stable handle that may point
@@ -100,91 +100,96 @@ class _ProjectTile extends StatelessWidget {
     // available via long-press.
     final missing = project.directoryMissing;
 
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: missing ? prego.colors.bgErrorPrimary : prego.colors.bgBrandSolid,
-        child: Icon(
-          missing ? Icons.folder_off_outlined : Icons.folder_outlined,
-          color: missing ? prego.colors.fgErrorPrimary : prego.colors.fgWhite,
-        ),
-      ),
-      title: Text(
-        displayName,
-        style: (unseen ? prego.textTheme.textMd.bold : prego.textTheme.textMd.regular).copyWith(
-          color: missing ? prego.colors.textSecondary : null,
-        ),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: .start,
-        children: [
-          Text(
-            displayPath,
-            style: prego.textTheme.textXs.regular,
-            maxLines: 1,
-            overflow: .ellipsis,
+    // Right-click is the mouse counterpart of long-press; ListTile has no
+    // secondary-tap slot of its own, so a detector wraps it.
+    return GestureDetector(
+      onSecondaryTap: openMenu,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: missing ? prego.colors.bgErrorPrimary : prego.colors.bgBrandSolid,
+          child: Icon(
+            missing ? Icons.folder_off_outlined : Icons.folder_outlined,
+            color: missing ? prego.colors.fgErrorPrimary : prego.colors.fgWhite,
           ),
-          if (missing)
+        ),
+        title: Text(
+          displayName,
+          style: (unseen ? prego.textTheme.textMd.bold : prego.textTheme.textMd.regular).copyWith(
+            color: missing ? prego.colors.textSecondary : null,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: .start,
+          children: [
             Text(
-              loc.projectFolderMissing,
-              style: prego.textTheme.textXs.regular.copyWith(
-                color: prego.colors.fgErrorPrimary,
-              ),
-            )
-          else ...[
-            if (updatedAt != null)
-              Text(
-                loc.projectListUpdated(context.formatTimestamp(updatedAt)),
-                style: prego.textTheme.textXs.regular.copyWith(
-                  color: prego.colors.textSecondary,
-                ),
-              ),
-            if (isActive)
-              Row(
-                children: [
-                  Icon(Icons.circle, size: 8, color: prego.colors.bgBrandSolid),
-                  const SizedBox(width: 4),
-                  Text(
-                    loc.projectListActiveSessions(activeSessions),
-                    style: prego.textTheme.textXs.regular.copyWith(
-                      color: prego.colors.bgBrandSolid,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ],
-      ),
-      isThreeLine: missing || updatedAt != null || isActive,
-      trailing: missing
-          ? Icon(Icons.error_outline, color: prego.colors.fgErrorPrimary)
-          : switch (unseen) {
-              true => Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.circle, size: 10, color: prego.colors.bgBrandSolid),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right),
-                ],
-              ),
-              false => const Icon(Icons.chevron_right),
-            },
-      onTap: () {
-        if (missing) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(loc.projectFolderMissingMessage),
-              duration: kSnackBarDuration,
+              displayPath,
+              style: prego.textTheme.textXs.regular,
+              maxLines: 1,
+              overflow: .ellipsis,
             ),
+            if (missing)
+              Text(
+                loc.projectFolderMissing,
+                style: prego.textTheme.textXs.regular.copyWith(
+                  color: prego.colors.fgErrorPrimary,
+                ),
+              )
+            else ...[
+              if (updatedAt != null)
+                Text(
+                  loc.projectListUpdated(context.formatTimestamp(updatedAt)),
+                  style: prego.textTheme.textXs.regular.copyWith(
+                    color: prego.colors.textSecondary,
+                  ),
+                ),
+              if (isActive)
+                Row(
+                  children: [
+                    Icon(Icons.circle, size: 8, color: prego.colors.bgBrandSolid),
+                    const SizedBox(width: 4),
+                    Text(
+                      loc.projectListActiveSessions(activeSessions),
+                      style: prego.textTheme.textXs.regular.copyWith(
+                        color: prego.colors.bgBrandSolid,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ],
+        ),
+        isThreeLine: missing || updatedAt != null || isActive,
+        trailing: missing
+            ? Icon(Icons.error_outline, color: prego.colors.fgErrorPrimary)
+            : switch (unseen) {
+                true => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, size: 10, color: prego.colors.bgBrandSolid),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+                false => const Icon(Icons.chevron_right),
+              },
+        onTap: () {
+          if (missing) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(loc.projectFolderMissingMessage),
+                duration: kSnackBarDuration,
+              ),
+            );
+            return;
+          }
+          context.read<ProjectListCubit>().setActiveProject(project);
+          context.pushRoute(
+            AppRoute.sessions(projectId: project.id, projectName: displayName),
           );
-          return;
-        }
-        context.read<ProjectListCubit>().setActiveProject(project);
-        context.pushRoute(
-          AppRoute.sessions(projectId: project.id, projectName: displayName),
-        );
-      },
-      onLongPress: onLongPress,
+        },
+        onLongPress: openMenu,
+      ),
     );
   }
 }
