@@ -25,6 +25,7 @@ class _GatedSelectionPlugin extends AcpPlugin {
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
+    required String? agent,
   }) async {
     final gate = selectionGate;
     if (gate != null) await gate.future;

@@ -210,6 +210,30 @@ void main() {
       );
     });
 
+    test("selectAgent preserves the model when the agent has no model preference", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      final before = (cubit.state as SessionDetailLoaded).selectedAgentModel;
+      cubit.selectAgent("Plan");
+
+      final after = cubit.state as SessionDetailLoaded;
+      expect(after.selectedAgent, "Plan");
+      expect(after.selectedAgentModel, before);
+    });
+
     test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
@@ -1120,6 +1144,8 @@ MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
 List<AgentInfo> _agents() {
   return const [
     AgentInfo(name: "coder", description: "A coding assistant", model: null, mode: AgentMode.primary),
+    AgentInfo(name: "oracle", description: "Answers questions", model: null, mode: AgentMode.primary),
+    AgentInfo(name: "Plan", description: "Plans before editing", model: null, mode: AgentMode.primary),
   ];
 }
 

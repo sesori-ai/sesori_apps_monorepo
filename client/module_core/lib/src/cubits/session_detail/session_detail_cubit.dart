@@ -1259,7 +1259,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (current is! SessionDetailLoaded) return;
 
     final agentInfo = current.availableAgents.firstWhereOrNull((a) => a.name == agent);
-    final agentModel = agentInfo?.model;
+    if (agentInfo == null) return;
+    // A null model means this agent has no model preference of its own.
+    final agentModel = agentInfo.model ?? current.selectedAgentModel;
 
     if (isClosed) return;
     emit(
