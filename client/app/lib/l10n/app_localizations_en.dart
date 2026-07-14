@@ -620,6 +620,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectHidden => 'Project hidden';
 
   @override
+  String get projectHideFailed => 'Failed to hide project';
+
+  @override
   String get hideProject => 'Hide Project';
 
   @override

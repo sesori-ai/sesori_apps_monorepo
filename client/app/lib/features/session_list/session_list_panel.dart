@@ -7,12 +7,13 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "session_list_content.dart";
+import "session_tile.dart";
 
 class SessionListPanel extends StatelessWidget {
   final String? projectName;
   final String? selectedSessionId;
   final ValueChanged<Session> onSessionTap;
-  final ValueChanged<Session> onSessionLongPress;
+  final SessionMenuEntriesBuilder sessionMenuEntries;
   final ValueChanged<Session> onSessionSwipe;
   final VoidCallback onNewSession;
   final VoidCallback? onBack;
@@ -22,7 +23,7 @@ class SessionListPanel extends StatelessWidget {
     this.projectName,
     this.selectedSessionId,
     required this.onSessionTap,
-    required this.onSessionLongPress,
+    required this.sessionMenuEntries,
     required this.onSessionSwipe,
     required this.onNewSession,
     this.onBack,
@@ -140,7 +141,7 @@ class SessionListPanel extends StatelessWidget {
         SessionListContent(
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
-          onSessionLongPress: onSessionLongPress,
+          sessionMenuEntries: sessionMenuEntries,
           onSessionSwipe: onSessionSwipe,
         ),
       ],

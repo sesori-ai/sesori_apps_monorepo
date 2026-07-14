@@ -3,7 +3,13 @@ part of "session_list_screen.dart";
 class SessionListActionDispatcher {
   const SessionListActionDispatcher();
 
-  void showSessionActions({required BuildContext context, required Session session}) {
+  /// The long-press actions for [session], rendered by [SessionTile] in a
+  /// [PregoAnchorMenu] anchored to the row.
+  ///
+  /// [PregoAnchorMenu] dismisses the menu before running an entry's `onTap`, so
+  /// each of these acts against the still-mounted row rather than a popped
+  /// route — the sheets they raise (archive, delete) push on top of the list.
+  List<PregoMenuEntry> sessionMenuEntries({required BuildContext context, required Session session}) {
     final loc = context.loc;
     final cubit = context.read<SessionListCubit>();
     final isArchived = session.time?.archived != null;
@@ -12,67 +18,42 @@ class SessionListActionDispatcher {
         ? (state.unseenBySessionId[session.id] ?? session.unseen)
         : session.unseen;
 
-    showPregoBottomSheet<void>(
-      context: context,
-      title: session.title ?? loc.sessionListUntitled,
-      // Full-bleed tiles; each ListTile carries its own horizontal padding.
-      contentPadding: EdgeInsetsDirectional.zero,
-      builder: (sheetContext) {
-        // Transparent Material so the tiles' ink paints on top of the sheet
-        // surface instead of behind it on the modal's transparent Material.
-        return Material(
-          type: MaterialType.transparency,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.edit_outlined),
-                title: Text(loc.rename),
-                onTap: () {
-                  sheetContext.pop();
-                  showRenameSessionDialog(
-                    context: context,
-                    session: session,
-                    cubit: cubit,
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(isUnseen ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined),
-                title: Text(isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread),
-                onTap: () {
-                  sheetContext.pop();
-                  unawaited(cubit.markSessionSeen(sessionId: session.id, read: isUnseen));
-                },
-              ),
-              ListTile(
-                leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
-                title: Text(isArchived ? loc.sessionListUnarchive : loc.sessionListArchive),
-                onTap: () {
-                  sheetContext.pop();
-                  if (isArchived) {
-                    _unarchiveSession(context: context, cubit: cubit, sessionId: session.id);
-                  } else {
-                    _showArchiveSheet(context: context, cubit: cubit, session: session);
-                  }
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.delete_outlined, color: context.prego.colors.fgErrorPrimary),
-                title: Text(
-                  loc.sessionListDelete,
-                  style: TextStyle(color: context.prego.colors.fgErrorPrimary),
-                ),
-                onTap: () {
-                  sheetContext.pop();
-                  _showDeleteSheet(context: context, cubit: cubit, session: session);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    return [
+      PregoMenuItem(
+        leadingIcon: TablerRegular.pencil,
+        title: loc.rename,
+        subtitle: null,
+        isSelected: false,
+        onTap: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
+      ),
+      PregoMenuItem(
+        leadingIcon: isUnseen ? TablerRegular.mail_opened : TablerRegular.mail,
+        title: isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
+        subtitle: null,
+        isSelected: false,
+        onTap: () => unawaited(cubit.markSessionSeen(sessionId: session.id, read: isUnseen)),
+      ),
+      PregoMenuItem(
+        leadingIcon: isArchived ? TablerRegular.archive_off : TablerRegular.archive,
+        title: isArchived ? loc.sessionListUnarchive : loc.sessionListArchive,
+        subtitle: null,
+        isSelected: false,
+        onTap: () => isArchived
+            ? _unarchiveSession(context: context, cubit: cubit, sessionId: session.id)
+            : _showArchiveSheet(context: context, cubit: cubit, session: session),
+      ),
+      // Delete is the only entry here that destroys work the user cannot get
+      // back — archiving is reversible — so it is set apart and tinted.
+      const PregoMenuDivider(),
+      PregoMenuItem(
+        leadingIcon: TablerRegular.trash,
+        title: loc.sessionListDelete,
+        subtitle: null,
+        isSelected: false,
+        isDestructive: true,
+        onTap: () => _showDeleteSheet(context: context, cubit: cubit, session: session),
+      ),
+    ];
   }
 
   void handleSessionSwipe({required BuildContext context, required Session session}) {

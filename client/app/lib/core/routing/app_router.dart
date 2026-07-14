@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/widgets/session_split/empty_session_detail_panel.dart";
 import "../../core/widgets/session_split/session_split_scope.dart";
@@ -365,7 +366,8 @@ class _SessionListPane extends StatelessWidget {
             ),
           );
         },
-        onSessionLongPress: (session) => actionDispatcher.showSessionActions(context: context, session: session),
+        sessionMenuEntries: (BuildContext context, Session session) =>
+            actionDispatcher.sessionMenuEntries(context: context, session: session),
         onSessionSwipe: (session) => actionDispatcher.handleSessionSwipe(context: context, session: session),
       ),
     );

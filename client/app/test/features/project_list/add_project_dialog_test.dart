@@ -75,6 +75,10 @@ Widget _buildApp({required ProjectListCubit cubit, required Widget child}) {
   );
 }
 
+/// A minimal host for the add-project entry points — the FAB and the
+/// empty-state call to action. It deliberately does not stand in for
+/// [ProjectListScreen]: tests that exercise the real list (tiles, their
+/// long-press menu) pump the screen itself.
 Widget _buildProjectListShell({required ProjectListCubit cubit}) {
   return _buildApp(
     cubit: cubit,
@@ -91,55 +95,22 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
           ),
           body: switch (state) {
             ProjectListLoading() => const Center(child: CircularProgressIndicator()),
-            ProjectListLoaded(:final projects) =>
-              projects.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(loc.noProjects),
-                          const SizedBox(height: 8),
-                          Text(loc.addProjectPrompt),
-                          const SizedBox(height: 24),
-                          FilledButton.icon(
-                            onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
-                            icon: const Icon(Icons.add),
-                            label: Text(loc.addProject),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: projects.length,
-                      itemBuilder: (ctx, index) {
-                        final project = projects[index];
-                        final listCubit = context.read<ProjectListCubit>();
-                        return ListTile(
-                          key: Key("project-tile-${project.id}"),
-                          title: Text(project.name ?? project.id),
-                          onLongPress: () {
-                            showModalBottomSheet<void>(
-                              context: ctx,
-                              builder: (sheetContext) => SafeArea(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    ListTile(
-                                      leading: const Icon(Icons.visibility_off_outlined),
-                                      title: Text(loc.hideProject),
-                                      onTap: () {
-                                        Navigator.of(sheetContext).pop();
-                                        listCubit.hideProject(project.id);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
+            ProjectListLoaded() => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(loc.noProjects),
+                  const SizedBox(height: 8),
+                  Text(loc.addProjectPrompt),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+                    icon: const Icon(Icons.add),
+                    label: Text(loc.addProject),
+                  ),
+                ],
+              ),
+            ),
             ProjectListFailed() => const Text("Error"),
             ProjectListBridgeDisconnected() => const Text("Bridge disconnected"),
           },
@@ -301,48 +272,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("Limited folder access"), findsNothing);
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // Long-press to hide
-  // -------------------------------------------------------------------------
-
-  group("Long-press to hide", () {
-    testWidgets("long-pressing a project tile shows bottom sheet with Hide Project", (tester) async {
-      final project = testProject();
-      when(() => mockCubit.state).thenReturn(
-        ProjectListState.loaded(projects: [project], activityById: const {}),
-      );
-
-      await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
-
-      final tileFinder = find.byKey(Key("project-tile-${project.id}"));
-      expect(tileFinder, findsOneWidget);
-
-      await tester.longPress(tileFinder);
-      await tester.pumpAndSettle();
-
-      expect(find.text("Hide Project"), findsOneWidget);
-    });
-
-    testWidgets("tapping Hide Project calls hideProject", (tester) async {
-      final project = testProject();
-      when(() => mockCubit.state).thenReturn(
-        ProjectListState.loaded(projects: [project], activityById: const {}),
-      );
-      when(() => mockCubit.hideProject(any())).thenAnswer((_) async {});
-
-      await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
-
-      final tileFinder = find.byKey(Key("project-tile-${project.id}"));
-      await tester.longPress(tileFinder);
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text("Hide Project"));
-      await tester.pumpAndSettle();
-
-      verify(() => mockCubit.hideProject(project.id)).called(1);
     });
   });
 

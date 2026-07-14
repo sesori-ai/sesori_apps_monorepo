@@ -54,7 +54,7 @@ void main() {
                   onBack: () {},
                   onNewSession: () {},
                   onSessionTap: (_) {},
-                  onSessionLongPress: (_) {},
+                  sessionMenuEntries: (_, _) => const [],
                   onSessionSwipe: (_) {},
                 ),
               ),

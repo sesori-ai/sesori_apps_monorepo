@@ -6,6 +6,21 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/status_colors.dart";
 import "pr_status_row.dart";
 
+/// Builds the long-press actions for a session row. It is a builder rather than
+/// a ready-made list because the entries are owned by the screen's action
+/// dispatcher, while the list supplies the session and the context they act
+/// against. The context must be the list's, not the row's: archive and delete
+/// hide the row optimistically, unmounting it before their cubit calls resolve,
+/// which would silently skip the follow-up the actions run afterwards (undo
+/// snackbar, closing a deleted session's detail route).
+typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext context, Session session);
+
+/// A single session row.
+///
+/// Tapping opens the session; long-pressing — or right-clicking with a mouse —
+/// opens its actions in a [PregoAnchorMenu] anchored to the row, which blurs
+/// the rest of the list back and holds this row sharp so the session being
+/// acted on stays in view. Swiping still archives, as before.
 class SessionTile extends StatelessWidget {
   final Session session;
   final bool isArchived;
@@ -16,7 +31,12 @@ class SessionTile extends StatelessWidget {
   final bool isRetrying;
   final int backgroundTaskCount;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+
+  /// Builds this row's long-press actions; the session — and the stable
+  /// context the actions run against — are already closed over by the list,
+  /// like [onTap] and [onSwipe] (see [SessionMenuEntriesBuilder]).
+  final List<PregoMenuEntry> Function() menuEntries;
+
   final VoidCallback onSwipe;
 
   const SessionTile({
@@ -30,12 +50,28 @@ class SessionTile extends StatelessWidget {
     this.isRetrying = false,
     this.backgroundTaskCount = 0,
     required this.onTap,
-    required this.onLongPress,
+    required this.menuEntries,
     required this.onSwipe,
   });
 
+  /// Wide enough for the longest action label ("Mark as unread") without the
+  /// panel spanning the row it is anchored to.
+  static const double _menuWidth = 220;
+
   @override
   Widget build(BuildContext context) {
+    return PregoAnchorMenu(
+      flat: true,
+      menuWidth: _menuWidth,
+      // Holds this row sharp while the rest of the list blurs back, so which
+      // session the actions will hit is unambiguous.
+      spotlight: PregoMenuSpotlight.listRow,
+      entriesBuilder: menuEntries,
+      triggerBuilder: (context, openMenu) => _buildRow(context: context, openMenu: openMenu),
+    );
+  }
+
+  Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
     final loc = context.loc;
     final updatedAt = session.time?.updated;
     final filesChanged = session.summary?.files ?? 0;
@@ -60,65 +96,70 @@ class SessionTile extends StatelessWidget {
           ),
         ),
       ),
-      child: ListTile(
-        selected: selected,
-        selectedTileColor: context.prego.colors.bgBrandSolid.withValues(alpha: 0.08),
-        leading: CircleAvatar(
-          backgroundColor: context.prego.colors.bgBrandSolid,
-          child: Icon(
-            Icons.chat_outlined,
-            color: context.prego.colors.fgWhite,
+      // Right-click is the mouse counterpart of long-press; ListTile has no
+      // secondary-tap slot of its own, so a detector wraps it.
+      child: GestureDetector(
+        onSecondaryTap: openMenu,
+        child: ListTile(
+          selected: selected,
+          selectedTileColor: context.prego.colors.bgBrandSolid.withValues(alpha: 0.08),
+          leading: CircleAvatar(
+            backgroundColor: context.prego.colors.bgBrandSolid,
+            child: Icon(
+              Icons.chat_outlined,
+              color: context.prego.colors.fgWhite,
+            ),
           ),
-        ),
-        title: Text(
-          session.title ?? loc.sessionListUntitled,
-          style: unseen ? context.prego.textTheme.textMd.bold : null,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (updatedAt != null)
-              Text(
-                loc.sessionListUpdated(context.formatTimestamp(updatedAt)),
-                style: context.prego.textTheme.textXs.regular.copyWith(
-                  color: context.prego.colors.textSecondary,
-                ),
-              ),
-            if (filesChanged > 0)
-              Text(
-                loc.sessionListFilesChanged(filesChanged),
-                style: context.prego.textTheme.textXs.regular,
-              ),
-            if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
-            if (isActive)
-              _ActivityRow(
-                awaitingInput: awaitingInput,
-                isRetrying: isRetrying,
-                backgroundTaskCount: backgroundTaskCount,
-              ),
-          ],
-        ),
-        isThreeLine:
-            [
-              updatedAt != null,
-              filesChanged > 0,
-              session.pullRequest != null,
-              isActive,
-            ].where((v) => v).length >=
-            2,
-        trailing: switch (unseen) {
-          true => Row(
-            mainAxisSize: MainAxisSize.min,
+          title: Text(
+            session.title ?? loc.sessionListUntitled,
+            style: unseen ? context.prego.textTheme.textMd.bold : null,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.circle, size: 10, color: context.prego.colors.bgBrandSolid),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right),
+              if (updatedAt != null)
+                Text(
+                  loc.sessionListUpdated(context.formatTimestamp(updatedAt)),
+                  style: context.prego.textTheme.textXs.regular.copyWith(
+                    color: context.prego.colors.textSecondary,
+                  ),
+                ),
+              if (filesChanged > 0)
+                Text(
+                  loc.sessionListFilesChanged(filesChanged),
+                  style: context.prego.textTheme.textXs.regular,
+                ),
+              if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
+              if (isActive)
+                _ActivityRow(
+                  awaitingInput: awaitingInput,
+                  isRetrying: isRetrying,
+                  backgroundTaskCount: backgroundTaskCount,
+                ),
             ],
           ),
-          false => const Icon(Icons.chevron_right),
-        },
-        onTap: onTap,
-        onLongPress: onLongPress,
+          isThreeLine:
+              [
+                updatedAt != null,
+                filesChanged > 0,
+                session.pullRequest != null,
+                isActive,
+              ].where((v) => v).length >=
+              2,
+          trailing: switch (unseen) {
+            true => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.circle, size: 10, color: context.prego.colors.bgBrandSolid),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+            false => const Icon(Icons.chevron_right),
+          },
+          onTap: onTap,
+          onLongPress: openMenu,
+        ),
       ),
     );
   }

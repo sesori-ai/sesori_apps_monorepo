@@ -1213,6 +1213,12 @@ abstract class AppLocalizations {
   /// **'Project hidden'**
   String get projectHidden;
 
+  /// No description provided for @projectHideFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to hide project'**
+  String get projectHideFailed;
+
   /// No description provided for @hideProject.
   ///
   /// In en, this message translates to:
