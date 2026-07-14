@@ -8,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
+import "../../../core/widgets/copy_icon_button.dart";
 import "../../../core/widgets/markdown_styles.dart";
 
 /// Bottom sheet that presents a tool permission request from the AI assistant.
@@ -102,48 +103,92 @@ class PermissionModal extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Tool name
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: prego.colors.bgQuaternary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.terminal,
-                    size: 16,
-                    color: prego.colors.textSecondary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    permission.tool,
-                    style: prego.textTheme.textSm.bold
-                        .copyWith(
-                          fontWeight: FontWeight.bold,
-                        )
-                        .monospace,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Description — scrolls on its own when tall so the actions below
-            // stay on screen.
+            // A long request scrolls as one card while the blocking actions
+            // remain pinned below it.
             Flexible(
               child: SingleChildScrollView(
-                child: MarkdownBody(
-                  data: permission.description,
-                  selectable: true,
-                  onTapLink: handleMarkdownLinkTap,
-                  styleSheet: buildSessionMarkdownStyleSheet(
-                    prego: prego,
-                    paragraphStyle: prego.textTheme.textSm.regular,
+                child: Container(
+                  key: const Key("permission-detail-card"),
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: prego.colors.bgSurface1,
+                    borderRadius: BorderRadius.circular(prego.radius.xl),
+                    border: Border.all(color: prego.colors.borderSecondary),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: prego.spacing.lg,
+                          vertical: prego.spacing.md,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: prego.colors.bgBrandPrimary,
+                                borderRadius: BorderRadius.circular(prego.radius.md),
+                              ),
+                              child: Icon(
+                                TablerRegular.terminal,
+                                size: 16,
+                                color: prego.colors.textBrandPrimary,
+                              ),
+                            ),
+                            SizedBox(width: prego.spacing.md),
+                            Expanded(
+                              child: Text(
+                                permission.tool,
+                                style: prego.textTheme.textSm.bold.monospace,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        key: const Key("permission-request-detail"),
+                        width: double.infinity,
+                        padding: EdgeInsetsDirectional.only(
+                          start: prego.spacing.lg,
+                          top: prego.spacing.lg,
+                          end: prego.spacing.xs,
+                          bottom: prego.spacing.lg,
+                        ),
+                        decoration: BoxDecoration(
+                          color: prego.colors.bgQuaternary,
+                          border: Border(top: BorderSide(color: prego.colors.borderSecondary)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: MarkdownBody(
+                                data: permission.description,
+                                selectable: true,
+                                onTapLink: handleMarkdownLinkTap,
+                                styleSheet: buildSessionMarkdownStyleSheet(
+                                  prego: prego,
+                                  paragraphStyle: prego.textTheme.textSm.regular
+                                      .copyWith(color: prego.colors.textPrimary)
+                                      .monospace,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: prego.spacing.xs),
+                            CopyIconButton(
+                              text: permission.description,
+                              tooltip: context.loc.sessionDetailCopy,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
