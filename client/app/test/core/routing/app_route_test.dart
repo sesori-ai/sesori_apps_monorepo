@@ -230,9 +230,17 @@ void main() {
           queryParameters: {"name": "My Project", "title": "Debug session", "readOnly": "true"},
         ),
       );
+      final otherSessionPage = detailRoute.pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-100"},
+          queryParameters: {"name": "My Project", "title": "Other session", "readOnly": "false"},
+        ),
+      );
       final scope = (page as CustomTransitionPage<void>).child as ImperativePaneRouteScope;
       final widget = scope.child;
 
+      expect(page.key, isNot(otherSessionPage.key));
       expect(widget, isA<SessionDetailScreen>());
       final screen = widget as SessionDetailScreen;
       expect(screen.key, const ValueKey("session-detail-ses-99"));

@@ -83,6 +83,7 @@ The only exception is reading `Theme.of(context).brightness` for light/dark chec
 - GoRouter for routing (`go_router`)
 - No automatic redirects — all navigation triggered by explicit user action
 - Routes use web-style URLs with path/query params. Do NOT use `state.extra`
+- For pageless routes such as modal sheets, align the enclosing `Page` key with the logical owner so Flutter's Navigator lifecycle removes them naturally. Prefer correct page identity and a current-route presentation gate over manually tracking `ModalRoute`s or listening to `GoRouter.routerDelegate` from a feature widget.
 
 ## Platform Adapters
 

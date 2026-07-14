@@ -57,14 +57,17 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
   );
 }
 
-SessionDetailState _loadedState() {
+SessionDetailLoaded _loadedState({
+  required List<SesoriQuestionAsked> pendingQuestions,
+  required List<SesoriPermissionAsked> pendingPermissions,
+}) {
   final provider = testProviderListResponse().items.first;
-  return SessionDetailState.loaded(
+  return SessionDetailLoaded(
     messages: const [],
     streamingText: const {},
     sessionStatus: const SessionStatus.idle(),
-    pendingQuestions: const [],
-    pendingPermissions: const [],
+    pendingQuestions: pendingQuestions,
+    pendingPermissions: pendingPermissions,
     sessionTitle: "Session",
     agent: null,
     assistantAgentModel: null,
@@ -88,6 +91,27 @@ SessionDetailState _loadedState() {
   );
 }
 
+const _question = SesoriQuestionAsked(
+  id: "question-1",
+  sessionID: "session-1",
+  displaySessionId: null,
+  questions: [
+    QuestionInfo(
+      question: "Choose a release channel",
+      header: "Release channel",
+      options: [QuestionOption(label: "Stable", description: "Release to everyone")],
+    ),
+  ],
+);
+
+const _permission = SesoriPermissionAsked(
+  requestID: "permission-1",
+  sessionID: "session-1",
+  displaySessionId: null,
+  tool: "write_release_notes",
+  description: "Allow writing the release notes",
+);
+
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
@@ -100,7 +124,7 @@ void main() {
     cubit = MockSessionDetailCubit();
     voiceTranscriptionService = MockVoiceTranscriptionService();
 
-    final state = _loadedState();
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
@@ -138,7 +162,7 @@ void main() {
   });
 
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
-    final initialState = _loadedState();
+    final initialState = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final updatedState = SessionDetailState.loaded(
       messages: const [],
       streamingText: const {},
@@ -206,6 +230,88 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Diffs"), findsOneWidget);
+  });
+
+  testWidgets("presents a queued permission after answering an active question", (tester) async {
+    final questionController = StreamController<SesoriQuestionAsked>.broadcast();
+    final permissionController = StreamController<SesoriPermissionAsked>.broadcast();
+    addTearDown(questionController.close);
+    addTearDown(permissionController.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.questionStream).thenAnswer((_) => questionController.stream);
+    when(() => cubit.permissionStream).thenAnswer((_) => permissionController.stream);
+    when(
+      () => cubit.replyToQuestion(
+        requestId: "question-1",
+        sessionId: "session-1",
+        answers: any(named: "answers"),
+      ),
+    ).thenAnswer((_) async {
+      state = state.copyWith(pendingQuestions: const []);
+      return true;
+    });
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    state = state.copyWith(pendingQuestions: const [_question]);
+    questionController.add(_question);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsOneWidget);
+
+    state = state.copyWith(pendingPermissions: const [_permission]);
+    permissionController.add(_permission);
+    await tester.pumpAndSettle();
+    expect(find.text("write_release_notes"), findsNothing);
+
+    await tester.tap(find.text("Stable"));
+    await tester.pump();
+    await tester.tap(find.text("Submit"));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+
+    expect(find.text("write_release_notes"), findsOneWidget);
+  });
+
+  testWidgets("presents a queued question after answering an active permission", (tester) async {
+    final questionController = StreamController<SesoriQuestionAsked>.broadcast();
+    final permissionController = StreamController<SesoriPermissionAsked>.broadcast();
+    addTearDown(questionController.close);
+    addTearDown(permissionController.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.questionStream).thenAnswer((_) => questionController.stream);
+    when(() => cubit.permissionStream).thenAnswer((_) => permissionController.stream);
+    when(
+      () => cubit.replyToPermission(
+        requestId: "permission-1",
+        sessionId: "session-1",
+        reply: PermissionReply.once,
+      ),
+    ).thenAnswer((_) async {
+      state = state.copyWith(pendingPermissions: const []);
+      return true;
+    });
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    state = state.copyWith(pendingPermissions: const [_permission]);
+    permissionController.add(_permission);
+    await tester.pumpAndSettle();
+    expect(find.text("write_release_notes"), findsOneWidget);
+
+    state = state.copyWith(pendingQuestions: const [_question]);
+    questionController.add(_question);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsNothing);
+
+    await tester.tap(find.text("Once"));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Choose a release channel"), findsOneWidget);
   });
 
   // Only the input row is grouped with the text field via a TextFieldTapRegion,
