@@ -18,16 +18,14 @@ class IsolatedActivityIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (context.isReducedMotion) {
-      return Semantics(
-        role: SemanticsRole.loadingSpinner,
-        child: ExcludeSemantics(
-          child: RepaintBoundary(child: _indicator(value: _staticArcSweep)),
+    return Semantics(
+      role: SemanticsRole.loadingSpinner,
+      child: ExcludeSemantics(
+        child: RepaintBoundary(
+          child: _indicator(value: context.isReducedMotion ? _staticArcSweep : null),
         ),
-      );
-    }
-
-    return RepaintBoundary(child: _indicator(value: null));
+      ),
+    );
   }
 
   CircularProgressIndicator _indicator({required double? value}) {

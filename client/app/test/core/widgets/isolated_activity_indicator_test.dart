@@ -16,6 +16,7 @@ void main() {
   }
 
   testWidgets("uses a smooth indeterminate spinner behind a repaint boundary", (tester) async {
+    final handle = tester.ensureSemantics();
     await tester.pumpWidget(
       wrap(const IsolatedActivityIndicator(strokeWidth: 2, color: Colors.blue)),
     );
@@ -32,6 +33,11 @@ void main() {
       isNull,
     );
     expect(tester.hasRunningAnimations, isTrue);
+
+    final data = tester.getSemantics(find.byType(IsolatedActivityIndicator)).getSemanticsData();
+    expect(data.role, SemanticsRole.loadingSpinner);
+
+    handle.dispose();
   });
 
   testWidgets("reduced motion stays static with loading-spinner semantics", (tester) async {
