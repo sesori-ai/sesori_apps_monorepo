@@ -334,6 +334,7 @@ class ConfigCommand extends cli.Command<void> {
 
   ConfigCommand() {
     addSubcommand(ConfigTrackCommand());
+    addSubcommand(ConfigYoloCommand());
     addSubcommand(ConfigEditCommand());
   }
 }
@@ -410,6 +411,55 @@ class ConfigTrackCommand extends cli.Command<void> {
         return ReleaseTrack.internal;
       default:
         usageException('Track must be "stable" or "internal".');
+    }
+  }
+}
+
+class ConfigYoloCommand extends cli.Command<void> {
+  @override
+  final name = 'yolo';
+
+  @override
+  final description = 'Show or set automatic permission approval (on|off)';
+
+  @override
+  Future<void> run() async {
+    final results = argResults;
+    if (results == null) {
+      usageException('Unable to read command arguments.');
+    }
+    final rest = results.rest;
+    final repository = BridgeSettingsRepository(api: BridgeSettingsApi());
+
+    if (rest.isEmpty) {
+      final settings = await repository.loadSettings();
+      stdout.writeln('YOLO mode: ${settings.yolo ? 'on' : 'off'}');
+      return;
+    }
+
+    if (rest.length > 1) {
+      usageException('Expected a single YOLO mode: on or off.');
+    }
+
+    final enabled = _parseYoloArgument(rest.single);
+    await repository.updateYolo(enabled: enabled);
+    stdout.writeln('YOLO mode set to ${enabled ? 'on' : 'off'}.');
+    if (enabled) {
+      stdout.writeln(
+        'Warning: permission requests will be auto-approved without being sent to clients.',
+      );
+    }
+    stdout.writeln('Restart sesori-bridge to apply.');
+  }
+
+  bool _parseYoloArgument(String value) {
+    switch (value) {
+      case 'on':
+        return true;
+      case 'off':
+        return false;
+      default:
+        usageException('YOLO mode must be "on" or "off".');
     }
   }
 }

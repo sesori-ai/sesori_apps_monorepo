@@ -386,6 +386,7 @@ class _ReauthHarness {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: RelayClient(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
