@@ -276,9 +276,10 @@ Use this fixed structure:
 
 `Current Pointer` always names the current stage, wave, and next action. A
 `Wave Baselines` row is the authoritative pinned commit for every started
-repository/base pair in a wave; same-wave sibling runs reuse it. Keep the tables
-complete and put free-form milestone notes only under the final `Findings and
-Plan Deltas` section.
+repository/base pair in a wave; same-wave sibling runs reuse it. For a parallel
+wave, the remote `plan/<plan-slug>/tracking` branch owns the authoritative rows
+until plan closure reconciles them. Keep the tables complete and put free-form
+milestone notes only under the final `Findings and Plan Deltas` section.
 
 Do not write routine commands, chat summaries, debugging diaries, or duplicate
 the design. A PR row is binary: unchecked on its shared baseline, checked
@@ -364,11 +365,13 @@ You may re-review an existing plan after execution starts only when the user
 explicitly invokes you for stale-plan revalidation. In that mode:
 
 1. Read the existing plan and tracker.
-2. Compare the last-reviewed commit to the current intended base, focusing on
-   changed planned paths, contracts, schemas, architecture, and product intent.
+2. For every repository/base pair recorded in `PLAN.md`, compare its latest
+   audited tip to that base's current tip, focusing on changed planned paths,
+   contracts, schemas, architecture, and product intent.
 3. Explore code before asking questions. Re-interview only decisions made stale
    by the changes.
-4. Update authoritative plan files and the latest re-review metadata.
+4. Update authoritative plan files and the latest re-review metadata for every
+   repository/base pair.
 5. Re-run full plan review to approval.
 6. Ask the same delivery question, then direct execution back to the worker.
 

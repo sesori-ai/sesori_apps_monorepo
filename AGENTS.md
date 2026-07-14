@@ -534,6 +534,8 @@ the repository/base declared by their step. Parallel same-wave steps pin one
 baseline commit per repository/base pair when that wave starts. Plans record an
 audited tip SHA/date for every repository/base pair; workers assess drift from
 that audit point, and the exact tip SHA assessed becomes that wave's baseline.
+Before parallel sibling branches are created, those baselines are committed and
+pushed to the plan-host `plan/<slug>/tracking` branch as shared execution state.
 
 `.gitattributes` marks generated code and test directories as `linguist-generated` so GitHub collapses their diffs. Lockfiles (`pubspec.lock`, `Gemfile.lock`, `Podfile.lock`) must NEVER be marked as generated — the user always reviews lockfile diffs.
 
