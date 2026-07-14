@@ -45,11 +45,14 @@ another branch? Present those three choices explicitly and include your
 recommendation. If the user chooses another branch, require its exact name.
 
 Record the selected implementation base branch in `PLAN.md` and use its current
-tip as the initial implementation baseline. The initial commit SHA and later
-reviewed commit SHAs are audit/staleness metadata; they do not turn that commit
-into a historical branch point. Do not silently substitute the default branch,
-the invocation branch, or the currently checked-out branch after the choice is
-recorded.
+tip as the initial implementation baseline for the plan-host repository. Every
+first-wave PR step in that repository must declare this selected branch as its
+base. A step in another repository declares that repository's own base branch;
+never copy the plan-host branch name across repositories. The initial commit SHA
+and later reviewed commit SHAs are audit/staleness metadata; they do not turn
+that commit into a historical branch point. Do not silently substitute the
+default branch, invocation branch, or currently checked-out branch after the
+choice is recorded.
 
 ## Interview Contract
 
@@ -218,6 +221,10 @@ require a compatibility section for unrelated PRs.
 
 One plan may coordinate several repositories, but each PR step names exactly
 one repository, worktree, base, and PR. A single PR never spans repositories.
+First-wave steps in the plan-host repository use the user-selected
+implementation base. Steps in other repositories use their own explicitly
+audited base. Same-wave steps targeting the same repository and base share one
+baseline commit, pinned when that wave starts execution.
 
 ### Manual step file
 
