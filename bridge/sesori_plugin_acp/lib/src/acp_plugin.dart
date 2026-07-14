@@ -584,7 +584,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       parentID: null,
       title: info.title,
       time: ts == null ? null : PluginSessionTime(created: ts, updated: ts, archived: null),
-      summary: null,
     );
   }
 
@@ -662,7 +661,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       parentID: parentSessionId,
       title: null,
       time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
-      summary: null,
     );
   }
 
@@ -1083,7 +1081,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       parentID: null,
       title: title,
       time: null,
-      summary: null,
     );
   }
 

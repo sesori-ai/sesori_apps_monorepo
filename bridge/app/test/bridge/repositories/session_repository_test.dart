@@ -210,7 +210,6 @@ void main() {
           parentID: null,
           title: "session",
           time: SessionTime(created: 1, updated: 2, archived: null),
-          summary: null,
           pullRequest: null,
           promptDefaults: null,
         ),
@@ -269,7 +268,6 @@ void main() {
           parentID: null,
           title: "session",
           time: null,
-          summary: null,
           pullRequest: null,
           promptDefaults: null,
         ),
@@ -337,7 +335,6 @@ void main() {
             parentID: null,
             title: "stored",
             time: null,
-            summary: null,
             pullRequest: null,
             promptDefaults: null,
           ),
@@ -349,7 +346,6 @@ void main() {
             parentID: null,
             title: "unstored",
             time: SessionTime(created: 3, updated: 4, archived: null),
-            summary: null,
             pullRequest: null,
             promptDefaults: null,
           ),
@@ -646,7 +642,6 @@ void main() {
         parentID: null,
         title: "Renamed",
         time: PluginSessionTime(created: 1, updated: 2, archived: null),
-        summary: null,
       );
 
       final result = await repository.renameSession(sessionId: "s1", title: "Renamed");
@@ -724,7 +719,6 @@ void main() {
             parentID: null,
             title: "Session",
             time: null,
-            summary: null,
           ),
         ],
       };
@@ -789,7 +783,6 @@ void main() {
         parentID: null,
         title: "Event session",
         time: null,
-        summary: null,
         pullRequest: null,
         promptDefaults: null,
       ).toJson();
@@ -824,7 +817,6 @@ void main() {
               parentID: null,
               title: "Session",
               time: null,
-              summary: null,
             ),
           ],
         };
@@ -978,7 +970,6 @@ void main() {
       parentID: null,
       title: null,
       time: const PluginSessionTime(created: 1, updated: 1, archived: null),
-      summary: null,
     );
 
     Future<void> recordWorktreeSession(
@@ -1266,7 +1257,6 @@ void main() {
             parentID: null,
             title: "Backend auto-title",
             time: PluginSessionTime(created: 1, updated: 1, archived: null),
-            summary: null,
           ),
         ],
       );
@@ -1569,7 +1559,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
   );
   PluginSession? renameSessionResult;
   String? lastRenameSessionId;
@@ -1748,7 +1737,6 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
       parentID: null,
       title: title,
       time: null,
-      summary: null,
     );
   }
 

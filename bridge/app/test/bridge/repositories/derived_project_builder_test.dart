@@ -19,7 +19,6 @@ void main() {
       parentID: null,
       title: null,
       time: PluginSessionTime(created: created, updated: updated, archived: null),
-      summary: null,
     );
   }
 

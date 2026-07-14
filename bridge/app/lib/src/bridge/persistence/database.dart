@@ -204,9 +204,6 @@ class AppDatabase extends _$AppDatabase {
               schema.sessionsTable.updatedAt,
               schema.sessionsTable.projectionUpdatedAt,
               schema.sessionsTable.catalogTitle,
-              schema.sessionsTable.summaryAdditions,
-              schema.sessionsTable.summaryDeletions,
-              schema.sessionsTable.summaryFiles,
             ],
             columnTransformer: {
               schema.sessionsTable.backendSessionId: const CustomExpression<String>("session_id"),

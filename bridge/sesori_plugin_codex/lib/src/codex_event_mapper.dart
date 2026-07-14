@@ -491,7 +491,6 @@ class CodexEventMapper {
       parentID: null,
       title: thread["name"] as String?,
       time: _threadTime(thread),
-      summary: null,
       pullRequest: null,
       promptDefaults: null,
     );
@@ -511,7 +510,6 @@ class CodexEventMapper {
       parentID: null,
       title: title,
       time: null,
-      summary: null,
       pullRequest: null,
       promptDefaults: null,
     );

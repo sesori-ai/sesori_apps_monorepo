@@ -481,12 +481,6 @@ abstract class AppLocalizations {
   /// **'Updated {timestamp}'**
   String sessionListUpdated(String timestamp);
 
-  /// No description provided for @sessionListFilesChanged.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} files changed'**
-  String sessionListFilesChanged(int count);
-
   /// No description provided for @sessionListRefreshSuccess.
   ///
   /// In en, this message translates to:

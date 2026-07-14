@@ -68,9 +68,6 @@ void main() {
       pluginId: "codex",
       title: null,
       catalogTitle: "Observed title",
-      summaryAdditions: 3,
-      summaryDeletions: null,
-      summaryFiles: 1,
     );
 
     final session = mapper.map(row: row, pullRequest: null, unseen: true);
@@ -79,7 +76,6 @@ void main() {
     expect(session.pluginId, "codex");
     expect(session.parentID, "parent-id");
     expect(session.title, "Observed title");
-    expect(session.summary, const SessionSummary(additions: 3, deletions: 0, files: 1));
     expect(session.promptDefaults?.agent, "build");
     expect(session.hasWorktree, isTrue);
     expect(session.unseen, isTrue);

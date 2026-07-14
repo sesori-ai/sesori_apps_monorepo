@@ -410,7 +410,6 @@ class CodexPlugin implements CodexManagedApi {
               updated: updated,
               archived: null,
             ),
-      summary: null,
     );
   }
 
@@ -476,7 +475,6 @@ class CodexPlugin implements CodexManagedApi {
       parentID: parentSessionId,
       title: thread?["name"] as String?,
       time: _timeFromThread(thread),
-      summary: null,
     );
   }
 
@@ -687,7 +685,6 @@ class CodexPlugin implements CodexManagedApi {
       parentID: null,
       title: title,
       time: null,
-      summary: null,
     );
   }
 

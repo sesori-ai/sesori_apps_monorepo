@@ -220,7 +220,6 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         );
   }
 
@@ -239,7 +238,6 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         );
   }
 
@@ -464,9 +462,6 @@ class FakeSessionDao {
       pluginId: pluginId,
       title: null,
       catalogTitle: null,
-      summaryAdditions: null,
-      summaryDeletions: null,
-      summaryFiles: null,
     );
   }
 
@@ -720,7 +715,6 @@ Session _deletedSession(String sessionId) => Session(
   parentID: null,
   title: null,
   time: null,
-  summary: null,
   pullRequest: null,
   promptDefaults: null,
 );
@@ -761,7 +755,6 @@ class _NoopSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );
@@ -863,7 +856,6 @@ class _NoopSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );
@@ -952,7 +944,6 @@ class FakeSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );
@@ -1219,7 +1210,6 @@ class FakeSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );

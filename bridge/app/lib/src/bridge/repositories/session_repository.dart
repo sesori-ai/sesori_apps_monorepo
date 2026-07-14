@@ -343,7 +343,6 @@ class SessionRepository {
       parentID: null,
       title: stored?.title,
       time: null,
-      summary: null,
       pullRequest: null,
       promptDefaults: null,
       hasWorktree: stored?.worktreePath != null,

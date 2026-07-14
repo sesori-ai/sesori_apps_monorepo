@@ -473,9 +473,6 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   /// authoritative) and for sessions with no bridge-known title.
   String? get title;
   String? get catalogTitle;
-  int? get summaryAdditions;
-  int? get summaryDeletions;
-  int? get summaryFiles;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -528,15 +525,6 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
     }
     if (!nullToAbsent || catalogTitle != null) {
       map['catalog_title'] = Variable<String>(catalogTitle);
-    }
-    if (!nullToAbsent || summaryAdditions != null) {
-      map['summary_additions'] = Variable<int>(summaryAdditions);
-    }
-    if (!nullToAbsent || summaryDeletions != null) {
-      map['summary_deletions'] = Variable<int>(summaryDeletions);
-    }
-    if (!nullToAbsent || summaryFiles != null) {
-      map['summary_files'] = Variable<int>(summaryFiles);
     }
     return map;
   }
@@ -794,39 +782,6 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _summaryAdditionsMeta = const VerificationMeta(
-    'summaryAdditions',
-  );
-  @override
-  late final GeneratedColumn<int> summaryAdditions = GeneratedColumn<int>(
-    'summary_additions',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _summaryDeletionsMeta = const VerificationMeta(
-    'summaryDeletions',
-  );
-  @override
-  late final GeneratedColumn<int> summaryDeletions = GeneratedColumn<int>(
-    'summary_deletions',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _summaryFilesMeta = const VerificationMeta(
-    'summaryFiles',
-  );
-  @override
-  late final GeneratedColumn<int> summaryFiles = GeneratedColumn<int>(
-    'summary_files',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
@@ -851,9 +806,6 @@ class $SessionTableTable extends SessionTable
     pluginId,
     title,
     catalogTitle,
-    summaryAdditions,
-    summaryDeletions,
-    summaryFiles,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1038,33 +990,6 @@ class $SessionTableTable extends SessionTable
         ),
       );
     }
-    if (data.containsKey('summary_additions')) {
-      context.handle(
-        _summaryAdditionsMeta,
-        summaryAdditions.isAcceptableOrUnknown(
-          data['summary_additions']!,
-          _summaryAdditionsMeta,
-        ),
-      );
-    }
-    if (data.containsKey('summary_deletions')) {
-      context.handle(
-        _summaryDeletionsMeta,
-        summaryDeletions.isAcceptableOrUnknown(
-          data['summary_deletions']!,
-          _summaryDeletionsMeta,
-        ),
-      );
-    }
-    if (data.containsKey('summary_files')) {
-      context.handle(
-        _summaryFilesMeta,
-        summaryFiles.isAcceptableOrUnknown(
-          data['summary_files']!,
-          _summaryFilesMeta,
-        ),
-      );
-    }
     return context;
   }
 
@@ -1164,18 +1089,6 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.string,
         data['${effectivePrefix}catalog_title'],
       ),
-      summaryAdditions: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}summary_additions'],
-      ),
-      summaryDeletions: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}summary_deletions'],
-      ),
-      summaryFiles: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}summary_files'],
-      ),
     );
   }
 
@@ -1215,9 +1128,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String> pluginId;
   final Value<String?> title;
   final Value<String?> catalogTitle;
-  final Value<int?> summaryAdditions;
-  final Value<int?> summaryDeletions;
-  final Value<int?> summaryFiles;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.backendSessionId = const Value.absent(),
@@ -1241,9 +1151,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.pluginId = const Value.absent(),
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
-    this.summaryAdditions = const Value.absent(),
-    this.summaryDeletions = const Value.absent(),
-    this.summaryFiles = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
@@ -1268,9 +1175,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     required String pluginId,
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
-    this.summaryAdditions = const Value.absent(),
-    this.summaryDeletions = const Value.absent(),
-    this.summaryFiles = const Value.absent(),
   }) : sessionId = Value(sessionId),
        backendSessionId = Value(backendSessionId),
        projectId = Value(projectId),
@@ -1303,9 +1207,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? pluginId,
     Expression<String>? title,
     Expression<String>? catalogTitle,
-    Expression<int>? summaryAdditions,
-    Expression<int>? summaryDeletions,
-    Expression<int>? summaryFiles,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -1331,9 +1232,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (pluginId != null) 'plugin_id': pluginId,
       if (title != null) 'title': title,
       if (catalogTitle != null) 'catalog_title': catalogTitle,
-      if (summaryAdditions != null) 'summary_additions': summaryAdditions,
-      if (summaryDeletions != null) 'summary_deletions': summaryDeletions,
-      if (summaryFiles != null) 'summary_files': summaryFiles,
     });
   }
 
@@ -1360,9 +1258,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String>? pluginId,
     Value<String?>? title,
     Value<String?>? catalogTitle,
-    Value<int?>? summaryAdditions,
-    Value<int?>? summaryDeletions,
-    Value<int?>? summaryFiles,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -1387,9 +1282,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       pluginId: pluginId ?? this.pluginId,
       title: title ?? this.title,
       catalogTitle: catalogTitle ?? this.catalogTitle,
-      summaryAdditions: summaryAdditions ?? this.summaryAdditions,
-      summaryDeletions: summaryDeletions ?? this.summaryDeletions,
-      summaryFiles: summaryFiles ?? this.summaryFiles,
     );
   }
 
@@ -1466,15 +1358,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (catalogTitle.present) {
       map['catalog_title'] = Variable<String>(catalogTitle.value);
     }
-    if (summaryAdditions.present) {
-      map['summary_additions'] = Variable<int>(summaryAdditions.value);
-    }
-    if (summaryDeletions.present) {
-      map['summary_deletions'] = Variable<int>(summaryDeletions.value);
-    }
-    if (summaryFiles.present) {
-      map['summary_files'] = Variable<int>(summaryFiles.value);
-    }
     return map;
   }
 
@@ -1502,10 +1385,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('lastUserMessageAt: $lastUserMessageAt, ')
           ..write('pluginId: $pluginId, ')
           ..write('title: $title, ')
-          ..write('catalogTitle: $catalogTitle, ')
-          ..write('summaryAdditions: $summaryAdditions, ')
-          ..write('summaryDeletions: $summaryDeletions, ')
-          ..write('summaryFiles: $summaryFiles')
+          ..write('catalogTitle: $catalogTitle')
           ..write(')'))
         .toString();
   }
@@ -3084,9 +2964,6 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       required String pluginId,
       Value<String?> title,
       Value<String?> catalogTitle,
-      Value<int?> summaryAdditions,
-      Value<int?> summaryDeletions,
-      Value<int?> summaryFiles,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -3112,9 +2989,6 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String> pluginId,
       Value<String?> title,
       Value<String?> catalogTitle,
-      Value<int?> summaryAdditions,
-      Value<int?> summaryDeletions,
-      Value<int?> summaryFiles,
     });
 
 final class $$SessionTableTableReferences
@@ -3266,21 +3140,6 @@ class $$SessionTableTableFilterComposer
 
   ColumnFilters<String> get catalogTitle => $composableBuilder(
     column: $table.catalogTitle,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get summaryAdditions => $composableBuilder(
-    column: $table.summaryAdditions,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get summaryDeletions => $composableBuilder(
-    column: $table.summaryDeletions,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get summaryFiles => $composableBuilder(
-    column: $table.summaryFiles,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3440,21 +3299,6 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get summaryAdditions => $composableBuilder(
-    column: $table.summaryAdditions,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get summaryDeletions => $composableBuilder(
-    column: $table.summaryDeletions,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get summaryFiles => $composableBuilder(
-    column: $table.summaryFiles,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   $$ProjectsTableTableOrderingComposer get projectId {
     final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3598,21 +3442,6 @@ class $$SessionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get summaryAdditions => $composableBuilder(
-    column: $table.summaryAdditions,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get summaryDeletions => $composableBuilder(
-    column: $table.summaryDeletions,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get summaryFiles => $composableBuilder(
-    column: $table.summaryFiles,
-    builder: (column) => column,
-  );
-
   $$ProjectsTableTableAnnotationComposer get projectId {
     final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -3710,9 +3539,6 @@ class $$SessionTableTableTableManager
                 Value<String> pluginId = const Value.absent(),
                 Value<String?> title = const Value.absent(),
                 Value<String?> catalogTitle = const Value.absent(),
-                Value<int?> summaryAdditions = const Value.absent(),
-                Value<int?> summaryDeletions = const Value.absent(),
-                Value<int?> summaryFiles = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -3736,9 +3562,6 @@ class $$SessionTableTableTableManager
                 pluginId: pluginId,
                 title: title,
                 catalogTitle: catalogTitle,
-                summaryAdditions: summaryAdditions,
-                summaryDeletions: summaryDeletions,
-                summaryFiles: summaryFiles,
               ),
           createCompanionCallback:
               ({
@@ -3764,9 +3587,6 @@ class $$SessionTableTableTableManager
                 required String pluginId,
                 Value<String?> title = const Value.absent(),
                 Value<String?> catalogTitle = const Value.absent(),
-                Value<int?> summaryAdditions = const Value.absent(),
-                Value<int?> summaryDeletions = const Value.absent(),
-                Value<int?> summaryFiles = const Value.absent(),
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -3790,9 +3610,6 @@ class $$SessionTableTableTableManager
                 pluginId: pluginId,
                 title: title,
                 catalogTitle: catalogTitle,
-                summaryAdditions: summaryAdditions,
-                summaryDeletions: summaryDeletions,
-                summaryFiles: summaryFiles,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -1125,7 +1125,6 @@ void main() {
           expect(root.projectionUpdatedAt, 250);
           expect(root.title, 'Root title');
           expect(root.catalogTitle, isNull);
-          expect(root.summaryAdditions, isNull);
           expect(root.lastAgent, 'build');
           expect(root.lastSeenAt, 150);
 

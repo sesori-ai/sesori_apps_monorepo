@@ -452,7 +452,6 @@ class _LiveListBenchmark {
           updated: _defaultTimestamp + index,
           archived: null,
         ),
-        summary: const PluginSessionSummary(additions: 1, deletions: 0, files: 1),
       ),
       growable: false,
     );

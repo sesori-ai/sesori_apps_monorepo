@@ -21,6 +21,18 @@ void main() {
             projectionUpdatedAt: 1,
           ),
         );
+    await db
+        .into(db.projectsTable)
+        .insert(
+          ProjectsTableCompanion.insert(
+            projectId: "project-hidden",
+            path: "/projects/hidden",
+            createdAt: const Value(3),
+            updatedAt: const Value(40),
+            projectionUpdatedAt: 40,
+            hidden: const Value(true),
+          ),
+        );
   });
 
   tearDown(() => db.close());
@@ -52,7 +64,7 @@ void main() {
         );
   }
 
-  test("catalog DAOs return ordered roots, children, bindings, and archived rows", () async {
+  test("catalog DAOs filter hidden projects and return ordered session rows", () async {
     await db
         .into(db.projectsTable)
         .insert(

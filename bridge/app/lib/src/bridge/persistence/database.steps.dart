@@ -1207,9 +1207,6 @@ final class Schema11 extends i0.VersionedSchema {
         _column_30,
         _column_32,
         _column_39,
-        _column_40,
-        _column_41,
-        _column_42,
       ],
       attachedDatabase: database,
     ),
@@ -1257,7 +1254,7 @@ final class Schema11 extends i0.VersionedSchema {
       withoutRowId: true,
       isStrict: false,
       tableConstraints: ['PRIMARY KEY(plugin_id, projection_version)'],
-      columns: [_column_30, _column_43, _column_44],
+      columns: [_column_30, _column_40, _column_41],
       attachedDatabase: database,
     ),
     alias: null,
@@ -1365,12 +1362,6 @@ class Shape12 extends i0.VersionedTable {
       columnsByName['title']! as i1.GeneratedColumn<String>;
   i1.GeneratedColumn<String> get catalogTitle =>
       columnsByName['catalog_title']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get summaryAdditions =>
-      columnsByName['summary_additions']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<int> get summaryDeletions =>
-      columnsByName['summary_deletions']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<int> get summaryFiles =>
-      columnsByName['summary_files']! as i1.GeneratedColumn<int>;
 }
 
 i1.GeneratedColumn<String> _column_36(String aliasedName) =>
@@ -1406,30 +1397,6 @@ i1.GeneratedColumn<String> _column_39(String aliasedName) =>
       type: i1.DriftSqlType.string,
       $customConstraints: 'NULL',
     );
-i1.GeneratedColumn<int> _column_40(String aliasedName) =>
-    i1.GeneratedColumn<int>(
-      'summary_additions',
-      aliasedName,
-      true,
-      type: i1.DriftSqlType.int,
-      $customConstraints: 'NULL',
-    );
-i1.GeneratedColumn<int> _column_41(String aliasedName) =>
-    i1.GeneratedColumn<int>(
-      'summary_deletions',
-      aliasedName,
-      true,
-      type: i1.DriftSqlType.int,
-      $customConstraints: 'NULL',
-    );
-i1.GeneratedColumn<int> _column_42(String aliasedName) =>
-    i1.GeneratedColumn<int>(
-      'summary_files',
-      aliasedName,
-      true,
-      type: i1.DriftSqlType.int,
-      $customConstraints: 'NULL',
-    );
 
 class Shape13 extends i0.VersionedTable {
   Shape13({required super.source, required super.alias}) : super.aliased();
@@ -1453,7 +1420,7 @@ class Shape14 extends i0.VersionedTable {
       columnsByName['completed_at']! as i1.GeneratedColumn<int>;
 }
 
-i1.GeneratedColumn<int> _column_43(String aliasedName) =>
+i1.GeneratedColumn<int> _column_40(String aliasedName) =>
     i1.GeneratedColumn<int>(
       'projection_version',
       aliasedName,
@@ -1461,7 +1428,7 @@ i1.GeneratedColumn<int> _column_43(String aliasedName) =>
       type: i1.DriftSqlType.int,
       $customConstraints: 'NOT NULL',
     );
-i1.GeneratedColumn<int> _column_44(String aliasedName) =>
+i1.GeneratedColumn<int> _column_41(String aliasedName) =>
     i1.GeneratedColumn<int>(
       'completed_at',
       aliasedName,

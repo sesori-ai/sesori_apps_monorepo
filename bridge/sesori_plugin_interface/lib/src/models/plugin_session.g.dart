@@ -14,7 +14,6 @@ Map<String, dynamic> _$PluginSessionToJson(_PluginSession instance) =>
       'parentID': ?instance.parentID,
       'title': ?instance.title,
       'time': ?instance.time?.toJson(),
-      'summary': ?instance.summary?.toJson(),
     };
 
 Map<String, dynamic> _$PluginSessionTimeToJson(_PluginSessionTime instance) =>
@@ -23,11 +22,3 @@ Map<String, dynamic> _$PluginSessionTimeToJson(_PluginSessionTime instance) =>
       'updated': instance.updated,
       'archived': ?instance.archived,
     };
-
-Map<String, dynamic> _$PluginSessionSummaryToJson(
-  _PluginSessionSummary instance,
-) => <String, dynamic>{
-  'additions': instance.additions,
-  'deletions': instance.deletions,
-  'files': instance.files,
-};

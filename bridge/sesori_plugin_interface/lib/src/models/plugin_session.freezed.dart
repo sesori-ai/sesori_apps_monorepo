@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginSession {
 
- String get id; String get projectID; String get directory; String? get parentID; String? get title; PluginSessionTime? get time; PluginSessionSummary? get summary;
+ String get id; String get projectID; String get directory; String? get parentID; String? get title; PluginSessionTime? get time;
 /// Create a copy of PluginSession
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +27,16 @@ $PluginSessionCopyWith<PluginSession> get copyWith => _$PluginSessionCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary);
+int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time);
 
 @override
 String toString() {
-  return 'PluginSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary)';
+  return 'PluginSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time)';
 }
 
 
@@ -47,11 +47,11 @@ abstract mixin class $PluginSessionCopyWith<$Res>  {
   factory $PluginSessionCopyWith(PluginSession value, $Res Function(PluginSession) _then) = _$PluginSessionCopyWithImpl;
 @useResult
 $Res call({
- String id, String projectID, String directory, String? parentID, String? title, PluginSessionTime? time, PluginSessionSummary? summary
+ String id, String projectID, String directory, String? parentID, String? title, PluginSessionTime? time
 });
 
 
-$PluginSessionTimeCopyWith<$Res>? get time;$PluginSessionSummaryCopyWith<$Res>? get summary;
+$PluginSessionTimeCopyWith<$Res>? get time;
 
 }
 /// @nodoc
@@ -64,7 +64,7 @@ class _$PluginSessionCopyWithImpl<$Res>
 
 /// Create a copy of PluginSession
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
@@ -72,8 +72,7 @@ as String,directory: null == directory ? _self.directory : directory // ignore: 
 as String,parentID: freezed == parentID ? _self.parentID : parentID // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
-as PluginSessionTime?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
-as PluginSessionSummary?,
+as PluginSessionTime?,
   ));
 }
 /// Create a copy of PluginSession
@@ -88,18 +87,6 @@ $PluginSessionTimeCopyWith<$Res>? get time {
   return $PluginSessionTimeCopyWith<$Res>(_self.time!, (value) {
     return _then(_self.copyWith(time: value));
   });
-}/// Create a copy of PluginSession
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PluginSessionSummaryCopyWith<$Res>? get summary {
-    if (_self.summary == null) {
-    return null;
-  }
-
-  return $PluginSessionSummaryCopyWith<$Res>(_self.summary!, (value) {
-    return _then(_self.copyWith(summary: value));
-  });
 }
 }
 
@@ -109,7 +96,7 @@ $PluginSessionSummaryCopyWith<$Res>? get summary {
 @JsonSerializable(createFactory: false)
 
 class _PluginSession implements PluginSession {
-  const _PluginSession({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.summary});
+  const _PluginSession({required this.id, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time});
   
 
 @override final  String id;
@@ -118,7 +105,6 @@ class _PluginSession implements PluginSession {
 @override final  String? parentID;
 @override final  String? title;
 @override final  PluginSessionTime? time;
-@override final  PluginSessionSummary? summary;
 
 /// Create a copy of PluginSession
 /// with the given fields replaced by the non-null parameter values.
@@ -133,16 +119,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.summary, summary) || other.summary == summary));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,summary);
+int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time);
 
 @override
 String toString() {
-  return 'PluginSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, summary: $summary)';
+  return 'PluginSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time)';
 }
 
 
@@ -153,11 +139,11 @@ abstract mixin class _$PluginSessionCopyWith<$Res> implements $PluginSessionCopy
   factory _$PluginSessionCopyWith(_PluginSession value, $Res Function(_PluginSession) _then) = __$PluginSessionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String projectID, String directory, String? parentID, String? title, PluginSessionTime? time, PluginSessionSummary? summary
+ String id, String projectID, String directory, String? parentID, String? title, PluginSessionTime? time
 });
 
 
-@override $PluginSessionTimeCopyWith<$Res>? get time;@override $PluginSessionSummaryCopyWith<$Res>? get summary;
+@override $PluginSessionTimeCopyWith<$Res>? get time;
 
 }
 /// @nodoc
@@ -170,7 +156,7 @@ class __$PluginSessionCopyWithImpl<$Res>
 
 /// Create a copy of PluginSession
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? summary = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,}) {
   return _then(_PluginSession(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
@@ -178,8 +164,7 @@ as String,directory: null == directory ? _self.directory : directory // ignore: 
 as String,parentID: freezed == parentID ? _self.parentID : parentID // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
-as PluginSessionTime?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
-as PluginSessionSummary?,
+as PluginSessionTime?,
   ));
 }
 
@@ -194,18 +179,6 @@ $PluginSessionTimeCopyWith<$Res>? get time {
 
   return $PluginSessionTimeCopyWith<$Res>(_self.time!, (value) {
     return _then(_self.copyWith(time: value));
-  });
-}/// Create a copy of PluginSession
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PluginSessionSummaryCopyWith<$Res>? get summary {
-    if (_self.summary == null) {
-    return null;
-  }
-
-  return $PluginSessionSummaryCopyWith<$Res>(_self.summary!, (value) {
-    return _then(_self.copyWith(summary: value));
   });
 }
 }
@@ -343,145 +316,6 @@ created: null == created ? _self.created : created // ignore: cast_nullable_to_n
 as int,updated: null == updated ? _self.updated : updated // ignore: cast_nullable_to_non_nullable
 as int,archived: freezed == archived ? _self.archived : archived // ignore: cast_nullable_to_non_nullable
 as int?,
-  ));
-}
-
-
-}
-
-/// @nodoc
-mixin _$PluginSessionSummary {
-
- int get additions; int get deletions; int get files;
-/// Create a copy of PluginSessionSummary
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$PluginSessionSummaryCopyWith<PluginSessionSummary> get copyWith => _$PluginSessionSummaryCopyWithImpl<PluginSessionSummary>(this as PluginSessionSummary, _$identity);
-
-  /// Serializes this PluginSessionSummary to a JSON map.
-  Map<String, dynamic> toJson();
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionSummary&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.files, files) || other.files == files));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,additions,deletions,files);
-
-@override
-String toString() {
-  return 'PluginSessionSummary(additions: $additions, deletions: $deletions, files: $files)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $PluginSessionSummaryCopyWith<$Res>  {
-  factory $PluginSessionSummaryCopyWith(PluginSessionSummary value, $Res Function(PluginSessionSummary) _then) = _$PluginSessionSummaryCopyWithImpl;
-@useResult
-$Res call({
- int additions, int deletions, int files
-});
-
-
-
-
-}
-/// @nodoc
-class _$PluginSessionSummaryCopyWithImpl<$Res>
-    implements $PluginSessionSummaryCopyWith<$Res> {
-  _$PluginSessionSummaryCopyWithImpl(this._self, this._then);
-
-  final PluginSessionSummary _self;
-  final $Res Function(PluginSessionSummary) _then;
-
-/// Create a copy of PluginSessionSummary
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? additions = null,Object? deletions = null,Object? files = null,}) {
-  return _then(_self.copyWith(
-additions: null == additions ? _self.additions : additions // ignore: cast_nullable_to_non_nullable
-as int,deletions: null == deletions ? _self.deletions : deletions // ignore: cast_nullable_to_non_nullable
-as int,files: null == files ? _self.files : files // ignore: cast_nullable_to_non_nullable
-as int,
-  ));
-}
-
-}
-
-
-
-/// @nodoc
-@JsonSerializable(createFactory: false)
-
-class _PluginSessionSummary implements PluginSessionSummary {
-  const _PluginSessionSummary({required this.additions, required this.deletions, required this.files});
-  
-
-@override final  int additions;
-@override final  int deletions;
-@override final  int files;
-
-/// Create a copy of PluginSessionSummary
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$PluginSessionSummaryCopyWith<_PluginSessionSummary> get copyWith => __$PluginSessionSummaryCopyWithImpl<_PluginSessionSummary>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$PluginSessionSummaryToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSessionSummary&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.files, files) || other.files == files));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,additions,deletions,files);
-
-@override
-String toString() {
-  return 'PluginSessionSummary(additions: $additions, deletions: $deletions, files: $files)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class _$PluginSessionSummaryCopyWith<$Res> implements $PluginSessionSummaryCopyWith<$Res> {
-  factory _$PluginSessionSummaryCopyWith(_PluginSessionSummary value, $Res Function(_PluginSessionSummary) _then) = __$PluginSessionSummaryCopyWithImpl;
-@override @useResult
-$Res call({
- int additions, int deletions, int files
-});
-
-
-
-
-}
-/// @nodoc
-class __$PluginSessionSummaryCopyWithImpl<$Res>
-    implements _$PluginSessionSummaryCopyWith<$Res> {
-  __$PluginSessionSummaryCopyWithImpl(this._self, this._then);
-
-  final _PluginSessionSummary _self;
-  final $Res Function(_PluginSessionSummary) _then;
-
-/// Create a copy of PluginSessionSummary
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? additions = null,Object? deletions = null,Object? files = null,}) {
-  return _then(_PluginSessionSummary(
-additions: null == additions ? _self.additions : additions // ignore: cast_nullable_to_non_nullable
-as int,deletions: null == deletions ? _self.deletions : deletions // ignore: cast_nullable_to_non_nullable
-as int,files: null == files ? _self.files : files // ignore: cast_nullable_to_non_nullable
-as int,
   ));
 }
 

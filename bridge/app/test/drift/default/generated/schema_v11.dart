@@ -516,9 +516,6 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
   String get pluginId;
   String? get title;
   String? get catalogTitle;
-  int? get summaryAdditions;
-  int? get summaryDeletions;
-  int? get summaryFiles;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -569,15 +566,6 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
     }
     if (!nullToAbsent || catalogTitle != null) {
       map['catalog_title'] = Variable<String>(catalogTitle);
-    }
-    if (!nullToAbsent || summaryAdditions != null) {
-      map['summary_additions'] = Variable<int>(summaryAdditions);
-    }
-    if (!nullToAbsent || summaryDeletions != null) {
-      map['summary_deletions'] = Variable<int>(summaryDeletions);
-    }
-    if (!nullToAbsent || summaryFiles != null) {
-      map['summary_files'] = Variable<int>(summaryFiles);
     }
     return map;
   }
@@ -767,30 +755,6 @@ class SessionsTable extends Table
     requiredDuringInsert: false,
     $customConstraints: 'NULL',
   );
-  late final GeneratedColumn<int> summaryAdditions = GeneratedColumn<int>(
-    'summary_additions',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
-  );
-  late final GeneratedColumn<int> summaryDeletions = GeneratedColumn<int>(
-    'summary_deletions',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
-  );
-  late final GeneratedColumn<int> summaryFiles = GeneratedColumn<int>(
-    'summary_files',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
-  );
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
@@ -815,9 +779,6 @@ class SessionsTable extends Table
     pluginId,
     title,
     catalogTitle,
-    summaryAdditions,
-    summaryDeletions,
-    summaryFiles,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -918,18 +879,6 @@ class SessionsTable extends Table
         DriftSqlType.string,
         data['${effectivePrefix}catalog_title'],
       ),
-      summaryAdditions: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}summary_additions'],
-      ),
-      summaryDeletions: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}summary_deletions'],
-      ),
-      summaryFiles: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}summary_files'],
-      ),
     );
   }
 
@@ -991,12 +940,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   final String? title;
   @override
   final String? catalogTitle;
-  @override
-  final int? summaryAdditions;
-  @override
-  final int? summaryDeletions;
-  @override
-  final int? summaryFiles;
   const SessionsTableData({
     required this.sessionId,
     required this.backendSessionId,
@@ -1020,9 +963,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     required this.pluginId,
     this.title,
     this.catalogTitle,
-    this.summaryAdditions,
-    this.summaryDeletions,
-    this.summaryFiles,
   });
   SessionsTableCompanion toCompanion(bool nullToAbsent) {
     return SessionsTableCompanion(
@@ -1074,15 +1014,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       catalogTitle: catalogTitle == null && nullToAbsent
           ? const Value.absent()
           : Value(catalogTitle),
-      summaryAdditions: summaryAdditions == null && nullToAbsent
-          ? const Value.absent()
-          : Value(summaryAdditions),
-      summaryDeletions: summaryDeletions == null && nullToAbsent
-          ? const Value.absent()
-          : Value(summaryDeletions),
-      summaryFiles: summaryFiles == null && nullToAbsent
-          ? const Value.absent()
-          : Value(summaryFiles),
     );
   }
 
@@ -1116,9 +1047,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       pluginId: serializer.fromJson<String>(json['pluginId']),
       title: serializer.fromJson<String?>(json['title']),
       catalogTitle: serializer.fromJson<String?>(json['catalogTitle']),
-      summaryAdditions: serializer.fromJson<int?>(json['summaryAdditions']),
-      summaryDeletions: serializer.fromJson<int?>(json['summaryDeletions']),
-      summaryFiles: serializer.fromJson<int?>(json['summaryFiles']),
     );
   }
   @override
@@ -1147,9 +1075,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       'pluginId': serializer.toJson<String>(pluginId),
       'title': serializer.toJson<String?>(title),
       'catalogTitle': serializer.toJson<String?>(catalogTitle),
-      'summaryAdditions': serializer.toJson<int?>(summaryAdditions),
-      'summaryDeletions': serializer.toJson<int?>(summaryDeletions),
-      'summaryFiles': serializer.toJson<int?>(summaryFiles),
     };
   }
 
@@ -1176,9 +1101,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     String? pluginId,
     Value<String?> title = const Value.absent(),
     Value<String?> catalogTitle = const Value.absent(),
-    Value<int?> summaryAdditions = const Value.absent(),
-    Value<int?> summaryDeletions = const Value.absent(),
-    Value<int?> summaryFiles = const Value.absent(),
   }) => SessionsTableData(
     sessionId: sessionId ?? this.sessionId,
     backendSessionId: backendSessionId ?? this.backendSessionId,
@@ -1210,13 +1132,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     pluginId: pluginId ?? this.pluginId,
     title: title.present ? title.value : this.title,
     catalogTitle: catalogTitle.present ? catalogTitle.value : this.catalogTitle,
-    summaryAdditions: summaryAdditions.present
-        ? summaryAdditions.value
-        : this.summaryAdditions,
-    summaryDeletions: summaryDeletions.present
-        ? summaryDeletions.value
-        : this.summaryDeletions,
-    summaryFiles: summaryFiles.present ? summaryFiles.value : this.summaryFiles,
   );
   SessionsTableData copyWithCompanion(SessionsTableCompanion data) {
     return SessionsTableData(
@@ -1270,15 +1185,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       catalogTitle: data.catalogTitle.present
           ? data.catalogTitle.value
           : this.catalogTitle,
-      summaryAdditions: data.summaryAdditions.present
-          ? data.summaryAdditions.value
-          : this.summaryAdditions,
-      summaryDeletions: data.summaryDeletions.present
-          ? data.summaryDeletions.value
-          : this.summaryDeletions,
-      summaryFiles: data.summaryFiles.present
-          ? data.summaryFiles.value
-          : this.summaryFiles,
     );
   }
 
@@ -1306,10 +1212,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ..write('lastUserMessageAt: $lastUserMessageAt, ')
           ..write('pluginId: $pluginId, ')
           ..write('title: $title, ')
-          ..write('catalogTitle: $catalogTitle, ')
-          ..write('summaryAdditions: $summaryAdditions, ')
-          ..write('summaryDeletions: $summaryDeletions, ')
-          ..write('summaryFiles: $summaryFiles')
+          ..write('catalogTitle: $catalogTitle')
           ..write(')'))
         .toString();
   }
@@ -1338,9 +1241,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     pluginId,
     title,
     catalogTitle,
-    summaryAdditions,
-    summaryDeletions,
-    summaryFiles,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -1367,10 +1267,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           other.lastUserMessageAt == this.lastUserMessageAt &&
           other.pluginId == this.pluginId &&
           other.title == this.title &&
-          other.catalogTitle == this.catalogTitle &&
-          other.summaryAdditions == this.summaryAdditions &&
-          other.summaryDeletions == this.summaryDeletions &&
-          other.summaryFiles == this.summaryFiles);
+          other.catalogTitle == this.catalogTitle);
 }
 
 class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
@@ -1396,9 +1293,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   final Value<String> pluginId;
   final Value<String?> title;
   final Value<String?> catalogTitle;
-  final Value<int?> summaryAdditions;
-  final Value<int?> summaryDeletions;
-  final Value<int?> summaryFiles;
   const SessionsTableCompanion({
     this.sessionId = const Value.absent(),
     this.backendSessionId = const Value.absent(),
@@ -1422,9 +1316,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.pluginId = const Value.absent(),
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
-    this.summaryAdditions = const Value.absent(),
-    this.summaryDeletions = const Value.absent(),
-    this.summaryFiles = const Value.absent(),
   });
   SessionsTableCompanion.insert({
     required String sessionId,
@@ -1449,9 +1340,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     required String pluginId,
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
-    this.summaryAdditions = const Value.absent(),
-    this.summaryDeletions = const Value.absent(),
-    this.summaryFiles = const Value.absent(),
   }) : sessionId = Value(sessionId),
        backendSessionId = Value(backendSessionId),
        projectId = Value(projectId),
@@ -1484,9 +1372,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Expression<String>? pluginId,
     Expression<String>? title,
     Expression<String>? catalogTitle,
-    Expression<int>? summaryAdditions,
-    Expression<int>? summaryDeletions,
-    Expression<int>? summaryFiles,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -1512,9 +1397,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       if (pluginId != null) 'plugin_id': pluginId,
       if (title != null) 'title': title,
       if (catalogTitle != null) 'catalog_title': catalogTitle,
-      if (summaryAdditions != null) 'summary_additions': summaryAdditions,
-      if (summaryDeletions != null) 'summary_deletions': summaryDeletions,
-      if (summaryFiles != null) 'summary_files': summaryFiles,
     });
   }
 
@@ -1541,9 +1423,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Value<String>? pluginId,
     Value<String?>? title,
     Value<String?>? catalogTitle,
-    Value<int?>? summaryAdditions,
-    Value<int?>? summaryDeletions,
-    Value<int?>? summaryFiles,
   }) {
     return SessionsTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -1568,9 +1447,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       pluginId: pluginId ?? this.pluginId,
       title: title ?? this.title,
       catalogTitle: catalogTitle ?? this.catalogTitle,
-      summaryAdditions: summaryAdditions ?? this.summaryAdditions,
-      summaryDeletions: summaryDeletions ?? this.summaryDeletions,
-      summaryFiles: summaryFiles ?? this.summaryFiles,
     );
   }
 
@@ -1643,15 +1519,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     if (catalogTitle.present) {
       map['catalog_title'] = Variable<String>(catalogTitle.value);
     }
-    if (summaryAdditions.present) {
-      map['summary_additions'] = Variable<int>(summaryAdditions.value);
-    }
-    if (summaryDeletions.present) {
-      map['summary_deletions'] = Variable<int>(summaryDeletions.value);
-    }
-    if (summaryFiles.present) {
-      map['summary_files'] = Variable<int>(summaryFiles.value);
-    }
     return map;
   }
 
@@ -1679,10 +1546,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
           ..write('lastUserMessageAt: $lastUserMessageAt, ')
           ..write('pluginId: $pluginId, ')
           ..write('title: $title, ')
-          ..write('catalogTitle: $catalogTitle, ')
-          ..write('summaryAdditions: $summaryAdditions, ')
-          ..write('summaryDeletions: $summaryDeletions, ')
-          ..write('summaryFiles: $summaryFiles')
+          ..write('catalogTitle: $catalogTitle')
           ..write(')'))
         .toString();
   }

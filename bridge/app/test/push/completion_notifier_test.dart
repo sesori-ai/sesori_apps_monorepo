@@ -1115,7 +1115,6 @@ Session _session({
     parentID: parentID,
     title: title,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );

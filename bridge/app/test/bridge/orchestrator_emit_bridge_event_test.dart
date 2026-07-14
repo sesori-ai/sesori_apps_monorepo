@@ -2194,7 +2194,6 @@ Session _deletedSession(String sessionId) => Session(
   parentID: null,
   title: null,
   time: null,
-  summary: null,
   pullRequest: null,
   promptDefaults: null,
 );
@@ -2235,7 +2234,6 @@ class _NoopSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );
@@ -2336,7 +2334,6 @@ class _NoopSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );

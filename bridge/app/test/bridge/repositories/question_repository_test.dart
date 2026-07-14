@@ -428,7 +428,6 @@ PluginSession _session(String directory, {required String id}) => PluginSession(
   parentID: null,
   title: null,
   time: const PluginSessionTime(created: 1, updated: 1, archived: null),
-  summary: null,
 );
 
 /// A derive-style plugin whose pending questions are keyed per session, so the

@@ -66,7 +66,6 @@ void main() {
         parentID: null,
         title: "New Title",
         time: null,
-        summary: null,
       );
 
       await handler.handle(
@@ -120,7 +119,6 @@ void main() {
         parentID: "parent-1",
         title: "Renamed Session",
         time: PluginSessionTime(created: 10, updated: 20, archived: 30),
-        summary: PluginSessionSummary(additions: 4, deletions: 1, files: 2),
       );
 
       final result = await handler.handle(
@@ -139,9 +137,6 @@ void main() {
       expect(result.time?.created, equals(10));
       expect(result.time?.updated, equals(20));
       expect(result.time?.archived, isNull);
-      expect(result.summary?.additions, equals(4));
-      expect(result.summary?.deletions, equals(1));
-      expect(result.summary?.files, equals(2));
       expect(result.pullRequest?.number, equals(13));
       expect(result.pullRequest?.title, equals("Rename PR"));
     });

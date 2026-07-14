@@ -29,10 +29,12 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   }
 
   Future<List<ProjectDto>> getCatalogProjects() {
-    return (select(projectsTable)..orderBy([
-          (table) => OrderingTerm.desc(table.updatedAt),
-          (table) => OrderingTerm.desc(table.projectId),
-        ]))
+    return (select(projectsTable)
+          ..where((table) => table.hidden.equals(false))
+          ..orderBy([
+            (table) => OrderingTerm.desc(table.updatedAt),
+            (table) => OrderingTerm.desc(table.projectId),
+          ]))
         .get();
   }
 

@@ -27,7 +27,6 @@ class PluginModelMapper {
   final AssistantMessageMapper _assistantMessageMapper;
 
   PluginSession mapSession(Session session, {required String projectID}) {
-    final summary = session.summary;
     final time = session.time;
     return PluginSession(
       id: session.id,
@@ -35,13 +34,6 @@ class PluginModelMapper {
       directory: session.directory,
       parentID: session.parentID,
       title: session.title,
-      summary: summary == null
-          ? null
-          : PluginSessionSummary(
-              additions: summary.additions.toInt(),
-              deletions: summary.deletions.toInt(),
-              files: summary.files.toInt(),
-            ),
       time: PluginSessionTime(
         created: time.created.toInt(),
         updated: time.updated.toInt(),

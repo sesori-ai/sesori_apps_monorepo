@@ -549,7 +549,6 @@ void main() {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         ),
       );
       final service = OpenCodeService(repository, tracker);
@@ -589,7 +588,6 @@ void main() {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         ),
       );
       final service = OpenCodeService(repository, tracker);
@@ -617,7 +615,6 @@ void main() {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         ),
       )..sendPromptError = StateError("prompt failed");
       final service = OpenCodeService(repository, tracker);
@@ -2036,7 +2033,6 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         );
   }
 

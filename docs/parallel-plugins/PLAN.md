@@ -228,7 +228,6 @@ Add to `SessionTable`:
 - `directory TEXT NOT NULL`;
 - `catalog_title TEXT NULL`;
 - `updated_at INTEGER NOT NULL`;
-- nullable `summary_additions`, `summary_deletions`, and `summary_files`; and
 - `projection_updated_at INTEGER NOT NULL`.
 
 Keep existing bridge-owned worktree, branch, archive, prompt-default, unseen,
