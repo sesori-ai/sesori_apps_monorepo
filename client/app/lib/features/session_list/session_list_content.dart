@@ -30,14 +30,14 @@ Future<void> refreshSessionList(BuildContext context) async {
 class SessionListContent extends StatelessWidget {
   final String? selectedSessionId;
   final ValueChanged<Session> onSessionTap;
-  final ValueChanged<Session> onSessionLongPress;
+  final SessionMenuEntriesBuilder sessionMenuEntries;
   final ValueChanged<Session> onSessionSwipe;
 
   const SessionListContent({
     super.key,
     this.selectedSessionId,
     required this.onSessionTap,
-    required this.onSessionLongPress,
+    required this.sessionMenuEntries,
     required this.onSessionSwipe,
   });
 
@@ -81,7 +81,7 @@ class SessionListContent extends StatelessWidget {
                       isRetrying: activityInfo?.isRetrying ?? false,
                       backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
                       onTap: () => onSessionTap(session),
-                      onLongPress: () => onSessionLongPress(session),
+                      menuEntries: sessionMenuEntries,
                       onSwipe: () => onSessionSwipe(session),
                     );
                   },

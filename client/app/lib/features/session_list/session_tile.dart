@@ -6,6 +6,17 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/status_colors.dart";
 import "pr_status_row.dart";
 
+/// Builds the long-press actions for a session row. It is a builder rather than
+/// a ready-made list because the entries are owned by the screen's action
+/// dispatcher, while the row supplies the context they act against.
+typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext context, Session session);
+
+/// A single session row.
+///
+/// Tapping opens the session; long-pressing opens its actions in a
+/// [PregoAnchorMenu] anchored to the row, which blurs the rest of the list back
+/// and holds this row sharp so the session being acted on stays in view. Swiping
+/// still archives, as before.
 class SessionTile extends StatelessWidget {
   final Session session;
   final bool isArchived;
@@ -16,7 +27,7 @@ class SessionTile extends StatelessWidget {
   final bool isRetrying;
   final int backgroundTaskCount;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final SessionMenuEntriesBuilder menuEntries;
   final VoidCallback onSwipe;
 
   const SessionTile({
@@ -30,12 +41,34 @@ class SessionTile extends StatelessWidget {
     this.isRetrying = false,
     this.backgroundTaskCount = 0,
     required this.onTap,
-    required this.onLongPress,
+    required this.menuEntries,
     required this.onSwipe,
   });
 
+  /// Wide enough for the longest action label ("Mark as unread") without the
+  /// panel spanning the row it is anchored to.
+  static const double _menuWidth = 220;
+
+  /// Holds this row sharp while the rest of the list blurs back, so which
+  /// session the actions will hit is unambiguous. Inset from the screen edges so
+  /// the sharp region reads as a lifted card rather than a full-bleed band.
+  static const _spotlight = PregoMenuSpotlight(
+    borderRadius: 16,
+    inset: EdgeInsets.symmetric(horizontal: 8),
+  );
+
   @override
   Widget build(BuildContext context) {
+    return PregoAnchorMenu(
+      flat: true,
+      menuWidth: _menuWidth,
+      spotlight: _spotlight,
+      entries: menuEntries(context, session),
+      triggerBuilder: (context, openMenu) => _buildRow(context: context, onLongPress: openMenu),
+    );
+  }
+
+  Widget _buildRow({required BuildContext context, required VoidCallback onLongPress}) {
     final loc = context.loc;
     final updatedAt = session.time?.updated;
     final filesChanged = session.summary?.files ?? 0;

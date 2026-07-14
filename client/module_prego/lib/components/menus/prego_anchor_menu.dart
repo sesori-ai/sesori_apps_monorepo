@@ -35,6 +35,7 @@ class PregoMenuItem extends PregoMenuEntry {
     required this.isSelected,
     required this.onTap,
     this.leadingIcon,
+    this.isDestructive = false,
   });
 
   final String title;
@@ -45,6 +46,12 @@ class PregoMenuItem extends PregoMenuEntry {
   /// Optional glyph shown before the title. Rendered identically on the glass
   /// and flat paths (muted to the secondary text colour).
   final IconData? leadingIcon;
+
+  /// Marks an action that destroys something the user cannot get back (delete,
+  /// not archive). Tints the title and glyph with the error colour on both
+  /// paths. Reach for it sparingly — a menu where several rows shout stops any
+  /// of them being heard.
+  final bool isDestructive;
 }
 
 /// A thin separator line between entries.
@@ -213,13 +220,26 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
       case PregoMenuLabel(:final text):
         // GlassMenuLabel uppercases the title itself; we only supply the style.
         return GlassMenuLabel(title: text, style: _labelStyle(prego));
-      case PregoMenuItem(:final title, :final subtitle, :final isSelected, :final onTap, :final leadingIcon):
+      case PregoMenuItem(
+        :final title,
+        :final subtitle,
+        :final isSelected,
+        :final onTap,
+        :final leadingIcon,
+        :final isDestructive,
+      ):
         return GlassMenuItem(
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
-          icon: leadingIcon == null ? null : Icon(leadingIcon, size: 20, color: prego.colors.textSecondary),
-          titleStyle: _titleStyle(prego),
+          // GlassMenuItem would paint a destructive row in Cupertino's system
+          // red; the explicit style below keeps it on the design system's error
+          // token instead. The flag still drives its press feedback.
+          isDestructive: isDestructive,
+          icon: leadingIcon == null
+              ? null
+              : Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive)),
+          titleStyle: _titleStyle(prego, isDestructive: isDestructive),
           subtitleStyle: _subtitleStyle(prego),
           trailing: isSelected ? _selectedCheck(prego) : null,
           onTap: onTap,
@@ -296,12 +316,20 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
           // Uppercased to match GlassMenuLabel on the glass path.
           child: Text(text.toUpperCase(), style: _labelStyle(prego)),
         );
-      case PregoMenuItem(:final title, :final subtitle, :final isSelected, :final onTap, :final leadingIcon):
+      case PregoMenuItem(
+        :final title,
+        :final subtitle,
+        :final isSelected,
+        :final onTap,
+        :final leadingIcon,
+        :final isDestructive,
+      ):
         return _FlatMenuTile(
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
           leadingIcon: leadingIcon,
+          isDestructive: isDestructive,
           onTap: () {
             close();
             onTap();
@@ -329,6 +357,7 @@ class _FlatMenuTile extends StatelessWidget {
     required this.subtitle,
     required this.isSelected,
     required this.onTap,
+    required this.isDestructive,
     this.leadingIcon,
   });
 
@@ -336,6 +365,7 @@ class _FlatMenuTile extends StatelessWidget {
   final String? subtitle;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool isDestructive;
   final IconData? leadingIcon;
 
   @override
@@ -354,7 +384,7 @@ class _FlatMenuTile extends StatelessWidget {
           child: Row(
             children: [
               if (leadingIcon != null) ...[
-                Icon(leadingIcon, size: 20, color: prego.colors.textSecondary),
+                Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive)),
                 const SizedBox(width: 12),
               ],
               Expanded(
@@ -362,7 +392,12 @@ class _FlatMenuTile extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: _titleStyle(prego)),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _titleStyle(prego, isDestructive: isDestructive),
+                    ),
                     if (subtitle != null && subtitle.isNotEmpty)
                       Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: _subtitleStyle(prego)),
                   ],
@@ -385,8 +420,13 @@ class _FlatMenuTile extends StatelessWidget {
 TextStyle _labelStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);
 
-TextStyle _titleStyle(PregoDesignSystem prego) =>
-    prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary);
+TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive}) =>
+    prego.textTheme.textSm.medium.copyWith(
+      color: isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textPrimary,
+    );
+
+Color _iconColor(PregoDesignSystem prego, {required bool isDestructive}) =>
+    isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textSecondary;
 
 TextStyle _subtitleStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary);

@@ -190,6 +190,45 @@ void main() {
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   });
 
+  group("Destructive entries", () {
+    const entries = [
+      PregoMenuItem(title: "Archive", subtitle: null, isSelected: false, onTap: _noop),
+      PregoMenuItem(
+        title: "Delete",
+        subtitle: null,
+        isSelected: false,
+        isDestructive: true,
+        onTap: _noop,
+        leadingIcon: Icons.delete_outline,
+      ),
+    ];
+
+    testWidgets("tint only the destructive row's title and glyph", (tester) async {
+      await tester.pumpWidget(_harness(entries, flat: true));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      final error = PregoDesignSystem.light.colors.fgErrorPrimary;
+      expect(tester.widget<Text>(find.text("Delete")).style?.color, equals(error));
+      expect(tester.widget<Icon>(find.byIcon(Icons.delete_outline)).color, equals(error));
+      // A menu where every row shouts warns about nothing.
+      expect(tester.widget<Text>(find.text("Archive")).style?.color, isNot(equals(error)));
+    });
+
+    testWidgets("reach the glass path as destructive too", (tester) async {
+      await tester.pumpWidget(_harness(entries));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      final item = tester.widget<GlassMenuItem>(find.widgetWithText(GlassMenuItem, "Delete"));
+      expect(item.isDestructive, isTrue);
+      // Tinted from the design system's error token, not Cupertino's system red.
+      expect(item.titleStyle?.color, equals(PregoDesignSystem.light.colors.fgErrorPrimary));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  });
+
   group("Spotlight", () {
     const entries = [
       PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: _noop),
