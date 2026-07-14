@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -41,9 +40,6 @@ class SessionDetailBody extends StatefulWidget {
 class _SessionDetailBodyState extends State<SessionDetailBody> {
   StreamSubscription<SesoriQuestionAsked>? _questionSub;
   StreamSubscription<SesoriPermissionAsked>? _permissionSub;
-  GoRouter? _router;
-  final Map<int, ModalRoute<void>> _ownedModalRoutes = {};
-  int _nextModalId = 0;
 
   @override
   void initState() {
@@ -55,22 +51,9 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // ignore: no_slop_linter/avoid_raw_go_router, observes route ownership without performing navigation
-    final router = GoRouter.maybeOf(context);
-    if (identical(router, _router)) return;
-    _router?.routerDelegate.removeListener(_handleRouteChanged);
-    _router = router;
-    router?.routerDelegate.addListener(_handleRouteChanged);
-  }
-
-  @override
   void dispose() {
-    _router?.routerDelegate.removeListener(_handleRouteChanged);
     _questionSub?.cancel();
     _permissionSub?.cancel();
-    _dismissOwnedModals();
     super.dispose();
   }
 
@@ -212,61 +195,50 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   }
 
   void _showQuestionModal(SesoriQuestionAsked question) {
-    if (!_isCurrentSessionRoute) return;
     context.read<SessionDetailCubit>().clearNotifications();
-    final modalId = _nextModalId++;
-    final dismissal = QuestionModal.show(
+    QuestionModal.show(
       context,
       question: question,
-      onPresented: (modalRoute) => _ownedModalRoutes[modalId] = modalRoute,
       onReply: (requestId, answers) async {
-        if (!mounted || !_isCurrentSessionRoute) return;
         final success = await context.read<SessionDetailCubit>().replyToQuestion(
           requestId: requestId,
           sessionId: question.sessionID,
           answers: answers,
         );
-        if (!mounted || !_isCurrentSessionRoute) return;
+        if (!mounted) return;
         if (!success) return _showFailureSnackBar(context.loc.questionReplyFailed);
         _scheduleNextQuestionModal();
       },
       onReject: (requestId) async {
-        if (!mounted || !_isCurrentSessionRoute) return;
         final success = await context.read<SessionDetailCubit>().rejectQuestion(requestId);
-        if (!mounted || !_isCurrentSessionRoute) return;
+        if (!mounted) return;
         if (!success) return _showFailureSnackBar(context.loc.questionRejectFailed);
         _scheduleNextQuestionModal();
       },
     );
-    unawaited(dismissal.whenComplete(() => _ownedModalRoutes.remove(modalId)));
   }
 
   void _showPermissionModal(SesoriPermissionAsked permission) {
-    if (!_isCurrentSessionRoute) return;
     context.read<SessionDetailCubit>().clearNotifications();
-    final modalId = _nextModalId++;
-    final dismissal = PermissionModal.show(
+    PermissionModal.show(
       context,
       permission: permission,
-      onPresented: (modalRoute) => _ownedModalRoutes[modalId] = modalRoute,
       onReply:
           ({
             required String requestId,
             required String sessionId,
             required PermissionReply reply,
           }) async {
-            if (!mounted || !_isCurrentSessionRoute) return;
             final success = await context.read<SessionDetailCubit>().replyToPermission(
               requestId: requestId,
               sessionId: sessionId,
               reply: reply,
             );
-            if (!mounted || !_isCurrentSessionRoute) return;
+            if (!mounted) return;
             if (!success) return _showFailureSnackBar(context.loc.permissionReplyFailed);
             _scheduleNextPermissionModal();
           },
     );
-    unawaited(dismissal.whenComplete(() => _ownedModalRoutes.remove(modalId)));
   }
 
   void _scheduleNextQuestionModal() {
@@ -285,34 +257,6 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
 
   void _scheduleModal(VoidCallback action) =>
       Future.delayed(const Duration(milliseconds: 200), () => mounted ? action() : null);
-
-  bool get _isCurrentSessionRoute {
-    final router = _router;
-    if (router == null) return false;
-    final expectedPath = Uri.parse(
-      AppRoute.sessionDetail(
-        projectId: widget.projectId,
-        projectName: widget.projectName,
-        sessionId: widget.sessionId,
-        sessionTitle: widget.sessionTitle,
-        readOnly: widget.readOnly,
-      ).buildPath(),
-    ).path;
-    return router.state.uri.path == expectedPath;
-  }
-
-  void _handleRouteChanged() {
-    if (!_isCurrentSessionRoute) _dismissOwnedModals();
-  }
-
-  void _dismissOwnedModals() {
-    final modalRoutes = _ownedModalRoutes.values.toList(growable: false);
-    _ownedModalRoutes.clear();
-    for (final route in modalRoutes) {
-      if (!route.isActive) continue;
-      route.navigator?.removeRoute(route);
-    }
-  }
 
   void _showFailureSnackBar(String message) {
     ScaffoldMessenger.of(context)

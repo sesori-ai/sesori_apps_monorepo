@@ -42,7 +42,6 @@ class QuestionModal extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     required SesoriQuestionAsked question,
-    required ValueChanged<ModalRoute<void>> onPresented,
     required void Function(String requestId, List<ReplyAnswer> answers) onReply,
     required void Function(String requestId) onReject,
   }) {
@@ -55,17 +54,12 @@ class QuestionModal extends StatefulWidget {
       // transparent. The sheet caps itself below the status bar.
       backgroundColor: Colors.transparent,
       useSafeArea: false,
-      builder: (modalContext) {
-        final modalRoute = ModalRoute.of<void>(modalContext);
-        if (modalRoute == null) throw StateError("Question modal requires a ModalRoute");
-        onPresented(modalRoute);
-        return QuestionModal(
-          question: question,
-          onReply: onReply,
-          onReject: onReject,
-          topInset: topInset,
-        );
-      },
+      builder: (_) => QuestionModal(
+        question: question,
+        onReply: onReply,
+        onReject: onReject,
+        topInset: topInset,
+      ),
     );
   }
 

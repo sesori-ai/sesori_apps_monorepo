@@ -33,7 +33,6 @@ GoRouter _createRouter({
                   QuestionModal.show(
                     context,
                     question: question,
-                    onPresented: (_) {},
                     onReply: capture.onReply,
                     onReject: (_) {},
                   );

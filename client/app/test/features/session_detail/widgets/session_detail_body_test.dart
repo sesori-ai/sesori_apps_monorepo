@@ -22,16 +22,11 @@ class MockSessionDetailCubit extends MockCubit<SessionDetailState> implements Se
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
-const _sessionPath = "/projects/project-1/sessions/session-1";
-const _newSessionPath = "/projects/project-1/sessions/new";
-const _otherSessionPath = "/projects/project-1/sessions/session-2";
-
-GoRouter _createRouter({required SessionDetailCubit cubit}) {
-  return GoRouter(
-    initialLocation: _sessionPath,
+Widget _buildApp({required SessionDetailCubit cubit}) {
+  final router = GoRouter(
     routes: [
       GoRoute(
-        path: _sessionPath,
+        path: "/",
         builder: (context, state) => BlocProvider<SessionDetailCubit>.value(
           value: cubit,
           child: const SessionDetailBody(
@@ -47,25 +42,13 @@ GoRouter _createRouter({required SessionDetailCubit cubit}) {
         path: "/projects/:projectId/sessions/:sessionId/diffs",
         builder: (context, state) => const Scaffold(body: Text("Diffs")),
       ),
-      GoRoute(
-        path: _newSessionPath,
-        builder: (context, state) => const Scaffold(body: Text("New session")),
-      ),
-      GoRoute(
-        path: _otherSessionPath,
-        builder: (context, state) => const Scaffold(body: Text("Other session")),
-      ),
     ],
   );
-}
-
-Widget _buildApp({required SessionDetailCubit cubit, GoRouter? router}) {
-  final appRouter = router ?? _createRouter(cubit: cubit);
 
   return BlocProvider<ConnectionOverlayCubit>(
     create: (_) => StubConnectionOverlayCubit(),
     child: MaterialApp.router(
-      routerConfig: appRouter,
+      routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -105,36 +88,9 @@ SessionDetailState _loadedState() {
   );
 }
 
-const _question = SesoriQuestionAsked(
-  id: "question-1",
-  sessionID: "session-1",
-  displaySessionId: null,
-  questions: [
-    QuestionInfo(
-      question: "Choose a release channel",
-      header: "Release channel",
-      options: [
-        QuestionOption(label: "Stable", description: "Release to everyone"),
-      ],
-    ),
-  ],
-);
-
-const _permission = SesoriPermissionAsked(
-  requestID: "permission-1",
-  sessionID: "session-1",
-  displaySessionId: null,
-  tool: "write_file",
-  description: "Allow writing the release notes",
-);
-
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
-
-  setUpAll(() {
-    registerFallbackValue(PermissionReply.once);
-  });
 
   // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
   // renders its flat (cue) menu here — the menu rows are Material InkWells, not
@@ -250,71 +206,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Diffs"), findsOneWidget);
-  });
-
-  testWidgets("does not show a question while the session route is covered", (tester) async {
-    final questions = StreamController<SesoriQuestionAsked>.broadcast();
-    addTearDown(questions.close);
-    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
-    final router = _createRouter(cubit: cubit);
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(cubit: cubit, router: router));
-    await tester.pumpAndSettle();
-
-    unawaited(router.push<void>(_newSessionPath));
-    await tester.pumpAndSettle();
-    questions.add(_question);
-    await tester.pumpAndSettle();
-
-    expect(find.text("New session"), findsOneWidget);
-    expect(find.text("Choose a release channel"), findsNothing);
-  });
-
-  testWidgets("dismisses a question when navigation changes before the sheet builds", (tester) async {
-    final questions = StreamController<SesoriQuestionAsked>.broadcast(sync: true);
-    addTearDown(questions.close);
-    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
-    final router = _createRouter(cubit: cubit);
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(cubit: cubit, router: router));
-    await tester.pumpAndSettle();
-
-    questions.add(_question);
-    unawaited(router.push<void>(_newSessionPath));
-    await tester.pumpAndSettle();
-
-    expect(find.text("New session"), findsOneWidget);
-    expect(find.text("Choose a release channel"), findsNothing);
-  });
-
-  testWidgets("dismisses a permission sheet when navigating to another session", (tester) async {
-    final permissions = StreamController<SesoriPermissionAsked>.broadcast();
-    addTearDown(permissions.close);
-    when(() => cubit.permissionStream).thenAnswer((_) => permissions.stream);
-    final router = _createRouter(cubit: cubit);
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(cubit: cubit, router: router));
-    await tester.pumpAndSettle();
-
-    permissions.add(_permission);
-    await tester.pumpAndSettle();
-    expect(find.text("write_file"), findsOneWidget);
-
-    router.go(_otherSessionPath);
-    await tester.pumpAndSettle();
-
-    expect(find.text("Other session"), findsOneWidget);
-    expect(find.text("write_file"), findsNothing);
-    verifyNever(
-      () => cubit.replyToPermission(
-        requestId: any(named: "requestId"),
-        sessionId: any(named: "sessionId"),
-        reply: any(named: "reply"),
-      ),
-    );
   });
 
   // Only the input row is grouped with the text field via a TextFieldTapRegion,
