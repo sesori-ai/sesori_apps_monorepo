@@ -170,8 +170,26 @@ void main() {
     verify(() => mockProjectService.hideProject(projectId: project.id)).called(1);
     expect(find.text("Hide Project"), findsNothing);
     expect(find.text("Project hidden"), findsOneWidget);
-    // Hidden optimistically, so the row is gone before the bridge answers.
+    // The bridge confirmed, so the row is gone.
     expect(find.widgetWithText(ListTile, "my-app"), findsNothing);
+  });
+
+  testWidgets("Hide Project reports the failure when the bridge rejects the hide", (tester) async {
+    // The cubit only drops the project once the bridge confirms; a rejected
+    // hide must not claim success while the row stays in the list.
+    when(() => mockProjectService.hideProject(projectId: any(named: "projectId"))).thenAnswer(
+      (_) async => ApiResponse.error(ApiError.generic()),
+    );
+
+    await pumpScreen(tester);
+    await longPressTile(tester);
+
+    await tester.tap(find.widgetWithText(InkWell, "Hide Project"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Project hidden"), findsNothing);
+    expect(find.text("Failed to hide project"), findsOneWidget);
+    expect(find.widgetWithText(ListTile, "my-app"), findsOneWidget);
   });
 
   testWidgets("Rename dismisses the menu and opens the rename sheet", (tester) async {

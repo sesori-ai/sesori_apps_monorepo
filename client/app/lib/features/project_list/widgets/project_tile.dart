@@ -58,7 +58,7 @@ class _ProjectTile extends StatelessWidget {
         title: loc.hideProject,
         subtitle: null,
         isSelected: false,
-        onTap: () => _hide(context: context),
+        onTap: () => unawaited(_hide(context: context)),
       ),
     ];
   }
@@ -71,15 +71,16 @@ class _ProjectTile extends StatelessWidget {
     );
   }
 
-  /// Hiding drops the project from the list, which disposes this tile — so the
-  /// messenger is resolved before the cubit call, not after it.
-  void _hide({required BuildContext context}) {
+  /// A confirmed hide drops the project from the list, which disposes this
+  /// tile — so the messenger and strings are resolved before the cubit call,
+  /// not after it.
+  Future<void> _hide({required BuildContext context}) async {
     final messenger = ScaffoldMessenger.of(context);
     final loc = context.loc;
-    context.read<ProjectListCubit>().hideProject(project.id);
+    final hidden = await context.read<ProjectListCubit>().hideProject(project.id);
     messenger.showSnackBar(
       SnackBar(
-        content: Text(loc.projectHidden),
+        content: Text(hidden ? loc.projectHidden : loc.projectHideFailed),
         duration: kSnackBarDuration,
       ),
     );

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
@@ -138,6 +140,77 @@ void main() {
 
     expect(find.widgetWithText(InkWell, "Unarchive"), findsOneWidget);
     expect(find.widgetWithText(InkWell, "Archive"), findsNothing);
+  });
+
+  testWidgets("archiving still confirms with the undo snackbar after the row unmounts", (tester) async {
+    // testSession has no worktree, so Archive skips the confirm sheet and runs
+    // directly. The cubit hides the row optimistically, so the row's own
+    // context is unmounted long before the bridge call resolves — the entries
+    // must act through a context that outlives the row.
+    final session = testSession(title: "My Session");
+    final states = StreamController<SessionListState>();
+    addTearDown(states.close);
+    whenListen(
+      cubit,
+      states.stream,
+      initialState: SessionListState.loaded(sessions: [session], baseBranch: null),
+    );
+    when(
+      () => cubit.archiveSession(
+        sessionId: any(named: "sessionId"),
+        deleteWorktree: any(named: "deleteWorktree"),
+        deleteBranch: any(named: "deleteBranch"),
+        force: any(named: "force"),
+      ),
+    ).thenAnswer((_) async {
+      states.add(const SessionListState.loaded(sessions: [], baseBranch: null));
+      // Keeps the call pending across a few frames, like a real network
+      // round-trip, so the optimistic removal lands first.
+      await Future<void>.delayed(const Duration(seconds: 1));
+      return true;
+    });
+
+    const dispatcher = SessionListActionDispatcher();
+    await tester.pumpWidget(
+      BlocProvider<ConnectionOverlayCubit>(
+        create: (_) => StubConnectionOverlayCubit(),
+        child: MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: BlocProvider<SessionListCubit>.value(
+              value: cubit,
+              child: SessionListPanel(
+                projectName: "Project One",
+                onNewSession: () {},
+                onSessionTap: (_) {},
+                sessionMenuEntries: (BuildContext context, Session session) =>
+                    dispatcher.sessionMenuEntries(context: context, session: session),
+                onSessionSwipe: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await longPressTile(tester, title: "My Session");
+
+    await tester.tap(find.widgetWithText(InkWell, "Archive"));
+    await tester.pumpAndSettle();
+
+    // The row is gone before the bridge call resolves…
+    expect(find.widgetWithText(ListTile, "My Session"), findsNothing);
+    expect(find.text("Session archived"), findsNothing);
+
+    // …the call resolves…
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    // …and the confirmation and its undo affordance still appear.
+    expect(find.text("Session archived"), findsOneWidget);
+    expect(find.text("Undo"), findsOneWidget);
   });
 
   testWidgets("tapping outside dismisses the menu without acting on the session", (tester) async {

@@ -296,6 +296,25 @@ void main() {
       expect(find.byType(BackdropFilter), findsNothing);
     });
 
+    test("falls back to the trigger's raw bounds when the inset outsizes the trigger", () {
+      const tight = PregoMenuSpotlight(
+        borderRadius: 16,
+        inset: EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+      );
+      const smallTrigger = Rect.fromLTWH(0, 0, 60, 44);
+
+      // Deflating would flip the rect inside out; the raw bounds keep the
+      // backdrop's cut-out and outline geometrically valid.
+      expect(tight.resolveRect(triggerRect: smallTrigger), equals(smallTrigger));
+
+      // A trigger with room for the inset still gets the deflated rect.
+      const wideTrigger = Rect.fromLTWH(0, 0, 400, 80);
+      expect(
+        tight.resolveRect(triggerRect: wideTrigger),
+        equals(tight.inset.deflateRect(wideTrigger)),
+      );
+    });
+
     test("cannot be paired with the glass path, which hides its own trigger", () {
       expect(
         () => PregoAnchorMenu(

@@ -81,7 +81,9 @@ class SessionListContent extends StatelessWidget {
                       isRetrying: activityInfo?.isRetrying ?? false,
                       backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
                       onTap: () => onSessionTap(session),
-                      menuEntries: (context) => sessionMenuEntries(context, session),
+                      // The list's context, not the row's: archive/delete
+                      // unmount the row before their follow-ups run.
+                      menuEntries: () => sessionMenuEntries(context, session),
                       onSwipe: () => onSessionSwipe(session),
                     );
                   },

@@ -8,8 +8,11 @@ import "pr_status_row.dart";
 
 /// Builds the long-press actions for a session row. It is a builder rather than
 /// a ready-made list because the entries are owned by the screen's action
-/// dispatcher, while the list supplies the session and the row supplies the
-/// context they act against.
+/// dispatcher, while the list supplies the session and the context they act
+/// against. The context must be the list's, not the row's: archive and delete
+/// hide the row optimistically, unmounting it before their cubit calls resolve,
+/// which would silently skip the follow-up the actions run afterwards (undo
+/// snackbar, closing a deleted session's detail route).
 typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext context, Session session);
 
 /// A single session row.
@@ -29,9 +32,10 @@ class SessionTile extends StatelessWidget {
   final int backgroundTaskCount;
   final VoidCallback onTap;
 
-  /// Builds this row's long-press actions; the session is already closed over
-  /// by the list, like [onTap] and [onSwipe].
-  final List<PregoMenuEntry> Function(BuildContext context) menuEntries;
+  /// Builds this row's long-press actions; the session — and the stable
+  /// context the actions run against — are already closed over by the list,
+  /// like [onTap] and [onSwipe] (see [SessionMenuEntriesBuilder]).
+  final List<PregoMenuEntry> Function() menuEntries;
 
   final VoidCallback onSwipe;
 
@@ -62,7 +66,7 @@ class SessionTile extends StatelessWidget {
       // Holds this row sharp while the rest of the list blurs back, so which
       // session the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
-      entriesBuilder: () => menuEntries(context),
+      entriesBuilder: menuEntries,
       triggerBuilder: (context, openMenu) => _buildRow(context: context, openMenu: openMenu),
     );
   }

@@ -97,7 +97,14 @@ class PregoMenuSpotlight {
   final EdgeInsets inset;
 
   /// The region to keep sharp for a trigger occupying [triggerRect].
-  Rect resolveRect({required Rect triggerRect}) => inset.deflateRect(triggerRect);
+  ///
+  /// An [inset] larger than the trigger would flip the rect inside out and hand
+  /// a negative-size rect to the backdrop's cut-out and outline; the trigger's
+  /// raw bounds win over the inset in that case.
+  Rect resolveRect({required Rect triggerRect}) {
+    final deflated = inset.deflateRect(triggerRect);
+    return (deflated.width < 0 || deflated.height < 0) ? triggerRect : deflated;
+  }
 
   /// The treatment for a long-pressed full-width list row: the cut-out is inset
   /// from the screen edges so the sharp region reads as a lifted card rather

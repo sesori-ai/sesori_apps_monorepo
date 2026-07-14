@@ -822,6 +822,27 @@ void main() {
       },
     );
 
+    blocTest<ProjectListCubit, ProjectListState>(
+      "hideProject: reports failure and keeps the project when the bridge rejects the hide",
+      build: () {
+        when(() => mockProjectService.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
+        );
+        when(
+          () => mockProjectService.hideProject(projectId: any(named: "projectId")),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final hidden = await cubit.hideProject("B");
+        expect(hidden, isFalse);
+      },
+      skip: 1,
+      // Nothing was hidden, so no state follows the initial load.
+      expect: () => <ProjectListState>[],
+    );
+
     // -------------------------------------------------------------------------
     // Test 4b: createProject success
     // -------------------------------------------------------------------------
