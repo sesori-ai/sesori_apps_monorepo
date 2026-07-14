@@ -1,0 +1,357 @@
+# S02-W02-P01: Add Authored Identity-Scoped PR Refresh
+
+## 0. Metadata
+
+- **ID:** S02-W02-P01
+- **Repository:** `sesori-ai/sesori_apps_monorepo`
+- **Worktree:** one dedicated worker worktree for this PR
+- **Base branch:** `main`
+- **Branch:** `plan/session-pull-request-monitoring/s02-w02-p01-authored-pr-refresh`
+- **Wave baseline:** pin the assessed current `main` tip after S02-W01 merges
+- **Audited reference:** `e766684e0fdc22256419b7b99691021c9f14732d`
+- **Contract-affecting:** Yes — persisted cache identity and shipped request behavior
+
+## 1. Goal and Cohesion
+
+Replace `PrSyncService`'s request-era discovery internals with one authored,
+GitHub-account-safe refresh dispatcher and serve current/history from durable
+branch associations. The PR is independently cohesive because it completes the
+live request-triggered path—source commands, identity-scoped migration,
+repository writers/mappers, dispatcher queue, session enrichment, and SSE—while
+deliberately leaving archive snapshots and viewed-project timers for later waves.
+
+## 2. Dependencies and Baseline
+
+- S02-W01-P01 is merged; exact directory/current/history data and
+  `SessionBranchChanged` stream exist.
+- Fetch `main`, assess all planned paths plus schema drift, and pin the exact
+  S02/W02 baseline before branching.
+- Read the current schema; allocate exactly `N+1` without rewriting W01.
+- Parallel-plugin Stage 2 remains paused.
+
+## 3. Scope
+
+### In Scope
+
+- Export current schema; add owner/login scope to global PR cache and project
+  cache metadata.
+- Add active-login resolution, open/all authored query modes, 1,001-row
+  truncation detection, PR author parsing, exact timeouts, and author-aware
+  single-PR lookup to `GhCliApi`/`GhPullRequest`.
+- Keep `--author @me` on list commands only; verify `gh pr view` author after
+  parsing.
+- Evolve `PrSourceRepository` to own cached GitHub-remote eligibility and return
+  typed availability/login/query outcomes without writing durable state.
+- Make `PullRequestRepository` the sole writer/finalizer of global live PR rows
+  and project cache-login metadata.
+- Add typed refresh request/result/completion models and
+  `PrRefreshDispatcher` in target Layer 3.
+- Implement per-project serialization, safe coalescing, complete/truncated
+  semantics, all-state replacement, open reconciliation, disappeared-open
+  finalization, login capture/recheck, and change-only completions.
+- Route both `GetSessionsHandler` request modes through the dispatcher. Awaited
+  all-state retains the five-second budget; non-wait remains fire-and-forget.
+- If `pr_cache_github_login` is null, upgrade even an open request to all-state
+  and resolve the complete active branch scope first.
+- On that first post-migration verification only, union active scope with
+  durable branch history from archived sessions; never resolve archived paths.
+- Remove `SessionRepository -> PullRequestRepository`; inject read-only branch,
+  live-PR, and later-compatible archive DAOs/mappers directly.
+- Map current headline and descending non-null history for live sessions, hiding
+  null/mismatched author rows.
+- Subscribe `Orchestrator` independently to branch-change and refresh-completion
+  streams and emit `sessionsUpdated` only under their respective change rules.
+- Keep request-driven refresh active; do not add project presence or timers.
+
+### Non-Goals
+
+- Terminal stop markers, archive snapshot tables, or final archive refresh.
+- Project-view routing, scheduled polling, adaptive cadence, or client sends.
+- GitHub comments/check-run detail/PR mutation.
+- Full unbounded pagination beyond the supported 1,000 rows.
+- Deleting `PrSyncService` source in this wave if a thin compatibility facade is
+  still needed by existing wiring/tests; dead internals are removed in S03-W02.
+- Reusing GitHub login as Sesori owner identity.
+
+## 4. Audited Current Code and Assumptions
+
+- Current `GhCliApi` has `gh --version`, plain auth status, open list limited to
+  100, and single view. It does not parse author.
+- `PrSyncService` currently owns capability/remote caches, 30-second debounce,
+  active-project suppression, matching, writes, and completion events.
+- `PullRequestsTable` key is `(project_id, pr_number)` and has no author/owner.
+- `PullRequestDao.getPrsBySessionIds` joins one legacy session branch; W01's
+  branch history is now the correct association source.
+- `SessionRepository` depends on peer `PullRequestRepository` and prefers open
+  state over a higher PR number; both violate the locked final architecture.
+- `GetSessionsHandler` triggers both wait modes and already handles timeout by
+  returning current data while later SSE supplies freshness.
+- The GitHub CLI manual confirms `--state all`, `--author @me`, finite `--limit`,
+  and required JSON fields.
+
+## 5. Design and Ownership
+
+### Expected files
+
+Existing paths likely changed:
+
+- `bridge/app/lib/src/bridge/api/gh_cli_api.dart`
+- `bridge/app/lib/src/bridge/api/gh_pull_request.dart`
+- `bridge/app/lib/src/bridge/repositories/pr_source_repository.dart`
+- `bridge/app/lib/src/bridge/repositories/pull_request_repository.dart`
+- `bridge/app/lib/src/bridge/repositories/session_repository.dart`
+- `bridge/app/lib/src/bridge/api/database/tables/pull_requests_table.dart`
+- `bridge/app/lib/src/bridge/api/database/daos/pull_request_dao.dart`
+- `bridge/app/lib/src/bridge/persistence/tables/projects_table.dart`
+- `bridge/app/lib/src/bridge/persistence/daos/projects_dao.dart`
+- `bridge/app/lib/src/bridge/persistence/database.dart`
+- `bridge/app/lib/src/bridge/routing/get_sessions_handler.dart`
+- `bridge/app/lib/src/bridge/routing/request_router.dart`
+- `bridge/app/lib/src/bridge/services/pr_sync_service.dart` (thin transition or removal if no caller remains)
+- `bridge/app/lib/src/bridge/orchestrator.dart`
+
+New target paths:
+
+- `bridge/app/lib/src/services/pr_refresh_dispatcher.dart`
+- `bridge/app/lib/src/repositories/models/pr_refresh_models.dart`
+- `bridge/app/lib/src/repositories/mappers/pr_cache_mapper.dart` if mapping is
+  not already owned by `pull_request_mapper.dart`
+- focused API/repository/service/integration tests
+- generated Drift/Freezed/schema/migration outputs
+
+Do not add `*Like` interfaces; Dart fakes implement concrete classes.
+`Orchestrator.compose` constructs and shares every source/repository/dispatcher
+instance introduced here. `BridgeRuntime` remains the lifecycle-only consumer
+established in W01 and is not a second wiring site.
+
+### Exact API commands
+
+```text
+gh --version
+gh api user --hostname github.com --jq .login
+gh pr list --state open --author @me --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
+gh pr list --state all --author @me --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
+gh pr view <number> --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author
+```
+
+- Login/view timeout: 15 seconds.
+- List timeout: 30 seconds.
+- A non-zero exit, malformed login/JSON, missing author, or timeout throws from
+  API; repository/dispatcher maps it to typed non-success rather than `[]`.
+- Exactly 1,001 list rows means truncated; expose first 1,000 plus the flag.
+
+### Persistence
+
+`pull_requests_table` gains:
+
+- `owner_identity TEXT NOT NULL`, backfilled `local`;
+- `github_author_login TEXT NULL`, backfilled null; and
+- primary key `(owner_identity, project_id, pr_number)`.
+
+`projects_table` gains nullable `pr_cache_github_login`.
+
+Live reads require row `owner_identity = local`, non-null row login, non-null
+project cache login, and equality between those logins. Legacy/unverified rows
+are retained physically but hidden until verified replacement.
+
+### Repository responsibilities
+
+- `PrSourceRepository` returns active login, authored observations, truncation,
+  and GitHub-remote eligibility. Its remote cache keeps the existing ten-minute
+  TTL; capability/login failures remain explicit.
+- `PullRequestRepository` receives raw PR/project DAOs and owns transactionally
+  replacing/upserting rows and project cache login. Complete all-state results
+  may delete absent branch-matched rows; truncated results may not.
+- `SessionRepository` receives raw read-only DAOs and pure mapper(s). Live
+  association joins the session's complete branch history, then chooses the
+  highest-numbered PR on current branch as headline and every other associated
+  PR descending as history.
+- No repository imports or calls another repository.
+
+### Dispatcher and data flow
+
+Typed requests identify:
+
+- project id;
+- mode `open` or `all` (archive-final lands W03);
+- origin (`sessionRequest`, later listener origins) for diagnostics only; and
+- whether the caller still owns one identity-change follow-up.
+
+Dispatcher flow:
+
+1. Serialize requests by project. Let an active/queued all-state request satisfy
+   compatible live open waiters; never let an open request discard queued all.
+2. Read persisted live project path and branch scope from
+   `SessionBranchRepository`. Before all-state, synchronously resolve/persist
+   every active session branch so listener enrollment races cannot commit an
+   incomplete cache-login baseline.
+3. Resolve eligibility and active login through `PrSourceRepository`.
+4. Execute open/all query. Reject cross-repository and any row whose
+   `author.login` differs from captured login.
+5. Match only branches in durable project scope. For first null-cache-login
+   verification, include archived-only persisted history.
+6. For complete open results, finalize previously cached open rows absent from
+   the list through author-verified `gh pr view`. For truncated results, absence
+   proves nothing and no finalization occurs.
+7. Re-resolve active login immediately before the write transaction. If it
+   differs or cannot be confirmed, discard data and return `identityChanged` or
+   explicit failure without writing.
+8. Write through `PullRequestRepository`; publish a broadcast completion with
+   mode, complete/truncated, authored-open count, and rendered-change flag.
+
+The dispatcher never queues an identity follow-up. `GetSessionsHandler` may
+recheck that its request is still live and issue at most one all-state follow-up.
+
+### Request behavior
+
+- `waitForPrData: true`: request all-state, await no more than existing five
+  seconds, re-enrich already-fetched sessions on success, otherwise return
+  current cached data and let later completion SSE refresh clients.
+- `waitForPrData: false`: fire-and-forget open request. Null project cache login
+  upgrades it to all-state. Add the exact compatibility marker above this
+  trigger because old clients rely on it after project presence ships.
+- A timeout does not cancel the dispatcher process or lose its eventual write;
+  it only releases the HTTP response budget.
+
+### Concurrency, cancellation, lifecycle, and errors
+
+- Project queues are independent; one slow repository does not block another.
+- Shutdown rejects new requests, lets owned process futures settle/cancel under
+  existing process timeout, completes all waiters exactly once, and closes the
+  completion stream.
+- Failures surfaced as typed results are logged once by the recovering origin,
+  not pre-logged by dispatcher. Unexpected catch-all recovery includes context
+  and attached stack.
+- Branch changes always publish their independent project invalidation even if
+  the subsequent request is skipped, truncated, or fails.
+
+## 6. Backward Compatibility
+
+- Old clients/new bridge: both request modes still trigger dispatcher work.
+  Non-wait trigger receives the source marker and exact cleanup condition from
+  PLAN section 7.
+- New clients/old bridge: not active until S03; the old request-driven path
+  remains compatible.
+- Existing `pullRequest` is populated from the new headline rule; history is
+  additive and non-null from S01.
+- Legacy cache rows are preserved but hidden because no released producer
+  recorded verified author. The first complete authored all-state result
+  verifies/replaces them; no speculative repair guesses an author.
+- A first all-state verification includes archived-only durable branches so W03
+  can snapshot genuine legacy associations without touching archived paths.
+- Compatibility marker location: immediately above the non-wait dispatcher
+  trigger in `GetSessionsHandler`; use implementation date/current declared
+  version and cleanup text from PLAN section 7.
+
+## 7. Schema and Generated-Code Workflow
+
+1. Run pre-edit schema export from `bridge/app`.
+2. Allocate current `N+1`; rebuild key/table as required by Drift while
+   preserving all existing rows and FKs.
+3. Backfill owner to `local`; author and project cache-login to null.
+4. Run migration generation and implement callback body only.
+5. Run bridge-wide codegen.
+6. Add structural/data tests for key, row preservation, hidden unverified rows,
+   project cascade, and migration from immediate predecessor.
+
+## 8. Verification
+
+### Automated tests
+
+- Exact command arguments, working directory, timeout, author JSON, login
+  parsing, state mapping, malformed output, non-zero, and timeout.
+- 1,000 rows complete; 1,001 rows truncated; truncated results expose first
+  1,000 and never trigger absent-row deletion/finalization.
+- Remote eligibility/capability caching and non-GitHub/missing-gh outcomes.
+- Migration preserves cache rows, adds local owner key, nulls login metadata,
+  and keeps project/session/PR cascades valid.
+- SessionRepository hides null/mismatched login rows and maps headline/history
+  for current branch, previous branch, duplicate branch associations, detached
+  current branch, and archived-only first-verification scope.
+- Highest current-branch number wins regardless of state; history is descending
+  and excludes headline.
+- Complete all-state replacement, complete open upsert/finalization, truncated
+  non-destructive behavior, query failure non-empty semantics, and rendered
+  change detection.
+- Per-project serialization, stronger queued request preservation, compatible
+  waiter coalescing, independent project concurrency, shutdown, and no overlap.
+- Login switches before query, during query, and before commit; no stale account
+  write/render. Handler follow-up is at most one; dispatcher follow-up is zero.
+- Null cache-login open upgrade synchronously resolves active branch scope.
+- `waitForPrData` true keeps five-second budget and re-enriches on success;
+  false fires and returns; both retain existing response behavior.
+- Branch current change emits `sessionsUpdated` even with no PR cache change;
+  cache completion emits only on rendered change.
+- Unseen timestamps are unchanged by every refresh mode.
+
+### Manual verification
+
+Deferred to S03-W03-M01; API and identity races are deterministic with fake
+process outputs here.
+
+### Exact commands
+
+```text
+# workdir: bridge
+dart pub get
+
+# workdir: bridge/app — before source table edits
+dart run drift_dev make-migrations
+
+# workdir: bridge/app — after schemaVersion/table edits
+dart run drift_dev make-migrations
+
+# workdir: bridge
+make codegen
+make analyze
+make test
+
+# workdir: bridge/app
+dart analyze --fatal-infos
+dart test test/drift/default/migration_test.dart
+dart test test/bridge/api/gh_cli_api_test.dart
+dart test test/bridge/routing/get_sessions_handler_test.dart
+```
+
+### Regression guide
+
+- Non-GitHub, unavailable `gh`, or unauthenticated `gh` still returns sessions.
+- A failure is not an authoritative empty PR result.
+- Session list pagination/persistence, worktree metadata, archive behavior, and
+  unseen enrichment remain unchanged.
+- Explicit pull-to-refresh remains bounded; normal load remains non-blocking.
+- Old clients still receive the correct one-field headline.
+- Bridge stays plugin-agnostic and headless.
+
+## 9. Risks
+
+- Account switch can race every async gap; capture/recheck login and verify each
+  author before transaction.
+- All-state query may exceed response budget; handler timeout must not cancel
+  eventual dispatcher completion.
+- Truncated results can falsely close/delete absent PRs; absence is never used
+  when truncated.
+- Same-layer dependencies can return through convenience calls; inject DAOs
+  directly into each repository and repositories only into dispatcher.
+- Migration key rebuild may lose rows/FKs; require old-row fixtures and foreign
+  key validation.
+
+## 10. Acceptance Criteria
+
+- Every list query uses `--author @me`; every accepted row/view matches captured
+  active login and same repository.
+- 1,001st row produces explicit non-destructive truncation.
+- Live sessions render verified current/history under locked ordering.
+- No `SessionRepository -> PullRequestRepository` dependency remains.
+- Requests serialize/coalesce without dropping all-state work or looping on
+  identity change.
+- Both shipped request paths and five-second wait behavior remain.
+- Branch and PR invalidations are independent and unseen-neutral.
+
+## 11. Definition of Done
+
+- Migration, codegen, tests, fatal analysis, and regression pass are complete.
+- Compatibility marker has exact date/version/scenario/cleanup.
+- `aristotle-impl-review` approves before PR opening.
+- PR targets `main`; tracker records baseline/branch/URL/check state.
+- S02-W03 starts only after merge.
