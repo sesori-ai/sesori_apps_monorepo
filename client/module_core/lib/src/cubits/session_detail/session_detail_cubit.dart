@@ -265,6 +265,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
     // While backgrounded the queue is held for the resume bypass refresh.
     if (_wasPaused) return;
+    if (!_isConnected) {
+      _needsStaleRefresh = true;
+      return;
+    }
     final active = _activeRefresh;
     if (active != null) {
       // The minimum interval has already elapsed, so run the queued refresh

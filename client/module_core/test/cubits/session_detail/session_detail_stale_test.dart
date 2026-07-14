@@ -590,6 +590,67 @@ void main() {
       expect(messageLoads, 2);
     });
 
+    test("a disconnected failed refresh waits for reconnect instead of retrying each cooldown", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+        eventRefreshMinInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      reset(mockSessionService);
+      _stubLoadApis(mockSessionService, sessionId: sessionId);
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
+
+      final firstMessages = Completer<ApiResponse<MessageWithPartsResponse>>();
+      var messageLoads = 0;
+      when(
+        () => mockSessionService.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) {
+        messageLoads++;
+        if (messageLoads == 1) return firstMessages.future;
+        return Future.value(
+          ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])),
+        );
+      });
+
+      final emitted = <SessionDetailState>[];
+      final sub = cubit.stream.listen(emitted.add);
+      addTearDown(sub.cancel);
+
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      connectionStatus.add(connectionLostStatus);
+      firstMessages.complete(ApiResponse.error(ApiError.generic()));
+
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(messageLoads, 1);
+      expect(
+        emitted.whereType<SessionDetailLoaded>().where((state) => state.isRefreshing),
+        hasLength(1),
+      );
+
+      connectionStatus.add(connectedStatus);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(messageLoads, 2);
+    });
+
     test("concurrent stale signals are coalesced (single API call)", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
