@@ -53,6 +53,11 @@ jobs:
       ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
       BUILD_NUMBER: ${{ inputs.build_number }}
       CI: true
+      # gym's pre-flight `xcodebuild -showBuildSettings` must load the full SPM
+      # package graph (Firebase + local Flutter packages), which takes far longer
+      # than fastlane's 3s default base timeout on a cold runner.
+      FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: '120'
+      FASTLANE_XCODEBUILD_SETTINGS_RETRIES: '5'
 
     steps:
       - name: Checkout repository
