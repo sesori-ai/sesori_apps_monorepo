@@ -167,6 +167,34 @@ void main() {
       );
     });
 
+    test('updateYolo enables it and preserves other settings', () async {
+      final api = FakeBridgeSettingsApi(
+        readResult: '{"sleepPrevention":"off","yolo":false,"releaseTrack":"internal","enabledPlugins":["opencode"]}',
+      );
+      final repository = BridgeSettingsRepository(api: api);
+
+      await repository.updateYolo(enabled: true);
+
+      expect(
+        api.lastWrittenConfig,
+        equals(
+          '{\n  "sleepPrevention": "off",\n  "yolo": true,\n  "releaseTrack": "internal",\n  "enabledPlugins": [\n    "opencode"\n  ]\n}',
+        ),
+      );
+    });
+
+    test('updateYolo persists an explicit false value', () async {
+      final api = FakeBridgeSettingsApi(readResult: '{"yolo":true}');
+      final repository = BridgeSettingsRepository(api: api);
+
+      await repository.updateYolo(enabled: false);
+
+      expect(
+        api.lastWrittenConfig,
+        equals('{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable"\n}'),
+      );
+    });
+
     test('configFilePath delegates to the api', () {
       final api = FakeBridgeSettingsApi(
         readResult: null,

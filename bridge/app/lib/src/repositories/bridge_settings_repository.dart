@@ -74,4 +74,11 @@ class BridgeSettingsRepository {
     final current = await loadSettings();
     await saveSettings(settings: current.copyWith(releaseTrack: track));
   }
+
+  /// Read-modify-write of the persisted YOLO mode, preserving every other
+  /// setting.
+  Future<void> updateYolo({required bool enabled}) async {
+    final current = await loadSettings();
+    await saveSettings(settings: current.copyWith(yolo: enabled));
+  }
 }

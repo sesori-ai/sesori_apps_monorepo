@@ -147,6 +147,7 @@ In addition to flags, the bridge supports subcommands:
 |---------|-------------|
 | `help` | Show the help message (also available via `--help` or `-h`) |
 | `config track [stable\|internal]` | Show or set the update track. With no argument, prints the current track. |
+| `config yolo [on\|off]` | Show or set automatic permission approval. With no argument, prints the current mode. |
 | `config edit` | Open the bridge configuration file in your default editor |
 | `logout` | Clear stored authentication tokens. You will be asked to log in again on next start. |
 
@@ -162,7 +163,8 @@ In addition to flags, the bridge supports subcommands:
 
 Setting `"yolo": true` makes the bridge approve every permission request
 without sending the request to connected clients. The bridge prints a warning
-at startup whenever this mode is active.
+at startup whenever this mode is active. Use `sesori-bridge config yolo on` or
+`sesori-bridge config yolo off` to change it without editing the file directly.
 
 ## Examples
 
