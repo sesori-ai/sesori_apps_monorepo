@@ -105,6 +105,9 @@ void main() {
     final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
     expect(markdown.data, _command);
     expect(markdown.selectable, isTrue);
+    final codeBlockDecoration = markdown.styleSheet!.codeblockDecoration! as BoxDecoration;
+    expect(codeBlockDecoration.color, isNot(detailDecoration.color));
+    expect((codeBlockDecoration.border! as Border).top.color, colors.borderSecondary);
 
     final copyButton = tester.widget<CopyIconButton>(find.byType(CopyIconButton));
     expect(copyButton.text, _command);

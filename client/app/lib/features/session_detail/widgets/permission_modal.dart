@@ -172,12 +172,19 @@ class PermissionModal extends StatelessWidget {
                                 data: permission.description,
                                 selectable: true,
                                 onTapLink: handleMarkdownLinkTap,
-                                styleSheet: buildSessionMarkdownStyleSheet(
-                                  prego: prego,
-                                  paragraphStyle: prego.textTheme.textSm.regular
-                                      .copyWith(color: prego.colors.textPrimary)
-                                      .monospace,
-                                ),
+                                styleSheet:
+                                    buildSessionMarkdownStyleSheet(
+                                      prego: prego,
+                                      paragraphStyle: prego.textTheme.textSm.regular
+                                          .copyWith(color: prego.colors.textPrimary)
+                                          .monospace,
+                                    ).copyWith(
+                                      codeblockDecoration: BoxDecoration(
+                                        color: prego.colors.bgSurface2,
+                                        borderRadius: BorderRadius.circular(prego.radius.md),
+                                        border: Border.all(color: prego.colors.borderSecondary),
+                                      ),
+                                    ),
                               ),
                             ),
                             SizedBox(width: prego.spacing.xs),
