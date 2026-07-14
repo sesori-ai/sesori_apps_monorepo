@@ -46,6 +46,9 @@ class SessionRepository {
   final ProjectsDao _projectsDao;
   final PullRequestRepository _pullRequestRepository;
   final SessionUnseenCalculator _unseenCalculator;
+  final Set<String> _tombstonedSessionIds = <String>{};
+  Future<void>? _tombstoneLoad;
+  bool _tombstonesLoaded = false;
 
   SessionRepository({
     required BridgePluginApi plugin,
@@ -289,8 +292,33 @@ class SessionRepository {
     return true;
   }
 
-  Future<bool> isSessionTombstoned({required String sessionId}) {
-    return _sessionDao.isSessionTombstoned(sessionId: sessionId, pluginId: _plugin.id);
+  Future<bool> isSessionTombstoned({required String sessionId}) async {
+    await _ensureTombstonesLoaded();
+    return _tombstonedSessionIds.contains(sessionId);
+  }
+
+  Future<void> _ensureTombstonesLoaded() async {
+    if (_tombstonesLoaded) return;
+    final inFlight = _tombstoneLoad;
+    if (inFlight != null) return inFlight;
+
+    final load = _loadTombstones();
+    _tombstoneLoad = load;
+    try {
+      await load;
+    } finally {
+      if (identical(_tombstoneLoad, load)) {
+        _tombstoneLoad = null;
+      }
+    }
+  }
+
+  Future<void> _loadTombstones() async {
+    final stored = await _sessionDao.getTombstonedSessionIds(pluginId: _plugin.id);
+    // Merge rather than replace so a deletion committed during the initial
+    // read cannot be lost when that read completes.
+    _tombstonedSessionIds.addAll(stored);
+    _tombstonesLoaded = true;
   }
 
   /// Deletes the backend session, then records its tombstone and removes the
@@ -333,6 +361,7 @@ class SessionRepository {
       );
       await _sessionDao.deleteSession(sessionId: sessionId);
     });
+    _tombstonedSessionIds.add(sessionId);
     return deletionSnapshot;
   }
 

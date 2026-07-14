@@ -40,15 +40,12 @@ class SessionDetailLoadService {
 
     try {
       final routeProjectId = projectId.normalize();
-      final projectContextFuture = _loadProjectSessionContext(sessionId: sessionId);
       final messagesFuture = _repository.getMessages(sessionId: sessionId);
       final questionsFuture = _repository.getPendingQuestions(sessionId: sessionId);
       final permissionsFuture = _repository.getPendingPermissions(sessionId: sessionId);
       final childrenFuture = _repository.getChildren(sessionId: sessionId);
       final statusesFuture = _repository.getSessionStatuses();
       final sessionResponse = await _repository.getSession(sessionId: sessionId);
-      final projectContext = await projectContextFuture;
-      final effectiveProjectId = routeProjectId ?? projectContext?.projectId;
       final session = switch (sessionResponse) {
         SuccessResponse(:final data) => data,
         ErrorResponse(:final error) => () {
@@ -56,6 +53,8 @@ class SessionDetailLoadService {
           return null;
         }(),
       };
+      final fallbackContext = session == null ? await _loadProjectSessionContext(sessionId: sessionId) : null;
+      final effectiveProjectId = routeProjectId ?? session?.projectID.normalize() ?? fallbackContext?.projectId;
       // COMPATIBILITY 2026-07-13 (v1.5.0): A failed legacy session lookup has no plugin identity. Remove this fallback when every load path supplies concrete identity.
       final pluginId = session?.pluginId ?? legacyMissingPluginId;
       final commandsFuture = _listCommands(projectId: effectiveProjectId, pluginId: pluginId);
@@ -135,7 +134,7 @@ class SessionDetailLoadService {
           agents: agents,
           providerData: providerData,
           commands: commands,
-          canonicalSessionTitle: projectContext?.sessionTitle,
+          canonicalSessionTitle: session?.title ?? fallbackContext?.sessionTitle,
           promptDefaults: promptDefaults,
           isRootSession: session != null ? session.parentID == null : null,
         ),
