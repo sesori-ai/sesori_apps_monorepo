@@ -498,11 +498,23 @@ or combine new work into the already-merged N migration or schema snapshot.
 - Prefer non-null columns for durable timestamps when a stable migration baseline exists. Backfill existing rows during
   migration instead of introducing a permanent nullable state solely to avoid the backfill.
 
-## Compatibility Debt
+## Backward Compatibility
 
-Temporary wire nullability or fallback behavior added only for old-version interoperability must be recorded in
-`docs/COMPATIBILITY_DEBT.md` with its supported scenario, a dated removal target, and exact cleanup steps. Do not let
-compatibility branches become undocumented permanent behavior.
+Preserve backwards compatibility unless the user explicitly directs otherwise. Prefer an honest transport-model
+`@Default` when a missing legacy value has one concrete meaning, then keep repository, service, handler, cubit, and
+connector parameters required and non-null. Use nullable wire state only when absence is meaningful or no honest
+fallback exists, and normalize it immediately at the transport/repository boundary.
+
+Every default, nullable field, fallback branch, alias, dual-read/write path, or repair path that exists only for
+old-version interoperability must have a comment immediately above it in this exact form:
+
+```dart
+// COMPATIBILITY YYYY-MM-DD (vX.Y.Z): <legacy scenario and rationale>. <Exact mechanical cleanup>.
+```
+
+Use the introduction date and version currently declared by the app; do not query releases for a newer version.
+Ordinary domain defaults do not receive this marker. A direct user cleanup command is sufficient authorization to
+remove old marked compatibility code.
 
 ## Git
 
@@ -574,6 +586,12 @@ Two review agents enforce the rules above. Both reject on any violation — no w
 
 - **Before implementation**: send the plan to `aristotle-plan-review` (agent file at `.opencode/agents/aristotle-plan-review.md`). A plan needs a clear goal, specific classes/files/layers, and stated data flow. Vague plans are rejected on the gate without further review.
 - **Before opening a PR**: send the branch/PR to `aristotle-impl-review` (agent file at `.opencode/agents/aristotle-impl-review.md`). It reviews only new and changed code — preexisting legacy patterns are not flagged unless the change extends them.
+
+Both reviewers are shell-denied and read-only. Implementation-review requests
+must include the branch, base commit or branch, complete changed-file list,
+full diff, and any Git history evidence needed to distinguish changed lines
+from legacy code. The reviewer rejects incomplete scope rather than running Git
+commands or guessing.
 
 Do not skip either step. The reviewers exist because violations compound — one bypass in a handler becomes three bypasses in the handlers that copy it.
 

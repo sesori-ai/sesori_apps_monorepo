@@ -17,7 +17,7 @@ import "primitives/prego_widths.g.dart";
 /// ```dart
 /// final design = context.prego;
 /// Container(
-///   color: design.colors.bgPrimary,
+///   color: design.colors.bgSurface1,
 ///   padding: EdgeInsets.all(design.spacing.md),
 ///   decoration: BoxDecoration(
 ///     borderRadius: BorderRadius.circular(design.radius.lg),

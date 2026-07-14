@@ -19,6 +19,7 @@ mixin _$HealthResponse {
 // (e.g. macOS Full Disk Access not granted), so the phone can proactively
 // warn the user. Nullable for backward compatibility: an older bridge that
 // never sends it decodes to null and is treated as "not degraded".
+// COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges omit filesystem-access state. Make this non-null and remove client null fallbacks once those bridges are unsupported.
  bool? get filesystemAccessDegraded;
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -95,6 +96,7 @@ class _HealthResponse implements HealthResponse {
 // (e.g. macOS Full Disk Access not granted), so the phone can proactively
 // warn the user. Nullable for backward compatibility: an older bridge that
 // never sends it decodes to null and is treated as "not degraded".
+// COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges omit filesystem-access state. Make this non-null and remove client null fallbacks once those bridges are unsupported.
 @override final  bool? filesystemAccessDegraded;
 
 /// Create a copy of HealthResponse

@@ -298,7 +298,8 @@ as bool,
 /// @nodoc
 mixin _$Session {
 
- String get id; String get pluginId; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionSummary? get summary; PullRequestInfo? get pullRequest; SessionPromptDefaults? get promptDefaults; bool get hasWorktree;// Whether this session has unseen activity (new changes the user has not
+ String get id;// COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove default; require pluginId.
+ String get pluginId; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionSummary? get summary; PullRequestInfo? get pullRequest; SessionPromptDefaults? get promptDefaults; bool get hasWorktree;// Whether this session has unseen activity (new changes the user has not
 // viewed). Backend-computed; advances on activity and is cleared by viewing
 // the session or an explicit mark-as-read. Defaults to false so older
 // payloads (and the baseline) deserialize as "seen".
@@ -430,6 +431,7 @@ class _Session implements Session {
   factory _Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
 
 @override final  String id;
+// COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove default; require pluginId.
 @override@JsonKey() final  String pluginId;
 @override final  String projectID;
 @override final  String directory;

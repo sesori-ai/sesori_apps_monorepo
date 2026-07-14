@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
@@ -126,6 +127,7 @@ void main() {
             projectsDao: database.projectsDao,
           ),
           sessionRepository: sessionRepository,
+          clock: const Clock(),
         ),
         sessionRepository: sessionRepository,
         projectRepository: projectRepository,
@@ -332,6 +334,7 @@ class _TestHarness {
       prSource: _NoopPrSource(),
       pullRequestRepository: pullRequestRepository,
       sessionRepository: sessionRepository,
+      clock: const Clock(),
     );
 
     final projectRepository = ProjectRepository(

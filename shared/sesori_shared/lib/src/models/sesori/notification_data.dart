@@ -45,7 +45,7 @@ enum NotificationCategory {
     description: "App and bridge updates",
     importance: .defaultImportance,
   ),
-  // fallback for unknown categories (for backwards compatibility)
+  // Permanent forward-compatible fallback for categories added by newer peers.
   @JsonValue("unknown")
   unknown(
     id: "unknown",
@@ -77,7 +77,7 @@ enum NotificationEventType {
   installationUpdateAvailable,
   @JsonValue("agent_turn_completed")
   agentTurnCompleted,
-  // fallback for unknown event types (for backwards compatibility)
+  // Permanent forward-compatible fallback for event types added by newer peers.
   @JsonValue("unknown")
   unknown,
 }

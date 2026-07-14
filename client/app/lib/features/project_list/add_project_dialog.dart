@@ -389,7 +389,7 @@ class _DirectoryTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: prego.colors.bgPrimary,
+                color: prego.colors.bgSurface1,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -424,6 +424,7 @@ class _FilesystemAccessBanner extends StatelessWidget {
       initialData: connectionService.currentStatus,
       builder: (context, snapshot) {
         final status = snapshot.data;
+        // COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges omit filesystem-access state. Remove the null fallback when HealthResponse makes it non-null.
         final degraded = status is ConnectionConnected && (status.health.filesystemAccessDegraded ?? false);
         if (!degraded) return const SizedBox.shrink();
 

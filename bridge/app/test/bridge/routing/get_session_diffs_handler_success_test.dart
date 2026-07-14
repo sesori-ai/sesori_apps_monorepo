@@ -73,6 +73,9 @@ void main() {
       );
 
       processRunner.responder = ({required List<String> arguments}) {
+        if (FakeProcessRunner.supportGitDiffCalls(arguments) case final result?) {
+          return result;
+        }
         if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
           return ProcessResult(1, 0, "abc123\n", "");
         }
@@ -174,6 +177,9 @@ void main() {
       );
 
       processRunner.responder = ({required List<String> arguments}) {
+        if (FakeProcessRunner.supportGitDiffCalls(arguments) case final result?) {
+          return result;
+        }
         if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
           return ProcessResult(1, 0, "abc123\n", "");
         }
@@ -214,6 +220,74 @@ void main() {
       );
     });
 
+    test("includes untracked files", () async {
+      File("${tempDir.path}/lib/untracked.dart")
+        ..createSync(recursive: true)
+        ..writeAsStringSync("new file\n");
+
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
+      await db.sessionDao.insertSession(
+        pluginId: "opencode",
+        sessionId: "s1",
+        projectId: "project-1",
+        isDedicated: true,
+        createdAt: 123,
+        worktreePath: tempDir.path,
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "main",
+
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      processRunner.responder = ({required List<String> arguments}) {
+        if (FakeProcessRunner.supportGitDiffCalls(
+          arguments,
+          untrackedOutput: "lib/untracked.dart\n",
+        ) case final result?) {
+          return result;
+        }
+        if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.length >= 2 && arguments[0] == "merge-base") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.contains("--name-status")) {
+          return ProcessResult(1, 0, "", "");
+        }
+        if (arguments.contains("--numstat")) {
+          return ProcessResult(1, 0, "", "");
+        }
+        throw StateError("Unexpected git call: $arguments");
+      };
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final body = switch (jsonDecode(response.body!)) {
+        {"diffs": final List<dynamic> list} => list,
+        _ => throw StateError("expected JSON object with diffs"),
+      };
+      expect(body, hasLength(1));
+      final entry = body.single as Map<String, dynamic>;
+      expect(entry["file"], equals("lib/untracked.dart"));
+      expect(entry["status"], equals("added"));
+      expect(entry["runtimeType"], equals("content"));
+      expect(entry["before"], equals(""));
+      expect(entry["after"], equals("new file\n"));
+      expect(entry["additions"], equals(1));
+    });
+
     test("returns skipped diff for binary file", () async {
       File("${tempDir.path}/assets/blob.dat")
         ..createSync(recursive: true)
@@ -236,6 +310,9 @@ void main() {
       );
 
       processRunner.responder = ({required List<String> arguments}) {
+        if (FakeProcessRunner.supportGitDiffCalls(arguments) case final result?) {
+          return result;
+        }
         if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
           return ProcessResult(1, 0, "abc123\n", "");
         }
@@ -301,6 +378,9 @@ void main() {
       );
 
       processRunner.responder = ({required List<String> arguments}) {
+        if (FakeProcessRunner.supportGitDiffCalls(arguments) case final result?) {
+          return result;
+        }
         if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
           return ProcessResult(1, 0, "abc123\n", "");
         }

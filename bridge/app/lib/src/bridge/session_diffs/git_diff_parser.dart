@@ -43,3 +43,35 @@ FileDiffStatus? parseStatus(String token) {
     _ => null,
   };
 }
+
+/// Parses one path per line from `git ls-files --others --exclude-standard`.
+List<String> parseUntrackedPaths(String output) {
+  final paths = <String>[];
+  for (final rawLine in output.split("\n")) {
+    final path = rawLine.endsWith("\r") ? rawLine.substring(0, rawLine.length - 1) : rawLine;
+    if (path.isEmpty) continue;
+    paths.add(path);
+  }
+  return paths;
+}
+
+/// Merges tracked diff entries with untracked paths, preserving tracked order.
+List<({String file, FileDiffStatus? status})> mergeTrackedAndUntrackedEntries({
+  required List<({String file, FileDiffStatus? status})> trackedEntries,
+  required List<String> untrackedPaths,
+}) {
+  final seen = trackedEntries.map((entry) => entry.file).toSet();
+  final merged = List<({String file, FileDiffStatus? status})>.from(trackedEntries);
+  for (final path in untrackedPaths) {
+    if (seen.contains(path)) {
+      final existingIndex = merged.indexWhere((entry) => entry.file == path);
+      if (existingIndex != -1 && merged[existingIndex].status == FileDiffStatus.deleted) {
+        merged[existingIndex] = (file: path, status: FileDiffStatus.modified);
+      }
+      continue;
+    }
+    merged.add((file: path, status: FileDiffStatus.added));
+    seen.add(path);
+  }
+  return merged;
+}

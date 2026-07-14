@@ -36,6 +36,7 @@ part "widgets/project_tile.dart";
 /// The user-facing directory of [project]: its live path on disk, falling
 /// back to the id for payloads from older bridges that don't send a path
 /// (there the id is the directory).
+// COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit Project.path. Remove this fallback when the shared path default is removed.
 String _projectDisplayPath(Project project) => project.path.isEmpty ? project.id : project.path;
 
 /// The last segment of [project]'s directory, used as the display-name

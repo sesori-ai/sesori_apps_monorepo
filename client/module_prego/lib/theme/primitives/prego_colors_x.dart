@@ -34,7 +34,7 @@ extension PregoColorsX on PregoColors {
     errorContainer: bgErrorSolid,
     onError: brightness == .light ? fgWhite : bgErrorPrimary,
     onErrorContainer: brightness == .light ? fgWhite : textErrorPrimaryHover,
-    surface: bgPrimary,
+    surface: bgSurface1,
     surfaceContainer: bgSecondary,
     surfaceContainerHighest: brightness == .light ? bgQuaternary : bgTertiary,
     onSurface: textPrimary,
@@ -43,7 +43,7 @@ extension PregoColorsX on PregoColors {
     onInverseSurface: brightness == .light ? bgBrandPrimaryAlt : fgWhite,
     inverseSurface: brightness == .light ? bgPrimarySolid : bgBrandPrimary,
     inversePrimary: brightness == .light ? bgBrandSecondary : bgBrandSectionSubtle,
-    shadow: brightness == .light ? bgPrimarySolid : bgOverlay,
-    surfaceTint: bgPrimary,
+    shadow: brightness == .light ? bgPrimarySolid : bgSurface6,
+    surfaceTint: bgSurface1,
   );
 }

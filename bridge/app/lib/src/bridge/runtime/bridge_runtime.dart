@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
@@ -252,6 +253,7 @@ class BridgeRuntime {
           ),
           pullRequestRepository: pullRequestRepository,
           sessionRepository: sessionRepository,
+          clock: const Clock(),
         ),
         sessionRepository: sessionRepository,
         projectRepository: projectRepository,

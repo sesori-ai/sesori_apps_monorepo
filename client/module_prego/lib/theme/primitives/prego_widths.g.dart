@@ -8,7 +8,6 @@ import "prego_spacing_primitives.g.dart";
 ///
 /// Values reference [PregoSpacingPrimitives] where Figma uses an alias.
 abstract final class PregoWidths {
-
   /// Figma: width-xxs → Spacing/80 (320px)
   static const double xxs = PregoSpacingPrimitives.spacing80;
 

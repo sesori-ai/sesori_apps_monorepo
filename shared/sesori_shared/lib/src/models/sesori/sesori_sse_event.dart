@@ -262,6 +262,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("project.updated")
   const factory SesoriSseEvent.projectUpdated({
+    // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges emit no payload. Require both fields and remove fallbacks.
     required String? projectID,
     required int? updatedAt,
   }) = SesoriProjectUpdated;

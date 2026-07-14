@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:typed_data";
 
+import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
@@ -2123,6 +2124,7 @@ class _FakePrSyncService extends PrSyncService {
         prSource: _NoopPrSource(),
         pullRequestRepository: _NoopPullRequestRepository(),
         sessionRepository: _NoopSessionRepository(),
+        clock: const Clock(),
       );
 
   @override
