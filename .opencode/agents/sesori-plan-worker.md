@@ -39,6 +39,8 @@ Before implementation, verify:
 
 - the complete canonical plan tree exists;
 - `TRACKER.md` records an approved full-plan review;
+- `PLAN.md` records the user-selected implementation base branch and its
+  initial tip;
 - the current stage, wave, and candidate PR files are concrete;
 - the candidate PR names one repository and base;
 - prior waves are merged;
@@ -84,7 +86,9 @@ same-wave PRs are ready, show active and ready steps, recommend the
 lowest-numbered safe step, and ask which one to execute.
 
 Use branch `plan/<plan-slug>/sNN-wNN-pNN-step-slug` exactly as declared by the
-step file.
+step file. Start the first implementation wave from the current tip of the
+user-selected implementation base branch recorded by the plan. Do not infer a
+different base from the worker's current branch or worktree.
 
 One run implements exactly one PR step in one repository, opens that PR, starts
 monitoring, and stops. Do not combine ready steps, even when the user asks to

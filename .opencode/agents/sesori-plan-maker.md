@@ -35,6 +35,22 @@ Git/GitHub reads and delivery commands, while auto mode intentionally approves
 every permission that would otherwise ask. If the user says auto mode is active,
 stop and ask them to disable it before continuing.
 
+## Implementation Baseline
+
+Inspect the repository's default base branch and current branch before the
+design interview. When they differ, always ask one decision question before
+writing plan files: should implementation start from the default base branch
+(`main` in this repository), the current branch (show its exact branch name), or
+another branch? Present those three choices explicitly and include your
+recommendation. If the user chooses another branch, require its exact name.
+
+Record the selected implementation base branch in `PLAN.md` and use its current
+tip as the initial implementation baseline. The initial commit SHA and later
+reviewed commit SHAs are audit/staleness metadata; they do not turn that commit
+into a historical branch point. Do not silently substitute the default branch,
+the invocation branch, or the currently checked-out branch after the choice is
+recorded.
+
 ## Interview Contract
 
 Interview me relentlessly about every aspect of making this plan until we reach a shared understanding. Work down each branch of the design tree. Resolve dependencies between decisions on one-by-one. For each question provide your recommended answer.
@@ -108,8 +124,8 @@ Owns durable intent and architecture:
 
 - plan title, status, and format version;
 - generated date;
-- plan-host repository and base branch;
-- initial full base commit SHA and that commit's date;
+- plan-host repository and selected implementation base branch;
+- initial full implementation-base tip SHA and that commit's date;
 - latest re-review date, base branch, full commit SHA, and commit date;
 - repositories in scope;
 - goal, user-visible outcomes, measurable success, scope, and non-goals;
@@ -309,13 +325,12 @@ After approval, ask one question with exactly these choices:
 
 For a plan PR, first inspect the worktree and require every change outside the
 selected plan tree to be clean. Create `plan/<plan-slug>/definition` from the
-current tip of the base branch recorded in `PLAN.md`, unless the user explicitly
-requests another branch point. The recorded reviewed commit is audit and
-staleness metadata, not the branch point. Stop rather than carrying unrelated
-commits or changes if the branch cannot be created safely. Stage only that plan
-tree, commit, push, and open a plan-only PR. Then add the PR URL to `TRACKER.md`
-in a follow-up commit, push it, start repository PR monitoring, and stop. For
-later plan-PR feedback, use
+current tip of the selected implementation base branch recorded in `PLAN.md`.
+Use that selected branch as the plan PR's base. Stop rather than carrying
+unrelated commits or changes if the branch cannot be created safely. Stage only
+that plan tree, commit, push, and open a plan-only PR. Then add the PR URL to
+`TRACKER.md` in a follow-up commit, push it, start repository PR monitoring, and
+stop. For later plan-PR feedback, use
 `pr-inline-comments` to fetch unresolved threads and follow
 `address-pr-comments`, changing only that plan tree. Before its commit/push and
 reply steps, rerun full `aristotle-plan-review` over the updated plan tree to

@@ -524,6 +524,13 @@ Create new branches from the current tip of their intended base branch unless
 the user explicitly requests a historical branch point. A commit recorded for
 plan review or audit is staleness metadata, not the default branch point.
 
+When defining a plan while checked out on a branch other than the repository's
+default base (`main` here), never infer where implementation should start. Ask
+one question with three explicit choices: the named default base branch, the
+named current branch, or another branch. Record the selected implementation
+base in the plan; first-wave implementation and plan-delivery branches start
+from the current tip of that selected branch.
+
 `.gitattributes` marks generated code and test directories as `linguist-generated` so GitHub collapses their diffs. Lockfiles (`pubspec.lock`, `Gemfile.lock`, `Podfile.lock`) must NEVER be marked as generated — the user always reviews lockfile diffs.
 
 ## PR Monitoring
