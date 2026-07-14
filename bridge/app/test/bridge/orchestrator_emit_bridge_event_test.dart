@@ -64,10 +64,20 @@ import "../helpers/test_helpers.dart";
 import "routing/get_session_diffs_handler_test_helpers.dart";
 
 void main() {
-  test("activity and PR streams are emitted as SSE only by the orchestrator", () async {
+  test("orchestrator routes activity and silently auto-approves yolo permissions", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
-    final plugin = _NoopPlugin();
+    final plugin = _EventPlugin(
+      pendingPermissions: const [
+        PluginPendingPermission(
+          id: "pending-permission",
+          sessionID: "pending-child-session",
+          displaySessionId: "pending-root-session",
+          tool: "bash",
+          description: "resume a command",
+        ),
+      ],
+    );
     final pushSubsystem = _createPushSubsystem();
     final fakePrSyncService = _FakePrSyncService();
     final pullRequestRepository = PullRequestRepository(
@@ -122,12 +132,34 @@ void main() {
       projectRepository: projectRepository,
       now: () => 1234,
     );
+    final sessionViewTracker = SessionViewTracker();
+    final unseenRepository = SessionUnseenRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
+      db: database,
+      calculator: const SessionUnseenCalculator(),
+    );
+    final sessionUnseenService = SessionUnseenService(
+      unseenRepository: unseenRepository,
+      projectRepository: projectRepository,
+      viewTracker: sessionViewTracker,
+      now: () => 1234,
+    );
+    await sessionUnseenService.recordSessionCreated(
+      sessionId: "root-session",
+      projectId: "project-123",
+      sessionDirectory: "/tmp/project-123",
+      parentId: null,
+    );
+    expect(await unseenRepository.isUnseen(sessionId: "root-session"), isTrue);
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: true,
       ),
       client: relayClient,
       plugin: plugin,
@@ -147,24 +179,8 @@ void main() {
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
-      sessionUnseenService: SessionUnseenService(
-        unseenRepository: SessionUnseenRepository(
-          plugin: plugin,
-          sessionDao: database.sessionDao,
-          projectsDao: database.projectsDao,
-          db: database,
-          calculator: const SessionUnseenCalculator(),
-        ),
-        projectRepository: ProjectRepository(
-          plugin: plugin,
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
-        viewTracker: SessionViewTracker(),
-      ),
-      sessionViewTracker: SessionViewTracker(),
+      sessionUnseenService: sessionUnseenService,
+      sessionViewTracker: sessionViewTracker,
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
@@ -212,6 +228,21 @@ void main() {
     final bridgeSocket = await relayServer.nextClient();
     final messages = bridgeSocket.asBroadcastStream();
 
+    await _waitForCondition(
+      check: () => plugin.permissionReplies.length == 1,
+      failureMessage: "Timed out waiting for pending permission auto-approval",
+    );
+    expect(
+      plugin.permissionReplies.single,
+      equals(
+        (
+          requestId: "pending-permission",
+          sessionId: "pending-child-session",
+          reply: PluginPermissionReply.once,
+        ),
+      ),
+    );
+
     const connID = 7;
     bridgeSocket.add(jsonEncode(<String, Object>{"type": "phone_connected", "connId": connID}));
 
@@ -236,6 +267,110 @@ void main() {
     );
     bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
     await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    final sentByteCounts = <int>[];
+    final sentBytesSubscription = session.bytesSent.listen(sentByteCounts.add);
+
+    plugin.pendingPermissions.add(
+      const PluginPendingPermission(
+        id: "summary-permission",
+        sessionID: "pending-child-session",
+        displaySessionId: "pending-root-session",
+        tool: "bash",
+        description: "update the project summary",
+      ),
+    );
+    final projectsSummaryFuture = _waitForEventType(
+      messages: messages,
+      roomKey: roomKey,
+      expectedType: "projects.summary",
+    );
+    plugin.add(const BridgeSseProjectUpdated());
+
+    await _waitForCondition(
+      check: () => plugin.permissionReplies.length == 2,
+      failureMessage: "Timed out waiting for project-summary permission auto-approval",
+    );
+    expect(await projectsSummaryFuture, isTrue);
+    final bytesAfterSummary = sentByteCounts.length;
+
+    plugin.add(
+      const BridgeSsePermissionAsked(
+        requestID: "summary-permission",
+        sessionID: "pending-child-session",
+        displaySessionId: "pending-root-session",
+        tool: "bash",
+        description: "update the project summary",
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(plugin.permissionReplies, hasLength(2), reason: "queued permission events must not reply twice");
+    expect(sentByteCounts, hasLength(bytesAfterSummary));
+
+    plugin.add(
+      const BridgeSsePermissionAsked(
+        requestID: "permission-1",
+        sessionID: "child-session",
+        displaySessionId: "root-session",
+        tool: "bash",
+        description: "run a command",
+      ),
+    );
+
+    await _waitForCondition(
+      check: () => plugin.permissionReplies.length == 3,
+      failureMessage: "Timed out waiting for permission auto-approval",
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(
+      plugin.permissionReplies,
+      equals([
+        (
+          requestId: "pending-permission",
+          sessionId: "pending-child-session",
+          reply: PluginPermissionReply.once,
+        ),
+        (
+          requestId: "summary-permission",
+          sessionId: "pending-child-session",
+          reply: PluginPermissionReply.once,
+        ),
+        (
+          requestId: "permission-1",
+          sessionId: "child-session",
+          reply: PluginPermissionReply.once,
+        ),
+      ]),
+    );
+    expect(
+      sentByteCounts,
+      hasLength(bytesAfterSummary),
+      reason: "YOLO permission requests must not reach clients",
+    );
+
+    plugin.add(
+      const BridgeSsePermissionReplied(
+        requestID: "permission-1",
+        sessionID: "child-session",
+        displaySessionId: "root-session",
+        reply: "once",
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(
+      sentByteCounts,
+      hasLength(bytesAfterSummary),
+      reason: "YOLO permission replies must not reach clients",
+    );
+    expect(
+      await unseenRepository.isUnseen(sessionId: "root-session"),
+      isTrue,
+      reason: "YOLO permission replies must not clear unseen activity",
+    );
+    await sentBytesSubscription.cancel();
 
     await projectActivityService.openProject(path: "project-activity");
     final projectUpdated = await _waitForEventType(
@@ -340,6 +475,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -539,6 +675,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -655,7 +792,7 @@ void main() {
   test("session SSE events stay ordered while async enrichment completes", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
-    final plugin = _EventPlugin();
+    final plugin = _EventPlugin(pendingPermissions: const []);
     final pushDispatcher = _CapturingPushDispatcher();
     final pushListeners = _createPushListeners(
       tracker: pushDispatcher.tracker,
@@ -755,6 +892,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -997,6 +1135,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -1163,6 +1302,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -1354,6 +1494,7 @@ void main() {
         pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
       ),
       client: relayClient,
       plugin: plugin,
@@ -1686,6 +1827,8 @@ class _AbortEventPlugin extends _EventPlugin {
   Completer<void>? abortCompleter;
   Completer<void>? abortStartedCompleter;
   Object? abortError;
+
+  _AbortEventPlugin() : super(pendingPermissions: const []);
 
   @override
   Future<void> abortSession({required String sessionId}) async {
@@ -2043,6 +2186,11 @@ class _NoopPlugin implements NativeProjectsPluginApi {
 
 class _EventPlugin extends _NoopPlugin {
   int subscribeCount = 0;
+  final List<({String requestId, String sessionId, PluginPermissionReply reply})> permissionReplies = [];
+  final List<PluginPendingPermission> pendingPermissions;
+
+  _EventPlugin({required List<PluginPendingPermission> pendingPermissions})
+    : pendingPermissions = List<PluginPendingPermission>.of(pendingPermissions);
 
   @override
   Stream<BridgeSseEvent> get events {
@@ -2059,6 +2207,41 @@ class _EventPlugin extends _NoopPlugin {
 
   void add(BridgeSseEvent event) {
     _controller.add(event);
+  }
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    if (pendingPermissions.isEmpty) return super.getActiveSessionsSummary();
+    return const [
+      PluginProjectActivitySummary(
+        id: "pending-project",
+        activeSessions: [
+          PluginActiveSession(
+            id: "pending-root-session",
+            mainAgentRunning: true,
+            awaitingInput: true,
+            childSessionIds: ["pending-child-session"],
+          ),
+        ],
+      ),
+    ];
+  }
+
+  @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async {
+    return pendingPermissions
+        .where((permission) => (permission.displaySessionId ?? permission.sessionID) == sessionId)
+        .toList();
+  }
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) async {
+    permissionReplies.add((requestId: requestId, sessionId: sessionId, reply: reply));
+    pendingPermissions.removeWhere((permission) => permission.id == requestId);
   }
 
   Future<void> waitForSubscription() async {

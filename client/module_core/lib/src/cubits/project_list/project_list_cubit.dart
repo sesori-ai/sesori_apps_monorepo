@@ -491,12 +491,16 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     return _activeRefresh ??= _fetchProjects(silent: true).whenComplete(() => _activeRefresh = null);
   }
 
-  /// Calls the bridge API to hide the project, then optimistically removes
-  /// it from the current state on success.
-  Future<void> hideProject(String projectId) async {
+  /// Calls the bridge API to hide the project, then removes it from the
+  /// current state on success. Returns whether the bridge accepted the hide,
+  /// so the UI can report a rejected hide instead of claiming success.
+  Future<bool> hideProject(String projectId) async {
     final response = await _projectService.hideProject(projectId: projectId);
-    if (isClosed) return;
-    if (response is! SuccessResponse) return;
+    if (isClosed) return false;
+    if (response case ErrorResponse(:final error)) {
+      loge("Failed to hide project: ${error.toString()}");
+      return false;
+    }
     if (state case final ProjectListLoaded loaded) {
       final remaining = loaded.projects.where((p) => p.id != projectId).toList();
       emit(
@@ -509,6 +513,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       // names the machine — same follow-up enrichment as an empty fetch.
       if (remaining.isEmpty) unawaited(_enrichLoadedEmptyWithBridges());
     }
+    return true;
   }
 
   /// Creates a new project at [path].

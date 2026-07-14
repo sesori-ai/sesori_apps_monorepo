@@ -7,6 +7,7 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
 import "anchored_flat_panel.dart";
+import "anchored_spotlight_backdrop.dart";
 
 /// A single entry in a [PregoAnchorMenu].
 ///
@@ -34,6 +35,7 @@ class PregoMenuItem extends PregoMenuEntry {
     required this.isSelected,
     required this.onTap,
     this.leadingIcon,
+    this.isDestructive = false,
   });
 
   final String title;
@@ -44,6 +46,12 @@ class PregoMenuItem extends PregoMenuEntry {
   /// Optional glyph shown before the title. Rendered identically on the glass
   /// and flat paths (muted to the secondary text colour).
   final IconData? leadingIcon;
+
+  /// Marks an action that destroys something the user cannot get back (delete,
+  /// not archive). Tints the title and glyph with the error colour on both
+  /// paths. Reach for it sparingly — a menu where several rows shout stops any
+  /// of them being heard.
+  final bool isDestructive;
 }
 
 /// A thin separator line between entries.
@@ -66,6 +74,48 @@ class PregoMenuCustom extends PregoMenuEntry {
 /// path, toggles) the popup — wire it to the trigger's tap handler.
 typedef PregoMenuTriggerBuilder = Widget Function(BuildContext context, VoidCallback toggle);
 
+/// Blurs and dims the page behind an open [PregoAnchorMenu], cutting a sharp
+/// hole around the trigger so it stays legible and reads as lifted out of the
+/// blur — the iOS context-menu treatment for a long-pressed list row.
+///
+/// Only the flat path can spotlight. The glass path's [GlassMenu] hides its own
+/// trigger while the popup is up and morphs the popup out of the trigger's
+/// bounds, so there is nothing left to keep sharp; [PregoAnchorMenu] asserts the
+/// pairing rather than letting the option silently do nothing.
+class PregoMenuSpotlight {
+  const PregoMenuSpotlight({
+    required this.borderRadius,
+    this.inset = EdgeInsets.zero,
+  });
+
+  /// Corner radius of the sharp cut-out.
+  final double borderRadius;
+
+  /// Shrinks the cut-out relative to the trigger's bounds. A full-width list row
+  /// insets horizontally so the sharp region reads as a lifted card rather than
+  /// a full-bleed band running into the screen edges.
+  final EdgeInsets inset;
+
+  /// The region to keep sharp for a trigger occupying [triggerRect].
+  ///
+  /// An [inset] larger than the trigger would flip the rect inside out and hand
+  /// a negative-size rect to the backdrop's cut-out and outline; the trigger's
+  /// raw bounds win over the inset in that case.
+  Rect resolveRect({required Rect triggerRect}) {
+    final deflated = inset.deflateRect(triggerRect);
+    return (deflated.width < 0 || deflated.height < 0) ? triggerRect : deflated;
+  }
+
+  /// The treatment for a long-pressed full-width list row: the cut-out is inset
+  /// from the screen edges so the sharp region reads as a lifted card rather
+  /// than a full-bleed band. One shared preset so every long-pressable row gets
+  /// the identical spotlight.
+  static const listRow = PregoMenuSpotlight(
+    borderRadius: 16,
+    inset: EdgeInsets.symmetric(horizontal: 8),
+  );
+}
+
 /// A popup menu that anchors to its trigger, rendered platform-appropriately.
 ///
 /// On Apple platforms it is the `liquid_glass_widgets` [GlassMenu] — the
@@ -74,27 +124,36 @@ typedef PregoMenuTriggerBuilder = Widget Function(BuildContext context, VoidCall
 /// anchored to the trigger and animated with the `cue` package's spring physics
 /// (a [CueModalTransition]) — same anchored-popup behaviour, zero shader cost.
 ///
-/// The same [entries] and [triggerBuilder] drive both paths; only the rendering
-/// differs. See [glassEffectsEnabled] for the platform switch. Set [flat] to
+/// The same [entriesBuilder] and [triggerBuilder] drive both paths; only the
+/// rendering differs. See [glassEffectsEnabled] for the platform switch. Set [flat] to
 /// force the flat/`cue` path on every platform (including Apple) — for a menu
 /// paired with a flat trigger, where a glass popup would look out of place.
 class PregoAnchorMenu extends StatefulWidget {
   const PregoAnchorMenu({
     super.key,
     required this.triggerBuilder,
-    required this.entries,
+    required this.entriesBuilder,
     this.menuWidth = 240,
     this.menuHeight,
     this.menuBorderRadius = 24,
     this.menuScreenPadding = const EdgeInsets.all(12),
     this.flat = false,
-  });
+    this.spotlight,
+  }) : assert(
+         spotlight == null || flat,
+         "A spotlight needs the flat path (flat: true): GlassMenu hides its trigger while the "
+         "popup is up, so there is no trigger left to keep sharp.",
+       );
 
   /// Builds the tappable trigger. The provided callback opens the menu.
   final PregoMenuTriggerBuilder triggerBuilder;
 
-  /// The menu contents, top to bottom.
-  final List<PregoMenuEntry> entries;
+  /// Builds the menu contents, top to bottom. A builder rather than a list so
+  /// a trigger hosted in a frequently-rebuilding row (a live-updating list
+  /// tile) pays nothing for a closed menu: the flat path calls it only when the
+  /// menu opens. The glass path materialises it at build time — [GlassMenu]
+  /// takes its items up front.
+  final List<PregoMenuEntry> Function() entriesBuilder;
 
   /// Width of the open menu.
   final double menuWidth;
@@ -114,6 +173,12 @@ class PregoAnchorMenu extends StatefulWidget {
   /// (the default) the path follows [glassEffectsEnabled] — glass on Apple,
   /// flat on Android.
   final bool flat;
+
+  /// When set, the open menu blurs and dims the page behind it while keeping the
+  /// trigger sharp. Null (the default) leaves the backdrop untouched — right for
+  /// a menu hung off a button, where the page behind it is not the subject.
+  /// Requires [flat]; see [PregoMenuSpotlight].
+  final PregoMenuSpotlight? spotlight;
 
   @override
   State<PregoAnchorMenu> createState() => _PregoAnchorMenuState();
@@ -146,7 +211,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
         toggle();
         _alignGlassMenuToTrigger(context);
       }),
-      items: [for (final entry in widget.entries) _glassEntry(context, entry: entry)],
+      items: [for (final entry in widget.entriesBuilder()) _glassEntry(context, entry: entry)],
     );
   }
 
@@ -175,13 +240,26 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
       case PregoMenuLabel(:final text):
         // GlassMenuLabel uppercases the title itself; we only supply the style.
         return GlassMenuLabel(title: text, style: _labelStyle(prego));
-      case PregoMenuItem(:final title, :final subtitle, :final isSelected, :final onTap, :final leadingIcon):
+      case PregoMenuItem(
+        :final title,
+        :final subtitle,
+        :final isSelected,
+        :final onTap,
+        :final leadingIcon,
+        :final isDestructive,
+      ):
         return GlassMenuItem(
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
-          icon: leadingIcon == null ? null : Icon(leadingIcon, size: 20, color: prego.colors.textSecondary),
-          titleStyle: _titleStyle(prego),
+          // GlassMenuItem would paint a destructive row in Cupertino's system
+          // red; the explicit style below keeps it on the design system's error
+          // token instead. The flag still drives its press feedback.
+          isDestructive: isDestructive,
+          icon: leadingIcon == null
+              ? null
+              : Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive)),
+          titleStyle: _titleStyle(prego, isDestructive: isDestructive),
           subtitleStyle: _subtitleStyle(prego),
           trailing: isSelected ? _selectedCheck(prego) : null,
           onTap: onTap,
@@ -196,6 +274,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
   // ── Flat path (Android) ────────────────────────────────────────────────────
 
   Widget _buildFlat(BuildContext context) {
+    final spotlight = widget.spotlight;
     return CueModalTransition(
       barrierColor: Colors.transparent,
       motion: const Spring.smooth(),
@@ -204,24 +283,45 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
       // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
       triggerBuilder: (context, showModal) =>
           widget.triggerBuilder(context, () => unawaited(showModal())),
-      builder: (context, triggerRect) => AnchoredFlatPanel(
-        triggerRect: triggerRect,
-        width: widget.menuWidth,
-        height: widget.menuHeight,
-        borderRadius: widget.menuBorderRadius,
-        screenPadding: widget.menuScreenPadding,
-        // AnchoredFlatPanel owns the scroll, so this supplies just the padded
-        // column of entries; the panel scrolls it when the menu is taller than
-        // the room beside the trigger.
-        childBuilder: (context, close) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final entry in widget.entries) _flatEntry(context, entry: entry, close: close),
-            ],
-          ),
+      builder: (context, triggerRect) {
+        final panel = _flatPanel(context, triggerRect: triggerRect);
+        if (spotlight == null) return panel;
+        // The backdrop is stacked here rather than passed as CueModalTransition's
+        // `backdrop`, which is a plain widget and so cannot see the trigger rect
+        // it must cut its hole around. Both children fill the route; the panel
+        // paints last, over the blur.
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            AnchoredSpotlightBackdrop(
+              spotlightRect: spotlight.resolveRect(triggerRect: triggerRect),
+              borderRadius: spotlight.borderRadius,
+            ),
+            panel,
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _flatPanel(BuildContext context, {required Rect triggerRect}) {
+    return AnchoredFlatPanel(
+      triggerRect: triggerRect,
+      width: widget.menuWidth,
+      height: widget.menuHeight,
+      borderRadius: widget.menuBorderRadius,
+      screenPadding: widget.menuScreenPadding,
+      // AnchoredFlatPanel owns the scroll, so this supplies just the padded
+      // column of entries; the panel scrolls it when the menu is taller than
+      // the room beside the trigger.
+      childBuilder: (context, close) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final entry in widget.entriesBuilder()) _flatEntry(context, entry: entry, close: close),
+          ],
         ),
       ),
     );
@@ -236,12 +336,20 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
           // Uppercased to match GlassMenuLabel on the glass path.
           child: Text(text.toUpperCase(), style: _labelStyle(prego)),
         );
-      case PregoMenuItem(:final title, :final subtitle, :final isSelected, :final onTap, :final leadingIcon):
+      case PregoMenuItem(
+        :final title,
+        :final subtitle,
+        :final isSelected,
+        :final onTap,
+        :final leadingIcon,
+        :final isDestructive,
+      ):
         return _FlatMenuTile(
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
           leadingIcon: leadingIcon,
+          isDestructive: isDestructive,
           onTap: () {
             close();
             onTap();
@@ -269,6 +377,7 @@ class _FlatMenuTile extends StatelessWidget {
     required this.subtitle,
     required this.isSelected,
     required this.onTap,
+    required this.isDestructive,
     this.leadingIcon,
   });
 
@@ -276,6 +385,7 @@ class _FlatMenuTile extends StatelessWidget {
   final String? subtitle;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool isDestructive;
   final IconData? leadingIcon;
 
   @override
@@ -294,7 +404,7 @@ class _FlatMenuTile extends StatelessWidget {
           child: Row(
             children: [
               if (leadingIcon != null) ...[
-                Icon(leadingIcon, size: 20, color: prego.colors.textSecondary),
+                Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive)),
                 const SizedBox(width: 12),
               ],
               Expanded(
@@ -302,7 +412,12 @@ class _FlatMenuTile extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: _titleStyle(prego)),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _titleStyle(prego, isDestructive: isDestructive),
+                    ),
                     if (subtitle != null && subtitle.isNotEmpty)
                       Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: _subtitleStyle(prego)),
                   ],
@@ -325,8 +440,13 @@ class _FlatMenuTile extends StatelessWidget {
 TextStyle _labelStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);
 
-TextStyle _titleStyle(PregoDesignSystem prego) =>
-    prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary);
+TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive}) =>
+    prego.textTheme.textSm.medium.copyWith(
+      color: isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textPrimary,
+    );
+
+Color _iconColor(PregoDesignSystem prego, {required bool isDestructive}) =>
+    isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textSecondary;
 
 TextStyle _subtitleStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary);

@@ -146,6 +146,98 @@ void main() {
       buffer.dispose();
     });
 
+    test("flush interval stretches as the buffered text grows, capped at 300ms", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        // Small buffers flush at the base throttle.
+        buffer.appendDelta(partId: "p1", delta: "small");
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 1);
+
+        // Past the relaxed threshold (8 KiB) the next flush waits
+        // proportionally longer than the base throttle (~16 KB → ~98ms).
+        buffer.appendDelta(partId: "p1", delta: "x" * 16000);
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 1);
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 2);
+
+        // No matter how large the part grows, the interval caps at 300ms.
+        buffer.appendDelta(partId: "p1", delta: "x" * 1000000);
+        async.elapse(const Duration(milliseconds: 300));
+        expect(flushCount, 3);
+
+        buffer.dispose();
+      });
+    });
+
+    test("a finalized large part stops throttling the next part", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        // The large part schedules the capped 300ms interval, then finalizes
+        // before that timer fires.
+        buffer.appendDelta(partId: "p1", delta: "x" * 1000000);
+        buffer.removePart("p1");
+
+        // The next (small) part must get its normal 50ms flush, not inherit
+        // the stale 300ms timer.
+        buffer.appendDelta(partId: "p2", delta: "small");
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 1);
+        expect(buffer.snapshot(), {"p2": "small"});
+
+        buffer.dispose();
+      });
+    });
+
+    test("removing the last part cancels the pending flush", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        buffer.appendDelta(partId: "p1", delta: "data");
+        buffer.removePart("p1");
+
+        async.elapse(const Duration(milliseconds: 400));
+        expect(flushCount, 0);
+
+        buffer.dispose();
+      });
+    });
+
+    test("removing one part reschedules the flush for the remaining parts", () {
+      fakeAsync((async) {
+        var flushCount = 0;
+        final buffer = StreamingTextBuffer(
+          onFlush: () => flushCount++,
+          throttle: const Duration(milliseconds: 50),
+        );
+
+        buffer.appendDelta(partId: "p1", delta: "x" * 1000000);
+        buffer.appendDelta(partId: "p2", delta: "small");
+        buffer.removePart("p1");
+
+        async.elapse(const Duration(milliseconds: 50));
+        expect(flushCount, 1);
+        expect(buffer.snapshot(), {"p2": "small"});
+
+        buffer.dispose();
+      });
+    });
+
     test("appendDelta() after clear() works normally (buffer is reusable)", () {
       fakeAsync((async) {
         var flushCount = 0;

@@ -1,8 +1,8 @@
 ---
 description: Reviews development plans against strict architectural rules for the Sesori monorepo. Validates proposed layer boundaries, dependency direction, class cohesion, naming discipline, and simplicity before any code is written. Rejects god classes, pass-through parameters, peer-as-child dependency patterns, asymmetric trigger handling, and misuse of class suffixes. Also rejects designs that foreclose the documented product-direction invariants in docs/VISION.md, or that build speculatively ahead of need. Input is a plan containing a clear goal plus concrete implementation steps. Always invoke before implementation begins.
 mode: subagent
-model: kimi-for-coding/k2p7
-variant: max
+model: openai/gpt-5.6-sol
+variant: high
 temperature: 0.1
 permission:
   "*": deny

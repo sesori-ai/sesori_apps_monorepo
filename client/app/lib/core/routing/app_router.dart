@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/widgets/session_split/empty_session_detail_panel.dart";
 import "../../core/widgets/session_split/session_split_scope.dart";
@@ -97,12 +98,13 @@ extension AppRouteToGoRoute on AppRouteDef {
 Page<void> buildSessionPaneTransitionPage({
   required BuildContext context,
   required GoRouterState state,
+  required LocalKey pageKey,
   required Widget child,
 }) {
   final duration = context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220);
   final isImperative = isImperativePaneState(context: context, state: state);
   return CustomTransitionPage<void>(
-    key: state.pageKey,
+    key: pageKey,
     transitionDuration: duration,
     reverseTransitionDuration: duration,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -233,6 +235,7 @@ List<RouteBase> _buildAppRoutes({
               pageBuilder: (context, state) => buildSessionPaneTransitionPage(
                 context: context,
                 state: state,
+                pageKey: state.pageKey,
                 child: Builder(
                   builder: (context) {
                     final route = switch (AppRoute.fromDef(
@@ -264,6 +267,7 @@ List<RouteBase> _buildAppRoutes({
                     return buildSessionPaneTransitionPage(
                       context: context,
                       state: state,
+                      pageKey: state.pageKey,
                       child: NewSessionScreen(projectId: route.projectId, projectName: route.projectName),
                     );
                   },
@@ -282,6 +286,7 @@ List<RouteBase> _buildAppRoutes({
                     return buildSessionPaneTransitionPage(
                       context: context,
                       state: state,
+                      pageKey: ValueKey((state.pageKey, route.projectId, route.sessionId)),
                       child: SessionDetailScreen(
                         key: ValueKey("session-detail-${route.sessionId}"),
                         projectId: route.projectId,
@@ -307,6 +312,7 @@ List<RouteBase> _buildAppRoutes({
                         return buildSessionPaneTransitionPage(
                           context: context,
                           state: state,
+                          pageKey: state.pageKey,
                           child: SessionDiffsScreen(
                             key: ValueKey("session-diffs-${route.sessionId}"),
                             projectId: route.projectId,
@@ -365,7 +371,8 @@ class _SessionListPane extends StatelessWidget {
             ),
           );
         },
-        onSessionLongPress: (session) => actionDispatcher.showSessionActions(context: context, session: session),
+        sessionMenuEntries: (BuildContext context, Session session) =>
+            actionDispatcher.sessionMenuEntries(context: context, session: session),
         onSessionSwipe: (session) => actionDispatcher.handleSessionSwipe(context: context, session: session),
       ),
     );

@@ -194,16 +194,17 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     bool fromNewSession = false,
   }) {}
 
-  /// Applies the requested [model] and [variant] for a turn on [sessionId]
-  /// before the prompt is dispatched. Called from [createSession] and from
-  /// [sendPrompt]/[sendCommand], so a mid-conversation switch takes effect.
-  /// Base does nothing (the agent's defaults are used). Cursor overrides to
-  /// drive its model + mode `session/set_config_option` calls.
+  /// Applies the requested [model], [variant], and [agent] for a turn on
+  /// [sessionId] before the prompt is dispatched. Called from [createSession]
+  /// and from [sendPrompt]/[sendCommand], so a mid-conversation switch takes
+  /// effect. Base does nothing (the agent's defaults are used). Cursor overrides
+  /// to drive its model / mode / effort `session/set_config_option` calls.
   Future<void> applyTurnSelection({
     required AcpStdioClient client,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
+    required String? agent,
   }) async {}
 
   /// Invoked when the agent subprocess is torn down for a respawn (see
@@ -643,6 +644,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         sessionId: session.sessionId,
         model: model,
         variant: variant,
+        agent: agent,
       );
     } else {
       // A fresh session has an empty chain, so this dispatches immediately;
@@ -652,6 +654,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         parts: parts,
         model: model,
         variant: variant,
+        agent: agent,
       );
     }
     return PluginSession(
@@ -683,6 +686,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       parts: parts,
       model: model,
       variant: variant,
+      agent: agent,
     );
   }
 
@@ -703,6 +707,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       parts: [PluginPromptPart.text(text: body)],
       model: model,
       variant: variant,
+      agent: agent,
     );
   }
 
@@ -858,6 +863,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required List<PluginPromptPart> parts,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
+    required String? agent,
   }) {
     final blocks = parts
         .map(_promptPartToContentBlock)
@@ -887,6 +893,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         blocks: blocks,
         model: model,
         variant: variant,
+        agent: agent,
       ),
     );
   }
@@ -911,6 +918,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required List<Map<String, dynamic>> blocks,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
+    required String? agent,
   }) async {
     // Aborted turns were never dispatched, so no per-turn error event — just
     // settle the accounting (idle emission when the count reaches 0).
@@ -951,6 +959,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         sessionId: sessionId,
         model: model,
         variant: variant,
+        agent: agent,
       );
     } on Object catch (error, stack) {
       // Selection is best-effort (the Cursor override is already fail-soft):

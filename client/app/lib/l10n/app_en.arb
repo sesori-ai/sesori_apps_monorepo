@@ -353,6 +353,7 @@
   "fetchDirectoryGoBack": "Go Back",
   "gitRepoBadge": "git",
   "projectHidden": "Project hidden",
+  "projectHideFailed": "Failed to hide project",
   "hideProject": "Hide Project",
   "projectFolderMissing": "Folder not found",
   "projectFolderMissingMessage": "This project's folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.",

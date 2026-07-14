@@ -29,7 +29,7 @@ Future<List<FileDiff>> computeSessionDiffs({
   final mergeBaseResult = await _runGit(
     processRunner: processRunner,
     worktreePath: worktreePath,
-    arguments: ["merge-base", "--", baseBranch, "HEAD"],
+    arguments: ["merge-base", baseBranch, "HEAD"],
   );
   if (mergeBaseResult.exitCode != 0) {
     final stderr = decodeOutput(mergeBaseResult.stderr).trim();

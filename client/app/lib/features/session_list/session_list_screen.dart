@@ -71,7 +71,8 @@ class _SessionListBody extends StatelessWidget {
           ),
         );
       },
-      onSessionLongPress: (session) => actionDispatcher.showSessionActions(context: context, session: session),
+      sessionMenuEntries: (BuildContext context, Session session) =>
+          actionDispatcher.sessionMenuEntries(context: context, session: session),
       onSessionSwipe: (session) => actionDispatcher.handleSessionSwipe(context: context, session: session),
     );
   }

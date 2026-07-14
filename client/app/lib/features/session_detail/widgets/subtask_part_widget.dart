@@ -5,6 +5,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/current_project_name.dart";
+import "../../../core/widgets/isolated_activity_indicator.dart";
 
 class SubtaskPartWidget extends StatelessWidget {
   final String? projectId;
@@ -101,7 +102,7 @@ class SubtaskPartWidget extends StatelessWidget {
     SessionStatusBusy() || SessionStatusRetry() => SizedBox(
       width: 16,
       height: 16,
-      child: CircularProgressIndicator(
+      child: IsolatedActivityIndicator(
         strokeWidth: 2,
         color: prego.colors.bgBrandSolid,
       ),

@@ -14,6 +14,7 @@ See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering
 - Services: resolve via `getIt<Type>()`, NOT `context.read<Service>()`
 - Cubits: `BlocProvider(create: (_) => MyCubit(getIt<MyService>()))`, then `context.watch`/`context.read`
 - Do NOT use `BlocBuilder` — prefer `context.watch<MyCubit>().state`
+- Do not reduce visible animation cadence as a battery optimization without explicit design approval. For long-lived busy indicators, first isolate repaint damage and profile the smooth animation; use a static indicator when continuous frames are unacceptable.
 - Guard `emit()` with `if (isClosed) return;` after any async gap in cubits
 - DI configured in `lib/core/di/injection.dart` — calls `configureCoreDependencies(getIt)` after Flutter-specific registrations
 
@@ -82,6 +83,7 @@ The only exception is reading `Theme.of(context).brightness` for light/dark chec
 - GoRouter for routing (`go_router`)
 - No automatic redirects — all navigation triggered by explicit user action
 - Routes use web-style URLs with path/query params. Do NOT use `state.extra`
+- For pageless routes such as modal sheets, align the enclosing `Page` key with the logical owner so Flutter's Navigator lifecycle removes them naturally. Prefer correct page identity and a current-route presentation gate over manually tracking `ModalRoute`s or listening to `GoRouter.routerDelegate` from a feature widget.
 
 ## Platform Adapters
 

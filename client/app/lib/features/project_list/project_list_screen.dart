@@ -4,7 +4,6 @@ import "package:flutter/cupertino.dart" show CupertinoColors, CupertinoDynamicCo
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:go_router/go_router.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -89,61 +88,6 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   void dispose() {
     _ticker.cancel();
     super.dispose();
-  }
-
-  void _showProjectMenu({required BuildContext context, required Project project}) {
-    // Capture messenger and cubit before any Navigator.pop to avoid
-    // post-pop context access.
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final cubit = context.read<ProjectListCubit>();
-    final loc = context.loc;
-    // Same display-name resolution as _ProjectTile, so the sheet is titled
-    // by the project it acts on.
-    final lastSegment = _projectDirectoryBasename(project);
-    final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
-
-    showPregoBottomSheet<void>(
-      context: context,
-      title: displayName,
-      // Full-bleed tiles; each ListTile carries its own horizontal padding.
-      contentPadding: EdgeInsetsDirectional.zero,
-      builder: (sheetContext) => Material(
-        // Transparent Material so the tiles' ink paints on top of the sheet
-        // surface instead of behind it on the modal's transparent Material.
-        type: MaterialType.transparency,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(loc.rename),
-              onTap: () {
-                sheetContext.pop();
-                showRenameProjectDialog(
-                  context: context,
-                  project: project,
-                  cubit: cubit,
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.visibility_off_outlined),
-              title: Text(loc.hideProject),
-              onTap: () {
-                sheetContext.pop();
-                cubit.hideProject(project.id);
-                scaffoldMessenger.showSnackBar(
-                  SnackBar(
-                    content: Text(loc.projectHidden),
-                    duration: kSnackBarDuration,
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   /// The scaffold's bottom-right floating action for the current [state]: the
@@ -285,7 +229,6 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                   project: project,
                   activeSessions: activityById[project.id] ?? 0,
                   unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
-                  onLongPress: () => _showProjectMenu(context: context, project: project),
                 );
               },
             ),

@@ -324,7 +324,7 @@ class _NeedHelpMenu extends StatelessWidget {
           toggle();
         },
       ),
-      entries: [
+      entriesBuilder: () => [
         PregoMenuItem(
           leadingIcon: TablerRegular.mail,
           title: loc.projectsOnboardingNeedHelpEmail,

@@ -34,6 +34,7 @@ plugin-scoped DTO for operations whose routing depends on plugin identity.
 **Directional invariants (don't weld these doors shut):**
 
 - **Plugin boundary is sacred** — no backend specifics leak past `BridgePluginApi` into `shared/`, the relay protocol, or the client; our own harness is *just a plugin*; differing abilities are optional, declared capabilities.
+- Plugins normalize backend identifiers and presentation fields into the existing contract before returning them. Shared clients must not infer backend meaning from description length, capitalization, or other payload-shape heuristics.
 - **The bridge is one of many** — keep per-bridge addressing first-class across client/relay/auth (multi-client per bridge already works; multi-bridge is the new axis).
 - **Shared brain, thin shells** — `module_core` stays Flutter-free and surface-agnostic; the client is online-first with minimal local cache.
 - **Headless-first bridge** — desktop GUI supervision is additive and gated; the standalone/VM path stays first-class (this is what enables managed VMs).
@@ -424,6 +425,10 @@ module_auth/lib/src/
 
 Data flows downstream via streams and events — this is push-based. Polling is a violation unless the data source genuinely can't expose a stream.
 
+Long-lived Flutter busy indicators preserve smooth visible motion unless the user explicitly approves another treatment. Isolate repaint damage and profile before reducing cadence; if continuous frames are unacceptable, deliberately use a static indicator. Animated indicators must stop under `TickerMode` and become static under reduced motion. Do not carry performance measurements across materially different animation implementations.
+
+When a coalesced staleness queue drives snapshot refreshes, only a successfully applied snapshot consumes queued staleness. A failed or connection-blocked refresh must preserve and re-arm the prior signal, while signals arriving during the refresh remain queued independently.
+
 - **Polling** (flag): `Timer.periodic`, `Stream.periodic`, manual re-fetch loops, or repeatedly-triggered invalidation to re-fetch data you already had from a stream-capable source.
 - **Not polling** (fine): one-shot fetches on user action (pull-to-refresh, initial load); retry-with-backoff on failed network calls (that's reconnection); periodic timers used for genuine scheduling like heartbeats or stuck-session sweeps.
 
@@ -520,6 +525,23 @@ remove old marked compatibility code.
 
 Conventional commits: `fix:`, `feat:`, `ci:`, `docs:`, `chore:`.
 
+Create new branches from the current tip of their intended base branch unless
+the user explicitly requests a historical branch point. A commit recorded for
+plan review or audit is staleness metadata, not the default branch point.
+
+When defining a plan while checked out on a branch other than the repository's
+default base (`main` here), never infer where implementation should start. Ask
+one question with three explicit choices: the named default base branch, the
+named current branch, or another branch. Record the selected implementation
+base in the plan; plan-delivery and first-wave plan-host branches start from the
+current tip of that selected branch. Cross-repository implementation steps use
+the repository/base declared by their step. Parallel same-wave steps pin one
+baseline commit per repository/base pair when that wave starts. Plans record an
+audited tip SHA/date for every repository/base pair; workers assess drift from
+that audit point, and the exact tip SHA assessed becomes that wave's baseline.
+Before parallel sibling branches are created, those baselines are committed and
+pushed to the plan-host `plan/<slug>/tracking` branch as shared execution state.
+
 `.gitattributes` marks generated code and test directories as `linguist-generated` so GitHub collapses their diffs. Lockfiles (`pubspec.lock`, `Gemfile.lock`, `Podfile.lock`) must NEVER be marked as generated — the user always reviews lockfile diffs.
 
 ## PR Monitoring
@@ -602,6 +624,7 @@ Do not skip either step. The reviewers exist because violations compound — one
 - Prefer updating both the **repo-root `AGENTS.md`** for general guidance and the **workspace/module `AGENTS.md`** for domain-specific guidance when the feedback is scoped.
 - For UI review comments from bots, do not assume a changed shared component is an unintended regression just because the PR title names one screen. First check whether the design changed across all consumers; if the design source or user intent says the shared visual changed globally, decline the bot comment instead of preserving old styling on non-focused screens.
 - Do not broaden a PR to eliminate rare or speculative edge cases merely because a reviewer can describe them. Require a plausible user flow and meaningful consequence; decline fixes that need broad locking, new abstractions, or large refactors without concrete evidence proportional to that cost.
+- Treat multiplying local guards, registries, listeners, callbacks, and cleanup paths for one bug as evidence that the ownership or identity model is wrong. Stop and look for the framework-native lifecycle or a single upstream invariant before adding more localized fixes; cover the likely, meaningful failure paths rather than every describable timing window.
 - Do this proactively after the lesson is clear; do not wait for the user to ask a second time.
 - Assume the user reviews **committed and pushed code**, not your uncommitted local workspace. If you are expecting PR feedback to reflect your latest work, proactively commit and push first.
 - Never rely on users reviewing uncommitted changes. Remote PR state is the review source of truth unless the user explicitly says otherwise.

@@ -33,7 +33,7 @@ Widget _buildApp() {
     routes: [
       GoRoute(
         path: "/",
-        builder: (context, state) => const SizedBox.shrink(),
+        builder: (context, state) => const Scaffold(body: SizedBox.shrink()),
         routes: [
           GoRoute(
             path: "new",
@@ -381,15 +381,14 @@ void main() {
     // so tester.pageBack() can't find it — tap the glass chevron directly.
     await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pump();
-    // The snackbar is scheduled via a post-frame callback (so it stays safe
-    // when the pop is invoked during build), so pump once more to render it.
+    await tester.pump(const Duration(milliseconds: 500));
+    // Route disposal schedules the snackbar post-frame, so render that frame.
     await tester.pump();
 
-    // Snackbar should appear before the screen pops.
+    // Snackbar should appear after the screen pops.
     expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
 
-    // The screen should have popped (no longer showing NewSessionScreen).
-    await tester.pumpAndSettle();
+    // The screen has popped (no longer showing NewSessionScreen).
     expect(find.byType(NewSessionScreen), findsNothing);
   });
 
@@ -425,8 +424,8 @@ void main() {
     // so tester.pageBack() can't find it — tap the glass chevron directly.
     await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pump();
-    // The launching-in-background snackbar is deferred to a post-frame
-    // callback; pump once more to render it.
+    await tester.pump(const Duration(milliseconds: 500));
+    // Route disposal schedules the snackbar post-frame, so render that frame.
     await tester.pump();
     expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
 

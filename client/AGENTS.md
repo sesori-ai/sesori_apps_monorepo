@@ -99,6 +99,8 @@ Cubits orchestrate: they call services/repositories and emit state. They MUST NO
 - Depend on other cubits
 - Hold business logic that belongs in a Service
 
+Shared widgets and cubits must remain backend-neutral. Do not add plugin-name checks or infer display semantics from capitalization, description length, whitespace, or similar payload-shape heuristics; concrete plugins normalize those fields before they cross the bridge contract.
+
 For reactive state (connection, SSE events), mobile/shared cubits subscribe to
 streams exposed by `ConnectionService`. Desktop control cubits may subscribe to
 `module_desktop_core` tracker streams such as `BridgeStatusTracker` and

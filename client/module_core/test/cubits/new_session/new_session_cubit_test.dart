@@ -278,7 +278,7 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectAgent changes agent without affecting selected model variant",
+      "selectAgent preserves the model variant when the agent has no model preference",
       build: () {
         when(
           () => mockSessionService.listAgents(
@@ -296,9 +296,9 @@ void main() {
                   mode: AgentMode.primary,
                 ),
                 AgentInfo(
-                  name: "build",
-                  description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
+                  name: "Plan",
+                  description: "Plans before editing",
+                  model: null,
                   mode: AgentMode.primary,
                 ),
               ],
@@ -310,7 +310,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         cubit.selectVariant(const SessionVariant(id: "xhigh"));
-        cubit.selectAgent("oracle");
+        cubit.selectAgent("Plan");
       },
       expect: () => [
         isA<NewSessionIdle>().having(
@@ -324,7 +324,7 @@ void main() {
           "xhigh",
         ),
         isA<NewSessionIdle>()
-            .having((state) => state.selectedAgent, "selectedAgent", "oracle")
+            .having((state) => state.selectedAgent, "selectedAgent", "Plan")
             .having((state) => state.selectedAgentModel?.variant, "selectedAgentModel.variant preserved", "xhigh"),
       ],
     );

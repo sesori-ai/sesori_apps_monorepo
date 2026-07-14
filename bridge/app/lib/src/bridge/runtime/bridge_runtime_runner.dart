@@ -47,6 +47,7 @@ import "../../control/control_channel_loss_listener.dart";
 import "../../control/control_provision_notifier.dart";
 import "../../control/control_status_notifier.dart";
 import "../../foundation/control_channel_client.dart";
+import "../../repositories/bridge_settings.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
 import "../../server/api/runtime_file_api.dart";
@@ -376,18 +377,22 @@ class BridgeRuntimeRunner {
         return 1;
       }
 
-      // Resolve the configured release track once, here in the composition
-      // root. Constructing settings access (BridgeSettingsApi reads HOME) or
-      // reading the config can throw; a settings failure must never block the
-      // bridge from starting, so any error falls back to the stable track.
-      ReleaseTrack? configuredTrack;
+      // Resolve settings once at the composition root. Constructing settings
+      // access (BridgeSettingsApi reads HOME) or reading the config can throw;
+      // a settings failure must never block the bridge from starting.
+      var bridgeSettings = const BridgeSettings();
       try {
         final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
-        configuredTrack = (await settingsRepository.loadSettings()).releaseTrack;
-      } on Object catch (error) {
-        Log.w("Failed to resolve release track; defaulting to stable: $error");
+        bridgeSettings = await settingsRepository.loadSettings();
+      } on Object catch (error, stackTrace) {
+        Log.w("Failed to resolve bridge settings; using defaults", error, stackTrace);
       }
-      final releaseTrack = configuredTrack ?? ReleaseTrack.stable;
+      final releaseTrack = bridgeSettings.releaseTrack;
+      if (bridgeSettings.yolo) {
+        Console.warning(
+          "YOLO mode enabled: permission requests will be auto-approved without being sent to clients.",
+        );
+      }
       // Resolve the shared policy once so startup diagnostics and update
       // lifecycle gating cannot disagree about whether this run may update.
       final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
@@ -650,6 +655,7 @@ class BridgeRuntimeRunner {
           pluginEndpoint: plugin.describe().endpoint ?? pluginId,
           authBackendURL: options.authBackendUrl,
           sseReplayWindow: SSEManager.defaultReplayWindow,
+          yolo: bridgeSettings.yolo,
         ),
         plugin: plugin.api,
         relayClient: relayClient,
