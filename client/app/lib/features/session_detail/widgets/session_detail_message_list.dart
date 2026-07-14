@@ -185,6 +185,11 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   int? _indexSignature;
   Map<String, int> _indexById = const <String, int>{};
 
+  /// Cache for the chat package theme derived from the app theme. Deriving it
+  /// allocates a full style set, and this widget rebuilds on every streaming
+  /// flush — recompute only when the underlying [ThemeData] changes.
+  (ThemeData, chat_core.ChatTheme)? _chatThemeCache;
+
   @override
   void initState() {
     super.initState();
@@ -370,7 +375,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
           currentUserId: _kUserAuthorId,
           resolveUser: _resolveUser,
           chatController: _chatController,
-          theme: chat_core.ChatTheme.fromThemeData(Theme.of(context)),
+          theme: _chatThemeFor(theme: Theme.of(context)),
           backgroundColor: Colors.transparent,
           builders: chat_core.Builders(
             // Full-row control: drop the package's bubble/alignment/
@@ -611,6 +616,14 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     } else {
       _revealController.animateTo(0, curve: Curves.easeOut);
     }
+  }
+
+  chat_core.ChatTheme _chatThemeFor({required ThemeData theme}) {
+    final cached = _chatThemeCache;
+    if (cached != null && identical(cached.$1, theme)) return cached.$2;
+    final derived = chat_core.ChatTheme.fromThemeData(theme);
+    _chatThemeCache = (theme, derived);
+    return derived;
   }
 
   Map<String, int> _indexByIdFor({required List<MessageWithParts> messages}) {

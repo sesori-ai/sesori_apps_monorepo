@@ -4,6 +4,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
+import "../../../core/widgets/isolated_activity_indicator.dart";
 import "../../../l10n/app_localizations.dart";
 
 class ToolPartWidget extends StatelessWidget {
@@ -67,8 +68,8 @@ class ToolPartWidget extends StatelessWidget {
                 padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
                 child: Text(
                   errorText,
-                    style: prego.textTheme.textXs.regular.copyWith(
-                      color: prego.colors.fgErrorPrimary,
+                  style: prego.textTheme.textXs.regular.copyWith(
+                    color: prego.colors.fgErrorPrimary,
                   ),
                   maxLines: 4,
                   overflow: .ellipsis,
@@ -84,7 +85,7 @@ class ToolPartWidget extends StatelessWidget {
     ToolStatus.pending || ToolStatus.running => SizedBox(
       width: 16,
       height: 16,
-      child: CircularProgressIndicator(
+      child: IsolatedActivityIndicator(
         strokeWidth: 2,
         color: prego.colors.bgBrandSolid,
       ),
@@ -135,6 +136,47 @@ class _ToolOutputBlockState extends State<_ToolOutputBlock> {
   /// against the same width the text actually lays out in.
   static const _copyButtonReserve = 32.0;
 
+  /// Inputs of the last overflow measurement. The parent list rebuilds every
+  /// visible row on each streaming flush, so without this cache every rebuild
+  /// would lay out a throwaway [TextPainter] per visible tool output.
+  String? _measuredOutput;
+  double? _measuredWidth;
+  TextScaler? _measuredScaler;
+  TextStyle? _measuredStyle;
+  TextDirection? _measuredDirection;
+  bool _isExpandable = false;
+
+  bool _measureIsExpandable({
+    required BuildContext context,
+    required String output,
+    required double textWidth,
+    required TextStyle monoStyle,
+  }) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.of(context);
+    if (output == _measuredOutput &&
+        textWidth == _measuredWidth &&
+        textScaler == _measuredScaler &&
+        monoStyle == _measuredStyle &&
+        textDirection == _measuredDirection) {
+      return _isExpandable;
+    }
+    final painter = TextPainter(
+      text: TextSpan(text: output, style: monoStyle),
+      maxLines: _collapsedMaxLines,
+      textDirection: textDirection,
+      textScaler: textScaler,
+    )..layout(maxWidth: textWidth);
+    _measuredOutput = output;
+    _measuredWidth = textWidth;
+    _measuredScaler = textScaler;
+    _measuredStyle = monoStyle;
+    _measuredDirection = textDirection;
+    _isExpandable = painter.didExceedMaxLines;
+    painter.dispose();
+    return _isExpandable;
+  }
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -155,13 +197,12 @@ class _ToolOutputBlockState extends State<_ToolOutputBlock> {
           // text width (accounts for soft-wrapped long lines, not just
           // explicit newlines). maxLines bounds the layout cost.
           final textWidth = constraints.maxWidth - _copyButtonReserve;
-          final painter = TextPainter(
-            text: TextSpan(text: output, style: monoStyle),
-            maxLines: _collapsedMaxLines,
-            textDirection: Directionality.of(context),
-            textScaler: MediaQuery.textScalerOf(context),
-          )..layout(maxWidth: textWidth);
-          final isExpandable = painter.didExceedMaxLines;
+          final isExpandable = _measureIsExpandable(
+            context: context,
+            output: output,
+            textWidth: textWidth,
+            monoStyle: monoStyle,
+          );
 
           return Column(
             crossAxisAlignment: .start,

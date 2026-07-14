@@ -169,6 +169,36 @@ void main() {
     });
   });
 
+  group("streaming tail slicing", () {
+    test("returns text under the tail budget unchanged", () {
+      expect(ReasoningPartCard.streamingTail(text: "short thought"), "short thought");
+    });
+
+    test("starts the slice after the first newline inside the tail window", () {
+      final text = "${"a" * 800}\n${"b" * 400}";
+
+      expect(ReasoningPartCard.streamingTail(text: text), "b" * 400);
+    });
+
+    test("keeps the whole slice when a newline near the end would empty the preview", () {
+      // The only newline in the window sits 10 characters from the end;
+      // aligning to it would collapse the 56px preview to a near-blank
+      // sliver showing just those characters.
+      final text = "${"a" * 1000}\n${"b" * 10}";
+
+      expect(ReasoningPartCard.streamingTail(text: text), "${"a" * 689}\n${"b" * 10}");
+    });
+
+    test("never starts the slice on an orphaned UTF-16 low surrogate", () {
+      // Position an emoji so the tail cut lands exactly between its two
+      // UTF-16 code units; no newline follows, so the raw slice would
+      // otherwise begin with a malformed lone low surrogate.
+      final text = "${"x" * 700}😀${"y" * 699}";
+
+      expect(ReasoningPartCard.streamingTail(text: text), "y" * 699);
+    });
+  });
+
   group("header text", () {
     testWidgets("shows 'Thought' when not streaming", (tester) async {
       await tester.pumpWidget(buildApp(text: "Some thought", isStreaming: false));
