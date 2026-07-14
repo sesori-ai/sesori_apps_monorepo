@@ -177,11 +177,35 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       }
       return;
     }
-    // Any refresh that starts now will fetch a snapshot covering every
-    // staleness signal seen so far, so it consumes the queued flag. Signals
-    // that arrive while this refresh is in flight re-queue behind it.
+    // Remove prior staleness from the live queue while this refresh runs.
+    // Success consumes it; failure restores it. Signals that arrive while the
+    // refresh is in flight independently re-queue behind it.
+    final consumedQueuedSignal = _eventRefreshQueued;
     _eventRefreshQueued = false;
-    _activeRefresh = _doSilentRefresh().whenComplete(() => _activeRefresh = null);
+    late final Future<void> refresh;
+    refresh = _doSilentRefresh()
+        .then((appliedSnapshot) {
+          if (!appliedSnapshot && consumedQueuedSignal) {
+            _restoreQueuedRefreshAfterFailure();
+          }
+        })
+        .whenComplete(() {
+          if (identical(_activeRefresh, refresh)) {
+            _activeRefresh = null;
+          }
+        });
+    _activeRefresh = refresh;
+  }
+
+  void _restoreQueuedRefreshAfterFailure() {
+    if (isClosed) return;
+    _eventRefreshQueued = true;
+    if (_wasPaused || state is! SessionDetailLoaded) return;
+    if (!_isConnected) {
+      _needsStaleRefresh = true;
+      return;
+    }
+    _eventRefreshCooldown ??= Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
 
   void _drainQueueWhenRefreshCompletes(Future<void> activeRefresh) {
@@ -252,15 +276,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
 
-  Future<void> _doSilentRefresh() async {
+  Future<bool> _doSilentRefresh() async {
     final current = state;
-    if (current is! SessionDetailLoaded) return;
+    if (current is! SessionDetailLoaded) return false;
 
     emit(current.copyWith(isRefreshing: true, queuedMessages: _promptQueue.items));
 
     try {
       final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
-      if (isClosed) return;
+      if (isClosed) return false;
 
       switch (result) {
         case SessionDetailLoadResultLoaded(:final snapshot):
@@ -297,7 +321,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _sortChildrenByUpdatedDesc(refreshedChildSessions);
 
           final latest = state;
-          if (latest is! SessionDetailLoaded) return;
+          if (latest is! SessionDetailLoaded) return false;
           final preservedSelectedAgent = latest.selectedAgent;
           final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
@@ -348,26 +372,30 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             _sessionViewingService.setViewingSession(_sessionId);
           }
           _drainPendingEvents();
+          return true;
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;
           final latest = state;
           if (latest is SessionDetailLoaded) {
             emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
           }
+          return false;
         case SessionDetailLoadResultFailed(:final error):
           logw("Silent refresh failed: ${error.toString()}");
           final latest = state;
           if (latest is SessionDetailLoaded) {
             emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
           }
+          return false;
       }
     } catch (error) {
       logw("Silent refresh failed: ${error.toString()}");
-      if (isClosed) return;
+      if (isClosed) return false;
       final latest = state;
       if (latest is SessionDetailLoaded) {
         emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
       }
+      return false;
     }
   }
 

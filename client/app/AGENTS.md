@@ -14,6 +14,7 @@ See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering
 - Services: resolve via `getIt<Type>()`, NOT `context.read<Service>()`
 - Cubits: `BlocProvider(create: (_) => MyCubit(getIt<MyService>()))`, then `context.watch`/`context.read`
 - Do NOT use `BlocBuilder` — prefer `context.watch<MyCubit>().state`
+- Long-lived busy indicators use static or low-frequency motion that stops when `TickerMode` is disabled or reduced motion is requested; never leave a stock indeterminate ticker running at display refresh for an entire agent turn.
 - Guard `emit()` with `if (isClosed) return;` after any async gap in cubits
 - DI configured in `lib/core/di/injection.dart` — calls `configureCoreDependencies(getIt)` after Flutter-specific registrations
 

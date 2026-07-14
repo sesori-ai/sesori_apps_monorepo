@@ -11,8 +11,8 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/imperative_pane_route.dart";
 import "../../../core/widgets/connection_banner.dart";
-import "../../../core/widgets/isolated_activity_indicator.dart";
 import "../../../core/widgets/session_split/session_split_scope.dart";
+import "../../../core/widgets/throttled_activity_indicator.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
 import "session_detail_loaded_view.dart";
@@ -111,7 +111,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
             child: SizedBox(
               width: 20,
               height: 20,
-              child: IsolatedActivityIndicator(
+              child: ThrottledActivityIndicator(
                 strokeWidth: 2.5,
                 color: context.prego.colors.bgBrandSolid,
               ),

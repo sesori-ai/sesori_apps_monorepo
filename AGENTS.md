@@ -424,6 +424,10 @@ module_auth/lib/src/
 
 Data flows downstream via streams and events — this is push-based. Polling is a violation unless the data source genuinely can't expose a stream.
 
+Long-lived Flutter busy indicators must not keep the render pipeline active at display refresh for the full operation. Use a static indicator or a low-frequency animation that stops under `TickerMode`/reduced motion, and do not carry performance measurements across materially different animation implementations.
+
+When a coalesced staleness queue drives snapshot refreshes, only a successfully applied snapshot consumes queued staleness. A failed or connection-blocked refresh must preserve and re-arm the prior signal, while signals arriving during the refresh remain queued independently.
+
 - **Polling** (flag): `Timer.periodic`, `Stream.periodic`, manual re-fetch loops, or repeatedly-triggered invalidation to re-fetch data you already had from a stream-capable source.
 - **Not polling** (fine): one-shot fetches on user action (pull-to-refresh, initial load); retry-with-backoff on failed network calls (that's reconnection); periodic timers used for genuine scheduling like heartbeats or stuck-session sweeps.
 
