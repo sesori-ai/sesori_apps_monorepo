@@ -16,10 +16,10 @@
 
 ## Plan Review
 
-- **Verdict:** Approved after pre-delivery base drift audit
+- **Verdict:** Approved after plan-PR feedback review
 - **Reviewer:** `aristotle-plan-review`
 - **Date:** 2026-07-14
-- **Reviewed commit:** `28662b349e9979273877a3cb01b84baef703fb12` plus the complete uncommitted plan tree
+- **Reviewed commit:** `f772f15e3ffffc658d69890098383e74618e5546`
 
 ## Wave Baselines
 
@@ -52,6 +52,7 @@
 
 ## Findings and Plan Deltas
 
+- **2026-07-14 — Legacy-thread assessment:** Four bot threads on superseded `docs/pr-monitor/PLAN.md` required no canonical change: owner-scoped multi-user cache metadata is explicitly speculative, direct detail has no PR presentation, intermediate-wave historical freshness is not a shipped regression and remains explicitly refreshable, and unverifiable legacy archived cache rows intentionally fail closed rather than guessing GitHub authorship. Full plan review remained approved.
 - **2026-07-14 — Plan delivery:** The approved canonical plan tree was pushed to plan PR https://github.com/sesori-ai/sesori_apps_monorepo/pull/436.
 - **2026-07-14 — Pre-delivery approval refresh:** `aristotle-plan-review` approved the complete tree against latest audited `main` tip `e766684e0fdc22256419b7b99691021c9f14732d`; architecture, compatibility, migrations, lifecycle ownership, verification, tracker state, and audit references were execution-ready.
 - **2026-07-14 — Pre-delivery drift audit:** `main` advanced from `2f4adf2dec643f44db231f88d09672499a8a8619` to `e766684e0fdc22256419b7b99691021c9f14732d` only through iOS TestFlight workflow/Fastfile fixes. No planned path, contract, schema, architecture, or product decision changed.
