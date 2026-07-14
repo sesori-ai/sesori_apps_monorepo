@@ -65,6 +65,25 @@ void main() {
       expect(find.text("Alpha"), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
+    testWidgets("first and last item highlights reach the panel edges", (tester) async {
+      await tester.pumpWidget(
+        _harness([
+          PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
+          PregoMenuItem(title: "Beta", subtitle: null, isSelected: false, onTap: () {}),
+        ], flat: true),
+      );
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      final panelRect = tester.getRect(find.byType(SingleChildScrollView));
+      final firstItemRect = tester.getRect(find.widgetWithText(InkWell, "Alpha"));
+      final lastItemRect = tester.getRect(find.widgetWithText(InkWell, "Beta"));
+
+      expect(firstItemRect.top, panelRect.top);
+      expect(lastItemRect.bottom, panelRect.bottom);
+    });
+
     testWidgets("a custom entry can close the menu via its close callback", (tester) async {
       await tester.pumpWidget(
         _harness([
