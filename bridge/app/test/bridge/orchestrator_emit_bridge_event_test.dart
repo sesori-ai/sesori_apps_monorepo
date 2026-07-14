@@ -131,6 +131,27 @@ void main() {
       projectRepository: projectRepository,
       now: () => 1234,
     );
+    final sessionViewTracker = SessionViewTracker();
+    final unseenRepository = SessionUnseenRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
+      db: database,
+      calculator: const SessionUnseenCalculator(),
+    );
+    final sessionUnseenService = SessionUnseenService(
+      unseenRepository: unseenRepository,
+      projectRepository: projectRepository,
+      viewTracker: sessionViewTracker,
+      now: () => 1234,
+    );
+    await sessionUnseenService.recordSessionCreated(
+      sessionId: "root-session",
+      projectId: "project-123",
+      sessionDirectory: "/tmp/project-123",
+      parentId: null,
+    );
+    expect(await unseenRepository.isUnseen(sessionId: "root-session"), isTrue);
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -157,24 +178,8 @@ void main() {
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
-      sessionUnseenService: SessionUnseenService(
-        unseenRepository: SessionUnseenRepository(
-          plugin: plugin,
-          sessionDao: database.sessionDao,
-          projectsDao: database.projectsDao,
-          db: database,
-          calculator: const SessionUnseenCalculator(),
-        ),
-        projectRepository: ProjectRepository(
-          plugin: plugin,
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
-        viewTracker: SessionViewTracker(),
-      ),
-      sessionViewTracker: SessionViewTracker(),
+      sessionUnseenService: sessionUnseenService,
+      sessionViewTracker: sessionViewTracker,
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
@@ -342,6 +347,27 @@ void main() {
       sentByteCounts,
       hasLength(bytesAfterSummary),
       reason: "YOLO permission requests must not reach clients",
+    );
+
+    plugin.add(
+      const BridgeSsePermissionReplied(
+        requestID: "permission-1",
+        sessionID: "child-session",
+        displaySessionId: "root-session",
+        reply: "once",
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(
+      sentByteCounts,
+      hasLength(bytesAfterSummary),
+      reason: "YOLO permission replies must not reach clients",
+    );
+    expect(
+      await unseenRepository.isUnseen(sessionId: "root-session"),
+      isTrue,
+      reason: "YOLO permission replies must not clear unseen activity",
     );
     await sentBytesSubscription.cancel();
 

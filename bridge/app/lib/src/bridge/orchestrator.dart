@@ -685,7 +685,10 @@ class OrchestratorSession {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
 
       if (event is BridgeSsePermissionReplied) {
-        _autoApprovedPermissions.remove((requestId: event.requestID, sessionId: event.sessionID));
+        final wasAutoApproved = _autoApprovedPermissions.remove(
+          (requestId: event.requestID, sessionId: event.sessionID),
+        );
+        if (wasAutoApproved) return;
       }
 
       if (config.yolo && event is BridgeSsePermissionAsked) {
