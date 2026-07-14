@@ -34,6 +34,7 @@ plugin-scoped DTO for operations whose routing depends on plugin identity.
 **Directional invariants (don't weld these doors shut):**
 
 - **Plugin boundary is sacred** — no backend specifics leak past `BridgePluginApi` into `shared/`, the relay protocol, or the client; our own harness is *just a plugin*; differing abilities are optional, declared capabilities.
+- Plugins normalize backend identifiers and presentation fields into the existing contract before returning them. Shared clients must not infer backend meaning from description length, capitalization, or other payload-shape heuristics.
 - **The bridge is one of many** — keep per-bridge addressing first-class across client/relay/auth (multi-client per bridge already works; multi-bridge is the new axis).
 - **Shared brain, thin shells** — `module_core` stays Flutter-free and surface-agnostic; the client is online-first with minimal local cache.
 - **Headless-first bridge** — desktop GUI supervision is additive and gated; the standalone/VM path stays first-class (this is what enables managed VMs).
@@ -424,6 +425,10 @@ module_auth/lib/src/
 
 Data flows downstream via streams and events — this is push-based. Polling is a violation unless the data source genuinely can't expose a stream.
 
+Long-lived Flutter busy indicators preserve smooth visible motion unless the user explicitly approves another treatment. Isolate repaint damage and profile before reducing cadence; if continuous frames are unacceptable, deliberately use a static indicator. Animated indicators must stop under `TickerMode` and become static under reduced motion. Do not carry performance measurements across materially different animation implementations.
+
+When a coalesced staleness queue drives snapshot refreshes, only a successfully applied snapshot consumes queued staleness. A failed or connection-blocked refresh must preserve and re-arm the prior signal, while signals arriving during the refresh remain queued independently.
+
 - **Polling** (flag): `Timer.periodic`, `Stream.periodic`, manual re-fetch loops, or repeatedly-triggered invalidation to re-fetch data you already had from a stream-capable source.
 - **Not polling** (fine): one-shot fetches on user action (pull-to-refresh, initial load); retry-with-backoff on failed network calls (that's reconnection); periodic timers used for genuine scheduling like heartbeats or stuck-session sweeps.
 
@@ -498,15 +503,44 @@ or combine new work into the already-merged N migration or schema snapshot.
 - Prefer non-null columns for durable timestamps when a stable migration baseline exists. Backfill existing rows during
   migration instead of introducing a permanent nullable state solely to avoid the backfill.
 
-## Compatibility Debt
+## Backward Compatibility
 
-Temporary wire nullability or fallback behavior added only for old-version interoperability must be recorded in
-`docs/COMPATIBILITY_DEBT.md` with its supported scenario, a dated removal target, and exact cleanup steps. Do not let
-compatibility branches become undocumented permanent behavior.
+Preserve backwards compatibility unless the user explicitly directs otherwise. Prefer an honest transport-model
+`@Default` when a missing legacy value has one concrete meaning, then keep repository, service, handler, cubit, and
+connector parameters required and non-null. Use nullable wire state only when absence is meaningful or no honest
+fallback exists, and normalize it immediately at the transport/repository boundary.
+
+Every default, nullable field, fallback branch, alias, dual-read/write path, or repair path that exists only for
+old-version interoperability must have a comment immediately above it in this exact form:
+
+```dart
+// COMPATIBILITY YYYY-MM-DD (vX.Y.Z): <legacy scenario and rationale>. <Exact mechanical cleanup>.
+```
+
+Use the introduction date and version currently declared by the app; do not query releases for a newer version.
+Ordinary domain defaults do not receive this marker. A direct user cleanup command is sufficient authorization to
+remove old marked compatibility code.
 
 ## Git
 
 Conventional commits: `fix:`, `feat:`, `ci:`, `docs:`, `chore:`.
+
+Create new branches from the current tip of their intended base branch unless
+the user explicitly requests a historical branch point. A commit recorded for
+plan review or audit is staleness metadata, not the default branch point.
+
+When defining a plan while checked out on a branch other than the repository's
+default base (`main` here), never infer where implementation should start. Ask
+one question with three explicit choices: the named default base branch, the
+named current branch, or another branch. Record the selected implementation
+base in the plan; plan-delivery and first-wave plan-host branches start from the
+current tip of that selected branch. Cross-repository implementation steps use
+the repository/base declared by their step. Parallel same-wave steps pin one
+baseline commit per repository/base pair when that wave starts. Plans record an
+audited tip SHA/date for every repository/base pair; workers assess drift from
+that audit point, and the exact tip SHA assessed becomes that wave's baseline.
+Before parallel sibling branches are created, those baselines are committed and
+pushed to the plan-host `plan/<slug>/tracking` branch as shared execution state.
 
 `.gitattributes` marks generated code and test directories as `linguist-generated` so GitHub collapses their diffs. Lockfiles (`pubspec.lock`, `Gemfile.lock`, `Podfile.lock`) must NEVER be marked as generated — the user always reviews lockfile diffs.
 
@@ -574,6 +608,12 @@ Two review agents enforce the rules above. Both reject on any violation — no w
 
 - **Before implementation**: send the plan to `aristotle-plan-review` (agent file at `.opencode/agents/aristotle-plan-review.md`). A plan needs a clear goal, specific classes/files/layers, and stated data flow. Vague plans are rejected on the gate without further review.
 - **Before opening a PR**: send the branch/PR to `aristotle-impl-review` (agent file at `.opencode/agents/aristotle-impl-review.md`). It reviews only new and changed code — preexisting legacy patterns are not flagged unless the change extends them.
+
+Both reviewers are shell-denied and read-only. Implementation-review requests
+must include the branch, base commit or branch, complete changed-file list,
+full diff, and any Git history evidence needed to distinguish changed lines
+from legacy code. The reviewer rejects incomplete scope rather than running Git
+commands or guessing.
 
 Do not skip either step. The reviewers exist because violations compound — one bypass in a handler becomes three bypasses in the handlers that copy it.
 

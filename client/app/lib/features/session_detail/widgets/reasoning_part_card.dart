@@ -21,6 +21,40 @@ class ReasoningPartCard extends StatefulWidget {
 
   @override
   State<ReasoningPartCard> createState() => _ReasoningPartCardState();
+
+  /// The streaming preview is bottom-aligned and clipped to 56px, so only the
+  /// last few lines are ever visible — but laying out the whole accumulated
+  /// reasoning document costs O(text) under a saveLayer on every streaming
+  /// flush. Hand the layout only a tail slice that comfortably overfills the
+  /// viewport at the preview's small text size.
+  static const int _kStreamingTailChars = 700;
+
+  @visibleForTesting
+  static String streamingTail({required String text}) {
+    if (text.length <= _kStreamingTailChars) return text;
+    var start = text.length - _kStreamingTailChars;
+    // Never start the slice on the low half of a UTF-16 surrogate pair
+    // (emoji etc.): an orphaned low surrogate is malformed and renders as a
+    // replacement character. Dropping the split character entirely is
+    // invisible in a tail preview, and stays O(1) where grapheme-aware
+    // slicing would re-walk the whole document on every flush.
+    if (_isLowSurrogate(text.codeUnitAt(start))) start++;
+    final slice = text.substring(start);
+    // Start at a line boundary when one exists so the slice doesn't begin
+    // with a mid-line fragment that wraps differently from the real text —
+    // but only while enough text remains to fill the preview. A newline near
+    // the end of the window would otherwise collapse the preview to a nearly
+    // blank sliver, which reads far worse than a leading fragment.
+    final newline = slice.indexOf('\n');
+    final aligned = newline >= 0 ? slice.length - newline - 1 : 0;
+    return aligned >= _kMinAlignedTailChars ? slice.substring(newline + 1) : slice;
+  }
+
+  /// Minimum text kept after aligning the tail to a line boundary; half the
+  /// tail budget still comfortably overfills the 56px preview.
+  static const int _kMinAlignedTailChars = _kStreamingTailChars ~/ 2;
+
+  static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;
 }
 
 class _ReasoningPartCardState extends State<ReasoningPartCard> {
@@ -118,7 +152,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                         alignment: Alignment.bottomLeft,
                         maxHeight: double.infinity,
                         child: Text(
-                          widget.text,
+                          ReasoningPartCard.streamingTail(text: widget.text),
                           style: prego.textTheme.textXs.regular.copyWith(
                             color: prego.colors.textSecondary,
                           ),

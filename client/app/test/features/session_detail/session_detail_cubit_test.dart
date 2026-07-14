@@ -320,30 +320,65 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "selectAgent updates selected agent in loaded state",
-      build: () => SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        lifecycleSource: MockLifecycleSource(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: mockFailureReporter,
-      ),
+      "selectAgent applies a known agent's model preference",
+      build: () {
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            Agents(
+              agents: [
+                testAgentInfo(),
+                testAgentInfo().copyWith(
+                  name: "reviewer",
+                  description: "Reviews code",
+                  model: const AgentModel(
+                    providerID: "openai",
+                    modelID: "gpt-4.1",
+                    variant: null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
       act: (cubit) async {
         await _awaitLoaded(cubit);
         cubit.selectAgent("reviewer");
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
-        isA<SessionDetailLoaded>().having(
-          (state) => state.selectedAgent,
-          "selectedAgent",
-          "reviewer",
-        ),
+        isA<SessionDetailLoaded>()
+            .having(
+              (state) => state.selectedAgent,
+              "selectedAgent",
+              "reviewer",
+            )
+            .having(
+              (state) => state.selectedAgentModel,
+              "selectedAgentModel",
+              const AgentModel(
+                providerID: "openai",
+                modelID: "gpt-4.1",
+                variant: null,
+              ),
+            ),
       ],
     );
 

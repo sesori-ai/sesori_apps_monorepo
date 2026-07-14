@@ -137,6 +137,7 @@ class QuestionRepository {
     );
   }
 
+  // COMPATIBILITY 2026-06-17 (v1.1.0): Old clients may omit the rejection sessionId. Require it and always run tombstone validation once those clients are unsupported.
   Future<void> rejectQuestion({
     required String questionId,
     required String? sessionId,

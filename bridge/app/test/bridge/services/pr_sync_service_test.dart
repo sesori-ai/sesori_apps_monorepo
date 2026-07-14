@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:clock/clock.dart";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
@@ -30,6 +31,7 @@ void main() {
         prSource: prSource,
         pullRequestRepository: pullRequestRepository,
         sessionRepository: sessionRepository,
+        clock: const Clock(),
         debounceWindow: const Duration(milliseconds: 1),
       );
       addTearDown(service.dispose);
@@ -82,6 +84,7 @@ void main() {
         prSource: prSource,
         pullRequestRepository: pullRequestRepository,
         sessionRepository: sessionRepository,
+        clock: const Clock(),
       );
       addTearDown(service.dispose);
 
@@ -125,6 +128,7 @@ void main() {
         prSource: prSource,
         pullRequestRepository: pullRequestRepository,
         sessionRepository: sessionRepository,
+        clock: const Clock(),
       );
       addTearDown(service.dispose);
 
@@ -136,7 +140,8 @@ void main() {
       expect(prSource.getPrByNumberCalls, contains(22));
     });
 
-    test("re-checks gh availability and skips refresh when unavailable", () async {
+    test("caches unavailable gh capability and detects installation after the TTL", () async {
+      var now = DateTime.utc(2026, 7, 13);
       final prSource = _FakePrSource(
         listOpenPrsResult: <GhPullRequest>[],
         isAvailableResult: false,
@@ -145,33 +150,99 @@ void main() {
         prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
         sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: Clock(() => now),
       );
       addTearDown(service.dispose);
 
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
-      await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      await service.triggerRefresh(projectId: "project-2", projectPath: "/tmp/project-2");
 
-      expect(prSource.isAvailableCallCount, equals(2));
+      expect(prSource.isAvailableCallCount, equals(1));
       expect(prSource.isAuthenticatedCallCount, equals(0));
       expect(prSource.listOpenPrsCallCount, equals(0));
+
+      prSource.isAvailableResult = true;
+      now = now.add(const Duration(seconds: 29));
+      await service.triggerRefresh(projectId: "project-3", projectPath: "/tmp/project-3");
+      expect(prSource.isAvailableCallCount, equals(1));
+
+      now = now.add(const Duration(seconds: 1));
+      await service.triggerRefresh(projectId: "project-4", projectPath: "/tmp/project-4");
+      expect(prSource.isAvailableCallCount, equals(2));
+      expect(prSource.isAuthenticatedCallCount, equals(1));
+      expect(prSource.listOpenPrsCallCount, equals(1));
+    });
+
+    test("shares one in-flight gh capability check across projects", () async {
+      final capabilityBlock = Completer<void>();
+      final prSource = _FakePrSource(listOpenPrsResult: <GhPullRequest>[])..availabilityBlock = capabilityBlock;
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: _FakePullRequestRepository(),
+        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: const Clock(),
+        debounceWindow: Duration.zero,
+      );
+      addTearDown(service.dispose);
+
+      final first = service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
+      await _waitFor(() => prSource.isAvailableCallCount == 1);
+      final second = service.triggerRefresh(projectId: "project-2", projectPath: "/tmp/project-2");
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(prSource.isAvailableCallCount, equals(1));
+      capabilityBlock.complete();
+      await Future.wait([first, second]);
+      expect(prSource.isAuthenticatedCallCount, equals(1));
+      expect(prSource.listOpenPrsCallCount, equals(2));
+
+      await service.triggerRefresh(projectId: "project-3", projectPath: "/tmp/project-3");
+      expect(prSource.isAvailableCallCount, equals(1));
+      expect(prSource.isAuthenticatedCallCount, equals(1));
+      expect(prSource.listOpenPrsCallCount, equals(3));
+    });
+
+    test("retries a gh capability check after an unexpected failure", () async {
+      final prSource = _FakePrSource(listOpenPrsResult: <GhPullRequest>[])..isAvailableFailuresRemaining = 1;
+      final service = PrSyncService(
+        prSource: prSource,
+        pullRequestRepository: _FakePullRequestRepository(),
+        sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: const Clock(),
+      );
+      addTearDown(service.dispose);
+
+      await expectLater(
+        service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1"),
+        throwsStateError,
+      );
+      await service.triggerRefresh(projectId: "project-2", projectPath: "/tmp/project-2");
+
+      expect(prSource.isAvailableCallCount, equals(2));
+      expect(prSource.listOpenPrsCallCount, equals(1));
     });
 
     test("debounces repeated refreshes for same project", () async {
+      var now = DateTime.utc(2026, 7, 13);
       final prSource = _FakePrSource(listOpenPrsResult: <GhPullRequest>[]);
       final service = PrSyncService(
         prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
         sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: Clock(() => now),
         debounceWindow: const Duration(hours: 1),
       );
       addTearDown(service.dispose);
 
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
       await _waitFor(() => prSource.listOpenPrsCallCount == 1);
+      now = now.add(const Duration(seconds: 31));
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(prSource.listOpenPrsCallCount, equals(1));
+      expect(prSource.isAvailableCallCount, equals(1));
+      expect(prSource.isAuthenticatedCallCount, equals(1));
     });
 
     test("skips concurrent refresh while one is already active", () async {
@@ -184,6 +255,7 @@ void main() {
         prSource: prSource,
         pullRequestRepository: _FakePullRequestRepository(),
         sessionRepository: _FakeSessionRepository(sessionsByProject: const <String, List<StoredSession>>{}),
+        clock: const Clock(),
         debounceWindow: Duration.zero,
       );
       addTearDown(service.dispose);
@@ -196,6 +268,8 @@ void main() {
       await service.triggerRefresh(projectId: "project-1", projectPath: "/tmp/project-1");
 
       expect(prSource.listOpenPrsCallCount, equals(1));
+      expect(prSource.isAvailableCallCount, equals(1));
+      expect(prSource.isAuthenticatedCallCount, equals(1));
 
       block.complete();
       await firstRefresh;
@@ -263,7 +337,10 @@ class _FakePrSource implements PrSourceRepository {
   final List<GhPullRequest> listOpenPrsResult;
   final Map<int, GhPullRequest> prByNumber;
   final Future<void> Function()? onListOpenPrs;
-  final bool isAvailableResult;
+  bool isAvailableResult;
+  bool isAuthenticatedResult = true;
+  Completer<void>? availabilityBlock;
+  int isAvailableFailuresRemaining = 0;
 
   int isAvailableCallCount = 0;
   int isAuthenticatedCallCount = 0;
@@ -280,13 +357,20 @@ class _FakePrSource implements PrSourceRepository {
   @override
   Future<bool> isGithubCliAvailable() async {
     isAvailableCallCount++;
+    if (availabilityBlock case final block?) {
+      await block.future;
+    }
+    if (isAvailableFailuresRemaining > 0) {
+      isAvailableFailuresRemaining--;
+      throw StateError("gh availability failed");
+    }
     return isAvailableResult;
   }
 
   @override
   Future<bool> isGithubCliAuthenticated() async {
     isAuthenticatedCallCount++;
-    return true;
+    return isAuthenticatedResult;
   }
 
   @override

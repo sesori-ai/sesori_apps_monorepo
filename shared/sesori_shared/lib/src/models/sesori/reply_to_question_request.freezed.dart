@@ -167,6 +167,7 @@ mixin _$RejectQuestionRequest {
 // `required` so callers cannot forget to supply it, but nullable on the
 // wire: older clients that omit it deserialize to null, and the bridge
 // falls back to resolving the owning session from the question id.
+// COMPATIBILITY 2026-06-17 (v1.1.0): Old clients omit sessionId on rejection. Make it non-null and remove bridge null handling once those clients are unsupported.
  String? get sessionId;
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -241,6 +242,7 @@ class _RejectQuestionRequest implements RejectQuestionRequest {
 // `required` so callers cannot forget to supply it, but nullable on the
 // wire: older clients that omit it deserialize to null, and the bridge
 // falls back to resolving the owning session from the question id.
+// COMPATIBILITY 2026-06-17 (v1.1.0): Old clients omit sessionId on rejection. Make it non-null and remove bridge null handling once those clients are unsupported.
 @override final  String? sessionId;
 
 /// Create a copy of RejectQuestionRequest

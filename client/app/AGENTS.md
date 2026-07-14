@@ -14,6 +14,7 @@ See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering
 - Services: resolve via `getIt<Type>()`, NOT `context.read<Service>()`
 - Cubits: `BlocProvider(create: (_) => MyCubit(getIt<MyService>()))`, then `context.watch`/`context.read`
 - Do NOT use `BlocBuilder` — prefer `context.watch<MyCubit>().state`
+- Do not reduce visible animation cadence as a battery optimization without explicit design approval. For long-lived busy indicators, first isolate repaint damage and profile the smooth animation; use a static indicator when continuous frames are unacceptable.
 - Guard `emit()` with `if (isClosed) return;` after any async gap in cubits
 - DI configured in `lib/core/di/injection.dart` — calls `configureCoreDependencies(getIt)` after Flutter-specific registrations
 

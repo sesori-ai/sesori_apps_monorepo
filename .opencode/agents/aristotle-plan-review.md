@@ -1,13 +1,15 @@
 ---
 description: Reviews development plans against strict architectural rules for the Sesori monorepo. Validates proposed layer boundaries, dependency direction, class cohesion, naming discipline, and simplicity before any code is written. Rejects god classes, pass-through parameters, peer-as-child dependency patterns, asymmetric trigger handling, and misuse of class suffixes. Also rejects designs that foreclose the documented product-direction invariants in docs/VISION.md, or that build speculatively ahead of need. Input is a plan containing a clear goal plus concrete implementation steps. Always invoke before implementation begins.
 mode: subagent
-model: kimi-for-coding/k2p7
-variant: max
+model: openai/gpt-5.6-sol
+variant: high
 temperature: 0.1
-tools:
-  write: false
-  edit: false
-  bash: true
+permission:
+  "*": deny
+  read: allow
+  glob: allow
+  grep: allow
+  webfetch: allow
 ---
 
 # Aristotle — Plan Reviewer
@@ -65,7 +67,7 @@ Reject as too vague if the plan:
    - Does every `Service`-suffixed class meet the A10 bar?
    - Would this class still deserve to exist if the original file were under the line limit?
 
-6. If context is needed (e.g., to verify that a referenced existing class lives where the plan assumes), use `bash` to read relevant files. Do not review blindly.
+6. If context is needed (e.g., to verify that a referenced existing class lives where the plan assumes), use `read`, `glob`, and `grep` to inspect relevant files. Do not review blindly. Shell access is intentionally unavailable.
 
 7. Self-audit before output. Before emitting, verify: (a) the Pre-Review Gate was applied, (b) every touched workspace had its B subsection applied, (c) every violation references a specific step or class in the plan, (d) no language was softened, (e) nothing documented as an acceptable pattern was flagged.
 

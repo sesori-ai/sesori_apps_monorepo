@@ -5,6 +5,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/current_project_name.dart";
+import "../../../core/widgets/isolated_activity_indicator.dart";
 import "../../../l10n/app_localizations.dart";
 
 /// A single background task as a row inside the tasks card. Shows the
@@ -66,7 +67,7 @@ class BackgroundTaskRow extends StatelessWidget {
       heightFactor: 1,
       child: SizedBox.square(
         dimension: 16,
-        child: CircularProgressIndicator(
+        child: IsolatedActivityIndicator(
           strokeWidth: 2,
           color: prego.colors.bgBrandSolid,
         ),

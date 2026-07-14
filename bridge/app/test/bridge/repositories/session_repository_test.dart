@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
@@ -47,10 +48,12 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
+      expect(await repository.isSessionTombstoned(sessionId: "sess-tomb"), isFalse);
 
       final deleted = await repository.deleteSession(sessionId: "sess-tomb");
 
       expect(deleted.pluginId, equals(plugin.id));
+      expect(await repository.isSessionTombstoned(sessionId: "sess-tomb"), isTrue);
       expect(await db.sessionDao.getSession(sessionId: "sess-tomb"), isNull);
       expect(
         await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
@@ -67,6 +70,54 @@ void main() {
         await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
         contains("sess-tomb"),
       );
+    });
+
+    test("coalesces tombstone loading and serves later lookups from memory", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final readBlock = Completer<void>();
+      final sessionDao = _CountingSessionDao(tombstones: {"gone"}, readBlock: readBlock);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final first = repository.isSessionTombstoned(sessionId: "gone");
+      final second = repository.isSessionTombstoned(sessionId: "live");
+      await Future<void>.delayed(Duration.zero);
+      expect(sessionDao.bulkReadCount, 1);
+
+      readBlock.complete();
+      expect(await first, isTrue);
+      expect(await second, isFalse);
+      expect(await repository.isSessionTombstoned(sessionId: "gone"), isTrue);
+      expect(sessionDao.bulkReadCount, 1);
+    });
+
+    test("retries tombstone loading after a database failure", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final sessionDao = _CountingSessionDao(tombstones: {"gone"}, readBlock: null)..failuresRemaining = 1;
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      await expectLater(repository.isSessionTombstoned(sessionId: "gone"), throwsStateError);
+      expect(await repository.isSessionTombstoned(sessionId: "gone"), isTrue);
+      expect(sessionDao.bulkReadCount, 2);
     });
 
     test("enrichSession merges stored archive and selected PR metadata", () async {
@@ -1573,6 +1624,31 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
     required String projectId,
     required String worktreePath,
   }) async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _CountingSessionDao implements SessionDao {
+  final Set<String> tombstones;
+  final Completer<void>? readBlock;
+  int bulkReadCount = 0;
+  int failuresRemaining = 0;
+
+  _CountingSessionDao({required this.tombstones, required this.readBlock});
+
+  @override
+  Future<Set<String>> getTombstonedSessionIds({required String pluginId}) async {
+    bulkReadCount++;
+    if (failuresRemaining > 0) {
+      failuresRemaining--;
+      throw StateError("tombstone load failed");
+    }
+    if (readBlock case final block?) {
+      await block.future;
+    }
+    return Set<String>.of(tombstones);
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

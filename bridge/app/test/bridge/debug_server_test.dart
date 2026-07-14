@@ -39,6 +39,7 @@ _DebugServerHarness _createDebugServerHarness({
       pluginEndpoint: "http://127.0.0.1:4096",
       authBackendURL: "https://api.sesori.test",
       sseReplayWindow: Duration(minutes: 5),
+      yolo: false,
     ),
     plugin: plugin,
     relayClient: RelayClient(

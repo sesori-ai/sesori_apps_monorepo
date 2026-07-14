@@ -422,6 +422,7 @@ class ConnectionService {
   /// Returns `null` when the body is absent or malformed (e.g. an older bridge
   /// that returns an empty `{}` body), so the caller keeps its healthy
   /// fallback rather than failing the connection.
+  // COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges may return an empty health body. Fail malformed health responses once those bridges are unsupported.
   HealthResponse? _parseHealthResponse(String? body) {
     if (body == null) return null;
     try {

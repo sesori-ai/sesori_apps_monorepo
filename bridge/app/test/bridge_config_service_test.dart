@@ -48,6 +48,9 @@ class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
 
   @override
   Future<void> updateReleaseTrack({required ReleaseTrack track}) async {}
+
+  @override
+  Future<void> updateYolo({required bool enabled}) async {}
 }
 
 class _FakeDefaultEditorRepository implements DefaultEditorRepository {

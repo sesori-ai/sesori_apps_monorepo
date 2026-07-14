@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreateSessionRequest {
 
- String get projectId; String get pluginId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; SessionVariant? get variant; bool get dedicatedWorktree;
+ String get projectId;// COMPATIBILITY 2026-07-13 (v1.5.0): Old create requests omit pluginId and mean OpenCode. Remove default; require it.
+ String get pluginId; List<PromptPart> get parts; String? get agent; PromptModel? get model; String? get command; SessionVariant? get variant; bool get dedicatedWorktree;
 /// Create a copy of CreateSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -115,6 +116,7 @@ class _CreateSessionRequest implements CreateSessionRequest {
   factory _CreateSessionRequest.fromJson(Map<String, dynamic> json) => _$CreateSessionRequestFromJson(json);
 
 @override final  String projectId;
+// COMPATIBILITY 2026-07-13 (v1.5.0): Old create requests omit pluginId and mean OpenCode. Remove default; require it.
 @override@JsonKey() final  String pluginId;
  final  List<PromptPart> _parts;
 @override List<PromptPart> get parts {
