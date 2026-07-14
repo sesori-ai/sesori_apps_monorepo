@@ -541,6 +541,55 @@ void main() {
       },
     );
 
+    test("a failed leading stale refresh retries until a snapshot succeeds", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+        eventRefreshMinInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      reset(mockSessionService);
+      _stubLoadApis(mockSessionService, sessionId: sessionId);
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
+      var messageLoads = 0;
+      when(
+        () => mockSessionService.getMessages(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) async {
+        messageLoads++;
+        if (messageLoads == 1) {
+          return ApiResponse.error(ApiError.generic());
+        }
+        return ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()]));
+      });
+
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(messageLoads, 1);
+
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(messageLoads, 2);
+
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(messageLoads, 2);
+    });
+
     test("concurrent stale signals are coalesced (single API call)", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,

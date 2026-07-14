@@ -251,6 +251,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
       return;
     }
+    _eventRefreshQueued = true;
     _silentRefresh();
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
