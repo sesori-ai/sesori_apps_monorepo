@@ -13,7 +13,7 @@ dependencies:
   meta: ^1.18.0
   flutter_svg: ^2.3.0
   universal_platform: ^1.1.0
-  liquid_glass_widgets: ^0.21.3
+  liquid_glass_widgets: ^0.21.4
   cue: ^0.3.1
 
 flutter:

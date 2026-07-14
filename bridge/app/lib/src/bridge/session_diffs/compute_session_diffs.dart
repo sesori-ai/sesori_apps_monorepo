@@ -63,7 +63,19 @@ Future<List<FileDiff>> computeSessionDiffs({
     throw const GitDiffQueryException(message: "git diff --numstat failed");
   }
 
-  final statusEntries = parseNameStatus(decodeOutput(nameStatusResult.stdout));
+  final untrackedResult = await _runGit(
+    processRunner: processRunner,
+    worktreePath: worktreePath,
+    arguments: ["ls-files", "--others", "--exclude-standard"],
+  );
+  if (untrackedResult.exitCode != 0) {
+    throw const GitDiffQueryException(message: "git ls-files --others failed");
+  }
+
+  final statusEntries = mergeTrackedAndUntrackedEntries(
+    trackedEntries: parseNameStatus(decodeOutput(nameStatusResult.stdout)),
+    untrackedPaths: parseUntrackedPaths(decodeOutput(untrackedResult.stdout)),
+  );
   final statsByFile = parseNumstat(decodeOutput(numstatResult.stdout));
   final diffs = <FileDiff>[];
 
@@ -117,6 +129,18 @@ Future<List<FileDiff>> computeSessionDiffs({
 
     final before = contentOrEmpty(beforeResult);
     final after = contentOrEmpty(afterResult);
+    final isUntracked = !statsByFile.containsKey(entry.file);
+    final lineCounts = isUntracked && after.isNotEmpty
+        ? (additions: _countLines(after), deletions: 0)
+        : switch (entry.status) {
+            FileDiffStatus.modified
+                when counts.additions == 0 &&
+                    after.isNotEmpty &&
+                    before != after &&
+                    (counts.deletions == 0 || !_isDeletionOnlyChange(before, after)) =>
+              (additions: _countLines(after), deletions: counts.deletions > 0 ? counts.deletions : _countLines(before)),
+            _ => counts,
+          };
     if (before.length + after.length > maxFileContentBytes) {
       diffs.add(
         FileDiff.skipped(
@@ -133,14 +157,38 @@ Future<List<FileDiff>> computeSessionDiffs({
         file: entry.file,
         before: before,
         after: after,
-        additions: counts.additions,
-        deletions: counts.deletions,
+        additions: lineCounts.additions,
+        deletions: lineCounts.deletions,
         status: entry.status,
       ),
     );
   }
 
   return diffs;
+}
+
+int _countLines(String content) {
+  if (content.isEmpty) return 0;
+  return "\n".allMatches(content).length + (content.endsWith("\n") ? 0 : 1);
+}
+
+bool _isDeletionOnlyChange(String before, String after) {
+  if (after.isEmpty) return true;
+  final beforeLines = _normalizedLines(before);
+  final afterLines = _normalizedLines(after);
+  var beforeIndex = 0;
+  for (final line in afterLines) {
+    while (beforeIndex < beforeLines.length && beforeLines[beforeIndex] != line) {
+      beforeIndex++;
+    }
+    if (beforeIndex >= beforeLines.length) return false;
+    beforeIndex++;
+  }
+  return true;
+}
+
+List<String> _normalizedLines(String content) {
+  return content.replaceAll("\r\n", "\n").split("\n").map((line) => line.replaceAll("\r", "")).toList();
 }
 
 /// Parses stdout that should contain exactly one non-empty SHA line.

@@ -46,7 +46,7 @@ void main() {
 
     test("load returns exactly one typed outcome without emitting ui state", () async {
       connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
+      _stubRepositorySnapshot(repository: repository);
 
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
@@ -59,12 +59,17 @@ void main() {
       verify(() => repository.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
       verify(() => repository.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
       verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
+      verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
     });
 
-    test("load uses route projectId to fetch commands when context lookup fails", () async {
+    test("load gives the route project id precedence over session metadata", () async {
       connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
-      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenThrow(Exception("lookup failed"));
+      _stubRepositorySnapshot(repository: repository);
+      stubSessionRepositoryGetSession(
+        repository: repository,
+        sessionId: "session-1",
+        session: testSession(id: "session-1", title: "Canonical title").copyWith(projectID: "other-project"),
+      );
 
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
@@ -76,10 +81,13 @@ void main() {
 
     test("load uses the legacy OpenCode default when session identity is unavailable", () async {
       connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
+      _stubRepositorySnapshot(repository: repository);
       when(
         () => repository.getSession(sessionId: "session-1"),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
+        (_) async => const ProjectSessionContext(projectId: "project-1", sessionTitle: "Recovered title"),
+      );
       when(
         () => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId),
       ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
@@ -87,6 +95,7 @@ void main() {
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
+      expect((result as SessionDetailLoadResultLoaded).snapshot.canonicalSessionTitle, "Recovered title");
       verify(() => repository.listAgents(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
       verify(() => repository.listProviders(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
       verify(() => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
@@ -97,7 +106,7 @@ void main() {
       expect(waiting, isA<SessionDetailLoadResultWaitingForConnection>());
 
       connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
+      _stubRepositorySnapshot(repository: repository);
 
       final loaded = await service.load(sessionId: "session-1", projectId: "project-1");
       expect(loaded, isA<SessionDetailLoadResultLoaded>());
@@ -134,9 +143,6 @@ void main() {
       ).thenAnswer(
         (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
       );
-      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
-        (_) async => const ProjectSessionContext(projectId: "project-1", sessionTitle: "Canonical title"),
-      );
       when(() => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId)).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
@@ -151,7 +157,6 @@ void main() {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(
         repository: repository,
-        projectRepository: projectRepository,
         canonicalSessionTitle: null,
       );
 
@@ -164,7 +169,7 @@ void main() {
 
     test("blank route projectId scopes providers to the session's resolved project", () async {
       connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
+      _stubRepositorySnapshot(repository: repository);
 
       final result = await service.load(sessionId: "session-1", projectId: "");
 
@@ -176,9 +181,12 @@ void main() {
       verifyNever(() => repository.listProviders(projectId: "", pluginId: "plugin-1"));
     });
 
-    test("no route project and no session context loads empty providers without a request", () async {
+    test("no route project and no session metadata loads empty providers without a request", () async {
       connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
+      _stubRepositorySnapshot(repository: repository);
+      when(
+        () => repository.getSession(sessionId: "session-1"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
       when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer((_) async => null);
 
       final result = await service.load(sessionId: "session-1", projectId: "");
@@ -194,24 +202,32 @@ void main() {
       );
     });
 
-    test("project session context lookup failure is non-fatal when required reads succeed", () async {
+    test("failed session metadata recovers project context for a blank route", () async {
       connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
-      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenThrow(Exception("lookup failed"));
+      _stubRepositorySnapshot(repository: repository);
+      when(
+        () => repository.getSession(sessionId: "session-1"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
+        (_) async => const ProjectSessionContext(projectId: "project-1", sessionTitle: "Recovered title"),
+      );
+      when(() => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId)).thenAnswer(
+        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+      );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await service.load(sessionId: "session-1", projectId: "");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
-      expect(loaded.snapshot.messages, hasLength(1));
-      expect(loaded.snapshot.canonicalSessionTitle, isNull);
+      expect(loaded.snapshot.projectId, "project-1");
+      expect(loaded.snapshot.canonicalSessionTitle, "Recovered title");
+      verify(() => repository.listProviders(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
     });
   });
 }
 
 void _stubRepositorySnapshot({
   required MockSessionRepository repository,
-  required MockProjectRepository projectRepository,
   String? canonicalSessionTitle = "Canonical title",
 }) {
   when(
@@ -291,9 +307,10 @@ void _stubRepositorySnapshot({
       ),
     ),
   );
-  stubSessionRepositoryGetSession(repository: repository, sessionId: "session-1");
-  when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
-    (_) async => ProjectSessionContext(projectId: "project-1", sessionTitle: canonicalSessionTitle),
+  stubSessionRepositoryGetSession(
+    repository: repository,
+    sessionId: "session-1",
+    session: testSession(id: "session-1", title: canonicalSessionTitle),
   );
 }
 

@@ -48,7 +48,7 @@ class SessionTile extends StatelessWidget {
         return false;
       },
       background: ColoredBox(
-        color: context.prego.colors.bgPrimary,
+        color: context.prego.colors.bgSurface1,
         child: Align(
           alignment: Alignment.centerLeft,
           child: Padding(
@@ -98,12 +98,14 @@ class SessionTile extends StatelessWidget {
               ),
           ],
         ),
-        isThreeLine: [
-          updatedAt != null,
-          filesChanged > 0,
-          session.pullRequest != null,
-          isActive,
-        ].where((v) => v).length >= 2,
+        isThreeLine:
+            [
+              updatedAt != null,
+              filesChanged > 0,
+              session.pullRequest != null,
+              isActive,
+            ].where((v) => v).length >=
+            2,
         trailing: switch (unseen) {
           true => Row(
             mainAxisSize: MainAxisSize.min,

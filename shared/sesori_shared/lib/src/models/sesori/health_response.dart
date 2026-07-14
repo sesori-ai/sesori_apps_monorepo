@@ -13,6 +13,7 @@ sealed class HealthResponse with _$HealthResponse {
     // (e.g. macOS Full Disk Access not granted), so the phone can proactively
     // warn the user. Nullable for backward compatibility: an older bridge that
     // never sends it decodes to null and is treated as "not degraded".
+    // COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges omit filesystem-access state. Make this non-null and remove client null fallbacks once those bridges are unsupported.
     required bool? filesystemAccessDegraded,
   }) = _HealthResponse;
 

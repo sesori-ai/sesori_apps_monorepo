@@ -43,11 +43,14 @@ abstract final class PregoRadius {
   /// 24px - Figma: radius-4xl
   static const double x4l = 24;
 
-  /// 34px - Figma: radius-5xl
-  static const double x5l = 34;
+  /// 26px - Figma: radius-5xl
+  static const double x5l = 26;
 
-  /// 38px - Figma: radius-6xl
-  static const double x6l = 38;
+  /// 34px - Figma: radius-6xl
+  static const double x6l = 34;
+
+  /// 38px - Figma: radius-8xl
+  static const double x8l = 38;
 
   /// 9999px - Figma: radius-full
   static const double full = 9999;

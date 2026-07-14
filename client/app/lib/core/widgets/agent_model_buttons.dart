@@ -307,7 +307,7 @@ class _ModelSearchAffordance extends StatelessWidget {
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: prego.colors.bgPrimary,
+            color: prego.colors.bgSurface1,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(

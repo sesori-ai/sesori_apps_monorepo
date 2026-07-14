@@ -18,6 +18,7 @@ part "runtime_start_intent.g.dart";
 /// `opencode-processes.json` (whose schema requires a non-null runtime pid and
 /// is read verbatim by older bridge versions). Its shape is bridge-private and
 /// may evolve freely.
+// COMPATIBILITY 2026-06-12 (v1.0.9): Older bridges require the frozen ownership schema. Move intent state into that schema and remove the side-file model/store once those bridges are unsupported.
 @freezed
 sealed class RuntimeStartIntent with _$RuntimeStartIntent {
   const factory RuntimeStartIntent({
