@@ -196,6 +196,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   }
 
   void _showQuestionModal(SesoriQuestionAsked question) {
+    if (!_isCurrentPage) return;
     context.read<SessionDetailCubit>().clearNotifications();
     QuestionModal.show(
       context,
@@ -220,6 +221,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   }
 
   void _showPermissionModal(SesoriPermissionAsked permission) {
+    if (!_isCurrentPage) return;
     context.read<SessionDetailCubit>().clearNotifications();
     PermissionModal.show(
       context,
@@ -258,6 +260,8 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
 
   void _scheduleModal(VoidCallback action) =>
       Future.delayed(const Duration(milliseconds: 200), () => mounted ? action() : null);
+
+  bool get _isCurrentPage => ModalRoute.of(context)?.isCurrent == true;
 
   void _showFailureSnackBar(String message) {
     ScaffoldMessenger.of(context)

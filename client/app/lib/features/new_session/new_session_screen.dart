@@ -49,6 +49,31 @@ class _NewSessionBody extends StatefulWidget {
 class _NewSessionBodyState extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
+  bool _isSending = false;
+  late ScaffoldMessengerState _scaffoldMessenger;
+  late String _launchingInBackgroundMessage;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scaffoldMessenger = ScaffoldMessenger.of(context);
+    _launchingInBackgroundMessage = context.loc.newSessionLaunchingInBackground;
+  }
+
+  @override
+  void dispose() {
+    if (_isSending && !_navigatingToCreatedSession) {
+      final scaffoldMessenger = _scaffoldMessenger;
+      final message = _launchingInBackgroundMessage;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!scaffoldMessenger.mounted) return;
+        scaffoldMessenger.showSnackBar(
+          SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+        );
+      });
+    }
+    super.dispose();
+  }
 
   void _dismissScreen() {
     context.pop();
@@ -101,12 +126,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final loc = context.loc;
     final prego = context.prego;
     final isSending = state is NewSessionSending;
-    // Captured at build time: the callbacks below can run while this route is
-    // being torn down, where an ancestor lookup on a deactivated context
-    // throws. Both references stay valid — the root messenger outlives this
-    // route, and the route object is stable (`isCurrent` is still read at
-    // event time).
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    _isSending = isSending;
+    // The listener can run while this route is being torn down. The route
+    // object stays stable, so `isCurrent` remains safe to read at event time.
     final modalRoute = ModalRoute.of(context);
 
     return BlocListener<NewSessionCubit, NewSessionState>(
@@ -116,7 +138,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           // The user may have navigated elsewhere (e.g. opened another
           // session from the split-view list) while creation was in flight.
           // Replacing the route then would hijack their navigation — the
-          // pop-time snackbar already told them the session continues.
+          // leave-time snackbar already told them the session continues.
           if (modalRoute != null && !modalRoute.isCurrent) return;
           _navigatingToCreatedSession = true;
           context.replaceRoute(
@@ -130,107 +152,84 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           );
         }
       },
-      child: PopScope(
-        canPop: true,
-        onPopInvokedWithResult: (didPop, result) {
-          if (didPop && isSending && !_navigatingToCreatedSession) {
-            // This pop can fire during the Navigator's build phase — e.g. when
-            // opening another session from the split-view list while creation
-            // is in flight, go_router swaps the underlying detail route in
-            // place and pops this pushed new-session route in the same frame.
-            // showSnackBar throws if called during build, so defer it to the
-            // next frame. The captured root messenger outlives this route;
-            // guard it with `mounted` since the route may already be gone.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!scaffoldMessenger.mounted) return;
-              scaffoldMessenger.showSnackBar(
-                SnackBar(
-                  content: Text(loc.newSessionLaunchingInBackground),
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-            });
-          }
-        },
-        child: PregoGlassScaffold(
-          title: loc.sessionListNewSession,
-          banner: ConnectionBanner.maybeFor(context),
-          // The loading scrim must dim the body while the glass back button
-          // stays tappable (the user can abort while creation is in flight),
-          // so it goes through the scaffold's bar-aware overlay slot rather
-          // than an outer Stack that would also cover the bar.
-          overlay: isSending
-              ? NewSessionLoadingOverlay(
-                  semanticsLabel: loc.newSessionLoadingSemantics,
-                  messages: [
-                    loc.newSessionLoadingMessage1,
-                    loc.newSessionLoadingMessage2,
-                    loc.newSessionLoadingMessage3,
-                  ],
-                )
-              : null,
-          slivers: [
-            // The screen doesn't scroll: a single fill-remaining sliver holds
-            // the worktree toggle at the top and pins the composer to the
-            // bottom. With the scaffold's keyboard resize (Scaffold default),
-            // the composer rides above the keyboard when the field is focused.
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: AbsorbPointer(
-                absorbing: isSending,
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SwitchListTile(
-                              title: Text(loc.newSessionDedicatedWorktree),
-                              subtitle: Text(
-                                loc.newSessionDedicatedWorktreeDescription,
-                                style: prego.textTheme.textXs.regular.copyWith(
-                                  color: prego.colors.textSecondary,
-                                ),
+      child: PregoGlassScaffold(
+        title: loc.sessionListNewSession,
+        banner: ConnectionBanner.maybeFor(context),
+        // The loading scrim must dim the body while the glass back button
+        // stays tappable (the user can abort while creation is in flight),
+        // so it goes through the scaffold's bar-aware overlay slot rather
+        // than an outer Stack that would also cover the bar.
+        overlay: isSending
+            ? NewSessionLoadingOverlay(
+                semanticsLabel: loc.newSessionLoadingSemantics,
+                messages: [
+                  loc.newSessionLoadingMessage1,
+                  loc.newSessionLoadingMessage2,
+                  loc.newSessionLoadingMessage3,
+                ],
+              )
+            : null,
+        slivers: [
+          // The screen doesn't scroll: a single fill-remaining sliver holds
+          // the worktree toggle at the top and pins the composer to the
+          // bottom. With the scaffold's keyboard resize (Scaffold default),
+          // the composer rides above the keyboard when the field is focused.
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: AbsorbPointer(
+              absorbing: isSending,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SwitchListTile(
+                            title: Text(loc.newSessionDedicatedWorktree),
+                            subtitle: Text(
+                              loc.newSessionDedicatedWorktreeDescription,
+                              style: prego.textTheme.textXs.regular.copyWith(
+                                color: prego.colors.textSecondary,
                               ),
-                              value: _dedicatedWorktree,
-                              onChanged: (value) => setState(() => _dedicatedWorktree = value),
                             ),
-                          ],
-                        ),
+                            value: _dedicatedWorktree,
+                            onChanged: (value) => setState(() => _dedicatedWorktree = value),
+                          ),
+                        ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: PromptInput(
-                        // Persist the unsent prompt per project so it survives
-                        // leaving and returning to the new-session screen before
-                        // a session exists; cleared once the session is created.
-                        draftKey: "new-session:${widget.projectId}",
-                        isBusy: state is NewSessionSending,
-                        onSend: (String text, String? command) {
-                          context.read<NewSessionCubit>().createSession(
-                            text: text,
-                            command: command,
-                            dedicatedWorktree: _dedicatedWorktree,
-                          );
-                        },
-                        onAbort: _dismissScreen,
-                        header: _buildErrorBanner(state),
-                        composerHeader: _buildComposerHeader(state),
-                        availableCommands: state.agentModelData?.commands ?? const [],
-                        stagedCommand: state.agentModelData?.stagedCommand,
-                        onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-                        onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
-                      ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: PromptInput(
+                      // Persist the unsent prompt per project so it survives
+                      // leaving and returning to the new-session screen before
+                      // a session exists; cleared once the session is created.
+                      draftKey: "new-session:${widget.projectId}",
+                      isBusy: state is NewSessionSending,
+                      onSend: (String text, String? command) {
+                        context.read<NewSessionCubit>().createSession(
+                          text: text,
+                          command: command,
+                          dedicatedWorktree: _dedicatedWorktree,
+                        );
+                      },
+                      onAbort: _dismissScreen,
+                      header: _buildErrorBanner(state),
+                      composerHeader: _buildComposerHeader(state),
+                      availableCommands: state.agentModelData?.commands ?? const [],
+                      stagedCommand: state.agentModelData?.stagedCommand,
+                      onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                      onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

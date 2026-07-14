@@ -222,6 +222,7 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
 
       expect(find.byType(NewSessionScreen), findsNothing);
       expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);

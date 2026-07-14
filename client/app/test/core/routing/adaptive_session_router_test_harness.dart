@@ -39,6 +39,7 @@ class AdaptiveSessionRouterTestHarness {
   late final MockAuthSession authSession;
   late final BehaviorSubject<ConnectionStatus> statusController;
   late final BehaviorSubject<AuthState> authStateController;
+  late final StreamController<SesoriSessionEvent> sessionEventsController;
   late final StreamController<void> maxDurationReachedController;
   late final GoRouter router;
   late final GlobalKey<NavigatorState> rootNavigatorKey;
@@ -69,13 +70,14 @@ class AdaptiveSessionRouterTestHarness {
     authSession = MockAuthSession();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(_connectedStatus);
     authStateController = BehaviorSubject<AuthState>.seeded(const AuthState.unauthenticated());
+    sessionEventsController = StreamController<SesoriSessionEvent>.broadcast();
     maxDurationReachedController = StreamController<void>.broadcast();
     rootNavigatorKey = GlobalKey<NavigatorState>();
 
     when(() => connectionService.events).thenAnswer((_) => const Stream<SseEvent>.empty());
     when(() => connectionService.status).thenAnswer((_) => statusController.stream);
     when(() => connectionService.currentStatus).thenReturn(_connectedStatus);
-    when(() => connectionService.sessionEvents(any())).thenAnswer((_) => const Stream<SesoriSessionEvent>.empty());
+    when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEventsController.stream);
 
     when(() => projectService.listProjects()).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
 
@@ -224,9 +226,12 @@ class AdaptiveSessionRouterTestHarness {
 
   String get currentLocation => router.routeInformationProvider.value.uri.toString();
 
+  void emitSessionEvent({required SesoriSessionEvent event}) => sessionEventsController.add(event);
+
   Future<void> tearDown() async {
     await statusController.close();
     await authStateController.close();
+    await sessionEventsController.close();
     await maxDurationReachedController.close();
     await GetIt.instance.reset();
   }
