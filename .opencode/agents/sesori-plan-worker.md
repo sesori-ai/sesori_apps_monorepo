@@ -84,11 +84,12 @@ switch or create worktrees without that answer.
 Waves are strict merge barriers and implementation PRs are never stacked. For
 each repository/base pair in a wave, pin the exact tip SHA used by the drift
 assessment when the first PR for that pair starts. Do not resolve the branch tip
-again between assessment and pinning. Record the SHA in `TRACKER.md`; all
-same-wave siblings for that repository/base branch from the same pinned commit.
-Different repositories have independent pinned commits. If several same-wave
-PRs are ready, show active and ready steps, recommend the lowest-numbered safe
-step, and ask which one to execute.
+again between assessment and pinning. Record the SHA and drift decision in the
+`TRACKER.md` `Wave Baselines` table; that row is authoritative for later runs.
+All same-wave siblings for that repository/base pair branch from the same
+pinned commit. Different repositories have independent pinned commits. If
+several same-wave PRs are ready, show active and ready steps, recommend the
+lowest-numbered safe step, and ask which one to execute.
 
 Use branch `plan/<plan-slug>/sNN-wNN-pNN-step-slug` exactly as declared by the
 step file. Resolve its baseline in the step-declared repository from the

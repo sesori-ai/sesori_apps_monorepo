@@ -252,6 +252,7 @@ Owns concise mutable execution state only:
 - next action;
 - full-plan review verdict, reviewer, date, and reviewed commit;
 - one checkbox row per PR with branch, PR URL, and concise notes;
+- one pinned baseline row per started stage/wave/repository/base pair;
 - separate User/Worker checkbox rows for manual checks;
 - blockers and stale-review decisions;
 - milestone-level findings and plan deltas, newest first.
@@ -263,6 +264,8 @@ Use this fixed structure:
 ## Plan State
 ## Current Pointer
 ## Plan Review
+## Wave Baselines
+| Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
 ## PR Steps
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 ## Manual Checkpoints
@@ -271,9 +274,11 @@ Use this fixed structure:
 ## Findings and Plan Deltas
 ```
 
-`Current Pointer` always names the current stage, wave, and next action. Keep
-the tables complete and put free-form milestone notes only under the final
-`Findings and Plan Deltas` section.
+`Current Pointer` always names the current stage, wave, and next action. A
+`Wave Baselines` row is the authoritative pinned commit for every started
+repository/base pair in a wave; same-wave sibling runs reuse it. Keep the tables
+complete and put free-form milestone notes only under the final `Findings and
+Plan Deltas` section.
 
 Do not write routine commands, chat summaries, debugging diaries, or duplicate
 the design. A PR row is binary: unchecked on its shared baseline, checked
