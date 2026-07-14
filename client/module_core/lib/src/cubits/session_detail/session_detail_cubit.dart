@@ -37,6 +37,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final PromptSendQueue _promptQueue = PromptSendQueue();
   bool _isSending = false;
 
+  /// Cooldown between silent refreshes triggered by staleness events.
+  /// Overridable so tests can exercise the coalescing without real waits.
+  final Duration eventRefreshMinInterval;
+
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<SseEvent> _globalEventSubscription;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
@@ -44,6 +48,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
+  Timer? _eventRefreshCooldown;
+  bool _eventRefreshQueued = false;
   bool _needsStaleRefresh = false;
   bool _waitingForConnection = false;
   bool _wasPaused = false;
@@ -91,6 +97,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required String projectId,
     required NotificationCanceller notificationCanceller,
     required FailureReporter failureReporter,
+    this.eventRefreshMinInterval = const Duration(seconds: 5),
   }) : _loadService = loadService,
        _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
@@ -159,18 +166,130 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   void _silentRefresh() {
     if (state is! SessionDetailLoaded) return;
-    _activeRefresh ??= _doSilentRefresh().whenComplete(() => _activeRefresh = null);
+    final active = _activeRefresh;
+    if (active != null) {
+      // This call raced an in-flight refresh. If a staleness signal is
+      // queued with no cooldown armed to drain it (the pause path cancels
+      // the timer), chain the trailing refresh onto the in-flight completion
+      // so the signal is never stranded.
+      if (_eventRefreshQueued && _eventRefreshCooldown == null) {
+        _drainQueueWhenRefreshCompletes(active);
+      }
+      return;
+    }
+    // Remove prior staleness from the live queue while this refresh runs.
+    // Success consumes it; failure restores it. Signals that arrive while the
+    // refresh is in flight independently re-queue behind it.
+    final consumedQueuedSignal = _eventRefreshQueued;
+    _eventRefreshQueued = false;
+    late final Future<void> refresh;
+    refresh = _doSilentRefresh()
+        .then((appliedSnapshot) {
+          if (!appliedSnapshot && consumedQueuedSignal) {
+            _restoreQueuedRefreshAfterFailure();
+          }
+        })
+        .whenComplete(() {
+          if (identical(_activeRefresh, refresh)) {
+            _activeRefresh = null;
+          }
+        });
+    _activeRefresh = refresh;
   }
 
-  Future<void> _doSilentRefresh() async {
+  void _restoreQueuedRefreshAfterFailure() {
+    if (isClosed) return;
+    _eventRefreshQueued = true;
+    if (_wasPaused || state is! SessionDetailLoaded) return;
+    if (!_isConnected) {
+      _needsStaleRefresh = true;
+      return;
+    }
+    _eventRefreshCooldown ??= Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
+  }
+
+  void _drainQueueWhenRefreshCompletes(Future<void> activeRefresh) {
+    unawaited(
+      activeRefresh.whenComplete(() {
+        // A newer signal may have armed its own cooldown in the meantime;
+        // that timer owns the queue.
+        if (isClosed || _eventRefreshCooldown != null) return;
+        _onEventRefreshCooldownElapsed();
+      }),
+    );
+  }
+
+  /// Coalesces event-driven staleness signals (sessions.updated,
+  /// command.executed, dataMayBeStale) into at most one silent refresh per
+  /// [eventRefreshMinInterval]. While the agent works, the bridge can emit
+  /// these in sustained bursts (e.g. sessions.updated on every PR-sync tick),
+  /// and each silent refresh refetches the whole session snapshot — ~10
+  /// encrypted relay round-trips — so refreshing per event keeps the radio
+  /// and main isolate busy for the entire turn. The first signal after a
+  /// quiet period still refreshes immediately; follow-ups within the cooldown
+  /// collapse into a single trailing refresh. Reconnect and app-resume
+  /// refreshes bypass this on purpose: they must run promptly and re-assert
+  /// the bridge-side view declaration.
+  void _requestEventDrivenRefresh() {
+    if (state is! SessionDetailLoaded) return;
+    if (_wasPaused) {
+      // Don't spend the radio while backgrounded: hold the signal and let
+      // the resume path's bypass refresh consume it.
+      _eventRefreshQueued = true;
+      return;
+    }
+    if (_eventRefreshCooldown != null) {
+      _eventRefreshQueued = true;
+      return;
+    }
+    if (_activeRefresh != null) {
+      // A refresh is already in flight (e.g. the reconnect path): its
+      // snapshot may predate this signal, so queue a trailing refresh behind
+      // a cooldown window instead of letting _silentRefresh coalesce the
+      // signal into the stale in-flight run.
+      _eventRefreshQueued = true;
+      _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
+      return;
+    }
+    _eventRefreshQueued = true;
+    _silentRefresh();
+    _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
+  }
+
+  void _onEventRefreshCooldownElapsed() {
+    _eventRefreshCooldown = null;
+    if (!_eventRefreshQueued) return;
+    if (isClosed || state is! SessionDetailLoaded) {
+      _eventRefreshQueued = false;
+      return;
+    }
+    // While backgrounded the queue is held for the resume bypass refresh.
+    if (_wasPaused) return;
+    if (!_isConnected) {
+      _needsStaleRefresh = true;
+      return;
+    }
+    final active = _activeRefresh;
+    if (active != null) {
+      // The minimum interval has already elapsed, so run the queued refresh
+      // as soon as the in-flight one completes instead of waiting another
+      // full window.
+      _drainQueueWhenRefreshCompletes(active);
+      return;
+    }
+    _silentRefresh();
+    _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
+  }
+
+  Future<bool> _doSilentRefresh() async {
     final current = state;
-    if (current is! SessionDetailLoaded) return;
+    if (current is! SessionDetailLoaded) return false;
 
     emit(current.copyWith(isRefreshing: true, queuedMessages: _promptQueue.items));
 
     try {
       final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
-      if (isClosed) return;
+      if (isClosed) return false;
 
       switch (result) {
         case SessionDetailLoadResultLoaded(:final snapshot):
@@ -207,7 +326,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _sortChildrenByUpdatedDesc(refreshedChildSessions);
 
           final latest = state;
-          if (latest is! SessionDetailLoaded) return;
+          if (latest is! SessionDetailLoaded) return false;
           final preservedSelectedAgent = latest.selectedAgent;
           final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
@@ -258,26 +377,30 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             _sessionViewingService.setViewingSession(_sessionId);
           }
           _drainPendingEvents();
+          return true;
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;
           final latest = state;
           if (latest is SessionDetailLoaded) {
             emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
           }
+          return false;
         case SessionDetailLoadResultFailed(:final error):
           logw("Silent refresh failed: ${error.toString()}");
           final latest = state;
           if (latest is SessionDetailLoaded) {
             emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
           }
+          return false;
       }
     } catch (error) {
       logw("Silent refresh failed: ${error.toString()}");
-      if (isClosed) return;
+      if (isClosed) return false;
       final latest = state;
       if (latest is SessionDetailLoaded) {
         emit(latest.copyWith(isRefreshing: false, queuedMessages: _promptQueue.items));
       }
+      return false;
     }
   }
 
@@ -536,7 +659,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           break;
         case SesoriSessionsUpdated(:final projectID):
           if (projectID.isNotEmpty && projectID == _projectId) {
-            _silentRefresh();
+            _requestEventDrivenRefresh();
           }
       }
     } catch (e, st) {
@@ -794,7 +917,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     if (state is! SessionDetailLoaded) return;
     final status = _connectionService.status.value;
     if (status is ConnectionConnected) {
-      _silentRefresh();
+      _requestEventDrivenRefresh();
     } else {
       _needsStaleRefresh = true;
     }
@@ -805,6 +928,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case LifecycleState.paused:
       case LifecycleState.hidden:
         _wasPaused = true;
+        // Don't let a queued trailing refresh spend radio/CPU while hidden;
+        // the queue is preserved and consumed by the resume bypass refresh.
+        _eventRefreshCooldown?.cancel();
+        _eventRefreshCooldown = null;
       case LifecycleState.resumed:
         if (!_wasPaused) return;
         _wasPaused = false;
@@ -1399,6 +1526,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _connectionStatusSubscription.cancel();
     _staleSubscription.cancel();
     _lifecycleSubscription.cancel();
+    _eventRefreshCooldown?.cancel();
     _streamingBuffer.dispose();
     _questionStream.close();
     _permissionStream.close();

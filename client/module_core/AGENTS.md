@@ -36,6 +36,7 @@ lib/src/
 - `@lazySingleton` for services; cubits are NOT registered in DI
 - Public named parameters use `required` even when nullable. Prefer `required String? value` over optional named nullable parameters so call sites must pass intent explicitly.
 - **Service request bodies use shared Freezed models** — when a service method sends a POST/PUT body to the bridge, serialize with a Freezed class from `sesori_shared`: `FooRequest(field: value).toJson()`. Never use inline `{"key": value}` maps.
+- A coalesced staleness signal is consumed only after the resulting snapshot is successfully applied. Failed or connection-blocked refreshes preserve and re-arm prior staleness without discarding newer signals that arrived in flight.
 
 ## Platform Interfaces
 
