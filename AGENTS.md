@@ -424,7 +424,7 @@ module_auth/lib/src/
 
 Data flows downstream via streams and events — this is push-based. Polling is a violation unless the data source genuinely can't expose a stream.
 
-Long-lived Flutter busy indicators must not keep the render pipeline active at display refresh for the full operation. Use a static indicator or a low-frequency animation that stops under `TickerMode`/reduced motion, and do not carry performance measurements across materially different animation implementations.
+Long-lived Flutter busy indicators preserve smooth visible motion unless the user explicitly approves another treatment. Isolate repaint damage and profile before reducing cadence; if continuous frames are unacceptable, deliberately use a static indicator. Animated indicators must stop under `TickerMode` and become static under reduced motion. Do not carry performance measurements across materially different animation implementations.
 
 When a coalesced staleness queue drives snapshot refreshes, only a successfully applied snapshot consumes queued staleness. A failed or connection-blocked refresh must preserve and re-arm the prior signal, while signals arriving during the refresh remain queued independently.
 

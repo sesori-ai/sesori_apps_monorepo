@@ -4,7 +4,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
-import "../../../core/widgets/throttled_activity_indicator.dart";
+import "../../../core/widgets/isolated_activity_indicator.dart";
 import "../../../l10n/app_localizations.dart";
 
 class ToolPartWidget extends StatelessWidget {
@@ -68,8 +68,8 @@ class ToolPartWidget extends StatelessWidget {
                 padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
                 child: Text(
                   errorText,
-                    style: prego.textTheme.textXs.regular.copyWith(
-                      color: prego.colors.fgErrorPrimary,
+                  style: prego.textTheme.textXs.regular.copyWith(
+                    color: prego.colors.fgErrorPrimary,
                   ),
                   maxLines: 4,
                   overflow: .ellipsis,
@@ -85,7 +85,7 @@ class ToolPartWidget extends StatelessWidget {
     ToolStatus.pending || ToolStatus.running => SizedBox(
       width: 16,
       height: 16,
-      child: ThrottledActivityIndicator(
+      child: IsolatedActivityIndicator(
         strokeWidth: 2,
         color: prego.colors.bgBrandSolid,
       ),
