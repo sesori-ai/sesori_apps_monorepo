@@ -90,7 +90,6 @@ void main() {
     );
 
     final roots = await db.sessionDao.getRootCatalogSessions(
-      ownerIdentity: "local",
       projectId: "project-1",
       offset: 0,
       limit: 10,
@@ -98,36 +97,33 @@ void main() {
     expect(roots.map((row) => row.sessionId), ["root-new", "root-old"]);
     expect(
       (await db.sessionDao.getChildCatalogSessions(
-        ownerIdentity: "local",
         parentSessionId: "root-new",
       )).single.sessionId,
       "child",
     );
     expect(
       (await db.sessionDao.getSessionByBinding(
-        ownerIdentity: "local",
         pluginId: "codex",
         backendSessionId: "backend-new",
       ))?.sessionId,
       "root-new",
     );
     expect(
-      (await db.sessionDao.getArchivedCatalogSessions(ownerIdentity: "local", offset: 0, limit: 10)).single.sessionId,
+      (await db.sessionDao.getArchivedCatalogSessions(offset: 0, limit: 10)).single.sessionId,
       "root-new",
     );
     expect(
-      (await db.projectsDao.getProjectsByOwnerAndPath(ownerIdentity: "local", path: "/projects/one")).single.projectId,
+      (await db.projectsDao.getProjectsByPath(path: "/projects/one")).single.projectId,
       "project-1",
     );
     expect(
-      (await db.projectsDao.getCatalogProjects(ownerIdentity: "local")).map((row) => row.projectId),
+      (await db.projectsDao.getCatalogProjects()).map((row) => row.projectId),
       ["project-2", "project-1"],
     );
   });
 
   test("hydration completion access is exact and replaceable", () async {
     const first = CatalogHydrationDto(
-      ownerIdentity: "local",
       pluginId: "codex",
       projectionVersion: 1,
       completedAt: 10,
@@ -137,13 +133,12 @@ void main() {
 
     expect(
       (await db.catalogHydrationsDao.getCompletion(
-        ownerIdentity: "local",
         pluginId: "codex",
         projectionVersion: 1,
       ))?.completedAt,
       20,
     );
-    await db.catalogHydrationsDao.deleteForPlugin(ownerIdentity: "local", pluginId: "codex");
+    await db.catalogHydrationsDao.deleteForPlugin(pluginId: "codex");
     expect(await db.select(db.catalogHydrationsTable).get(), isEmpty);
   });
 
@@ -154,40 +149,39 @@ void main() {
     }
 
     expect(
-      await plan("SELECT * FROM projects_table WHERE owner_identity = 'local' AND path = '/projects/one'"),
-      contains("idx_projects_owner_path"),
+      await plan("SELECT * FROM projects_table WHERE path = '/projects/one'"),
+      contains("idx_projects_path"),
     );
     expect(
       await plan(
-        "SELECT * FROM projects_table WHERE owner_identity = 'local' "
-        "ORDER BY updated_at DESC, project_id DESC",
+        "SELECT * FROM projects_table ORDER BY updated_at DESC, project_id DESC",
       ),
-      allOf(contains("idx_projects_owner_updated"), isNot(contains("USE TEMP B-TREE"))),
+      allOf(contains("idx_projects_updated"), isNot(contains("USE TEMP B-TREE"))),
     );
     expect(
       await plan(
-        "SELECT * FROM sessions_table WHERE owner_identity = 'local' AND plugin_id = 'codex' "
+        "SELECT * FROM sessions_table WHERE plugin_id = 'codex' "
         "AND backend_session_id = 'backend'",
       ),
-      contains("idx_sessions_owner_plugin_backend"),
+      contains("idx_sessions_plugin_backend"),
     );
     expect(
       await plan(
-        "SELECT * FROM sessions_table WHERE owner_identity = 'local' AND project_id = 'project-1' "
+        "SELECT * FROM sessions_table WHERE project_id = 'project-1' "
         "AND parent_session_id IS NULL ORDER BY updated_at DESC, session_id DESC",
       ),
       contains("idx_sessions_roots"),
     );
     expect(
       await plan(
-        "SELECT * FROM sessions_table WHERE owner_identity = 'local' AND parent_session_id = 'parent' "
+        "SELECT * FROM sessions_table WHERE parent_session_id = 'parent' "
         "ORDER BY updated_at DESC, session_id DESC",
       ),
       contains("idx_sessions_children"),
     );
     expect(
       await plan(
-        "SELECT * FROM sessions_table WHERE owner_identity = 'local' AND archived_at IS NOT NULL "
+        "SELECT * FROM sessions_table WHERE archived_at IS NOT NULL "
         "ORDER BY updated_at DESC, session_id DESC",
       ),
       allOf(contains("idx_sessions_archive"), isNot(contains("USE TEMP B-TREE"))),

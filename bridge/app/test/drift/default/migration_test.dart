@@ -1110,8 +1110,6 @@ void main() {
         validateItems: (newDb) async {
           final project =
               (await newDb.select(newDb.projectsTable).get()).single;
-          expect(project.ownerIdentity, 'local');
-          expect(project.catalogName, isNull);
           expect(project.projectionUpdatedAt, 200);
           expect(project.displayName, 'One');
 

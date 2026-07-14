@@ -5,11 +5,10 @@ import "../database.dart";
 
 part "projects_table.freezed.dart";
 
-@TableIndex(name: "idx_projects_owner_path", columns: {#ownerIdentity, #path})
+@TableIndex(name: "idx_projects_path", columns: {#path})
 @TableIndex(
-  name: "idx_projects_owner_updated",
+  name: "idx_projects_updated",
   columns: {
-    #ownerIdentity,
     IndexedColumn(#updatedAt, orderBy: OrderingMode.desc),
     IndexedColumn(#projectId, orderBy: OrderingMode.desc),
   },
@@ -17,8 +16,6 @@ part "projects_table.freezed.dart";
 @UseRowClass(ProjectDto)
 class ProjectsTable extends Table {
   TextColumn get projectId => text()();
-
-  TextColumn get ownerIdentity => text().withDefault(const Constant("local"))();
 
   /// The project's live directory on disk. This may differ from [projectId]
   /// after a folder move; the id remains the stable bridge/client handle.
@@ -31,7 +28,6 @@ class ProjectsTable extends Table {
   /// bridge-derived plugins, which have no backend to store a project name;
   /// null means fall back to the directory basename.
   TextColumn get displayName => text().nullable()();
-  TextColumn get catalogName => text().nullable()();
 
   /// Wall-clock ms when this project row was first recorded — the folder was
   /// opened or the project was first discovered. Stamped at insert time and
@@ -58,13 +54,11 @@ class ProjectsTable extends Table {
 sealed class ProjectDto with _$ProjectDto, $ProjectsTableTableToColumns {
   const factory ProjectDto({
     required String projectId,
-    @Default("local") String ownerIdentity,
     required String path,
     @Default(false) bool hidden,
     String? baseBranch,
     @Default(0) int worktreeCounter,
     String? displayName,
-    String? catalogName,
     required int createdAt,
     required int updatedAt,
     required int projectionUpdatedAt,

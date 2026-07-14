@@ -26,16 +26,6 @@
             "dsl_features": []
           },
           {
-            "name": "owner_identity",
-            "getter_name": "ownerIdentity",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": "const CustomExpression('\\'local\\'')",
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
             "name": "path",
             "getter_name": "path",
             "moor_type": "string",
@@ -82,16 +72,6 @@
           {
             "name": "display_name",
             "getter_name": "displayName",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "catalog_name",
-            "getter_name": "catalogName",
             "moor_type": "string",
             "nullable": true,
             "customConstraints": null,
@@ -155,16 +135,6 @@
             "nullable": false,
             "customConstraints": null,
             "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "owner_identity",
-            "getter_name": "ownerIdentity",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": "const CustomExpression('\\'local\\'')",
             "default_client_dart": null,
             "dsl_features": []
           },
@@ -687,16 +657,6 @@
         "was_declared_in_moor": false,
         "columns": [
           {
-            "name": "owner_identity",
-            "getter_name": "ownerIdentity",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
             "name": "plugin_id",
             "getter_name": "pluginId",
             "moor_type": "string",
@@ -731,7 +691,6 @@
         "without_rowid": true,
         "constraints": [],
         "explicit_pk": [
-          "owner_identity",
           "plugin_id",
           "projection_version"
         ]
@@ -745,14 +704,10 @@
       "type": "index",
       "data": {
         "on": 0,
-        "name": "idx_projects_owner_path",
+        "name": "idx_projects_path",
         "sql": null,
         "unique": false,
         "columns": [
-          {
-            "column": "owner_identity",
-            "order_by": null
-          },
           {
             "column": "path",
             "order_by": null
@@ -768,14 +723,10 @@
       "type": "index",
       "data": {
         "on": 0,
-        "name": "idx_projects_owner_updated",
+        "name": "idx_projects_updated",
         "sql": null,
         "unique": false,
         "columns": [
-          {
-            "column": "owner_identity",
-            "order_by": null
-          },
           {
             "column": "updated_at",
             "order_by": "descending"
@@ -795,14 +746,10 @@
       "type": "index",
       "data": {
         "on": 1,
-        "name": "idx_sessions_owner_plugin_backend",
+        "name": "idx_sessions_plugin_backend",
         "sql": null,
         "unique": true,
         "columns": [
-          {
-            "column": "owner_identity",
-            "order_by": null
-          },
           {
             "column": "plugin_id",
             "order_by": null
@@ -826,10 +773,6 @@
         "sql": null,
         "unique": false,
         "columns": [
-          {
-            "column": "owner_identity",
-            "order_by": null
-          },
           {
             "column": "project_id",
             "order_by": null
@@ -862,10 +805,6 @@
         "unique": false,
         "columns": [
           {
-            "column": "owner_identity",
-            "order_by": null
-          },
-          {
             "column": "parent_session_id",
             "order_by": null
           },
@@ -889,7 +828,7 @@
       "data": {
         "on": 1,
         "name": "idx_sessions_archive",
-        "sql": "CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL",
+        "sql": "CREATE INDEX idx_sessions_archive ON sessions_table (updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL",
         "unique": false,
         "columns": []
       }
@@ -901,7 +840,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"projects_table\" (\"project_id\" TEXT NOT NULL, \"owner_identity\" TEXT NOT NULL DEFAULT 'local', \"path\" TEXT NOT NULL, \"hidden\" INTEGER NOT NULL DEFAULT 0 CHECK (\"hidden\" IN (0, 1)), \"base_branch\" TEXT NULL, \"worktree_counter\" INTEGER NOT NULL DEFAULT 0, \"display_name\" TEXT NULL, \"catalog_name\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"projection_updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"project_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"projects_table\" (\"project_id\" TEXT NOT NULL, \"path\" TEXT NOT NULL, \"hidden\" INTEGER NOT NULL DEFAULT 0 CHECK (\"hidden\" IN (0, 1)), \"base_branch\" TEXT NULL, \"worktree_counter\" INTEGER NOT NULL DEFAULT 0, \"display_name\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"projection_updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"project_id\")) WITHOUT ROWID;"
         }
       ]
     },
@@ -910,7 +849,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"owner_identity\" TEXT NOT NULL DEFAULT 'local', \"backend_session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"parent_session_id\" TEXT NULL REFERENCES sessions_table (session_id) ON DELETE CASCADE, \"directory\" TEXT NOT NULL, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"projection_updated_at\" INTEGER NOT NULL, \"last_activity_at\" INTEGER NULL, \"last_seen_at\" INTEGER NULL, \"last_user_message_at\" INTEGER NULL, \"plugin_id\" TEXT NOT NULL, \"title\" TEXT NULL, \"catalog_title\" TEXT NULL, \"summary_additions\" INTEGER NULL, \"summary_deletions\" INTEGER NULL, \"summary_files\" INTEGER NULL, PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"backend_session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"parent_session_id\" TEXT NULL REFERENCES sessions_table (session_id) ON DELETE CASCADE, \"directory\" TEXT NOT NULL, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"projection_updated_at\" INTEGER NOT NULL, \"last_activity_at\" INTEGER NULL, \"last_seen_at\" INTEGER NULL, \"last_user_message_at\" INTEGER NULL, \"plugin_id\" TEXT NOT NULL, \"title\" TEXT NULL, \"catalog_title\" TEXT NULL, \"summary_additions\" INTEGER NULL, \"summary_deletions\" INTEGER NULL, \"summary_files\" INTEGER NULL, PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
         }
       ]
     },
@@ -937,34 +876,34 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"catalog_hydrations_table\" (\"owner_identity\" TEXT NOT NULL, \"plugin_id\" TEXT NOT NULL, \"projection_version\" INTEGER NOT NULL, \"completed_at\" INTEGER NOT NULL, PRIMARY KEY (\"owner_identity\", \"plugin_id\", \"projection_version\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"catalog_hydrations_table\" (\"plugin_id\" TEXT NOT NULL, \"projection_version\" INTEGER NOT NULL, \"completed_at\" INTEGER NOT NULL, PRIMARY KEY (\"plugin_id\", \"projection_version\")) WITHOUT ROWID;"
         }
       ]
     },
     {
-      "name": "idx_projects_owner_path",
+      "name": "idx_projects_path",
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE INDEX idx_projects_owner_path ON projects_table (owner_identity, path)"
+          "sql": "CREATE INDEX idx_projects_path ON projects_table (path)"
         }
       ]
     },
     {
-      "name": "idx_projects_owner_updated",
+      "name": "idx_projects_updated",
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE INDEX idx_projects_owner_updated ON projects_table (owner_identity, updated_at DESC, project_id DESC)"
+          "sql": "CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)"
         }
       ]
     },
     {
-      "name": "idx_sessions_owner_plugin_backend",
+      "name": "idx_sessions_plugin_backend",
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE UNIQUE INDEX idx_sessions_owner_plugin_backend ON sessions_table (owner_identity, plugin_id, backend_session_id)"
+          "sql": "CREATE UNIQUE INDEX idx_sessions_plugin_backend ON sessions_table (plugin_id, backend_session_id)"
         }
       ]
     },
@@ -973,7 +912,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE INDEX idx_sessions_roots ON sessions_table (owner_identity, project_id, parent_session_id, updated_at, session_id)"
+          "sql": "CREATE INDEX idx_sessions_roots ON sessions_table (project_id, parent_session_id, updated_at, session_id)"
         }
       ]
     },
@@ -982,7 +921,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE INDEX idx_sessions_children ON sessions_table (owner_identity, parent_session_id, updated_at, session_id)"
+          "sql": "CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)"
         }
       ]
     },
@@ -991,7 +930,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL"
+          "sql": "CREATE INDEX idx_sessions_archive ON sessions_table (updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL"
         }
       ]
     }

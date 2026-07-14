@@ -28,21 +28,16 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     return (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
   }
 
-  Future<List<ProjectDto>> getCatalogProjects({required String ownerIdentity}) {
-    return (select(projectsTable)
-          ..where((table) => table.ownerIdentity.equals(ownerIdentity))
-          ..orderBy([
-            (table) => OrderingTerm.desc(table.updatedAt),
-            (table) => OrderingTerm.desc(table.projectId),
-          ]))
+  Future<List<ProjectDto>> getCatalogProjects() {
+    return (select(projectsTable)..orderBy([
+          (table) => OrderingTerm.desc(table.updatedAt),
+          (table) => OrderingTerm.desc(table.projectId),
+        ]))
         .get();
   }
 
-  Future<List<ProjectDto>> getProjectsByOwnerAndPath({required String ownerIdentity, required String path}) {
-    return (select(projectsTable)..where(
-          (table) => table.ownerIdentity.equals(ownerIdentity) & table.path.equals(path),
-        ))
-        .get();
+  Future<List<ProjectDto>> getProjectsByPath({required String path}) {
+    return (select(projectsTable)..where((table) => table.path.equals(path))).get();
   }
 
   /// The live directory stored for [projectId], or null when the bridge has no

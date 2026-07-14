@@ -186,13 +186,8 @@ class AppDatabase extends _$AppDatabase {
         await m.alterTable(
           TableMigration(
             schema.projectsTable,
-            newColumns: [
-              schema.projectsTable.ownerIdentity,
-              schema.projectsTable.catalogName,
-              schema.projectsTable.projectionUpdatedAt,
-            ],
+            newColumns: [schema.projectsTable.projectionUpdatedAt],
             columnTransformer: {
-              schema.projectsTable.ownerIdentity: const Constant<String>("local"),
               schema.projectsTable.projectionUpdatedAt: const CustomExpression<int>("updated_at"),
             },
           ),
@@ -203,7 +198,6 @@ class AppDatabase extends _$AppDatabase {
           TableMigration(
             schema.sessionsTable,
             newColumns: [
-              schema.sessionsTable.ownerIdentity,
               schema.sessionsTable.backendSessionId,
               schema.sessionsTable.parentSessionId,
               schema.sessionsTable.directory,
@@ -215,7 +209,6 @@ class AppDatabase extends _$AppDatabase {
               schema.sessionsTable.summaryFiles,
             ],
             columnTransformer: {
-              schema.sessionsTable.ownerIdentity: const Constant<String>("local"),
               schema.sessionsTable.backendSessionId: const CustomExpression<String>("session_id"),
               schema.sessionsTable.directory: const CustomExpression<String>(
                 "COALESCE(worktree_path, (SELECT path FROM projects_table WHERE project_id = sessions_table.project_id))",
@@ -237,9 +230,9 @@ class AppDatabase extends _$AppDatabase {
         );
 
         await m.createTable(schema.catalogHydrationsTable);
-        await m.createIndex(schema.idxProjectsOwnerPath);
-        await m.createIndex(schema.idxProjectsOwnerUpdated);
-        await m.createIndex(schema.idxSessionsOwnerPluginBackend);
+        await m.createIndex(schema.idxProjectsPath);
+        await m.createIndex(schema.idxProjectsUpdated);
+        await m.createIndex(schema.idxSessionsPluginBackend);
         await m.createIndex(schema.idxSessionsRoots);
         await m.createIndex(schema.idxSessionsChildren);
         await m.createIndex(schema.idxSessionsArchive);

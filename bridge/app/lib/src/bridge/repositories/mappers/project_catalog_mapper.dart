@@ -14,7 +14,7 @@ class ProjectCatalogMapper {
     final fallbackName = p.basename(row.path);
     return Project(
       id: row.projectId,
-      name: row.displayName ?? row.catalogName ?? (fallbackName.isEmpty ? row.path : fallbackName),
+      name: row.displayName ?? (fallbackName.isEmpty ? row.path : fallbackName),
       path: row.path,
       time: ProjectTime(created: row.createdAt, updated: row.updatedAt),
       hasUnseenChanges: hasUnseenChanges,

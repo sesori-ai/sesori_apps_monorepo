@@ -28,21 +28,21 @@ class AgentModelConverter extends TypeConverter<AgentModel, String> {
 }
 
 @TableIndex(
-  name: "idx_sessions_owner_plugin_backend",
-  columns: {#ownerIdentity, #pluginId, #backendSessionId},
+  name: "idx_sessions_plugin_backend",
+  columns: {#pluginId, #backendSessionId},
   unique: true,
 )
 @TableIndex(
   name: "idx_sessions_roots",
-  columns: {#ownerIdentity, #projectId, #parentSessionId, #updatedAt, #sessionId},
+  columns: {#projectId, #parentSessionId, #updatedAt, #sessionId},
 )
 @TableIndex(
   name: "idx_sessions_children",
-  columns: {#ownerIdentity, #parentSessionId, #updatedAt, #sessionId},
+  columns: {#parentSessionId, #updatedAt, #sessionId},
 )
 @TableIndex.sql(
   "CREATE INDEX idx_sessions_archive ON sessions_table "
-  "(owner_identity, updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL",
+  "(updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL",
 )
 @UseRowClass(SessionDto)
 class SessionTable extends Table {
@@ -50,7 +50,6 @@ class SessionTable extends Table {
   String get tableName => "sessions_table";
 
   TextColumn get sessionId => text()();
-  TextColumn get ownerIdentity => text().withDefault(const Constant("local"))();
   TextColumn get backendSessionId => text()();
   TextColumn get projectId => text().references(ProjectsTable, #projectId, onDelete: KeyAction.cascade)();
   TextColumn get parentSessionId =>
@@ -108,7 +107,6 @@ class SessionTable extends Table {
 sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
   const factory SessionDto({
     required String sessionId,
-    @Default("local") String ownerIdentity,
     required String backendSessionId,
     required String projectId,
     required String? parentSessionId,

@@ -12,7 +12,6 @@ void main() {
       projectId: "project-1",
       path: "/projects/repository",
       displayName: null,
-      catalogName: "Catalog name",
       createdAt: 10,
       updatedAt: 20,
       projectionUpdatedAt: 20,
@@ -20,7 +19,7 @@ void main() {
 
     expect(
       mapper.map(row: base, hasUnseenChanges: true, directoryMissing: false).name,
-      "Catalog name",
+      "repository",
     );
     expect(
       mapper
@@ -35,7 +34,7 @@ void main() {
     expect(
       mapper
           .map(
-            row: base.copyWith(catalogName: null),
+            row: base,
             hasUnseenChanges: false,
             directoryMissing: false,
           )

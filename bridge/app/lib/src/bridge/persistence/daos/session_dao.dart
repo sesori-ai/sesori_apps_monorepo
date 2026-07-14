@@ -100,7 +100,6 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     await into(sessionTable).insert(
       SessionTableCompanion(
         sessionId: Value(sessionId),
-        ownerIdentity: const Value(_ownerIdentity),
         backendSessionId: Value(sessionId),
         projectId: Value(projectId),
         parentSessionId: const Value(null),
@@ -162,31 +161,23 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   }
 
   Future<SessionDto?> getSessionByBinding({
-    required String ownerIdentity,
     required String pluginId,
     required String backendSessionId,
   }) {
     return (select(sessionTable)..where(
-          (table) =>
-              table.ownerIdentity.equals(ownerIdentity) &
-              table.pluginId.equals(pluginId) &
-              table.backendSessionId.equals(backendSessionId),
+          (table) => table.pluginId.equals(pluginId) & table.backendSessionId.equals(backendSessionId),
         ))
         .getSingleOrNull();
   }
 
   Future<List<SessionDto>> getRootCatalogSessions({
-    required String ownerIdentity,
     required String projectId,
     required int offset,
     required int limit,
   }) {
     return (select(sessionTable)
           ..where(
-            (table) =>
-                table.ownerIdentity.equals(ownerIdentity) &
-                table.projectId.equals(projectId) &
-                table.parentSessionId.isNull(),
+            (table) => table.projectId.equals(projectId) & table.parentSessionId.isNull(),
           )
           ..orderBy([
             (table) => OrderingTerm.desc(table.updatedAt),
@@ -197,12 +188,11 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   }
 
   Future<List<SessionDto>> getChildCatalogSessions({
-    required String ownerIdentity,
     required String parentSessionId,
   }) {
     return (select(sessionTable)
           ..where(
-            (table) => table.ownerIdentity.equals(ownerIdentity) & table.parentSessionId.equals(parentSessionId),
+            (table) => table.parentSessionId.equals(parentSessionId),
           )
           ..orderBy([
             (table) => OrderingTerm.desc(table.updatedAt),
@@ -212,12 +202,11 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   }
 
   Future<List<SessionDto>> getArchivedCatalogSessions({
-    required String ownerIdentity,
     required int offset,
     required int limit,
   }) {
     return (select(sessionTable)
-          ..where((table) => table.ownerIdentity.equals(ownerIdentity) & table.archivedAt.isNotNull())
+          ..where((table) => table.archivedAt.isNotNull())
           ..orderBy([
             (table) => OrderingTerm.desc(table.updatedAt),
             (table) => OrderingTerm.desc(table.sessionId),
@@ -408,7 +397,6 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
           for (final s in sessions)
             SessionTableCompanion(
               sessionId: Value(s.sessionId),
-              ownerIdentity: const Value(_ownerIdentity),
               backendSessionId: Value(s.sessionId),
               projectId: Value(s.projectId),
               parentSessionId: const Value(null),

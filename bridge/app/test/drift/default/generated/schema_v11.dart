@@ -6,13 +6,11 @@ import 'package:drift/drift.dart';
 
 mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
   String get projectId;
-  String get ownerIdentity;
   String get path;
   int get hidden;
   String? get baseBranch;
   int get worktreeCounter;
   String? get displayName;
-  String? get catalogName;
   int get createdAt;
   int get updatedAt;
   int get projectionUpdatedAt;
@@ -20,7 +18,6 @@ mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['project_id'] = Variable<String>(projectId);
-    map['owner_identity'] = Variable<String>(ownerIdentity);
     map['path'] = Variable<String>(path);
     map['hidden'] = Variable<int>(hidden);
     if (!nullToAbsent || baseBranch != null) {
@@ -29,9 +26,6 @@ mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
     map['worktree_counter'] = Variable<int>(worktreeCounter);
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
-    }
-    if (!nullToAbsent || catalogName != null) {
-      map['catalog_name'] = Variable<String>(catalogName);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
@@ -53,15 +47,6 @@ class ProjectsTable extends Table
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<String> ownerIdentity = GeneratedColumn<String>(
-    'owner_identity',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NOT NULL DEFAULT \'local\'',
-    defaultValue: const CustomExpression('\'local\''),
   );
   late final GeneratedColumn<String> path = GeneratedColumn<String>(
     'path',
@@ -105,14 +90,6 @@ class ProjectsTable extends Table
     requiredDuringInsert: false,
     $customConstraints: 'NULL',
   );
-  late final GeneratedColumn<String> catalogName = GeneratedColumn<String>(
-    'catalog_name',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
-  );
   late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
     'created_at',
     aliasedName,
@@ -140,13 +117,11 @@ class ProjectsTable extends Table
   @override
   List<GeneratedColumn> get $columns => [
     projectId,
-    ownerIdentity,
     path,
     hidden,
     baseBranch,
     worktreeCounter,
     displayName,
-    catalogName,
     createdAt,
     updatedAt,
     projectionUpdatedAt,
@@ -165,10 +140,6 @@ class ProjectsTable extends Table
       projectId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
-      )!,
-      ownerIdentity: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}owner_identity'],
       )!,
       path: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -189,10 +160,6 @@ class ProjectsTable extends Table
       displayName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}display_name'],
-      ),
-      catalogName: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}catalog_name'],
       ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -226,8 +193,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   @override
   final String projectId;
   @override
-  final String ownerIdentity;
-  @override
   final String path;
   @override
   final int hidden;
@@ -238,8 +203,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   @override
   final String? displayName;
   @override
-  final String? catalogName;
-  @override
   final int createdAt;
   @override
   final int updatedAt;
@@ -247,13 +210,11 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   final int projectionUpdatedAt;
   const ProjectsTableData({
     required this.projectId,
-    required this.ownerIdentity,
     required this.path,
     required this.hidden,
     this.baseBranch,
     required this.worktreeCounter,
     this.displayName,
-    this.catalogName,
     required this.createdAt,
     required this.updatedAt,
     required this.projectionUpdatedAt,
@@ -261,7 +222,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   ProjectsTableCompanion toCompanion(bool nullToAbsent) {
     return ProjectsTableCompanion(
       projectId: Value(projectId),
-      ownerIdentity: Value(ownerIdentity),
       path: Value(path),
       hidden: Value(hidden),
       baseBranch: baseBranch == null && nullToAbsent
@@ -271,9 +231,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       displayName: displayName == null && nullToAbsent
           ? const Value.absent()
           : Value(displayName),
-      catalogName: catalogName == null && nullToAbsent
-          ? const Value.absent()
-          : Value(catalogName),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       projectionUpdatedAt: Value(projectionUpdatedAt),
@@ -287,13 +244,11 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ProjectsTableData(
       projectId: serializer.fromJson<String>(json['projectId']),
-      ownerIdentity: serializer.fromJson<String>(json['ownerIdentity']),
       path: serializer.fromJson<String>(json['path']),
       hidden: serializer.fromJson<int>(json['hidden']),
       baseBranch: serializer.fromJson<String?>(json['baseBranch']),
       worktreeCounter: serializer.fromJson<int>(json['worktreeCounter']),
       displayName: serializer.fromJson<String?>(json['displayName']),
-      catalogName: serializer.fromJson<String?>(json['catalogName']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       projectionUpdatedAt: serializer.fromJson<int>(
@@ -306,13 +261,11 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'projectId': serializer.toJson<String>(projectId),
-      'ownerIdentity': serializer.toJson<String>(ownerIdentity),
       'path': serializer.toJson<String>(path),
       'hidden': serializer.toJson<int>(hidden),
       'baseBranch': serializer.toJson<String?>(baseBranch),
       'worktreeCounter': serializer.toJson<int>(worktreeCounter),
       'displayName': serializer.toJson<String?>(displayName),
-      'catalogName': serializer.toJson<String?>(catalogName),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
       'projectionUpdatedAt': serializer.toJson<int>(projectionUpdatedAt),
@@ -321,25 +274,21 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
 
   ProjectsTableData copyWith({
     String? projectId,
-    String? ownerIdentity,
     String? path,
     int? hidden,
     Value<String?> baseBranch = const Value.absent(),
     int? worktreeCounter,
     Value<String?> displayName = const Value.absent(),
-    Value<String?> catalogName = const Value.absent(),
     int? createdAt,
     int? updatedAt,
     int? projectionUpdatedAt,
   }) => ProjectsTableData(
     projectId: projectId ?? this.projectId,
-    ownerIdentity: ownerIdentity ?? this.ownerIdentity,
     path: path ?? this.path,
     hidden: hidden ?? this.hidden,
     baseBranch: baseBranch.present ? baseBranch.value : this.baseBranch,
     worktreeCounter: worktreeCounter ?? this.worktreeCounter,
     displayName: displayName.present ? displayName.value : this.displayName,
-    catalogName: catalogName.present ? catalogName.value : this.catalogName,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     projectionUpdatedAt: projectionUpdatedAt ?? this.projectionUpdatedAt,
@@ -347,9 +296,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   ProjectsTableData copyWithCompanion(ProjectsTableCompanion data) {
     return ProjectsTableData(
       projectId: data.projectId.present ? data.projectId.value : this.projectId,
-      ownerIdentity: data.ownerIdentity.present
-          ? data.ownerIdentity.value
-          : this.ownerIdentity,
       path: data.path.present ? data.path.value : this.path,
       hidden: data.hidden.present ? data.hidden.value : this.hidden,
       baseBranch: data.baseBranch.present
@@ -361,9 +307,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       displayName: data.displayName.present
           ? data.displayName.value
           : this.displayName,
-      catalogName: data.catalogName.present
-          ? data.catalogName.value
-          : this.catalogName,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       projectionUpdatedAt: data.projectionUpdatedAt.present
@@ -376,13 +319,11 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   String toString() {
     return (StringBuffer('ProjectsTableData(')
           ..write('projectId: $projectId, ')
-          ..write('ownerIdentity: $ownerIdentity, ')
           ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
           ..write('worktreeCounter: $worktreeCounter, ')
           ..write('displayName: $displayName, ')
-          ..write('catalogName: $catalogName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('projectionUpdatedAt: $projectionUpdatedAt')
@@ -393,13 +334,11 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   @override
   int get hashCode => Object.hash(
     projectId,
-    ownerIdentity,
     path,
     hidden,
     baseBranch,
     worktreeCounter,
     displayName,
-    catalogName,
     createdAt,
     updatedAt,
     projectionUpdatedAt,
@@ -409,13 +348,11 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       identical(this, other) ||
       (other is ProjectsTableData &&
           other.projectId == this.projectId &&
-          other.ownerIdentity == this.ownerIdentity &&
           other.path == this.path &&
           other.hidden == this.hidden &&
           other.baseBranch == this.baseBranch &&
           other.worktreeCounter == this.worktreeCounter &&
           other.displayName == this.displayName &&
-          other.catalogName == this.catalogName &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.projectionUpdatedAt == this.projectionUpdatedAt);
@@ -423,38 +360,32 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
 
 class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   final Value<String> projectId;
-  final Value<String> ownerIdentity;
   final Value<String> path;
   final Value<int> hidden;
   final Value<String?> baseBranch;
   final Value<int> worktreeCounter;
   final Value<String?> displayName;
-  final Value<String?> catalogName;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> projectionUpdatedAt;
   const ProjectsTableCompanion({
     this.projectId = const Value.absent(),
-    this.ownerIdentity = const Value.absent(),
     this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
-    this.catalogName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.projectionUpdatedAt = const Value.absent(),
   });
   ProjectsTableCompanion.insert({
     required String projectId,
-    this.ownerIdentity = const Value.absent(),
     required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
-    this.catalogName = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     required int projectionUpdatedAt,
@@ -465,26 +396,22 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
        projectionUpdatedAt = Value(projectionUpdatedAt);
   static Insertable<ProjectsTableData> custom({
     Expression<String>? projectId,
-    Expression<String>? ownerIdentity,
     Expression<String>? path,
     Expression<int>? hidden,
     Expression<String>? baseBranch,
     Expression<int>? worktreeCounter,
     Expression<String>? displayName,
-    Expression<String>? catalogName,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? projectionUpdatedAt,
   }) {
     return RawValuesInsertable({
       if (projectId != null) 'project_id': projectId,
-      if (ownerIdentity != null) 'owner_identity': ownerIdentity,
       if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
       if (worktreeCounter != null) 'worktree_counter': worktreeCounter,
       if (displayName != null) 'display_name': displayName,
-      if (catalogName != null) 'catalog_name': catalogName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (projectionUpdatedAt != null)
@@ -494,26 +421,22 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
 
   ProjectsTableCompanion copyWith({
     Value<String>? projectId,
-    Value<String>? ownerIdentity,
     Value<String>? path,
     Value<int>? hidden,
     Value<String?>? baseBranch,
     Value<int>? worktreeCounter,
     Value<String?>? displayName,
-    Value<String?>? catalogName,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int>? projectionUpdatedAt,
   }) {
     return ProjectsTableCompanion(
       projectId: projectId ?? this.projectId,
-      ownerIdentity: ownerIdentity ?? this.ownerIdentity,
       path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
       worktreeCounter: worktreeCounter ?? this.worktreeCounter,
       displayName: displayName ?? this.displayName,
-      catalogName: catalogName ?? this.catalogName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       projectionUpdatedAt: projectionUpdatedAt ?? this.projectionUpdatedAt,
@@ -525,9 +448,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     final map = <String, Expression>{};
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
-    }
-    if (ownerIdentity.present) {
-      map['owner_identity'] = Variable<String>(ownerIdentity.value);
     }
     if (path.present) {
       map['path'] = Variable<String>(path.value);
@@ -543,9 +463,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     }
     if (displayName.present) {
       map['display_name'] = Variable<String>(displayName.value);
-    }
-    if (catalogName.present) {
-      map['catalog_name'] = Variable<String>(catalogName.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
@@ -563,13 +480,11 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   String toString() {
     return (StringBuffer('ProjectsTableCompanion(')
           ..write('projectId: $projectId, ')
-          ..write('ownerIdentity: $ownerIdentity, ')
           ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
           ..write('worktreeCounter: $worktreeCounter, ')
           ..write('displayName: $displayName, ')
-          ..write('catalogName: $catalogName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('projectionUpdatedAt: $projectionUpdatedAt')
@@ -580,7 +495,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
 
 mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
   String get sessionId;
-  String get ownerIdentity;
   String get backendSessionId;
   String get projectId;
   String? get parentSessionId;
@@ -609,7 +523,6 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['session_id'] = Variable<String>(sessionId);
-    map['owner_identity'] = Variable<String>(ownerIdentity);
     map['backend_session_id'] = Variable<String>(backendSessionId);
     map['project_id'] = Variable<String>(projectId);
     if (!nullToAbsent || parentSessionId != null) {
@@ -683,15 +596,6 @@ class SessionsTable extends Table
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<String> ownerIdentity = GeneratedColumn<String>(
-    'owner_identity',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NOT NULL DEFAULT \'local\'',
-    defaultValue: const CustomExpression('\'local\''),
   );
   late final GeneratedColumn<String> backendSessionId = GeneratedColumn<String>(
     'backend_session_id',
@@ -890,7 +794,6 @@ class SessionsTable extends Table
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
-    ownerIdentity,
     backendSessionId,
     projectId,
     parentSessionId,
@@ -930,10 +833,6 @@ class SessionsTable extends Table
       sessionId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}session_id'],
-      )!,
-      ownerIdentity: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}owner_identity'],
       )!,
       backendSessionId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -1051,8 +950,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   @override
   final String sessionId;
   @override
-  final String ownerIdentity;
-  @override
   final String backendSessionId;
   @override
   final String projectId;
@@ -1102,7 +999,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   final int? summaryFiles;
   const SessionsTableData({
     required this.sessionId,
-    required this.ownerIdentity,
     required this.backendSessionId,
     required this.projectId,
     this.parentSessionId,
@@ -1131,7 +1027,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   SessionsTableCompanion toCompanion(bool nullToAbsent) {
     return SessionsTableCompanion(
       sessionId: Value(sessionId),
-      ownerIdentity: Value(ownerIdentity),
       backendSessionId: Value(backendSessionId),
       projectId: Value(projectId),
       parentSessionId: parentSessionId == null && nullToAbsent
@@ -1198,7 +1093,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return SessionsTableData(
       sessionId: serializer.fromJson<String>(json['sessionId']),
-      ownerIdentity: serializer.fromJson<String>(json['ownerIdentity']),
       backendSessionId: serializer.fromJson<String>(json['backendSessionId']),
       projectId: serializer.fromJson<String>(json['projectId']),
       parentSessionId: serializer.fromJson<String?>(json['parentSessionId']),
@@ -1232,7 +1126,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'sessionId': serializer.toJson<String>(sessionId),
-      'ownerIdentity': serializer.toJson<String>(ownerIdentity),
       'backendSessionId': serializer.toJson<String>(backendSessionId),
       'projectId': serializer.toJson<String>(projectId),
       'parentSessionId': serializer.toJson<String?>(parentSessionId),
@@ -1262,7 +1155,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
 
   SessionsTableData copyWith({
     String? sessionId,
-    String? ownerIdentity,
     String? backendSessionId,
     String? projectId,
     Value<String?> parentSessionId = const Value.absent(),
@@ -1289,7 +1181,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     Value<int?> summaryFiles = const Value.absent(),
   }) => SessionsTableData(
     sessionId: sessionId ?? this.sessionId,
-    ownerIdentity: ownerIdentity ?? this.ownerIdentity,
     backendSessionId: backendSessionId ?? this.backendSessionId,
     projectId: projectId ?? this.projectId,
     parentSessionId: parentSessionId.present
@@ -1330,9 +1221,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   SessionsTableData copyWithCompanion(SessionsTableCompanion data) {
     return SessionsTableData(
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
-      ownerIdentity: data.ownerIdentity.present
-          ? data.ownerIdentity.value
-          : this.ownerIdentity,
       backendSessionId: data.backendSessionId.present
           ? data.backendSessionId.value
           : this.backendSessionId,
@@ -1398,7 +1286,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   String toString() {
     return (StringBuffer('SessionsTableData(')
           ..write('sessionId: $sessionId, ')
-          ..write('ownerIdentity: $ownerIdentity, ')
           ..write('backendSessionId: $backendSessionId, ')
           ..write('projectId: $projectId, ')
           ..write('parentSessionId: $parentSessionId, ')
@@ -1430,7 +1317,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   @override
   int get hashCode => Object.hashAll([
     sessionId,
-    ownerIdentity,
     backendSessionId,
     projectId,
     parentSessionId,
@@ -1461,7 +1347,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       identical(this, other) ||
       (other is SessionsTableData &&
           other.sessionId == this.sessionId &&
-          other.ownerIdentity == this.ownerIdentity &&
           other.backendSessionId == this.backendSessionId &&
           other.projectId == this.projectId &&
           other.parentSessionId == this.parentSessionId &&
@@ -1490,7 +1375,6 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
 
 class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   final Value<String> sessionId;
-  final Value<String> ownerIdentity;
   final Value<String> backendSessionId;
   final Value<String> projectId;
   final Value<String?> parentSessionId;
@@ -1517,7 +1401,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   final Value<int?> summaryFiles;
   const SessionsTableCompanion({
     this.sessionId = const Value.absent(),
-    this.ownerIdentity = const Value.absent(),
     this.backendSessionId = const Value.absent(),
     this.projectId = const Value.absent(),
     this.parentSessionId = const Value.absent(),
@@ -1545,7 +1428,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   });
   SessionsTableCompanion.insert({
     required String sessionId,
-    this.ownerIdentity = const Value.absent(),
     required String backendSessionId,
     required String projectId,
     this.parentSessionId = const Value.absent(),
@@ -1581,7 +1463,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
        pluginId = Value(pluginId);
   static Insertable<SessionsTableData> custom({
     Expression<String>? sessionId,
-    Expression<String>? ownerIdentity,
     Expression<String>? backendSessionId,
     Expression<String>? projectId,
     Expression<String>? parentSessionId,
@@ -1609,7 +1490,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
-      if (ownerIdentity != null) 'owner_identity': ownerIdentity,
       if (backendSessionId != null) 'backend_session_id': backendSessionId,
       if (projectId != null) 'project_id': projectId,
       if (parentSessionId != null) 'parent_session_id': parentSessionId,
@@ -1640,7 +1520,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
 
   SessionsTableCompanion copyWith({
     Value<String>? sessionId,
-    Value<String>? ownerIdentity,
     Value<String>? backendSessionId,
     Value<String>? projectId,
     Value<String?>? parentSessionId,
@@ -1668,7 +1547,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   }) {
     return SessionsTableCompanion(
       sessionId: sessionId ?? this.sessionId,
-      ownerIdentity: ownerIdentity ?? this.ownerIdentity,
       backendSessionId: backendSessionId ?? this.backendSessionId,
       projectId: projectId ?? this.projectId,
       parentSessionId: parentSessionId ?? this.parentSessionId,
@@ -1701,9 +1579,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     final map = <String, Expression>{};
     if (sessionId.present) {
       map['session_id'] = Variable<String>(sessionId.value);
-    }
-    if (ownerIdentity.present) {
-      map['owner_identity'] = Variable<String>(ownerIdentity.value);
     }
     if (backendSessionId.present) {
       map['backend_session_id'] = Variable<String>(backendSessionId.value);
@@ -1784,7 +1659,6 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   String toString() {
     return (StringBuffer('SessionsTableCompanion(')
           ..write('sessionId: $sessionId, ')
-          ..write('ownerIdentity: $ownerIdentity, ')
           ..write('backendSessionId: $backendSessionId, ')
           ..write('projectId: $projectId, ')
           ..write('parentSessionId: $parentSessionId, ')
@@ -2671,14 +2545,12 @@ class PullRequestsTableCompanion
 
 mixin CatalogHydrationsTableToColumns
     implements Insertable<CatalogHydrationsTableData> {
-  String get ownerIdentity;
   String get pluginId;
   int get projectionVersion;
   int get completedAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['owner_identity'] = Variable<String>(ownerIdentity);
     map['plugin_id'] = Variable<String>(pluginId);
     map['projection_version'] = Variable<int>(projectionVersion);
     map['completed_at'] = Variable<int>(completedAt);
@@ -2692,14 +2564,6 @@ class CatalogHydrationsTable extends Table
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   CatalogHydrationsTable(this.attachedDatabase, [this._alias]);
-  late final GeneratedColumn<String> ownerIdentity = GeneratedColumn<String>(
-    'owner_identity',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
   late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
     'plugin_id',
     aliasedName,
@@ -2726,7 +2590,6 @@ class CatalogHydrationsTable extends Table
   );
   @override
   List<GeneratedColumn> get $columns => [
-    ownerIdentity,
     pluginId,
     projectionVersion,
     completedAt,
@@ -2737,11 +2600,7 @@ class CatalogHydrationsTable extends Table
   String get actualTableName => $name;
   static const String $name = 'catalog_hydrations_table';
   @override
-  Set<GeneratedColumn> get $primaryKey => {
-    ownerIdentity,
-    pluginId,
-    projectionVersion,
-  };
+  Set<GeneratedColumn> get $primaryKey => {pluginId, projectionVersion};
   @override
   CatalogHydrationsTableData map(
     Map<String, dynamic> data, {
@@ -2749,10 +2608,6 @@ class CatalogHydrationsTable extends Table
   }) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return CatalogHydrationsTableData(
-      ownerIdentity: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}owner_identity'],
-      )!,
       pluginId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}plugin_id'],
@@ -2777,7 +2632,7 @@ class CatalogHydrationsTable extends Table
   bool get withoutRowId => true;
   @override
   List<String> get customConstraints => const [
-    'PRIMARY KEY(owner_identity, plugin_id, projection_version)',
+    'PRIMARY KEY(plugin_id, projection_version)',
   ];
   @override
   bool get dontWriteConstraints => true;
@@ -2786,22 +2641,18 @@ class CatalogHydrationsTable extends Table
 class CatalogHydrationsTableData extends DataClass
     with CatalogHydrationsTableToColumns {
   @override
-  final String ownerIdentity;
-  @override
   final String pluginId;
   @override
   final int projectionVersion;
   @override
   final int completedAt;
   const CatalogHydrationsTableData({
-    required this.ownerIdentity,
     required this.pluginId,
     required this.projectionVersion,
     required this.completedAt,
   });
   CatalogHydrationsTableCompanion toCompanion(bool nullToAbsent) {
     return CatalogHydrationsTableCompanion(
-      ownerIdentity: Value(ownerIdentity),
       pluginId: Value(pluginId),
       projectionVersion: Value(projectionVersion),
       completedAt: Value(completedAt),
@@ -2814,7 +2665,6 @@ class CatalogHydrationsTableData extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return CatalogHydrationsTableData(
-      ownerIdentity: serializer.fromJson<String>(json['ownerIdentity']),
       pluginId: serializer.fromJson<String>(json['pluginId']),
       projectionVersion: serializer.fromJson<int>(json['projectionVersion']),
       completedAt: serializer.fromJson<int>(json['completedAt']),
@@ -2824,7 +2674,6 @@ class CatalogHydrationsTableData extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'ownerIdentity': serializer.toJson<String>(ownerIdentity),
       'pluginId': serializer.toJson<String>(pluginId),
       'projectionVersion': serializer.toJson<int>(projectionVersion),
       'completedAt': serializer.toJson<int>(completedAt),
@@ -2832,12 +2681,10 @@ class CatalogHydrationsTableData extends DataClass
   }
 
   CatalogHydrationsTableData copyWith({
-    String? ownerIdentity,
     String? pluginId,
     int? projectionVersion,
     int? completedAt,
   }) => CatalogHydrationsTableData(
-    ownerIdentity: ownerIdentity ?? this.ownerIdentity,
     pluginId: pluginId ?? this.pluginId,
     projectionVersion: projectionVersion ?? this.projectionVersion,
     completedAt: completedAt ?? this.completedAt,
@@ -2846,9 +2693,6 @@ class CatalogHydrationsTableData extends DataClass
     CatalogHydrationsTableCompanion data,
   ) {
     return CatalogHydrationsTableData(
-      ownerIdentity: data.ownerIdentity.present
-          ? data.ownerIdentity.value
-          : this.ownerIdentity,
       pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
       projectionVersion: data.projectionVersion.present
           ? data.projectionVersion.value
@@ -2862,7 +2706,6 @@ class CatalogHydrationsTableData extends DataClass
   @override
   String toString() {
     return (StringBuffer('CatalogHydrationsTableData(')
-          ..write('ownerIdentity: $ownerIdentity, ')
           ..write('pluginId: $pluginId, ')
           ..write('projectionVersion: $projectionVersion, ')
           ..write('completedAt: $completedAt')
@@ -2871,13 +2714,11 @@ class CatalogHydrationsTableData extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(ownerIdentity, pluginId, projectionVersion, completedAt);
+  int get hashCode => Object.hash(pluginId, projectionVersion, completedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is CatalogHydrationsTableData &&
-          other.ownerIdentity == this.ownerIdentity &&
           other.pluginId == this.pluginId &&
           other.projectionVersion == this.projectionVersion &&
           other.completedAt == this.completedAt);
@@ -2885,33 +2726,27 @@ class CatalogHydrationsTableData extends DataClass
 
 class CatalogHydrationsTableCompanion
     extends UpdateCompanion<CatalogHydrationsTableData> {
-  final Value<String> ownerIdentity;
   final Value<String> pluginId;
   final Value<int> projectionVersion;
   final Value<int> completedAt;
   const CatalogHydrationsTableCompanion({
-    this.ownerIdentity = const Value.absent(),
     this.pluginId = const Value.absent(),
     this.projectionVersion = const Value.absent(),
     this.completedAt = const Value.absent(),
   });
   CatalogHydrationsTableCompanion.insert({
-    required String ownerIdentity,
     required String pluginId,
     required int projectionVersion,
     required int completedAt,
-  }) : ownerIdentity = Value(ownerIdentity),
-       pluginId = Value(pluginId),
+  }) : pluginId = Value(pluginId),
        projectionVersion = Value(projectionVersion),
        completedAt = Value(completedAt);
   static Insertable<CatalogHydrationsTableData> custom({
-    Expression<String>? ownerIdentity,
     Expression<String>? pluginId,
     Expression<int>? projectionVersion,
     Expression<int>? completedAt,
   }) {
     return RawValuesInsertable({
-      if (ownerIdentity != null) 'owner_identity': ownerIdentity,
       if (pluginId != null) 'plugin_id': pluginId,
       if (projectionVersion != null) 'projection_version': projectionVersion,
       if (completedAt != null) 'completed_at': completedAt,
@@ -2919,13 +2754,11 @@ class CatalogHydrationsTableCompanion
   }
 
   CatalogHydrationsTableCompanion copyWith({
-    Value<String>? ownerIdentity,
     Value<String>? pluginId,
     Value<int>? projectionVersion,
     Value<int>? completedAt,
   }) {
     return CatalogHydrationsTableCompanion(
-      ownerIdentity: ownerIdentity ?? this.ownerIdentity,
       pluginId: pluginId ?? this.pluginId,
       projectionVersion: projectionVersion ?? this.projectionVersion,
       completedAt: completedAt ?? this.completedAt,
@@ -2935,9 +2768,6 @@ class CatalogHydrationsTableCompanion
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (ownerIdentity.present) {
-      map['owner_identity'] = Variable<String>(ownerIdentity.value);
-    }
     if (pluginId.present) {
       map['plugin_id'] = Variable<String>(pluginId.value);
     }
@@ -2953,7 +2783,6 @@ class CatalogHydrationsTableCompanion
   @override
   String toString() {
     return (StringBuffer('CatalogHydrationsTableCompanion(')
-          ..write('ownerIdentity: $ownerIdentity, ')
           ..write('pluginId: $pluginId, ')
           ..write('projectionVersion: $projectionVersion, ')
           ..write('completedAt: $completedAt')
@@ -2972,29 +2801,29 @@ class DatabaseAtV11 extends GeneratedDatabase {
   late final PullRequestsTable pullRequestsTable = PullRequestsTable(this);
   late final CatalogHydrationsTable catalogHydrationsTable =
       CatalogHydrationsTable(this);
-  late final Index idxProjectsOwnerPath = Index(
-    'idx_projects_owner_path',
-    'CREATE INDEX idx_projects_owner_path ON projects_table (owner_identity, path)',
+  late final Index idxProjectsPath = Index(
+    'idx_projects_path',
+    'CREATE INDEX idx_projects_path ON projects_table (path)',
   );
-  late final Index idxProjectsOwnerUpdated = Index(
-    'idx_projects_owner_updated',
-    'CREATE INDEX idx_projects_owner_updated ON projects_table (owner_identity, updated_at DESC, project_id DESC)',
+  late final Index idxProjectsUpdated = Index(
+    'idx_projects_updated',
+    'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
   );
-  late final Index idxSessionsOwnerPluginBackend = Index(
-    'idx_sessions_owner_plugin_backend',
-    'CREATE UNIQUE INDEX idx_sessions_owner_plugin_backend ON sessions_table (owner_identity, plugin_id, backend_session_id)',
+  late final Index idxSessionsPluginBackend = Index(
+    'idx_sessions_plugin_backend',
+    'CREATE UNIQUE INDEX idx_sessions_plugin_backend ON sessions_table (plugin_id, backend_session_id)',
   );
   late final Index idxSessionsRoots = Index(
     'idx_sessions_roots',
-    'CREATE INDEX idx_sessions_roots ON sessions_table (owner_identity, project_id, parent_session_id, updated_at, session_id)',
+    'CREATE INDEX idx_sessions_roots ON sessions_table (project_id, parent_session_id, updated_at, session_id)',
   );
   late final Index idxSessionsChildren = Index(
     'idx_sessions_children',
-    'CREATE INDEX idx_sessions_children ON sessions_table (owner_identity, parent_session_id, updated_at, session_id)',
+    'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
   );
   late final Index idxSessionsArchive = Index(
     'idx_sessions_archive',
-    'CREATE INDEX idx_sessions_archive ON sessions_table (owner_identity, updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
+    'CREATE INDEX idx_sessions_archive ON sessions_table (updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3006,9 +2835,9 @@ class DatabaseAtV11 extends GeneratedDatabase {
     deletedSessionsTable,
     pullRequestsTable,
     catalogHydrationsTable,
-    idxProjectsOwnerPath,
-    idxProjectsOwnerUpdated,
-    idxSessionsOwnerPluginBackend,
+    idxProjectsPath,
+    idxProjectsUpdated,
+    idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
     idxSessionsArchive,

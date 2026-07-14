@@ -39,7 +39,7 @@ plugin-scoped DTO for operations whose routing depends on plugin identity.
 - **Headless-first bridge** — desktop GUI supervision is additive and gated; the standalone/VM path stays first-class (this is what enables managed VMs).
 - **One session-control surface** — a human and a future master agent drive sessions through the same API; no automation backdoor.
 - **Two trust postures, kept apart** — local mode is zero-knowledge (E2E phone↔bridge); **managed VMs are a trusted-Sesori posture** where that guarantee does not hold. Never let managed mode silently weaken local mode.
-- **Teams-later, cheaply** — carry an owner/identity on durable entities even while it's always "me".
+- **Teams when concrete** — do not add placeholder ownership fields before a real multi-owner requirement. Add ownership with an explicit migration and backfill when that requirement exists.
 - **Autonomy at the bridge seam** — opt-in automation (auto-handle CI/review, future auto-approve) is intercepted at the bridge, not scattered into clients or plugins.
 
 **Explicitly NOT building now** (don't design for these): cross-plugin live session migration (dropped); cost/usage metering; a permission-policy framework (trivial to add later at the bridge interception point); teams/multi-user implementation; offline/local-first client caching.

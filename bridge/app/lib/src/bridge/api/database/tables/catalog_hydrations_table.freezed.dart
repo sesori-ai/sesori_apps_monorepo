@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CatalogHydrationDto {
 
- String get ownerIdentity; String get pluginId; int get projectionVersion; int get completedAt;
+ String get pluginId; int get projectionVersion; int get completedAt;
 /// Create a copy of CatalogHydrationDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $CatalogHydrationDtoCopyWith<CatalogHydrationDto> get copyWith => _$CatalogHydra
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogHydrationDto&&(identical(other.ownerIdentity, ownerIdentity) || other.ownerIdentity == ownerIdentity)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectionVersion, projectionVersion) || other.projectionVersion == projectionVersion)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogHydrationDto&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectionVersion, projectionVersion) || other.projectionVersion == projectionVersion)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,ownerIdentity,pluginId,projectionVersion,completedAt);
+int get hashCode => Object.hash(runtimeType,pluginId,projectionVersion,completedAt);
 
 @override
 String toString() {
-  return 'CatalogHydrationDto(ownerIdentity: $ownerIdentity, pluginId: $pluginId, projectionVersion: $projectionVersion, completedAt: $completedAt)';
+  return 'CatalogHydrationDto(pluginId: $pluginId, projectionVersion: $projectionVersion, completedAt: $completedAt)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $CatalogHydrationDtoCopyWith<$Res>  {
   factory $CatalogHydrationDtoCopyWith(CatalogHydrationDto value, $Res Function(CatalogHydrationDto) _then) = _$CatalogHydrationDtoCopyWithImpl;
 @useResult
 $Res call({
- String ownerIdentity, String pluginId, int projectionVersion, int completedAt
+ String pluginId, int projectionVersion, int completedAt
 });
 
 
@@ -62,10 +62,9 @@ class _$CatalogHydrationDtoCopyWithImpl<$Res>
 
 /// Create a copy of CatalogHydrationDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? ownerIdentity = null,Object? pluginId = null,Object? projectionVersion = null,Object? completedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? pluginId = null,Object? projectionVersion = null,Object? completedAt = null,}) {
   return _then(_self.copyWith(
-ownerIdentity: null == ownerIdentity ? _self.ownerIdentity : ownerIdentity // ignore: cast_nullable_to_non_nullable
-as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,projectionVersion: null == projectionVersion ? _self.projectionVersion : projectionVersion // ignore: cast_nullable_to_non_nullable
 as int,completedAt: null == completedAt ? _self.completedAt : completedAt // ignore: cast_nullable_to_non_nullable
 as int,
@@ -80,10 +79,9 @@ as int,
 
 
 class _CatalogHydrationDto extends CatalogHydrationDto {
-  const _CatalogHydrationDto({required this.ownerIdentity, required this.pluginId, required this.projectionVersion, required this.completedAt}): super._();
+  const _CatalogHydrationDto({required this.pluginId, required this.projectionVersion, required this.completedAt}): super._();
   
 
-@override final  String ownerIdentity;
 @override final  String pluginId;
 @override final  int projectionVersion;
 @override final  int completedAt;
@@ -98,16 +96,16 @@ _$CatalogHydrationDtoCopyWith<_CatalogHydrationDto> get copyWith => __$CatalogHy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogHydrationDto&&(identical(other.ownerIdentity, ownerIdentity) || other.ownerIdentity == ownerIdentity)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectionVersion, projectionVersion) || other.projectionVersion == projectionVersion)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogHydrationDto&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectionVersion, projectionVersion) || other.projectionVersion == projectionVersion)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,ownerIdentity,pluginId,projectionVersion,completedAt);
+int get hashCode => Object.hash(runtimeType,pluginId,projectionVersion,completedAt);
 
 @override
 String toString() {
-  return 'CatalogHydrationDto(ownerIdentity: $ownerIdentity, pluginId: $pluginId, projectionVersion: $projectionVersion, completedAt: $completedAt)';
+  return 'CatalogHydrationDto(pluginId: $pluginId, projectionVersion: $projectionVersion, completedAt: $completedAt)';
 }
 
 
@@ -118,7 +116,7 @@ abstract mixin class _$CatalogHydrationDtoCopyWith<$Res> implements $CatalogHydr
   factory _$CatalogHydrationDtoCopyWith(_CatalogHydrationDto value, $Res Function(_CatalogHydrationDto) _then) = __$CatalogHydrationDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String ownerIdentity, String pluginId, int projectionVersion, int completedAt
+ String pluginId, int projectionVersion, int completedAt
 });
 
 
@@ -135,10 +133,9 @@ class __$CatalogHydrationDtoCopyWithImpl<$Res>
 
 /// Create a copy of CatalogHydrationDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? ownerIdentity = null,Object? pluginId = null,Object? projectionVersion = null,Object? completedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? projectionVersion = null,Object? completedAt = null,}) {
   return _then(_CatalogHydrationDto(
-ownerIdentity: null == ownerIdentity ? _self.ownerIdentity : ownerIdentity // ignore: cast_nullable_to_non_nullable
-as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,projectionVersion: null == projectionVersion ? _self.projectionVersion : projectionVersion // ignore: cast_nullable_to_non_nullable
 as int,completedAt: null == completedAt ? _self.completedAt : completedAt // ignore: cast_nullable_to_non_nullable
 as int,

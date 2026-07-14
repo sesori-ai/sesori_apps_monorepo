@@ -217,7 +217,7 @@ The invariants (see `docs/VISION.md` for the full statements):
 4. **Headless-first bridge** — bridge capabilities stay runnable headless; a feature must not depend on the desktop GUI being present.
 5. **One session-control surface** — anything that drives sessions (including future automation) goes through the same API a human uses; no automation-only backdoor.
 6. **Two trust postures, kept apart** — local mode stays zero-knowledge (E2E phone↔bridge); do not route local-mode application data through a Sesori-readable path, and do not let a managed-mode assumption weaken local mode.
-7. **Teams-later** — new durable entities carry an owner/identity field even while it is always the local user, so multi-user needs no later data migration.
+7. **Teams when concrete** — reject placeholder owner/identity fields added before a real multi-owner requirement. Ownership should arrive with an explicit migration and backfill based on the concrete identity model.
 8. **Autonomy at the bridge seam** — opt-in automation (auto-handle CI/review, future auto-approve) is intercepted at the bridge, not scattered into clients or plugins.
 
 Reject a plan that violates any invariant above. State the invariant, the foreclosure, and the compliant alternative.

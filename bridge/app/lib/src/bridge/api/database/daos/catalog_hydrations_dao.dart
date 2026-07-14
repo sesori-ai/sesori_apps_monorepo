@@ -10,15 +10,11 @@ class CatalogHydrationsDao extends DatabaseAccessor<AppDatabase> with _$CatalogH
   CatalogHydrationsDao(super.attachedDatabase);
 
   Future<CatalogHydrationDto?> getCompletion({
-    required String ownerIdentity,
     required String pluginId,
     required int projectionVersion,
   }) {
     return (select(catalogHydrationsTable)..where(
-          (table) =>
-              table.ownerIdentity.equals(ownerIdentity) &
-              table.pluginId.equals(pluginId) &
-              table.projectionVersion.equals(projectionVersion),
+          (table) => table.pluginId.equals(pluginId) & table.projectionVersion.equals(projectionVersion),
         ))
         .getSingleOrNull();
   }
@@ -27,10 +23,7 @@ class CatalogHydrationsDao extends DatabaseAccessor<AppDatabase> with _$CatalogH
     return into(catalogHydrationsTable).insertOnConflictUpdate(completion);
   }
 
-  Future<void> deleteForPlugin({required String ownerIdentity, required String pluginId}) async {
-    await (delete(catalogHydrationsTable)..where(
-          (table) => table.ownerIdentity.equals(ownerIdentity) & table.pluginId.equals(pluginId),
-        ))
-        .go();
+  Future<void> deleteForPlugin({required String pluginId}) async {
+    await (delete(catalogHydrationsTable)..where((table) => table.pluginId.equals(pluginId))).go();
   }
 }
