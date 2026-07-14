@@ -246,15 +246,27 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
 
   void _scheduleNextQuestionModal() {
     final state = context.read<SessionDetailCubit>().state;
-    if (state case SessionDetailLoaded(:final pendingQuestions) when pendingQuestions.isNotEmpty) {
-      _scheduleModal(() => _showQuestionModal(pendingQuestions.first));
+    if (state case SessionDetailLoaded(:final pendingQuestions, :final pendingPermissions)) {
+      if (pendingQuestions.isNotEmpty) {
+        _scheduleModal(() => _showQuestionModal(pendingQuestions.first));
+        return;
+      }
+      if (pendingPermissions.isNotEmpty) {
+        _scheduleModal(() => _showPermissionModal(pendingPermissions.first));
+      }
     }
   }
 
   void _scheduleNextPermissionModal() {
     final state = context.read<SessionDetailCubit>().state;
-    if (state case SessionDetailLoaded(:final pendingPermissions) when pendingPermissions.isNotEmpty) {
-      _scheduleModal(() => _showPermissionModal(pendingPermissions.first));
+    if (state case SessionDetailLoaded(:final pendingQuestions, :final pendingPermissions)) {
+      if (pendingPermissions.isNotEmpty) {
+        _scheduleModal(() => _showPermissionModal(pendingPermissions.first));
+        return;
+      }
+      if (pendingQuestions.isNotEmpty) {
+        _scheduleModal(() => _showQuestionModal(pendingQuestions.first));
+      }
     }
   }
 
