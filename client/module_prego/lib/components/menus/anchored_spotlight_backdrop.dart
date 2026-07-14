@@ -66,23 +66,18 @@ class AnchoredSpotlightBackdrop extends StatelessWidget {
     // lifted — and skips only the blur, taking a deeper scrim in its place.
     final blurred = glassEffectsEnabled();
 
-    // The backdrop rides the popup's follower so the cut-out stays glued to its
-    // anchor when the page relayouts under the open menu (a banner dropping in
-    // above the list, a row growing a line). The scrim is translated by that same
-    // relayout, so it is drawn far larger than the viewport: a screen-sized scrim
-    // would slide off one edge and leave a sharp, un-dimmed band along the other.
-    final screen = MediaQuery.sizeOf(context);
-    final canvas = (Offset.zero & screen).inflate(screen.longestSide);
-
+    // The backdrop rides the popup's follower, so the cut-out stays glued to
+    // its anchor when the page relayouts under the open menu (a banner dropping
+    // in above the list, a row growing a line). The scrim is simply
+    // viewport-sized: the enclosing stacks clip to the route's bounds anyway,
+    // so nothing larger could ever paint.
     return IgnorePointer(
       child: Stack(
         children: [
-          Positioned.fromRect(
-            rect: canvas,
+          Positioned.fill(
             child: ClipPath(
-              // Shifted into the oversized canvas's own coordinate space.
               clipper: _SpotlightHoleClipper(
-                hole: RRect.fromRectAndRadius(spotlightRect, radius).shift(-canvas.topLeft),
+                hole: RRect.fromRectAndRadius(spotlightRect, radius),
               ),
               // Acts nest in reverse, which puts the BackdropFilter OUTSIDE the
               // scrim's Opacity. That order matters: an Opacity above the filter

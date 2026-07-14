@@ -27,22 +27,15 @@ class _ProjectTile extends StatelessWidget {
   /// row it is anchored to.
   static const double _menuWidth = 200;
 
-  /// While the menu is open the rest of the list blurs back and this row stays
-  /// sharp, so which project the actions will hit is unambiguous. The cut-out is
-  /// inset from the screen edges so the sharp region reads as a lifted card
-  /// rather than a full-bleed band.
-  static const _spotlight = PregoMenuSpotlight(
-    borderRadius: 16,
-    inset: EdgeInsets.symmetric(horizontal: 8),
-  );
-
   @override
   Widget build(BuildContext context) {
     return PregoAnchorMenu(
       flat: true,
       menuWidth: _menuWidth,
-      spotlight: _spotlight,
-      entries: _actionEntries(context: context),
+      // While the menu is open the rest of the list blurs back and this row
+      // stays sharp, so which project the actions will hit is unambiguous.
+      spotlight: PregoMenuSpotlight.listRow,
+      entriesBuilder: () => _actionEntries(context: context),
       triggerBuilder: (context, openMenu) => _buildRow(context: context, onLongPress: openMenu),
     );
   }

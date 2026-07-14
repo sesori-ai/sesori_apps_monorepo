@@ -13,7 +13,7 @@ Widget _harness(List<PregoMenuEntry> entries, {bool flat = false, PregoMenuSpotl
           menuWidth: 240,
           flat: flat,
           spotlight: spotlight,
-          entries: entries,
+          entriesBuilder: () => entries,
           triggerBuilder: (context, toggle) => ElevatedButton(
             onPressed: toggle,
             child: const Text("Open"),
@@ -103,7 +103,7 @@ void main() {
               child: PregoAnchorMenu(
                 menuWidth: 320,
                 menuScreenPadding: const EdgeInsets.all(12),
-                entries: [
+                entriesBuilder: () => [
                   PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
                 ],
                 triggerBuilder: (context, toggle) => ElevatedButton(
@@ -234,10 +234,7 @@ void main() {
       PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: _noop),
     ];
 
-    const spotlight = PregoMenuSpotlight(
-      borderRadius: 16,
-      inset: EdgeInsets.symmetric(horizontal: 8),
-    );
+    const spotlight = PregoMenuSpotlight.listRow;
 
     testWidgets("cuts the hole around the trigger and releases it on dismiss", (tester) async {
       await tester.pumpWidget(_harness(entries, flat: true, spotlight: spotlight));
@@ -302,7 +299,7 @@ void main() {
     test("cannot be paired with the glass path, which hides its own trigger", () {
       expect(
         () => PregoAnchorMenu(
-          entries: entries,
+          entriesBuilder: () => entries,
           spotlight: const PregoMenuSpotlight(borderRadius: 16),
           triggerBuilder: (context, toggle) => const SizedBox.shrink(),
         ),

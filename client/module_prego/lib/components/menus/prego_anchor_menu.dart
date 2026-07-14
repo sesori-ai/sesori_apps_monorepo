@@ -98,6 +98,15 @@ class PregoMenuSpotlight {
 
   /// The region to keep sharp for a trigger occupying [triggerRect].
   Rect resolveRect({required Rect triggerRect}) => inset.deflateRect(triggerRect);
+
+  /// The treatment for a long-pressed full-width list row: the cut-out is inset
+  /// from the screen edges so the sharp region reads as a lifted card rather
+  /// than a full-bleed band. One shared preset so every long-pressable row gets
+  /// the identical spotlight.
+  static const listRow = PregoMenuSpotlight(
+    borderRadius: 16,
+    inset: EdgeInsets.symmetric(horizontal: 8),
+  );
 }
 
 /// A popup menu that anchors to its trigger, rendered platform-appropriately.
@@ -108,15 +117,15 @@ class PregoMenuSpotlight {
 /// anchored to the trigger and animated with the `cue` package's spring physics
 /// (a [CueModalTransition]) — same anchored-popup behaviour, zero shader cost.
 ///
-/// The same [entries] and [triggerBuilder] drive both paths; only the rendering
-/// differs. See [glassEffectsEnabled] for the platform switch. Set [flat] to
+/// The same [entriesBuilder] and [triggerBuilder] drive both paths; only the
+/// rendering differs. See [glassEffectsEnabled] for the platform switch. Set [flat] to
 /// force the flat/`cue` path on every platform (including Apple) — for a menu
 /// paired with a flat trigger, where a glass popup would look out of place.
 class PregoAnchorMenu extends StatefulWidget {
   const PregoAnchorMenu({
     super.key,
     required this.triggerBuilder,
-    required this.entries,
+    required this.entriesBuilder,
     this.menuWidth = 240,
     this.menuHeight,
     this.menuBorderRadius = 24,
@@ -132,8 +141,12 @@ class PregoAnchorMenu extends StatefulWidget {
   /// Builds the tappable trigger. The provided callback opens the menu.
   final PregoMenuTriggerBuilder triggerBuilder;
 
-  /// The menu contents, top to bottom.
-  final List<PregoMenuEntry> entries;
+  /// Builds the menu contents, top to bottom. A builder rather than a list so
+  /// a trigger hosted in a frequently-rebuilding row (a live-updating list
+  /// tile) pays nothing for a closed menu: the flat path calls it only when the
+  /// menu opens. The glass path materialises it at build time — [GlassMenu]
+  /// takes its items up front.
+  final List<PregoMenuEntry> Function() entriesBuilder;
 
   /// Width of the open menu.
   final double menuWidth;
@@ -191,7 +204,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
         toggle();
         _alignGlassMenuToTrigger(context);
       }),
-      items: [for (final entry in widget.entries) _glassEntry(context, entry: entry)],
+      items: [for (final entry in widget.entriesBuilder()) _glassEntry(context, entry: entry)],
     );
   }
 
@@ -300,7 +313,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final entry in widget.entries) _flatEntry(context, entry: entry, close: close),
+            for (final entry in widget.entriesBuilder()) _flatEntry(context, entry: entry, close: close),
           ],
         ),
       ),

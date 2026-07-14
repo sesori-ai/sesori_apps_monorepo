@@ -81,7 +81,7 @@ class SessionListContent extends StatelessWidget {
                       isRetrying: activityInfo?.isRetrying ?? false,
                       backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
                       onTap: () => onSessionTap(session),
-                      menuEntries: sessionMenuEntries,
+                      menuEntries: (context) => sessionMenuEntries(context, session),
                       onSwipe: () => onSessionSwipe(session),
                     );
                   },

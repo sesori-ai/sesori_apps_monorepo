@@ -163,7 +163,7 @@ class _AgentMenu extends StatelessWidget {
         label: selectedAgent,
         onPressed: toggle,
       ),
-      entries: [
+      entriesBuilder: () => [
         PregoMenuLabel(text: loc.sessionDetailPickerAgent),
         for (final agent in agents)
           PregoMenuItem(
@@ -237,7 +237,7 @@ class _ModelMenu extends StatelessWidget {
         label: _resolveModelName(context, providers: providers, selected: selected),
         onPressed: toggle,
       ),
-      entries: entries,
+      entriesBuilder: () => entries,
     );
   }
 }
@@ -265,7 +265,7 @@ class _VariantMenu extends StatelessWidget {
         label: selectedVariant ?? loc.sessionDetailVariantDefault,
         onPressed: toggle,
       ),
-      entries: [
+      entriesBuilder: () => [
         PregoMenuLabel(text: loc.sessionDetailPickerVariant),
         PregoMenuItem(
           title: loc.sessionDetailVariantDefault,
