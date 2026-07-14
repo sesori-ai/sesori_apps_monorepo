@@ -141,12 +141,6 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
 
 /// Agent-selection pill + its popup. Extracted as a widget (rather than a build
 /// method) so it gets its own element subtree and only rebuilds with its inputs.
-///
-/// Selection is always keyed by [AgentInfo.name] (stable id). The visible label
-/// prefers a short [AgentInfo.description] when present so backends like Cursor
-/// can expose `name: "plan"` with `description: "Plan"` without changing what
-/// the phone sends back on prompt. Long OpenCode-style descriptions fall back
-/// to [AgentInfo.name] so the pill stays compact.
 class _AgentMenu extends StatelessWidget {
   final List<AgentInfo> agents;
   final String selectedAgent;
@@ -161,52 +155,26 @@ class _AgentMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final selected = agents.where((a) => a.name == selectedAgent).firstOrNull;
     return PregoAnchorMenu(
       menuWidth: 240,
       menuHeight: agents.length > 6 ? 320 : null,
       triggerBuilder: (context, toggle) => PregoButtonsGlass(
         leadingIcon: Icons.smart_toy_outlined,
-        label: _agentDisplayLabel(selected) ?? selectedAgent,
+        label: selectedAgent,
         onPressed: toggle,
       ),
       entries: [
         PregoMenuLabel(text: loc.sessionDetailPickerAgent),
         for (final agent in agents)
           PregoMenuItem(
-            title: _agentDisplayLabel(agent) ?? agent.name,
-            subtitle: _agentSubtitle(agent),
+            title: agent.name,
+            subtitle: agent.description,
             isSelected: agent.name == selectedAgent,
             onTap: () => onAgentSelected(agent.name),
           ),
       ],
     );
   }
-}
-
-/// Short human label for an agent pill/menu row. Prefers [AgentInfo.description]
-/// only when it is a compact single-token label (e.g. Cursor's "Plan"); sentence
-/// descriptions fall back to [AgentInfo.name] so OpenCode pills stay on the
-/// stable agent id.
-String? _agentDisplayLabel(AgentInfo? agent) {
-  if (agent == null) return null;
-  final description = agent.description?.trim();
-  if (description != null &&
-      description.isNotEmpty &&
-      description.length <= 24 &&
-      !description.contains(" ") &&
-      !description.contains("\n")) {
-    return description;
-  }
-  return agent.name;
-}
-
-/// Subtitle only when it adds information beyond the display label.
-String? _agentSubtitle(AgentInfo agent) {
-  final description = agent.description?.trim();
-  if (description == null || description.isEmpty) return null;
-  if (description == _agentDisplayLabel(agent)) return null;
-  return description;
 }
 
 /// Model-selection pill + its quick-pick popup (search affordance pinned at the

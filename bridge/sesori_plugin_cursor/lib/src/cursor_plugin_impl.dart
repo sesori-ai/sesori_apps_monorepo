@@ -12,9 +12,8 @@ import "cursor_model_probe.dart";
 /// layering on Cursor's `cursor/*` extensions and its `configOptions` picker.
 ///
 /// With `parameterizedModelPicker: true` (sent at initialize), Cursor exposes:
-///  - **mode** (`agent`/`plan`/`ask`) — surfaced as sesori *agents* (stable
-///    ACP `value` ids, human label in [PluginAgent.description]; no embedded
-///    model so mobile mode switches preserve the user's model/effort)
+///  - **mode** (`agent`/`plan`/`ask`) — surfaced as sesori *agents*, with the
+///    human ACP option name mapped back to its stable value before dispatch
 ///  - **model** — surfaced as sesori provider models
 ///  - **thought_level** (`effort` or `reasoning`, per model) — surfaced as each
 ///    model's [PluginModel.variants]
@@ -67,15 +66,15 @@ class CursorPlugin extends AcpPlugin {
   List<Map<String, dynamic>> _modes = const [];
   String? _defaultModeId;
 
-  /// Cached thought-level config. The option id varies per model (`effort` vs
-  /// `reasoning`), so we keep both the last-seen id and a per-model map.
-  String? _thoughtLevelConfigId;
-  final Map<String, String> _thoughtLevelConfigIdByModel = {};
-  String? _defaultThoughtLevelId;
+  /// Cursor can expose a different thought-level option id and default for each
+  /// model (`effort` vs `reasoning`). Keep those values together so applying a
+  /// turn can never combine state captured from different models.
+  final Map<String, ({String configId, List<String> variants, String? defaultValue})> _thoughtLevelsByModel = {};
 
-  /// Per-model effort/reasoning variant lists. A key present with an empty list
-  /// means "observed, this model has no thought_level picker".
-  final Map<String, List<String>> _effortVariantsByModel = {};
+  /// Used only to render effort choices before Cursor has returned an exact
+  /// thought-level option for a model. Applying a turn still requires an exact
+  /// per-model entry from Cursor and therefore fails closed.
+  List<String> _provisionalThoughtLevelVariants = const [];
 
   /// The model a freshly created session defaults to.
   String? _currentModelId;
@@ -84,6 +83,8 @@ class CursorPlugin extends AcpPlugin {
   String? _appliedModelId;
   String? _appliedModeId;
   String? _appliedThoughtLevelId;
+
+  Future<void>? _catalogFuture;
 
   @override
   String? get authMethodId => "cursor_login";
@@ -116,7 +117,7 @@ class CursorPlugin extends AcpPlugin {
     Map<String, dynamic> result, {
     required bool fromNewSession,
     String? sessionId,
-    String? modelIdForEffort,
+    String? modelIdForThoughtLevel,
   }) {
     final session = AcpNewSessionResult.fromJson(result);
 
@@ -145,8 +146,12 @@ class CursorPlugin extends AcpPlugin {
       }
     }
 
-    final effortModelId = modelIdForEffort ?? loadedModelId ?? _currentModelId;
-    _captureThoughtLevel(session, forModelId: effortModelId, fromNewSession: fromNewSession);
+    final thoughtLevelModelId = modelIdForThoughtLevel ?? loadedModelId ?? _currentModelId;
+    _captureThoughtLevel(
+      session,
+      forModelId: thoughtLevelModelId,
+      captureDefault: fromNewSession || modelIdForThoughtLevel != null,
+    );
 
     eventMapper.currentProviderId = _providerId;
     eventMapper.currentModelId = _currentModelId;
@@ -161,35 +166,30 @@ class CursorPlugin extends AcpPlugin {
   void _captureThoughtLevel(
     AcpNewSessionResult session, {
     required String? forModelId,
-    required bool fromNewSession,
+    required bool captureDefault,
   }) {
     final thoughtConfig = CursorModelProbe.findThoughtLevelConfig(session);
-    if (thoughtConfig == null) {
+    if (thoughtConfig == null ||
+        thoughtConfig["id"] is! String ||
+        forModelId == null ||
+        forModelId.isEmpty) {
       return;
     }
 
-    if (thoughtConfig["id"] case final String id) {
-      _thoughtLevelConfigId = id;
-      if (forModelId != null && forModelId.isNotEmpty) {
-        _thoughtLevelConfigIdByModel[forModelId] = id;
-      }
-    }
-    final variants = _thoughtLevelVariants(thoughtConfig);
-    if (fromNewSession) {
-      _defaultThoughtLevelId =
-          CursorModelProbe.currentValue(thoughtConfig) ?? _defaultThoughtLevelId;
-    }
-    if (forModelId != null && forModelId.isNotEmpty) {
-      _effortVariantsByModel[forModelId] = variants;
-    }
-    // Provisionally fill sibling models so the first getProviders is effort-
-    // complete before per-model set_config echoes refine option sets.
-    // putIfAbsent keeps a real per-model result once written.
-    for (final model in _models) {
-      final value = model["value"];
-      if (value is String && value.isNotEmpty) {
-        _effortVariantsByModel.putIfAbsent(value, () => List<String>.of(variants));
-      }
+    final configId = thoughtConfig["id"] as String;
+    final variants = List<String>.unmodifiable(
+      _thoughtLevelVariants(thoughtConfig),
+    );
+    final previous = _thoughtLevelsByModel[forModelId];
+    _thoughtLevelsByModel[forModelId] = (
+      configId: configId,
+      variants: variants,
+      defaultValue: captureDefault
+          ? CursorModelProbe.currentValue(thoughtConfig) ?? previous?.defaultValue
+          : previous?.defaultValue,
+    );
+    if (_provisionalThoughtLevelVariants.isEmpty && variants.isNotEmpty) {
+      _provisionalThoughtLevelVariants = variants;
     }
   }
 
@@ -205,8 +205,8 @@ class CursorPlugin extends AcpPlugin {
     return ids;
   }
 
-  List<String> _effortVariantsForModel(String modelId) =>
-      _effortVariantsByModel[modelId] ?? const [];
+  List<String> _thoughtLevelVariantsForModel(String modelId) =>
+      _thoughtLevelsByModel[modelId]?.variants ?? _provisionalThoughtLevelVariants;
 
   @override
   Future<void> applyTurnSelection({
@@ -256,23 +256,25 @@ class CursorPlugin extends AcpPlugin {
       }
     }
 
-    final requestedEffort = (variant != null && variant.id.isNotEmpty)
-        ? variant.id
-        : _defaultThoughtLevelId;
     // Effort options are per-model. Use the model actually stamped on this
     // session (after the model-selection block above), not a rejected/unknown
     // requested id that has no catalog entry.
     final effortModelId =
         eventMapper.modelForSession(sessionId) ?? _currentModelId ?? "";
-    final effortOptions = _effortVariantsForModel(effortModelId);
-    final thoughtConfigId =
-        _thoughtLevelConfigIdByModel[effortModelId] ?? _thoughtLevelConfigId;
+    final thoughtLevel = _thoughtLevelsByModel[effortModelId];
+    final requestedEffort = (variant != null && variant.id.isNotEmpty)
+        ? variant.id
+        : thoughtLevel?.defaultValue;
     if (requestedEffort != null &&
-        thoughtConfigId != null &&
+        thoughtLevel != null &&
         requestedEffort != _appliedThoughtLevelId &&
-        effortOptions.isNotEmpty &&
-        effortOptions.contains(requestedEffort)) {
-      if (await _setConfig(client, sessionId, thoughtConfigId, requestedEffort)) {
+        thoughtLevel.variants.contains(requestedEffort)) {
+      if (await _setConfig(
+        client,
+        sessionId,
+        thoughtLevel.configId,
+        requestedEffort,
+      )) {
         _appliedThoughtLevelId = requestedEffort;
       }
     }
@@ -310,7 +312,7 @@ class CursorPlugin extends AcpPlugin {
           raw.cast<String, dynamic>(),
           fromNewSession: false,
           sessionId: sessionId,
-          modelIdForEffort: configId == _modelConfigId ? value : null,
+          modelIdForThoughtLevel: configId == _modelConfigId ? value : null,
         );
       }
       return true;
@@ -326,31 +328,24 @@ class CursorPlugin extends AcpPlugin {
     // models alone would strand the agent picker empty while the model picker
     // works.
     if (_models.isNotEmpty && _modes.isNotEmpty) return;
-    if (!await ensureConnected()) return;
-    await probeCatalogFromExistingSession(
-      extraDirectories: {if (projectId != null && projectId.trim().isNotEmpty) projectId},
-    );
-  }
-
-  /// Ensures every known model has an effort-variant entry (possibly empty)
-  /// without creating throwaway Cursor sessions. Uses provisional sibling
-  /// copies from real captures; per-model sets refine via set_config echoes.
-  void _ensureEffortCatalogEntries() {
-    if (_models.isEmpty) return;
-    if (_thoughtLevelConfigId == null) {
-      for (final model in _models) {
-        final value = model["value"];
-        if (value is String && value.isNotEmpty) {
-          _effortVariantsByModel.putIfAbsent(value, () => const []);
-        }
-      }
+    final pending = _catalogFuture;
+    if (pending != null) {
+      await pending;
       return;
     }
-    for (final model in _models) {
-      final value = model["value"];
-      if (value is String && value.isNotEmpty) {
-        _effortVariantsByModel.putIfAbsent(value, () => const []);
-      }
+    final future = () async {
+      if (!await ensureConnected()) return;
+      await probeCatalogFromExistingSession(
+        extraDirectories: {
+          if (projectId != null && projectId.trim().isNotEmpty) projectId,
+        },
+      );
+    }();
+    _catalogFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_catalogFuture, future)) _catalogFuture = null;
     }
   }
 
@@ -359,9 +354,8 @@ class CursorPlugin extends AcpPlugin {
   Future<void> warmCatalog() async {
     try {
       await _ensureCatalog();
-      _ensureEffortCatalogEntries();
     } on Object catch (error, stack) {
-      Log.d("[cursor] warmCatalog failed (will populate lazily): $error\n$stack");
+      Log.w("[cursor] warmCatalog failed; will populate lazily", error, stack);
     }
   }
 
@@ -375,15 +369,15 @@ class CursorPlugin extends AcpPlugin {
     return null;
   }
 
-  /// Cursor modes as sesori agents. Uses the stable ACP `value` as [PluginAgent.name]
-  /// (what mobile persists/sends back) and the human `name` as description.
-  /// [PluginAgent.model] is intentionally null so a mode switch does not wipe
-  /// the user's selected model/effort on the client.
+  /// Cursor modes as display-ready sesori agents. The human ACP option name is
+  /// mapped back to its stable value by [CursorModelProbe.resolveModeId]. Modes
+  /// do not own a model default, so selecting one leaves that independent
+  /// choice unchanged.
   List<PluginAgent> _modeAgents() {
     if (_modes.isEmpty) {
       return [
         const PluginAgent(
-          name: "cursor",
+          name: "Cursor",
           description: "Cursor CLI session",
           model: null,
           mode: PluginAgentMode.primary,
@@ -398,21 +392,23 @@ class CursorPlugin extends AcpPlugin {
     ];
     final defaultMode = _defaultModeId;
     if (defaultMode != null) {
-      ordered.sort((a, b) {
-        final av = a["value"];
-        final bv = b["value"];
-        if (av == defaultMode) return -1;
-        if (bv == defaultMode) return 1;
-        return 0;
-      });
+      final defaultIndex = ordered.indexWhere(
+        (mode) => mode["value"] == defaultMode,
+      );
+      if (defaultIndex > 0) {
+        ordered.insert(0, ordered.removeAt(defaultIndex));
+      }
     }
 
     return [
       for (final mode in ordered)
         PluginAgent(
-          name: mode["value"] as String,
-          description: switch (mode["name"]) {
+          name: switch (mode["name"]) {
             final String name when name.isNotEmpty => name,
+            _ => mode["value"] as String,
+          },
+          description: switch (mode["description"]) {
+            final String description when description.isNotEmpty => description,
             _ => null,
           },
           model: null,
@@ -431,9 +427,6 @@ class CursorPlugin extends AcpPlugin {
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
     await _ensureCatalog(projectId: projectId);
-    // Fill any missing effort entries from provisional sibling copies so the
-    // mobile provider cache is effort-complete on first fetch.
-    _ensureEffortCatalogEntries();
     if (_models.isEmpty) return const PluginProvidersResult(providers: []);
     return PluginProvidersResult(
       providers: [
@@ -452,7 +445,7 @@ class CursorPlugin extends AcpPlugin {
                     final String name when name.isNotEmpty => name,
                     _ => value,
                   },
-                  variants: _effortVariantsForModel(value),
+                  variants: _thoughtLevelVariantsForModel(value),
                   family: null,
                   isAvailable: true,
                   releaseDate: null,

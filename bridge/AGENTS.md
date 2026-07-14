@@ -150,6 +150,8 @@ In the push subsystem, `PushDispatcher` owns only outbound push sends. `Completi
 
 Backend-specific endpoint semantics and the workarounds they require (synchronous vs async endpoints, dispatch timeouts compensating for upstream API shape, retry quirks) belong inside the plugin that implements `BridgePluginApi` — never in bridge `app/` services or handlers. Bridge `app/` code must stay plugin-agnostic: it programs against the `BridgePluginApi` contract, and the contract's doc comments define the semantics (e.g., `sendCommand` completes on acceptance, not on run completion). If a fix requires knowing how a specific backend behaves, it goes in that backend's plugin.
 
+Plugins also own presentation normalization for backend values they expose through existing shared fields. Return a display-ready agent/model name and keep the backend's stable identifier translation inside the plugin; never require a client widget or cubit to recognize one backend's capitalization, description shape, or naming convention.
+
 Do not persist a backend edge case merely because its schema permits it. A
 sentinel, presence bit, or tri-state column needs evidence that the backend
 actually emits the distinction and that users observe different behavior.

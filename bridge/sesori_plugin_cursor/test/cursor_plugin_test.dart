@@ -95,6 +95,34 @@ void main() {
       expect(config["id"], "reasoning");
     });
 
+    test("findThoughtLevelConfig ignores binary thought toggles", () {
+      final thoughtSession = AcpNewSessionResult.fromJson({
+        "sessionId": "s",
+        "configOptions": [
+          {
+            "id": "reasoning",
+            "category": "thought_level",
+            "currentValue": "on",
+            "options": [
+              {"value": "on", "name": "On"},
+              {"value": "off", "name": "Off"},
+            ],
+          },
+          {
+            "id": "effort",
+            "category": "thought_level",
+            "currentValue": "true",
+            "options": [
+              {"value": "true", "name": "On"},
+              {"value": "false", "name": "Off"},
+            ],
+          },
+        ],
+      });
+
+      expect(CursorModelProbe.findThoughtLevelConfig(thoughtSession), isNull);
+    });
+
     test("resolveModeId matches by value or display name", () {
       final modes = [
         {"value": "agent", "name": "Agent"},
@@ -143,6 +171,7 @@ void main() {
   group("CursorPlugin", () {
     late FakeAcpProcess fake;
     late CursorPlugin plugin;
+    late Set<Object?> handledFrameIds;
 
     Map<String, dynamic> catalogResult() => {
       "sessionId": "s1",
@@ -152,9 +181,21 @@ void main() {
           "category": "mode",
           "currentValue": "agent",
           "options": [
-            {"value": "agent", "name": "Agent"},
-            {"value": "plan", "name": "Plan"},
-            {"value": "ask", "name": "Ask"},
+            {
+              "value": "agent",
+              "name": "Agent",
+              "description": "Works autonomously",
+            },
+            {
+              "value": "plan",
+              "name": "Plan",
+              "description": "Plans before editing",
+            },
+            {
+              "value": "ask",
+              "name": "Ask",
+              "description": "Answers without editing",
+            },
           ],
         },
         {
@@ -179,8 +220,33 @@ void main() {
       ],
     };
 
+    Map<String, dynamic> effortModelSelectionResult({required String modelId}) => {
+      "configOptions": [
+        {
+          "id": "model",
+          "category": "model",
+          "currentValue": modelId,
+          "options": [
+            {"value": "gpt-5.4", "name": "GPT-5.4"},
+            {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
+          ],
+        },
+        {
+          "id": "effort",
+          "category": "thought_level",
+          "currentValue": "medium",
+          "options": [
+            {"value": "low", "name": "Low"},
+            {"value": "medium", "name": "Medium"},
+            {"value": "high", "name": "High"},
+          ],
+        },
+      ],
+    };
+
     setUp(() {
       fake = FakeAcpProcess();
+      handledFrameIds = {};
       plugin = CursorPlugin(
         launchDirectory: "/repo",
         processFactory: (_) async => fake,
@@ -195,8 +261,14 @@ void main() {
     Future<void> pump() => Future<void>.delayed(Duration.zero);
     Future<Map<String, dynamic>> waitForFrame(String method) async {
       for (var i = 0; i < 50; i++) {
-        final matches = fake.written.where((f) => f["method"] == method);
-        if (matches.isNotEmpty) return matches.last;
+        final matches = fake.written.where(
+          (frame) => frame["method"] == method && !handledFrameIds.contains(frame["id"]),
+        );
+        if (matches.isNotEmpty) {
+          final frame = matches.first;
+          handledFrameIds.add(frame["id"]);
+          return frame;
+        }
         await pump();
       }
       throw StateError("agent never wrote a '$method' frame");
@@ -234,9 +306,11 @@ void main() {
       expect(provider.models.last.variants, ["medium", "low", "high"]);
 
       final agents = await plugin.getAgents(projectId: "/repo");
-      expect(agents.map((a) => a.name), ["agent", "plan", "ask"]);
-      expect(agents.map((a) => a.description), ["Agent", "Plan", "Ask"]);
-      // Mode agents omit model so mobile mode switches preserve model/effort.
+      expect(agents.map((a) => a.name), ["Agent", "Plan", "Ask"]);
+      expect(
+        agents.map((a) => a.description),
+        ["Works autonomously", "Plans before editing", "Answers without editing"],
+      );
       expect(agents.every((a) => a.model == null), isTrue);
     });
 
@@ -305,7 +379,10 @@ void main() {
         variant: const PluginSessionVariant(id: "high"),
         agent: "plan",
       );
-      await respond("session/set_config_option", const {}); // model
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "sonnet-4.6"),
+      ); // model
       await respond("session/set_config_option", const {}); // mode=plan
       await respond("session/set_config_option", const {}); // effort=high
       await applying;
@@ -351,7 +428,10 @@ void main() {
         variant: null,
         agent: "Ask",
       );
-      await respond("session/set_config_option", const {}); // model
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "gpt-5.4"),
+      ); // model
       await respond("session/set_config_option", const {}); // mode=ask
       await respond("session/set_config_option", const {}); // effort=medium
       await applying;
@@ -382,7 +462,10 @@ void main() {
         variant: const PluginSessionVariant(id: "high"),
         agent: "agent",
       );
-      await respond("session/set_config_option", const {}); // model
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "gpt-5.4"),
+      ); // model
       await respond("session/set_config_option", const {}); // mode
       await respond("session/set_config_option", const {}); // effort high
       await first;
@@ -394,7 +477,10 @@ void main() {
         variant: const PluginSessionVariant(id: "high"),
         agent: "agent",
       );
-      await respond("session/set_config_option", const {}); // model sonnet
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "sonnet-4.6"),
+      ); // model sonnet
       await respond("session/set_config_option", const {}); // effort high again
       await second;
 
@@ -404,8 +490,7 @@ void main() {
           .where((p) => p["configId"] == "effort")
           .map((p) => p["value"])
           .toList();
-      expect(effortSets, ["high", "high"],
-          reason: "the same effort string must be re-pushed after a model change");
+      expect(effortSets, ["high", "high"], reason: "the same effort string must be re-pushed after a model change");
 
       await client.dispose();
     });
@@ -496,6 +581,100 @@ void main() {
       await client.dispose();
     });
 
+    test("applyTurnSelection does not reuse another model's thought config id", () async {
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+      await client.connect();
+
+      final applying = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "s1",
+        model: (providerID: "cursor", modelID: "sonnet-4.6"),
+        variant: const PluginSessionVariant(id: "high"),
+        agent: "Plan",
+      );
+      await respond(
+        "session/set_config_option",
+        modelCatalog("sonnet-4.6"),
+      ); // model response has no thought_level option
+      await respond("session/set_config_option", const {}); // mode=plan
+      await applying;
+
+      final configIds = fake.written
+          .where((frame) => frame["method"] == "session/set_config_option")
+          .map((frame) => frame["params"] as Map)
+          .map((params) => params["configId"])
+          .toList();
+      expect(configIds, ["model", "mode"]);
+
+      await client.dispose();
+    });
+
+    test("applyTurnSelection restores the selected model's default effort", () async {
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+      await client.connect();
+
+      final selectingHigh = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "s1",
+        model: (providerID: "cursor", modelID: "sonnet-4.6"),
+        variant: const PluginSessionVariant(id: "high"),
+        agent: "Plan",
+      );
+      await respond("session/set_config_option", {
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "sonnet-4.6",
+            "options": [
+              {"value": "gpt-5.4", "name": "GPT-5.4"},
+              {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
+            ],
+          },
+          {
+            "id": "effort",
+            "category": "thought_level",
+            "currentValue": "low",
+            "options": [
+              {"value": "low", "name": "Low"},
+              {"value": "high", "name": "High"},
+            ],
+          },
+        ],
+      });
+      await respond("session/set_config_option", const {}); // mode=plan
+      await respond("session/set_config_option", const {}); // effort=high
+      await selectingHigh;
+
+      final restoringDefault = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "s1",
+        model: (providerID: "cursor", modelID: "sonnet-4.6"),
+        variant: null,
+        agent: "Plan",
+      );
+      await respond("session/set_config_option", const {}); // effort=low
+      await restoringDefault;
+
+      final effortSets = fake.written
+          .where((frame) => frame["method"] == "session/set_config_option")
+          .map((frame) => (frame["params"] as Map).cast<String, dynamic>())
+          .where((params) => params["configId"] == "effort")
+          .map((params) => params["value"])
+          .toList();
+      expect(effortSets, ["high", "low"]);
+
+      await client.dispose();
+    });
+
     test("applyTurnSelection never pushes an unknown model", () async {
       plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
@@ -519,8 +698,7 @@ void main() {
           .where((f) => f["method"] == "session/set_config_option")
           .map((f) => (f["params"] as Map).cast<String, dynamic>())
           .toList();
-      expect(sets.where((s) => s["configId"] == "model"), isEmpty,
-          reason: "unknown model is never pushed");
+      expect(sets.where((s) => s["configId"] == "model"), isEmpty, reason: "unknown model is never pushed");
       expect(sets.where((s) => s["configId"] == "mode" && s["value"] == "agent"), hasLength(1));
       expect(sets.where((s) => s["configId"] == "effort" && s["value"] == "medium"), hasLength(1));
 
@@ -542,7 +720,10 @@ void main() {
         variant: const PluginSessionVariant(id: "not-a-real-effort"),
         agent: "agent",
       );
-      await respond("session/set_config_option", const {}); // model
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "gpt-5.4"),
+      ); // model
       await respond("session/set_config_option", const {}); // mode
       await applying;
 
@@ -570,7 +751,10 @@ void main() {
         variant: null,
         agent: null,
       );
-      await respond("session/set_config_option", const {}); // model
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "sonnet-4.6"),
+      ); // model
       await respond("session/set_config_option", const {}); // mode
       await respond("session/set_config_option", const {}); // effort
       await selecting;
@@ -582,7 +766,10 @@ void main() {
         variant: null,
         agent: null,
       );
-      await respond("session/set_config_option", const {}); // model=gpt-5.4
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "gpt-5.4"),
+      ); // model=gpt-5.4
       await respond("session/set_config_option", const {}); // effort re-applied after model change
       await defaulting;
 
@@ -612,7 +799,10 @@ void main() {
         variant: null,
         agent: null,
       );
-      await respond("session/set_config_option", const {});
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "sonnet-4.6"),
+      );
       await respond("session/set_config_option", const {});
       await respond("session/set_config_option", const {});
       await a;
@@ -624,7 +814,10 @@ void main() {
         variant: null,
         agent: null,
       );
-      await respond("session/set_config_option", const {}); // model
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "gpt-5.4"),
+      ); // model
       await respond("session/set_config_option", const {}); // effort re-applied
       await b;
 
@@ -635,7 +828,10 @@ void main() {
         variant: null,
         agent: null,
       );
-      await respond("session/set_config_option", const {}); // model
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "sonnet-4.6"),
+      ); // model
       await respond("session/set_config_option", const {}); // effort re-applied
       await aAgain;
 
@@ -696,7 +892,10 @@ void main() {
         variant: null,
         agent: null,
       );
-      await respond("session/set_config_option", const {});
+      await respond(
+        "session/set_config_option",
+        effortModelSelectionResult(modelId: "sonnet-4.6"),
+      );
       await respond("session/set_config_option", const {});
       await respond("session/set_config_option", const {});
       await a;
@@ -738,7 +937,10 @@ void main() {
           variant: const PluginSessionVariant(id: "high"),
           agent: "plan",
         );
-        await respond("session/set_config_option", const {});
+        await respond(
+          "session/set_config_option",
+          effortModelSelectionResult(modelId: "sonnet-4.6"),
+        );
         await respond("session/set_config_option", const {});
         await respond("session/set_config_option", const {});
         await applying;

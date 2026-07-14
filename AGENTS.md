@@ -34,6 +34,7 @@ plugin-scoped DTO for operations whose routing depends on plugin identity.
 **Directional invariants (don't weld these doors shut):**
 
 - **Plugin boundary is sacred** — no backend specifics leak past `BridgePluginApi` into `shared/`, the relay protocol, or the client; our own harness is *just a plugin*; differing abilities are optional, declared capabilities.
+- Plugins normalize backend identifiers and presentation fields into the existing contract before returning them. Shared clients must not infer backend meaning from description length, capitalization, or other payload-shape heuristics.
 - **The bridge is one of many** — keep per-bridge addressing first-class across client/relay/auth (multi-client per bridge already works; multi-bridge is the new axis).
 - **Shared brain, thin shells** — `module_core` stays Flutter-free and surface-agnostic; the client is online-first with minimal local cache.
 - **Headless-first bridge** — desktop GUI supervision is additive and gated; the standalone/VM path stays first-class (this is what enables managed VMs).

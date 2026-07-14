@@ -259,15 +259,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       NewSessionError() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
       NewSessionCreated() => null,
     };
-    final previousModel = switch (current) {
-      NewSessionIdle(:final selectedAgentModel) => selectedAgentModel,
-      NewSessionSending(:final selectedAgentModel) => selectedAgentModel,
-      NewSessionError(:final selectedAgentModel) => selectedAgentModel,
-      NewSessionCreated() => null,
-    };
-    // Agents that omit a model (Cursor modes) must not wipe the current
-    // model/effort selection.
-    final agentModel = agentInfo?.model ?? previousModel;
+    final agentModel = agentInfo?.model;
     _emitAgentModelUpdate(
       selectedAgent: agent,
       selectedAgentModel: agentModel,

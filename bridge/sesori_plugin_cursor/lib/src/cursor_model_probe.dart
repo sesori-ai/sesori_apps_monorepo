@@ -89,7 +89,7 @@ abstract final class CursorModelProbe {
     }
     if (reasoning != null && _hasMultiLevelOptions(reasoning)) return reasoning;
     if (effort != null && _hasMultiLevelOptions(effort)) return effort;
-    return reasoning ?? effort;
+    return null;
   }
 
   /// Resolves a mode id from either the ACP `value` or the human `name`.
