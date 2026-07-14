@@ -64,7 +64,7 @@ class PregoPopover extends StatelessWidget {
         triggerRect: triggerRect,
         width: popoverWidth,
         // Content-sized (still bounded to stay on screen).
-        height: null,
+        maxHeight: null,
         borderRadius: popoverBorderRadius,
         screenPadding: screenPadding,
         childBuilder: contentBuilder,

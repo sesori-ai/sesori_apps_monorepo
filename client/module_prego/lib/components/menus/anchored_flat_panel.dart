@@ -25,7 +25,7 @@ class AnchoredFlatPanel extends StatelessWidget {
     super.key,
     required this.triggerRect,
     required this.width,
-    required this.height,
+    required this.maxHeight,
     required this.borderRadius,
     required this.screenPadding,
     required this.childBuilder,
@@ -37,10 +37,10 @@ class AnchoredFlatPanel extends StatelessWidget {
   /// Fixed width of the bubble (clamped down to fit a narrow viewport).
   final double width;
 
-  /// Optional fixed maximum height. When set, the bubble caps at this height
-  /// and its content scrolls; when null it sizes to its content (still bounded
-  /// to stay on screen).
-  final double? height;
+  /// Caps how tall the bubble may grow; past it the content scrolls. Null lets
+  /// it grow with its content. Either way it is bounded by the room beside the
+  /// trigger — a cap only ever tightens that bound.
+  final double? maxHeight;
 
   /// Corner radius of the bubble.
   final double borderRadius;
@@ -71,9 +71,9 @@ class AnchoredFlatPanel extends StatelessWidget {
     final spaceBelow =
         screen.height - keyboard - safe.bottom - screenPadding.bottom - triggerRect.bottom - _gap;
     final expandUp = spaceAbove >= spaceBelow;
+    final cap = maxHeight;
     final available = math.max(0.0, expandUp ? spaceAbove : spaceBelow);
-    final height = this.height;
-    final maxHeight = height != null ? math.min(height, available) : available;
+    final effectiveMaxHeight = cap != null ? math.min(cap, available) : available;
 
     // module_prego is a GoRouter-agnostic design module (no go_router dep);
     // this pops the modal route CueModalTransition pushed for the popup.
@@ -104,7 +104,7 @@ class AnchoredFlatPanel extends StatelessWidget {
       delegate: _AnchoredPopupLayoutDelegate(
         triggerRect: triggerRect,
         width: width,
-        maxHeight: maxHeight,
+        maxHeight: effectiveMaxHeight,
         expandUp: expandUp,
         screenPadding: screenPadding,
         safe: safe,

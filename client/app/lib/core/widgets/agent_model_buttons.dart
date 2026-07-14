@@ -157,7 +157,7 @@ class _AgentMenu extends StatelessWidget {
     final loc = context.loc;
     return PregoAnchorMenu(
       menuWidth: 240,
-      menuHeight: agents.length > 6 ? 320 : null,
+      menuMaxHeight: _pickerMaxHeight,
       triggerBuilder: (context, toggle) => PregoButtonsGlass(
         leadingIcon: Icons.smart_toy_outlined,
         label: selectedAgent,
@@ -201,6 +201,7 @@ class _ModelMenu extends StatelessWidget {
     // custom entry so it can close the menu before the sheet rises.
     final entries = <PregoMenuEntry>[
       PregoMenuCustom(
+        height: _ModelSearchAffordance.height,
         builder: (context, close) => _ModelSearchAffordance(
           onTap: () {
             close();
@@ -209,15 +210,11 @@ class _ModelMenu extends StatelessWidget {
         ),
       ),
     ];
-    var modelRows = 0;
-    var headerRows = 0;
     for (final section in sections) {
       final models = section.models.where((model) => model.visibleByDefault).toList();
       if (models.isEmpty) continue;
-      headerRows++;
       entries.add(PregoMenuLabel(text: section.providerName));
       for (final model in models) {
-        modelRows++;
         entries.add(
           PregoMenuItem(
             title: model.displayName,
@@ -231,7 +228,7 @@ class _ModelMenu extends StatelessWidget {
 
     return PregoAnchorMenu(
       menuWidth: 320,
-      menuHeight: _modelMenuHeight(modelRows: modelRows, headerRows: headerRows),
+      menuMaxHeight: _pickerMaxHeight,
       triggerBuilder: (context, toggle) => PregoButtonsGlass(
         leadingIcon: Icons.memory_outlined,
         label: _resolveModelName(context, providers: providers, selected: selected),
@@ -259,7 +256,7 @@ class _VariantMenu extends StatelessWidget {
     final loc = context.loc;
     return PregoAnchorMenu(
       menuWidth: 220,
-      menuHeight: availableVariants.length > 6 ? 320 : null,
+      menuMaxHeight: _pickerMaxHeight,
       triggerBuilder: (context, toggle) => PregoButtonsGlass(
         leadingIcon: Icons.speed_outlined,
         label: selectedVariant ?? loc.sessionDetailVariantDefault,
@@ -294,17 +291,25 @@ class _ModelSearchAffordance extends StatelessWidget {
 
   const _ModelSearchAffordance({required this.onTap});
 
+  /// The row's rendered height — the [_barHeight] bar plus the [_bottomGap] that
+  /// separates it from the first provider heading. The glass popup budgets its
+  /// height from what each row declares, so this is what the menu is told; the
+  /// two constants below are the only things that decide it.
+  static const double height = _barHeight + _bottomGap;
+  static const double _barHeight = 40;
+  static const double _bottomGap = 8;
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(4, 0, 4, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(4, 0, 4, _bottomGap),
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          height: 40,
+          height: _barHeight,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: prego.colors.bgSurface1,
@@ -328,16 +333,10 @@ class _ModelSearchAffordance extends StatelessWidget {
 
 // ── Shared menu pieces ─────────────────────────────────────────────────────
 
-/// Fixed (always-scrollable) model-menu height that fits the quick-pick rows
-/// but caps so the popup never fills the screen; results scroll inside.
-double _modelMenuHeight({required int modelRows, required int headerRows}) {
-  const searchHeight = 52.0;
-  const itemHeight = 48.0;
-  const headerHeight = 30.0;
-  const verticalPadding = 36.0;
-  final natural = searchHeight + modelRows * itemHeight + headerRows * headerHeight + verticalPadding;
-  return natural.clamp(120.0, 380.0);
-}
+/// How tall a composer picker may grow before its rows start to scroll. The menu
+/// sizes itself to its rows below this; the cap only stops a long catalog (or a
+/// project with many agents) from swallowing the conversation behind it.
+const double _pickerMaxHeight = 380;
 
 String _resolveModelName(
   BuildContext context, {
