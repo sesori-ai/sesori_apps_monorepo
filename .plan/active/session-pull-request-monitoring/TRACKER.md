@@ -10,9 +10,9 @@
 
 ## Current Pointer
 
-- **Stage:** S01 — Additive contracts
+- **Stage:** S02 — Durable bridge monitoring
 - **Wave:** W01
-- **Next action:** Pin the then-current `main` baseline for S01/W01 and implement S01-W01-P01 with `sesori-plan-worker`.
+- **Next action:** After S01-W01-P01 merges, pin the then-current `main` baseline for S02/W01 and implement S02-W01-P01 with `sesori-plan-worker`.
 
 ## Plan Review
 
@@ -25,12 +25,13 @@
 
 | Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
 |---|---|---|---|---|---|
+| S01 | W01 | `sesori-ai/sesori_apps_monorepo` | `main` | `d1379eaeae857531d73e7765fdea4f92d21d1063` | Proceed — five commits in under one day; S01 shared contract/schema paths are unchanged, and the plugin-subscriber plus menu/UI changes do not affect this step. |
 
 ## PR Steps
 
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | S01-W01-P01 | S01 | W01 | — | `plan/session-pull-request-monitoring/s01-w01-p01-additive-pr-monitor-contracts` | Additive shared contracts; no behavior activation. |
+| [x] | S01-W01-P01 | S01 | W01 | [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) | `plan/session-pull-request-monitoring/s01-w01-p01-additive-pr-monitor-contracts` | Delivers additive shared contracts with no behavior activation. Shared, bridge, module-core, mobile, desktop-core, and desktop analysis/tests passed; `aristotle-impl-review` approved. |
 | [ ] | S02-W01-P01 | S02 | W01 | — | `plan/session-pull-request-monitoring/s02-w01-p01-durable-branch-observation` | Exact directory and filesystem-driven branch history. |
 | [ ] | S02-W02-P01 | S02 | W02 | — | `plan/session-pull-request-monitoring/s02-w02-p01-authored-pr-refresh` | Authored identity-scoped live cache and dispatcher. |
 | [ ] | S02-W03-P01 | S02 | W03 | — | `plan/session-pull-request-monitoring/s02-w03-p01-terminal-archive-snapshots` | Irreversible PR stop and immutable archived snapshot. |
@@ -52,6 +53,7 @@
 
 ## Findings and Plan Deltas
 
+- **2026-07-15 — Active-plan resolution correction:** The user explicitly authorized S01-W01-P01 to carry a prompt-only worker correction: inspect active plans first, proceed on a clear semantic match, ask with the best guess recommended when ambiguous, and never infer the plan from a branch name. The amended step passed `aristotle-plan-review` before implementation.
 - **2026-07-15 — Feedback review approval:** `aristotle-plan-review` approved the complete canonical tree after all current account/repository, dispatcher, scheduler, and client declaration corrections; no architecture violations remained.
 - **2026-07-15 — Archive-scope review approval:** `aristotle-plan-review` approved exact branch-name association, scope-gated terminal clears, and snapshot-neutral same-identity truncation; no architecture violations remained.
 - **2026-07-15 — Repository-bound review approval:** `aristotle-plan-review` approved the complete canonical tree after per-history-row Git binding, symmetric mutation events, and transactional live/terminal scope revalidation were made explicit; no architecture violations remained.

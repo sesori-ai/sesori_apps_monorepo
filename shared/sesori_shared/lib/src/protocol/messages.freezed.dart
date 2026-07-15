@@ -39,6 +39,10 @@ RelayMessage _$RelayMessageFromJson(
           return RelaySessionView.fromJson(
             json
           );
+                case 'project_view':
+          return RelayProjectView.fromJson(
+            json
+          );
                 case 'key_exchange':
           return RelayKeyExchange.fromJson(
             json
@@ -531,6 +535,79 @@ class _$RelaySessionViewCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? sessionId = freezed,}) {
   return _then(RelaySessionView(
 sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class RelayProjectView implements RelayMessage {
+  const RelayProjectView({required this.projectId, final  String? $type}): $type = $type ?? 'project_view';
+  factory RelayProjectView.fromJson(Map<String, dynamic> json) => _$RelayProjectViewFromJson(json);
+
+ final  String? projectId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of RelayMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$RelayProjectViewCopyWith<RelayProjectView> get copyWith => _$RelayProjectViewCopyWithImpl<RelayProjectView>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$RelayProjectViewToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayProjectView&&(identical(other.projectId, projectId) || other.projectId == projectId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,projectId);
+
+@override
+String toString() {
+  return 'RelayMessage.projectView(projectId: $projectId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $RelayProjectViewCopyWith<$Res> implements $RelayMessageCopyWith<$Res> {
+  factory $RelayProjectViewCopyWith(RelayProjectView value, $Res Function(RelayProjectView) _then) = _$RelayProjectViewCopyWithImpl;
+@useResult
+$Res call({
+ String? projectId
+});
+
+
+
+
+}
+/// @nodoc
+class _$RelayProjectViewCopyWithImpl<$Res>
+    implements $RelayProjectViewCopyWith<$Res> {
+  _$RelayProjectViewCopyWithImpl(this._self, this._then);
+
+  final RelayProjectView _self;
+  final $Res Function(RelayProjectView) _then;
+
+/// Create a copy of RelayMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? projectId = freezed,}) {
+  return _then(RelayProjectView(
+projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
