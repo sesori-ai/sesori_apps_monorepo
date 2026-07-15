@@ -356,7 +356,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
 
   Widget _flatPanel(BuildContext context, {required Rect triggerRect}) {
     final entries = widget.entriesBuilder();
-    final edgePadding = EdgeInsets.only(
+    final edgePadding = EdgeInsetsDirectional.only(
       top: entries.isEmpty || entries.first is! PregoMenuItem ? 6 : 0,
       bottom: entries.isEmpty || entries.last is! PregoMenuItem ? 6 : 0,
     );
@@ -559,8 +559,12 @@ double debugGlassEntryHeight(BuildContext context, {required PregoMenuEntry entr
 /// Prego's styles set an explicit line height, so the line box is exactly the
 /// scaled font size times that factor — no font-metric guesswork.
 double _lineHeight(BuildContext context, {required TextStyle style}) {
-  final fontSize = MediaQuery.textScalerOf(context).scale(style.fontSize!);
-  return fontSize * style.height!;
+  final fontSize = style.fontSize;
+  final height = style.height;
+  if (fontSize == null || height == null) {
+    throw StateError('Prego menu text styles must declare font size and height.');
+  }
+  return MediaQuery.textScalerOf(context).scale(fontSize) * height;
 }
 
 // ── Shared entry styling, cont. ──────────────────────────────────────────────

@@ -213,19 +213,31 @@ class _AiLoaderPainter extends CustomPainter {
   (Color, double, double) _keyframe(double t) {
     if (t < _outlineAt) {
       final p = t / _outlineAt;
-      return (_lerpColor(solid, outline, p), 1 - p, _lerpDouble(1.0, 0.86, p));
+      return (
+        _lerpColor(a: solid, b: outline, t: p),
+        1 - p,
+        _lerpDouble(a: 1.0, b: 0.86, t: p),
+      );
     }
     if (t < _fadedAt) {
       final p = (t - _outlineAt) / (_fadedAt - _outlineAt);
-      return (_lerpColor(outline, faded, p), p, _lerpDouble(0.86, 0.92, p));
+      return (
+        _lerpColor(a: outline, b: faded, t: p),
+        p,
+        _lerpDouble(a: 0.86, b: 0.92, t: p),
+      );
     }
     final p = (t - _fadedAt) / (1 - _fadedAt);
-    return (_lerpColor(faded, solid, p), 1, _lerpDouble(0.92, 1.0, p));
+    return (
+      _lerpColor(a: faded, b: solid, t: p),
+      1,
+      _lerpDouble(a: 0.92, b: 1.0, t: p),
+    );
   }
 
-  static Color _lerpColor(Color a, Color b, double t) => Color.lerp(a, b, t) ?? b;
+  static Color _lerpColor({required Color a, required Color b, required double t}) => Color.lerp(a, b, t) ?? b;
 
-  static double _lerpDouble(double a, double b, double t) => a + (b - a) * t;
+  static double _lerpDouble({required double a, required double b, required double t}) => a + (b - a) * t;
 
   @override
   bool shouldRepaint(_AiLoaderPainter oldDelegate) {
