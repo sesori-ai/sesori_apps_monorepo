@@ -110,8 +110,8 @@ void main() {
     );
 
     // Displays the live directory, not the id…
-    expect(find.text("/moved/my-app"), findsOneWidget);
-    expect(find.text("/projects/my-app"), findsNothing);
+    expect(find.text("moved/my-app"), findsOneWidget);
+    expect(find.text("projects/my-app"), findsNothing);
     // …and derives the name from the live directory's basename.
     expect(find.text("my-app"), findsOneWidget);
 
@@ -142,7 +142,9 @@ void main() {
 
     await pumpScreen(tester, projects: [project], onSessionsRoute: (_) {});
 
-    expect(find.text("/home/user/legacy-app"), findsOneWidget);
+    // A row is far too narrow for a real path, so only the segments that tell
+    // projects apart survive; the dropped head is marked with an ellipsis.
+    expect(find.text("…/user/legacy-app"), findsOneWidget);
     expect(find.text("legacy-app"), findsOneWidget);
   });
 }

@@ -12,6 +12,7 @@ import "dart:async";
 
 import "package:flutter/material.dart";
 
+import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
 
 /// Animates a shimmer sheen across [child].
@@ -64,7 +65,7 @@ class PregoShimmer extends StatefulWidget {
 }
 
 class _PregoShimmerState extends State<PregoShimmer>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   /// Sweep position in multiples of the child's width. The band (20% wide,
   /// centred at 0.5 + value) is fully off-screen outside [-0.6, 0.6]; the
   /// extra margin below/above gives it a clean entry and a short rest between
@@ -78,18 +79,25 @@ class _PregoShimmerState extends State<PregoShimmer>
   late bool _visible = widget.appearDelay == Duration.zero;
   Timer? _appearTimer;
 
-  bool get _shouldAnimate {
-    if (!widget.enabled || !_visible) return false;
-    // MediaQuery only carries Android's "Remove animations"; iOS "Reduce
-    // Motion" surfaces solely through accessibilityFeatures.reduceMotion.
-    if (MediaQuery.disableAnimationsOf(context)) return false;
-    return !View.of(context).platformDispatcher.accessibilityFeatures.reduceMotion;
+  /// Nothing to sweep before the skeleton has faded in.
+  @override
+  bool get motionEnabled => widget.enabled && _visible;
+
+  @override
+  void startMotion() {
+    if (!_slide.isAnimating) {
+      _slide.repeat(min: _slideMin, max: _slideMax, period: widget.period);
+    }
+  }
+
+  @override
+  void stopMotion() {
+    if (_slide.isAnimating) _slide.stop();
   }
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     if (!_visible) _scheduleAppear();
   }
 
@@ -98,14 +106,8 @@ class _PregoShimmerState extends State<PregoShimmer>
     _appearTimer = Timer(widget.appearDelay, () {
       if (!mounted) return;
       setState(() => _visible = true);
-      _syncAnimation();
+      syncMotion();
     });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncAnimation();
   }
 
   @override
@@ -120,29 +122,11 @@ class _PregoShimmerState extends State<PregoShimmer>
         _scheduleAppear();
       }
     }
-    _syncAnimation();
-  }
-
-  @override
-  void didChangeAccessibilityFeatures() {
-    // Reduce Motion toggles don't reach MediaQuery on iOS; re-evaluate the
-    // sweep when the platform's accessibility features change.
-    if (!mounted) return;
-    setState(() {});
-    _syncAnimation();
-  }
-
-  void _syncAnimation() {
-    if (_shouldAnimate && !_slide.isAnimating) {
-      _slide.repeat(min: _slideMin, max: _slideMax, period: widget.period);
-    } else if (!_shouldAnimate && _slide.isAnimating) {
-      _slide.stop();
-    }
+    syncMotion();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _appearTimer?.cancel();
     _slide.dispose();
     super.dispose();
@@ -152,7 +136,7 @@ class _PregoShimmerState extends State<PregoShimmer>
   Widget build(BuildContext context) {
     Widget result = ExcludeSemantics(child: widget.child);
 
-    if (_shouldAnimate) {
+    if (motionAllowed) {
       final highlight = widget.highlightColor ?? Colors.white.withValues(alpha: 0.30);
       // In RTL the band sweeps right-to-left so it still travels leading →
       // trailing.
