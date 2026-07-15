@@ -1157,6 +1157,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       agentId: agentDisplayName,
       modelId: eventMapper.modelForSession(sessionId),
       providerId: eventMapper.providerForSession(sessionId),
+      // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
+      // the live stream does, so reloaded history renders it identically.
+      haltClassifier: eventMapper.classifyHaltNotice,
     );
     StreamSubscription<AcpNotification>? sub;
     try {

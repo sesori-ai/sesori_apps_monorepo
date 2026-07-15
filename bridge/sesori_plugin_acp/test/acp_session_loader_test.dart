@@ -255,5 +255,36 @@ void main() {
         PluginMessagePartType.tool,
       ]));
     });
+
+    test("a halt notice replays as an error message with no text part", () {
+      final collector = AcpReplayCollector(
+        sessionId: "s1",
+        agentId: "Cursor",
+        modelId: "claude-fable-5",
+        providerId: "cursor",
+        haltClassifier: (text) => text.trim() == "Check your settings to continue"
+            ? const AcpHaltNotice(errorName: "cursor_gate", message: "Check your settings to continue")
+            : null,
+      )..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "\n\nCheck your settings to continue"},
+        }));
+
+      final message = collector.build().single;
+      expect(message.info, isA<PluginMessageError>());
+      expect((message.info as PluginMessageError).errorMessage, "Check your settings to continue");
+      expect(message.parts, isEmpty);
+    });
+
+    test("without a halt classifier the same chunk stays assistant text", () {
+      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor")
+        ..consume(upd({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Check your settings to continue"},
+        }));
+      final message = collector.build().single;
+      expect(message.info, isA<PluginMessageAssistant>());
+      expect(message.parts, isNotEmpty);
+    });
   });
 }

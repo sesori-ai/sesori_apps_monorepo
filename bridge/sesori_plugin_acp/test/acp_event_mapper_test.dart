@@ -682,5 +682,94 @@ void main() {
     test("unknown variants are dropped", () {
       expect(mapper.map(update({"sessionUpdate": "current_mode_update"})), isEmpty);
     });
+
+    test("base mapper never classifies a chunk as a halt notice", () {
+      expect(mapper.classifyHaltNotice("Check your settings to continue"), isNull);
+    });
   });
+
+  group("AcpEventMapper halt notices", () {
+    late _HaltMapper mapper;
+
+    setUp(() {
+      mapper = _HaltMapper()
+        ..currentModelId = "claude-fable-5"
+        ..currentProviderId = "cursor";
+    });
+
+    AcpNotification update(Map<String, dynamic> body) => AcpNotification(
+      method: "session/update",
+      params: {"sessionId": "s1", "update": body},
+    );
+
+    test("a classified halt notice becomes a lone error message, not assistant text", () {
+      mapper.beginTurn("s1");
+      final events = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "\n\nHALT: fix it"},
+      }));
+
+      final message = shared.Message.fromJson(
+        events.whereType<BridgeSseMessageUpdated>().single.info,
+      );
+      expect(message, isA<shared.MessageError>());
+      expect((message as shared.MessageError).errorMessage, "HALT: fix it");
+      // No assistant text part or delta — the notice rides in the error message.
+      expect(events.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+      expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
+    });
+
+    test("a repeated identical halt chunk does not stack duplicate error cards", () {
+      mapper.beginTurn("s1");
+      mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "HALT: fix it"},
+      }));
+      final again = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "HALT: fix it"},
+      }));
+      expect(again, isEmpty);
+    });
+
+    test("a reasoning chunk is never classified as a halt notice", () {
+      mapper.beginTurn("s1");
+      final events = mapper.map(update({
+        "sessionUpdate": "agent_thought_chunk",
+        "content": {"type": "text", "text": "HALT: fix it"},
+      }));
+      expect(
+        events.whereType<BridgeSseMessagePartUpdated>().single.part.type,
+        PluginMessagePartType.reasoning,
+      );
+    });
+
+    test("ordinary assistant text still streams as an assistant message", () {
+      mapper.beginTurn("s1");
+      final events = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "real answer"},
+      }));
+      final message = shared.Message.fromJson(
+        events.whereType<BridgeSseMessageUpdated>().single.info,
+      );
+      expect(message, isA<shared.MessageAssistant>());
+      expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "real answer");
+    });
+  });
+}
+
+/// Test double: classifies any message whose trimmed text starts with "HALT:"
+/// as a halt notice, using the trimmed text as the shown message.
+class _HaltMapper extends AcpEventMapper {
+  _HaltMapper() : super(launchDirectory: "/repo", agentId: "cursor", pluginId: "cursor");
+
+  @override
+  AcpHaltNotice? classifyHaltNotice(String text) {
+    final trimmed = text.trim();
+    if (trimmed.startsWith("HALT:")) {
+      return AcpHaltNotice(errorName: "test_halt", message: trimmed);
+    }
+    return null;
+  }
 }
