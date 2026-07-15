@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
+import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -22,6 +23,8 @@ void main() {
 
   group("SessionListCubit", () {
     late MockSessionService mockSessionService;
+    late MockProjectRepository mockProjectRepository;
+    late SessionListService sessionListService;
     late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
     late MockSseEventTracker mockSseEventTracker;
@@ -35,6 +38,8 @@ void main() {
 
     setUp(() {
       mockSessionService = MockSessionService();
+      mockProjectRepository = MockProjectRepository();
+      sessionListService = SessionListService(repository: mockProjectRepository);
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
@@ -43,6 +48,17 @@ void main() {
       eventController = StreamController<SseEvent>.broadcast();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         const ConnectionStatus.disconnected(),
+      );
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: any(named: "projectId"),
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer(
+        (invocation) => mockProjectService.listSessions(
+          projectId: invocation.namedArguments[#projectId]! as String,
+          waitForPrData: invocation.namedArguments[#waitForPrData]! as bool,
+        ),
       );
 
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
@@ -71,6 +87,7 @@ void main() {
     /// Convenience factory — stubs must be set up before calling this.
     SessionListCubit buildCubit() => SessionListCubit(
       sessionService: mockSessionService,
+      sessionListService: sessionListService,
       projectService: mockProjectService,
       connectionService: mockConnectionService,
       sseEventTracker: mockSseEventTracker,
@@ -116,6 +133,45 @@ void main() {
           ),
         ).called(1);
       },
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "REST session list is sorted by title then id regardless of timestamp",
+      build: () {
+        when(
+          () => mockProjectService.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [
+                testSession(id: "untitled").copyWith(
+                  time: const SessionTime(created: 1000, updated: 9000, archived: null),
+                ),
+                testSession(id: "B", title: "bravo").copyWith(
+                  time: const SessionTime(created: 1000, updated: 4000, archived: null),
+                ),
+                testSession(id: "a", title: "alpha").copyWith(
+                  time: const SessionTime(created: 1000, updated: 1000, archived: null),
+                ),
+                testSession(id: "A", title: "Alpha").copyWith(
+                  time: const SessionTime(created: 1000, updated: 3000, archived: null),
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      expect: () => [
+        isA<SessionListLoaded>().having(
+          (state) => state.sessions.map((session) => session.id).toList(),
+          "session order",
+          ["A", "a", "B", "untitled"],
+        ),
+      ],
     );
 
     // -------------------------------------------------------------------------
@@ -1063,9 +1119,11 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>()
-            .having((s) => s.sessions.length, "sessions count", 2)
-            .having((s) => s.sessions.first.id, "new session first", "s2"),
+        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
+          (s) => s.sessions.map((session) => session.id).toList(),
+          "alphabetical session order",
+          ["s1", "s2"],
+        ),
       ],
     );
 
@@ -1104,6 +1162,59 @@ void main() {
         isA<SessionListLoaded>()
             .having((s) => s.sessions.length, "sessions count", 1)
             .having((s) => s.sessions.first.title, "updated title", "Updated"),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "SSE session.updated timestamp does not reorder sessions",
+      build: () {
+        when(
+          () => mockProjectService.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [
+                testSession(id: "A", title: "Alpha").copyWith(
+                  time: const SessionTime(created: 1000, updated: 3000, archived: null),
+                ),
+                testSession(id: "B", title: "Bravo").copyWith(
+                  time: const SessionTime(created: 1000, updated: 2000, archived: null),
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        eventController.add(
+          SseEvent(
+            data: SesoriSseEvent.sessionUpdated(
+              info: testSession(id: "B", title: "Bravo").copyWith(
+                time: const SessionTime(created: 1000, updated: 9000, archived: null),
+              ),
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>()
+            .having(
+              (state) => state.sessions.map((session) => session.id).toList(),
+              "session order",
+              ["A", "B"],
+            )
+            .having(
+              (state) => state.sessions.last.time?.updated,
+              "updated timestamp",
+              9000,
+            ),
       ],
     );
 
@@ -1545,6 +1656,7 @@ void main() {
         );
         return SessionListCubit(
           sessionService: mockSessionService,
+          sessionListService: sessionListService,
           projectService: mockProjectService,
           connectionService: mockConnectionService,
           sseEventTracker: mockSseEventTracker,

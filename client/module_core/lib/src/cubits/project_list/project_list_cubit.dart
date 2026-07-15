@@ -13,6 +13,7 @@ import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
+import "../../services/project_list_service.dart";
 import "../../services/registered_bridges_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
@@ -29,6 +30,7 @@ const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
 class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
+  final ProjectListService _projectListService;
   final ConnectionService _connectionService;
   final SseEventTracker _sseEventTracker;
   final SessionUnseenTracker _sessionUnseenTracker;
@@ -42,10 +44,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ConnectionService connectionService,
     SseEventTracker sseEventTracker,
     RouteSource routeSource, {
+    required ProjectListService projectListService,
     required SessionUnseenTracker sessionUnseenTracker,
     required RegisteredBridgesService registeredBridgesService,
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
+       _projectListService = projectListService,
        _connectionService = connectionService,
        _sseEventTracker = sseEventTracker,
        _sessionUnseenTracker = sessionUnseenTracker,
@@ -164,7 +168,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     try {
       if (isClosed) return;
       if (state case final ProjectListLoaded loaded) {
-        final merged = _mergeProjectTimestampUpdates(
+        final merged = _projectListService.mergeTimestampUpdates(
           projects: loaded.projects,
           timestampByProjectId: timestampByProjectId,
         );
@@ -195,47 +199,6 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       );
     }
   }
-
-  ({bool changed, List<Project> projects}) _mergeProjectTimestampUpdates({
-    required Iterable<Project> projects,
-    required Map<String, int> timestampByProjectId,
-  }) {
-    var changed = false;
-    final mergedProjects = projects.map((project) {
-      final updated = timestampByProjectId[project.id];
-      final time = project.time;
-      if (updated == null || time == null || updated <= time.updated) return project;
-
-      changed = true;
-      return project.copyWith(time: time.copyWith(updated: updated));
-    });
-    final sortedProjects = _sortProjects(mergedProjects);
-    return (changed: changed, projects: sortedProjects);
-  }
-
-  List<Project> _sortProjects(Iterable<Project> projects) {
-    return projects.toList()..sort((a, b) => _compareProjectsByTimestampAndName(a: a, b: b));
-  }
-
-  int _compareProjectsByTimestampAndName({required Project a, required Project b}) {
-    final aUpdated = a.time?.updated;
-    final bUpdated = b.time?.updated;
-    if (aUpdated == null && bUpdated != null) return 1;
-    if (aUpdated != null && bUpdated == null) return -1;
-
-    final updatedCompare = switch ((aUpdated, bUpdated)) {
-      (final aUpdatedValue?, final bUpdatedValue?) => bUpdatedValue.compareTo(aUpdatedValue),
-      _ => 0,
-    };
-    if (updatedCompare != 0) return updatedCompare;
-
-    final nameCompare = _effectiveName(a).toLowerCase().compareTo(_effectiveName(b).toLowerCase());
-    if (nameCompare != 0) return nameCompare;
-
-    return a.id.compareTo(b.id);
-  }
-
-  String _effectiveName(Project project) => project.name ?? project.path;
 
   /// Whether the bridge (the user's computer) is currently unreachable. With
   /// nothing loaded, the bridge-disconnected flow (setup onboarding or "turn
@@ -502,7 +465,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       return false;
     }
     if (state case final ProjectListLoaded loaded) {
-      final remaining = loaded.projects.where((p) => p.id != projectId).toList();
+      final remaining = _projectListService.removeProject(
+        projects: loaded.projects,
+        projectId: projectId,
+      );
       emit(
         loaded.copyWith(
           projects: remaining,
@@ -618,15 +584,17 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     // Captured BEFORE the fetch so the seed can't overwrite a live update that
     // arrives while the request is in flight.
     final unseenTick = _sessionUnseenTracker.tick;
-    final projectResponse = await _projectService.listProjects();
+    final projectResponse = await _projectListService.listProjects();
     if (isClosed) return false;
 
     switch (projectResponse) {
       case SuccessResponse(data: Projects(data: final projects)):
-        final sortedProjects = _mergeProjectTimestampUpdates(
-          projects: projects,
-          timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
-        ).projects;
+        final sortedProjects = _projectListService
+            .mergeTimestampUpdates(
+              projects: projects,
+              timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
+            )
+            .projects;
         // The REST aggregate is authoritative at fetch time — seed the tracker
         // so a stale live `true` can't keep a project bold after its last
         // unseen session was archived/deleted while an echo was missed.

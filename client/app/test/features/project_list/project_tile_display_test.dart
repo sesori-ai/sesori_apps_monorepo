@@ -25,6 +25,7 @@ void main() {
   late BehaviorSubject<ConnectionStatus> statusController;
   late MockConnectionService mockConnectionService;
   late MockProjectService mockProjectService;
+  late MockProjectRepository mockProjectRepository;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late StubConnectionOverlayCubit overlayCubit;
 
@@ -34,6 +35,7 @@ void main() {
     statusController = BehaviorSubject<ConnectionStatus>.seeded(connected);
     mockConnectionService = MockConnectionService();
     mockProjectService = MockProjectService();
+    mockProjectRepository = MockProjectRepository();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     overlayCubit = StubConnectionOverlayCubit();
 
@@ -43,6 +45,10 @@ void main() {
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
+    registerListServices(
+      projectService: mockProjectService,
+      projectRepository: mockProjectRepository,
+    );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);
@@ -65,7 +71,7 @@ void main() {
     required List<Project> projects,
     required void Function(String projectId) onSessionsRoute,
   }) async {
-    when(() => mockProjectService.listProjects()).thenAnswer(
+    when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(Projects(data: projects)),
     );
 

@@ -10,13 +10,6 @@ class ProjectService {
 
   ProjectService(RelayHttpApiClient client) : _client = client;
 
-  Future<ApiResponse<Projects>> listProjects() {
-    return _client.get(
-      "/projects",
-      fromJson: Projects.fromJson,
-    );
-  }
-
   /// Returns the project matching the requested project ID.
   Future<ApiResponse<Project>> getProject({required String projectId}) {
     return _client.post(

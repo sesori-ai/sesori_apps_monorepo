@@ -28,6 +28,7 @@ void main() {
   late BehaviorSubject<ConnectionStatus> statusController;
   late MockConnectionService mockConnectionService;
   late MockProjectService mockProjectService;
+  late MockProjectRepository mockProjectRepository;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late _MutableConnectionOverlayCubit overlayCubit;
 
@@ -37,6 +38,7 @@ void main() {
     statusController = BehaviorSubject<ConnectionStatus>.seeded(connected);
     mockConnectionService = MockConnectionService();
     mockProjectService = MockProjectService();
+    mockProjectRepository = MockProjectRepository();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     overlayCubit = _MutableConnectionOverlayCubit();
 
@@ -47,6 +49,10 @@ void main() {
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
+    registerListServices(
+      projectService: mockProjectService,
+      projectRepository: mockProjectRepository,
+    );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);
@@ -75,7 +81,7 @@ void main() {
 
   testWidgets("full-screen bridge-offline design suppresses the nav banner", (tester) async {
     statusController.add(bridgeOffline);
-    when(() => mockProjectService.listProjects()).thenAnswer(
+    when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),
     );
 
@@ -90,7 +96,7 @@ void main() {
   });
 
   testWidgets("a retained loaded list shows the nav banner while the bridge is offline", (tester) async {
-    when(() => mockProjectService.listProjects()).thenAnswer(
+    when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(Projects(data: [testProject(name: "My Project")])),
     );
 
@@ -109,7 +115,7 @@ void main() {
   });
 
   testWidgets("an empty onboarding list surfaces the reconnect banner when the connection is lost", (tester) async {
-    when(() => mockProjectService.listProjects()).thenAnswer(
+    when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(const Projects(data: [])),
     );
 

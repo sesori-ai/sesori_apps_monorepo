@@ -42,6 +42,7 @@ BridgeSummary _bridge({required String name, DateTime? lastSeenAt}) {
 
 void main() {
   late MockProjectService mockProjectService;
+  late MockProjectRepository mockProjectRepository;
   late MockConnectionService mockConnectionService;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late MockAnalyticsReporter mockAnalyticsReporter;
@@ -52,6 +53,7 @@ void main() {
 
   setUp(() {
     mockProjectService = MockProjectService();
+    mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     mockAnalyticsReporter = MockAnalyticsReporter();
@@ -60,7 +62,7 @@ void main() {
 
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
-    when(() => mockProjectService.listProjects()).thenAnswer(
+    when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(const Projects(data: [])),
     );
     // Default: the machine-identity fetch resolves empty (the fail-soft error
@@ -71,6 +73,10 @@ void main() {
     ).thenAnswer((_) async {});
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
+    registerListServices(
+      projectService: mockProjectService,
+      projectRepository: mockProjectRepository,
+    );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);

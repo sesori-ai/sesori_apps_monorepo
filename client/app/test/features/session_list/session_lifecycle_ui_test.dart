@@ -537,6 +537,10 @@ void main() {
 
       getIt.registerSingleton<SessionService>(mockSessionService);
       getIt.registerSingleton<ProjectService>(mockProjectService);
+      registerListServices(
+        projectService: mockProjectService,
+        projectRepository: MockProjectRepository(),
+      );
       getIt.registerSingleton<ConnectionService>(mockConnectionService);
       getIt.registerSingleton<SseEventTracker>(mockSseEventTracker);
       getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());

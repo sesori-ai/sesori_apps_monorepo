@@ -30,7 +30,9 @@ import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
+import "package:sesori_dart_core/src/services/project_list_service.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
+import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
@@ -40,6 +42,7 @@ import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
 import "package:sesori_mobile/core/analytics/analytics_event.dart";
 import "package:sesori_mobile/core/analytics/analytics_reporter.dart";
+import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 // ---------------------------------------------------------------------------
@@ -133,6 +136,35 @@ class MockNotificationCanceller extends Mock implements NotificationCanceller {}
 class MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class MockAnalyticsReporter extends Mock implements AnalyticsReporter {}
+
+void registerListServices({
+  required ProjectService projectService,
+  required MockProjectRepository projectRepository,
+}) {
+  if (getIt.isRegistered<ProjectListService>()) {
+    getIt.unregister<ProjectListService>();
+  }
+  if (getIt.isRegistered<SessionListService>()) {
+    getIt.unregister<SessionListService>();
+  }
+  when(
+    () => projectRepository.listSessions(
+      projectId: any(named: "projectId"),
+      waitForPrData: any(named: "waitForPrData"),
+    ),
+  ).thenAnswer(
+    (invocation) => projectService.listSessions(
+      projectId: invocation.namedArguments[#projectId]! as String,
+      waitForPrData: invocation.namedArguments[#waitForPrData]! as bool,
+    ),
+  );
+  getIt.registerSingleton<ProjectListService>(
+    ProjectListService(repository: projectRepository),
+  );
+  getIt.registerSingleton<SessionListService>(
+    SessionListService(repository: projectRepository),
+  );
+}
 
 /// In-memory [SessionUnseenTracker] stand-in mirroring its lean contract:
 /// overwrite-only maps plus a tick guard.

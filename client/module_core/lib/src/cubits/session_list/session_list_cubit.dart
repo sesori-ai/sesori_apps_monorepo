@@ -16,6 +16,7 @@ import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
 import "../../services/models/session_activity_info.dart";
+import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
 import "session_list_state.dart";
@@ -24,6 +25,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   final SessionService _sessionService;
+  final SessionListService _sessionListService;
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventTracker _sseEventTracker;
@@ -43,6 +45,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   SessionListCubit({
     required SessionService sessionService,
+    required SessionListService sessionListService,
     required ProjectService projectService,
     required ConnectionService connectionService,
     required SseEventTracker sseEventTracker,
@@ -51,6 +54,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     required String projectId,
     required FailureReporter failureReporter,
   }) : _sessionService = sessionService,
+       _sessionListService = sessionListService,
        _projectService = projectService,
        _connectionService = connectionService,
        _sseEventTracker = sseEventTracker,
@@ -257,7 +261,7 @@ class SessionListCubit extends Cubit<SessionListState> {
       return;
     }
 
-    _allSessions = [session, ..._allSessions];
+    _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
     logd("[SessionList] session.created added id=${session.id}");
     _emitFiltered();
   }
@@ -281,8 +285,7 @@ class SessionListCubit extends Cubit<SessionListState> {
       return;
     }
 
-    _allSessions = List<Session>.from(_allSessions);
-    _allSessions[index] = session;
+    _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
     logd("[SessionList] session.updated updated id=${session.id}");
     _emitFiltered();
   }
@@ -298,7 +301,10 @@ class SessionListCubit extends Cubit<SessionListState> {
     }
 
     final before = _allSessions.length;
-    _allSessions = _allSessions.where((s) => s.id != session.id).toList();
+    _allSessions = _sessionListService.removeSession(
+      sessions: _allSessions,
+      sessionId: session.id,
+    );
     if (_allSessions.length == before) {
       logd("[SessionList] session.deleted not_found id=${session.id}");
       return;
@@ -362,9 +368,12 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     // Optimistically mark as archived in the backing list so _emitFiltered
     // hides it when showArchived is off.
-    _allSessions = List<Session>.from(_allSessions);
-    _allSessions[index] = _allSessions[index].copyWith(
+    final archivedSession = _allSessions[index].copyWith(
       time: _allSessions[index].time?.copyWith(archived: DateTime.now().millisecondsSinceEpoch),
+    );
+    _allSessions = _sessionListService.upsertSession(
+      sessions: _allSessions,
+      session: archivedSession,
     );
     _emitFiltered();
 
@@ -408,9 +417,12 @@ class SessionListCubit extends Cubit<SessionListState> {
 
     _undoSnapshot = _allSessions[index];
 
-    _allSessions = List<Session>.from(_allSessions);
-    _allSessions[index] = _allSessions[index].copyWith(
+    final unarchivedSession = _allSessions[index].copyWith(
       time: _allSessions[index].time?.copyWith(archived: null),
+    );
+    _allSessions = _sessionListService.upsertSession(
+      sessions: _allSessions,
+      session: unarchivedSession,
     );
     _emitFiltered();
 
@@ -495,7 +507,10 @@ class SessionListCubit extends Cubit<SessionListState> {
     final originalSession = _allSessions[index];
 
     // Optimistically remove.
-    _allSessions = List<Session>.from(_allSessions)..removeAt(index);
+    _allSessions = _sessionListService.removeSession(
+      sessions: _allSessions,
+      sessionId: sessionId,
+    );
     _emitFiltered();
 
     _lastCleanupRejection = null;
@@ -537,14 +552,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   void _reinsertSession(Session session) {
     if (state is! SessionListLoaded) return;
 
-    // Replace or insert in backing list.
-    final index = _allSessions.indexWhere((s) => s.id == session.id);
-    _allSessions = List<Session>.from(_allSessions);
-    if (index >= 0) {
-      _allSessions[index] = session;
-    } else {
-      _allSessions.insert(0, session);
-    }
+    _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
     _emitFiltered();
   }
 
@@ -561,11 +569,10 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   void _emitFiltered() {
-    var visible = _allSessions;
-    if (!_showArchived) {
-      visible = visible.where((s) => s.time?.archived == null).toList();
-    }
-    final sorted = visible.toList()..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+    final visible = _sessionListService.visibleSessions(
+      sessions: _allSessions,
+      showArchived: _showArchived,
+    );
 
     if (isClosed) return;
     final projectActivity = _sseEventTracker.currentSessionActivity[_projectId] ?? <String, SessionActivityInfo>{};
@@ -573,10 +580,10 @@ class SessionListCubit extends Cubit<SessionListState> {
     final isRefreshing = currentState is SessionListLoaded ? currentState.isRefreshing : false;
     emit(
       SessionListState.loaded(
-        sessions: sorted,
+        sessions: visible,
         showArchived: _showArchived,
         activeSessionIds: projectActivity,
-        unseenBySessionId: _unseenBySessionId(sorted),
+        unseenBySessionId: _unseenBySessionId(visible),
         isRefreshing: isRefreshing,
         baseBranch: _baseBranch,
       ),
@@ -647,7 +654,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     // arrives while the (possibly PR-data-delayed) request is in flight.
     final unseenTick = _sessionUnseenTracker.tick;
     final (sessionsResponse, baseBranchResponse) = await (
-      _projectService.listSessions(
+      _sessionListService.listSessions(
         projectId: _projectId,
         waitForPrData: waitForPrData,
       ),
