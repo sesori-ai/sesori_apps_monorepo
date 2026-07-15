@@ -12,9 +12,12 @@ void main() {
     final filesystemApi = MockFilesystemApi();
     final repository = ProjectRepository(api: api, filesystemApi: filesystemApi);
     const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
+    const projects = Projects(data: [project]);
     const suggestions = FilesystemSuggestions(data: []);
     const baseBranch = BaseBranchResponse(baseBranch: "main");
+    const sessions = SessionListResponse(items: []);
 
+    when(api.listProjects).thenAnswer((_) async => ApiResponse.success(projects));
     when(() => api.createProject(path: "/project-1")).thenAnswer((_) async => ApiResponse.success(project));
     when(() => api.discoverProject(path: "/project-1")).thenAnswer((_) async => ApiResponse.success(project));
     when(() => api.hideProject(projectId: "project-1")).thenAnswer((_) async => ApiResponse.success(null));
@@ -25,9 +28,13 @@ void main() {
       () => api.getBaseBranch(projectId: "project-1"),
     ).thenAnswer((_) async => ApiResponse.success(baseBranch));
     when(
+      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(sessions));
+    when(
       () => api.renameProject(projectId: "project-1", name: "Renamed"),
     ).thenAnswer((_) async => ApiResponse.success(project));
 
+    expect(await repository.listProjects(), ApiResponse<Projects>.success(projects));
     expect(await repository.createProject(path: "/project-1"), ApiResponse<Project>.success(project));
     expect(await repository.discoverProject(path: "/project-1"), ApiResponse<Project>.success(project));
     expect(await repository.hideProject(projectId: "project-1"), ApiResponse<void>.success(null));
@@ -40,15 +47,21 @@ void main() {
       ApiResponse<BaseBranchResponse>.success(baseBranch),
     );
     expect(
+      await repository.listSessions(projectId: "project-1", waitForPrData: false),
+      ApiResponse<SessionListResponse>.success(sessions),
+    );
+    expect(
       await repository.renameProject(projectId: "project-1", name: "Renamed"),
       ApiResponse<Project>.success(project),
     );
 
+    verify(api.listProjects).called(1);
     verify(() => api.createProject(path: "/project-1")).called(1);
     verify(() => api.discoverProject(path: "/project-1")).called(1);
     verify(() => api.hideProject(projectId: "project-1")).called(1);
     verify(() => filesystemApi.getSuggestions(prefix: "/projects")).called(1);
     verify(() => api.getBaseBranch(projectId: "project-1")).called(1);
+    verify(() => api.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
     verify(() => api.renameProject(projectId: "project-1", name: "Renamed")).called(1);
   });
 }
