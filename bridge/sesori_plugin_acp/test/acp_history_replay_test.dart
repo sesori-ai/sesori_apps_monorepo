@@ -137,5 +137,50 @@ void main() {
 
       await expectLater(loading, throwsA(isA<PluginOperationException>()));
     });
+
+    // The degrade is scoped to the `session/load` request alone: a rejected
+    // handshake means the replay client is broken (not "this stored session is
+    // unloadable"), and the getSessionMessages contract requires auth/transport
+    // failures to surface typed, never as an empty thread.
+
+    test("a -32602 rejection of `initialize` surfaces as a typed failure, not an empty thread", () async {
+      final loading = plugin.getSessionMessages(sessionId);
+
+      final initFrame = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initFrame["id"],
+        "error": {"code": -32602, "message": "Invalid params"},
+      });
+
+      await expectLater(loading, throwsA(isA<PluginOperationException>()));
+    });
+
+    test("a -32601 rejection of `authenticate` surfaces as a typed failure, not an empty thread", () async {
+      final loading = plugin.getSessionMessages(sessionId);
+
+      final initFrame = await waitForFrame("initialize");
+      // The agent advertises an auth method, so the replay client must
+      // authenticate before loading — reject that instead of the load.
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initFrame["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": {"loadSession": true},
+          "authMethods": [
+            {"id": "agent_login", "name": "Agent login"},
+          ],
+        },
+      });
+      final authFrame = await waitForFrame("authenticate");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": authFrame["id"],
+        "error": {"code": -32601, "message": "Method not found"},
+      });
+
+      await expectLater(loading, throwsA(isA<PluginOperationException>()));
+    });
   });
 }
