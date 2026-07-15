@@ -31,7 +31,7 @@
 
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
-| [x] | S01-W01-P01 | S01 | W01 | — | `plan/session-pull-request-monitoring/s01-w01-p01-additive-pr-monitor-contracts` | This PR delivers additive shared contracts with no behavior activation from `plan/session-pull-request-monitoring/s01-w01-p01-additive-pr-monitor-contracts`. |
+| [x] | S01-W01-P01 | S01 | W01 | [#457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/457) | `plan/session-pull-request-monitoring/s01-w01-p01-additive-pr-monitor-contracts` | Delivers additive shared contracts with no behavior activation. Shared, bridge, module-core, mobile, desktop-core, and desktop analysis/tests passed; `aristotle-impl-review` approved. |
 | [ ] | S02-W01-P01 | S02 | W01 | — | `plan/session-pull-request-monitoring/s02-w01-p01-durable-branch-observation` | Exact directory and filesystem-driven branch history. |
 | [ ] | S02-W02-P01 | S02 | W02 | — | `plan/session-pull-request-monitoring/s02-w02-p01-authored-pr-refresh` | Authored identity-scoped live cache and dispatcher. |
 | [ ] | S02-W03-P01 | S02 | W03 | — | `plan/session-pull-request-monitoring/s02-w03-p01-terminal-archive-snapshots` | Irreversible PR stop and immutable archived snapshot. |
