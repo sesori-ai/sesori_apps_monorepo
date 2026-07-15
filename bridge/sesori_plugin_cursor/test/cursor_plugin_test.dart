@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
@@ -280,6 +282,23 @@ void main() {
       await pump();
     }
 
+    // getProviders now warms the catalog before returning (so a fresh session's
+    // effort pill is populated up front). That needs the ACP handshake. For a
+    // test that only reads back a directly-captured catalog, service a
+    // no-capability agent (no session list) so the warm-up probe is an instant
+    // no-op, then return the providers. Use only for the FIRST fetch on a
+    // plugin — afterward the probe-completed latch skips warm-up, so there is no
+    // initialize frame to answer.
+    Future<PluginProvidersResult> providersAfterWarmup() async {
+      final future = plugin.getProviders(projectId: "/repo");
+      await respond("initialize", const {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      return future;
+    }
+
     test("id is cursor", () {
       expect(plugin.id, "cursor");
     });
@@ -343,7 +362,7 @@ void main() {
     test("a session/new capture seeds the new-session default model", () async {
       plugin.captureSessionConfig(modelCatalog("sonnet-4.6"), sessionId: "new-1", fromNewSession: true);
       expect(
-        (await plugin.getProviders(projectId: "/repo")).providers.single.defaultModelID,
+        (await providersAfterWarmup()).providers.single.defaultModelID,
         "sonnet-4.6",
         reason: "session/new's currentValue is the new-session default, even when it isn't the first model",
       );
@@ -351,11 +370,13 @@ void main() {
 
     test("a session/load (or probe) does not overwrite the new-session default", () async {
       plugin.captureSessionConfig(modelCatalog("gpt-5.4"), sessionId: "new-1", fromNewSession: true);
-      expect((await plugin.getProviders(projectId: "/repo")).providers.single.defaultModelID, "gpt-5.4");
+      // First fetch warms the catalog (probe-completed latch is then set).
+      expect((await providersAfterWarmup()).providers.single.defaultModelID, "gpt-5.4");
 
       plugin.captureSessionConfig(modelCatalog("sonnet-4.6"), sessionId: "old");
       plugin.captureSessionConfig(modelCatalog("sonnet-4.6"));
 
+      // Latched: this fetch reads back without re-warming.
       expect(
         (await plugin.getProviders(projectId: "/repo")).providers.single.defaultModelID,
         "gpt-5.4",
@@ -986,7 +1007,7 @@ void main() {
           },
         ],
       });
-      final providers = await plugin.getProviders(projectId: "/repo");
+      final providers = await providersAfterWarmup();
       final provider = providers.providers.single;
       expect(provider.models.map((m) => m.id), ["gpt-5.4"]);
       expect(provider.defaultModelID, "gpt-5.4");
@@ -1045,10 +1066,206 @@ void main() {
         ],
       }, fromNewSession: true);
 
-      final providers = await plugin.getProviders(projectId: "/repo");
+      final providers = await providersAfterWarmup();
       final provider = providers.providers.single;
       expect(provider.models.map((m) => m.id), ["gpt-5.4", "sonnet-4.6"]);
       expect(provider.defaultModelID, "gpt-5.4");
+    });
+  });
+
+  // The catalog warm-up walk seeds a provisional effort scale before the first
+  // turn so the composer's effort pill shows for a fresh session. Cursor only
+  // reveals a model's effort for a model active in a session, so the bridge
+  // `session/load`s recent sessions until a reasoning one is found. These drive
+  // the real getProviders -> _ensureCatalog -> probe path end to end, so the
+  // probe spawns its own process — a fresh fake per spawn (not the shared one).
+  group("CursorPlugin catalog warm-up", () {
+    final fakes = <FakeAcpProcess>[];
+    late CursorPlugin plugin;
+    const cwd = "/repo";
+
+    setUp(() {
+      fakes.clear();
+      plugin = CursorPlugin(
+        launchDirectory: cwd,
+        processFactory: (_) async {
+          final fake = FakeAcpProcess();
+          fakes.add(fake);
+          return fake;
+        },
+      );
+    });
+
+    tearDown(() async {
+      await plugin.dispose();
+      for (final fake in fakes) {
+        await fake.close();
+      }
+    });
+
+    List<Map<String, dynamic>> allWritten() =>
+        [for (final fake in fakes) ...fake.written];
+
+    Map<String, dynamic> listSession(String id, {required int updatedAt}) =>
+        {"sessionId": id, "cwd": cwd, "title": id, "updatedAt": updatedAt};
+
+    // A `session/load` result carrying Cursor's model + mode config, and — only
+    // for a reasoning model — a multi-level effort `thought_level`.
+    Map<String, dynamic> loadResult({
+      required String currentModel,
+      required bool reasoning,
+    }) => {
+      "sessionId": "ignored",
+      "configOptions": [
+        {
+          "id": "mode",
+          "category": "mode",
+          "currentValue": "agent",
+          "options": [
+            {"value": "agent", "name": "Agent"},
+            {"value": "plan", "name": "Plan"},
+          ],
+        },
+        {
+          "id": "model",
+          "category": "model",
+          "currentValue": currentModel,
+          "options": [
+            {"value": "gpt-5.4", "name": "GPT-5.4"},
+            {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
+          ],
+        },
+        if (reasoning)
+          {
+            "id": "effort",
+            "category": "thought_level",
+            "currentValue": "medium",
+            "options": [
+              {"value": "low", "name": "Low"},
+              {"value": "medium", "name": "Medium"},
+              {"value": "high", "name": "High"},
+            ],
+          },
+      ],
+    };
+
+    /// Background agent answering initialize / session/list / session/load
+    /// across every spawned fake until stopped.
+    void Function() autoAnswer({
+      required List<Map<String, dynamic>> listSessions,
+      required Map<String, Map<String, dynamic>> loadResults,
+      List<String>? loadOrder,
+    }) {
+      final answered = <(FakeAcpProcess, Object?)>{};
+      var running = true;
+      unawaited(() async {
+        while (running) {
+          for (final fake in fakes.toList()) {
+            for (final frame in fake.written.toList()) {
+              final id = frame["id"];
+              if (id == null || !answered.add((fake, id))) continue;
+              final Map<String, dynamic> result;
+              switch (frame["method"]) {
+                case "initialize":
+                  result = {
+                    "protocolVersion": 1,
+                    "agentCapabilities": {
+                      "loadSession": true,
+                      "sessionCapabilities": {"list": <String, dynamic>{}},
+                    },
+                    "authMethods": <Object?>[],
+                  };
+                case "session/list":
+                  result = {"sessions": listSessions};
+                case "session/load":
+                  final sid = (frame["params"] as Map).cast<String, dynamic>()["sessionId"] as String;
+                  loadOrder?.add(sid);
+                  result = loadResults[sid] ?? const {};
+                default:
+                  answered.remove((fake, id));
+                  continue;
+              }
+              fake.emit({"jsonrpc": "2.0", "id": id, "result": result});
+            }
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+      }());
+      return () => running = false;
+    }
+
+    test("seeds provisional effort when the newest session is non-reasoning but an older one is reasoning", () async {
+      final loadOrder = <String>[];
+      final stop = autoAnswer(
+        listSessions: [
+          listSession("s-new", updatedAt: 3000),
+          listSession("s-old", updatedAt: 1000),
+        ],
+        loadResults: {
+          // Newest session's model has no effort scale.
+          "s-new": loadResult(currentModel: "gpt-5.4", reasoning: false),
+          // Older session's model does.
+          "s-old": loadResult(currentModel: "sonnet-4.6", reasoning: true),
+        },
+        loadOrder: loadOrder,
+      );
+
+      final providers = await plugin.getProviders(projectId: cwd);
+      stop();
+
+      expect(loadOrder, ["s-new", "s-old"], reason: "walked newest-first until the reasoning session seeded effort");
+      final models = providers.providers.single.models;
+      expect(models.map((m) => m.id), ["gpt-5.4", "sonnet-4.6"]);
+      expect(
+        models.every((m) => m.variants.isNotEmpty),
+        isTrue,
+        reason: "every model shows the provisional effort scale so the pill renders",
+      );
+      // Default effort first, then the rest — the provisional scale from s-old.
+      expect(models.first.variants, ["medium", "low", "high"]);
+    });
+
+    test("returns empty variants (no hang, no throwaway session) when no session is reasoning", () async {
+      final loadOrder = <String>[];
+      final stop = autoAnswer(
+        listSessions: [
+          listSession("s-new", updatedAt: 3000),
+          listSession("s-old", updatedAt: 1000),
+        ],
+        loadResults: {
+          "s-new": loadResult(currentModel: "gpt-5.4", reasoning: false),
+          "s-old": loadResult(currentModel: "gpt-5.4", reasoning: false),
+        },
+        loadOrder: loadOrder,
+      );
+
+      final providers = await plugin.getProviders(projectId: cwd);
+
+      final models = providers.providers.single.models;
+      expect(models.map((m) => m.id), ["gpt-5.4", "sonnet-4.6"]);
+      expect(
+        models.every((m) => m.variants.isEmpty),
+        isTrue,
+        reason: "no reasoning session anywhere -> no effort scale to show",
+      );
+      expect(
+        allWritten().where((f) => f["method"] == "session/new"),
+        isEmpty,
+        reason: "warm-up must never create a throwaway session",
+      );
+      expect(loadOrder, ["s-new", "s-old"], reason: "both sessions walked (under the bound), neither reasoning");
+
+      // A second fetch must not re-walk: the exhaustion latch holds, so no new
+      // probe process is spawned.
+      final fakesAfterFirst = fakes.length;
+      final again = await plugin.getProviders(projectId: cwd);
+      stop();
+      expect(again.providers.single.models.every((m) => m.variants.isEmpty), isTrue);
+      expect(
+        fakes.length,
+        fakesAfterFirst,
+        reason: "the latch stops a re-walk, so no additional probe process spawns",
+      );
     });
   });
 }

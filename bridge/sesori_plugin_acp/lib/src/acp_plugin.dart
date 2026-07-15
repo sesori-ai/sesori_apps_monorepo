@@ -215,6 +215,23 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// turn on the wrong model/mode. Base does nothing.
   void onConnectionReset() {}
 
+  /// Whether the config catalog is fully warmed after the captures the
+  /// [probeCatalogFromExistingSession] walk has made so far. The base captures
+  /// everything it needs from a single session, so one successful load
+  /// completes it. A subclass whose catalog spans data present on only some
+  /// sessions (e.g. Cursor's per-model effort scale, which only a reasoning
+  /// session carries) overrides this so the bounded probe keeps walking older
+  /// sessions until it is satisfied or [maxCatalogProbeSessions] is hit.
+  bool get isCatalogComplete => true;
+
+  /// Upper bound on how many recent existing sessions
+  /// [probeCatalogFromExistingSession] will `session/load` while warming. The
+  /// base stops at the first successful capture ([isCatalogComplete] is always
+  /// true), so this only bounds a subclass that overrides [isCatalogComplete];
+  /// it guarantees the walk terminates for an account whose sessions never
+  /// complete the catalog.
+  int get maxCatalogProbeSessions => 1;
+
   // --- Protected accessors for subclasses ---
 
   AcpStdioClient? get client => _client;
@@ -1258,13 +1275,19 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     }
   }
 
-  /// Populates the config catalog (models/modes) by `session/load`-ing the most
-  /// recent existing session on a short-lived client and feeding the result to
+  /// Populates the config catalog (models/modes) by `session/load`-ing recent
+  /// existing sessions on a short-lived client and feeding each result to
   /// [captureSessionConfig]. Reads the catalog from the load *result*, so it
   /// never pollutes the live event stream with replayed history, and — unlike
   /// a `session/new` probe — creates no throwaway session (the ACP agents this
   /// drives have no session-delete). No-op when there are no existing sessions
   /// (a brand-new account's first `session/new` populates the catalog instead).
+  ///
+  /// Sessions are walked most-recent-first, stopping as soon as
+  /// [isCatalogComplete] reports the catalog fully warmed or the
+  /// [maxCatalogProbeSessions] bound is hit. The base loads exactly one session
+  /// (its catalog completes on the first capture); a subclass whose catalog
+  /// needs data present only on some sessions walks back through older ones.
   ///
   /// The catalog (models/modes) is account-global, so ANY existing session is
   /// a valid source. Enumeration goes through [listAllSessions] — the launch
@@ -1274,14 +1297,12 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   Future<void> probeCatalogFromExistingSession({Set<String> extraDirectories = const {}}) async {
     if (_client == null) return;
     final sessions = await listAllSessions(knownDirectories: extraDirectories);
-    PluginSession? newest;
-    for (final session in sessions) {
-      if (session.id.isEmpty) continue;
-      if (newest == null || _sessionRecency(session) > _sessionRecency(newest)) {
-        newest = session;
-      }
-    }
-    if (newest == null) return;
+    // Most-recent-first: the freshest session is the likeliest catalog source,
+    // and a subclass that needs several sessions to complete its catalog walks
+    // back through older ones from there.
+    final ordered = sessions.where((session) => session.id.isNotEmpty).toList(growable: false)
+      ..sort((a, b) => _sessionRecency(b).compareTo(_sessionRecency(a)));
+    if (ordered.isEmpty) return;
     final probe = AcpStdioClient(
       launchSpec: launchSpec,
       processFactory: _processFactory,
@@ -1291,20 +1312,36 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       await probe.connect();
       final init = await _initialize(probe);
       if (!init.agentCapabilities.loadSession) return;
-      final raw = await probe.request(
-        method: AcpMethods.sessionLoad,
-        params: {
-          "sessionId": newest.id,
-          "cwd": newest.directory,
-          "mcpServers": const <Object?>[],
-        },
-        timeout: const Duration(minutes: 1),
-      );
-      // This loads an EXISTING session purely to populate the model/mode
-      // catalog list. It must not be treated as a new-session default source,
-      // or the probed session's own (possibly non-default) model would become
-      // the new-session default (fromNewSession stays false).
-      captureSessionConfig(raw is Map ? raw.cast<String, dynamic>() : const {});
+      var probed = 0;
+      for (final session in ordered) {
+        if (probed >= maxCatalogProbeSessions) {
+          Log.d("[$id] catalog probe stopped at the $maxCatalogProbeSessions-session bound; catalog may be incomplete");
+          break;
+        }
+        probed++;
+        try {
+          final raw = await probe.request(
+            method: AcpMethods.sessionLoad,
+            params: {
+              "sessionId": session.id,
+              "cwd": session.directory,
+              "mcpServers": const <Object?>[],
+            },
+            timeout: const Duration(minutes: 1),
+          );
+          // This loads an EXISTING session purely to populate the model/mode
+          // catalog list. It must not be treated as a new-session default
+          // source, or the probed session's own (possibly non-default) model
+          // would become the new-session default (fromNewSession stays false).
+          captureSessionConfig(raw is Map ? raw.cast<String, dynamic>() : const {});
+        } on Object catch (error, stack) {
+          // One session's load failing must not abandon the walk — the next
+          // session may still complete the catalog.
+          Log.d("[$id] catalog probe load of ${session.id} failed; trying the next session: $error\n$stack");
+          continue;
+        }
+        if (isCatalogComplete) break;
+      }
     } catch (error, stack) {
       Log.d("[$id] catalog probe failed: $error\n$stack");
     } finally {

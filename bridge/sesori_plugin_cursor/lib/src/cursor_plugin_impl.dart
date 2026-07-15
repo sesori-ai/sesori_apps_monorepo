@@ -86,6 +86,14 @@ class CursorPlugin extends AcpPlugin {
 
   Future<void>? _catalogFuture;
 
+  /// Set once the bounded catalog-probe walk has run this connection, so an
+  /// account with no reasoning sessions among its recent ones doesn't
+  /// re-`session/load` several sessions on every providers fetch. Real
+  /// turn/load captures still seed effort afterward via [captureSessionConfig].
+  /// In-memory only, like the base's `_bareSessionListUnsupported`; a disposed
+  /// plugin (account switch) starts fresh.
+  bool _catalogProbeCompleted = false;
+
   @override
   String? get authMethodId => "cursor_login";
 
@@ -322,12 +330,25 @@ class CursorPlugin extends AcpPlugin {
     }
   }
 
+  // The catalog is warmed one session at a time by the base probe walk. Cursor
+  // needs three dimensions present — models, modes, AND a provisional effort
+  // scale — before it is complete, because effort is only carried by a session
+  // whose model is reasoning-capable. Overriding these two hooks makes the base
+  // probe keep walking older sessions until a reasoning one seeds effort (or
+  // the bound is hit), instead of stopping at the newest session.
+  @override
+  bool get isCatalogComplete =>
+      _models.isNotEmpty && _modes.isNotEmpty && _provisionalThoughtLevelVariants.isNotEmpty;
+
+  // Small bound: the walk stops as soon as a reasoning session seeds effort, so
+  // this only caps the cost for an account with no reasoning session among its
+  // recent ones. Past the bound the provisional pill is simply absent until a
+  // real turn captures the selected model's effort.
+  @override
+  int get maxCatalogProbeSessions => 8;
+
   Future<void> _ensureCatalog({String? projectId}) async {
-    // Both dimensions must be present before the catalog is "ready". A probe (or
-    // an early capture) can populate models without modes — returning after
-    // models alone would strand the agent picker empty while the model picker
-    // works.
-    if (_models.isNotEmpty && _modes.isNotEmpty) return;
+    if (_isCatalogReady) return;
     final pending = _catalogFuture;
     if (pending != null) {
       await pending;
@@ -340,6 +361,9 @@ class CursorPlugin extends AcpPlugin {
           if (projectId != null && projectId.trim().isNotEmpty) projectId,
         },
       );
+      // The bounded walk has done its best; don't re-walk existing sessions on
+      // the next fetch even when none of them was a reasoning model.
+      _catalogProbeCompleted = true;
     }();
     _catalogFuture = future;
     try {
@@ -347,6 +371,19 @@ class CursorPlugin extends AcpPlugin {
     } finally {
       if (identical(_catalogFuture, future)) _catalogFuture = null;
     }
+  }
+
+  /// Whether [_ensureCatalog] can skip probing. Models AND modes must both be
+  /// present — a probe (or early capture) can populate models without modes,
+  /// and returning after models alone would strand the agent picker empty while
+  /// the model picker works. Beyond that, the effort scale must be seeded, or
+  /// the bounded walk that would have seeded it must have already run — so an
+  /// account with no reasoning sessions terminates instead of re-walking on
+  /// every fetch. The models/modes guard keeps the latch from short-circuiting
+  /// a brand-new account that has no sessions yet.
+  bool get _isCatalogReady {
+    if (_models.isEmpty || _modes.isEmpty) return false;
+    return _provisionalThoughtLevelVariants.isNotEmpty || _catalogProbeCompleted;
   }
 
   /// Eagerly populates models/modes from an existing session so the first
