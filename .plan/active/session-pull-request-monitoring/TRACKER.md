@@ -52,6 +52,7 @@
 
 ## Findings and Plan Deltas
 
+- **2026-07-14 — Legacy cleanup:** Removed superseded `docs/pr-monitor/PLAN.md`; `.plan/active/session-pull-request-monitoring/` is the sole plan authority.
 - **2026-07-14 — Legacy-thread assessment:** Four bot threads on superseded `docs/pr-monitor/PLAN.md` required no canonical change: owner-scoped multi-user cache metadata is explicitly speculative, direct detail has no PR presentation, intermediate-wave historical freshness is not a shipped regression and remains explicitly refreshable, and unverifiable legacy archived cache rows intentionally fail closed rather than guessing GitHub authorship. Full plan review remained approved.
 - **2026-07-14 — Plan delivery:** The approved canonical plan tree was pushed to plan PR https://github.com/sesori-ai/sesori_apps_monorepo/pull/436.
 - **2026-07-14 — Pre-delivery approval refresh:** `aristotle-plan-review` approved the complete tree against latest audited `main` tip `e766684e0fdc22256419b7b99691021c9f14732d`; architecture, compatibility, migrations, lifecycle ownership, verification, tracker state, and audit references were execution-ready.

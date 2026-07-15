@@ -609,6 +609,14 @@ executing does not. Keep them timeless.
 
 Strict analysis is enabled across all packages. Don't add `// ignore:` comments without a written justification in the same line.
 
+## Agent Scope
+
+Agent-specific prompts and permission boundaries apply only while that agent is
+active. Switching primary agents replaces those restrictions with the newly
+active agent's prompt and permissions; do not carry a prior agent's edit scope
+(for example, `sesori-plan-maker`'s `.plan/**` boundary) into later work in the
+same conversation or worktree.
+
 ## Architectural Review Workflow
 
 Two review agents enforce the rules above. Both reject on any violation — no warnings or partial approvals.

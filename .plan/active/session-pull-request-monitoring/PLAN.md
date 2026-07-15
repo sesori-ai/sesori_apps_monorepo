@@ -8,10 +8,9 @@
 - **Plan slug:** `session-pull-request-monitoring`
 - **Plan host:** `sesori-ai/sesori_apps_monorepo`
 - **Selected implementation base:** `main`
-- **Legacy source:** `docs/pr-monitor/PLAN.md` from the earlier commit on the
-  existing `git-pr-monitor-upgrade` plan-PR branch. This tree supersedes that
-  document; the legacy path is not an implementation baseline or an additional
-  authority.
+- **Legacy source:** `docs/pr-monitor/PLAN.md` from an earlier commit on the
+  existing plan-PR branch. The canonical migration removes that path; it remains
+  historical context only, not an implementation baseline or authority.
 
 | Repository | Implementation base | Initial audited tip | Commit date | Latest re-review | Latest audited tip | Commit date |
 |---|---|---|---|---|---|---|
