@@ -39,6 +39,12 @@ sealed class RelayMessage with _$RelayMessage {
   @FreezedUnionValue("session_view")
   const factory RelayMessage.sessionView({required String? sessionId}) = RelaySessionView;
 
+  /// Connection-scoped declaration of which project the phone is currently
+  /// viewing. [projectId] is null when the phone is not viewing any project.
+  /// This is a fire-and-forget control message with no response.
+  @FreezedUnionValue("project_view")
+  const factory RelayMessage.projectView({required String? projectId}) = RelayProjectView;
+
   @FreezedUnionValue("key_exchange")
   const factory RelayMessage.keyExchange({required String publicKey}) = RelayKeyExchange;
 

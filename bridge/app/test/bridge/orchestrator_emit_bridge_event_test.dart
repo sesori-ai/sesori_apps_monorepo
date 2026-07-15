@@ -261,6 +261,11 @@ void main() {
     );
 
     final encryptor = crypto.createSessionEncryptor(SecretKey(roomKey));
+    final unknownControlFrame = await frame(
+      utf8.encode(jsonEncode(const <String, Object>{"type": "future_control"})),
+      encryptor: encryptor,
+    );
+    bridgeSocket.add(_withConnID(connID: connID, payload: unknownControlFrame));
     final subscribeFrame = await frame(
       utf8.encode(jsonEncode(const RelayMessage.sseSubscribe(path: "/events").toJson())),
       encryptor: encryptor,
@@ -291,7 +296,11 @@ void main() {
       check: () => plugin.permissionReplies.length == 2,
       failureMessage: "Timed out waiting for project-summary permission auto-approval",
     );
-    expect(await projectsSummaryFuture, isTrue);
+    expect(
+      await projectsSummaryFuture,
+      isTrue,
+      reason: "an unknown control union must not prevent a following valid subscription",
+    );
     final bytesAfterSummary = sentByteCounts.length;
 
     plugin.add(

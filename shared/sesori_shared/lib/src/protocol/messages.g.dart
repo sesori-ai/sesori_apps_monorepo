@@ -71,6 +71,14 @@ RelaySessionView _$RelaySessionViewFromJson(Map json) => RelaySessionView(
 Map<String, dynamic> _$RelaySessionViewToJson(RelaySessionView instance) =>
     <String, dynamic>{'sessionId': ?instance.sessionId, 'type': instance.$type};
 
+RelayProjectView _$RelayProjectViewFromJson(Map json) => RelayProjectView(
+  projectId: json['projectId'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$RelayProjectViewToJson(RelayProjectView instance) =>
+    <String, dynamic>{'projectId': ?instance.projectId, 'type': instance.$type};
+
 RelayKeyExchange _$RelayKeyExchangeFromJson(Map json) => RelayKeyExchange(
   publicKey: json['publicKey'] as String,
   $type: json['type'] as String?,

@@ -44,6 +44,8 @@ sealed class Session with _$Session {
     required SessionTime? time,
     required SessionSummary? summary,
     required PullRequestInfo? pullRequest,
+    // COMPATIBILITY 2026-07-15 (v1.5.0): Bridges before PR-history support omit pullRequestHistory, which means no legacy history beyond pullRequest. Remove @Default and make the field required after the minimum supported bridge always sends pullRequestHistory.
+    @Default(<PullRequestInfo>[]) List<PullRequestInfo> pullRequestHistory,
     required SessionPromptDefaults? promptDefaults,
     @Default(false) bool hasWorktree,
     // Whether this session has unseen activity (new changes the user has not

@@ -53,6 +53,14 @@ _Session _$SessionFromJson(Map json) => _Session(
       : PullRequestInfo.fromJson(
           Map<String, dynamic>.from(json['pullRequest'] as Map),
         ),
+  pullRequestHistory:
+      (json['pullRequestHistory'] as List<dynamic>?)
+          ?.map(
+            (e) =>
+                PullRequestInfo.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList() ??
+      const <PullRequestInfo>[],
   promptDefaults: json['promptDefaults'] == null
       ? null
       : SessionPromptDefaults.fromJson(
@@ -72,6 +80,9 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'time': ?instance.time?.toJson(),
   'summary': ?instance.summary?.toJson(),
   'pullRequest': ?instance.pullRequest?.toJson(),
+  'pullRequestHistory': instance.pullRequestHistory
+      .map((e) => e.toJson())
+      .toList(),
   'promptDefaults': ?instance.promptDefaults?.toJson(),
   'hasWorktree': instance.hasWorktree,
   'unseen': instance.unseen,
