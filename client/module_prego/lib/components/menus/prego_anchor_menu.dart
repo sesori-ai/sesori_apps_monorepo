@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:cue/cue.dart";
 import "package:flutter/material.dart";
@@ -65,9 +66,18 @@ class PregoMenuDivider extends PregoMenuEntry {
 /// [builder] receives a `close` callback that dismisses the menu — use it to
 /// collapse the popup before, say, raising a full-screen sheet.
 class PregoMenuCustom extends PregoMenuEntry {
-  const PregoMenuCustom({required this.builder});
+  const PregoMenuCustom({required this.builder, required this.height});
 
   final Widget Function(BuildContext context, VoidCallback close) builder;
+
+  /// The row's rendered height, which the caller must state.
+  ///
+  /// The glass popup lays itself out from declared row heights rather than by
+  /// measuring (see [_glassItemHeight]), and it cannot measure a widget it did
+  /// not build. Getting this wrong under-sizes the popup, so keep it in step
+  /// with what [builder] returns. The flat path measures for real and ignores
+  /// it.
+  final double height;
 }
 
 /// Builds the trigger that opens the menu. [toggle] opens (or, on the glass
@@ -134,7 +144,7 @@ class PregoAnchorMenu extends StatefulWidget {
     required this.triggerBuilder,
     required this.entriesBuilder,
     this.menuWidth = 240,
-    this.menuHeight,
+    this.menuMaxHeight,
     this.menuBorderRadius = 24,
     this.menuScreenPadding = const EdgeInsets.all(12),
     this.flat = false,
@@ -158,10 +168,15 @@ class PregoAnchorMenu extends StatefulWidget {
   /// Width of the open menu.
   final double menuWidth;
 
-  /// Optional fixed maximum height. When set, the menu caps at this height and
-  /// scrolls internally; when null it sizes to its content (still bounded to
-  /// stay on screen).
-  final double? menuHeight;
+  /// Caps how tall the open menu may grow; beyond it the rows scroll. Null (the
+  /// default) lets the menu grow with its content, which both paths still bound
+  /// to the room they have — the screen on the glass path, the space beside the
+  /// trigger on the flat one.
+  ///
+  /// The menu measures its own rows, so a cap is a product decision ("don't let
+  /// this swallow the screen"), never a guess at how tall the rows are. A menu
+  /// shorter than its cap is sized exactly to its content, not padded out to it.
+  final double? menuMaxHeight;
 
   /// Corner radius of the open menu.
   final double menuBorderRadius;
@@ -199,10 +214,11 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
   // ── Glass path (Apple) ─────────────────────────────────────────────────────
 
   Widget _buildGlass(BuildContext context) {
+    final entries = widget.entriesBuilder();
     return GlassMenu(
       controller: _glassController,
       menuWidth: widget.menuWidth,
-      menuHeight: widget.menuHeight,
+      menuHeight: _glassHeight(context, entries: entries),
       menuBorderRadius: widget.menuBorderRadius,
       autoAdjustToScreen: true,
       menuPadding: widget.menuScreenPadding,
@@ -211,8 +227,28 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
         toggle();
         _alignGlassMenuToTrigger(context);
       }),
-      items: [for (final entry in widget.entriesBuilder()) _glassEntry(context, entry: entry)],
+      items: [for (final entry in entries) _glassEntry(context, entry: entry)],
     );
+  }
+
+  /// The fixed height to pin the glass popup at, or null to let it grow with its
+  /// rows.
+  ///
+  /// [GlassMenu] has no notion of a maximum: a height either pins it (and it
+  /// scrolls inside) or is absent (and it wraps its rows, bounded by the
+  /// screen). [menuMaxHeight] is honoured by pinning it only once the rows
+  /// actually outgrow the cap — below that the popup wraps them exactly, with no
+  /// dead glass at the bottom.
+  double? _glassHeight(BuildContext context, {required List<PregoMenuEntry> entries}) {
+    final cap = widget.menuMaxHeight;
+    if (cap == null) return null;
+    // GlassMenu's own column chrome: 12px above the first row, 12px below the
+    // last, 2px between neighbours.
+    var natural = 24.0 + math.max(0, entries.length - 1) * 2.0;
+    for (final entry in entries) {
+      natural += _glassEntryHeight(context, entry: entry);
+    }
+    return natural > cap ? cap : null;
   }
 
   /// Re-anchors the just-opened glass popup under its trigger when the composer
@@ -239,7 +275,11 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
     switch (entry) {
       case PregoMenuLabel(:final text):
         // GlassMenuLabel uppercases the title itself; we only supply the style.
-        return GlassMenuLabel(title: text, style: _labelStyle(prego));
+        return GlassMenuLabel(
+          title: text,
+          style: _labelStyle(prego),
+          height: _glassLabelHeight(context),
+        );
       case PregoMenuItem(
         :final title,
         :final subtitle,
@@ -252,6 +292,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
+          height: _glassItemHeight(context, hasSubtitle: subtitle != null),
           // GlassMenuItem would paint a destructive row in Cupertino's system
           // red; the explicit style below keeps it on the design system's error
           // token instead. The flag still drives its press feedback.
@@ -265,9 +306,18 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
           onTap: onTap,
         );
       case PregoMenuDivider():
-        return const GlassMenuDivider();
-      case PregoMenuCustom(:final builder):
-        return builder(context, _glassController.close);
+        return const GlassMenuDivider(height: _glassDividerHeight);
+      case PregoMenuCustom(:final builder, :final height):
+        // Hosted in a GlassMenuLabel — the one non-interactive row GlassMenu
+        // will take a height from. Handed back raw, the row would be budgeted at
+        // GlassMenu's 44px fallback for widgets it does not recognise, which
+        // under-sizes the popup. The label is pure chrome here (no title, no
+        // padding of its own), so the custom widget renders unchanged.
+        return GlassMenuLabel(
+          height: height,
+          horizontalPadding: 0,
+          child: builder(context, _glassController.close),
+        );
     }
   }
 
@@ -313,7 +363,9 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
     return AnchoredFlatPanel(
       triggerRect: triggerRect,
       width: widget.menuWidth,
-      height: widget.menuHeight,
+      // The panel measures its rows for real, so the cap is all it needs: it
+      // shrink-wraps below it and scrolls above it.
+      maxHeight: widget.menuMaxHeight,
       borderRadius: widget.menuBorderRadius,
       screenPadding: widget.menuScreenPadding,
       // Menu items meet the panel clip so their ink reaches its outer edges.
@@ -443,6 +495,75 @@ class _FlatMenuTile extends StatelessWidget {
 }
 
 // ── Shared entry styling (keeps the glass and flat paths visually identical) ──
+
+// ── Glass row heights ────────────────────────────────────────────────────────
+//
+// [GlassMenu] never measures its rows: it lays the popup out from the heights
+// its items *declare* (`GlassMenuItem.height` and friends), falling back to a
+// guess at the text height — `fontSize × 1.2` per line, floored at a 44px touch
+// target — when a row leaves that height at its default. The design system's
+// rows are taller than that guess: `textSm` sits in a 20px line box and `textXs`
+// in an 18px one, so a title-plus-subtitle row really occupies 54px against a
+// guessed 47.
+//
+// Under-declaring is not just a cosmetic under-size. Those same heights are what
+// GlassMenu sums to size the popup, what it uses to place the selection pill,
+// and — for a popup short enough not to scroll — what it does index arithmetic
+// over to decide which row a tap landed on. Guess low and the last row is
+// clipped with no way to scroll to it, and taps near a row's lower edge fire the
+// row *below* the one under the finger.
+//
+// So every row we hand GlassMenu declares its true height, computed here from
+// the very styles the row is rendered with. `prego_anchor_menu_test` pins each
+// declaration against the height the row actually renders at, so a package
+// upgrade that changes a row's chrome fails there rather than in the field.
+
+/// Height of a [PregoMenuItem]'s glass row: [GlassMenuItem]'s 8px of padding
+/// above and below a title, plus a subtitle line when it carries one.
+double _glassItemHeight(BuildContext context, {required bool hasSubtitle}) {
+  const verticalPadding = 16.0;
+  final prego = context.prego;
+  var text = _lineHeight(context, style: _titleStyle(prego, isDestructive: false));
+  if (hasSubtitle) text += _lineHeight(context, style: _subtitleStyle(prego));
+  // Never below the 44px touch target GlassMenuItem floors its rows at.
+  return math.max(44, verticalPadding + text);
+}
+
+/// Height of a [PregoMenuLabel]'s glass row. [GlassMenuLabel] pins its box to
+/// the declared height, so it must clear the label's line box — at a large text
+/// scale that outgrows the 30px the package would otherwise assume.
+double _glassLabelHeight(BuildContext context) =>
+    math.max(30, _lineHeight(context, style: _labelStyle(context.prego)));
+
+/// Height of a [PregoMenuDivider]'s glass row — [GlassMenuDivider]'s own
+/// default, named so the height budget can account for it.
+const double _glassDividerHeight = 12;
+
+/// The height [GlassMenu] will budget for [entry] — which is exactly the height
+/// the row renders at, because every row above declares its own.
+///
+/// Exposed (via [debugGlassEntryHeight]) to the test that pins each declaration
+/// against the rendered row.
+double _glassEntryHeight(BuildContext context, {required PregoMenuEntry entry}) => switch (entry) {
+  PregoMenuLabel() => _glassLabelHeight(context),
+  PregoMenuItem(:final subtitle) => _glassItemHeight(context, hasSubtitle: subtitle != null),
+  PregoMenuDivider() => _glassDividerHeight,
+  PregoMenuCustom(:final height) => height,
+};
+
+@visibleForTesting
+double debugGlassEntryHeight(BuildContext context, {required PregoMenuEntry entry}) =>
+    _glassEntryHeight(context, entry: entry);
+
+/// The vertical space one line of [style] occupies, at the reader's text scale.
+/// Prego's styles set an explicit line height, so the line box is exactly the
+/// scaled font size times that factor — no font-metric guesswork.
+double _lineHeight(BuildContext context, {required TextStyle style}) {
+  final fontSize = MediaQuery.textScalerOf(context).scale(style.fontSize!);
+  return fontSize * style.height!;
+}
+
+// ── Shared entry styling, cont. ──────────────────────────────────────────────
 
 TextStyle _labelStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);

@@ -4,13 +4,19 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:theme_prego/components/menus/anchored_spotlight_backdrop.dart";
 import "package:theme_prego/module_prego.dart";
 
-Widget _harness(List<PregoMenuEntry> entries, {bool flat = false, PregoMenuSpotlight? spotlight}) {
+Widget _harness(
+  List<PregoMenuEntry> entries, {
+  bool flat = false,
+  PregoMenuSpotlight? spotlight,
+  double? maxHeight,
+}) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     home: Scaffold(
       body: Center(
         child: PregoAnchorMenu(
           menuWidth: 240,
+          menuMaxHeight: maxHeight,
           flat: flat,
           spotlight: spotlight,
           entriesBuilder: () => entries,
@@ -23,6 +29,23 @@ Widget _harness(List<PregoMenuEntry> entries, {bool flat = false, PregoMenuSpotl
     ),
   );
 }
+
+/// The rows of an agent picker — the shape that broke: a heading, then several
+/// rows carrying both a title and a subtitle.
+List<PregoMenuEntry> _agentEntries(List<String> names, {void Function(String name)? onTap}) => [
+  const PregoMenuLabel(text: "Agent"),
+  for (final name in names)
+    PregoMenuItem(
+      title: name,
+      subtitle: "The $name agent, described at some length",
+      isSelected: name == names.last,
+      onTap: () => onTap?.call(name),
+    ),
+];
+
+/// The scroll position of the open glass popup.
+ScrollPosition _popupScroll(WidgetTester tester) =>
+    tester.state<ScrollableState>(find.byType(Scrollable)).position;
 
 void main() {
   group("Android (flat) path", () {
@@ -92,10 +115,12 @@ void main() {
       await tester.pumpWidget(
         _harness([
           PregoMenuCustom(
+            height: 12,
             builder: (context, close) => const SizedBox(key: ValueKey("first-custom"), height: 12),
           ),
           PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
           PregoMenuCustom(
+            height: 12,
             builder: (context, close) => const SizedBox(key: ValueKey("last-custom"), height: 12),
           ),
         ], flat: true),
@@ -116,6 +141,7 @@ void main() {
       await tester.pumpWidget(
         _harness([
           PregoMenuCustom(
+            height: 48,
             builder: (context, close) => TextButton(onPressed: close, child: const Text("Dismiss")),
           ),
           PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
@@ -234,6 +260,137 @@ void main() {
 
       expect(taps, 1);
       expect(find.text("Alpha"), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  });
+
+  // GlassMenu never measures its rows — it lays the popup out from the heights
+  // they declare, and for a popup short enough not to scroll it even resolves
+  // taps by doing index arithmetic over those same heights. Every row we hand it
+  // therefore declares its true height. These guard that: under-declare, and the
+  // last row is clipped with no way to scroll to it while taps land on the wrong
+  // agent.
+  group("Glass row heights", () {
+    testWidgets("declare the height each row actually renders at", (tester) async {
+      const custom = 64.0;
+      final entries = <PregoMenuEntry>[
+        const PregoMenuLabel(text: "Agent"),
+        PregoMenuItem(title: "Titled", subtitle: null, isSelected: false, onTap: () {}),
+        PregoMenuItem(title: "Subtitled", subtitle: "and described", isSelected: false, onTap: () {}),
+        const PregoMenuDivider(),
+        PregoMenuCustom(
+          height: custom,
+          builder: (context, close) => const SizedBox(height: custom, child: Text("Custom")),
+        ),
+      ];
+      await tester.pumpWidget(_harness(entries));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      // Each declaration matches the rendered row to the pixel. A package
+      // upgrade that changes a row's chrome fails here, loudly, rather than
+      // silently clipping the menu in the field.
+      final context = tester.element(find.byType(GlassMenu));
+      final rows = <PregoMenuEntry, Finder>{
+        entries[1]: find.widgetWithText(GlassMenuItem, "Titled"),
+        entries[2]: find.widgetWithText(GlassMenuItem, "Subtitled"),
+        entries[3]: find.byType(GlassMenuDivider),
+        entries[4]: find.widgetWithText(GlassMenuLabel, "Custom"),
+      };
+      rows.forEach((entry, row) {
+        expect(
+          tester.getSize(row).height,
+          equals(debugGlassEntryHeight(context, entry: entry)),
+          reason: "$entry renders taller or shorter than the popup was told",
+        );
+      });
+      // The heading is the one row whose rendered box is the declared height
+      // itself; assert it clears its line box rather than round-tripping it.
+      expect(tester.getSize(find.widgetWithText(GlassMenuLabel, "AGENT")).height, equals(30.0));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("leave nothing hidden below the fold", (tester) async {
+      await tester.pumpWidget(_harness(_agentEntries(["Alpha", "Beta", "Gamma", "Delta"])));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      // Uncapped and short enough to fit: the popup wraps its rows exactly, so
+      // there is nothing to scroll to and the last agent is on screen.
+      expect(_popupScroll(tester).maxScrollExtent, equals(0.0));
+      expect(find.widgetWithText(GlassMenuItem, "Delta"), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("hold up when the reader scales their text", (tester) async {
+      // Set on the view, not via a local MediaQuery: the popup is painted in the
+      // app's Overlay, above any override we could wrap the trigger in.
+      tester.platformDispatcher.textScaleFactorTestValue = 1.8;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await tester.pumpWidget(_harness(_agentEntries(["Alpha", "Beta", "Gamma", "Delta"])));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      // Rows grow with the text scale, and the popup's budget grows with them.
+      expect(_popupScroll(tester).maxScrollExtent, equals(0.0));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("route a tap to the row under the finger, edges included", (tester) async {
+      final tapped = <String>[];
+      const names = ["Alpha", "Beta", "Gamma", "Delta"];
+      await tester.pumpWidget(_harness(_agentEntries(names, onTap: tapped.add)));
+
+      for (final name in names) {
+        await tester.tap(find.text("Open"));
+        await tester.pumpAndSettle();
+
+        // The lower edge of the row, where a height under-declared by a few
+        // pixels per row has drifted far enough to hand the tap to the row below.
+        final row = find.widgetWithText(GlassMenuItem, name);
+        await tester.tapAt(tester.getRect(row).bottomCenter - const Offset(0, 4));
+        await tester.pumpAndSettle();
+      }
+
+      expect(tapped, equals(names));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("scroll, rather than clip, once the rows outgrow the cap", (tester) async {
+      final tapped = <String>[];
+      const names = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta"];
+      await tester.pumpWidget(_harness(_agentEntries(names, onTap: tapped.add), maxHeight: 200));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      // The cap holds, and what it hides is scrollable rather than lost.
+      expect(tester.getSize(find.byType(SingleChildScrollView)).height, equals(200.0));
+      expect(_popupScroll(tester).maxScrollExtent, greaterThan(0.0));
+
+      // Taps still land on the row they were aimed at once it has scrolled — the
+      // last agent, which was past the cap, is now reachable.
+      await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(GlassMenuItem, "Theta"));
+      await tester.pumpAndSettle();
+
+      expect(tapped, equals(["Theta"]));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("size the popup to its rows when they stay under the cap", (tester) async {
+      await tester.pumpWidget(_harness(_agentEntries(["Alpha", "Beta"]), maxHeight: 380));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      // A cap is a ceiling, not a fixed height: a two-agent menu is a two-agent
+      // menu, not 380px of glass with the bottom half empty.
+      final label = tester.getRect(find.widgetWithText(GlassMenuLabel, "AGENT"));
+      final lastRow = tester.getRect(find.widgetWithText(GlassMenuItem, "Beta"));
+      final popup = tester.getSize(find.byType(SingleChildScrollView)).height;
+      // The rows plus GlassMenu's 12px of padding at either end.
+      expect(popup, closeTo(lastRow.bottom - label.top + 24, 0.1));
+      expect(_popupScroll(tester).maxScrollExtent, equals(0.0));
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   });
 
