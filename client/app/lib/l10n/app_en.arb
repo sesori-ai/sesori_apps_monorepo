@@ -168,7 +168,10 @@
     }
   },
   "sessionListLoadingSemantics": "Loading sessions",
-  "sessionListEmpty": "No sessions found",
+  "sessionListEmptyTitle": "Start your first task",
+  "@sessionListEmptyTitle": {
+    "description": "Headline on the sessions list when a project has no active sessions yet, inviting the user to begin."
+  },
   "sessionListUntitled": "Untitled session",
   "sessionListUpdated": "Updated {timestamp}",
   "@sessionListUpdated": {
@@ -183,6 +186,10 @@
   "sessionListErrorTitle": "Failed to load sessions",
   "sessionListRetry": "Retry",
   "sessionListNewSession": "New session",
+  "sessionListNewTask": "New task",
+  "@sessionListNewTask": {
+    "description": "Label of the primary button on the sessions list that starts a new task (session)."
+  },
   "sessionDetailTitle": "Session",
   "sessionDetailEmpty": "No messages yet",
   "sessionDetailErrorTitle": "Failed to load messages",

@@ -208,7 +208,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListLoadingSemantics => 'Loading sessions';
 
   @override
-  String get sessionListEmpty => 'No sessions found';
+  String get sessionListEmptyTitle => 'Start your first task';
 
   @override
   String get sessionListUntitled => 'Untitled session';
@@ -232,6 +232,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListNewSession => 'New session';
+
+  @override
+  String get sessionListNewTask => 'New task';
 
   @override
   String get sessionDetailTitle => 'Session';

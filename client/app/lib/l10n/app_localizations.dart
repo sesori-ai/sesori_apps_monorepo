@@ -463,11 +463,11 @@ abstract class AppLocalizations {
   /// **'Loading sessions'**
   String get sessionListLoadingSemantics;
 
-  /// No description provided for @sessionListEmpty.
+  /// Headline on the sessions list when a project has no active sessions yet, inviting the user to begin.
   ///
   /// In en, this message translates to:
-  /// **'No sessions found'**
-  String get sessionListEmpty;
+  /// **'Start your first task'**
+  String get sessionListEmptyTitle;
 
   /// No description provided for @sessionListUntitled.
   ///
@@ -510,6 +510,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New session'**
   String get sessionListNewSession;
+
+  /// Label of the primary button on the sessions list that starts a new task (session).
+  ///
+  /// In en, this message translates to:
+  /// **'New task'**
+  String get sessionListNewTask;
 
   /// No description provided for @sessionDetailTitle.
   ///
