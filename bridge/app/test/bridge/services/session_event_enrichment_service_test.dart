@@ -137,7 +137,7 @@ void main() {
 
     test("drops created and updated events for a tombstoned session", () async {
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone",
+        backendSessionId: "gone",
         pluginId: plugin.id,
         deletedAt: 1,
       );

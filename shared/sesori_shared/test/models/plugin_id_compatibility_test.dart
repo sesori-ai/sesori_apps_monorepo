@@ -12,7 +12,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        summary: null,
         pullRequest: null,
         promptDefaults: null,
       );
@@ -20,7 +19,7 @@ void main() {
       expect(Session.fromJson(session.toJson()).pluginId, "opencode");
     });
 
-    test("attributes missing and null keys to OpenCode", () {
+    test("attributes missing plugin id and ignores legacy summary", () {
       final session = Session.fromJson({
         "id": "session-1",
         "projectID": "project-1",
@@ -28,12 +27,13 @@ void main() {
         "parentID": null,
         "title": null,
         "time": null,
-        "summary": null,
+        "summary": {"additions": 4, "deletions": 1, "files": 2},
         "pullRequest": null,
       });
 
       expect(legacyMissingPluginId, "opencode");
       expect(session.pluginId, "opencode");
+      expect(session.toJson(), isNot(contains("summary")));
       expect(Session.fromJson({...session.toJson(), "pluginId": null}).pluginId, "opencode");
     });
   });

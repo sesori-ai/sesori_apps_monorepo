@@ -27,7 +27,6 @@ void main() {
         directory: "/tmp/project",
         parentID: null,
         title: "Session",
-        summary: null,
         time: SessionTime(created: 1, updated: 1, archived: null),
         pullRequest: null,
         promptDefaults: null,

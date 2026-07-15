@@ -30,7 +30,6 @@ void main() {
         "parentID": null,
         "title": "Session",
         "time": null,
-        "summary": null,
         "pullRequest": headline.toJson(),
         "promptDefaults": null,
       });
@@ -47,7 +46,6 @@ void main() {
         parentID: null,
         title: "Session",
         time: null,
-        summary: null,
         pullRequest: null,
         promptDefaults: null,
       );
@@ -66,7 +64,6 @@ void main() {
         parentID: null,
         title: "Session",
         time: null,
-        summary: null,
         pullRequest: headline,
         pullRequestHistory: <PullRequestInfo>[historical],
         promptDefaults: null,

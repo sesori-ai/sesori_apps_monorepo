@@ -501,7 +501,7 @@ void main() {
         _session("/tmp/proj/alpha", id: "kept", created: 1, updated: 1),
         _session("/tmp/proj/deleted-only", id: "gone", created: 1, updated: 1),
       ];
-      await db.sessionDao.insertSessionTombstone(sessionId: "gone", pluginId: "codex", deletedAt: 1);
+      await db.sessionDao.insertSessionTombstone(backendSessionId: "gone", pluginId: "codex", deletedAt: 1);
 
       final result = await repo.getProjects(defaultTimestamp: 1);
 
@@ -514,7 +514,7 @@ void main() {
         _session("/tmp/proj/deleted-only", id: "gone", created: 10, updated: 20),
       ];
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone",
+        backendSessionId: "gone",
         pluginId: "codex",
         deletedAt: 1,
       );
@@ -687,7 +687,6 @@ PluginSession _session(
     parentID: null,
     title: null,
     time: PluginSessionTime(created: created, updated: updated, archived: null),
-    summary: null,
   );
 }
 

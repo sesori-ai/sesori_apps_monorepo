@@ -343,7 +343,6 @@ class SessionRepository {
       parentID: null,
       title: stored?.title,
       time: null,
-      summary: null,
       pullRequest: null,
       promptDefaults: null,
       hasWorktree: stored?.worktreePath != null,
@@ -355,7 +354,7 @@ class SessionRepository {
     }
     await _sessionDao.transaction(() async {
       await _sessionDao.insertSessionTombstone(
-        sessionId: sessionId,
+        backendSessionId: stored?.backendSessionId ?? sessionId,
         pluginId: _plugin.id,
         deletedAt: DateTime.now().millisecondsSinceEpoch,
       );
@@ -691,7 +690,7 @@ class SessionRepository {
       // canonical project; drop the now-orphaned placeholder project row so it
       // can't surface as an empty derived project card. Guarded twice: only
       // when nothing else references the row, and only when the row carries no
-      // user-set state (hidden/rename/base-branch/worktree counter) — a row
+      // user-set state (hidden/rename/base-branch) — a row
       // the user touched is a real project, not placeholder junk.
       final placeholderProjectId = placeholder?.projectId;
       if (placeholderProjectId != null && placeholderProjectId != projectId) {
@@ -699,8 +698,7 @@ class SessionRepository {
           db.projectsDao.getProject(projectId: placeholderProjectId),
           _sessionDao.getSessionsByProject(projectId: placeholderProjectId),
         ).wait;
-        final untouched =
-            row != null && !row.hidden && row.displayName == null && row.baseBranch == null && row.worktreeCounter == 0;
+        final untouched = row != null && !row.hidden && row.displayName == null && row.baseBranch == null;
         if (untouched && remaining.isEmpty) {
           await db.projectsDao.deleteProject(projectId: placeholderProjectId);
         }

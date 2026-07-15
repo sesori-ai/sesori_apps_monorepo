@@ -61,7 +61,6 @@ void main() {
           parentID: "s1",
           title: "child",
           time: null,
-          summary: null,
         ),
       ];
 
@@ -85,7 +84,6 @@ void main() {
           parentID: "parent-1",
           title: "Child Session",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: PluginSessionSummary(additions: 5, deletions: 2, files: 3),
         ),
       ];
 
@@ -106,9 +104,6 @@ void main() {
       expect(session.time?.created, equals(10));
       expect(session.time?.updated, equals(20));
       expect(session.time?.archived, isNull);
-      expect(session.summary?.additions, equals(5));
-      expect(session.summary?.deletions, equals(2));
-      expect(session.summary?.files, equals(3));
     });
 
     test("keeps pullRequest null for child sessions", () async {
@@ -120,7 +115,6 @@ void main() {
           parentID: "parent-1",
           title: "Child Session",
           time: null,
-          summary: null,
         ),
       ];
 

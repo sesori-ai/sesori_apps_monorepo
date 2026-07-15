@@ -86,10 +86,6 @@ class WorktreeRepository {
     );
   }
 
-  Future<int> incrementAndGetWorktreeCounter({required String projectId}) {
-    return _projectsDao.incrementAndGetWorktreeCounter(projectId: projectId);
-  }
-
   /// The live directory for [projectId] — where git operations for the
   /// project must run. Unknown ids are rejected: an id is not a directory.
   Future<String> resolveProjectPath({required String projectId}) async {

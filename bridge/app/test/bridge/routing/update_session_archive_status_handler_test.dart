@@ -110,7 +110,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
       await db.pullRequestDao.upsertPr(
@@ -173,7 +172,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: 12345),
-          summary: null,
         ),
       ];
 
@@ -220,7 +218,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
       worktreeService.safetyResult = WorktreeSafe();
@@ -306,7 +303,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
 
@@ -356,7 +352,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
-          summary: null,
         ),
       ];
       await db.pullRequestDao.upsertPr(
@@ -422,7 +417,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
-          summary: null,
         ),
       ];
       worktreeService.resolveBaseBranchAndCommitResult = (
@@ -465,7 +459,6 @@ void main() {
           parentID: null,
           title: "Pre-migration Session",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
 
@@ -509,7 +502,6 @@ void main() {
           parentID: null,
           title: "Brand New Session",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
 
@@ -554,7 +546,6 @@ void main() {
           parentID: null,
           title: "Simple Session",
           time: PluginSessionTime(created: 10, updated: 20, archived: 123),
-          summary: null,
         ),
       ];
 
@@ -599,7 +590,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
 
@@ -649,7 +639,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
-          summary: null,
         ),
       ];
 
@@ -691,7 +680,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
       plugin.throwOnArchiveSessionError = Exception("OpenCode unavailable");
@@ -735,7 +723,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
       // Plugin never completes — if handler awaited, this test would hang.
@@ -779,7 +766,6 @@ void main() {
           parentID: null,
           title: "Simple Session",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
 
@@ -824,7 +810,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
 
@@ -865,7 +850,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
-          summary: null,
         ),
       ];
 
@@ -913,7 +897,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: const PluginSessionTime(created: 10, updated: 20, archived: 123),
-          summary: null,
         ),
       ];
 
@@ -954,7 +937,6 @@ void main() {
           parentID: null,
           title: "Session 1",
           time: PluginSessionTime(created: 10, updated: 20, archived: 123),
-          summary: null,
         ),
       ];
 
@@ -995,7 +977,6 @@ void main() {
           parentID: null,
           title: "Preserved",
           time: PluginSessionTime(created: 10, updated: 20, archived: 123),
-          summary: null,
         ),
       ];
 

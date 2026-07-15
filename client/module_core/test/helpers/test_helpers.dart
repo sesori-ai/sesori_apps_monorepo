@@ -331,7 +331,6 @@ Session testSession({
     directory: "/home/user/my-project",
     parentID: null,
     title: title,
-    summary: null,
     pullRequest: null,
     time: SessionTime(
       created: 1700000000000,

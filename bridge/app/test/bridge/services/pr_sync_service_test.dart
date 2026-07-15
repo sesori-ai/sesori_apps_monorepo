@@ -497,7 +497,6 @@ class _FakeSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );
@@ -532,7 +531,6 @@ class _FakeSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );
@@ -645,7 +643,6 @@ class _FakeSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );

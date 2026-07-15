@@ -221,11 +221,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String sessionListFilesChanged(int count) {
-    return '$count files changed';
-  }
-
-  @override
   String get sessionListRefreshSuccess => 'Sessions updated';
 
   @override

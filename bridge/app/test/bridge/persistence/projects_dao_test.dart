@@ -63,7 +63,6 @@ void main() {
       expect(rows, hasLength(1));
       expect(rows.first.hidden, isFalse);
       expect(rows.first.baseBranch, isNull);
-      expect(rows.first.worktreeCounter, equals(0));
     });
 
     test("unhideProject on existing hidden=true project sets hidden=false", () async {
@@ -75,9 +74,8 @@ void main() {
       expect(hiddenIds, isEmpty);
     });
 
-    test("unhideProject preserves baseBranch and worktreeCounter on existing row", () async {
+    test("unhideProject preserves baseBranch on existing row", () async {
       await dao.setBaseBranch(projectId: "proj-p", baseBranch: "main");
-      await dao.incrementAndGetWorktreeCounter(projectId: "proj-p");
       await dao.hideProject(projectId: "proj-p");
 
       await dao.unhideProject(projectId: "proj-p");
@@ -86,7 +84,6 @@ void main() {
       expect(rows, hasLength(1));
       expect(rows.first.hidden, isFalse);
       expect(rows.first.baseBranch, equals("main"));
-      expect(rows.first.worktreeCounter, equals(1));
     });
 
     test("handles project IDs with slashes", () async {
@@ -111,38 +108,6 @@ void main() {
       await dao.unhideProject(projectId: "project-1");
 
       await expectation;
-    });
-
-    group("incrementAndGetWorktreeCounter", () {
-      test("returns 1 for a project with no existing row", () async {
-        final counter = await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
-        expect(counter, equals(1));
-      });
-
-      test("returns 2 on second increment", () async {
-        await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
-        final counter = await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
-        expect(counter, equals(2));
-      });
-
-      test("preserves existing hidden=true flag when incrementing", () async {
-        await dao.hideProject(projectId: "proj-hidden");
-
-        await dao.incrementAndGetWorktreeCounter(projectId: "proj-hidden");
-
-        final hiddenIds = await dao.getHiddenProjectIds();
-        expect(hiddenIds, contains("proj-hidden"));
-      });
-
-      test("independent increments for different projects", () async {
-        final a = await dao.incrementAndGetWorktreeCounter(projectId: "proj-a");
-        final b = await dao.incrementAndGetWorktreeCounter(projectId: "proj-b");
-        final a2 = await dao.incrementAndGetWorktreeCounter(projectId: "proj-a");
-
-        expect(a, equals(1));
-        expect(b, equals(1));
-        expect(a2, equals(2));
-      });
     });
 
     group("getBaseBranch", () {
@@ -194,16 +159,6 @@ void main() {
         expect(branch, equals("feature"));
       });
 
-      test("preserves existing worktreeCounter", () async {
-        await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
-        await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
-
-        await dao.setBaseBranch(projectId: "proj-1", baseBranch: "main");
-
-        // increment again and expect it continues from 2 → 3
-        final counter = await dao.incrementAndGetWorktreeCounter(projectId: "proj-1");
-        expect(counter, equals(3));
-      });
     });
 
     group("recordOpenedProject", () {
@@ -243,11 +198,10 @@ void main() {
         expect(row.updatedAt, equals(222));
       });
 
-      test("preserves hidden, baseBranch, displayName and worktreeCounter on conflict", () async {
+      test("preserves hidden, baseBranch and displayName on conflict", () async {
         await dao.hideProject(projectId: "/projects/a");
         await dao.setBaseBranch(projectId: "/projects/a", baseBranch: "develop");
         await dao.setDisplayName(projectId: "/projects/a", displayName: "My App");
-        await dao.incrementAndGetWorktreeCounter(projectId: "/projects/a");
 
         await dao.recordOpenedProject(
           projectId: "/projects/a",
@@ -260,7 +214,6 @@ void main() {
         expect(row!.hidden, isTrue);
         expect(row.baseBranch, equals("develop"));
         expect(row.displayName, equals("My App"));
-        expect(row.worktreeCounter, equals(1));
         expect(row.path, equals("/moved/a"));
         expect(row.createdAt, equals(111));
         expect(row.updatedAt, equals(333));
@@ -304,7 +257,6 @@ void main() {
         await dao.unhideProject(projectId: "/projects/a");
         await dao.setBaseBranch(projectId: "/projects/a", baseBranch: "main");
         await dao.setDisplayName(projectId: "/projects/a", displayName: "My App");
-        await dao.incrementAndGetWorktreeCounter(projectId: "/projects/a");
         await dao.insertProjectsIfMissing(projectIds: ["/projects/a"]);
 
         final path = await dao.getResolvedPath(projectId: "/projects/a");
@@ -322,7 +274,6 @@ void main() {
         for (final row in rows) {
           expect(row.hidden, isFalse);
           expect(row.baseBranch, isNull);
-          expect(row.worktreeCounter, equals(0));
         }
       });
 

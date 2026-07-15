@@ -438,7 +438,6 @@ Session testSession({
     directory: "/home/user/my-project",
     parentID: parentID,
     title: title,
-    summary: null,
     pullRequest: null,
     promptDefaults: promptDefaults,
     time: SessionTime(

@@ -19,7 +19,6 @@ void main() {
       parentID: null,
       title: null,
       time: PluginSessionTime(created: created, updated: updated, archived: null),
-      summary: null,
     );
   }
 
@@ -30,6 +29,7 @@ void main() {
       displayName: displayName,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      projectionUpdatedAt: updatedAt,
     );
   }
 

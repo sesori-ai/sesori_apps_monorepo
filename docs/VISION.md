@@ -115,8 +115,9 @@ always-on; it is a **paid** tier and **not currently in play**.
    sessions through the same API; no automation backdoor.
 6. **Two trust postures, kept apart** — local = zero-knowledge; managed = trusted
    VM; never let managed weaken local.
-7. **Teams-later, cheaply** — carry an owner/identity on durable entities even
-   while it is always "me", so multi-user needs no data migration later.
+7. **Teams when concrete** — do not persist placeholder ownership while the
+   product has one local owner. Add it with an explicit migration when a real
+   multi-owner requirement exists.
 8. **Autonomy at the bridge seam** — auto-handle / future auto-approve are
    opt-in, observable, and intercepted at the bridge, not scattered into clients
    or plugins.

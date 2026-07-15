@@ -22,7 +22,7 @@ class DeletedSessionsTable extends Table {
   /// carrying it in the key keeps future identity scoping possible.
   TextColumn get ownerIdentity => text().withDefault(const Constant("local"))();
 
-  TextColumn get sessionId => text()();
+  TextColumn get backendSessionId => text()();
 
   /// The id of the plugin that owned the session. Scoping keeps one plugin's
   /// tombstones from ever touching another plugin's sessions.
@@ -34,14 +34,14 @@ class DeletedSessionsTable extends Table {
   bool get withoutRowId => true;
 
   @override
-  Set<Column>? get primaryKey => {ownerIdentity, pluginId, sessionId};
+  Set<Column>? get primaryKey => {ownerIdentity, pluginId, backendSessionId};
 }
 
 @freezed
 sealed class DeletedSessionDto with _$DeletedSessionDto, $DeletedSessionsTableTableToColumns {
   const factory DeletedSessionDto({
     required String ownerIdentity,
-    required String sessionId,
+    required String backendSessionId,
     required String pluginId,
     required int deletedAt,
   }) = _DeletedSessionDto;

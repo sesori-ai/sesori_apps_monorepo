@@ -238,7 +238,6 @@ Session _session({
   parentID: null,
   title: null,
   time: SessionTime(created: createdAt, updated: createdAt, archived: null),
-  summary: null,
   pullRequest: null,
   promptDefaults: null,
 );

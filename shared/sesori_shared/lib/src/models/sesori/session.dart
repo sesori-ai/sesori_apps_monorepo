@@ -42,7 +42,6 @@ sealed class Session with _$Session {
     required String? parentID,
     required String? title,
     required SessionTime? time,
-    required SessionSummary? summary,
     required PullRequestInfo? pullRequest,
     // COMPATIBILITY 2026-07-15 (v1.5.0): Bridges before PR-history support omit pullRequestHistory, which means no legacy history beyond pullRequest. Remove @Default and make the field required after the minimum supported bridge always sends pullRequestHistory.
     @Default(<PullRequestInfo>[]) List<PullRequestInfo> pullRequestHistory,
@@ -79,17 +78,6 @@ sealed class SessionTime with _$SessionTime {
   factory SessionTime.fromJson(Map<String, dynamic> json) => _$SessionTimeFromJson(json);
 }
 
-@Freezed(fromJson: true, toJson: true)
-sealed class SessionSummary with _$SessionSummary {
-  const factory SessionSummary({
-    @Default(0) int additions,
-    @Default(0) int deletions,
-    @Default(0) int files,
-  }) = _SessionSummary;
-
-  factory SessionSummary.fromJson(Map<String, dynamic> json) => _$SessionSummaryFromJson(json);
-}
-
 /// Session with embedded project info, returned by `/experimental/session`.
 ///
 /// This is the `GlobalInfo` type from the backend server — a [Session] extended
@@ -104,7 +92,6 @@ sealed class GlobalSession with _$GlobalSession {
     required String? parentID,
     required String? title,
     required SessionTime? time,
-    required SessionSummary? summary,
     required SessionProject? project,
   }) = _GlobalSession;
 

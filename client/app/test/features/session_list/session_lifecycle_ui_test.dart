@@ -83,7 +83,6 @@ Session _testSessionWithPullRequest() {
     directory: "/home/user/my-project",
     parentID: null,
     title: "PR Session",
-    summary: SessionSummary(files: 3),
     pullRequest: PullRequestInfo(
       number: 42,
       url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
@@ -555,7 +554,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("PR Session"), findsOneWidget);
-      expect(find.text("3 files changed"), findsOneWidget);
       expect(find.text("PR #42"), findsOneWidget);
       expect(find.text("Open"), findsOneWidget);
     });

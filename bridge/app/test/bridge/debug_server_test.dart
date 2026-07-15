@@ -312,7 +312,6 @@ void main() {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         ),
       ];
 
@@ -641,7 +640,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
   );
 
   @override
@@ -652,7 +650,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
   );
 
   @override
@@ -809,7 +806,6 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
   );
 
   @override
@@ -820,7 +816,6 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
   );
 
   @override

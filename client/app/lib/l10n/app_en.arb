@@ -181,14 +181,6 @@
       }
     }
   },
-  "sessionListFilesChanged": "{count} files changed",
-  "@sessionListFilesChanged": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "sessionListRefreshSuccess": "Sessions updated",
   "sessionListRefreshFailed": "Could not refresh sessions",
   "sessionListErrorTitle": "Failed to load sessions",

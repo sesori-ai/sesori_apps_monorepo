@@ -427,7 +427,6 @@ void main() {
             directory: "/foo",
             parentID: null,
             title: null,
-            summary: null,
             time: SessionTime(created: 1, updated: 2, archived: null),
             pullRequest: null,
             promptDefaults: null,
