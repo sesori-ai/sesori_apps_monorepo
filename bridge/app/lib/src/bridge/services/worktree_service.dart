@@ -15,7 +15,7 @@ const _worktreeDir = ".worktrees";
 /// project IDENTIFIER; this service resolves it to the project's live
 /// directory before every git operation (a moved folder keeps its identity
 /// but git must run where the folder actually is), while database writes
-/// (worktree counter, base-branch override) stay keyed on the identifier.
+/// (base-branch override) stay keyed on the identifier.
 class WorktreeService {
   final WorktreeRepository _worktreeRepository;
 
@@ -124,11 +124,7 @@ class WorktreeService {
     }
 
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
-      // The counter is durable per-project state, keyed on the identifier.
-      final counter = await _worktreeRepository.incrementAndGetWorktreeCounter(
-        projectId: projectId,
-      );
-      final branchName = "$_branchPrefix${counter.toString().padLeft(3, '0')}";
+      final branchName = "$_branchPrefix${_randomSuffix()}";
       final worktreePath = "$projectPath/$_worktreeDir/$branchName";
 
       if (await _worktreeRepository.branchExists(

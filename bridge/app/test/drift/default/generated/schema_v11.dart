@@ -9,7 +9,6 @@ mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
   String get path;
   int get hidden;
   String? get baseBranch;
-  int get worktreeCounter;
   String? get displayName;
   int get createdAt;
   int get updatedAt;
@@ -23,7 +22,6 @@ mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
     if (!nullToAbsent || baseBranch != null) {
       map['base_branch'] = Variable<String>(baseBranch);
     }
-    map['worktree_counter'] = Variable<int>(worktreeCounter);
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
     }
@@ -73,15 +71,6 @@ class ProjectsTable extends Table
     requiredDuringInsert: false,
     $customConstraints: 'NULL',
   );
-  late final GeneratedColumn<int> worktreeCounter = GeneratedColumn<int>(
-    'worktree_counter',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    $customConstraints: 'NOT NULL DEFAULT 0',
-    defaultValue: const CustomExpression('0'),
-  );
   late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
     'display_name',
     aliasedName,
@@ -120,7 +109,6 @@ class ProjectsTable extends Table
     path,
     hidden,
     baseBranch,
-    worktreeCounter,
     displayName,
     createdAt,
     updatedAt,
@@ -153,10 +141,6 @@ class ProjectsTable extends Table
         DriftSqlType.string,
         data['${effectivePrefix}base_branch'],
       ),
-      worktreeCounter: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}worktree_counter'],
-      )!,
       displayName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}display_name'],
@@ -199,8 +183,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   @override
   final String? baseBranch;
   @override
-  final int worktreeCounter;
-  @override
   final String? displayName;
   @override
   final int createdAt;
@@ -213,7 +195,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     required this.path,
     required this.hidden,
     this.baseBranch,
-    required this.worktreeCounter,
     this.displayName,
     required this.createdAt,
     required this.updatedAt,
@@ -227,7 +208,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       baseBranch: baseBranch == null && nullToAbsent
           ? const Value.absent()
           : Value(baseBranch),
-      worktreeCounter: Value(worktreeCounter),
       displayName: displayName == null && nullToAbsent
           ? const Value.absent()
           : Value(displayName),
@@ -247,7 +227,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       path: serializer.fromJson<String>(json['path']),
       hidden: serializer.fromJson<int>(json['hidden']),
       baseBranch: serializer.fromJson<String?>(json['baseBranch']),
-      worktreeCounter: serializer.fromJson<int>(json['worktreeCounter']),
       displayName: serializer.fromJson<String?>(json['displayName']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -264,7 +243,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       'path': serializer.toJson<String>(path),
       'hidden': serializer.toJson<int>(hidden),
       'baseBranch': serializer.toJson<String?>(baseBranch),
-      'worktreeCounter': serializer.toJson<int>(worktreeCounter),
       'displayName': serializer.toJson<String?>(displayName),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -277,7 +255,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     String? path,
     int? hidden,
     Value<String?> baseBranch = const Value.absent(),
-    int? worktreeCounter,
     Value<String?> displayName = const Value.absent(),
     int? createdAt,
     int? updatedAt,
@@ -287,7 +264,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     path: path ?? this.path,
     hidden: hidden ?? this.hidden,
     baseBranch: baseBranch.present ? baseBranch.value : this.baseBranch,
-    worktreeCounter: worktreeCounter ?? this.worktreeCounter,
     displayName: displayName.present ? displayName.value : this.displayName,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -301,9 +277,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       baseBranch: data.baseBranch.present
           ? data.baseBranch.value
           : this.baseBranch,
-      worktreeCounter: data.worktreeCounter.present
-          ? data.worktreeCounter.value
-          : this.worktreeCounter,
       displayName: data.displayName.present
           ? data.displayName.value
           : this.displayName,
@@ -322,7 +295,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
           ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
-          ..write('worktreeCounter: $worktreeCounter, ')
           ..write('displayName: $displayName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -337,7 +309,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     path,
     hidden,
     baseBranch,
-    worktreeCounter,
     displayName,
     createdAt,
     updatedAt,
@@ -351,7 +322,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
           other.path == this.path &&
           other.hidden == this.hidden &&
           other.baseBranch == this.baseBranch &&
-          other.worktreeCounter == this.worktreeCounter &&
           other.displayName == this.displayName &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -363,7 +333,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   final Value<String> path;
   final Value<int> hidden;
   final Value<String?> baseBranch;
-  final Value<int> worktreeCounter;
   final Value<String?> displayName;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -373,7 +342,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
-    this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -384,7 +352,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
-    this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
     required int createdAt,
     required int updatedAt,
@@ -399,7 +366,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     Expression<String>? path,
     Expression<int>? hidden,
     Expression<String>? baseBranch,
-    Expression<int>? worktreeCounter,
     Expression<String>? displayName,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -410,7 +376,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
       if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
-      if (worktreeCounter != null) 'worktree_counter': worktreeCounter,
       if (displayName != null) 'display_name': displayName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -424,7 +389,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     Value<String>? path,
     Value<int>? hidden,
     Value<String?>? baseBranch,
-    Value<int>? worktreeCounter,
     Value<String?>? displayName,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -435,7 +399,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
       path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
-      worktreeCounter: worktreeCounter ?? this.worktreeCounter,
       displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -457,9 +420,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     }
     if (baseBranch.present) {
       map['base_branch'] = Variable<String>(baseBranch.value);
-    }
-    if (worktreeCounter.present) {
-      map['worktree_counter'] = Variable<int>(worktreeCounter.value);
     }
     if (displayName.present) {
       map['display_name'] = Variable<String>(displayName.value);
@@ -483,7 +443,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
           ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
-          ..write('worktreeCounter: $worktreeCounter, ')
           ..write('displayName: $displayName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')

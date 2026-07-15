@@ -1112,6 +1112,11 @@ void main() {
               (await newDb.select(newDb.projectsTable).get()).single;
           expect(project.projectionUpdatedAt, 200);
           expect(project.displayName, 'One');
+          final projectColumns = await newDb.customSelect("PRAGMA table_info('projects_table')").get();
+          expect(
+            projectColumns.map((row) => row.read<String>('name')),
+            isNot(contains('worktree_counter')),
+          );
 
           final sessions = {
             for (final row in await newDb.select(newDb.sessionsTable).get())

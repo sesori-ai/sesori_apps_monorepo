@@ -11,7 +11,6 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   String get path;
   bool get hidden;
   String? get baseBranch;
-  int get worktreeCounter;
 
   /// Bridge-persisted display-name override for a renamed project. Used by
   /// bridge-derived plugins, which have no backend to store a project name;
@@ -39,7 +38,6 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
     if (!nullToAbsent || baseBranch != null) {
       map['base_branch'] = Variable<String>(baseBranch);
     }
-    map['worktree_counter'] = Variable<int>(worktreeCounter);
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
     }
@@ -100,18 +98,6 @@ class $ProjectsTableTable extends ProjectsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _worktreeCounterMeta = const VerificationMeta(
-    'worktreeCounter',
-  );
-  @override
-  late final GeneratedColumn<int> worktreeCounter = GeneratedColumn<int>(
-    'worktree_counter',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
   static const VerificationMeta _displayNameMeta = const VerificationMeta(
     'displayName',
   );
@@ -163,7 +149,6 @@ class $ProjectsTableTable extends ProjectsTable
     path,
     hidden,
     baseBranch,
-    worktreeCounter,
     displayName,
     createdAt,
     updatedAt,
@@ -207,15 +192,6 @@ class $ProjectsTableTable extends ProjectsTable
       context.handle(
         _baseBranchMeta,
         baseBranch.isAcceptableOrUnknown(data['base_branch']!, _baseBranchMeta),
-      );
-    }
-    if (data.containsKey('worktree_counter')) {
-      context.handle(
-        _worktreeCounterMeta,
-        worktreeCounter.isAcceptableOrUnknown(
-          data['worktree_counter']!,
-          _worktreeCounterMeta,
-        ),
       );
     }
     if (data.containsKey('display_name')) {
@@ -275,10 +251,6 @@ class $ProjectsTableTable extends ProjectsTable
         DriftSqlType.string,
         data['${effectivePrefix}base_branch'],
       ),
-      worktreeCounter: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}worktree_counter'],
-      )!,
       displayName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}display_name'],
@@ -312,7 +284,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   final Value<String> path;
   final Value<bool> hidden;
   final Value<String?> baseBranch;
-  final Value<int> worktreeCounter;
   final Value<String?> displayName;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -322,7 +293,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
-    this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -333,7 +303,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
-    this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -346,7 +315,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     Expression<String>? path,
     Expression<bool>? hidden,
     Expression<String>? baseBranch,
-    Expression<int>? worktreeCounter,
     Expression<String>? displayName,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -357,7 +325,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
-      if (worktreeCounter != null) 'worktree_counter': worktreeCounter,
       if (displayName != null) 'display_name': displayName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -371,7 +338,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     Value<String>? path,
     Value<bool>? hidden,
     Value<String?>? baseBranch,
-    Value<int>? worktreeCounter,
     Value<String?>? displayName,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -382,7 +348,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
-      worktreeCounter: worktreeCounter ?? this.worktreeCounter,
       displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -404,9 +369,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     }
     if (baseBranch.present) {
       map['base_branch'] = Variable<String>(baseBranch.value);
-    }
-    if (worktreeCounter.present) {
-      map['worktree_counter'] = Variable<int>(worktreeCounter.value);
     }
     if (displayName.present) {
       map['display_name'] = Variable<String>(displayName.value);
@@ -430,7 +392,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
           ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
-          ..write('worktreeCounter: $worktreeCounter, ')
           ..write('displayName: $displayName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2450,7 +2411,6 @@ typedef $$ProjectsTableTableCreateCompanionBuilder =
       required String path,
       Value<bool> hidden,
       Value<String?> baseBranch,
-      Value<int> worktreeCounter,
       Value<String?> displayName,
       Value<int> createdAt,
       Value<int> updatedAt,
@@ -2462,7 +2422,6 @@ typedef $$ProjectsTableTableUpdateCompanionBuilder =
       Value<String> path,
       Value<bool> hidden,
       Value<String?> baseBranch,
-      Value<int> worktreeCounter,
       Value<String?> displayName,
       Value<int> createdAt,
       Value<int> updatedAt,
@@ -2551,11 +2510,6 @@ class $$ProjectsTableTableFilterComposer
 
   ColumnFilters<String> get baseBranch => $composableBuilder(
     column: $table.baseBranch,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get worktreeCounter => $composableBuilder(
-    column: $table.worktreeCounter,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2659,11 +2613,6 @@ class $$ProjectsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get worktreeCounter => $composableBuilder(
-    column: $table.worktreeCounter,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get displayName => $composableBuilder(
     column: $table.displayName,
     builder: (column) => ColumnOrderings(column),
@@ -2705,11 +2654,6 @@ class $$ProjectsTableTableAnnotationComposer
 
   GeneratedColumn<String> get baseBranch => $composableBuilder(
     column: $table.baseBranch,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get worktreeCounter => $composableBuilder(
-    column: $table.worktreeCounter,
     builder: (column) => column,
   );
 
@@ -2816,7 +2760,6 @@ class $$ProjectsTableTableTableManager
                 Value<String> path = const Value.absent(),
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
-                Value<int> worktreeCounter = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -2826,7 +2769,6 @@ class $$ProjectsTableTableTableManager
                 path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
-                worktreeCounter: worktreeCounter,
                 displayName: displayName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -2838,7 +2780,6 @@ class $$ProjectsTableTableTableManager
                 required String path,
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
-                Value<int> worktreeCounter = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -2848,7 +2789,6 @@ class $$ProjectsTableTableTableManager
                 path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
-                worktreeCounter: worktreeCounter,
                 displayName: displayName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

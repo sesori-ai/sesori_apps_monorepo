@@ -22,7 +22,6 @@ class ProjectsTable extends Table {
   TextColumn get path => text()();
   BoolColumn get hidden => boolean().withDefault(const Constant(false))();
   TextColumn get baseBranch => text().nullable()();
-  IntColumn get worktreeCounter => integer().withDefault(const Constant(0))();
 
   /// Bridge-persisted display-name override for a renamed project. Used by
   /// bridge-derived plugins, which have no backend to store a project name;
@@ -57,7 +56,6 @@ sealed class ProjectDto with _$ProjectDto, $ProjectsTableTableToColumns {
     required String path,
     @Default(false) bool hidden,
     String? baseBranch,
-    @Default(0) int worktreeCounter,
     String? displayName,
     required int createdAt,
     required int updatedAt,

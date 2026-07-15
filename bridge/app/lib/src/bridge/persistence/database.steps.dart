@@ -1168,7 +1168,6 @@ final class Schema11 extends i0.VersionedSchema {
         _column_27,
         _column_1,
         _column_2,
-        _column_3,
         _column_28,
         _column_12,
         _column_31,
@@ -1295,8 +1294,6 @@ class Shape11 extends i0.VersionedTable {
       columnsByName['hidden']! as i1.GeneratedColumn<int>;
   i1.GeneratedColumn<String> get baseBranch =>
       columnsByName['base_branch']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get worktreeCounter =>
-      columnsByName['worktree_counter']! as i1.GeneratedColumn<int>;
   i1.GeneratedColumn<String> get displayName =>
       columnsByName['display_name']! as i1.GeneratedColumn<String>;
   i1.GeneratedColumn<int> get createdAt =>

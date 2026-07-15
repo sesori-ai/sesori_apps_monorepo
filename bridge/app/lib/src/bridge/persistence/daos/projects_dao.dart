@@ -139,7 +139,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
 
   /// Removes the hidden flag from a project. Creates the row if missing.
   /// Uses DoUpdate to update ONLY the hidden column on conflict, preserving
-  /// baseBranch and worktreeCounter on existing rows.
+  /// baseBranch on existing rows.
   Future<void> unhideProject({required String projectId}) async {
     final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(
@@ -158,37 +158,6 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     );
   }
 
-  /// Atomically increments the worktree counter for a project and returns the new value.
-  ///
-  /// If no row exists for [projectId], inserts one with counter=1.
-  /// If a row exists, increments its counter by 1.
-  /// Preserves existing [hidden] and [baseBranch] values.
-  Future<int> incrementAndGetWorktreeCounter({required String projectId}) async {
-    return transaction(() async {
-      final existing = await (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
-      if (existing != null) {
-        final newCounter = existing.worktreeCounter + 1;
-        await (update(projectsTable)..where((t) => t.projectId.equals(projectId))).write(
-          ProjectsTableCompanion(worktreeCounter: Value(newCounter)),
-        );
-        return newCounter;
-      } else {
-        final insertedAt = DateTime.now().millisecondsSinceEpoch;
-        await into(projectsTable).insert(
-          ProjectsTableCompanion.insert(
-            projectId: projectId,
-            path: projectId,
-            worktreeCounter: const Value(1),
-            createdAt: Value(insertedAt),
-            updatedAt: Value(insertedAt),
-            projectionUpdatedAt: insertedAt,
-          ),
-        );
-        return 1;
-      }
-    });
-  }
-
   /// Returns the base branch for the given project, or null if no row exists.
   Future<String?> getBaseBranch({required String projectId}) async {
     final row = await (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
@@ -198,7 +167,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// Sets the base branch for the given project.
   ///
   /// If no row exists, inserts one with the given [baseBranch].
-  /// If a row exists, updates only [baseBranch], preserving [hidden] and [worktreeCounter].
+  /// If a row exists, updates only [baseBranch], preserving [hidden].
   Future<void> setBaseBranch({required String projectId, required String? baseBranch}) async {
     final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(

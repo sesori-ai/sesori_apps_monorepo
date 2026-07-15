@@ -60,16 +60,6 @@
             "dsl_features": []
           },
           {
-            "name": "worktree_counter",
-            "getter_name": "worktreeCounter",
-            "moor_type": "int",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": "const CustomExpression('0')",
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
             "name": "display_name",
             "getter_name": "displayName",
             "moor_type": "string",
@@ -810,7 +800,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"projects_table\" (\"project_id\" TEXT NOT NULL, \"path\" TEXT NOT NULL, \"hidden\" INTEGER NOT NULL DEFAULT 0 CHECK (\"hidden\" IN (0, 1)), \"base_branch\" TEXT NULL, \"worktree_counter\" INTEGER NOT NULL DEFAULT 0, \"display_name\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"projection_updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"project_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"projects_table\" (\"project_id\" TEXT NOT NULL, \"path\" TEXT NOT NULL, \"hidden\" INTEGER NOT NULL DEFAULT 0 CHECK (\"hidden\" IN (0, 1)), \"base_branch\" TEXT NULL, \"display_name\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"projection_updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"project_id\")) WITHOUT ROWID;"
         }
       ]
     },
