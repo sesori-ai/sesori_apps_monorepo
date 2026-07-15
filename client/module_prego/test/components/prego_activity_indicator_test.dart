@@ -36,10 +36,9 @@ void main() {
       ),
       findsOneWidget,
     );
-    final platformView = tester.widget<AndroidView>(find.byType(AndroidView));
+    final platformView = tester.widget<PlatformViewLink>(find.byType(PlatformViewLink));
     expect(platformView.viewType, "sesori/native-activity-indicator");
-    expect(platformView.creationParams, color.toARGB32());
-    expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
+    expect(find.byType(AndroidView), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(tester.hasRunningAnimations, isFalse);
 
@@ -92,7 +91,7 @@ void main() {
       ),
     );
 
-    expect(tester.getSize(find.byType(AndroidView)), const Size.square(36));
+    expect(tester.getSize(find.byType(PlatformViewLink)), const Size.square(36));
 
     debugDefaultTargetPlatformOverride = null;
   });
@@ -111,6 +110,7 @@ void main() {
       isNotNull,
     );
     expect(find.byType(AndroidView), findsNothing);
+    expect(find.byType(PlatformViewLink), findsNothing);
     await tester.pump(const Duration(seconds: 1));
     expect(tester.hasRunningAnimations, isFalse);
 
