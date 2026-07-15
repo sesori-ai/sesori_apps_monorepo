@@ -62,7 +62,7 @@ void main() {
       });
       await pump();
 
-      final asked = emitted.single as BridgeSseQuestionAsked;
+      final asked = emitted.whereType<BridgeSseQuestionAsked>().single;
       expect(asked.sessionID, "s1");
       expect(asked.displaySessionId, "s1");
       expect(asked.questions.single.question, "Pick one");
@@ -73,8 +73,11 @@ void main() {
       );
 
       expect(registry.pendingForSession("s1"), hasLength(1));
+      expect(emitted.whereType<BridgeSseProjectUpdated>(), hasLength(1));
 
-      registry.replyQuestion(asked.id, [["Yes"]]);
+      registry.replyQuestion(asked.id, [
+        ["Yes"],
+      ]);
       final reply = fake.written.last;
       expect(reply["id"], 1);
       final questions = (reply["result"] as Map)["questions"] as List;
@@ -90,10 +93,12 @@ void main() {
       });
       await pump();
 
-      final asked = emitted.single as BridgeSseQuestionAsked;
+      final asked = emitted.whereType<BridgeSseQuestionAsked>().single;
       expect(asked.questions.single.header, "Plan A");
 
-      registry.replyQuestion(asked.id, [["Accept"]]);
+      registry.replyQuestion(asked.id, [
+        ["Accept"],
+      ]);
       final reply = fake.written.last;
       expect((reply["result"] as Map)["accepted"], true);
     });
@@ -115,7 +120,7 @@ void main() {
       });
       await pump();
 
-      final asked = emitted.single as BridgeSseQuestionAsked;
+      final asked = emitted.whereType<BridgeSseQuestionAsked>().single;
       expect(asked.sessionID, "active-s", reason: "create_plan has no sessionId; falls back to the active turn");
       expect(asked.displaySessionId, "active-s");
       expect(asked.questions.single.header, "Plan Z");
@@ -142,7 +147,7 @@ void main() {
         },
       });
       await pump();
-      final asked = emitted.single as BridgeSseQuestionAsked;
+      final asked = emitted.whereType<BridgeSseQuestionAsked>().single;
       expect(asked.questions.single.multiple, false);
       expect(registry.pendingForSession("s1"), hasLength(1));
     });
@@ -233,8 +238,7 @@ void main() {
       await pump();
       final pending = registry.pendingForSession("s1").single;
       final labels = pending.questions.single.options.map((o) => o.label).toList();
-      expect(labels, ["Option", "Option (2)"],
-          reason: "duplicate labels are made unique so label->id stays 1:1");
+      expect(labels, ["Option", "Option (2)"], reason: "duplicate labels are made unique so label->id stays 1:1");
     });
 
     test("questions with no usable text are dropped", () async {
@@ -268,7 +272,8 @@ void main() {
         },
       });
       await pump();
-      expect(emitted.single, isA<BridgeSsePermissionAsked>());
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), hasLength(1));
+      expect(emitted.whereType<BridgeSseProjectUpdated>(), hasLength(1));
     });
   });
 }

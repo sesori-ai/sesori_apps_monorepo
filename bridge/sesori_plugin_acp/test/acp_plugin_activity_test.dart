@@ -10,6 +10,7 @@ void main() {
   group("AcpPlugin.getActiveSessionsSummary", () {
     late FakeAcpProcess fake;
     late AcpPlugin plugin;
+    late List<BridgeSseEvent> emitted;
     const cwd = "/repo";
 
     setUp(() {
@@ -22,6 +23,8 @@ void main() {
         eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
         processFactory: (_) async => fake,
       );
+      emitted = [];
+      plugin.events.listen(emitted.add);
     });
 
     tearDown(() async {
@@ -73,6 +76,7 @@ void main() {
     test("idle session is not surfaced; a running turn is, then clears", () async {
       final sessionId = await connectAndCreateSession();
       expect(sessionId, "s1");
+      emitted.clear();
 
       // Created but idle -> no activity row.
       expect(plugin.getActiveSessionsSummary(), isEmpty);
@@ -97,15 +101,26 @@ void main() {
       expect(active.awaitingInput, isFalse);
       expect(active.isRetrying, isFalse);
       expect(active.childSessionIds, isEmpty, reason: "ACP sessions are flat");
+      expect(
+        emitted.whereType<BridgeSseProjectUpdated>(),
+        hasLength(1),
+        reason: "the project and session lists refresh when the turn starts",
+      );
 
       // Resolve the turn -> session goes idle -> summary clears.
       await respond("session/prompt", {"stopReason": "end_turn"});
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(
+        emitted.whereType<BridgeSseProjectUpdated>(),
+        hasLength(2),
+        reason: "the activity row clears when the turn finishes",
+      );
     });
 
     test("a session awaiting a permission is surfaced with awaitingInput", () async {
       final sessionId = await connectAndCreateSession();
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+      emitted.clear();
 
       // A permission ask arrives for the session (the agent is blocked on the
       // user). The base registry tracks it as pending input.
@@ -129,6 +144,11 @@ void main() {
       expect(active.id, sessionId);
       expect(active.awaitingInput, isTrue);
       expect(active.mainAgentRunning, isFalse, reason: "no prompt turn in flight");
+      expect(
+        emitted.whereType<BridgeSseProjectUpdated>(),
+        hasLength(1),
+        reason: "awaiting-input state refreshes project and session rows",
+      );
     });
   });
 }

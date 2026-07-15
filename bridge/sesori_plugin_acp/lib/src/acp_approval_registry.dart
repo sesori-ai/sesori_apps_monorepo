@@ -73,8 +73,7 @@ class AcpApprovalRegistry {
     return AcpApprovalRegistry(
       emit: emit,
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
-      respondError: (id, code, message) =>
-          client.respondToServerRequestWithError(id: id, code: code, message: message),
+      respondError: (id, code, message) => client.respondToServerRequestWithError(id: id, code: code, message: message),
       idGenerator: idGenerator,
       activeSessionResolver: activeSessionResolver,
     );
@@ -104,8 +103,7 @@ class AcpApprovalRegistry {
   void respond(Object acpId, Object? result) => _respond(acpId, result);
 
   /// Respond to a server request with a JSON-RPC error.
-  void respondError(Object acpId, int code, String message) =>
-      _respondError(acpId, code, message);
+  void respondError(Object acpId, int code, String message) => _respondError(acpId, code, message);
 
   /// Generates the next stable bridge request id (`br-N`).
   String generateBridgeId() {
@@ -142,6 +140,7 @@ class AcpApprovalRegistry {
       questions: questions,
       replyBuilder: replyBuilder,
     );
+    _emitActivityChanged();
   }
 
   /// Override to handle harness-specific server requests (e.g. Cursor's
@@ -167,6 +166,7 @@ class AcpApprovalRegistry {
     _subscription = null;
     final remaining = List<_PendingApproval>.from(_pending.values);
     _pending.clear();
+    if (remaining.isNotEmpty) _emitActivityChanged();
     // Emit the resolution SSEs (not just answer the agent) so a phone showing a
     // prompt when the child exits mid-approval clears it, instead of displaying
     // a stale prompt until a reload — same as [cancelForSession].
@@ -199,14 +199,12 @@ class AcpApprovalRegistry {
         .toList(growable: false);
   }
 
-  String? sessionIdFor(String bridgeRequestId) =>
-      _pending[bridgeRequestId]?.sessionId;
+  String? sessionIdFor(String bridgeRequestId) => _pending[bridgeRequestId]?.sessionId;
 
   /// Whether [sessionId] is blocked awaiting user input — a pending permission
   /// ask or question. Both kinds count, mirroring the OpenCode tracker's
   /// "awaiting input" notion (see `_rootHasPendingInput`).
-  bool hasPendingInput(String sessionId) =>
-      _pending.values.any((e) => e.sessionId == sessionId);
+  bool hasPendingInput(String sessionId) => _pending.values.any((e) => e.sessionId == sessionId);
 
   /// Resolves every pending approval for [sessionId] as cancelled — used when
   /// a turn is aborted. ACP still requires the client to answer an in-flight
@@ -214,8 +212,12 @@ class AcpApprovalRegistry {
   /// it) and emits the replied/rejected event so the phone clears the prompt.
   void cancelForSession(String sessionId) {
     final entries = _pending.values.where((e) => e.sessionId == sessionId).toList(growable: false);
+    if (entries.isEmpty) return;
     for (final entry in entries) {
       _pending.remove(entry.bridgeRequestId);
+    }
+    _emitActivityChanged();
+    for (final entry in entries) {
       _resolveCancelled(entry, questionErrorMessage: "aborted");
     }
   }
@@ -258,8 +260,10 @@ class AcpApprovalRegistry {
   /// the server-supplied option whose `kind` matches and echoes its
   /// `optionId` (ACP requires the client to select a provided option).
   bool replyPermission(String bridgeRequestId, PluginPermissionReply reply) {
-    final entry = _pending.remove(bridgeRequestId);
+    final entry = _pending[bridgeRequestId];
     if (entry == null || entry.kind != _PendingKind.permission) return false;
+    _pending.remove(bridgeRequestId);
+    _emitActivityChanged();
     final optionId = _selectOptionId(_optionsFrom(entry.params), reply);
     if (optionId == null) {
       _respond(entry.acpId, const {
@@ -284,10 +288,11 @@ class AcpApprovalRegistry {
   }
 
   bool replyQuestion(String bridgeRequestId, List<List<String>> answers) {
-    final entry = _pending.remove(bridgeRequestId);
+    final entry = _pending[bridgeRequestId];
     if (entry == null || entry.kind != _PendingKind.question) return false;
-    final payload = entry.replyBuilder?.call(answers) ??
-        {"answers": answers.map((row) => row.toList()).toList()};
+    _pending.remove(bridgeRequestId);
+    _emitActivityChanged();
+    final payload = entry.replyBuilder?.call(answers) ?? {"answers": answers.map((row) => row.toList()).toList()};
     _respond(entry.acpId, payload);
     _emit(
       BridgeSseQuestionReplied(
@@ -300,8 +305,10 @@ class AcpApprovalRegistry {
   }
 
   bool rejectQuestion(String bridgeRequestId) {
-    final entry = _pending.remove(bridgeRequestId);
+    final entry = _pending[bridgeRequestId];
     if (entry == null || entry.kind != _PendingKind.question) return false;
+    _pending.remove(bridgeRequestId);
+    _emitActivityChanged();
     _respondError(entry.acpId, -32603, "user rejected");
     _emit(
       BridgeSseQuestionRejected(
@@ -349,6 +356,7 @@ class AcpApprovalRegistry {
       kind: _PendingKind.permission,
       params: request.params,
     );
+    _emitActivityChanged();
     final summary = _permissionSummary(request.params);
     _emit(
       BridgeSsePermissionAsked(
@@ -383,6 +391,12 @@ class AcpApprovalRegistry {
 
   static String? _str(Object? value) => value is String && value.isNotEmpty ? value : null;
 
+  /// Pending input contributes to `getActiveSessionsSummary()`. The project
+  /// and session-list screens consume that aggregate rather than individual
+  /// permission/question events, so every real registry mutation must request
+  /// a fresh summary.
+  void _emitActivityChanged() => _emit(const BridgeSseProjectUpdated());
+
   PluginPendingQuestion _toPluginPendingQuestion(_PendingApproval entry) {
     return PluginPendingQuestion(
       id: entry.bridgeRequestId,
@@ -406,10 +420,7 @@ class AcpApprovalRegistry {
   List<Map<String, dynamic>> _optionsFrom(Map<String, dynamic> params) {
     final raw = params["options"];
     if (raw is! List) return const [];
-    return raw
-        .whereType<Map<dynamic, dynamic>>()
-        .map((m) => m.cast<String, dynamic>())
-        .toList(growable: false);
+    return raw.whereType<Map<dynamic, dynamic>>().map((m) => m.cast<String, dynamic>()).toList(growable: false);
   }
 
   String? _selectOptionId(

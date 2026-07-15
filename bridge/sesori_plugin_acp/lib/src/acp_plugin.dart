@@ -245,8 +245,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           if (notification.method == AcpMethods.sessionUpdate) {
             final sid = notification.params["sessionId"];
             final update = notification.params["update"];
-            final isCommandUpdate =
-                update is Map && update["sessionUpdate"] == "available_commands_update";
+            final isCommandUpdate = update is Map && update["sessionUpdate"] == "available_commands_update";
             if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
               // Replay from an in-flight resume-load — drop so old history does
               // not re-stream into the live conversation.
@@ -302,8 +301,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       );
     }
     if (init.requiresAuth) {
-      final methodId = authMethodId ??
-          (init.authMethods.isNotEmpty ? init.authMethods.first.id : null);
+      final methodId = authMethodId ?? (init.authMethods.isNotEmpty ? init.authMethods.first.id : null);
       if (methodId != null) {
         await client.request(
           method: AcpMethods.authenticate,
@@ -680,9 +678,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
-    eventMapper
-        .mapSentPrompt(sessionId: sessionId, parts: parts)
-        .forEach(_eventBuffer.add);
+    eventMapper.mapSentPrompt(sessionId: sessionId, parts: parts).forEach(_eventBuffer.add);
     _enqueueTurn(
       sessionId: sessionId,
       parts: parts,
@@ -715,8 +711,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   /// The directory a session should be loaded/operated in — its own canonical
   /// directory when known, else the launch directory.
-  String _directoryForSession(String sessionId) =>
-      _sessionDirectories[sessionId] ?? launchDirectory;
+  String _directoryForSession(String sessionId) => _sessionDirectories[sessionId] ?? launchDirectory;
 
   @override
   void primeSessionDirectory({required String sessionId, required String directory}) {
@@ -867,10 +862,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required PluginSessionVariant? variant,
     required String? agent,
   }) {
-    final blocks = parts
-        .map(_promptPartToContentBlock)
-        .whereType<Map<String, dynamic>>()
-        .toList(growable: false);
+    final blocks = parts.map(_promptPartToContentBlock).whereType<Map<String, dynamic>>().toList(growable: false);
     if (blocks.isEmpty) return;
 
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
@@ -883,6 +875,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           status: const shared.SessionStatus.busy().toJson(),
         ),
       );
+      // Project/session-list activity is driven by the aggregate
+      // `projects.summary`, not by the per-session status event above. Tell
+      // the orchestrator to rebuild that aggregate when this session crosses
+      // from idle to active.
+      _eventBuffer.add(const BridgeSseProjectUpdated());
     }
     final expectedGeneration = state.generation;
     // Each link isolates its own failure (_runTurn never throws), so one
@@ -1019,6 +1016,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     if (state.pending == 0) {
       _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
       _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+      // Mirror the 0 -> 1 invalidation in [_enqueueTurn]. Queued turns keep
+      // [pending] above zero, so one active period produces exactly one start
+      // and one completion summary refresh.
+      _eventBuffer.add(const BridgeSseProjectUpdated());
     }
     if (failed || refused) {
       _eventBuffer.add(BridgeSseSessionError(sessionID: sessionId));
@@ -1129,12 +1130,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async =>
-      const [];
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => const [];
 
   @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async =>
-      Map.unmodifiable(_sessionStatuses);
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => Map.unmodifiable(_sessionStatuses);
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
@@ -1318,8 +1317,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// Recency key for picking the freshest session as the catalog source. A
   /// missing timestamp sorts oldest — any session is a valid catalog source, so
   /// falling back to 0 just means "no better candidate than first-seen".
-  static int _sessionRecency(PluginSession session) =>
-      session.time?.updated ?? session.time?.created ?? 0;
+  static int _sessionRecency(PluginSession session) => session.time?.updated ?? session.time?.created ?? 0;
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
@@ -1371,14 +1369,12 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
-  }) async =>
-      _approvalRegistry?.pendingForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingForSession(sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingPermission>> getPendingPermissions({
     required String sessionId,
-  }) async =>
-      _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({
@@ -1458,8 +1454,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     if (byProject.isEmpty) return const [];
 
     return [
-      for (final entry in byProject.entries)
-        PluginProjectActivitySummary(id: entry.key, activeSessions: entry.value),
+      for (final entry in byProject.entries) PluginProjectActivitySummary(id: entry.key, activeSessions: entry.value),
     ];
   }
 

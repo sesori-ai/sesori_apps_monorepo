@@ -30,9 +30,17 @@ void main() {
   });
 
   /// Renders the real panel with the real action dispatcher behind the rows.
-  Future<void> pumpPanel(WidgetTester tester, {required Session session}) async {
+  Future<void> pumpPanel(
+    WidgetTester tester, {
+    required Session session,
+    SessionActivityInfo? activityInfo,
+  }) async {
     when(() => cubit.state).thenReturn(
-      SessionListState.loaded(sessions: [session], baseBranch: null),
+      SessionListState.loaded(
+        sessions: [session],
+        activeSessionIds: activityInfo == null ? const {} : {session.id: activityInfo},
+        baseBranch: null,
+      ),
     );
 
     const dispatcher = SessionListActionDispatcher();
@@ -62,6 +70,23 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets("a running session is identified on its session-list row", (
+    tester,
+  ) async {
+    final session = testSession(title: "Running Session");
+
+    await pumpPanel(
+      tester,
+      session: session,
+      activityInfo: const SessionActivityInfo(mainAgentRunning: true),
+    );
+
+    final loc = AppLocalizations.of(
+      tester.element(find.widgetWithText(ListTile, "Running Session")),
+    )!;
+    expect(find.text(loc.sessionListRunning), findsOneWidget);
+  });
 
   Future<void> longPressTile(WidgetTester tester, {required String title}) async {
     await tester.longPress(find.widgetWithText(ListTile, title));
@@ -116,7 +141,12 @@ void main() {
 
   testWidgets("Mark as unread dismisses the menu and marks the session", (tester) async {
     final session = testSession(title: "My Session");
-    when(() => cubit.markSessionSeen(sessionId: any(named: "sessionId"), read: any(named: "read"))).thenAnswer(
+    when(
+      () => cubit.markSessionSeen(
+        sessionId: any(named: "sessionId"),
+        read: any(named: "read"),
+      ),
+    ).thenAnswer(
       (_) async {},
     );
 
@@ -224,7 +254,10 @@ void main() {
 
     expect(find.text("Delete"), findsNothing);
     verifyNever(
-      () => cubit.markSessionSeen(sessionId: any(named: "sessionId"), read: any(named: "read")),
+      () => cubit.markSessionSeen(
+        sessionId: any(named: "sessionId"),
+        read: any(named: "read"),
+      ),
     );
   });
 }

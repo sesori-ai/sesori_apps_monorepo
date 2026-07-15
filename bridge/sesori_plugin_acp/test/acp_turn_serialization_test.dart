@@ -87,8 +87,7 @@ void main() {
       throw StateError("agent never wrote $count '$method' frame(s)");
     }
 
-    Future<Map<String, dynamic>> waitForFrame(String method) =>
-        waitForFrameCount(method, 1);
+    Future<Map<String, dynamic>> waitForFrame(String method) => waitForFrameCount(method, 1);
 
     void respondTo(Map<String, dynamic> frame, Map<String, dynamic> result) {
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
@@ -131,6 +130,7 @@ void main() {
 
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
+    int projectUpdateCount() => emitted.whereType<BridgeSseProjectUpdated>().length;
 
     test("an accepted prompt is emitted immediately as a user message", () async {
       await connect();
@@ -201,10 +201,12 @@ void main() {
     test("a second prompt on one session dispatches only after the first turn completes", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
 
       await sendPrompt(sessionId, "first");
       final firstPrompt = await waitForFrame("session/prompt");
       expect(busyCount(), 1);
+      expect(projectUpdateCount(), 1);
 
       await sendPrompt(sessionId, "second");
       for (var i = 0; i < 10; i++) {
@@ -217,6 +219,11 @@ void main() {
       );
       expect(busyCount(), 1, reason: "queued turn keeps the one busy signal");
       expect(idleCount(), 0);
+      expect(
+        projectUpdateCount(),
+        1,
+        reason: "a queued turn does not create another active-period refresh",
+      );
 
       respondTo(firstPrompt, {"stopReason": "end_turn"});
       final secondPrompt = await waitForFrameCount("session/prompt", 2);
@@ -236,6 +243,7 @@ void main() {
       await pump();
       await pump();
       expect(idleCount(), 1, reason: "idle only after the last queued turn settles");
+      expect(projectUpdateCount(), 2, reason: "the aggregate refreshes once when the active period ends");
       expect(plugin.getActiveSessionsSummary(), isEmpty);
     });
 
@@ -604,8 +612,7 @@ void main() {
 
       Future<Map<String, dynamic>> promptFrameFor(String sessionId) async {
         for (var i = 0; i < 80; i++) {
-          final match = frames("session/prompt")
-              .where((f) => (f["params"] as Map)["sessionId"] == sessionId);
+          final match = frames("session/prompt").where((f) => (f["params"] as Map)["sessionId"] == sessionId);
           if (match.isNotEmpty) return match.last;
           await pump();
         }
