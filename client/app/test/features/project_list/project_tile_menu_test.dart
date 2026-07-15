@@ -9,6 +9,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/features/project_list/rename_project_dialog.dart";
+import "package:sesori_mobile/features/project_list/widgets/project_tile.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -96,7 +97,7 @@ void main() {
   /// Long-presses the project's row. The finder targets the row's title so the
   /// press lands on the tile, not on the popover the press opens.
   Future<void> longPressTile(WidgetTester tester) async {
-    await tester.longPress(find.widgetWithText(ListTile, "my-app"));
+    await tester.longPress(find.widgetWithText(ProjectTile, "my-app"));
     await tester.pumpAndSettle();
   }
 
@@ -119,21 +120,21 @@ void main() {
 
     // The row it is anchored to stays on screen behind the menu — the whole
     // point of a popover over a sheet.
-    expect(find.widgetWithText(ListTile, "my-app"), findsOneWidget);
+    expect(find.widgetWithText(ProjectTile, "my-app"), findsOneWidget);
   });
 
   testWidgets("right-clicking a project opens the same anchored menu without navigating", (tester) async {
     await pumpScreen(tester);
 
     // The mouse counterpart of the long-press, for the desktop app.
-    await tester.tap(find.widgetWithText(ListTile, "my-app"), buttons: kSecondaryMouseButton);
+    await tester.tap(find.widgetWithText(ProjectTile, "my-app"), buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
     expect(find.widgetWithText(InkWell, "Hide Project"), findsOneWidget);
     // A secondary click must not double as the row's tap — the list is still
     // here, not the sessions route.
-    expect(find.widgetWithText(ListTile, "my-app"), findsOneWidget);
+    expect(find.widgetWithText(ProjectTile, "my-app"), findsOneWidget);
   });
 
   // Pinned to iOS because the blur is Apple-only: a full-screen BackdropFilter is
@@ -171,7 +172,7 @@ void main() {
     expect(find.text("Hide Project"), findsNothing);
     expect(find.text("Project hidden"), findsOneWidget);
     // The bridge confirmed, so the row is gone.
-    expect(find.widgetWithText(ListTile, "my-app"), findsNothing);
+    expect(find.widgetWithText(ProjectTile, "my-app"), findsNothing);
   });
 
   testWidgets("Hide Project reports the failure when the bridge rejects the hide", (tester) async {
@@ -189,7 +190,7 @@ void main() {
 
     expect(find.text("Project hidden"), findsNothing);
     expect(find.text("Failed to hide project"), findsOneWidget);
-    expect(find.widgetWithText(ListTile, "my-app"), findsOneWidget);
+    expect(find.widgetWithText(ProjectTile, "my-app"), findsOneWidget);
   });
 
   testWidgets("Rename dismisses the menu and opens the rename sheet", (tester) async {

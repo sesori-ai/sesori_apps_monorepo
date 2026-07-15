@@ -12,26 +12,23 @@
     "description": "App-bar title shown in place of 'Projects' while the connect-your-computer onboarding is visible (no bridge has ever been registered and none is connected)."
   },
   "projectListLoadingSemantics": "Loading projects",
-  "projectListUpdated": "Updated {timestamp}",
-  "@projectListUpdated": {
-    "placeholders": {
-      "timestamp": {
-        "type": "String"
-      }
-    }
-  },
   "projectListDefaultName": "Default Project",
   "projectListRefreshSuccess": "Projects updated",
   "projectListRefreshFailed": "Could not refresh projects",
   "projectListErrorTitle": "Failed to load projects",
   "projectListRetry": "Retry",
-  "projectListActiveSessions": "{count, plural, =1{1 active session} other{{count} active sessions}}",
-  "@projectListActiveSessions": {
+  "projectListRunning": "{count, plural, =1{Running} other{{count} running}}",
+  "@projectListRunning": {
+    "description": "Status shown beside the animated sparkle on a project row that has at least one session an agent is currently working in.",
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
+  },
+  "projectListNewActivity": "New activity",
+  "@projectListNewActivity": {
+    "description": "Status shown beside a static sparkle on a project row with unseen agent activity the user hasn't opened yet."
   },
   "projectsEmptyConnected": "Connected",
   "@projectsEmptyConnected": {
@@ -355,7 +352,10 @@
   "projectHidden": "Project hidden",
   "projectHideFailed": "Failed to hide project",
   "hideProject": "Hide Project",
-  "projectFolderMissing": "Folder not found",
+  "projectFolderMissing": "Unavailable",
+  "@projectFolderMissing": {
+    "description": "Status shown on a project row whose folder no longer exists on disk. The row is greyed out and cannot be opened."
+  },
   "projectFolderMissingMessage": "This project's folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.",
   "noProjects": "No projects",
   "addProjectPrompt": "Add a project to get started",

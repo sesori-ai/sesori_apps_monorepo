@@ -36,11 +36,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListLoadingSemantics => 'Loading projects';
 
   @override
-  String projectListUpdated(String timestamp) {
-    return 'Updated $timestamp';
-  }
-
-  @override
   String get projectListDefaultName => 'Default Project';
 
   @override
@@ -56,15 +51,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListRetry => 'Retry';
 
   @override
-  String projectListActiveSessions(int count) {
+  String projectListRunning(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count active sessions',
-      one: '1 active session',
+      other: '$count running',
+      one: 'Running',
     );
     return '$_temp0';
   }
+
+  @override
+  String get projectListNewActivity => 'New activity';
 
   @override
   String get projectsEmptyConnected => 'Connected';
@@ -621,7 +619,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hideProject => 'Hide Project';
 
   @override
-  String get projectFolderMissing => 'Folder not found';
+  String get projectFolderMissing => 'Unavailable';
 
   @override
   String get projectFolderMissingMessage =>
