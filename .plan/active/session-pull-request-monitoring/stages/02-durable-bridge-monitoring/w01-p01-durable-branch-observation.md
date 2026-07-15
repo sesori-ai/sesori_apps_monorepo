@@ -34,18 +34,23 @@ writes, and typed changes—without introducing GitHub/network behavior.
 ### In Scope
 
 - Export the current Drift schema before source changes.
-- Add/reuse non-null root-session `directory`, nullable
-  `current_branch_name`, and owner-scoped `session_branch_history` with
-  first/last-seen timestamps.
+- Add/reuse non-null root-session `directory`, nullable normalized
+  `git_common_directory`, nullable `current_branch_name`, and owner-scoped
+  `session_branch_history` whose identity includes a non-null normalized Git
+  common directory plus branch and first/last-seen timestamps.
 - Backfill directory from stored worktree path, otherwise FK-joined persisted
-  project path. Seed current/history from a non-empty legacy `branch_name`.
+  project path. Backfill current branch from a non-empty legacy `branch_name`,
+  but do not invent a repository binding or seed unverified history.
 - Extend `SessionRepository` to persist exact directories from successful root
   session lists and live root `session.created`; remove the touched bulk-list
   persistence responsibility from `SessionPersistenceService` rather than
-  extending its direct DAO bypass.
+  extending its direct DAO bypass. A changed exact directory clears the prior
+  current branch and Git common directory in the same transaction until branch
+  observation verifies the new location, then emits one typed change after commit.
 - Extend `SessionMutationDispatcher` with the ordered live-root persistence
   operation; call it before unseen handling for `SesoriSessionCreated`.
-- Add `GitCliApi` operations for named `HEAD` and git `HEAD` path.
+- Add `GitCliApi` operations for named `HEAD`, git `HEAD` path, and Git common
+  directory.
 - Add a dumb `FilesystemApi` directory-watch operation.
 - Add raw branch DAO/table queries, typed repository models,
   `SessionBranchRepository`, and `SessionBranchListener` in target layer paths.
@@ -54,7 +59,9 @@ writes, and typed changes—without introducing GitHub/network behavior.
 - Perform initial resolve, idempotent transition/return/detach persistence,
   dynamic enrollment/removal, retry failed setup, and full disposal.
 - Expose broadcast `Stream<SessionBranchChanged>` for later independent
-  consumers; do not emit SSE or call GitHub in this PR.
+  consumers from both repository mutation owners; `Orchestrator` merges them
+  into one downstream change path. Do not emit SSE below Orchestrator or call
+  GitHub in this PR.
 - Exclude currently archived rows from runtime observation until the irreversible
   stop marker lands in S02-W03.
 - Establish `Orchestrator.compose` as the sole constructor/wiring owner for
@@ -137,10 +144,19 @@ target path; do not create duplicate tables/DAOs/models.
   the raw path. `SessionBranchRepository` resolves a relative result against
   that exact stored directory before absolute normalization; it never resolves
   against the bridge process working directory.
+- `GitCliApi.resolveGitCommonDirectory` executes
+  `git rev-parse --git-common-dir` and returns the raw path. The repository uses
+  the same directory-relative normalization; main and linked-worktree sessions
+  share one value, while unrelated checkouts do not.
 - `SessionBranchDao` exposes raw Drift watch/read/write operations with required
   owner/session/project inputs. Selection and branch semantics stay out of DAO.
 - `SessionBranchRepository` receives the DAOs, `GitCliApi`, and
   `FilesystemApi`; no service/handler is constructed inside it.
+- `SessionRepository` is the sole exact-directory writer and owns only the
+  derived current-branch/Git-common-directory -> null invalidation when that
+  directory changes. `SessionBranchRepository` owns only successful git
+  verification to a non-null binding plus observed current/history writes.
+  Neither repository calls the other.
 - `SessionBranchListener` receives an already-built repository and its typed
   trackable-session stream. It owns subscription maps, retry timers, and
   teardown; it imports no DAO/API or raw `dart:io` event type.
@@ -162,25 +178,40 @@ target path; do not create duplicate tables/DAOs/models.
 
 - `owner_identity TEXT NOT NULL`
 - `session_id TEXT NOT NULL` FK/cascade
+- `git_common_directory TEXT NOT NULL`
 - `branch_name TEXT NOT NULL`
 - `first_seen_at INTEGER NOT NULL`
 - `last_seen_at INTEGER NOT NULL`
-- primary key `(owner_identity, session_id, branch_name)`
+- primary key
+  `(owner_identity, session_id, git_common_directory, branch_name)`
 
-Repository enrollment records contain only required plain values:
-`sessionId`, `projectId`, `directory`. Watch targets contain normalized absolute
+Repository enrollment records contain only required plain values: `sessionId`,
+`projectId`, `directory`. Watch targets contain normalized absolute
 `headPath`/`watchKey`; repository watch signals are `Stream<void>`, so the
-listener never receives Layer 1 filesystem types.
+listener never receives Layer 1 filesystem types. The nullable persisted Git
+common directory is honest unverified state for migrated rows or failed git
+resolution, not a fallback identity.
 
 On each initial/event resolve:
 
-1. Run detached-safe named-branch resolution in the exact stored directory.
+1. Run detached-safe named-branch and Git-common-directory resolution in the
+   exact stored directory.
 2. Start a DB transaction and re-read the session.
 3. No-op if missing or archived (later: terminally stopped).
-4. If named, upsert history preserving first-seen and advancing last-seen.
-5. Set `current_branch_name` to named/null.
-6. Emit `SessionBranchChanged` only when current branch changed; a same-branch
-   duplicate or return that changes only `last_seen_at` emits no invalidation.
+4. Persist the normalized Git common directory on the session.
+5. If named, upsert history under the freshly verified Git common directory,
+   preserving first-seen and advancing last-seen only for that bound row.
+6. Set `current_branch_name` to named/null.
+7. Emit `SessionBranchChanged` when current branch or Git common directory
+   changed; a same-branch duplicate or return that changes only `last_seen_at`
+   emits no invalidation.
+
+`SessionRepository` independently emits the same typed event exactly once after
+its directory-change transaction commits clear-to-null current branch/binding.
+The repository does not wait for branch re-resolution, so a failed subsequent
+git command still invalidates prior PR association. `Orchestrator` merges that source with
+`SessionBranchRepository.changes` into one typed stream; W02 wires that merged
+stream once to SSE, and W04 adds viewed-project refresh fan-out to the same path.
 
 ### Concurrency, cancellation, lifecycle, and errors
 
@@ -205,7 +236,9 @@ On each initial/event resolve:
 - Existing branch/worktree cleanup keeps reading legacy `branch_name`.
 - Existing rows receive a deterministic exact directory from only persisted
   location evidence; no hypothetical repair or unknown-id path inference.
-- Existing archived rows get seeded history but remain unobserved in this PR.
+- Existing archived rows retain last-known `current_branch_name` when available
+  but get no history row because migration cannot verify their Git repository;
+  they remain unobserved in this PR and fail closed for PR association.
 - No shared wire field changes beyond already-merged S01.
 - No compatibility-only runtime fallback is added; migration backfill is normal
   schema transition and does not require a `COMPATIBILITY` source marker.
@@ -226,13 +259,21 @@ On each initial/event resolve:
 ### Automated tests
 
 - Migration structure and old-row data preservation, including dedicated and
-  non-dedicated directory backfill, archived row seeding, FK/cascade, and null
-  legacy branch.
+  non-dedicated directory backfill, null migrated session Git common directory,
+  last-known current branch, no unverified history seed, history-binding key,
+  FK/cascade, and null legacy branch.
 - Successful list persistence and live `session.created` persist exact
-  directory before unseen updates; child events do not enroll.
+  directory before unseen updates; a changed directory clears stale current
+  branch/Git common directory in the same transaction, emits one post-commit
+  typed change even when re-resolution fails, and child events do not enroll.
 - Normal initial branch, switch, duplicate event, branch return, detached HEAD,
   and detach -> named transitions.
-- Main checkout and linked-worktree git `HEAD` path normalization.
+- Moving one session from repository A to B preserves A-bound history rows and
+  creates distinct B-bound rows; neither row is ever rekeyed to the other common
+  directory.
+- Main checkout and linked-worktree git `HEAD`/common-directory normalization;
+  linked worktrees share the common-directory value while unrelated checkouts
+  do not.
 - Two unrelated normal checkouts that both return `.git/HEAD` resolve to
   distinct absolute watch keys and cannot share/fan out events.
 - Two sessions sharing one checkout create one OS subscription and independent
@@ -243,7 +284,10 @@ On each initial/event resolve:
   repository/service/tracker instances with request routing, listeners, SSE,
   and `DebugServer`; `BridgeRuntime` only starts/stops/delegates them and all
   prior restart/debug lifecycle tests remain green.
-- A failed repository write emits no `SessionBranchChanged`.
+- A failed repository write emits no `SessionBranchChanged`; a common-directory
+  change with the same branch emits one. Tests subscribe to the Orchestrator's
+  merged path and prove one downstream event per committed clear or verification,
+  with no duplicate for unchanged state.
 - No periodic timer invokes git while a healthy filesystem stream exists.
 - Existing unseen, session creation/list persistence, archive, worktree cleanup,
   and PR-sync tests remain green.
@@ -299,12 +343,15 @@ dart test test/drift/default/migration_test.dart
 ## 10. Acceptance Criteria
 
 - Every persisted root has a non-null exact directory backed by real persisted
-  evidence.
+  evidence; a non-null Git common directory is written only from successful git
+  resolution.
 - Named current/history state follows filesystem-driven `HEAD` changes without
   periodic git polling.
 - Shared checkout watcher count is one per normalized target.
 - Detached, failure, retry, mapping, race, and shutdown behavior is tested.
 - No GitHub call, timer-based PR refresh, SSE emission, or UI behavior lands.
+- Directory clear and successful Git verification have explicit, disjoint
+  repository transition ownership and converge on one typed Orchestrator path.
 - `Orchestrator` is the sole layer composer and `BridgeRuntime` is lifecycle-only
   without changing existing startup/debug/restart behavior.
 

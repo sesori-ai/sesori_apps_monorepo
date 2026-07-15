@@ -34,17 +34,19 @@ deliberately leaving archive snapshots and viewed-project timers for later waves
 ### In Scope
 
 - Export current schema; add owner/login/repository scope to global PR cache and
-  project cache metadata, including the project path at verification time.
+  project cache metadata, including the project path and normalized Git common
+  directory at verification time.
 - Add active-login and canonical `nameWithOwner` repository resolution,
-  open/all authored query modes, 1,001-row truncation detection, PR author
-  parsing, exact timeouts, and author-aware single-PR lookup to
+  creation-descending open/all authored query modes, 1,001-row truncation
+  detection, PR author parsing, exact timeouts, and author-aware single-PR lookup to
   `GhCliApi`/`GhPullRequest`.
 - Keep `--author @me` on list commands only; verify `gh pr view` author after
   parsing.
 - Evolve `PrSourceRepository` to own cached GitHub-remote eligibility and return
   typed availability/login/query outcomes without writing durable state.
 - Make `PullRequestRepository` the sole writer/finalizer of global live PR rows
-  and project cache visibility/login/repository/path metadata.
+  and project cache visibility/login/repository/path/Git-common-directory
+  metadata.
 - Add typed refresh request/result/completion models and
   `PrRefreshDispatcher` in target Layer 3.
 - Implement per-project serialization, safe coalescing, complete/truncated
@@ -53,11 +55,12 @@ deliberately leaving archive snapshots and viewed-project timers for later waves
   cache suspension, request correlation, and change-only completions.
 - Route both `GetSessionsHandler` request modes through the dispatcher. Awaited
   all-state retains the five-second budget; non-wait remains fire-and-forget.
-- If any project cache login/repository/path metadata is null or mismatched,
-  upgrade even an open request to all-state and resolve the complete active
-  branch scope first.
+- If any project cache login/repository/path/Git-common-directory metadata is
+  null or mismatched, upgrade even an open request to all-state and resolve the
+  complete repository-bound active branch scope first.
 - On that first post-migration verification only, union active scope with
-  durable branch history from archived sessions; never resolve archived paths.
+  durable branch-history rows from archived sessions that already carry the
+  same non-null Git common directory; never resolve or guess archived paths.
 - Remove `SessionRepository -> PullRequestRepository`; inject read-only branch,
   live-PR, and later-compatible archive DAOs/mappers directly.
 - Map current headline and descending non-null history for live sessions, hiding
@@ -93,7 +96,8 @@ deliberately leaving archive snapshots and viewed-project timers for later waves
 - `GetSessionsHandler` triggers both wait modes and already handles timeout by
   returning current data while later SSE supplies freshness.
 - The GitHub CLI manual confirms `--state all`, `--author @me`, finite `--limit`,
-  and required JSON fields.
+  advanced `--search` syntax, and required JSON fields; a live command check
+  confirms `sort:created-desc` produces creation-descending results.
 
 ## 5. Design and Ownership
 
@@ -136,8 +140,8 @@ established in W01 and is not a second wiring site.
 gh --version
 gh api user --hostname github.com --jq .login
 gh repo view --json nameWithOwner --jq .nameWithOwner
-gh pr list --state open --author @me --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
-gh pr list --state all --author @me --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
+gh pr list --state open --author @me --search sort:created-desc --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
+gh pr list --state all --author @me --search sort:created-desc --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
 gh pr view <number> --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author
 ```
 
@@ -145,7 +149,8 @@ gh pr view <number> --json number,url,title,state,headRefName,isCrossRepository,
 - List timeout: 30 seconds.
 - A non-zero exit, malformed login/JSON, missing author, or timeout throws from
   API; repository/dispatcher maps it to typed non-success rather than `[]`.
-- Exactly 1,001 list rows means truncated; expose first 1,000 plus the flag.
+- `sort:created-desc` makes the finite window explicit. Exactly 1,001 list rows
+  means truncated; expose the first/newest 1,000 plus the flag.
 - The 1,001 bound applies before `isCrossRepository` rejection because `gh pr
   list` has no same-repository pre-limit filter.
 
@@ -160,13 +165,15 @@ gh pr view <number> --json number,url,title,state,headRefName,isCrossRepository,
 - primary key `(owner_identity, project_id, pr_number)`.
 
 `projects_table` gains nullable `pr_cache_github_login`,
-`pr_cache_repository_identity`, and `pr_cache_project_path`.
+`pr_cache_repository_identity`, `pr_cache_project_path`, and normalized
+`pr_cache_git_common_directory`.
 
 Live reads require row `owner_identity = local`; non-null row/project login and
-repository identity with pairwise equality; and
-`projects.pr_cache_project_path = projects.path`. Legacy/unverified rows and
-rows from a prior path/repository/account are retained physically but hidden
-until verified replacement.
+repository identity with pairwise equality;
+`projects.pr_cache_project_path = projects.path`; and the session's non-null
+`git_common_directory = projects.pr_cache_git_common_directory`. Legacy or
+unverified rows and sessions from a prior path/repository/account are retained
+physically but hidden until verified replacement.
 
 ### Repository responsibilities
 
@@ -176,12 +183,17 @@ until verified replacement.
   capability/login/repository failures remain explicit.
 - `PullRequestRepository` receives raw PR/project DAOs and owns transactionally
   suspending visibility (null project cache login), replacing/upserting rows,
-  and project cache login/repository/path metadata. Complete all-state results
-  may delete absent branch-matched rows; truncated results may not.
+  and project cache login/repository/path/Git-common-directory metadata. Complete
+  all-state results may delete absent branch-matched rows; truncated results may
+  not. It also receives raw session/branch DAOs so the cache-write transaction
+  can re-read and compare the complete captured `PrBranchScopeSnapshot`; it does
+  not call `SessionBranchRepository` or decide how to refresh after mismatch.
 - `SessionRepository` receives raw read-only DAOs and pure mapper(s). Live
-  association joins the session's complete branch history, then chooses the
-  highest-numbered PR on current branch as headline and every other associated
-  PR descending as history.
+  association joins only history rows whose own Git common directory equals
+  both the session's current non-null binding and project cache metadata, then
+  chooses the highest-numbered PR on current branch as headline and every other
+  associated PR descending as history. It never infers a historical row's
+  repository from only the session's current location.
 - No repository imports or calls another repository.
 
 ### Dispatcher and data flow
@@ -194,6 +206,15 @@ Typed requests identify:
 - typed origin (`sessionRequest`, later listener origins); and
 - whether the caller still owns one identity-change follow-up.
 
+`PrBranchScopeSnapshot` is a typed Layer-2 value containing expected project id,
+persisted project path, resolved project Git common directory, and the complete
+ordered set of relevant session ids with each persisted directory/common-
+directory/current state plus every history row's own common-directory/branch
+identity. It includes unbound active rows so a newly added, moved, or
+not-yet-verified session changes the snapshot instead of being silently omitted.
+All-state first verification also includes already-bound archived-only history
+rows under its existing rule.
+
 `dispatch` returns a ticket containing that request id and a future result.
 Broadcast execution completions contain an execution id plus all satisfied
 request ids/origins after coalescing, so Orchestrator emits once per execution
@@ -203,31 +224,42 @@ Dispatcher flow:
 
 1. Serialize requests by project. Let an active/queued all-state request satisfy
    compatible live open waiters; never let an open request discard queued all.
-2. Read persisted live project path and branch scope from
+2. Read persisted live project path and repository-bound branch scope from
    `SessionBranchRepository`. Before all-state, synchronously resolve/persist
-   every active session branch so listener enrollment races cannot commit an
-   incomplete cache-login baseline.
+   every active session branch/common-directory value, resolve the project
+   path's common directory, and include only sessions with the same non-null
+   binding so listener enrollment races cannot commit an incomplete baseline.
 3. Resolve eligibility, canonical repository identity, and active login through
    `PrSourceRepository`.
-4. Compare current path/repository/login with project cache metadata. If login
-   or repository cannot be verified, or any value changed, atomically suspend
+4. Compare current path/Git-common-directory/repository/login with project cache
+   metadata. If any value cannot be verified or changed, atomically suspend
    cache visibility before continuing/returning and publish rendered change if
-   previously visible. Rows remain physically retained. A path mismatch is
-   already hidden by the read predicate before this preflight runs.
+   previously visible. Rows remain physically retained. Path/common-directory
+   mismatch is already hidden by the read predicate before preflight runs.
 5. Execute open/all query. Reject cross-repository and any row whose
    `author.login` differs from captured login.
-6. Match only branches in durable project scope. For first null-cache-login
-   verification, include archived-only persisted history.
+6. Match only history rows whose own binding equals captured project/session
+   bindings. For first null-cache-login verification, include only already-bound
+   archived-only persisted history.
 7. For a complete open result with exactly one absent cached open row, finalize
    it through author-verified `gh pr view`. If more than one is absent, upgrade
    the same serialized execution to one all-state list instead of issuing
    unbounded per-row commands. For truncated results, absence proves nothing.
-8. Re-resolve active login and repository identity immediately before the write
-   transaction. If either differs or cannot be confirmed, suspend visibility,
-   discard observations, and return typed `identityChanged`/failure.
-9. Write through `PullRequestRepository`; publish one broadcast execution
-   completion with satisfied request ids/origins, effective mode,
-   complete/truncated, authored-open count, and rendered-change flag.
+8. Re-resolve active login, repository identity, and project path Git common
+   directory immediately before the write transaction. If any differs or cannot
+   be confirmed, suspend visibility, discard observations, and return typed
+   `identityChanged`/failure.
+9. Call `PullRequestRepository.applyRefresh` with the captured scope. Inside the
+   same transaction that would mutate cache rows/metadata, re-read project path
+   plus the complete active and eligible archived session/common-directory/
+   current state and each history row's bound common-directory/branch identity;
+   require exact equality. On mismatch, write nothing
+   and return typed `scopeChanged`; the dispatcher discards observations and
+   never retries autonomously. Origin/listener behavior remains governed by its
+   existing request eligibility and later typed branch/location triggers.
+10. Publish one broadcast execution completion with satisfied request
+    ids/origins, effective mode, complete/truncated, authored-open count, and
+    rendered-change flag.
 
 The dispatcher never queues an identity follow-up. `GetSessionsHandler` may
 recheck that its request is still live and issue at most one all-state follow-up.
@@ -243,10 +275,12 @@ recheck that its request is still live and issue at most one all-state follow-up
   project presence ships.
 - A timeout does not cancel the dispatcher process or lose its eventual write;
   it only releases the HTTP response budget.
-- Cache-first reads intentionally do not run `gh` synchronously. A local account
-  or remote change that has not yet been observed can remain visible until the
-  next request/view trigger; once observed, old visibility is suspended before
-  any query/write and cannot reappear without fresh verification.
+- Cache-first reads intentionally do not run `gh` or git synchronously. A local
+  account or remote change that has not yet been observed can remain visible
+  until the next request/view trigger; a project-path change fails the persisted
+  path/common-directory predicate immediately. Once observed, old visibility is
+  suspended before any query/write and cannot reappear without fresh
+  verification.
 
 ### Concurrency, cancellation, lifecycle, and errors
 
@@ -284,7 +318,7 @@ recheck that its request is still live and issue at most one all-state follow-up
 2. Allocate current `N+1`; rebuild key/table as required by Drift while
    preserving all existing rows and FKs.
 3. Backfill owner to `local`; row author/repository and project
-   login/repository/path metadata to null.
+   login/repository/path/Git-common-directory metadata to null.
 4. Run migration generation and implement callback body only.
 5. Run bridge-wide codegen.
 6. Add structural/data tests for key, row preservation, hidden unverified rows,
@@ -294,9 +328,9 @@ recheck that its request is still live and issue at most one all-state follow-up
 
 ### Automated tests
 
-- Exact command arguments, working directory, timeout, canonical repository
-  identity, author JSON, login parsing, state mapping, malformed output,
-  non-zero, and timeout.
+- Exact command arguments including `--search sort:created-desc`, working
+  directory, timeout, canonical repository identity, author JSON, login parsing,
+  state mapping, malformed output, non-zero, and timeout.
 - 1,000 rows complete; 1,001 rows truncated; truncated results expose first
   1,000 and never trigger absent-row deletion/finalization.
 - Cross-repository rows are rejected after the cap; fixtures prove they can
@@ -304,28 +338,36 @@ recheck that its request is still live and issue at most one all-state follow-up
   same-repository rows are not falsely deleted or claimed complete.
 - Remote eligibility/capability caching and non-GitHub/missing-gh outcomes.
 - Migration preserves cache rows, adds local owner key, nulls
-  login/repository/path metadata, and keeps project/session/PR cascades valid.
-- SessionRepository hides null/mismatched login, repository, or project-path
-  rows and maps headline/history for current branch, previous branch, duplicate
-  branch associations, detached current branch, and archived-only
-  first-verification scope.
+  login/repository/path/Git-common-directory metadata, and keeps
+  project/session/PR cascades valid.
+- SessionRepository hides null/mismatched login, repository, project path, or
+  history-row/session/project Git-common-directory rows and maps headline/history
+  for current branch, previous branch, duplicate branch associations, detached
+  current branch, and repository-bound archived-only first-verification scope.
+- A stable project id moved from repository/path A to B cannot attach B's PR to
+  an A-bound history row with the same branch name; moving a session preserves A
+  rows under their original key while new B rows are distinct, and a linked-
+  worktree history row whose common directory matches B remains eligible.
 - Highest current-branch number wins regardless of state; history is descending
   and excludes headline.
 - Complete all-state replacement, complete open upsert/finalization, truncated
   non-destructive behavior, query failure non-empty semantics, and rendered
   change detection.
+- A branch, session directory/common-directory, enrollment, archive state, or
+  project path mutation during the GitHub query makes the transactional scope
+  comparison fail with zero PR/cache writes; unchanged scope commits once.
 - One disappeared open row uses one author-verified view; two or more upgrade to
   one bounded all-state list with no per-row fan-out.
 - Per-project serialization, stronger queued request preservation, compatible
   waiter coalescing, independent project concurrency, shutdown, and no overlap.
 - Request ids/origins survive coalescing and each waiter completes once; one
   execution completion carries every satisfied id/origin.
-- Login/repository/path changes and failures before query, during query, and
-  before commit suspend prior visibility and emit change; retained rows cannot
-  reappear without fresh matching verification. Handler follow-up is at most
-  one; dispatcher follow-up is zero.
-- Null/mismatched cache identity/path open upgrade synchronously resolves active
-  branch scope.
+- Login/repository/path/Git-common-directory changes and failures before query,
+  during query, and before commit suspend prior visibility and emit change;
+  retained rows cannot reappear without fresh matching verification. Handler
+  follow-up is at most one; dispatcher follow-up is zero.
+- Null/mismatched cache identity/path/common-directory open upgrade synchronously
+  resolves active repository-bound branch scope.
 - `waitForPrData` true keeps five-second budget and re-enriches on success;
   false fires and returns; both retain existing response behavior.
 - Branch current change emits `sessionsUpdated` even with no PR cache change;
@@ -376,7 +418,8 @@ dart test test/bridge/routing/get_sessions_handler_test.dart
 - Account switch can race every async gap; capture/recheck login and verify each
   author before transaction, suspending old visibility when detected.
 - A stable project id can move to another path/repository; bind visible rows to
-  both canonical repository identity and the verified project path.
+  canonical repository identity, verified project path/common directory, and
+  only sessions carrying that same common-directory binding.
 - Per-row finalization can monopolize the dispatcher; allow at most one
   `gh pr view`, then use one all-state list for larger disappearance sets.
 - All-state query may exceed response budget; handler timeout must not cancel
@@ -390,15 +433,18 @@ dart test test/bridge/routing/get_sessions_handler_test.dart
 
 ## 10. Acceptance Criteria
 
-- Every list query uses `--author @me`; every accepted row/view matches captured
-  active login and canonical same-repository identity.
+- Every list query uses `--author @me --search sort:created-desc`; every accepted
+  row/view matches captured active login and canonical same-repository identity.
 - 1,001st row produces explicit non-destructive truncation.
 - Live sessions render verified current/history under locked ordering.
 - No `SessionRepository -> PullRequestRepository` dependency remains.
 - Requests serialize/coalesce without dropping all-state work or looping on
   identity change; completions preserve request/origin correlation.
-- Detected account/repository/path changes suspend old cache visibility before
-  any new query result can be rendered.
+- Every cache mutation transaction revalidates the complete captured session
+  branch/binding scope and fails closed on any concurrent scope change.
+- Detected account/repository/path/Git-common-directory changes suspend old
+  cache visibility before any new query result can be rendered, and old-session
+  branches cannot match a moved project's new repository.
 - Both shipped request paths and five-second wait behavior remain.
 - Branch and PR invalidations are independent and unseen-neutral.
 

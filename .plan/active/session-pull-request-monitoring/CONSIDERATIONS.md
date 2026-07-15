@@ -29,7 +29,8 @@ state non-null and avoids a compatibility branch beyond the wire boundary.
 ### Unbounded GraphQL pagination
 
 Rejected for this scope. `gh pr list` already provides the exact typed fields
-needed and accepts a finite limit. Fetching 1,001 rows supports the newest 1,000,
+needed, accepts a finite limit, and supports the `sort:created-desc` search
+qualifier. Fetching 1,001 creation-descending rows supports the newest 1,000,
 makes truncation observable, and prevents destructive replacement from an
 incomplete result without adding a second GitHub query subsystem.
 

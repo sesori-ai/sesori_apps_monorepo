@@ -35,7 +35,8 @@ being able to serve it.
   owner-scoped archived PR snapshot table.
 - Migrate already-archived sessions to stopped state and snapshot only cache
   rows already verified against project cache login, canonical repository
-  identity, and verified project path; perform no network work.
+  identity, verified project path, and a frozen history row whose own Git common
+  directory matches session/project bindings; perform no network work.
 - Add raw archive DAO/table, typed archive models, and
   `SessionArchiveRepository` as the sole terminal writer.
 - Move touched archive/unarchive persistence from
@@ -146,7 +147,8 @@ cleared. `archived_session_pull_requests` key is
 - `archiveAndSnapshot` transaction;
 - `unarchiveWithoutRestart` (clears only `archived_at`);
 - `clearSnapshotIfPresent` returning changed/unchanged;
-- `replaceSnapshotIfStillStopped` with expected active login/repository; and
+- `replaceSnapshotIfStillStopped` with expected active login/repository, project
+  path/common directory, and frozen session common directory; and
 - immutable snapshot reads only if kept there for focused archive operations.
 
 `SessionRepository` receives `SessionArchiveDao` directly for terminal mapping.
@@ -193,8 +195,9 @@ service, so the single allowed Layer-3 coordination edge is acyclic.
 5. In one repository transaction, re-read session, set `archived_at` and stop
    marker if not already stopped, freeze current/history, and replace immediate
    snapshot with only rows whose author/repository equal non-null project cache
-   login/repository and whose verified cache path equals the current project
-   path.
+   login/repository, whose verified cache path equals the current project path,
+   and whose history row's own Git common directory equals frozen session and
+   project cache bindings.
 6. Return session enriched from terminal snapshot.
 7. Notify plugin best-effort and publish final request only for a newly committed
    archive transition.
@@ -202,26 +205,38 @@ service, so the single allowed Layer-3 coordination edge is acyclic.
 ### Final async sequence
 
 The typed request carries owner, session/project ids, persisted project path,
-frozen branches, snapshot login, and snapshot repository identity.
+frozen session Git common directory and frozen history tuples retaining each
+row's Git-common-directory/branch identity, snapshot login, and snapshot
+repository identity.
 `ArchivePrRefreshListener` delegates once to dispatcher and logs a surfaced
 failure once.
 
 Dispatcher behavior:
 
-- Resolve active login and canonical repository identity first.
-- If either cannot be resolved, clear non-empty snapshot, emit
+- Resolve active login, canonical repository identity, and the project path's
+  normalized Git common directory first.
+- If any cannot be resolved, or project/session common directories differ,
+  clear non-empty snapshot, emit
   `snapshotCleared` only on mutation, return failure, and stop.
 - If snapshot login/repository is non-null and either differs, clear first and
   publish `snapshotCleared` before any PR query; continue the same one attempt
   for the new identity.
 - Null snapshot identity may establish the freshly resolved active
   account/repository.
-- Query all authored state for frozen branches using W02's bound/truncation
+- Query all authored state only for frozen history rows whose own binding equals
+  the frozen session/project common directory, using W02's bound/truncation
   contract. A truncated result may upsert supported rows but must not claim a
   full immutable replacement; treat final snapshot replacement as failed and
   keep the empty/same-identity immediate snapshot.
-- Recheck login and repository immediately before replacement. Identity change returns
-  `identityChanged` and ends; archive origin never follows up.
+- Recheck login, repository, project path, and Git common directory immediately
+  before replacement. Identity/binding change returns `identityChanged` and
+  ends; archive origin never follows up.
+- Call `SessionArchiveRepository.replaceSnapshotIfStillStopped` with all captured
+  expectations. In the snapshot-replacement transaction it re-reads the session
+  and project, requires terminal stop, expected session/project ids, unchanged
+  project path, unchanged frozen session Git common directory, and equality of
+  expected project/session common directories before replacing. Any mismatch
+  returns typed `scopeChanged` with zero snapshot writes.
 - Complete all-state success atomically replaces the full snapshot and publishes
   rendered change when content differs.
 - A PR query failure retains snapshot only when login/repository were freshly
@@ -263,8 +278,8 @@ Dispatcher behavior:
 2. Allocate current `N+1` and add stop/snapshot source definitions.
 3. Generate migrations; implement predecessor -> new callback only.
 4. Backfill stop from existing non-null archive timestamp.
-5. Snapshot only author/repository/path-verified rows matching project cache
-   metadata; leave other archived snapshots empty.
+5. Snapshot only author/repository/path/Git-common-directory-verified rows
+   matching project cache metadata; leave other archived snapshots empty.
 6. Generate code and add structural/data/FK/cascade tests.
 7. Preserve W01/W02 schema snapshots and migration callbacks unchanged.
 
@@ -285,13 +300,18 @@ Dispatcher behavior:
   performs direct filesystem or DAO access.
 - Archive response completes while `gh` never completes and while plugin notify
   never completes.
-- Immediate snapshot includes only same-login/repository/path verified rows and
-  terminal reads never consult live global cache.
+- Immediate snapshot includes only same-login/repository/path/common-directory
+  verified rows and terminal reads never consult live global cache.
 - One final success replaces snapshot; one query failure retains only after
-  same-login/repository confirmation; unknown identity clears; mismatch clears
-  before later failure; clearing emits independent invalidation.
+  same-login/repository/common-directory confirmation; unknown identity or
+  repository binding clears; mismatch clears before later failure; clearing
+  emits independent invalidation.
 - Null snapshot login/repository can establish active identity.
 - Identity change before replacement writes nothing and receives no follow-up.
+- Project path/common-directory or frozen session-binding change before the
+  replacement transaction returns `scopeChanged` and writes nothing.
+- A frozen A-bound history row never enters a B-bound final replacement even if
+  its branch name is identical.
 - Truncated all-state does not claim/replace a complete immutable snapshot.
 - Re-archive produces no second final request; archive listener never retries.
 - Branch callback vs archive transaction both orderings; no branch write/change
@@ -359,7 +379,10 @@ dart test test/bridge/routing/update_session_archive_status_handler_test.dart
 - Archive is responsive, terminal for PR tracking, and immutable afterward.
 - Exactly one final attempt occurs for a new archive and zero for migrated old
   archives/re-archive/unarchive.
-- Unknown/mismatched identity cannot leave cross-account terminal display.
+- Unknown/mismatched identity or Git common directory cannot leave cross-account
+  or cross-repository terminal display.
+- Final replacement transaction itself revalidates terminal state, project path,
+  expected project common directory, and frozen session common directory.
 - Same-login query failure retention and clear-before-failure invalidation are
   independently proven.
 - Branch writes cannot commit after stop state.

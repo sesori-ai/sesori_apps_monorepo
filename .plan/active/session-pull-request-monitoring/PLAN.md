@@ -43,11 +43,12 @@ shared contract or client.
 ## 2. Success Criteria
 
 1. A named local `HEAD` transition is persisted from filesystem events, updates
-   the session's current branch, preserves prior branch history, and emits a
-   project-scoped `sessionsUpdated` invalidation without waiting for GitHub.
+   the session's current branch, preserves prior history under each observation's
+   verified Git common directory, and emits a project-scoped `sessionsUpdated`
+   invalidation without waiting for GitHub.
 2. Detached `HEAD` clears the current branch without creating a fake `HEAD`
-   history row; returning to a named branch updates `last_seen_at` rather than
-   duplicating it.
+   history row; returning to a named branch in the same Git common directory
+   updates `last_seen_at` rather than duplicating it.
 3. Sessions sharing one checkout use one normalized git-`HEAD` watcher while
    receiving independent durable history updates.
 4. While at least one connected client views a project, GitHub refreshes use a
@@ -56,11 +57,12 @@ shared contract or client.
 5. A continuously viewed project completes an all-state authored reconciliation
    at least once every ten minutes; a failed attempt keeps the deadline pending
    and follows bounded backoff.
-6. Every `gh pr list` query is restricted to `--author @me` and at most 1,001
-   fetched authored rows; accepted observations are additionally restricted to
-   the resolved same repository. The first 1,000 pre-filter authored rows are
-   supported; row 1,001 marks an observable truncated result that never
-   authoritatively deletes absent cached rows.
+6. Every `gh pr list` query is restricted to `--author @me`, explicitly sorted
+   by creation descending, and limited to 1,001 fetched authored rows; accepted
+   observations are additionally restricted to the resolved same repository.
+   The first 1,000 pre-filter authored rows are supported; row 1,001 marks an
+   observable truncated result that never authoritatively deletes absent cached
+   rows.
 7. The bridge captures and rechecks active GitHub login plus canonical
    repository identity around every write. Once a refresh observes an unknown
    or changed account/repository, it suspends old cache visibility before
@@ -87,11 +89,13 @@ shared contract or client.
 ### In Scope
 
 - Additive shared `RelayProjectView` and `Session.pullRequestHistory` contracts.
-- Exact root-session directory persistence and durable named-branch history.
+- Exact root-session directory/Git-common-directory persistence and durable
+  named-branch history.
 - Filesystem-driven git `HEAD` observation with watcher sharing and recovery.
 - Authored, same-repository GitHub discovery through the installed `gh` CLI.
 - GitHub-account/repository-scoped global PR cache and project cache identity,
-  bound to the project path at verification time.
+  bound to the project path and normalized Git common directory at verification
+  time.
 - Per-project serialized refresh dispatch, open/all reconciliation, truncation
   handling, and identity-switch protection.
 - Terminal archive stop state, immutable archived PR snapshots, and one final
@@ -232,15 +236,15 @@ behavior; new classes live in visible top-level layer directories.
 
 | Component | Layer / path | Ownership |
 |---|---|---|
-| `GitCliApi` additions | Layer 1, existing `bridge/app/lib/src/bridge/api/git_cli_api.dart` | Resolve current named branch and absolute git `HEAD` path. No retries or branch decisions. |
+| `GitCliApi` additions | Layer 1, existing `bridge/app/lib/src/bridge/api/git_cli_api.dart` | Resolve current named branch plus raw git `HEAD` and Git-common-directory paths. No retries or branch decisions. |
 | `FilesystemApi` addition | Layer 1, existing `bridge/app/lib/src/bridge/api/filesystem_api.dart` | Expose raw directory watch events. |
 | `GhCliApi` / `GhPullRequest` additions | Layer 1, existing legacy paths | Execute exact `gh` commands, parse author/login/canonical repository identity and typed PR DTO fields, and throw on failures/truncation parsing errors. |
 | New branch/archive tables and DAOs | Layer 1, `bridge/app/lib/src/api/database/` | Raw owner-scoped queries and transactions inputs; no selection policy. |
-| `SessionBranchRepository` | Layer 2, `bridge/app/lib/src/repositories/` | Resolve stored exact directories to normalized watch targets; map raw watch events to typed signals; atomically persist current/history state; emit `SessionBranchChanged`. |
+| `SessionBranchRepository` | Layer 2, `bridge/app/lib/src/repositories/` | Resolve stored exact directories to normalized watch targets and Git common directories; map raw watch events to typed signals; atomically persist verified non-null Git-common-directory/current/history state; emit `SessionBranchChanged` after committed verified binding/branch changes. |
 | `PrSourceRepository` | Layer 2, existing legacy path | Wrap GitHub CLI availability, active-login/repository resolution, authored PR reads, and cached GitHub-remote eligibility. Never write another repository. |
-| `PullRequestRepository` | Layer 2, existing legacy path | Sole runtime writer/finalizer of the live global PR cache and project cache visibility/login/repository/path metadata. |
-| `SessionArchiveRepository` | Layer 2, `bridge/app/lib/src/repositories/` | Sole runtime writer of terminal stop state and immutable archived PR snapshots. |
-| `SessionRepository` | Layer 2, existing legacy path | Persist exact observed root-session directory; read branch/PR/archive DAOs; map headline/history into shared sessions. It has no repository peer dependency. |
+| `PullRequestRepository` | Layer 2, existing legacy path | Sole runtime writer/finalizer of the live global PR cache and project cache visibility/login/repository/path/Git-common-directory metadata; compare the complete expected session branch/binding scope inside each cache-write transaction using injected raw DAOs. |
+| `SessionArchiveRepository` | Layer 2, `bridge/app/lib/src/repositories/` | Sole runtime writer of terminal stop state and immutable archived PR snapshots; transactionally revalidate terminal session/project/path and expected project/frozen-session Git bindings before final replacement. |
+| `SessionRepository` | Layer 2, existing legacy path | Sole exact-directory writer; atomically clear derived current branch/Git common directory when that exact directory changes and emit `SessionBranchChanged` after the committed clear; read branch/PR/archive DAOs and map headline/history. It has no repository peer dependency. |
 | `WorktreeRepository` additions | Layer 2, existing legacy path | Expose repository-backed worktree existence/restore operations over `FilesystemApi`/`GitCliApi`; services never call `dart:io` directly. |
 | Mappers and typed models | Layer 2, `bridge/app/lib/src/repositories/{mappers,models}/` | Pure API/DAO/domain/shared transformations only. |
 | `ProjectViewTracker` | Layer 3 state collaborator, `bridge/app/lib/src/services/` | Maintain connection -> project declarations, aggregate counts, and typed 0->1 / 1->0 changes. |
@@ -273,25 +277,40 @@ plugin root session.created OR successful root-session list
   -> SessionBranchDao watch emits the trackable root set
   -> SessionBranchListener groups by normalized absolute git HEAD watch key
   -> one SessionBranchRepository-backed OS subscription per key
-  -> repository resolves `git symbolic-ref --short -q HEAD`
-  -> transaction rechecks trackability and writes current/history
-  -> Stream<SessionBranchChanged>
-     -> Orchestrator emits sessionsUpdated for a real current-branch change
+  -> repository resolves `git symbolic-ref --short -q HEAD` plus Git common dir
+  -> transaction rechecks trackability and writes common-dir/current/history
+  -> SessionRepository clear stream + SessionBranchRepository verify/branch stream
+  -> Orchestrator merges Stream<SessionBranchChanged> sources once
+     -> emits sessionsUpdated for a real branch/repository-binding change
      -> PrBranchChangeListener refreshes only if the project is viewed
 ```
 
-The API resolves the git `HEAD` path with `git rev-parse --git-path HEAD`; the
-repository converts a relative result to an absolute normalized path. The raw
-filesystem source watches its parent so atomic replacement is observed. The
-listener performs an initial branch resolve, shares subscriptions by watch key,
-and retries failed watch setup with bounded jittered backoff only while a
-session remains trackable. This is failure recovery, not periodic git polling.
+The API resolves the git `HEAD` path with `git rev-parse --git-path HEAD` and the
+checkout-family identity with `git rev-parse --git-common-dir`; the repository
+converts relative results against the exact stored session/project directory and
+normalizes absolute paths. Main and linked-worktree directories therefore share
+one local repository binding while unrelated checkouts do not. The raw
+filesystem source watches the `HEAD` parent so atomic replacement is observed.
+The listener performs an initial branch/common-directory resolve, shares
+subscriptions by watch key, and retries failed watch setup with bounded jittered
+backoff only while a session remains trackable. This is failure recovery, not
+periodic git polling.
 
 `SessionBranchRepository.resolveAndPersist` re-reads the session inside its
 transaction. Before terminal state exists it requires `archived_at IS NULL`;
 after S02-W03 it requires `pr_tracking_stopped_at IS NULL`. An archive race
 therefore either commits before the archive transaction freezes it or observes
 the terminal marker and emits nothing.
+
+Git-common-directory mutation ownership is split by transition, not duplicated:
+`SessionRepository` is the only writer of exact `directory` and the only writer
+of current branch/binding -> null when that directory changes;
+`SessionBranchRepository` is the only writer of observed current branch plus
+null/old -> freshly verified non-null Git common directory. Each repository
+publishes exactly one
+`SessionBranchChanged` after its own committed branch/binding mutation.
+`Orchestrator` merges both typed streams and sends every event through the same
+SSE and viewed-project refresh pipeline; no source calls the other repository.
 
 ### Project-presence flow
 
@@ -328,7 +347,7 @@ ScheduledPrRefreshListener
 PrBranchChangeListener
 ArchivePrRefreshListener
   -> PrRefreshDispatcher
-     -> SessionBranchRepository (live scope/path)
+     -> SessionBranchRepository (repository-bound live scope/path)
      -> PrSourceRepository -> GhCliApi
      -> PullRequestRepository (live cache only)
      -> SessionArchiveRepository (terminal snapshot only)
@@ -351,7 +370,7 @@ handler/listener may issue one all-state follow-up.
 POST /sessions
   -> SessionRepository obtains plugin/catalog session payload
   -> read-only SessionBranchDao + PullRequestDao + ArchivedSessionPullRequestDao
-  -> live rows: current branch + complete branch associations + verified cache
+  -> live rows: current branch + repository-bound associations + verified cache
   -> terminal rows: immutable archived snapshot only
   -> current headline + descending history mapper
   -> Session.pullRequest + non-null Session.pullRequestHistory
@@ -366,7 +385,8 @@ POST /sessions
    parallel-plugin plan must receive explicit stale-plan re-review afterward;
    the workstreams do not interleave.
 3. Record every named branch observed at each root session whose PR tracking has
-   not terminally stopped.
+   not terminally stopped, keyed with the successfully verified normalized Git
+   common directory in which that observation occurred.
 4. Persist the exact reported root-session directory. Migration may backfill
    from non-null stored `worktree_path`, otherwise the owning project's persisted
    `path` through its FK; it never treats an unknown id as a filesystem path.
@@ -380,9 +400,10 @@ POST /sessions
 8. GitHub discovery is same-repository and authored by the active `gh` account.
    Fork-head/cross-repository PRs are excluded.
 9. Repository-wide open/all discovery supports the newest 1,000 authored rows
-   before cross-repository rejection. Commands request 1,001 so truncation is
-   explicit; incomplete results never delete cache rows merely because they are
-   absent. Pagination to recover same-repository rows displaced by more than
+   by creation time before cross-repository rejection. Commands use the
+   supported `sort:created-desc` search qualifier and request 1,001 so truncation
+   is explicit; incomplete results never delete cache rows merely because they
+   are absent. Pagination to recover same-repository rows displaced by more than
    1,000 newer fork-head rows is explicitly deferred.
 10. Local branch observation runs for every nonterminal root session,
     independent of phone presence. GitHub network scheduling runs only while at
@@ -394,8 +415,9 @@ POST /sessions
     authored by `@me`, otherwise at 90 seconds. Failure backoff starts at the
     greater of the normal tier and 30 seconds, doubles with fresh +/-20% jitter,
     and caps at five minutes.
-13. Every persisted current-branch change invalidates the affected project
-    immediately even if GitHub is unavailable or cache data is unchanged.
+13. Every persisted current-branch or Git-common-directory binding change
+    invalidates the affected project immediately even if GitHub is unavailable
+    or cache data is unchanged.
 14. Session-list and session-detail surfaces both count as viewing the project;
     any connected client keeps it active.
 15. Archive synchronously resolves the latest local `HEAD`, performs existing
@@ -416,15 +438,21 @@ POST /sessions
     fire-and-forget trigger for clients that never declare project view.
 21. New PR tables/cache keys carry `owner_identity = "local"`; Sesori ownership
     and GitHub login remain separate. GitHub login is never sent to clients.
-22. One runtime writer owns each concern: `SessionRepository` exact directory,
-    `SessionBranchRepository` current/history branch state,
+22. One runtime writer owns each concern and derived transition:
+    `SessionRepository` owns exact directory plus atomic invalidation-to-null of
+    stale current branch/Git common directory, `SessionBranchRepository` owns
+    freshly observed current branch/non-null Git common directory plus bound
+    history state,
     `PullRequestRepository` live PR cache/login, and
     `SessionArchiveRepository` terminal stop/snapshot state.
 23. Branch/refresh/archive triggers are peer Layer 4 listeners over typed
     streams. `Orchestrator` wires them; peers never reference each other.
 24. Visible live PR rows must match the active project cache's GitHub login,
-    canonical lowercase `owner/name` repository identity, and verified project
-    path. Moving a stable project id to another path hides old rows immediately.
+    canonical lowercase `owner/name` repository identity, verified project path,
+    and normalized Git common directory. Each history row is eligible only when
+    its own persisted Git common directory matches both the session's current
+    binding and project cache binding, so moving a stable project id or session
+    cannot reinterpret old-repository branch names as new-repository history.
 25. Account/repository changes are detected by existing refresh triggers rather
     than a blocking check on every cache-first read. Detection atomically nulls
     project cache login before query, retains rows physically, and emits rendered
@@ -440,6 +468,10 @@ POST /sessions
     Disconnected relies on bridge connection release/reconnect reassertion;
     failed-connected sends retry the latest generation at 1s, 2s, 4s... capped
     at 30s so visible activation and hidden null cannot remain lost indefinitely.
+29. Every live cache-write transaction re-reads and compares the complete
+    captured project path plus active/eligible-archived session Git binding and
+    branch scope. Concurrent location, enrollment, branch, or archive changes
+    return typed `scopeChanged` with zero writes; repositories do not call peers.
 
 ## 7. Backward Compatibility and Migration
 
@@ -494,22 +526,27 @@ For every migration:
 
 ### Persistence migrations
 
-- **S02-W01:** add non-null session `directory`, nullable
-  `current_branch_name`, and owner-scoped `session_branch_history`. Backfill
-  directory from stored worktree or FK-joined project path. Seed one history row
-  and current branch from a non-empty legacy `branch_name`, including archived
-  rows, while only unarchived rows enter runtime observation.
+- **S02-W01:** add non-null session `directory`, nullable normalized
+  `git_common_directory`, nullable `current_branch_name`, and owner-scoped
+  `session_branch_history` keyed by non-null normalized Git common directory and
+  branch. Backfill directory from stored worktree or FK-joined project path and
+  leave session Git common directory null because migration cannot execute git;
+  runtime observation verifies it before writing history. Backfill only the
+  last-known current branch from a non-empty legacy `branch_name`; do not seed an
+  unverified history row. Only unarchived rows enter runtime observation.
 - **S02-W02:** rebuild/extend the global PR cache with non-null
   `owner_identity = "local"`, nullable verified `github_author_login`, nullable
   canonical `github_repository_identity`, and key
   `(owner_identity, project_id, pr_number)`. Add nullable project cache login,
-  repository identity, and verified project path. Legacy verification fields
-  remain null and are hidden until an authored all-state refresh verifies them.
+  repository identity, verified project path, and normalized Git common
+  directory. Legacy verification fields remain null and are hidden until an
+  authored all-state refresh verifies them.
 - **S02-W03:** add nullable `pr_tracking_stopped_at` and owner-scoped
   `archived_session_pull_requests`. Existing archived sessions receive
   `pr_tracking_stopped_at = archived_at`; migration snapshots only rows whose
-  non-null author/repository match project cache identity and whose verified
-  cache path equals current project path. It performs no network work.
+  non-null author/repository match project cache identity, whose verified cache
+  path equals current project path, and whose bound history-row Git common
+  directory matches session/project cache bindings. It performs no network work.
 
 Rollback before new terminal/random state is written may use the previous
 binary against additive columns only if its Drift compatibility is verified.
@@ -575,9 +612,10 @@ server deployment is required.
 
 - GitHub credentials remain inside the local `gh` CLI; the bridge stores no
   token and sends no GitHub login to clients.
-- Active-login/repository capture and recheck plus row/project/path verification
-  prevent detected account or repository changes from leaving prior cache
-  visible. Normal reads stay cache-first and detection occurs at the next
+- Active-login/repository capture and recheck plus row/project/path/Git-common-
+  directory verification prevent detected account, repository, or stable-id
+  location changes from leaving prior cache visible or cross-associating an old
+  session. Normal reads stay cache-first and detection occurs at the next
   existing refresh trigger rather than by blocking every response on `gh`.
 - Only canonical same-repository authored PRs are accepted;
   cross-repository/fork-head observations are rejected before writes.
@@ -594,7 +632,7 @@ server deployment is required.
 | More than 1,000 authored PRs, including fork heads | Fetch 1,001 before same-repository rejection, mark truncation, retain the newest 1,000 pre-filter rows, preserve absent cache rows, and report that older same-repository rows may be displaced. Full pagination is deferred. |
 | `gh` hangs or is slow | Explicit process timeouts, one per-project dispatcher, five-second legacy wait budget, completion-based timers, bounded retry, and at most one per-row finalization before all-state upgrade. |
 | `gh auth switch` races writes | Capture login, verify every returned author, recheck before transaction, suspend old visibility when detected, discard stale results, and allow one origin-owned follow-up. Cache-first reads intentionally detect at the next trigger. |
-| Stable project id moves to another repository | Bind visible rows to canonical repository identity and verified project path; path mismatch hides immediately and refresh suspends on source mismatch. |
+| Stable project id moves to another repository | Persist each observed session's normalized Git common directory, bind project cache metadata to the current path's common directory, and require equality on live association; path mismatch hides immediately and old-session branch names cannot join new-repository PRs. |
 | Short-lived PR opens and closes between open polls | Successful all-state reconciliation at least every ten minutes while viewed. |
 | Same checkout links one PR to multiple sessions | Explicitly accepted; share the watcher but persist/session-map independently. |
 | Laptop-created root switches before phone fetch | Persist exact `session.created` root through the mutation dispatcher before unseen handling; DAO watch enrolls it. |
@@ -629,8 +667,8 @@ advisory and does not block plan closure or any later wave.
 gh --version
 gh api user --hostname github.com --jq .login
 gh repo view --json nameWithOwner --jq .nameWithOwner
-gh pr list --state open --author @me --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
-gh pr list --state all --author @me --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
+gh pr list --state open --author @me --search sort:created-desc --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
+gh pr list --state all --author @me --search sort:created-desc --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
 gh pr view <number> --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author
 ```
 
@@ -640,11 +678,12 @@ repository identity is normalized to lowercase `owner/name`. A `gh pr view` call
 receives the list-only `--author` flag, so its parsed `author.login` must equal
 the request's captured active login before acceptance.
 
-The list DTO reports `truncated = rows.length == 1001` and exposes only the
-first 1,000 rows. A complete result may replace branch-matched rows for the
-captured login. A truncated result may upsert returned rows and finalize a
-specifically queried known PR, but it does not delete rows absent from the
-partial result or claim complete history.
+The supported search qualifier makes the returned window creation-descending.
+The list DTO reports `truncated = rows.length == 1001` and exposes only the first
+1,000 rows. A complete result may replace branch-matched rows for the captured
+login. A truncated result may upsert returned rows and finalize a specifically
+queried known PR, but it does not delete rows absent from the partial result or
+claim complete history.
 
 ### Refresh policies
 
@@ -652,18 +691,25 @@ Activation/all-state:
 
 1. Resolve GitHub availability, active login, canonical repository identity,
    and cached GitHub-remote eligibility.
-2. Resolve/persist every active root session's current named branch and read the
-   complete durable branch union. On the first post-migration verification,
-   include archived-only durable branch history without touching archived paths.
-3. Before query, suspend old visibility if cached path/repository/login differs;
-   if current identity cannot be verified, suspend and stop.
+2. Resolve/persist every active root session's current named branch and Git
+   common directory. Resolve the current project path's common directory and
+   read only history rows whose own non-null common-directory binding equals
+   both the session's current binding and project value. On first post-migration
+   verification, archived-only history remains eligible only when its rows
+   already carry that repository binding; no archived path is touched or guessed.
+3. Before query, suspend old visibility if cached path/common-directory/
+   repository/login differs; if current identity cannot be verified, suspend
+   and stop.
 4. Query all states with the 1,001-row contract; reject cross-repository or
    mismatched-author rows.
-5. Recheck active login/repository. On difference or failure, suspend old
-   visibility, discard observations, and return typed identity failure.
-6. Atomically upsert/replace supported branch matches and project cache
-   login/repository/path metadata. Only a complete result deletes absent
-   branch-matched rows.
+5. Recheck active login/repository plus current project path/common-directory
+   binding. On difference or failure, suspend old visibility, discard
+   observations, and return typed identity failure.
+6. Ask `PullRequestRepository` to atomically revalidate the complete captured
+   session state plus each history row's common-directory/branch identity, then
+   upsert/replace supported bound matches and project cache login/repository/path/
+   common-directory metadata. Scope mismatch writes nothing; only a complete
+   result deletes absent branch-matched rows.
 7. Publish a rendered-change completion only when headline/history output can
    differ.
 
@@ -676,8 +722,8 @@ Steady open refresh:
    run one `gh pr view`; if two or more are absent, upgrade to one all-state list
    in the same serialized execution. Accept only same-author/repository results.
 4. A truncated open result does not treat absence as closure.
-5. Recheck login/repository before one transaction and apply the same
-   suspension/identity-change rule.
+5. Recheck login/repository/path/common-directory before one transaction and
+   apply the same suspension/identity-change rule.
 6. Schedule the next one-shot timer from completion time, never start time.
 
 Continuous-view all-state deadline:
@@ -696,13 +742,16 @@ Continuous-view all-state deadline:
 `sessions_table` additions:
 
 - `directory TEXT NOT NULL` — exact root-session working directory;
+- `git_common_directory TEXT NULL` — normalized absolute local repository
+  binding; null means git has not verified the migrated/failed location;
 - `current_branch_name TEXT NULL` — current named branch or null; and
 - `pr_tracking_stopped_at INTEGER NULL` — irreversible PR terminal marker.
 
 `session_branch_history`:
 
-- key `(owner_identity, session_id, branch_name)`;
-- non-null `owner_identity`, `first_seen_at`, and `last_seen_at`;
+- key `(owner_identity, session_id, git_common_directory, branch_name)`;
+- non-null `owner_identity`, normalized `git_common_directory`, `first_seen_at`,
+  and `last_seen_at`;
 - FK session delete cascade.
 
 `pull_requests_table` additions/rekey:
@@ -710,14 +759,15 @@ Continuous-view all-state deadline:
 - key `(owner_identity, project_id, pr_number)`;
 - non-null `owner_identity`;
 - nullable `github_author_login` and `github_repository_identity`, hidden until
-  both match non-null project cache metadata and the cache's verified path equals
-  current `projects.path`.
+  both match non-null project cache metadata, the cache's verified path equals
+  current `projects.path`, and the session/project Git common directories match.
 
 `projects_table` cache metadata:
 
 - nullable `pr_cache_github_login`;
-- nullable canonical `pr_cache_repository_identity`; and
-- nullable `pr_cache_project_path`.
+- nullable canonical `pr_cache_repository_identity`;
+- nullable `pr_cache_project_path`; and
+- nullable normalized `pr_cache_git_common_directory`.
 
 `archived_session_pull_requests`:
 
@@ -734,14 +784,20 @@ Continuous-view all-state deadline:
 2. Run existing worktree/branch cleanup validation and operations.
 3. In one `SessionArchiveRepository` transaction, write `archived_at`, write the
    irreversible stop marker, freeze current/history branches, and snapshot only
-   global-cache rows verified against project cache login/repository and current
-   verified project path.
+   global-cache rows verified against project cache login/repository, current
+   verified project path, and a history row whose own binding matches frozen
+   session/project Git common directories.
 4. Return the archived session from the immutable snapshot read path.
 5. Publish an archive-final request containing session id, project id/path,
-   frozen branches, captured snapshot login, and repository identity.
-6. The archive listener delegates one all-state attempt. Unknown login or
-   repository clears a non-empty snapshot. Mismatch clears and emits change
-   before querying the new identity. Same-login/repository query failure retains
-   the snapshot. Success rechecks both and atomically replaces the full snapshot.
+   frozen session Git common directory plus frozen per-row common-directory/
+   branch identities, captured snapshot login, and repository identity.
+6. The archive listener delegates one all-state attempt. Unknown login,
+   repository, project common directory, or mismatch with the frozen session
+   binding clears a non-empty snapshot and stops before an unsafe query.
+   Identity mismatch clears and emits change before querying the new identity.
+   Same-login/repository/binding query failure retains the snapshot. Success
+   rechecks all bindings, then the repository replacement transaction re-reads
+   terminal state, project path, and expected project/frozen-session common
+   directories before atomically replacing the full snapshot.
 7. No retry, pending sentinel, startup recovery, later project-poll mutation, or
    unarchive restart exists.
