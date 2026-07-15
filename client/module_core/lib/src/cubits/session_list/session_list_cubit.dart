@@ -6,7 +6,6 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../api/session_api.dart";
-import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
@@ -14,6 +13,7 @@ import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
+import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/session_list_service.dart";
@@ -26,7 +26,7 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   final SessionService _sessionService;
   final SessionListService _sessionListService;
-  final ProjectService _projectService;
+  final ProjectRepository _projectRepository;
   final ConnectionService _connectionService;
   final SseEventTracker _sseEventTracker;
   final SessionUnseenTracker _sessionUnseenTracker;
@@ -46,7 +46,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   SessionListCubit({
     required SessionService sessionService,
     required SessionListService sessionListService,
-    required ProjectService projectService,
+    required ProjectRepository projectRepository,
     required ConnectionService connectionService,
     required SseEventTracker sseEventTracker,
     required SessionUnseenTracker sessionUnseenTracker,
@@ -55,7 +55,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     required FailureReporter failureReporter,
   }) : _sessionService = sessionService,
        _sessionListService = sessionListService,
-       _projectService = projectService,
+       _projectRepository = projectRepository,
        _connectionService = connectionService,
        _sseEventTracker = sseEventTracker,
        _sessionUnseenTracker = sessionUnseenTracker,
@@ -658,7 +658,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         projectId: _projectId,
         waitForPrData: waitForPrData,
       ),
-      _projectService.getBaseBranch(projectId: _projectId),
+      _projectRepository.getBaseBranch(projectId: _projectId),
     ).wait;
     if (isClosed) return false;
 

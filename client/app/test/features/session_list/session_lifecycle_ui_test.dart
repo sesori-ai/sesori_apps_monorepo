@@ -298,7 +298,7 @@ class _TestArchiveSheetState extends State<_TestArchiveSheet> {
 void main() {
   late MockSessionListCubit mockCubit;
   late MockSessionService mockSessionService;
-  late MockProjectService mockProjectService;
+  late MockProjectRepository mockProjectRepository;
   late MockConnectionService mockConnectionService;
   late MockSseEventTracker mockSseEventTracker;
   late MockRouteSource mockRouteSource;
@@ -310,7 +310,7 @@ void main() {
   setUp(() {
     mockCubit = MockSessionListCubit();
     mockSessionService = MockSessionService();
-    mockProjectService = MockProjectService();
+    mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     mockSseEventTracker = MockSseEventTracker();
     mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
@@ -331,7 +331,7 @@ void main() {
       ),
     );
     when(
-      () => mockProjectService.getBaseBranch(projectId: any(named: "projectId")),
+      () => mockProjectRepository.getBaseBranch(projectId: any(named: "projectId")),
     ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null)));
     when(
       () => mockFailureReporter.recordFailure(
@@ -349,8 +349,8 @@ void main() {
     await statusController.close();
 
     final getIt = GetIt.instance;
-    if (getIt.isRegistered<ProjectService>()) {
-      getIt.unregister<ProjectService>();
+    if (getIt.isRegistered<ProjectRepository>()) {
+      getIt.unregister<ProjectRepository>();
     }
     if (getIt.isRegistered<ConnectionService>()) {
       getIt.unregister<ConnectionService>();
@@ -529,17 +529,16 @@ void main() {
       final session = _testSessionWithPullRequest();
 
       when(
-        () => mockProjectService.listSessions(
+        () => mockProjectRepository.listSessions(
           projectId: session.projectID,
           waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
 
       getIt.registerSingleton<SessionService>(mockSessionService);
-      getIt.registerSingleton<ProjectService>(mockProjectService);
+      getIt.registerSingleton<ProjectRepository>(mockProjectRepository);
       registerListServices(
-        projectService: mockProjectService,
-        projectRepository: MockProjectRepository(),
+        projectRepository: mockProjectRepository,
       );
       getIt.registerSingleton<ConnectionService>(mockConnectionService);
       getIt.registerSingleton<SseEventTracker>(mockSseEventTracker);

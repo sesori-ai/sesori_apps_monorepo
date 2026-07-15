@@ -6,12 +6,12 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
+import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/project_list_service.dart";
 import "../../services/registered_bridges_service.dart";
@@ -29,7 +29,7 @@ const refreshThrottleDuration = Duration(seconds: 30);
 const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
 class ProjectListCubit extends Cubit<ProjectListState> {
-  final ProjectService _projectService;
+  final ProjectRepository _projectRepository;
   final ProjectListService _projectListService;
   final ConnectionService _connectionService;
   final SseEventTracker _sseEventTracker;
@@ -40,7 +40,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   ProjectListCubit(
-    ProjectService projectService,
+    ProjectRepository projectRepository,
     ConnectionService connectionService,
     SseEventTracker sseEventTracker,
     RouteSource routeSource, {
@@ -48,7 +48,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     required SessionUnseenTracker sessionUnseenTracker,
     required RegisteredBridgesService registeredBridgesService,
     required FailureReporter failureReporter,
-  }) : _projectService = projectService,
+  }) : _projectRepository = projectRepository,
        _projectListService = projectListService,
        _connectionService = connectionService,
        _sseEventTracker = sseEventTracker,
@@ -458,7 +458,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// current state on success. Returns whether the bridge accepted the hide,
   /// so the UI can report a rejected hide instead of claiming success.
   Future<bool> hideProject(String projectId) async {
-    final response = await _projectService.hideProject(projectId: projectId);
+    final response = await _projectRepository.hideProject(projectId: projectId);
     if (isClosed) return false;
     if (response case ErrorResponse(:final error)) {
       loge("Failed to hide project: ${error.toString()}");
@@ -487,7 +487,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// On success the project list is refreshed. A permission denial from the
   /// bridge is reported distinctly so the UI can show an actionable message.
   Future<AddProjectOutcome> createProject({required String path}) async {
-    final response = await _projectService.createProject(path: path);
+    final response = await _projectRepository.createProject(path: path);
     if (isClosed) return AddProjectOutcome.otherError;
     switch (response) {
       case SuccessResponse():
@@ -501,7 +501,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// Renames the project with [projectId] to [name].
   /// Returns `true` on success (and refreshes the project list), `false` on error.
   Future<bool> renameProject({required String projectId, required String name}) async {
-    final response = await _projectService.renameProject(projectId: projectId, name: name);
+    final response = await _projectRepository.renameProject(projectId: projectId, name: name);
     if (isClosed) return false;
     switch (response) {
       case SuccessResponse():
@@ -517,7 +517,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// On success the project list is refreshed. A permission denial from the
   /// bridge is reported distinctly so the UI can show an actionable message.
   Future<AddProjectOutcome> discoverProject({required String path}) async {
-    final response = await _projectService.discoverProject(path: path);
+    final response = await _projectRepository.discoverProject(path: path);
     if (isClosed) return AddProjectOutcome.otherError;
     switch (response) {
       case SuccessResponse():
@@ -533,7 +533,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// A permission denial from the bridge is reported distinctly so the browser
   /// can show an actionable macOS Full Disk Access message.
   Future<FilesystemSuggestionsOutcome> fetchFilesystemSuggestions({required String? prefix}) async {
-    final response = await _projectService.getFilesystemSuggestions(prefix: prefix);
+    final response = await _projectRepository.getFilesystemSuggestions(prefix: prefix);
     switch (response) {
       case SuccessResponse(:final data):
         return FilesystemSuggestionsSuccess(suggestions: data);

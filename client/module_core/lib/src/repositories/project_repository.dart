@@ -3,16 +3,44 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/filesystem_api.dart";
 import "../api/project_api.dart";
 
 @lazySingleton
 class ProjectRepository {
   final ProjectApi _api;
+  final FilesystemApi _filesystemApi;
 
-  ProjectRepository({required ProjectApi api}) : _api = api;
+  ProjectRepository({
+    required ProjectApi api,
+    required FilesystemApi filesystemApi,
+  }) : _api = api,
+       _filesystemApi = filesystemApi;
 
   Future<ApiResponse<Projects>> listProjects() {
     return _api.listProjects();
+  }
+
+  Future<ApiResponse<Project>> createProject({required String path}) {
+    return _api.createProject(path: path);
+  }
+
+  Future<ApiResponse<Project>> discoverProject({required String path}) {
+    return _api.discoverProject(path: path);
+  }
+
+  Future<ApiResponse<void>> hideProject({required String projectId}) {
+    return _api.hideProject(projectId: projectId);
+  }
+
+  Future<ApiResponse<FilesystemSuggestions>> getFilesystemSuggestions({
+    required String? prefix,
+  }) {
+    return _filesystemApi.getSuggestions(prefix: prefix);
+  }
+
+  Future<ApiResponse<BaseBranchResponse>> getBaseBranch({required String projectId}) {
+    return _api.getBaseBranch(projectId: projectId);
   }
 
   Future<ApiResponse<SessionListResponse>> listSessions({
@@ -23,6 +51,13 @@ class ProjectRepository {
       projectId: projectId,
       waitForPrData: waitForPrData,
     );
+  }
+
+  Future<ApiResponse<Project>> renameProject({
+    required String projectId,
+    required String name,
+  }) {
+    return _api.renameProject(projectId: projectId, name: name);
   }
 
   Future<ProjectSessionContext?> findSessionContext({required String sessionId}) async {

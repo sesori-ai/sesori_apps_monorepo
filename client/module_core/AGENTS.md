@@ -12,7 +12,6 @@ Business logic, state management, services, and models for the Sesori ecosystem.
 lib/src/
 ├── api/              HTTP clients (base, relay-routed), models, converters, parsing
 ├── capabilities/     Domain services
-│   ├── project/      ProjectService
 │   ├── relay/        RelayClient, RoomKeyStorage, relay config
 │   ├── server_connection/  ConnectionService, SSE models, connection status
 │   ├── session/      SessionService

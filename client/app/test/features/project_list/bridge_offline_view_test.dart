@@ -50,7 +50,6 @@ BridgeSummary _bridge({
 }
 
 void main() {
-  late MockProjectService mockProjectService;
   late MockProjectRepository mockProjectRepository;
   late MockConnectionService mockConnectionService;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
@@ -60,7 +59,6 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   setUp(() {
-    mockProjectService = MockProjectService();
     mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
@@ -76,9 +74,8 @@ void main() {
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
-    getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
+    getIt.registerLazySingleton<ProjectRepository>(() => mockProjectRepository);
     registerListServices(
-      projectService: mockProjectService,
       projectRepository: mockProjectRepository,
     );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);

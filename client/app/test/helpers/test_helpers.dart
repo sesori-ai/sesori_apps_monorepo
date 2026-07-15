@@ -13,7 +13,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef, RouteS
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
-import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
@@ -62,8 +61,6 @@ class StubConnectionOverlayCubit extends Cubit<ConnectionOverlayState> implement
   @override
   void reconnect() {}
 }
-
-class MockProjectService extends Mock implements ProjectService {}
 
 class MockProjectApi extends Mock implements ProjectApi {}
 
@@ -138,7 +135,6 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 class MockAnalyticsReporter extends Mock implements AnalyticsReporter {}
 
 void registerListServices({
-  required ProjectService projectService,
   required MockProjectRepository projectRepository,
 }) {
   if (getIt.isRegistered<ProjectListService>()) {
@@ -147,17 +143,6 @@ void registerListServices({
   if (getIt.isRegistered<SessionListService>()) {
     getIt.unregister<SessionListService>();
   }
-  when(
-    () => projectRepository.listSessions(
-      projectId: any(named: "projectId"),
-      waitForPrData: any(named: "waitForPrData"),
-    ),
-  ).thenAnswer(
-    (invocation) => projectService.listSessions(
-      projectId: invocation.namedArguments[#projectId]! as String,
-      waitForPrData: invocation.namedArguments[#waitForPrData]! as bool,
-    ),
-  );
   getIt.registerSingleton<ProjectListService>(
     ProjectListService(repository: projectRepository),
   );

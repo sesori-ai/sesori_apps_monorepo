@@ -28,7 +28,6 @@ void main() {
 
   late BehaviorSubject<ConnectionStatus> statusController;
   late MockConnectionService mockConnectionService;
-  late MockProjectService mockProjectService;
   late MockProjectRepository mockProjectRepository;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late StubConnectionOverlayCubit overlayCubit;
@@ -38,7 +37,6 @@ void main() {
   setUp(() {
     statusController = BehaviorSubject<ConnectionStatus>.seeded(connected);
     mockConnectionService = MockConnectionService();
-    mockProjectService = MockProjectService();
     mockProjectRepository = MockProjectRepository();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     overlayCubit = StubConnectionOverlayCubit();
@@ -51,9 +49,8 @@ void main() {
     // empty state with the bridges it would offer to add a project on.
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
-    getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
+    getIt.registerLazySingleton<ProjectRepository>(() => mockProjectRepository);
     registerListServices(
-      projectService: mockProjectService,
       projectRepository: mockProjectRepository,
     );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
@@ -164,7 +161,7 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets("Hide Project dismisses the menu, hides the project, and confirms with a snackbar", (tester) async {
-    when(() => mockProjectService.hideProject(projectId: any(named: "projectId"))).thenAnswer(
+    when(() => mockProjectRepository.hideProject(projectId: any(named: "projectId"))).thenAnswer(
       (_) async => ApiResponse.success(null),
     );
 
@@ -174,7 +171,7 @@ void main() {
     await tester.tap(find.widgetWithText(InkWell, "Hide Project"));
     await tester.pumpAndSettle();
 
-    verify(() => mockProjectService.hideProject(projectId: project.id)).called(1);
+    verify(() => mockProjectRepository.hideProject(projectId: project.id)).called(1);
     expect(find.text("Hide Project"), findsNothing);
     expect(find.text("Project hidden"), findsOneWidget);
     // The bridge confirmed, so the row is gone.
@@ -184,7 +181,7 @@ void main() {
   testWidgets("Hide Project reports the failure when the bridge rejects the hide", (tester) async {
     // The cubit only drops the project once the bridge confirms; a rejected
     // hide must not claim success while the row stays in the list.
-    when(() => mockProjectService.hideProject(projectId: any(named: "projectId"))).thenAnswer(
+    when(() => mockProjectRepository.hideProject(projectId: any(named: "projectId"))).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),
     );
 
@@ -221,6 +218,6 @@ void main() {
 
     expect(find.text("Rename"), findsNothing);
     expect(find.text("Hide Project"), findsNothing);
-    verifyNever(() => mockProjectService.hideProject(projectId: any(named: "projectId")));
+    verifyNever(() => mockProjectRepository.hideProject(projectId: any(named: "projectId")));
   });
 }

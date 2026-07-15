@@ -20,7 +20,6 @@ See the [root README](../README.md) for the full monorepo overview.
 
 | Service | Purpose |
 |---------|---------|
-| `ProjectService` | CRUD operations for projects |
 | `SessionService` | Session creation, listing, and message fetching |
 | `ConnectionService` | Manages the relay WebSocket lifecycle |
 | `RelayClient` | Low-level relay WebSocket client with E2E encryption |

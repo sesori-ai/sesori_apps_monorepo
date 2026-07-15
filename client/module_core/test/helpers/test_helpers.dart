@@ -3,9 +3,9 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/api/filesystem_api.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
-import "package:sesori_dart_core/src/capabilities/project/project_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
@@ -106,9 +106,9 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
   void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
 }
 
-class MockProjectService extends Mock implements ProjectService {}
-
 class MockProjectApi extends Mock implements ProjectApi {}
+
+class MockFilesystemApi extends Mock implements FilesystemApi {}
 
 class MockProjectRepository extends Mock implements ProjectRepository {}
 
