@@ -1212,6 +1212,27 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       collector.modelId = eventMapper.modelForSession(sessionId);
       collector.providerId = eventMapper.providerForSession(sessionId);
       return collector.build();
+    } on AcpRpcException catch (error, stackTrace) {
+      if (error.code == -32601 || error.code == -32602) {
+        // cursor-agent rejects `session/load` for some stored sessions with
+        // method-not-found / invalid-params (e.g. a session created by a prior
+        // agent process, or whose worktree was moved/removed). This is not a
+        // transport failure and a retry cannot succeed, so degrade to whatever
+        // history replayed before the rejection — the same fail-soft empty
+        // thread the no-loadSession branch above returns — keeping the session
+        // openable and promptable instead of 502ing the whole detail view.
+        Log.w("[$id] session/load rejected for $sessionId (code ${error.code}); showing collected history", error, stackTrace);
+        return collector.build();
+      }
+      // Any other RPC error is a genuine load failure — surface it typed.
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          "session/load history replay",
+          message: "history replay for $sessionId failed",
+          cause: error,
+        ),
+        stackTrace,
+      );
     } on Object catch (error, stackTrace) {
       // A broken replay (connect/init/auth/load failure) must stay
       // distinguishable from a genuinely empty thread: surface it as a typed
