@@ -21,22 +21,22 @@ class GitDiffOutputMapper {
   }
 
   String? parseSingleSha({required Object? output}) {
-    final lines = decodeOutput(output: output)
-        .split("\n")
-        .where((line) => line.trim().isNotEmpty)
-        .toList(growable: false);
+    final lines = decodeOutput(
+      output: output,
+    ).split("\n").where((line) => line.trim().isNotEmpty).toList(growable: false);
     return lines.length == 1 ? lines.single.trim() : null;
+  }
+
+  int? parseByteCount({required Object? output}) {
+    return int.tryParse(decodeOutput(output: output).trim());
   }
 
   List<SessionDiffEntry> parseNameStatus({required Object? output}) {
     final entries = <SessionDiffEntry>[];
-    for (final rawLine in decodeOutput(output: output).split("\n")) {
-      final line = rawLine.trim();
-      if (line.isEmpty) continue;
-      final parts = line.split("\t");
-      if (parts.length < 2) continue;
-      final statusToken = parts.first.trim();
-      final file = parts.last.trim();
+    final fields = decodeOutput(output: output).split("\x00");
+    for (var index = 0; index + 1 < fields.length; index += 2) {
+      final statusToken = fields[index].trim();
+      final file = fields[index + 1];
       if (statusToken.isEmpty || file.isEmpty) continue;
       entries.add((file: file, status: _parseStatus(token: statusToken)));
     }
@@ -45,15 +45,15 @@ class GitDiffOutputMapper {
 
   Map<String, SessionDiffLineCounts> parseNumstat({required Object? output}) {
     final byFile = <String, SessionDiffLineCounts>{};
-    for (final rawLine in decodeOutput(output: output).split("\n")) {
-      final line = rawLine.trim();
-      if (line.isEmpty) continue;
-      final parts = line.split("\t");
-      if (parts.length < 3) continue;
-      final file = parts.last.trim();
+    for (final record in decodeOutput(output: output).split("\x00")) {
+      if (record.isEmpty) continue;
+      final firstSeparator = record.indexOf("\t");
+      final secondSeparator = record.indexOf("\t", firstSeparator + 1);
+      if (firstSeparator < 0 || secondSeparator < 0) continue;
+      final file = record.substring(secondSeparator + 1);
       if (file.isEmpty) continue;
-      final additionsToken = parts[0].trim();
-      final deletionsToken = parts[1].trim();
+      final additionsToken = record.substring(0, firstSeparator).trim();
+      final deletionsToken = record.substring(firstSeparator + 1, secondSeparator).trim();
       byFile[file] = (
         additions: additionsToken == "-" ? 0 : int.tryParse(additionsToken) ?? 0,
         deletions: deletionsToken == "-" ? 0 : int.tryParse(deletionsToken) ?? 0,
@@ -63,12 +63,7 @@ class GitDiffOutputMapper {
   }
 
   List<String> parseUntrackedPaths({required Object? output}) {
-    final paths = <String>[];
-    for (final rawLine in decodeOutput(output: output).split("\n")) {
-      final path = rawLine.endsWith("\r") ? rawLine.substring(0, rawLine.length - 1) : rawLine;
-      if (path.isNotEmpty) paths.add(path);
-    }
-    return paths;
+    return decodeOutput(output: output).split("\x00").where((path) => path.isNotEmpty).toList(growable: false);
   }
 
   List<SessionDiffEntry> mergeTrackedAndUntrackedEntries({

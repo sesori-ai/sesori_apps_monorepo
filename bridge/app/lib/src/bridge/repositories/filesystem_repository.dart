@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -63,7 +64,6 @@ class FilesystemRepository {
     "ico",
     "webp",
     "bmp",
-    "svg",
     "tiff",
     "woff",
     "woff2",
@@ -139,7 +139,10 @@ class FilesystemRepository {
 
     try {
       final entityType = _filesystemApi.entityType(candidatePath);
-      if (entityType == FileSystemEntityType.link || entityType == FileSystemEntityType.notFound) {
+      if (entityType == FileSystemEntityType.link) {
+        return BoundedTextFileReadFailure();
+      }
+      if (entityType == FileSystemEntityType.notFound) {
         return BoundedTextFileMissing();
       }
 
@@ -149,22 +152,18 @@ class FilesystemRepository {
         return BoundedTextFileReadFailure();
       }
 
-      if (_filesystemApi.fileLength(candidatePath) > maxBytes) {
+      final bytes = _filesystemApi.readFilePrefix(
+        path: candidatePath,
+        maxBytes: maxBytes,
+      );
+      if (bytes.length > maxBytes) {
         return BoundedTextFileTooLarge();
       }
-
+      if (bytes.contains(0)) {
+        return BoundedTextFileBinary();
+      }
       try {
-        final content = _filesystemApi.readFileAsString(candidatePath);
-        return content.contains("\x00") ? BoundedTextFileBinary() : BoundedTextFileContent(content: content);
-      } on FileSystemException {
-        try {
-          if (_filesystemApi.readFileAsBytes(candidatePath).contains(0)) {
-            return BoundedTextFileBinary();
-          }
-        } on FileSystemException {
-          return BoundedTextFileReadFailure();
-        }
-        return BoundedTextFileReadFailure();
+        return BoundedTextFileContent(content: utf8.decode(bytes));
       } on FormatException {
         return BoundedTextFileBinary();
       }

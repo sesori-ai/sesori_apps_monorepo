@@ -56,16 +56,19 @@ class FilesystemApi {
     return Directory(path).resolveSymbolicLinksSync();
   }
 
-  int fileLength(String path) {
-    return File(path).lengthSync();
-  }
-
-  String readFileAsString(String path) {
-    return File(path).readAsStringSync();
-  }
-
-  List<int> readFileAsBytes(String path) {
-    return File(path).readAsBytesSync();
+  List<int> readFilePrefix({required String path, required int maxBytes}) {
+    final file = File(path).openSync();
+    try {
+      final bytes = <int>[];
+      while (bytes.length <= maxBytes) {
+        final chunk = file.readSync(maxBytes + 1 - bytes.length);
+        if (chunk.isEmpty) break;
+        bytes.addAll(chunk);
+      }
+      return bytes;
+    } finally {
+      file.closeSync();
+    }
   }
 
   /// Appends [content] to the file at [path], creating it if needed.

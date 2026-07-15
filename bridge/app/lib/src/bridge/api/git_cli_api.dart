@@ -155,6 +155,7 @@ class GitCliApi {
         "--no-color",
         "--no-renames",
         "--name-status",
+        "-z",
         revision,
       ],
     );
@@ -172,6 +173,7 @@ class GitCliApi {
         "--no-color",
         "--no-renames",
         "--numstat",
+        "-z",
         revision,
       ],
     );
@@ -180,7 +182,18 @@ class GitCliApi {
   Future<ProcessResult> listUntrackedFiles({required String projectPath}) {
     return runGit(
       projectPath: projectPath,
-      arguments: const ["ls-files", "--others", "--exclude-standard"],
+      arguments: const ["ls-files", "--others", "--exclude-standard", "-z"],
+    );
+  }
+
+  Future<ProcessResult> fileSizeAtRevision({
+    required String projectPath,
+    required String revision,
+    required String file,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["cat-file", "-s", "$revision:$file"],
     );
   }
 

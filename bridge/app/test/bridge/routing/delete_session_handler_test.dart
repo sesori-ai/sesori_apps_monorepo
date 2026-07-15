@@ -169,11 +169,15 @@ void main() {
     });
 
     test("failed worktree removal preserves the session for retry", () async {
+      final worktree = Directory.systemTemp.createTempSync("delete_cleanup_failure_");
+      addTearDown(() {
+        if (worktree.existsSync()) worktree.deleteSync(recursive: true);
+      });
       await _insertSession(
         db: db,
         sessionId: "s2-failed",
         projectId: "/repo",
-        worktreePath: "/repo/.worktrees/session-002-failed",
+        worktreePath: worktree.path,
         branchName: "session-002-failed",
       );
       worktreeService.safetyResult = WorktreeSafe();

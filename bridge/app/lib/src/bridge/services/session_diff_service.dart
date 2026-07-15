@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
@@ -119,7 +121,7 @@ class SessionDiffService {
 
       final before = (beforeResult as _DiffFileContent).content;
       final after = (afterResult as _DiffFileContent).content;
-      if (before.length + after.length > _maxFileContentBytes) {
+      if (utf8.encode(before).length + utf8.encode(after).length > _maxFileContentBytes) {
         diffs.add(
           FileDiff.skipped(
             file: entry.file,
@@ -164,9 +166,11 @@ class SessionDiffService {
       worktreePath: worktreePath,
       revision: revision,
       file: entry.file,
+      maxBytes: _maxFileContentBytes,
     )) {
       SessionDiffRevisionFileContent(:final content) => _DiffFileContent(content: content),
       SessionDiffRevisionFileBinary() => _DiffFileBinary(),
+      SessionDiffRevisionFileTooLarge() => _DiffFileTooLarge(),
       SessionDiffRevisionFileReadFailure() => _DiffFileReadFailure(),
     };
   }
@@ -251,10 +255,6 @@ class SessionDiffService {
   }
 
   List<String> _normalizedLines({required String content}) {
-    return content
-        .replaceAll("\r\n", "\n")
-        .split("\n")
-        .map((line) => line.replaceAll("\r", ""))
-        .toList();
+    return content.replaceAll("\r\n", "\n").split("\n").map((line) => line.replaceAll("\r", "")).toList();
   }
 }

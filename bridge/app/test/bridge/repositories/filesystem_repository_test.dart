@@ -27,6 +27,46 @@ void main() {
       expect(repository.directoryExists(path: "${tempDir.path}/missing"), isFalse);
     });
 
+    test("reads SVG files as bounded text", () {
+      File("${tempDir.path}/icon.svg").writeAsStringSync("<svg></svg>");
+
+      final result = repository.readBoundedTextFile(
+        rootDirectoryPath: tempDir.path,
+        relativePath: "icon.svg",
+        maxBytes: 100,
+      );
+
+      expect(result, isA<BoundedTextFileContent>());
+    });
+
+    test("returns read failure for symlinks instead of missing content", () {
+      File("${tempDir.path}/target.txt").writeAsStringSync("target");
+      Link("${tempDir.path}/link.txt").createSync("${tempDir.path}/target.txt");
+
+      final result = repository.readBoundedTextFile(
+        rootDirectoryPath: tempDir.path,
+        relativePath: "link.txt",
+        maxBytes: 100,
+      );
+
+      expect(result, isA<BoundedTextFileReadFailure>());
+    });
+
+    test("classifies a max-plus-one prefix as too large", () {
+      final growingRepository = FilesystemRepository(
+        filesystemApi: _GrowingFilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      final result = growingRepository.readBoundedTextFile(
+        rootDirectoryPath: "/root",
+        relativePath: "growing.txt",
+        maxBytes: 5,
+      );
+
+      expect(result, isA<BoundedTextFileTooLarge>());
+    });
+
     test("listSuggestions maps directories and flags git repos", () {
       Directory("${tempDir.path}/plain").createSync();
       final repo = Directory("${tempDir.path}/with_git")..createSync();
@@ -121,13 +161,7 @@ class _PermissionDeniedFilesystemApi implements FilesystemApi {
   String? readFileIfExists(String path) => null;
 
   @override
-  int fileLength(String path) => throw UnimplementedError();
-
-  @override
-  List<int> readFileAsBytes(String path) => throw UnimplementedError();
-
-  @override
-  String readFileAsString(String path) => throw UnimplementedError();
+  List<int> readFilePrefix({required String path, required int maxBytes}) => throw UnimplementedError();
 
   @override
   String resolveDirectoryPath(String path) => throw UnimplementedError();
@@ -137,4 +171,21 @@ class _PermissionDeniedFilesystemApi implements FilesystemApi {
 
   @override
   void appendToFile(String path, String content) {}
+}
+
+class _GrowingFilesystemApi implements FilesystemApi {
+  @override
+  FileSystemEntityType entityType(String path) => FileSystemEntityType.file;
+
+  @override
+  List<int> readFilePrefix({required String path, required int maxBytes}) => "123456".codeUnits;
+
+  @override
+  String resolveDirectoryPath(String path) => path;
+
+  @override
+  String resolveFilePath(String path) => path;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

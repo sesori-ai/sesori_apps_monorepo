@@ -123,7 +123,7 @@ class SessionLifecycleService {
         worktreePath: worktreePath,
         force: force,
       );
-      if (!removed) {
+      if (!removed && _filesystemRepository.classifyPath(path: worktreePath) != FilesystemEntityKind.notFound) {
         throw SessionCleanupFailedException(
           sessionId: sessionId,
           operation: SessionCleanupOperation.removeWorktree,

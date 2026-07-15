@@ -133,6 +133,19 @@ void main() {
       expect(content.deletions, greaterThan(0));
     });
 
+    test("reads raw untracked filenames containing tabs and newlines", () async {
+      const relativePath = "lib/tab\tand\nnewline.dart";
+      File("${worktreeDir.path}/$relativePath")
+        ..createSync(recursive: true)
+        ..writeAsStringSync("special content\n");
+
+      final diffs = await service.getDiffs(sessionId: "session-1");
+
+      final special = diffs.singleWhere((diff) => diff.file == relativePath);
+      expect(special, isA<FileDiffContent>());
+      expect((special as FileDiffContent).after, equals("special content\n"));
+    });
+
     test("keeps zero line counts for mode-only tracked changes", () async {
       await _runGit(processRunner, worktreeDir.path, ["checkout", "--", "."]);
       await _runGit(processRunner, worktreeDir.path, ["clean", "-fd"]);
@@ -168,7 +181,13 @@ void main() {
       await _runGit(processRunner, deletionRepo.path, ["add", "."]);
       await _runGit(processRunner, deletionRepo.path, ["commit", "-m", "base"]);
       await _runGit(processRunner, deletionRepo.path, ["branch", "-M", "main"]);
-      await _runGit(processRunner, deletionRepo.path, ["worktree", "add", deletionWorktree.path, "-b", "session-branch"]);
+      await _runGit(processRunner, deletionRepo.path, [
+        "worktree",
+        "add",
+        deletionWorktree.path,
+        "-b",
+        "session-branch",
+      ]);
       File("${deletionWorktree.path}/tracked.txt").writeAsStringSync("line one\n");
       await _insertStoredSession(
         db: db,

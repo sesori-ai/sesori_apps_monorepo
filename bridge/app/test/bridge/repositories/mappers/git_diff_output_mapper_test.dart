@@ -6,26 +6,47 @@ void main() {
   const mapper = GitDiffOutputMapper();
 
   group("parseUntrackedPaths", () {
-    test("parses one path per line and ignores blanks", () {
+    test("parses NUL-delimited raw paths", () {
       expect(
-        mapper.parseUntrackedPaths(output: "lib/new.dart\nassets/icon.png\n\n"),
+        mapper.parseUntrackedPaths(output: "lib/new.dart\x00assets/icon.png\x00"),
         equals(["lib/new.dart", "assets/icon.png"]),
       );
     });
 
     test("preserves leading and trailing whitespace in filenames", () {
       expect(
-        mapper.parseUntrackedPaths(output: " lib/spaced.dart \n"),
+        mapper.parseUntrackedPaths(output: " lib/spaced.dart \x00"),
         equals([" lib/spaced.dart "]),
       );
     });
 
-    test("strips carriage return line endings only", () {
+    test("preserves newlines and tabs in filenames", () {
       expect(
-        mapper.parseUntrackedPaths(output: "lib/new.dart\r\n"),
-        equals(["lib/new.dart"]),
+        mapper.parseUntrackedPaths(output: "lib/new\nfile.dart\x00lib/tab\tfile.dart\x00"),
+        equals(["lib/new\nfile.dart", "lib/tab\tfile.dart"]),
       );
     });
+  });
+
+  test("parseNameStatus preserves raw NUL-delimited paths", () {
+    expect(
+      mapper.parseNameStatus(
+        output: 'M\x00lib/quote"and\nnewline.dart\x00A\x00lib/tab\tfile.dart\x00',
+      ),
+      equals([
+        (file: 'lib/quote"and\nnewline.dart', status: FileDiffStatus.modified),
+        (file: "lib/tab\tfile.dart", status: FileDiffStatus.added),
+      ]),
+    );
+  });
+
+  test("parseNumstat preserves raw paths after count fields", () {
+    expect(
+      mapper.parseNumstat(output: "3\t2\tlib/quote\\and\nnewline.dart\x00"),
+      equals({
+        "lib/quote\\and\nnewline.dart": (additions: 3, deletions: 2),
+      }),
+    );
   });
 
   group("mergeTrackedAndUntrackedEntries", () {

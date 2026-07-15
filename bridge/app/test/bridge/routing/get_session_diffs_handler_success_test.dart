@@ -102,7 +102,7 @@ void main() {
           return ProcessResult(
             1,
             0,
-            "M\tlib/modified.dart\nA\tlib/added.dart\nD\tlib/deleted.dart\n",
+            "M\x00lib/modified.dart\x00A\x00lib/added.dart\x00D\x00lib/deleted.dart\x00",
             "",
           );
         }
@@ -110,7 +110,7 @@ void main() {
           return ProcessResult(
             1,
             0,
-            "5\t2\tlib/modified.dart\n8\t0\tlib/added.dart\n0\t3\tlib/deleted.dart\n",
+            "5\t2\tlib/modified.dart\x008\t0\tlib/added.dart\x000\t3\tlib/deleted.dart\x00",
             "",
           );
         }
@@ -203,10 +203,10 @@ void main() {
           return ProcessResult(1, 0, "abc123\n", "");
         }
         if (arguments.contains("--name-status")) {
-          return ProcessResult(1, 0, "M\tlib/kept.dart\nM\tlib/model.freezed.dart\n", "");
+          return ProcessResult(1, 0, "M\x00lib/kept.dart\x00M\x00lib/model.freezed.dart\x00", "");
         }
         if (arguments.contains("--numstat")) {
-          return ProcessResult(1, 0, "1\t0\tlib/kept.dart\n10\t2\tlib/model.freezed.dart\n", "");
+          return ProcessResult(1, 0, "1\t0\tlib/kept.dart\x0010\t2\tlib/model.freezed.dart\x00", "");
         }
         if (arguments.length >= 2 && arguments[0] == "show") {
           return ProcessResult(1, 0, "before\n", "");
@@ -260,7 +260,7 @@ void main() {
       processRunner.responder = ({required List<String> arguments}) {
         if (FakeProcessRunner.supportGitDiffCalls(
               arguments,
-              untrackedOutput: "lib/untracked.dart\n",
+              untrackedOutput: "lib/untracked.dart\x00",
             )
             case final result?) {
           return result;
@@ -337,10 +337,10 @@ void main() {
           return ProcessResult(1, 0, "abc123\n", "");
         }
         if (arguments.contains("--name-status")) {
-          return ProcessResult(1, 0, "M\tassets/blob.dat\n", "");
+          return ProcessResult(1, 0, "M\x00assets/blob.dat\x00", "");
         }
         if (arguments.contains("--numstat")) {
-          return ProcessResult(1, 0, "-\t-\tassets/blob.dat\n", "");
+          return ProcessResult(1, 0, "-\t-\tassets/blob.dat\x00", "");
         }
         if (arguments.length >= 2 && arguments[0] == "show") {
           return ProcessResult(1, 0, "", "");
@@ -405,10 +405,10 @@ void main() {
           return ProcessResult(1, 0, "abc123\n", "");
         }
         if (arguments.contains("--name-status")) {
-          return ProcessResult(1, 0, "M\tlib/too_large.dart\n", "");
+          return ProcessResult(1, 0, "M\x00lib/too_large.dart\x00", "");
         }
         if (arguments.contains("--numstat")) {
-          return ProcessResult(1, 0, "1\t1\tlib/too_large.dart\n", "");
+          return ProcessResult(1, 0, "1\t1\tlib/too_large.dart\x00", "");
         }
         if (arguments.length >= 2 && arguments[0] == "show") {
           return ProcessResult(1, 0, beforeLarge, "");
@@ -435,6 +435,135 @@ void main() {
       expect(entry["runtimeType"], equals("skipped"));
       expect(entry["reason"], equals("tooLarge"));
       expect(entry["status"], equals("modified"));
+    });
+
+    test("uses UTF-8 bytes for the combined content limit", () async {
+      final before = List.filled(30000, "😀").join();
+      final after = List.filled(30000, "🚀").join();
+      File("${tempDir.path}/lib/unicode.dart")
+        ..createSync(recursive: true)
+        ..writeAsStringSync(after);
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
+      await db.sessionDao.insertSession(
+        pluginId: "opencode",
+        sessionId: "unicode-session",
+        projectId: "project-1",
+        isDedicated: true,
+        createdAt: 123,
+        worktreePath: tempDir.path,
+        branchName: "unicode-session",
+        baseBranch: "main",
+        baseCommit: "main",
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      processRunner.responder = ({required List<String> arguments}) {
+        if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.length >= 2 && arguments[0] == "merge-base") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.contains("--name-status")) {
+          return ProcessResult(1, 0, "M\x00lib/unicode.dart\x00", "");
+        }
+        if (arguments.contains("--numstat")) {
+          return ProcessResult(1, 0, "1\t1\tlib/unicode.dart\x00", "");
+        }
+        if (arguments.first == "ls-files") {
+          return ProcessResult(1, 0, "", "");
+        }
+        if (arguments.first == "cat-file") {
+          return ProcessResult(1, 0, "120000\n", "");
+        }
+        if (arguments.first == "show") {
+          return ProcessResult(1, 0, before, "");
+        }
+        throw StateError("Unexpected git call: $arguments");
+      };
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "unicode-session")),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final body = switch (jsonDecode(response.body!)) {
+        {"diffs": final List<dynamic> list} => list,
+        _ => throw StateError("expected JSON object with diffs"),
+      };
+      final entry = body.single as Map<String, dynamic>;
+      expect(entry["runtimeType"], equals("skipped"));
+      expect(entry["reason"], equals("tooLarge"));
+    });
+
+    test("skips an oversized base blob without invoking git show", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
+      await db.sessionDao.insertSession(
+        pluginId: "opencode",
+        sessionId: "large-base-session",
+        projectId: "project-1",
+        isDedicated: true,
+        createdAt: 123,
+        worktreePath: tempDir.path,
+        branchName: "large-base-session",
+        baseBranch: "main",
+        baseCommit: "main",
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      processRunner.responder = ({required List<String> arguments}) {
+        if (arguments.length >= 2 && arguments[0] == "rev-parse" && arguments[1] == "--verify") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.length >= 2 && arguments[0] == "merge-base") {
+          return ProcessResult(1, 0, "abc123\n", "");
+        }
+        if (arguments.contains("--name-status")) {
+          return ProcessResult(1, 0, "D\x00lib/large.dart\x00", "");
+        }
+        if (arguments.contains("--numstat")) {
+          return ProcessResult(1, 0, "0\t300000\tlib/large.dart\x00", "");
+        }
+        if (arguments.first == "ls-files") {
+          return ProcessResult(1, 0, "", "");
+        }
+        if (arguments.first == "cat-file") {
+          return ProcessResult(1, 0, "300000\n", "");
+        }
+        if (arguments.first == "show") {
+          return ProcessResult(1, 0, List.filled(300000, "x").join(), "");
+        }
+        throw StateError("Unexpected git call: $arguments");
+      };
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/diffs",
+          body: jsonEncode(const SessionIdRequest(sessionId: "large-base-session")),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      final body = switch (jsonDecode(response.body!)) {
+        {"diffs": final List<dynamic> list} => list,
+        _ => throw StateError("expected JSON object with diffs"),
+      };
+      final entry = body.single as Map<String, dynamic>;
+      expect(entry["runtimeType"], equals("skipped"));
+      expect(entry["reason"], equals("tooLarge"));
+      expect(
+        processRunner.invocations.where((invocation) => invocation.arguments.first == "show"),
+        isEmpty,
+      );
     });
   });
 }

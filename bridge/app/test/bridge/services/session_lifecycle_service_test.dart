@@ -84,13 +84,17 @@ void main() {
     test("failed worktree removal throws instead of reporting success", () async {
       worktreeService.safetyResult = WorktreeSafe();
       worktreeService.removeResult = false;
+      final worktree = Directory.systemTemp.createTempSync("cleanup_failure_");
+      addTearDown(() {
+        if (worktree.existsSync()) worktree.deleteSync(recursive: true);
+      });
 
       await expectLater(
         () => _cleanup(
           service: service,
           sessionRepository: sessionRepository,
           sessionId: "s2-failed",
-          worktreePath: "/repo/.worktrees/session-002-failed",
+          worktreePath: worktree.path,
           branchName: "session-002-failed",
           deleteWorktree: true,
           deleteBranch: false,
@@ -104,6 +108,47 @@ void main() {
           ),
         ),
       );
+    });
+
+    test("identical retry continues branch cleanup after worktree was removed", () async {
+      worktreeService.safetyResult = WorktreeSafe();
+      worktreeService.deleteBranchResult = false;
+      final worktree = Directory.systemTemp.createTempSync("cleanup_retry_");
+      addTearDown(() {
+        if (worktree.existsSync()) worktree.deleteSync(recursive: true);
+      });
+
+      await expectLater(
+        () => _cleanup(
+          service: service,
+          sessionRepository: sessionRepository,
+          sessionId: "s2-retry",
+          worktreePath: worktree.path,
+          branchName: "session-002-retry",
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: true,
+        ),
+        throwsA(isA<SessionCleanupFailedException>()),
+      );
+      worktree.deleteSync(recursive: true);
+      worktreeService.removeResult = false;
+      worktreeService.deleteBranchResult = true;
+
+      final retryResult = await _cleanup(
+        service: service,
+        sessionRepository: sessionRepository,
+        sessionId: "s2-retry",
+        worktreePath: worktree.path,
+        branchName: "session-002-retry",
+        deleteWorktree: true,
+        deleteBranch: true,
+        force: true,
+      );
+
+      expect(retryResult, isA<CleanupSuccess>());
+      expect(worktreeService.removeCallCount, equals(2));
+      expect(worktreeService.deleteBranchCallCount, equals(2));
     });
 
     test("dirty worktree without force rejects with mapped issues", () async {

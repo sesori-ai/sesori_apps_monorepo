@@ -35,6 +35,8 @@ class SessionDiffRevisionFileContent extends SessionDiffRevisionFileReadResult {
 
 class SessionDiffRevisionFileBinary extends SessionDiffRevisionFileReadResult {}
 
+class SessionDiffRevisionFileTooLarge extends SessionDiffRevisionFileReadResult {}
+
 class SessionDiffRevisionFileReadFailure extends SessionDiffRevisionFileReadResult {}
 
 class SessionDiffRepository {
@@ -112,7 +114,24 @@ class SessionDiffRepository {
     required String worktreePath,
     required String revision,
     required String file,
+    required int maxBytes,
   }) async {
+    final sizeResult = await _gitCliApi.fileSizeAtRevision(
+      projectPath: worktreePath,
+      revision: revision,
+      file: file,
+    );
+    if (sizeResult.exitCode != 0) {
+      return SessionDiffRevisionFileReadFailure();
+    }
+    final byteCount = _outputMapper.parseByteCount(output: sizeResult.stdout);
+    if (byteCount == null || byteCount < 0) {
+      return SessionDiffRevisionFileReadFailure();
+    }
+    if (byteCount > maxBytes) {
+      return SessionDiffRevisionFileTooLarge();
+    }
+
     final result = await _gitCliApi.readFileAtRevision(
       projectPath: worktreePath,
       revision: revision,
