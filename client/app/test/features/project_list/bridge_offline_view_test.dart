@@ -51,6 +51,7 @@ BridgeSummary _bridge({
 
 void main() {
   late MockProjectService mockProjectService;
+  late MockProjectRepository mockProjectRepository;
   late MockConnectionService mockConnectionService;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late StubConnectionOverlayCubit overlayCubit;
@@ -60,6 +61,7 @@ void main() {
 
   setUp(() {
     mockProjectService = MockProjectService();
+    mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     overlayCubit = StubConnectionOverlayCubit();
@@ -68,14 +70,17 @@ void main() {
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
-    when(() => mockProjectService.listProjects()).thenAnswer(
+    when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),
     );
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
-    registerListServices(projectService: mockProjectService);
+    registerListServices(
+      projectService: mockProjectService,
+      projectRepository: mockProjectRepository,
+    );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);

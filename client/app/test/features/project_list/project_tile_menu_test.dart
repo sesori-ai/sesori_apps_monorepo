@@ -29,6 +29,7 @@ void main() {
   late BehaviorSubject<ConnectionStatus> statusController;
   late MockConnectionService mockConnectionService;
   late MockProjectService mockProjectService;
+  late MockProjectRepository mockProjectRepository;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late StubConnectionOverlayCubit overlayCubit;
 
@@ -38,6 +39,7 @@ void main() {
     statusController = BehaviorSubject<ConnectionStatus>.seeded(connected);
     mockConnectionService = MockConnectionService();
     mockProjectService = MockProjectService();
+    mockProjectRepository = MockProjectRepository();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     overlayCubit = StubConnectionOverlayCubit();
 
@@ -50,7 +52,10 @@ void main() {
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
-    registerListServices(projectService: mockProjectService);
+    registerListServices(
+      projectService: mockProjectService,
+      projectRepository: mockProjectRepository,
+    );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);
@@ -70,7 +75,7 @@ void main() {
   /// Pumps the real screen with a single project loaded. A router hosts it
   /// because the rename sheet pops itself with go_router's `context.pop()`.
   Future<void> pumpScreen(WidgetTester tester) async {
-    when(() => mockProjectService.listProjects()).thenAnswer(
+    when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(Projects(data: [project])),
     );
 

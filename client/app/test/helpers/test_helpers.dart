@@ -137,17 +137,18 @@ class MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class MockAnalyticsReporter extends Mock implements AnalyticsReporter {}
 
-void registerListServices({required ProjectService projectService}) {
+void registerListServices({
+  required ProjectService projectService,
+  required MockProjectRepository projectRepository,
+}) {
   if (getIt.isRegistered<ProjectListService>()) {
     getIt.unregister<ProjectListService>();
   }
   if (getIt.isRegistered<SessionListService>()) {
     getIt.unregister<SessionListService>();
   }
-  final repository = MockProjectRepository();
-  when(repository.listProjects).thenAnswer((_) => projectService.listProjects());
   when(
-    () => repository.listSessions(
+    () => projectRepository.listSessions(
       projectId: any(named: "projectId"),
       waitForPrData: any(named: "waitForPrData"),
     ),
@@ -158,10 +159,10 @@ void registerListServices({required ProjectService projectService}) {
     ),
   );
   getIt.registerSingleton<ProjectListService>(
-    ProjectListService(repository: repository),
+    ProjectListService(repository: projectRepository),
   );
   getIt.registerSingleton<SessionListService>(
-    SessionListService(repository: repository),
+    SessionListService(repository: projectRepository),
   );
 }
 

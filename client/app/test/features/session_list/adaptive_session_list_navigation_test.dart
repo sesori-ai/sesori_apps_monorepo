@@ -89,7 +89,7 @@ void main() {
       },
     );
 
-    when(() => harness.projectService.listProjects()).thenAnswer(
+    when(() => harness.projectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(
         const Projects(
           data: [
@@ -258,7 +258,7 @@ void main() {
       },
     );
 
-    when(() => harness.projectService.listProjects()).thenAnswer(
+    when(() => harness.projectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(
         const Projects(
           data: [
@@ -311,7 +311,7 @@ void main() {
       },
     );
 
-    when(() => harness.projectService.listProjects()).thenAnswer(
+    when(() => harness.projectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(
         const Projects(
           data: [

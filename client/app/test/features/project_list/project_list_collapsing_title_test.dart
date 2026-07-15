@@ -26,6 +26,7 @@ void main() {
   late BehaviorSubject<ConnectionStatus> statusController;
   late MockConnectionService mockConnectionService;
   late MockProjectService mockProjectService;
+  late MockProjectRepository mockProjectRepository;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late StubConnectionOverlayCubit overlayCubit;
 
@@ -35,16 +36,20 @@ void main() {
     statusController = BehaviorSubject<ConnectionStatus>.seeded(bridgeOffline);
     mockConnectionService = MockConnectionService();
     mockProjectService = MockProjectService();
+    mockProjectRepository = MockProjectRepository();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     overlayCubit = StubConnectionOverlayCubit();
 
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
-    when(() => mockProjectService.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+    when(() => mockProjectRepository.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
-    registerListServices(projectService: mockProjectService);
+    registerListServices(
+      projectService: mockProjectService,
+      projectRepository: mockProjectRepository,
+    );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);

@@ -40,6 +40,7 @@ const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
 
 void main() {
   late MockProjectService mockProjectService;
+  late MockProjectRepository mockProjectRepository;
   late MockConnectionService mockConnectionService;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late MockUrlLauncher mockUrlLauncher;
@@ -51,6 +52,7 @@ void main() {
 
   setUp(() {
     mockProjectService = MockProjectService();
+    mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     mockUrlLauncher = MockUrlLauncher();
@@ -68,7 +70,10 @@ void main() {
     ).thenAnswer((_) async {});
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
-    registerListServices(projectService: mockProjectService);
+    registerListServices(
+      projectService: mockProjectService,
+      projectRepository: mockProjectRepository,
+    );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);
@@ -112,7 +117,7 @@ void main() {
   /// setup onboarding.
   Future<void> pumpConnectSetup(WidgetTester tester) async {
     statusController.add(_bridgeOfflineStatus);
-    when(() => mockProjectService.listProjects()).thenAnswer(
+    when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),
     );
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
@@ -124,7 +129,7 @@ void main() {
   /// view.
   Future<void> pumpBridgeOffline(WidgetTester tester) async {
     statusController.add(_bridgeOfflineStatus);
-    when(() => mockProjectService.listProjects()).thenAnswer(
+    when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),
     );
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
