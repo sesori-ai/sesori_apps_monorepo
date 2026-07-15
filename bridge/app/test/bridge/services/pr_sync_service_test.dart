@@ -3,7 +3,6 @@ import "dart:async";
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
@@ -24,7 +23,7 @@ void main() {
       final pullRequestRepository = _FakePullRequestRepository();
       final sessionRepository = _FakeSessionRepository(
         sessionsByProject: <String, List<StoredSession>>{
-          "project-1": const <StoredSession>[StoredSession(id: "session-1", branchName: "feature/new-pr")],
+          "project-1": [_storedSession(id: "session-1", branchName: "feature/new-pr")],
         },
       );
       final service = PrSyncService(
@@ -77,7 +76,7 @@ void main() {
       );
       final sessionRepository = _FakeSessionRepository(
         sessionsByProject: <String, List<StoredSession>>{
-          "project-1": const <StoredSession>[StoredSession(id: "session-1", branchName: "feature/no-change")],
+          "project-1": [_storedSession(id: "session-1", branchName: "feature/no-change")],
         },
       );
       final service = PrSyncService(
@@ -121,7 +120,7 @@ void main() {
       );
       final sessionRepository = _FakeSessionRepository(
         sessionsByProject: <String, List<StoredSession>>{
-          "project-1": const <StoredSession>[StoredSession(id: "session-1", branchName: "feature/merged")],
+          "project-1": [_storedSession(id: "session-1", branchName: "feature/merged")],
         },
       );
       final service = PrSyncService(
@@ -576,7 +575,34 @@ class _FakeSessionRepository implements SessionRepository {
   Future<String?> getProjectPath({required String projectId}) async => null;
 
   @override
-  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<void> persistSessionsForProject({
+    required String projectId,
+    required List<Session> sessions,
+  }) async {}
+
+  @override
+  Future<void> createStoredSessionPlaceholder({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+  }) async {}
+
+  @override
+  Future<void> archiveStoredSession({
+    required String sessionId,
+    required int archivedAt,
+  }) async {}
+
+  @override
+  Future<void> unarchiveStoredSession({required String sessionId}) async {}
 
   @override
   Future<void> insertStoredSession({
@@ -649,4 +675,34 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
+}
+
+StoredSession _storedSession({
+  required String id,
+  required String? branchName,
+}) {
+  return StoredSession(
+    id: id,
+    backendSessionId: id,
+    pluginId: "fake",
+    projectId: "project-1",
+    parentSessionId: null,
+    directory: "/tmp/project-1",
+    worktreePath: null,
+    branchName: branchName,
+    isDedicated: false,
+    archivedAt: null,
+    baseBranch: null,
+    baseCommit: null,
+    lastAgent: null,
+    lastAgentModel: null,
+    createdAt: 1,
+    updatedAt: 1,
+    projectionUpdatedAt: 1,
+    lastActivityAt: null,
+    lastSeenAt: null,
+    lastUserMessageAt: null,
+    title: null,
+    catalogTitle: null,
+  );
 }

@@ -1,6 +1,6 @@
 # Bridge-Owned Project and Session Catalog Architecture
 
-> Status: **direction and execution plan approved; implementation not started**.
+> Status: **direction and execution plan approved; implementation in progress**.
 > This document records durable product and architecture decisions for parallel
 > plugin support. It is intentionally not an execution plan. The concrete data
 > flow, migration, rollout, verification, and staged PR sequence now live in

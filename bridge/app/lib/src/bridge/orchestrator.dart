@@ -29,19 +29,49 @@ import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/abort_session_handler.dart";
+import "routing/create_project_handler.dart";
+import "routing/create_session_handler.dart";
+import "routing/delete_session_handler.dart";
+import "routing/filesystem_suggestions_handler.dart";
+import "routing/get_agents_handler.dart";
+import "routing/get_base_branch_handler.dart";
+import "routing/get_child_sessions_handler.dart";
 import "routing/get_commands_handler.dart";
+import "routing/get_current_project_handler.dart";
+import "routing/get_project_questions_handler.dart";
+import "routing/get_projects_handler.dart";
+import "routing/get_providers_handler.dart";
 import "routing/get_session_diffs_handler.dart";
+import "routing/get_session_handler.dart";
+import "routing/get_session_messages_handler.dart";
+import "routing/get_session_permissions_handler.dart";
+import "routing/get_session_questions_handler.dart";
+import "routing/get_session_statuses_handler.dart";
+import "routing/get_sessions_handler.dart";
+import "routing/handlers/mark_session_seen_handler.dart";
+import "routing/health_check_handler.dart";
+import "routing/hide_project_handler.dart";
+import "routing/open_project_handler.dart";
+import "routing/post_agents_handler.dart";
+import "routing/reject_question_handler.dart";
+import "routing/rename_project_handler.dart";
+import "routing/rename_session_handler.dart";
+import "routing/reply_to_permission_handler.dart";
+import "routing/reply_to_question_handler.dart";
 import "routing/request_router.dart";
+import "routing/restart_bridge_handler.dart";
 import "routing/send_prompt_handler.dart";
+import "routing/set_base_branch_handler.dart";
+import "routing/update_session_archive_status_handler.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_archive_service.dart";
+import "services/session_cleanup_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
 import "services/session_mutation_dispatcher.dart";
-import "services/session_persistence_service.dart";
 import "services/session_prompt_service.dart";
 import "services/session_unseen_service.dart";
 import "services/session_view_tracker.dart";
@@ -76,7 +106,6 @@ class Orchestrator {
   final AgentRepository _agentRepository;
   final PermissionRepository _permissionRepository;
   final QuestionRepository _questionRepository;
-  final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
@@ -108,7 +137,6 @@ class Orchestrator {
     required AgentRepository agentRepository,
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
-    required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionMutationDispatcher sessionMutationDispatcher,
@@ -139,7 +167,6 @@ class Orchestrator {
        _agentRepository = agentRepository,
        _permissionRepository = permissionRepository,
        _questionRepository = questionRepository,
-       _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
        _sessionEventEnrichmentService = sessionEventEnrichmentService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
@@ -150,18 +177,97 @@ class Orchestrator {
   OrchestratorSession create() {
     final roomKey = _generateRoomKey();
     final bytesSentController = StreamController<int>.broadcast();
-    final sessionArchiveService = SessionArchiveService(
-      worktreeService: _worktreeService,
-      sessionRepository: _sessionRepository,
-      sessionPersistenceService: _sessionPersistenceService,
-    );
-    final sessionAbortService = SessionAbortService(sessionRepository: _sessionRepository);
     final sseManager = SSEManager(
       replayWindow: config.sseReplayWindow,
       onBytesSent: bytesSentController.add,
       failureReporter: _failureReporter,
     );
     sseManager.setRoomKey(roomKey);
+
+    final sessionPromptService = SessionPromptService(
+      sessionRepository: _sessionRepository,
+    );
+    final promptDefaultsSubscriptions = CompositeSubscription();
+    sessionPromptService.promptDefaultsChanges
+        .listen((change) {
+          sseManager.enqueueEvent(
+            SesoriSseEvent.sessionPromptDefaultsChanged(
+              sessionID: change.sessionId,
+              promptDefaults: change.promptDefaults,
+            ),
+          );
+        })
+        .addTo(promptDefaultsSubscriptions);
+    final sessionCleanupService = SessionCleanupService(
+      worktreeService: _worktreeService,
+      sessionRepository: _sessionRepository,
+    );
+    final sessionArchiveService = SessionArchiveService(
+      worktreeService: _worktreeService,
+      sessionRepository: _sessionRepository,
+      sessionCleanupService: sessionCleanupService,
+      filesystemRepository: _filesystemRepository,
+    );
+    final sessionAbortService = SessionAbortService(sessionRepository: _sessionRepository);
+    final router = RequestRouter(
+      handlers: [
+        HealthCheckHandler(healthRepository: _healthRepository),
+        RestartBridgeHandler(restartService: _restartService),
+        GetCurrentProjectHandler(projectRepository: _projectRepository),
+        GetProjectsHandler(projectActivityService: _projectActivityService),
+        GetCommandsHandler(sessionRepository: _sessionRepository),
+        GetSessionStatusesHandler(_plugin),
+        GetChildSessionsHandler(sessionRepository: _sessionRepository),
+        GetSessionHandler(_sessionRepository),
+        GetSessionMessagesHandler(sessionRepository: _sessionRepository),
+        GetSessionsHandler(
+          sessionRepository: _sessionRepository,
+          prSyncService: _prSyncService,
+          sessionMutationDispatcher: _sessionMutationDispatcher,
+          sessionUnseenService: _sessionUnseenService,
+        ),
+        CreateSessionHandler(sessionCreationService: _sessionCreationService),
+        RenameSessionHandler(sessionMutationDispatcher: _sessionMutationDispatcher),
+        MarkSessionSeenHandler(sessionUnseenService: _sessionUnseenService),
+        UpdateSessionArchiveStatusHandler(
+          sessionArchiveService: sessionArchiveService,
+          sessionUnseenService: _sessionUnseenService,
+        ),
+        DeleteSessionHandler(
+          sessionCleanupService: sessionCleanupService,
+          sessionMutationDispatcher: _sessionMutationDispatcher,
+        ),
+        SendPromptHandler(sessionPromptService: sessionPromptService),
+        AbortSessionHandler(sessionAbortService: sessionAbortService),
+        GetProvidersHandler(_providerRepository),
+        GetAgentsHandler(_agentRepository),
+        PostAgentsHandler(_agentRepository),
+        GetSessionQuestionsHandler(questionRepository: _questionRepository),
+        GetProjectQuestionsHandler(questionRepository: _questionRepository),
+        GetSessionPermissionsHandler(permissionRepository: _permissionRepository),
+        ReplyToQuestionHandler(questionRepository: _questionRepository),
+        RejectQuestionHandler(questionRepository: _questionRepository),
+        ReplyToPermissionHandler(permissionRepository: _permissionRepository),
+        RenameProjectHandler(_projectRepository),
+        CreateProjectHandler(
+          projectInitializationService: _projectInitializationService,
+          projectActivityService: _projectActivityService,
+        ),
+        OpenProjectHandler(
+          filesystemRepository: _filesystemRepository,
+          projectActivityService: _projectActivityService,
+        ),
+        HideProjectHandler(projectRepository: _projectRepository),
+        GetBaseBranchHandler(projectRepository: _projectRepository),
+        SetBaseBranchHandler(projectRepository: _projectRepository),
+        FilesystemSuggestionsHandler(filesystemRepository: _filesystemRepository),
+        GetSessionDiffsHandler(
+          sessionRepository: _sessionRepository,
+          filesystemRepository: _filesystemRepository,
+          processRunner: ProcessRunner(),
+        ),
+      ],
+    );
 
     return OrchestratorSession._(
       config: config,
@@ -175,25 +281,18 @@ class Orchestrator {
       bridgeRegistrationService: _bridgeRegistrationService,
       roomKey: roomKey,
       sseManager: sseManager,
+      router: router,
+      mapper: BridgeEventMapper(failureReporter: _failureReporter),
+      sessionPromptService: sessionPromptService,
+      promptDefaultsSubscriptions: promptDefaultsSubscriptions,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
       sessionRepository: _sessionRepository,
       prSyncService: _prSyncService,
-      projectRepository: _projectRepository,
       sessionUnseenService: _sessionUnseenService,
       sessionViewTracker: _sessionViewTracker,
-      filesystemRepository: _filesystemRepository,
-      projectInitializationService: _projectInitializationService,
       projectActivityService: _projectActivityService,
-      healthRepository: _healthRepository,
-      providerRepository: _providerRepository,
-      agentRepository: _agentRepository,
       permissionRepository: _permissionRepository,
-      questionRepository: _questionRepository,
-      sessionPersistenceService: _sessionPersistenceService,
-      worktreeService: _worktreeService,
-      sessionCreationService: _sessionCreationService,
-      sessionArchiveService: sessionArchiveService,
       sessionAbortService: sessionAbortService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
       sessionMutationDispatcher: _sessionMutationDispatcher,
@@ -238,6 +337,8 @@ class OrchestratorSession {
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionAbortService _sessionAbortService;
+  final SessionPromptService _sessionPromptService;
+  final CompositeSubscription _promptDefaultsSubscriptions;
   final ProjectActivityService _projectActivityService;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
@@ -277,25 +378,18 @@ class OrchestratorSession {
     required BridgeRegistrationService bridgeRegistrationService,
     required List<int> roomKey,
     required SSEManager sseManager,
+    required RequestRouter router,
+    required BridgeEventMapper mapper,
+    required SessionPromptService sessionPromptService,
+    required CompositeSubscription promptDefaultsSubscriptions,
     required StreamController<int> bytesSentController,
     required FailureReporter failureReporter,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
-    required ProjectRepository projectRepository,
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
-    required FilesystemRepository filesystemRepository,
-    required ProjectInitializationService projectInitializationService,
     required ProjectActivityService projectActivityService,
-    required HealthRepository healthRepository,
-    required ProviderRepository providerRepository,
-    required AgentRepository agentRepository,
     required PermissionRepository permissionRepository,
-    required QuestionRepository questionRepository,
-    required SessionPersistenceService sessionPersistenceService,
-    required WorktreeService worktreeService,
-    required SessionCreationService sessionCreationService,
-    required SessionArchiveService sessionArchiveService,
     required SessionAbortService sessionAbortService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionMutationDispatcher sessionMutationDispatcher,
@@ -311,6 +405,10 @@ class OrchestratorSession {
        _bridgeRegistrationService = bridgeRegistrationService,
        _roomKey = roomKey,
        _sseManager = sseManager,
+       _router = router,
+       _mapper = mapper,
+       _sessionPromptService = sessionPromptService,
+       _promptDefaultsSubscriptions = promptDefaultsSubscriptions,
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
@@ -323,44 +421,6 @@ class OrchestratorSession {
        _projectActivityService = projectActivityService,
        _restartService = restartService,
        _statusNotifier = statusNotifier,
-       _router = RequestRouter(
-         plugin: plugin,
-         getCommandsHandler: GetCommandsHandler(
-           sessionRepository: sessionRepository,
-         ),
-         sessionRepository: sessionRepository,
-         abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
-         sessionCreationService: sessionCreationService,
-         sessionArchiveService: sessionArchiveService,
-         sendPromptHandler: SendPromptHandler(
-           sessionPromptService: SessionPromptService(
-             sessionRepository: sessionRepository,
-             sseManager: sseManager,
-           ),
-         ),
-         prSyncService: prSyncService,
-         projectRepository: projectRepository,
-         filesystemRepository: filesystemRepository,
-         projectInitializationService: projectInitializationService,
-         projectActivityService: projectActivityService,
-         healthRepository: healthRepository,
-         providerRepository: providerRepository,
-         agentRepository: agentRepository,
-         permissionRepository: permissionRepository,
-         questionRepository: questionRepository,
-         sessionPersistenceService: sessionPersistenceService,
-         sessionUnseenService: sessionUnseenService,
-         sessionMutationDispatcher: sessionMutationDispatcher,
-         worktreeService: worktreeService,
-         sessionDiffsHandler: GetSessionDiffsHandler(
-           sessionRepository: sessionRepository,
-           processRunner: ProcessRunner(),
-         ),
-         restartService: restartService,
-       ),
-       _mapper = BridgeEventMapper(
-         failureReporter: failureReporter,
-       ),
        _sessionEventEnrichmentService = sessionEventEnrichmentService;
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
@@ -577,6 +637,8 @@ class OrchestratorSession {
       );
       await _subscriptions.cancel();
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
+      await _promptDefaultsSubscriptions.cancel();
+      await _sessionPromptService.dispose();
       await _sessionMutationDispatcher.dispose();
       await _projectActivityService.dispose();
       Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");

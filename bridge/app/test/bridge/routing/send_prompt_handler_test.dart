@@ -1,5 +1,4 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
@@ -25,16 +24,12 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = SendPromptHandler(
         sessionPromptService: SessionPromptService(
           sessionRepository: sessionRepository,
-          sseManager: FakeSSEManager(),
         ),
       );
     });
@@ -351,14 +346,11 @@ void main() {
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: localRepository, sseManager: FakeSSEManager()),
+        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
       );
 
       await expectLater(
@@ -404,14 +396,11 @@ void main() {
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: localRepository, sseManager: FakeSSEManager()),
+        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
       );
 
       await expectLater(
@@ -446,14 +435,16 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final promptService = SessionPromptService(sessionRepository: throwingRepository);
+      final changes = <SessionPromptDefaultsChange>[];
+      final subscription = promptService.promptDefaultsChanges.listen(changes.add);
+      addTearDown(subscription.cancel);
+      addTearDown(promptService.dispose);
       final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: throwingRepository, sseManager: FakeSSEManager()),
+        sessionPromptService: promptService,
       );
 
       final response = await localHandler.handle(
@@ -474,6 +465,7 @@ void main() {
       expect(response, equals(const SuccessEmptyResponse()));
       expect(plugin.lastSendPromptSessionId, equals("s-update-fails"));
       expect(throwingRepository.updatePromptDefaultsCallCount, equals(1));
+      expect(changes, isEmpty);
     });
 
     test("treats blank command as no command", () async {
@@ -575,7 +567,7 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
     required super.plugin,
     required super.sessionDao,
     required super.projectsDao,
-    required super.pullRequestRepository,
+    required super.pullRequestDao,
     required super.unseenCalculator,
   });
 

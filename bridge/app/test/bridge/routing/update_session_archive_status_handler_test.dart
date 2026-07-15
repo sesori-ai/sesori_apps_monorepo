@@ -2,16 +2,18 @@ import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_cleanup_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -37,22 +39,22 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final filesystemRepository = FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
       );
       handler = UpdateSessionArchiveStatusHandler(
         sessionArchiveService: SessionArchiveService(
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
-          sessionPersistenceService: SessionPersistenceService(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            db: db,
-            pluginId: "opencode",
+          sessionCleanupService: SessionCleanupService(
+            worktreeService: worktreeService,
+            sessionRepository: sessionRepository,
           ),
+          filesystemRepository: filesystemRepository,
         ),
         sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
       );

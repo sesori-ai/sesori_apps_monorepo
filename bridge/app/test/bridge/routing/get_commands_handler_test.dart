@@ -1,7 +1,6 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
@@ -27,10 +26,7 @@ void main() {
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
-          pullRequestRepository: PullRequestRepository(
-            pullRequestDao: db.pullRequestDao,
-            projectsDao: db.projectsDao,
-          ),
+          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         ),
       );

@@ -22,10 +22,10 @@ import "package:sesori_shared/sesori_shared.dart"
         Session,
         SessionVariant;
 
+import "../api/database/daos/pull_request_dao.dart";
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
-import "../persistence/tables/session_table.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
@@ -33,9 +33,9 @@ import "mappers/plugin_message_mapper.dart";
 import "mappers/plugin_session_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
 import "mappers/pull_request_mapper.dart";
+import "mappers/stored_session_mapper.dart";
 import "models/project_not_found_exception.dart";
 import "models/stored_session.dart";
-import "pull_request_repository.dart";
 import "session_unseen_calculator.dart";
 
 class SessionRepository {
@@ -44,7 +44,7 @@ class SessionRepository {
   final BridgePluginApi _plugin;
   final SessionDao _sessionDao;
   final ProjectsDao _projectsDao;
-  final PullRequestRepository _pullRequestRepository;
+  final PullRequestDao _pullRequestDao;
   final SessionUnseenCalculator _unseenCalculator;
   final Set<String> _tombstonedSessionIds = <String>{};
   Future<void>? _tombstoneLoad;
@@ -54,12 +54,12 @@ class SessionRepository {
     required BridgePluginApi plugin,
     required SessionDao sessionDao,
     required ProjectsDao projectsDao,
-    required PullRequestRepository pullRequestRepository,
+    required PullRequestDao pullRequestDao,
     required SessionUnseenCalculator unseenCalculator,
   }) : _plugin = plugin,
        _sessionDao = sessionDao,
        _projectsDao = projectsDao,
-       _pullRequestRepository = pullRequestRepository,
+       _pullRequestDao = pullRequestDao,
        _unseenCalculator = unseenCalculator;
 
   Future<List<Session>> getSessionsForProject({
@@ -520,7 +520,7 @@ class SessionRepository {
 
     final (dbSessions, prsBySessionId) = await (
       _sessionDao.getSessionsByIds(sessionIds: sessionIds),
-      _pullRequestRepository.getPrsBySessionIds(sessionIds: sessionIds),
+      _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds),
     ).wait;
 
     final pullRequestsBySessionId = <String, PullRequestInfo>{};
@@ -596,9 +596,7 @@ class SessionRepository {
 
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
-    return sessions
-        .map((session) => StoredSession(id: session.sessionId, branchName: session.branchName))
-        .toList(growable: false);
+    return sessions.map((session) => session.toStoredSession()).toList(growable: false);
   }
 
   Future<bool> hasOtherActiveSessionsSharing({
@@ -650,8 +648,68 @@ class SessionRepository {
     }
   }
 
-  Future<SessionDto?> getStoredSession({required String sessionId}) {
-    return _sessionDao.getSession(sessionId: sessionId);
+  Future<StoredSession?> getStoredSession({required String sessionId}) async {
+    return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
+  }
+
+  Future<void> persistSessionsForProject({
+    required String projectId,
+    required List<Session> sessions,
+  }) async {
+    await _sessionDao.attachedDatabase.transaction(() async {
+      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await _sessionDao.insertSessionsIfMissing(
+        pluginId: _plugin.id,
+        sessions: [
+          for (final session in sessions)
+            (
+              sessionId: session.id,
+              projectId: projectId,
+              createdAt: session.time?.created ?? DateTime.now().millisecondsSinceEpoch,
+              archivedAt: session.time?.archived,
+            ),
+        ],
+      );
+    });
+  }
+
+  Future<void> createStoredSessionPlaceholder({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+  }) async {
+    await _sessionDao.attachedDatabase.transaction(() async {
+      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await _sessionDao.insertSession(
+        sessionId: sessionId,
+        projectId: projectId,
+        isDedicated: isDedicated,
+        createdAt: createdAt,
+        worktreePath: worktreePath,
+        branchName: branchName,
+        baseBranch: baseBranch,
+        baseCommit: baseCommit,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: _plugin.id,
+      );
+    });
+  }
+
+  Future<void> archiveStoredSession({
+    required String sessionId,
+    required int archivedAt,
+  }) {
+    return _sessionDao.setArchived(sessionId: sessionId, archivedAt: archivedAt);
+  }
+
+  Future<void> unarchiveStoredSession({required String sessionId}) {
+    return _sessionDao.clearArchived(sessionId: sessionId);
   }
 
   Future<void> insertStoredSession({

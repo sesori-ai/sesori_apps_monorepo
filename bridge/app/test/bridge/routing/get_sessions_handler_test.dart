@@ -3,12 +3,10 @@ import "dart:convert";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -25,7 +23,6 @@ void main() {
     late FakePrSyncService prSyncService;
     late FakeSessionRepository sessionRepository;
     late AppDatabase db;
-    late SessionPersistenceService sessionPersistenceService;
     late _TrackingSessionMutationDispatcher sessionTitleService;
     late SessionUnseenService unseenService;
     late GetSessionsHandler handler;
@@ -40,19 +37,13 @@ void main() {
         plugin: plugin,
         sessionDao: sessionDao,
         pullRequestRepository: pullRequestRepository,
-      );
-      sessionPersistenceService = SessionPersistenceService(
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        db: db,
-        pluginId: "opencode",
+        persistenceDatabase: db,
       );
       sessionTitleService = _TrackingSessionMutationDispatcher();
       unseenService = buildTestSessionUnseenService(db, plugin);
       handler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
-        sessionPersistenceService: sessionPersistenceService,
         sessionMutationDispatcher: sessionTitleService,
         sessionUnseenService: unseenService,
       );
@@ -93,16 +84,12 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final realHandler = GetSessionsHandler(
         sessionRepository: realRepository,
         prSyncService: prSyncService,
-        sessionPersistenceService: sessionPersistenceService,
         sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: realRepository),
         sessionUnseenService: unseenService,
       );
@@ -335,7 +322,6 @@ void main() {
       final localHandler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
-        sessionPersistenceService: sessionPersistenceService,
         sessionMutationDispatcher: titleService,
         sessionUnseenService: unseenService,
       );
@@ -853,16 +839,12 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final realHandler = GetSessionsHandler(
         sessionRepository: realRepository,
         prSyncService: prSyncService,
-        sessionPersistenceService: sessionPersistenceService,
         sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: realRepository),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
@@ -1065,7 +1047,6 @@ void main() {
       final timeoutHandler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: slowPrSyncService,
-        sessionPersistenceService: sessionPersistenceService,
         sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         prRefreshTimeout: const Duration(milliseconds: 50),
@@ -1115,7 +1096,6 @@ void main() {
       final enrichedHandler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: fastPrSyncService,
-        sessionPersistenceService: sessionPersistenceService,
         sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );

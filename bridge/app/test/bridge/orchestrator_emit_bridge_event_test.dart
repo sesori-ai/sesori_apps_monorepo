@@ -16,7 +16,6 @@ import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
-import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
@@ -38,7 +37,6 @@ import "package:sesori_bridge/src/bridge/services/project_initialization_service
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -80,15 +78,11 @@ void main() {
     );
     final pushSubsystem = _createPushSubsystem();
     final fakePrSyncService = _FakePrSyncService();
-    final pullRequestRepository = PullRequestRepository(
-      pullRequestDao: database.pullRequestDao,
-      projectsDao: database.projectsDao,
-    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
@@ -99,12 +93,6 @@ void main() {
       filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: "opencode",
-    );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
@@ -214,7 +202,6 @@ void main() {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
       ),
-      sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
@@ -430,15 +417,11 @@ void main() {
       },
     );
     final fakePrSyncService = _FakePrSyncService();
-    final pullRequestRepository = PullRequestRepository(
-      pullRequestDao: database.pullRequestDao,
-      projectsDao: database.projectsDao,
-    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final relayClient = RelayClient(
@@ -460,12 +443,6 @@ void main() {
       filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: "opencode",
-    );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
@@ -558,7 +535,6 @@ void main() {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
       ),
-      sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
@@ -619,15 +595,11 @@ void main() {
       ),
     ];
     final fakePrSyncService = _FakePrSyncService();
-    final pullRequestRepository = PullRequestRepository(
-      pullRequestDao: database.pullRequestDao,
-      projectsDao: database.projectsDao,
-    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
@@ -638,12 +610,6 @@ void main() {
       filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: "opencode",
-    );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
@@ -752,7 +718,6 @@ void main() {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
       ),
-      sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
@@ -810,15 +775,11 @@ void main() {
       telemetryBuilder: pushDispatcher.telemetryBuilder,
       dispatcher: pushDispatcher,
     );
-    final pullRequestRepository = PullRequestRepository(
-      pullRequestDao: database.pullRequestDao,
-      projectsDao: database.projectsDao,
-    );
     final baseSessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final enrichGate = Completer<void>();
@@ -834,12 +795,6 @@ void main() {
       filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: "opencode",
-    );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
@@ -975,7 +930,6 @@ void main() {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
       ),
-      sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
@@ -1090,15 +1044,11 @@ void main() {
       dispatcher: pushDispatcher,
     );
     final plugin = _AbortPlugin();
-    final pullRequestRepository = PullRequestRepository(
-      pullRequestDao: database.pullRequestDao,
-      projectsDao: database.projectsDao,
-    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
@@ -1109,12 +1059,6 @@ void main() {
       filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: "opencode",
-    );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
@@ -1218,7 +1162,6 @@ void main() {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
       ),
-      sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
@@ -1257,15 +1200,11 @@ void main() {
     final notificationClient = _CapturingPushNotificationClient();
     final pushSubsystem = _createPushSubsystem(client: notificationClient);
     final plugin = _AbortEventPlugin();
-    final pullRequestRepository = PullRequestRepository(
-      pullRequestDao: database.pullRequestDao,
-      projectsDao: database.projectsDao,
-    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
@@ -1276,12 +1215,6 @@ void main() {
       filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: "opencode",
-    );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
@@ -1385,7 +1318,6 @@ void main() {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
       ),
-      sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
@@ -1449,15 +1381,11 @@ void main() {
     final plugin = _AbortEventPlugin()
       ..abortStartedCompleter = Completer<void>()
       ..abortCompleter = Completer<void>();
-    final pullRequestRepository = PullRequestRepository(
-      pullRequestDao: database.pullRequestDao,
-      projectsDao: database.projectsDao,
-    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
@@ -1468,12 +1396,6 @@ void main() {
       filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: "opencode",
-    );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
@@ -1577,7 +1499,6 @@ void main() {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
       ),
-      sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
@@ -2460,7 +2381,34 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
   @override
-  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<void> persistSessionsForProject({
+    required String projectId,
+    required List<Session> sessions,
+  }) async {}
+
+  @override
+  Future<void> createStoredSessionPlaceholder({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+  }) async {}
+
+  @override
+  Future<void> archiveStoredSession({
+    required String sessionId,
+    required int archivedAt,
+  }) async {}
+
+  @override
+  Future<void> unarchiveStoredSession({required String sessionId}) async {}
 
   @override
   Future<void> insertStoredSession({
@@ -2689,8 +2637,52 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<SessionDto?> getStoredSession({required String sessionId}) async {
+  Future<StoredSession?> getStoredSession({required String sessionId}) async {
     return _base.getStoredSession(sessionId: sessionId);
+  }
+
+  @override
+  Future<void> persistSessionsForProject({
+    required String projectId,
+    required List<Session> sessions,
+  }) {
+    return _base.persistSessionsForProject(projectId: projectId, sessions: sessions);
+  }
+
+  @override
+  Future<void> createStoredSessionPlaceholder({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+  }) {
+    return _base.createStoredSessionPlaceholder(
+      sessionId: sessionId,
+      projectId: projectId,
+      isDedicated: isDedicated,
+      createdAt: createdAt,
+      worktreePath: worktreePath,
+      branchName: branchName,
+      baseBranch: baseBranch,
+      baseCommit: baseCommit,
+    );
+  }
+
+  @override
+  Future<void> archiveStoredSession({
+    required String sessionId,
+    required int archivedAt,
+  }) {
+    return _base.archiveStoredSession(sessionId: sessionId, archivedAt: archivedAt);
+  }
+
+  @override
+  Future<void> unarchiveStoredSession({required String sessionId}) {
+    return _base.unarchiveStoredSession(sessionId: sessionId);
   }
 
   @override

@@ -8,11 +8,9 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 const _defaultWarmupCount = 25;
@@ -206,30 +204,6 @@ class _LiveListBenchmark {
     final nativeSmallRepository = _sessionRepository(database: database, plugin: nativeSmall);
     final derivedLargeRepository = _sessionRepository(database: database, plugin: derivedLarge);
     final derivedSmallRepository = _sessionRepository(database: database, plugin: derivedSmall);
-    final nativeLargePersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: nativeLarge.id,
-    );
-    final nativeSmallPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: nativeSmall.id,
-    );
-    final derivedLargePersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: derivedLarge.id,
-    );
-    final derivedSmallPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: derivedSmall.id,
-    );
     final nativeLargeDispatcher = SessionMutationDispatcher(sessionRepository: nativeLargeRepository);
     final nativeSmallDispatcher = SessionMutationDispatcher(sessionRepository: nativeSmallRepository);
     final derivedLargeDispatcher = SessionMutationDispatcher(sessionRepository: derivedLargeRepository);
@@ -251,7 +225,6 @@ class _LiveListBenchmark {
           plugin: nativeLarge,
           operation: () => _sessionEndpointCoreCount(
             repository: nativeLargeRepository,
-            persistenceService: nativeLargePersistenceService,
             mutationDispatcher: nativeLargeDispatcher,
             start: 0,
             limit: 100,
@@ -272,7 +245,6 @@ class _LiveListBenchmark {
           plugin: nativeSmall,
           operation: () => _sessionEndpointCoreCount(
             repository: nativeSmallRepository,
-            persistenceService: nativeSmallPersistenceService,
             mutationDispatcher: nativeSmallDispatcher,
             start: null,
             limit: null,
@@ -294,7 +266,6 @@ class _LiveListBenchmark {
           plugin: derivedLarge,
           operation: () => _sessionEndpointCoreCount(
             repository: derivedLargeRepository,
-            persistenceService: derivedLargePersistenceService,
             mutationDispatcher: derivedLargeDispatcher,
             start: 0,
             limit: 100,
@@ -315,7 +286,6 @@ class _LiveListBenchmark {
           plugin: derivedSmall,
           operation: () => _sessionEndpointCoreCount(
             repository: derivedSmallRepository,
-            persistenceService: derivedSmallPersistenceService,
             mutationDispatcher: derivedSmallDispatcher,
             start: null,
             limit: null,
@@ -338,17 +308,13 @@ class _LiveListBenchmark {
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: PullRequestRepository(
-        pullRequestDao: database.pullRequestDao,
-        projectsDao: database.projectsDao,
-      ),
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
   }
 
   Future<int> _sessionEndpointCoreCount({
     required SessionRepository repository,
-    required SessionPersistenceService persistenceService,
     required SessionMutationDispatcher mutationDispatcher,
     required int? start,
     required int? limit,
@@ -358,7 +324,7 @@ class _LiveListBenchmark {
       start: start,
       limit: limit,
     );
-    await persistenceService.persistSessionsForProject(
+    await repository.persistSessionsForProject(
       projectId: _projectDirectory,
       sessions: sessions,
     );

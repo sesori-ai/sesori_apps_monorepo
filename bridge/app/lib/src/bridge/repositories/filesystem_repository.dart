@@ -48,6 +48,10 @@ class FilesystemRepository {
   }) : _filesystemApi = filesystemApi,
        _permissionValidator = permissionValidator;
 
+  bool directoryExists({required String path}) {
+    return _guard(path: path, () => _filesystemApi.directoryExists(path));
+  }
+
   /// Lists child directories of [prefix], skipping dotfiles, mapped to shared
   /// [FilesystemSuggestion]s sorted by name.
   ///
@@ -74,7 +78,10 @@ class FilesystemRepository {
 
       final suggestions = selected
           .take(maxResults)
-          .map((e) => FilesystemSuggestion(path: e.path, name: e.name, isGitRepo: _filesystemApi.gitDirectoryExists(e.path)))
+          .map(
+            (e) =>
+                FilesystemSuggestion(path: e.path, name: e.name, isGitRepo: _filesystemApi.gitDirectoryExists(e.path)),
+          )
           .toList();
 
       return FilesystemSuggestions(data: suggestions);

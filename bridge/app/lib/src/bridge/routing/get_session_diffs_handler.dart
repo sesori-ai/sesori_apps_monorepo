@@ -1,8 +1,7 @@
-import "dart:io";
-
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/process_runner.dart";
+import "../repositories/filesystem_repository.dart";
 import "../repositories/session_repository.dart";
 import "../session_diffs/compute_session_diffs.dart";
 import "../session_diffs/exceptions.dart";
@@ -11,12 +10,15 @@ import "request_handler.dart";
 /// Returns file diffs for a session's worktree via bridge-side `git diff`.
 class GetSessionDiffsHandler extends BodyRequestHandler<SessionIdRequest, SessionDiffsResponse> {
   final SessionRepository _sessionRepository;
+  final FilesystemRepository _filesystemRepository;
   final ProcessRunner _processRunner;
 
   GetSessionDiffsHandler({
     required SessionRepository sessionRepository,
+    required FilesystemRepository filesystemRepository,
     required ProcessRunner processRunner,
   }) : _sessionRepository = sessionRepository,
+       _filesystemRepository = filesystemRepository,
        _processRunner = processRunner,
        super(
          HttpMethod.post,
@@ -42,7 +44,9 @@ class GetSessionDiffsHandler extends BodyRequestHandler<SessionIdRequest, Sessio
     final worktreePath = session.worktreePath;
     final baseBranch = session.baseBranch;
     if (worktreePath == null || baseBranch == null) return const SessionDiffsResponse(diffs: []);
-    if (!Directory(worktreePath).existsSync()) return const SessionDiffsResponse(diffs: []);
+    if (!_filesystemRepository.directoryExists(path: worktreePath)) {
+      return const SessionDiffsResponse(diffs: []);
+    }
 
     final List<FileDiff> diffs;
     try {

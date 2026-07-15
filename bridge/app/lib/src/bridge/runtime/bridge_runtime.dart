@@ -53,7 +53,6 @@ import "../services/project_initialization_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_event_enrichment_service.dart";
 import "../services/session_mutation_dispatcher.dart";
-import "../services/session_persistence_service.dart";
 import "../services/session_unseen_service.dart";
 import "../services/session_view_tracker.dart";
 import "../services/worktree_service.dart";
@@ -120,7 +119,7 @@ class BridgeRuntime {
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: unseenCalculator,
     );
     final projectRepository = ProjectRepository(
@@ -270,12 +269,6 @@ class BridgeRuntime {
           plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
-        ),
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          db: database,
-          pluginId: plugin.id,
         ),
         worktreeService: worktreeService,
         sessionEventEnrichmentService: sessionEventEnrichmentService,

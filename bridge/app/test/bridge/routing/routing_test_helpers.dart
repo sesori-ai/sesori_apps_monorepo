@@ -5,7 +5,6 @@ import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
-import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
@@ -14,6 +13,7 @@ import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_map
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/prompt_part_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
@@ -22,10 +22,8 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
-import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "../../helpers/fake_filesystem_api.dart";
@@ -490,33 +488,6 @@ class FakeSessionDao {
   }
 }
 
-class FakeSSEManager extends SSEManager {
-  FakeSSEManager()
-    : super(
-        replayWindow: const Duration(seconds: 1),
-        onBytesSent: (_) {},
-        failureReporter: _FakeFailureReporter(),
-      );
-}
-
-class _FakeFailureReporter implements FailureReporter {
-  @override
-  void setGlobalKey({required String key, required Object value}) {}
-
-  @override
-  void log({required String message}) {}
-
-  @override
-  Future<void> recordFailure({
-    required Object error,
-    required StackTrace stackTrace,
-    required String uniqueIdentifier,
-    required bool fatal,
-    required String? reason,
-    required Iterable<Object> information,
-  }) async {}
-}
-
 /// Hand-written fake [MetadataService] for testing.
 class FakeMetadataService implements MetadataService {
   bridge_metadata.SessionMetadata? generateResult;
@@ -635,33 +606,6 @@ class FakePrSyncService extends PrSyncService {
     if (delay != null) {
       await Future<void>.delayed(delay!);
     }
-  }
-}
-
-class FakeSessionPersistenceService extends SessionPersistenceService {
-  final List<({String projectId, List<Session> sessions})> persistedCalls =
-      <({String projectId, List<Session> sessions})>[];
-
-  FakeSessionPersistenceService()
-    : super(
-        projectsDao: _unsupportedProjectsDao(),
-        sessionDao: _unsupportedSessionDao(),
-        db: _unsupportedDatabase(),
-        pluginId: "opencode",
-      );
-
-  static ProjectsDao _unsupportedProjectsDao() => throw UnimplementedError();
-
-  static SessionDao _unsupportedSessionDao() => throw UnimplementedError();
-
-  static AppDatabase _unsupportedDatabase() => throw UnimplementedError();
-
-  @override
-  Future<void> persistSessionsForProject({
-    required String projectId,
-    required List<Session> sessions,
-  }) async {
-    persistedCalls.add((projectId: projectId, sessions: sessions));
   }
 }
 
@@ -789,7 +733,34 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
   @override
-  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<void> persistSessionsForProject({
+    required String projectId,
+    required List<Session> sessions,
+  }) async {}
+
+  @override
+  Future<void> createStoredSessionPlaceholder({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+  }) async {}
+
+  @override
+  Future<void> archiveStoredSession({
+    required String sessionId,
+    required int archivedAt,
+  }) async {}
+
+  @override
+  Future<void> unarchiveStoredSession({required String sessionId}) async {}
 
   @override
   Future<void> insertStoredSession({
@@ -871,6 +842,7 @@ class FakeSessionRepository implements SessionRepository {
   final FakeBridgePlugin _plugin;
   final FakeSessionDao _sessionDao;
   final FakePullRequestRepository _pullRequestRepository;
+  final AppDatabase? _persistenceDatabase;
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
   final Map<String, String?> enrichedTitleOverrides = {};
@@ -884,9 +856,11 @@ class FakeSessionRepository implements SessionRepository {
     required FakeBridgePlugin plugin,
     FakeSessionDao? sessionDao,
     FakePullRequestRepository? pullRequestRepository,
+    AppDatabase? persistenceDatabase,
   }) : _plugin = plugin,
        _sessionDao = sessionDao ?? FakeSessionDao(),
-       _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository();
+       _pullRequestRepository = pullRequestRepository ?? FakePullRequestRepository(),
+       _persistenceDatabase = persistenceDatabase;
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
@@ -1057,7 +1031,7 @@ class FakeSessionRepository implements SessionRepository {
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
     final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
-    return sessions.map((s) => StoredSession(id: s.sessionId, branchName: s.branchName)).toList(growable: false);
+    return sessions.map((session) => session.toStoredSession()).toList(growable: false);
   }
 
   @override
@@ -1080,9 +1054,54 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<SessionDto?> getStoredSession({required String sessionId}) async {
-    return _sessionDao.getSession(sessionId: sessionId);
+  Future<StoredSession?> getStoredSession({required String sessionId}) async {
+    return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
   }
+
+  @override
+  Future<void> persistSessionsForProject({
+    required String projectId,
+    required List<Session> sessions,
+  }) async {
+    final database = _persistenceDatabase;
+    if (database == null) return;
+    await database.transaction(() async {
+      await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await database.sessionDao.insertSessionsIfMissing(
+        pluginId: _plugin.id,
+        sessions: [
+          for (final session in sessions)
+            (
+              sessionId: session.id,
+              projectId: projectId,
+              createdAt: session.time?.created ?? DateTime.now().millisecondsSinceEpoch,
+              archivedAt: session.time?.archived,
+            ),
+        ],
+      );
+    });
+  }
+
+  @override
+  Future<void> createStoredSessionPlaceholder({
+    required String sessionId,
+    required String projectId,
+    required bool isDedicated,
+    required int createdAt,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+  }) async {}
+
+  @override
+  Future<void> archiveStoredSession({
+    required String sessionId,
+    required int archivedAt,
+  }) async {}
+
+  @override
+  Future<void> unarchiveStoredSession({required String sessionId}) async {}
 
   @override
   Future<void> insertStoredSession({

@@ -22,6 +22,11 @@ void main() {
       if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
     });
 
+    test("directoryExists delegates directory probes", () {
+      expect(repository.directoryExists(path: tempDir.path), isTrue);
+      expect(repository.directoryExists(path: "${tempDir.path}/missing"), isFalse);
+    });
+
     test("listSuggestions maps directories and flags git repos", () {
       Directory("${tempDir.path}/plain").createSync();
       final repo = Directory("${tempDir.path}/with_git")..createSync();

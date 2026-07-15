@@ -1,18 +1,30 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
-import "../sse/sse_manager.dart";
+
+class SessionPromptDefaultsChange {
+  final String sessionId;
+  final SessionPromptDefaults promptDefaults;
+
+  const SessionPromptDefaultsChange({
+    required this.sessionId,
+    required this.promptDefaults,
+  });
+}
 
 class SessionPromptService {
   final SessionRepository _sessionRepository;
-  final SSEManager _sseManager;
+  final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
+      StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
 
   SessionPromptService({
     required SessionRepository sessionRepository,
-    required SSEManager sseManager,
-  })  : _sessionRepository = sessionRepository,
-        _sseManager = sseManager;
+  }) : _sessionRepository = sessionRepository;
+
+  Stream<SessionPromptDefaultsChange> get promptDefaultsChanges => _promptDefaultsChangesController.stream;
 
   Future<void> sendPrompt({
     required String sessionId,
@@ -80,29 +92,21 @@ class SessionPromptService {
         agent: agent,
         agentModel: agentModel,
       );
-      _emitPromptDefaultsChanged(
-        sessionId: sessionId,
-        agent: agent,
-        agentModel: agentModel,
+      _promptDefaultsChangesController.add(
+        SessionPromptDefaultsChange(
+          sessionId: sessionId,
+          promptDefaults: SessionPromptDefaults(
+            agent: agent,
+            model: agentModel,
+          ),
+        ),
       );
-    } catch (e) {
-      Log.w("Failed to update prompt defaults for session $sessionId: $e");
+    } catch (error, stackTrace) {
+      Log.w("Failed to update prompt defaults for session $sessionId", error, stackTrace);
     }
   }
 
-  void _emitPromptDefaultsChanged({
-    required String sessionId,
-    required String? agent,
-    required AgentModel? agentModel,
-  }) {
-    _sseManager.enqueueEvent(
-      SesoriSseEvent.sessionPromptDefaultsChanged(
-        sessionID: sessionId,
-        promptDefaults: SessionPromptDefaults(
-          agent: agent,
-          model: agentModel,
-        ),
-      ),
-    );
+  Future<void> dispose() async {
+    await _promptDefaultsChangesController.close();
   }
 }

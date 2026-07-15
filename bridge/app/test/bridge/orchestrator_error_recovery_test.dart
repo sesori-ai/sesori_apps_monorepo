@@ -32,7 +32,6 @@ import "package:sesori_bridge/src/bridge/services/project_initialization_service
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -66,10 +65,7 @@ void main() {
         plugin: plugin,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: database.pullRequestDao,
-          projectsDao: database.projectsDao,
-        ),
+        pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
@@ -179,12 +175,6 @@ void main() {
           plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
-        ),
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          db: database,
-          pluginId: "opencode",
         ),
         worktreeService: WorktreeService(
           worktreeRepository: WorktreeRepository(
@@ -328,7 +318,7 @@ class _TestHarness {
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final prSyncService = PrSyncService(
@@ -346,12 +336,6 @@ class _TestHarness {
       filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: database.sessionDao);
-    final sessionPersistenceService = SessionPersistenceService(
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      db: database,
-      pluginId: "opencode",
-    );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
@@ -461,7 +445,6 @@ class _TestHarness {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
       ),
-      sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,

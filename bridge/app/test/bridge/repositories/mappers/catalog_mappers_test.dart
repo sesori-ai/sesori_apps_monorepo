@@ -2,6 +2,7 @@ import "package:sesori_bridge/src/bridge/persistence/tables/projects_table.dart"
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/project_catalog_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_catalog_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -79,5 +80,57 @@ void main() {
     expect(session.promptDefaults?.agent, "build");
     expect(session.hasWorktree, isTrue);
     expect(session.unseen, isTrue);
+  });
+
+  test("StoredSessionMapper preserves the complete persistence row", () {
+    const row = SessionDto(
+      sessionId: "sesori-id",
+      backendSessionId: "backend-id",
+      projectId: "project-1",
+      parentSessionId: "parent-id",
+      directory: "/projects/one",
+      worktreePath: "/worktrees/one",
+      branchName: "feature",
+      isDedicated: true,
+      archivedAt: 30,
+      baseBranch: "main",
+      baseCommit: "abc",
+      lastAgent: "build",
+      lastAgentModel: AgentModel(providerID: "anthropic", modelID: "claude", variant: "high"),
+      createdAt: 10,
+      updatedAt: 20,
+      projectionUpdatedAt: 21,
+      lastActivityAt: 22,
+      lastSeenAt: 23,
+      lastUserMessageAt: 24,
+      pluginId: "codex",
+      title: "Override",
+      catalogTitle: "Observed",
+    );
+
+    final stored = row.toStoredSession();
+
+    expect(stored.id, row.sessionId);
+    expect(stored.backendSessionId, row.backendSessionId);
+    expect(stored.pluginId, row.pluginId);
+    expect(stored.projectId, row.projectId);
+    expect(stored.parentSessionId, row.parentSessionId);
+    expect(stored.directory, row.directory);
+    expect(stored.worktreePath, row.worktreePath);
+    expect(stored.branchName, row.branchName);
+    expect(stored.isDedicated, row.isDedicated);
+    expect(stored.archivedAt, row.archivedAt);
+    expect(stored.baseBranch, row.baseBranch);
+    expect(stored.baseCommit, row.baseCommit);
+    expect(stored.lastAgent, row.lastAgent);
+    expect(stored.lastAgentModel, row.lastAgentModel);
+    expect(stored.createdAt, row.createdAt);
+    expect(stored.updatedAt, row.updatedAt);
+    expect(stored.projectionUpdatedAt, row.projectionUpdatedAt);
+    expect(stored.lastActivityAt, row.lastActivityAt);
+    expect(stored.lastSeenAt, row.lastSeenAt);
+    expect(stored.lastUserMessageAt, row.lastUserMessageAt);
+    expect(stored.title, row.title);
+    expect(stored.catalogTitle, row.catalogTitle);
   });
 }

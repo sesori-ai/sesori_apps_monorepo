@@ -1,13 +1,12 @@
 import "dart:async";
-import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/tables/session_table.dart";
+import "../repositories/filesystem_repository.dart";
+import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
-import "../routing/worktree_cleanup.dart";
-import "session_persistence_service.dart";
+import "session_cleanup_service.dart";
 import "worktree_service.dart";
 
 class SessionArchiveConflictException implements Exception {
@@ -39,15 +38,18 @@ class SessionInitializationException implements Exception {}
 class SessionArchiveService {
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
-  final SessionPersistenceService _sessionPersistenceService;
+  final SessionCleanupService _sessionCleanupService;
+  final FilesystemRepository _filesystemRepository;
 
   SessionArchiveService({
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
-    required SessionPersistenceService sessionPersistenceService,
+    required SessionCleanupService sessionCleanupService,
+    required FilesystemRepository filesystemRepository,
   }) : _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
-       _sessionPersistenceService = sessionPersistenceService;
+       _sessionCleanupService = sessionCleanupService,
+       _filesystemRepository = filesystemRepository;
 
   Future<ArchiveStatusUpdate> updateArchiveStatus({
     required String sessionId,
@@ -56,28 +58,32 @@ class SessionArchiveService {
     required bool deleteBranch,
     required bool force,
   }) async {
-    final sessionDto = await _getSessionDto(sessionId: sessionId);
-    final wasArchived = sessionDto.archivedAt != null;
+    final storedSession = await _getStoredSession(sessionId: sessionId);
+    final wasArchived = storedSession.archivedAt != null;
     final session = archived
         ? await _doArchive(
-            sessionDto: sessionDto,
+            storedSession: storedSession,
             deleteWorktree: deleteWorktree,
             deleteBranch: deleteBranch,
             force: force,
           )
-        : await _doUnarchive(sessionDto: sessionDto);
-    return ArchiveStatusUpdate(session: session, changed: wasArchived != archived, projectId: sessionDto.projectId);
+        : await _doUnarchive(storedSession: storedSession);
+    return ArchiveStatusUpdate(
+      session: session,
+      changed: wasArchived != archived,
+      projectId: storedSession.projectId,
+    );
   }
 
-  Future<SessionDto> _getSessionDto({required String sessionId}) async {
-    if (await _sessionRepository.getStoredSession(sessionId: sessionId) case final sessionDto?) {
-      return sessionDto;
+  Future<StoredSession> _getStoredSession({required String sessionId}) async {
+    if (await _sessionRepository.getStoredSession(sessionId: sessionId) case final storedSession?) {
+      return storedSession;
     }
     final projectId = await _sessionRepository.findProjectIdForSession(sessionId: sessionId);
     if (projectId == null) {
       throw SessionNotFoundException();
     }
-    await _sessionPersistenceService.createSession(
+    await _sessionRepository.createStoredSessionPlaceholder(
       sessionId: sessionId,
       projectId: projectId,
       isDedicated: true,
@@ -95,37 +101,40 @@ class SessionArchiveService {
   }
 
   Future<Session> _doArchive({
-    required SessionDto sessionDto,
+    required StoredSession storedSession,
     required bool deleteWorktree,
     required bool deleteBranch,
     required bool force,
   }) async {
     final archivedAt = DateTime.now().millisecondsSinceEpoch;
     await _cleanupIfNeeded(
-      sessionDto: sessionDto,
+      storedSession: storedSession,
       deleteWorktree: deleteWorktree,
       deleteBranch: deleteBranch,
       force: force,
     );
     if (await _sessionRepository.getSessionForProject(
-          projectId: sessionDto.projectId,
-          sessionId: sessionDto.sessionId,
+          projectId: storedSession.projectId,
+          sessionId: storedSession.id,
         ) ==
         null) {
       throw SessionNotFoundException();
     }
-    await _sessionPersistenceService.archiveSession(
-      sessionId: sessionDto.sessionId,
+    await _sessionRepository.archiveStoredSession(
+      sessionId: storedSession.id,
       archivedAt: archivedAt,
     );
     unawaited(
-      _sessionRepository.notifySessionArchived(sessionId: sessionDto.sessionId).catchError((Object e) {
-        Log.w("[archive] failed to notify plugin for session ${sessionDto.sessionId}: $e");
+      _sessionRepository.notifySessionArchived(sessionId: storedSession.id).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        Log.w("[archive] failed to notify plugin for session ${storedSession.id}", error, stackTrace);
       }),
     );
     final session = await _sessionRepository.getSessionForProject(
-      projectId: sessionDto.projectId,
-      sessionId: sessionDto.sessionId,
+      projectId: storedSession.projectId,
+      sessionId: storedSession.id,
     );
     if (session == null) {
       throw SessionNotFoundException();
@@ -134,7 +143,7 @@ class SessionArchiveService {
   }
 
   Future<void> _cleanupIfNeeded({
-    required SessionDto sessionDto,
+    required StoredSession storedSession,
     required bool deleteWorktree,
     required bool deleteBranch,
     required bool force,
@@ -142,54 +151,43 @@ class SessionArchiveService {
     if (!(deleteWorktree || deleteBranch)) {
       return;
     }
-    if (sessionDto case SessionDto(
-      :final projectId,
-      worktreePath: final worktreePath?,
-      branchName: final branchName?,
-    )) {
-      final cleanupResult = await performWorktreeCleanup(
-        worktreeService: _worktreeService,
-        sessionRepository: _sessionRepository,
-        sessionId: sessionDto.sessionId,
-        projectId: projectId,
-        worktreePath: worktreePath,
-        branchName: branchName,
-        deleteWorktree: deleteWorktree,
-        deleteBranch: deleteBranch,
-        force: force,
-      );
-      if (cleanupResult case CleanupRejected(:final rejection)) {
-        throw SessionArchiveConflictException(rejection: rejection);
-      }
+    final cleanupResult = await _sessionCleanupService.cleanup(
+      sessionId: storedSession.id,
+      deleteWorktree: deleteWorktree,
+      deleteBranch: deleteBranch,
+      force: force,
+    );
+    if (cleanupResult case CleanupRejected(:final rejection)) {
+      throw SessionArchiveConflictException(rejection: rejection);
     }
   }
 
-  Future<Session> _doUnarchive({required SessionDto sessionDto}) async {
-    await _sessionPersistenceService.unarchiveSession(sessionId: sessionDto.sessionId);
-    if (sessionDto case SessionDto(
+  Future<Session> _doUnarchive({required StoredSession storedSession}) async {
+    await _sessionRepository.unarchiveStoredSession(sessionId: storedSession.id);
+    if (storedSession case StoredSession(
       isDedicated: true,
       :final projectId,
       worktreePath: final worktreePath?,
       branchName: final branchName?,
     )) {
-      final hasWorktreeOnDisk = Directory(worktreePath).existsSync();
+      final hasWorktreeOnDisk = _filesystemRepository.directoryExists(path: worktreePath);
       if (!hasWorktreeOnDisk) {
         final restoreBaseBranch = await _resolveRestoreBaseBranch(
           projectId: projectId,
-          storedBaseBranch: sessionDto.baseBranch,
+          storedBaseBranch: storedSession.baseBranch,
         );
         await _worktreeService.restoreWorktree(
           projectId: projectId,
           worktreePath: worktreePath,
           branchName: branchName,
           baseBranch: restoreBaseBranch,
-          baseCommit: sessionDto.baseCommit?.normalize(),
+          baseCommit: storedSession.baseCommit?.normalize(),
         );
       }
     }
     final session = await _sessionRepository.getSessionForProject(
-      projectId: sessionDto.projectId,
-      sessionId: sessionDto.sessionId,
+      projectId: storedSession.projectId,
+      sessionId: storedSession.id,
     );
     if (session == null) {
       throw SessionNotFoundException();

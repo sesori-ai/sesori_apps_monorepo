@@ -3,10 +3,10 @@ import "dart:io";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/worktree_cleanup.dart";
+import "package:sesori_bridge/src/bridge/services/session_cleanup_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -15,15 +15,20 @@ import "package:test/test.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
-  group("performWorktreeCleanup", () {
+  group("SessionCleanupService", () {
     late AppDatabase db;
     late _FakeWorktreeService worktreeService;
     late _FakeSessionRepository sessionRepository;
+    late SessionCleanupService service;
 
     setUp(() {
       db = createTestDatabase();
       worktreeService = _FakeWorktreeService(database: db);
       sessionRepository = _FakeSessionRepository();
+      service = SessionCleanupService(
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+      );
     });
 
     tearDown(() async {
@@ -31,11 +36,10 @@ void main() {
     });
 
     test("no cleanup requested returns success and runs no git ops", () async {
-      final result = await performWorktreeCleanup(
-        worktreeService: worktreeService,
+      final result = await _cleanup(
+        service: service,
         sessionRepository: sessionRepository,
         sessionId: "s1",
-        projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
         branchName: "session-001",
         deleteWorktree: false,
@@ -52,11 +56,10 @@ void main() {
     test("clean worktree removes worktree and returns success", () async {
       worktreeService.safetyResult = WorktreeSafe();
 
-      final result = await performWorktreeCleanup(
-        worktreeService: worktreeService,
+      final result = await _cleanup(
+        service: service,
         sessionRepository: sessionRepository,
         sessionId: "s2",
-        projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-002",
         branchName: "session-002",
         deleteWorktree: true,
@@ -79,11 +82,10 @@ void main() {
         ],
       );
 
-      final result = await performWorktreeCleanup(
-        worktreeService: worktreeService,
+      final result = await _cleanup(
+        service: service,
         sessionRepository: sessionRepository,
         sessionId: "s3",
-        projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-003",
         branchName: "session-003",
         deleteWorktree: true,
@@ -111,11 +113,10 @@ void main() {
         issues: [UnstagedChanges()],
       );
 
-      final result = await performWorktreeCleanup(
-        worktreeService: worktreeService,
+      final result = await _cleanup(
+        service: service,
         sessionRepository: sessionRepository,
         sessionId: "s4",
-        projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-004",
         branchName: "session-004",
         deleteWorktree: true,
@@ -132,11 +133,10 @@ void main() {
     test("delete worktree and branch runs both operations", () async {
       worktreeService.safetyResult = WorktreeSafe();
 
-      final result = await performWorktreeCleanup(
-        worktreeService: worktreeService,
+      final result = await _cleanup(
+        service: service,
         sessionRepository: sessionRepository,
         sessionId: "s5",
-        projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-005",
         branchName: "session-005",
         deleteWorktree: true,
@@ -154,11 +154,10 @@ void main() {
     test("shared worktree rejected when force=false", () async {
       sessionRepository.hasSharingResult = true;
 
-      final result = await performWorktreeCleanup(
-        worktreeService: worktreeService,
+      final result = await _cleanup(
+        service: service,
         sessionRepository: sessionRepository,
         sessionId: "s6",
-        projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-006",
         branchName: "session-006",
         deleteWorktree: true,
@@ -178,11 +177,10 @@ void main() {
     test("force=true bypasses shared-worktree check and proceeds with cleanup", () async {
       sessionRepository.hasSharingResult = true;
 
-      final result = await performWorktreeCleanup(
-        worktreeService: worktreeService,
+      final result = await _cleanup(
+        service: service,
         sessionRepository: sessionRepository,
         sessionId: "s6b",
-        projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-006b",
         branchName: "session-006b",
         deleteWorktree: true,
@@ -202,11 +200,10 @@ void main() {
       sessionRepository.hasSharingResult = false;
       worktreeService.safetyResult = WorktreeSafe();
 
-      final result = await performWorktreeCleanup(
-        worktreeService: worktreeService,
+      final result = await _cleanup(
+        service: service,
         sessionRepository: sessionRepository,
         sessionId: "s7",
-        projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-007",
         branchName: "session-007",
         deleteWorktree: true,
@@ -224,11 +221,10 @@ void main() {
       sessionRepository.hasSharingResult = false;
       worktreeService.safetyResult = WorktreeSafe();
 
-      final result = await performWorktreeCleanup(
-        worktreeService: worktreeService,
+      final result = await _cleanup(
+        service: service,
         sessionRepository: sessionRepository,
         sessionId: "s8",
-        projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-008",
         branchName: "session-008",
         deleteWorktree: true,
@@ -244,7 +240,50 @@ void main() {
   });
 }
 
+Future<CleanupResult> _cleanup({
+  required SessionCleanupService service,
+  required _FakeSessionRepository sessionRepository,
+  required String sessionId,
+  required String worktreePath,
+  required String branchName,
+  required bool deleteWorktree,
+  required bool deleteBranch,
+  required bool force,
+}) {
+  sessionRepository.storedSession = StoredSession(
+    id: sessionId,
+    backendSessionId: sessionId,
+    pluginId: "fake",
+    projectId: "/repo",
+    parentSessionId: null,
+    directory: worktreePath,
+    worktreePath: worktreePath,
+    branchName: branchName,
+    isDedicated: true,
+    archivedAt: null,
+    baseBranch: null,
+    baseCommit: null,
+    lastAgent: null,
+    lastAgentModel: null,
+    createdAt: 1,
+    updatedAt: 1,
+    projectionUpdatedAt: 1,
+    lastActivityAt: null,
+    lastSeenAt: null,
+    lastUserMessageAt: null,
+    title: null,
+    catalogTitle: null,
+  );
+  return service.cleanup(
+    sessionId: sessionId,
+    deleteWorktree: deleteWorktree,
+    deleteBranch: deleteBranch,
+    force: force,
+  );
+}
+
 class _FakeSessionRepository implements SessionRepository {
+  StoredSession? storedSession;
   bool hasSharingResult = false;
   int hasSharingCallCount = 0;
 
@@ -266,7 +305,7 @@ class _FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<SessionDto?> getStoredSession({required String sessionId}) async => null;
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => storedSession;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
