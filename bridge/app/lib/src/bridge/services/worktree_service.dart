@@ -210,6 +210,16 @@ class WorktreeService {
     );
   }
 
+  Future<bool> branchExists({
+    required String projectId,
+    required String branchName,
+  }) async {
+    return _worktreeRepository.branchExists(
+      projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
+      branchName: branchName,
+    );
+  }
+
   Future<bool> restoreWorktree({
     required String projectId,
     required String worktreePath,

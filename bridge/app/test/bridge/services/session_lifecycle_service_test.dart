@@ -252,6 +252,37 @@ void main() {
       );
     });
 
+    test("identical retry accepts a branch that was already deleted", () async {
+      final firstResult = await _cleanup(
+        service: service,
+        sessionRepository: sessionRepository,
+        sessionId: "s5-retry",
+        worktreePath: "/repo/.worktrees/session-005-retry",
+        branchName: "session-005-retry",
+        deleteWorktree: false,
+        deleteBranch: true,
+        force: false,
+      );
+      expect(firstResult, isA<CleanupSuccess>());
+
+      worktreeService.deleteBranchResult = false;
+      worktreeService.branchExistsResult = false;
+      final retryResult = await _cleanup(
+        service: service,
+        sessionRepository: sessionRepository,
+        sessionId: "s5-retry",
+        worktreePath: "/repo/.worktrees/session-005-retry",
+        branchName: "session-005-retry",
+        deleteWorktree: false,
+        deleteBranch: true,
+        force: false,
+      );
+
+      expect(retryResult, isA<CleanupSuccess>());
+      expect(worktreeService.deleteBranchCallCount, equals(2));
+      expect(worktreeService.branchExistsCallCount, equals(1));
+    });
+
     test("shared worktree rejected when force=false", () async {
       sessionRepository.hasSharingResult = true;
 
@@ -405,10 +436,12 @@ class _FakeWorktreeService extends WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
   bool deleteBranchResult = true;
+  bool branchExistsResult = true;
 
   int checkCallCount = 0;
   int removeCallCount = 0;
   int deleteBranchCallCount = 0;
+  int branchExistsCallCount = 0;
 
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
@@ -457,6 +490,15 @@ class _FakeWorktreeService extends WorktreeService {
     deleteBranchCallCount++;
     lastDeleteBranchForce = force;
     return deleteBranchResult;
+  }
+
+  @override
+  Future<bool> branchExists({
+    required String projectId,
+    required String branchName,
+  }) async {
+    branchExistsCallCount++;
+    return branchExistsResult;
   }
 }
 

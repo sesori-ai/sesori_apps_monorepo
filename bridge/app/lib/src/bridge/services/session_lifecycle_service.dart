@@ -137,7 +137,11 @@ class SessionLifecycleService {
         branchName: branchName,
         force: deleteWorktree || force,
       );
-      if (!deleted) {
+      if (!deleted &&
+          await _worktreeService.branchExists(
+            projectId: projectId,
+            branchName: branchName,
+          )) {
         throw SessionCleanupFailedException(
           sessionId: sessionId,
           operation: SessionCleanupOperation.deleteBranch,

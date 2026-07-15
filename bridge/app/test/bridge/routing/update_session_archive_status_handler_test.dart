@@ -1084,6 +1084,7 @@ class _FakeWorktreeService extends WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
   bool deleteBranchResult = true;
+  bool branchExistsResult = true;
   bool restoreResult = true;
   ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
@@ -1154,6 +1155,14 @@ class _FakeWorktreeService extends WorktreeService {
     lastDeleteBranchName = branchName;
     lastDeleteBranchForce = force;
     return deleteBranchResult;
+  }
+
+  @override
+  Future<bool> branchExists({
+    required String projectId,
+    required String branchName,
+  }) async {
+    return branchExistsResult;
   }
 
   @override
