@@ -76,6 +76,10 @@ jobs:
         run: dart test
         working-directory: client/module_auth
 
+      - name: Run tests for module_prego
+        run: flutter test
+        working-directory: client/module_prego
+
       - name: Run tests for client/app
         run: flutter test
         working-directory: client/app
