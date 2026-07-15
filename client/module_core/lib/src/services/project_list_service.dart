@@ -23,16 +23,18 @@ class ProjectListService {
     required Map<String, int> timestampByProjectId,
   }) {
     var changed = false;
-    final mergedProjects = projects.map((project) {
+    final mergedProjects = <Project>[];
+    for (final project in projects) {
       final updated = timestampByProjectId[project.id];
       final time = project.time;
-      if (updated == null || time == null || updated <= time.updated) return project;
-
-      changed = true;
-      return project.copyWith(time: time.copyWith(updated: updated));
-    });
-    final sortedProjects = _sortProjects(mergedProjects);
-    return (changed: changed, projects: sortedProjects);
+      if (updated != null && time != null && updated > time.updated) {
+        changed = true;
+        mergedProjects.add(project.copyWith(time: time.copyWith(updated: updated)));
+      } else {
+        mergedProjects.add(project);
+      }
+    }
+    return (changed: changed, projects: mergedProjects);
   }
 
   List<Project> removeProject({required Iterable<Project> projects, required String projectId}) {
@@ -50,5 +52,12 @@ class ProjectListService {
     return a.id.compareTo(b.id);
   }
 
-  String _effectiveName(Project project) => project.name ?? project.path;
+  String _effectiveName(Project project) {
+    final name = project.name;
+    if (name != null) return name;
+
+    final path = project.path.isEmpty ? project.id : project.path;
+    final segments = path.replaceAll(r"\", "/").split("/").where((segment) => segment.isNotEmpty);
+    return segments.isEmpty ? path : segments.last;
+  }
 }

@@ -1623,6 +1623,42 @@ void main() {
       ],
     );
 
+    blocTest<ProjectListCubit, ProjectListState>(
+      "REST project list sorts unnamed projects by their displayed basename",
+      build: () {
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const Projects(
+              data: [
+                Project(
+                  id: "zeta",
+                  name: null,
+                  path: "/Users/a/zeta",
+                  time: ProjectTime(created: 1000, updated: 1000),
+                ),
+                Project(
+                  id: "alpha",
+                  name: null,
+                  path: "/Users/b/alpha",
+                  time: ProjectTime(created: 1000, updated: 1000),
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (state) => state.projects.map((project) => project.id).toList(),
+          "project order",
+          ["alpha", "zeta"],
+        ),
+      ],
+    );
+
     // =========================================================================
     // Throttled project data refresh
     // =========================================================================
