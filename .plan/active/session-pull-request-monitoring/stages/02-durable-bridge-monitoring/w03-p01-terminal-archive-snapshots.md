@@ -59,9 +59,10 @@ being able to serve it.
 - Publish one typed final-refresh request after each newly committed archive.
 - Add `ArchivePrRefreshListener`; extend `PrRefreshDispatcher` with
   archive-final target and `SessionArchiveRepository` dependency.
-- Implement unknown-login/repository fail-closed clearing, mismatched identity
-  clear-before-query, same-identity query-failure retention, identity recheck
-  before replacement, typed snapshot-cleared completion, and no retry/follow-up.
+- Implement archive-scope-gated unknown-login/repository clearing, mismatched
+  identity clear-before-query, same-identity query-failure retention, identity
+  recheck before replacement, typed snapshot-cleared completion, and no retry/
+  follow-up.
 - Change runtime branch eligibility/recheck from reversible `archived_at` to
   irreversible `pr_tracking_stopped_at`.
 - Preserve existing unarchive worktree restoration while never clearing stop
@@ -146,10 +147,17 @@ cleared. `archived_session_pull_requests` key is
 
 - `archiveAndSnapshot` transaction;
 - `unarchiveWithoutRestart` (clears only `archived_at`);
-- `clearSnapshotIfPresent` returning changed/unchanged;
-- `replaceSnapshotIfStillStopped` with expected active login/repository, project
-  path/common directory, and frozen session common directory; and
+- `validateFinalScope` for a read-only preflight;
+- `clearSnapshotIfScopeMatches` returning changed/unchanged/scope-changed;
+- `replaceSnapshotIfStillStopped` with expected active login/repository and the
+  same immutable archive scope; and
 - immutable snapshot reads only if kept there for focused archive operations.
+
+`ArchivePrScopeSnapshot` contains expected owner/session/project ids, persisted
+project path, resolved project Git common directory, frozen session Git common
+directory, and frozen per-row common-directory/branch identities. Both clear and
+replace methods re-read and compare that full scope plus terminal stop inside
+their own mutation transaction; a stale final request cannot mutate a snapshot.
 
 `SessionRepository` receives `SessionArchiveDao` directly for terminal mapping.
 It also owns `getOrInitializeStoredSessionForArchive`, which reads the existing
@@ -213,30 +221,38 @@ failure once.
 
 Dispatcher behavior:
 
-- Resolve active login, canonical repository identity, and the project path's
-  normalized Git common directory first.
-- If any cannot be resolved, or project/session common directories differ,
-  clear non-empty snapshot, emit
-  `snapshotCleared` only on mutation, return failure, and stop.
-- If snapshot login/repository is non-null and either differs, clear first and
-  publish `snapshotCleared` before any PR query; continue the same one attempt
-  for the new identity.
+- Resolve the project path's normalized Git common directory first. If it is
+  unavailable or differs from the frozen session binding, retain the immutable
+  snapshot, return typed `scopeUnavailable`/`scopeChanged`, and stop.
+- Call `SessionArchiveRepository.validateFinalScope`. If persisted project path,
+  terminal session binding/state, or frozen per-row scope differs, retain the
+  snapshot, return `scopeChanged`, and stop.
+- Resolve active login and canonical repository identity. If either is unknown,
+  call `clearSnapshotIfScopeMatches`; emit `snapshotCleared` only when that
+  transaction revalidates the same scope and mutates. A concurrent scope change
+  returns `scopeChanged` and retains the snapshot.
+- If snapshot login/repository is non-null and either differs, call the same
+  scope-gated clear and publish `snapshotCleared` before any PR query only when
+  it mutates; stop without querying if the transaction reports scope change.
+  Otherwise continue the same one attempt for the new identity.
 - Null snapshot identity may establish the freshly resolved active
   account/repository.
 - Query all authored state only for frozen history rows whose own binding equals
   the frozen session/project common directory, using W02's bound/truncation
-  contract. A truncated result may upsert supported rows but must not claim a
-  full immutable replacement; treat final snapshot replacement as failed and
-  keep the empty/same-identity immediate snapshot.
+  contract. A truncated archive-final result returns before any post-query live-
+  cache or terminal writer call, performs no upsert/replace or truncation-caused
+  clear, and retains the same-identity immediate snapshot unchanged. Any earlier
+  scope-gated clear required by an identity mismatch remains authoritative.
 - Recheck login, repository, project path, and Git common directory immediately
   before replacement. Identity/binding change returns `identityChanged` and
   ends; archive origin never follows up.
 - Call `SessionArchiveRepository.replaceSnapshotIfStillStopped` with all captured
   expectations. In the snapshot-replacement transaction it re-reads the session
   and project, requires terminal stop, expected session/project ids, unchanged
-  project path, unchanged frozen session Git common directory, and equality of
-  expected project/session common directories before replacing. Any mismatch
-  returns typed `scopeChanged` with zero snapshot writes.
+  project path, unchanged frozen session Git common directory, equality of
+  expected project/session common directories, and exact frozen per-row scope
+  before replacing. Any mismatch returns typed `scopeChanged` with zero snapshot
+  writes.
 - Complete all-state success atomically replaces the full snapshot and publishes
   rendered change when content differs.
 - A PR query failure retains snapshot only when login/repository were freshly
@@ -304,15 +320,18 @@ Dispatcher behavior:
   verified rows and terminal reads never consult live global cache.
 - One final success replaces snapshot; one query failure retains only after
   same-login/repository/common-directory confirmation; unknown identity or
-  repository binding clears; mismatch clears before later failure; clearing
+  identity mismatch clears only through a transaction that revalidates the full
+  archive scope; scope mismatch/unavailability retains; successful clearing
   emits independent invalidation.
 - Null snapshot login/repository can establish active identity.
 - Identity change before replacement writes nothing and receives no follow-up.
 - Project path/common-directory or frozen session-binding change before the
-  replacement transaction returns `scopeChanged` and writes nothing.
+  clear or replacement transaction returns `scopeChanged` and writes nothing.
 - A frozen A-bound history row never enters a B-bound final replacement even if
   its branch name is identical.
-- Truncated all-state does not claim/replace a complete immutable snapshot.
+- Under unchanged identity, truncated archive-final all-state invokes no post-
+  query live-cache/snapshot writer and leaves the immediate snapshot byte-for-
+  byte unchanged; a prior scope-gated identity-mismatch clear is not reversed.
 - Re-archive produces no second final request; archive listener never retries.
 - Branch callback vs archive transaction both orderings; no branch write/change
   after stop marker.
@@ -364,12 +383,14 @@ dart test test/bridge/routing/update_session_archive_status_handler_test.dart
 
 - Irreversible marker without immutable read path would corrupt behavior; land
   writer/read/listener together and test migration atomicity.
-- Clearing a stale account then failing query could leave clients stale; publish
-  `snapshotCleared` immediately through dispatcher completion/orchestrator.
+- Clearing a stale account then failing query could leave clients stale; scope-
+  gate the clear transaction and publish `snapshotCleared` immediately through
+  dispatcher completion/orchestrator only after an actual mutation.
 - A branch callback can race destructive cleanup; resolve before cleanup and
   recheck stop inside every branch transaction.
 - Truncated all-state is not a full final snapshot; preserve safe immediate state
-  and report failure rather than freezing an incomplete replacement as complete.
+  with zero post-query writer calls and report failure rather than freezing or
+  upserting an incomplete terminal replacement.
 - Retaining the routing cleanup import/direct `dart:io`/legacy persistence seam
   would preserve a touched layer cycle; remove all three in this wave and test
   the final constructor boundary.
@@ -381,8 +402,11 @@ dart test test/bridge/routing/update_session_archive_status_handler_test.dart
   archives/re-archive/unarchive.
 - Unknown/mismatched identity or Git common directory cannot leave cross-account
   or cross-repository terminal display.
-- Final replacement transaction itself revalidates terminal state, project path,
-  expected project common directory, and frozen session common directory.
+- Unknown/mismatched identity clears only while the full frozen archive scope
+  still matches; unavailable/moved scope retains the immutable snapshot.
+- Final clear and replacement transactions each revalidate terminal state,
+  project path, expected project common directory, frozen session common
+  directory, and per-row scope.
 - Same-login query failure retention and clear-before-failure invalidation are
   independently proven.
 - Branch writes cannot commit after stop state.

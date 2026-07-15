@@ -19,7 +19,7 @@
 - **Verdict:** Approved after repository-bound history hardening
 - **Reviewer:** `aristotle-plan-review`
 - **Date:** 2026-07-15
-- **Reviewed commit:** `3fab3914f2ffb2d087226949b5dd347d0f03f726` plus the complete uncommitted repository-binding update
+- **Reviewed commit:** `9a8644afc43bf1aa0f841bad86da6c9bf2d3023c` plus the complete uncommitted archive-scope update
 
 ## Wave Baselines
 
@@ -53,6 +53,7 @@
 ## Findings and Plan Deltas
 
 - **2026-07-15 — Feedback review approval:** `aristotle-plan-review` approved the complete canonical tree after all current account/repository, dispatcher, scheduler, and client declaration corrections; no architecture violations remained.
+- **2026-07-15 — Archive-scope review approval:** `aristotle-plan-review` approved exact branch-name association, scope-gated terminal clears, and snapshot-neutral same-identity truncation; no architecture violations remained.
 - **2026-07-15 — Repository-bound review approval:** `aristotle-plan-review` approved the complete canonical tree after per-history-row Git binding, symmetric mutation events, and transactional live/terminal scope revalidation were made explicit; no architecture violations remained.
 - **2026-07-15 — Repository-bound window hardening:** Made the supported 1,000-row window explicitly creation-descending; keyed each verified branch-history observation by normalized Git common directory; and added commit-time live/terminal scope checks so moving a stable project id or session cannot cross-join old repository history by branch name.
 - **2026-07-15 — Canonical review hardening:** Made relative git `HEAD` paths checkout-relative before normalization; bound live/archived cache visibility to account, canonical repository, and verified project path; suspended live visibility once identity failure/change is detected while preserving cache-first reads; bounded disappeared-open finalization; correlated coalesced completions; prevented overdue all-state zero-delay loops; documented the pre-filter authored-row cap; and added bounded retries for lost connected project/null declarations. Retained the approved acyclic `SessionArchiveService -> WorktreeCleanupService` collaborator because it owns a standalone multi-caller policy and does not depend back on archive.

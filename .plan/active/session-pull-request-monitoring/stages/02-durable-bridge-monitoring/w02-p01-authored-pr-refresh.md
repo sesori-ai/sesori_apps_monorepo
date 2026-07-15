@@ -190,10 +190,11 @@ physically but hidden until verified replacement.
   not call `SessionBranchRepository` or decide how to refresh after mismatch.
 - `SessionRepository` receives raw read-only DAOs and pure mapper(s). Live
   association joins only history rows whose own Git common directory equals
-  both the session's current non-null binding and project cache metadata, then
-  chooses the highest-numbered PR on current branch as headline and every other
-  associated PR descending as history. It never infers a historical row's
-  repository from only the session's current location.
+  both the session's current non-null binding and project cache metadata and
+  whose `branch_name` equals the PR row's `branch_name`, then chooses the
+  highest-numbered PR on current branch as headline and every other associated
+  PR descending as history. It never infers a historical row's repository from
+  only the session's current location or associates by repository binding alone.
 - No repository imports or calls another repository.
 
 ### Dispatcher and data flow
@@ -238,9 +239,10 @@ Dispatcher flow:
    mismatch is already hidden by the read predicate before preflight runs.
 5. Execute open/all query. Reject cross-repository and any row whose
    `author.login` differs from captured login.
-6. Match only history rows whose own binding equals captured project/session
-   bindings. For first null-cache-login verification, include only already-bound
-   archived-only persisted history.
+6. Match a PR only when both its head-ref/`branch_name` equals a history row's
+   `branch_name` and that row's binding equals captured project/session bindings.
+   For first null-cache-login verification, include only already-bound archived-
+   only persisted history.
 7. For a complete open result with exactly one absent cached open row, finalize
    it through author-verified `gh pr view`. If more than one is absent, upgrade
    the same serialized execution to one all-state list instead of issuing
@@ -344,6 +346,9 @@ recheck that its request is still live and issue at most one all-state follow-up
   history-row/session/project Git-common-directory rows and maps headline/history
   for current branch, previous branch, duplicate branch associations, detached
   current branch, and repository-bound archived-only first-verification scope.
+- Two sessions/history rows in one Git common directory but on different branch
+  names see only PR rows with their own names; repository equality alone never
+  associates a PR.
 - A stable project id moved from repository/path A to B cannot attach B's PR to
   an A-bound history row with the same branch name; moving a session preserves A
   rows under their original key while new B rows are distinct, and a linked-

@@ -370,7 +370,7 @@ handler/listener may issue one all-state follow-up.
 POST /sessions
   -> SessionRepository obtains plugin/catalog session payload
   -> read-only SessionBranchDao + PullRequestDao + ArchivedSessionPullRequestDao
-  -> live rows: current branch + repository-bound associations + verified cache
+  -> live rows: exact branch-name + repository-bound associations + verified cache
   -> terminal rows: immutable archived snapshot only
   -> current headline + descending history mapper
   -> Session.pullRequest + non-null Session.pullRequestHistory
@@ -423,10 +423,12 @@ POST /sessions
 15. Archive synchronously resolves the latest local `HEAD`, performs existing
     cleanup checks, commits terminal state plus an immediate verified snapshot,
     returns, and then publishes exactly one final async request.
-16. Unknown active GitHub identity clears a non-empty terminal snapshot. A PR
-    query failure retains a snapshot only after the same final job freshly
-    confirmed the same login. Archive-final never follows identity change and
-    never retries.
+16. Unknown active GitHub identity clears a non-empty terminal snapshot only
+    through a transaction that revalidates the final request's complete frozen
+    archive scope. Scope mismatch/unavailability and truncated archive-final
+    results perform no snapshot mutation. A PR query failure retains a snapshot
+    only after the same final job freshly confirmed the same login. Archive-final
+    never follows identity change and never retries.
 17. Unarchive retains existing worktree/session restoration but never clears
     the PR stop marker, restarts branch observation, or switches reads away from
     the terminal snapshot.
@@ -451,8 +453,9 @@ POST /sessions
     canonical lowercase `owner/name` repository identity, verified project path,
     and normalized Git common directory. Each history row is eligible only when
     its own persisted Git common directory matches both the session's current
-    binding and project cache binding, so moving a stable project id or session
-    cannot reinterpret old-repository branch names as new-repository history.
+    binding and project cache binding and its branch name equals the PR head-ref
+    branch name. Moving a stable project id/session cannot reinterpret old-
+    repository history, and repository equality alone never associates branches.
 25. Account/repository changes are detected by existing refresh triggers rather
     than a blocking check on every cache-first read. Detection atomically nulls
     project cache login before query, retains rows physically, and emits rendered
@@ -638,7 +641,7 @@ server deployment is required.
 | Laptop-created root switches before phone fetch | Persist exact `session.created` root through the mutation dispatcher before unseen handling; DAO watch enrolls it. |
 | Old client never declares project presence | Keep request-driven compatibility triggers with exact marker and cleanup condition. |
 | Archived display mutates from live cache | Snapshot table and terminal-only read path land atomically with the stop marker. |
-| Unknown/stale GitHub identity on archive final | Fail closed on unknown login/repository; clear mismatch before query; retain only after fresh same-identity confirmation. |
+| Unknown/stale GitHub identity on archive final | Validate the frozen archive scope before identity handling; clear unknown/mismatched login only through the same scope-gated transaction, retain on moved/unavailable scope, and retain query failure only after fresh same-identity confirmation. |
 | Timer/viewer leak after disconnect | Per-connection tracker, explicit release, relay-drop clear, listener cancellation tests. |
 | Client declaration send fails while relay stays live | Keep the latest project/null generation pending and retry with capped one-shot backoff; cancel on superseding intent, disconnect, or disposal. |
 | PR status changes conversation unseen | No dependency on unseen repository/service/tracker; regression tests across all stages. |
@@ -683,7 +686,9 @@ The list DTO reports `truncated = rows.length == 1001` and exposes only the firs
 1,000 rows. A complete result may replace branch-matched rows for the captured
 login. A truncated result may upsert returned rows and finalize a specifically
 queried known PR, but it does not delete rows absent from the partial result or
-claim complete history.
+claim complete history. This partial-upsert allowance applies only to live
+refresh; archive-final truncation invokes no post-query writer and retains its
+same-identity snapshot (without reversing a prior scoped identity-mismatch clear).
 
 ### Refresh policies
 
@@ -792,12 +797,13 @@ Continuous-view all-state deadline:
    frozen session Git common directory plus frozen per-row common-directory/
    branch identities, captured snapshot login, and repository identity.
 6. The archive listener delegates one all-state attempt. Unknown login,
-   repository, project common directory, or mismatch with the frozen session
-   binding clears a non-empty snapshot and stops before an unsafe query.
-   Identity mismatch clears and emits change before querying the new identity.
-   Same-login/repository/binding query failure retains the snapshot. Success
+   repository, or identity mismatch clears only after a transaction revalidates
+   the complete frozen archive scope. Project common-directory unavailability or
+   any scope mismatch retains the snapshot and stops. Under unchanged identity,
+   a truncated result invokes no post-query writer and retains the immediate
+   snapshot. Same-login/repository/binding query failure also retains it. Success
    rechecks all bindings, then the repository replacement transaction re-reads
-   terminal state, project path, and expected project/frozen-session common
-   directories before atomically replacing the full snapshot.
+   terminal state, project path, expected project/frozen-session common
+   directories, and per-row scope before atomically replacing the full snapshot.
 7. No retry, pending sentinel, startup recovery, later project-poll mutation, or
    unarchive restart exists.
