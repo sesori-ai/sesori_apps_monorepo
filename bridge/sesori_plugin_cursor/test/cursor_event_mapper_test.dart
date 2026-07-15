@@ -70,14 +70,14 @@ void main() {
     });
 
     test("gate matching tolerates case and surrounding decoration", () {
-      expect(mapper.classifyHaltNotice("  CHECK YOUR SETTINGS TO CONTINUE.  "), isNotNull);
-      expect(mapper.classifyHaltNotice("⚠️ Check your settings to continue"), isNotNull);
+      expect(mapper.classifyHaltNotice(text: "  CHECK YOUR SETTINGS TO CONTINUE.  "), isNotNull);
+      expect(mapper.classifyHaltNotice(text: "⚠️ Check your settings to continue"), isNotNull);
     });
 
     test("ordinary prose that merely contains the phrase is not a gate", () {
       expect(
         mapper.classifyHaltNotice(
-          "Sure — check your settings to continue setting up the project, then rerun.",
+          text: "Sure — check your settings to continue setting up the project, then rerun.",
         ),
         isNull,
       );

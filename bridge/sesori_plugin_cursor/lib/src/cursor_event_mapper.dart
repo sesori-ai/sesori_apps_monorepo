@@ -20,7 +20,7 @@ class CursorEventMapper extends AcpEventMapper {
   }
 
   @override
-  AcpHaltNotice? classifyHaltNotice(String text) {
+  AcpHaltNotice? classifyHaltNotice({required String text}) {
     if (_isGateNotice(text)) {
       // Preserve cursor-agent's own wording (trimmed) as the shown message.
       return AcpHaltNotice(errorName: "cursor_gate", message: text.trim());

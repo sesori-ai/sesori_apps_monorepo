@@ -329,16 +329,23 @@ class AcpEventMapper {
   /// Cursor's `cursor/update_todos`). Base implementation drops them.
   List<BridgeSseEvent> mapExtension(AcpNotification notification) => const [];
 
-  /// Hook: classify a complete assistant message's [text] as a backend halt
-  /// notice (see [AcpHaltNotice]) — the agent ended the turn without doing the
+  /// Hook: classify an assistant message's [text] as a backend halt notice
+  /// (see [AcpHaltNotice]) — the agent ended the turn without doing the
   /// requested work and told the user to change something. Returns the notice
   /// to surface as an error message, or null for ordinary assistant prose.
+  ///
+  /// Invoked with two text shapes: live, [text] is a single `agent_message_chunk`
+  /// (which equals the whole message only because the notice is emitted as one
+  /// atomic chunk); on history replay, [text] is the fully-accumulated message
+  /// text. An override that must gate on the complete message (e.g. a backend
+  /// that splits its notice across chunks) has to account for the live per-chunk
+  /// shape.
   ///
   /// Base backends never halt this way; harness subclasses that emit
   /// recognizable gate text (e.g. Cursor) override this. Also consulted by the
   /// history-replay collector so a reloaded session renders the notice the same
   /// way it did live.
-  AcpHaltNotice? classifyHaltNotice(String text) => null;
+  AcpHaltNotice? classifyHaltNotice({required String text}) => null;
 
   List<BridgeSseEvent> _textChunk({
     required String sessionId,
@@ -359,7 +366,7 @@ class AcpEventMapper {
     // as one atomic chunk; a hypothetically split notice falls through to plain
     // text (no regression).
     if (partType == PluginMessagePartType.text) {
-      final halt = classifyHaltNotice(text);
+      final halt = classifyHaltNotice(text: text);
       if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt);
     }
 
@@ -425,9 +432,12 @@ class AcpEventMapper {
     final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
     if (!started.add(messageId)) return const [];
     // Any id-less assistant envelope opened earlier this turn is abandoned: the
-    // halt notice is the turn's outcome and stands alone, so a later reordered
-    // chunk opens a fresh envelope rather than appending to it.
-    _openIdlessAssistant.remove(sessionId);
+    // halt notice is the turn's outcome and stands alone. Closing it bumps the
+    // fallback sequence, so a later reordered id-less chunk recomputes a fresh
+    // message id and opens a new envelope rather than appending a delta to the
+    // abandoned one. (The dedupe return above runs first, so a repeated halt
+    // chunk can't double-bump the sequence.)
+    _closeIdlessAssistantEnvelope(sessionId);
     return [
       BridgeSseMessageUpdated(
         info: shared.Message.error(

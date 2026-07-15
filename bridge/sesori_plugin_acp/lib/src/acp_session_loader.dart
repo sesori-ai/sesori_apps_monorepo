@@ -25,7 +25,7 @@ class AcpReplayCollector {
   /// (see [AcpEventMapper.classifyHaltNotice]) so a reloaded session renders the
   /// notice as an error message exactly as it appeared live. Null on backends
   /// with no halt notices.
-  final AcpHaltNotice? Function(String text)? haltClassifier;
+  final AcpHaltNotice? Function({required String text})? haltClassifier;
 
   /// Model/provider stamped on replayed assistant messages. Mutable so the
   /// plugin can set the loaded session's real model after `session/load`
@@ -102,7 +102,7 @@ class AcpReplayCollector {
         draft.reasoning.isEmpty &&
         draft.tools.isEmpty &&
         draft.text.isNotEmpty) {
-      final halt = haltClassifier?.call(draft.text.toString());
+      final halt = haltClassifier?.call(text: draft.text.toString());
       if (halt != null) {
         return PluginMessageWithParts(
           info: PluginMessage.error(

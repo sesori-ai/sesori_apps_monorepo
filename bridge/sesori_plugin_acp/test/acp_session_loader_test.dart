@@ -262,7 +262,7 @@ void main() {
         agentId: "Cursor",
         modelId: "claude-fable-5",
         providerId: "cursor",
-        haltClassifier: (text) => text.trim() == "Check your settings to continue"
+        haltClassifier: ({required text}) => text.trim() == "Check your settings to continue"
             ? const AcpHaltNotice(errorName: "cursor_gate", message: "Check your settings to continue")
             : null,
       )..consume(upd({

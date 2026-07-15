@@ -684,7 +684,7 @@ void main() {
     });
 
     test("base mapper never classifies a chunk as a halt notice", () {
-      expect(mapper.classifyHaltNotice("Check your settings to continue"), isNull);
+      expect(mapper.classifyHaltNotice(text: "Check your settings to continue"), isNull);
     });
   });
 
@@ -732,6 +732,34 @@ void main() {
       expect(again, isEmpty);
     });
 
+    test("id-less assistant text after a halt opens a fresh envelope", () {
+      mapper.beginTurn("s1");
+      final before = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "Before"},
+      }));
+      mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "HALT: fix it"},
+      }));
+      final after = mapper.map(update({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "After"},
+      }));
+
+      final beforeId = shared.Message.fromJson(
+        before.whereType<BridgeSseMessageUpdated>().single.info,
+      ).id;
+      // The halt abandons the pre-halt envelope, so the post-halt chunk must
+      // open a new one (its own envelope + a different message id), not append a
+      // delta to the abandoned envelope.
+      final afterId = shared.Message.fromJson(
+        after.whereType<BridgeSseMessageUpdated>().single.info,
+      ).id;
+      expect(afterId, isNot(beforeId));
+      expect(after.whereType<BridgeSseMessagePartDelta>().single.delta, "After");
+    });
+
     test("a reasoning chunk is never classified as a halt notice", () {
       mapper.beginTurn("s1");
       final events = mapper.map(update({
@@ -765,7 +793,7 @@ class _HaltMapper extends AcpEventMapper {
   _HaltMapper() : super(launchDirectory: "/repo", agentId: "cursor", pluginId: "cursor");
 
   @override
-  AcpHaltNotice? classifyHaltNotice(String text) {
+  AcpHaltNotice? classifyHaltNotice({required String text}) {
     final trimmed = text.trim();
     if (trimmed.startsWith("HALT:")) {
       return AcpHaltNotice(errorName: "test_halt", message: trimmed);
