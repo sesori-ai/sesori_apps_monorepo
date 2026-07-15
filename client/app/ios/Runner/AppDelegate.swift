@@ -12,5 +12,17 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    guard
+      let registrar = engineBridge.pluginRegistry.registrar(
+        forPlugin: "NativeActivityIndicatorPlatformViewPlugin"
+      )
+    else {
+      fatalError("Unable to register the native activity indicator platform view")
+    }
+    registrar.register(
+      NativeActivityIndicatorPlatformViewFactory(),
+      withId: NativeActivityIndicatorPlatformViewFactory.viewType
+    )
   }
 }
