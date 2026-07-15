@@ -45,6 +45,12 @@ compile the additive contract while production behavior remains unchanged.
   explicit no-op only where behavior intentionally waits for later stages.
 - Compile/test every shared consumer: bridge, module_core, mobile,
   module_desktop_core, and desktop shell.
+- Apply the explicitly user-authorized, prompt-only correction to
+  `.opencode/agents/sesori-plan-worker.md`: inspect active plans before resolving
+  a plan request, proceed on a clear semantic match, ask with the best matching
+  active slug recommended when ambiguous, and never infer the plan from a branch
+  name. This ancillary repository-workflow correction does not change the S01
+  product outcome.
 
 ### Non-Goals
 
@@ -54,6 +60,8 @@ compile the additive contract while production behavior remains unchanged.
 - Changing `Session.pullRequest`, `RelaySessionView`, unseen behavior, or
   session request semantics.
 - Hand-editing any generated file.
+- Changing any other agent, plan-delivery rule, or runtime behavior as part of
+  the worker prompt correction.
 
 ## 4. Audited Current Code and Assumptions
 
@@ -84,12 +92,16 @@ Expected source/test files:
   `session.freezed.dart`, and `session.g.dart`
 - only source switches/tests in bridge/client that fail exhaustive analysis
   after the new variant; do not add behavior wiring
+- `.opencode/agents/sesori-plan-worker.md` for the reviewed active-plan
+  resolution correction
 
 ### Classes, layers, and collaborators
 
 - `RelayMessage` remains a Layer 0 shared transport union.
 - `Session` remains a shared transport/domain response model.
 - No new service, repository, interface, helper, or wrapper is introduced.
+- The plan-worker edit is repository execution guidance outside product layers;
+  it introduces no runtime collaborator or dependency.
 
 ### Data flow
 
@@ -154,6 +166,9 @@ in PLAN section 7 with the implementation date and currently declared version.
 - Invalid/unknown control union remains connection-safe in bridge parsing tests
   if no existing test already proves it.
 - All downstream consumers compile against generated shared output.
+- Worker guidance preserves active-only resolution and archived-plan re-review,
+  does not use branch names as plan identity, and asks with its best active-plan
+  match recommended only when semantic matching is ambiguous.
 
 ### Manual verification
 
@@ -219,6 +234,8 @@ flutter test
   normalization.
 - `pullRequest` remains source/wire compatible.
 - No production sender, listener, timer, schema, or UI behavior changes.
+- Plan requests without a slug follow the reviewed active-plan matching and
+  ambiguity-question behavior without weakening archive safeguards.
 - All command groups pass.
 
 ## 11. Definition of Done

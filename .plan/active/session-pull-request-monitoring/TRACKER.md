@@ -25,6 +25,7 @@
 
 | Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
 |---|---|---|---|---|---|
+| S01 | W01 | `sesori-ai/sesori_apps_monorepo` | `main` | `d1379eaeae857531d73e7765fdea4f92d21d1063` | Proceed — five commits in under one day; S01 shared contract/schema paths are unchanged, and the plugin-subscriber plus menu/UI changes do not affect this step. |
 
 ## PR Steps
 
@@ -52,6 +53,7 @@
 
 ## Findings and Plan Deltas
 
+- **2026-07-15 — Active-plan resolution correction:** The user explicitly authorized S01-W01-P01 to carry a prompt-only worker correction: inspect active plans first, proceed on a clear semantic match, ask with the best guess recommended when ambiguous, and never infer the plan from a branch name. The amended step passed `aristotle-plan-review` before implementation.
 - **2026-07-15 — Feedback review approval:** `aristotle-plan-review` approved the complete canonical tree after all current account/repository, dispatcher, scheduler, and client declaration corrections; no architecture violations remained.
 - **2026-07-15 — Archive-scope review approval:** `aristotle-plan-review` approved exact branch-name association, scope-gated terminal clears, and snapshot-neutral same-identity truncation; no architecture violations remained.
 - **2026-07-15 — Repository-bound review approval:** `aristotle-plan-review` approved the complete canonical tree after per-history-row Git binding, symmetric mutation events, and transactional live/terminal scope revalidation were made explicit; no architecture violations remained.
