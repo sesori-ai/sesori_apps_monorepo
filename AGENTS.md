@@ -351,6 +351,13 @@ module_desktop_core/lib/src/
 - Desktop process supervision MUST stay out of `module_core`; mobile must never
   inherit tray/process/bundled-helper concerns.
 
+**`module_prego` — shared Flutter design system:**
+
+- Owns reusable visual primitives used by product shells or shared screens.
+- When one of those primitives needs native rendering, its Flutter plugin and
+  automatic platform registration stay with `module_prego`; product shells do
+  not duplicate the widget or manually register its renderer.
+
 **`module_app_ui` — shared Flutter UI package (Phase 4):**
 
 - Contains shared widgets/screens only; no product-shell DI, process supervision,
