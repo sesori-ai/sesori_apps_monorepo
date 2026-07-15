@@ -155,7 +155,6 @@ void main() {
           parentID: null,
           title: "one",
           time: PluginSessionTime(created: 1, updated: 1, archived: null),
-          summary: null,
         ),
         const PluginSession(
           id: "s2",
@@ -164,7 +163,6 @@ void main() {
           parentID: null,
           title: "two",
           time: PluginSessionTime(created: 2, updated: 2, archived: null),
-          summary: null,
         ),
         const PluginSession(
           id: "s3",
@@ -173,7 +171,6 @@ void main() {
           parentID: null,
           title: "three",
           time: PluginSessionTime(created: 3, updated: 3, archived: null),
-          summary: null,
         ),
       ];
 
@@ -220,7 +217,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 10, updated: 10, archived: null),
-          summary: null,
         ),
       ];
 
@@ -288,7 +284,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 10, updated: 10, archived: null),
-          summary: null,
         ),
         const PluginSession(
           id: "s2",
@@ -297,7 +292,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 11, updated: 11, archived: null),
-          summary: null,
         ),
         const PluginSession(
           id: "s3",
@@ -306,7 +300,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 12, updated: 12, archived: null),
-          summary: null,
         ),
       ];
 
@@ -332,7 +325,6 @@ void main() {
           parentID: null,
           title: "Backend title",
           time: null,
-          summary: null,
         ),
       ];
       final titleService = _TrackingSessionMutationDispatcher(
@@ -391,7 +383,6 @@ void main() {
           parentID: null,
           title: "My session",
           time: null,
-          summary: null,
         ),
       ];
 
@@ -419,7 +410,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 100, updated: 200, archived: null),
-          summary: null,
         ),
       ];
 
@@ -437,7 +427,7 @@ void main() {
       expect(time?.archived, isNull);
     });
 
-    test("maps PluginSessionSummary when present", () async {
+    test("time is null when absent", () async {
       plugin.sessionsResult = [
         const PluginSession(
           id: "s1",
@@ -446,34 +436,6 @@ void main() {
           parentID: null,
           title: null,
           time: null,
-          summary: PluginSessionSummary(additions: 10, deletions: 3, files: 2),
-        ),
-      ];
-
-      final result = await handler.handle(
-        makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      final summary = result.items.first.summary;
-      expect(summary?.additions, equals(10));
-      expect(summary?.deletions, equals(3));
-      expect(summary?.files, equals(2));
-    });
-
-    test("time and summary are null when absent", () async {
-      plugin.sessionsResult = [
-        const PluginSession(
-          id: "s1",
-          projectID: "p1",
-          directory: "/tmp",
-          parentID: null,
-          title: null,
-          time: null,
-          summary: null,
         ),
       ];
 
@@ -487,7 +449,6 @@ void main() {
 
       final session = result.items.first;
       expect(session.time, isNull);
-      expect(session.summary, isNull);
     });
 
     test("overrides time.archived with DB archivedAt when present", () async {
@@ -499,7 +460,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 100, updated: 200, archived: 300),
-          summary: null,
         ),
       ];
 
@@ -507,7 +467,10 @@ void main() {
         const SessionDto(
           pluginId: "opencode",
           sessionId: "s1",
+          backendSessionId: "s1",
           projectId: "p1",
+          parentSessionId: null,
+          directory: "/tmp",
           worktreePath: null,
           branchName: null,
           isDedicated: false,
@@ -517,10 +480,13 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          updatedAt: 200,
+          projectionUpdatedAt: 200,
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
+          catalogTitle: null,
         ),
       );
 
@@ -547,7 +513,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 100, updated: 200, archived: 300),
-          summary: null,
         ),
       ];
 
@@ -574,7 +539,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 100, updated: 200, archived: 300),
-          summary: null,
         ),
       ];
 
@@ -582,7 +546,10 @@ void main() {
         const SessionDto(
           pluginId: "opencode",
           sessionId: "s1",
+          backendSessionId: "s1",
           projectId: "p1",
+          parentSessionId: null,
+          directory: "/tmp",
           worktreePath: null,
           branchName: null,
           isDedicated: false,
@@ -592,10 +559,13 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          updatedAt: 200,
+          projectionUpdatedAt: 200,
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
+          catalogTitle: null,
         ),
       );
 
@@ -622,7 +592,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 100, updated: 200, archived: 300),
-          summary: null,
         ),
         const PluginSession(
           id: "s2",
@@ -631,7 +600,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 100, updated: 200, archived: 400),
-          summary: null,
         ),
         const PluginSession(
           id: "s3",
@@ -640,7 +608,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 100, updated: 200, archived: 500),
-          summary: null,
         ),
       ];
 
@@ -648,7 +615,10 @@ void main() {
         const SessionDto(
           pluginId: "opencode",
           sessionId: "s1",
+          backendSessionId: "s1",
           projectId: "p1",
+          parentSessionId: null,
+          directory: "/tmp",
           worktreePath: null,
           branchName: null,
           isDedicated: false,
@@ -658,17 +628,23 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          updatedAt: 200,
+          projectionUpdatedAt: 200,
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
+          catalogTitle: null,
         ),
       );
       sessionDao.setSession(
         const SessionDto(
           pluginId: "opencode",
           sessionId: "s2",
+          backendSessionId: "s2",
           projectId: "p1",
+          parentSessionId: null,
+          directory: "/tmp",
           worktreePath: null,
           branchName: null,
           isDedicated: false,
@@ -678,10 +654,13 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          updatedAt: 200,
+          projectionUpdatedAt: 200,
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
+          catalogTitle: null,
         ),
       );
 
@@ -708,7 +687,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 100, updated: 200, archived: null),
-          summary: null,
         ),
       ];
 
@@ -716,7 +694,10 @@ void main() {
         const SessionDto(
           pluginId: "opencode",
           sessionId: "s1",
+          backendSessionId: "s1",
           projectId: "p1",
+          parentSessionId: null,
+          directory: "/repo/.worktrees/session-001",
           worktreePath: "/repo/.worktrees/session-001",
           branchName: "session-001",
           isDedicated: true,
@@ -726,10 +707,13 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          updatedAt: 200,
+          projectionUpdatedAt: 200,
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
+          catalogTitle: null,
         ),
       );
 
@@ -753,7 +737,6 @@ void main() {
           parentID: null,
           title: null,
           time: PluginSessionTime(created: 100, updated: 200, archived: null),
-          summary: null,
         ),
       ];
 
@@ -761,7 +744,10 @@ void main() {
         const SessionDto(
           pluginId: "opencode",
           sessionId: "s1",
+          backendSessionId: "s1",
           projectId: "p1",
+          parentSessionId: null,
+          directory: "/tmp",
           worktreePath: null,
           branchName: null,
           isDedicated: false,
@@ -771,10 +757,13 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          updatedAt: 200,
+          projectionUpdatedAt: 200,
           lastActivityAt: null,
           lastSeenAt: null,
           lastUserMessageAt: null,
           title: null,
+          catalogTitle: null,
         ),
       );
 
@@ -798,7 +787,6 @@ void main() {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         ),
       ];
 
@@ -822,7 +810,6 @@ void main() {
           parentID: null,
           title: "session with pr",
           time: null,
-          summary: null,
         ),
       ];
 
@@ -917,7 +904,6 @@ void main() {
           parentID: null,
           title: "replacement payload",
           time: PluginSessionTime(created: 100, updated: 200, archived: null),
-          summary: null,
         ),
       ];
 
@@ -945,7 +931,6 @@ void main() {
           parentID: null,
           title: "session without pr",
           time: null,
-          summary: null,
         ),
       ];
 
@@ -969,7 +954,6 @@ void main() {
           parentID: null,
           title: "has pr",
           time: null,
-          summary: null,
         ),
         PluginSession(
           id: "s2",
@@ -978,7 +962,6 @@ void main() {
           parentID: null,
           title: "no pr",
           time: null,
-          summary: null,
         ),
       ];
 
@@ -1052,7 +1035,6 @@ void main() {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         ),
       ];
 
@@ -1077,7 +1059,6 @@ void main() {
           parentID: null,
           title: "session one",
           time: null,
-          summary: null,
         ),
       ];
       final slowPrSyncService = FakePrSyncService(delay: const Duration(seconds: 10));
@@ -1112,7 +1093,6 @@ void main() {
           parentID: null,
           title: "session one",
           time: null,
-          summary: null,
         ),
       ];
       pullRequestRepository.setPr(

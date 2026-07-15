@@ -178,7 +178,6 @@ void main() {
         directory: "/home/user/my-project",
         parentID: _sessionId,
         title: "Child session",
-        summary: null,
         pullRequest: null,
         time: SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
         promptDefaults: null,

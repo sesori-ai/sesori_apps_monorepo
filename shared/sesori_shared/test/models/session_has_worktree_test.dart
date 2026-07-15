@@ -43,7 +43,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        summary: null,
         pullRequest: null,
         promptDefaults: null,
         hasWorktree: true,

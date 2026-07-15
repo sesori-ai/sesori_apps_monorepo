@@ -8,10 +8,10 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 1B - additive compatibility contracts
-- **Next up:** Stage 2 - catalog schema and indexed DAO queries
+- **Last completed stage:** Stage 2 - catalog schema and indexed DAO queries
+- **Next up:** Stage 3 - catalog write-through and stable session binding
 - **Runtime default:** one selected plugin until Stage 7
-- **Catalog projection version:** not assigned until the schema migration lands
+- **Catalog projection version:** 1
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -89,7 +89,7 @@ The migration preserves every existing `session_id` and backfills
 `backend_session_id = session_id`. Existing routes, notifications, drafts, pull
 request links, and deep links therefore keep working. After the identity cutover,
 newly created or imported bindings receive a random Sesori id; uniqueness is
-enforced on `(owner_identity, plugin_id, backend_session_id)`.
+enforced on `(plugin_id, backend_session_id)`.
 
 There is no backend-id fallback after cutover. Every session-addressed request
 must resolve a stored binding. A missing row is a 404; an unavailable owning
@@ -101,8 +101,8 @@ work does not introduce project UUIDs. Project metadata remains shared across
 plugins: hiding, renaming, and setting a base branch affects the one project
 card for that directory.
 
-Every durable project and session row carries `owner_identity = "local"` now.
-No teams behavior or user picker is added.
+The local catalog does not persist a placeholder owner. A concrete multi-owner
+requirement will add ownership through an explicit migration and backfill.
 
 ### 3.2 Plugin Boundary
 
@@ -209,17 +209,13 @@ Stage 2 starts. It never rewrites an already merged migration.
 
 ### Projects
 
-Add to `ProjectsTable`:
+Add `projection_updated_at INTEGER NOT NULL` to `ProjectsTable`, backfilled
+from `updated_at`.
 
-- `owner_identity TEXT NOT NULL`, backfilled to `local`;
-- `catalog_name TEXT NULL`, the first useful plugin-observed name when no
-  bridge rename exists; and
-- `projection_updated_at INTEGER NOT NULL`, backfilled from `updated_at`.
-
-Rendered name precedence is `display_name ?? catalog_name ?? basename(path)`.
-Import never overwrites `display_name`. Once `catalog_name` is non-null, another
-plugin import does not replace it; an explicit Sesori rename writes
-`display_name`. Add an indexed `(owner_identity, path)` lookup. Do not make it
+Rendered name precedence is `display_name ?? basename(path)`. Hydration writes
+the first useful plugin-observed name to `display_name` only when it is null;
+later hydration never overwrites it, while an explicit Sesori rename writes the
+same field. Add an indexed `path` lookup. Do not make it
 unique until migration tests prove existing stores cannot contain duplicate
 live paths.
 
@@ -227,13 +223,11 @@ live paths.
 
 Add to `SessionTable`:
 
-- `owner_identity TEXT NOT NULL`;
 - `backend_session_id TEXT NOT NULL`;
 - `parent_session_id TEXT NULL` with a self-reference and cascade delete;
 - `directory TEXT NOT NULL`;
 - `catalog_title TEXT NULL`;
 - `updated_at INTEGER NOT NULL`;
-- nullable `summary_additions`, `summary_deletions`, and `summary_files`; and
 - `projection_updated_at INTEGER NOT NULL`.
 
 Keep existing bridge-owned worktree, branch, archive, prompt-default, unseen,
@@ -243,7 +237,6 @@ derived-plugin title. Rendered title precedence is `title ?? catalog_title`.
 
 Backfill:
 
-- `owner_identity = "local"`;
 - `backend_session_id = session_id`;
 - `parent_session_id = NULL` because existing persisted rows are roots;
 - `directory = worktree_path ?? projects_table.path`;
@@ -251,14 +244,15 @@ Backfill:
 - summary columns and `catalog_title` to null; and
 - `projection_updated_at = updated_at`.
 
-Add a unique index on `(owner_identity, plugin_id, backend_session_id)` and
+Add a unique index on `(plugin_id, backend_session_id)` and
 indexes supporting root lists, child lists, plugin binding lookup, ordering,
 and archive filtering.
 
 ### Tombstones and Hydration
 
 Rename the tombstone's backend-shaped `session_id` to `backend_session_id` and
-keep the `(owner_identity, plugin_id, backend_session_id)` primary key. Sesori
+keep its already-shipped `(owner_identity, plugin_id, backend_session_id)`
+primary key. Sesori
 deletion writes tombstones for every removed backend binding. A later import
 cannot resurrect those bindings.
 
@@ -266,12 +260,11 @@ Add `CatalogHydrationsTable`:
 
 | Column | Meaning |
 |---|---|
-| `owner_identity` | current durable owner |
 | `plugin_id` | imported plugin |
 | `projection_version` | catalog projection contract version |
 | `completed_at` | successful atomic publication time |
 
-Its primary key is all three identity/version columns. Only successful
+Its primary key is `(plugin_id, projection_version)`. Only successful
 completion is durable. Running, failed, cancelled, percentage, and
 "import-required" sentinels remain in memory; absence of the current completion
 row is sufficient to require hydration.
@@ -599,7 +592,7 @@ selection.
 | ☑ | 0 | Execution plan approved | `aristotle-plan-review`; docs consistency |
 | ☑ | 1A | Pre-change baseline harness | AOT baseline JSON; app/Codex analysis |
 | ☑ | 1B | Additive compatibility contracts | Shared/plugin/client round trips |
-| ☐ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
+| ☑ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
 | ☐ | 3 | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☐ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
 | ☐ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
@@ -648,7 +641,7 @@ matrix is introduced.
   hydration access.
 - Add repository mappers for catalog rows without changing handlers yet.
 
-Acceptance: migration preserves every existing session id and metadata; owner,
+Acceptance: migration preserves every existing session id and metadata;
 backend handle, directory, and timestamps are backfilled; parent/project delete
 cascades work; equal backend handles across plugins are legal; query-plan tests
 use the intended indexes.

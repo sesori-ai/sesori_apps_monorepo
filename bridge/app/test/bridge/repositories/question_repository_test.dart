@@ -82,7 +82,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
       // The backend still enumerates the deleted session (no session/delete):
       // its questions must not surface — and must not be queried at all.
-      await db.sessionDao.insertSessionTombstone(sessionId: "gone", pluginId: "codex", deletedAt: 1);
+      await db.sessionDao.insertSessionTombstone(backendSessionId: "gone", pluginId: "codex", deletedAt: 1);
 
       final plugin = _FakeDerivedQuestionPlugin(
         launchDirectory: parent,
@@ -223,7 +223,7 @@ void main() {
 
     test("getPendingQuestions skips a tombstoned derived session", () async {
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone",
+        backendSessionId: "gone",
         pluginId: "codex",
         deletedAt: 1,
       );
@@ -263,7 +263,7 @@ void main() {
     test("getPendingQuestions filters tombstoned child and displayed sessions", () async {
       for (final sessionId in ["gone-child", "gone-root"]) {
         await db.sessionDao.insertSessionTombstone(
-          sessionId: sessionId,
+          backendSessionId: sessionId,
           pluginId: "codex",
           deletedAt: 1,
         );
@@ -307,7 +307,7 @@ void main() {
 
     test("question mutations reject a tombstoned displayed root", () async {
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone-root",
+        backendSessionId: "gone-root",
         pluginId: "codex",
         deletedAt: 1,
       );
@@ -344,7 +344,7 @@ void main() {
 
     test("question mutations reject a tombstoned owning descendant", () async {
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone-child",
+        backendSessionId: "gone-child",
         pluginId: "codex",
         deletedAt: 1,
       );
@@ -383,7 +383,7 @@ void main() {
       const parent = "/repo";
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone-root",
+        backendSessionId: "gone-root",
         pluginId: "codex",
         deletedAt: 1,
       );
@@ -428,7 +428,6 @@ PluginSession _session(String directory, {required String id}) => PluginSession(
   parentID: null,
   title: null,
   time: const PluginSessionTime(created: 1, updated: 1, archived: null),
-  summary: null,
 );
 
 /// A derive-style plugin whose pending questions are keyed per session, so the

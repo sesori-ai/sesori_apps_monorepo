@@ -610,7 +610,6 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
   );
 
   @override
@@ -624,7 +623,6 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
   );
 
   @override

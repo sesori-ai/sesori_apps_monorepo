@@ -22,14 +22,6 @@ extension PluginSessionMapper on PluginSession {
         ),
         null => null,
       },
-      summary: switch (summary) {
-        PluginSessionSummary(:final additions, :final deletions, :final files) => SessionSummary(
-          additions: additions,
-          deletions: deletions,
-          files: files,
-        ),
-        null => null,
-      },
       pullRequest: null,
       promptDefaults: null,
     );

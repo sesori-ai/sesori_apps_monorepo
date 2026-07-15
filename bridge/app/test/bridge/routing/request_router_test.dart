@@ -290,7 +290,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        summary: null,
       );
 
       final response = await router.route(
@@ -409,7 +408,6 @@ void main() {
           parentID: null,
           title: "session",
           time: null,
-          summary: null,
         ),
       ];
 

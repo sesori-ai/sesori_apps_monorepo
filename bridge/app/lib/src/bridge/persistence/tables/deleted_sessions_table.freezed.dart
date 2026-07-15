@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DeletedSessionDto {
 
- String get ownerIdentity; String get sessionId; String get pluginId; int get deletedAt;
+ String get ownerIdentity; String get backendSessionId; String get pluginId; int get deletedAt;
 /// Create a copy of DeletedSessionDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $DeletedSessionDtoCopyWith<DeletedSessionDto> get copyWith => _$DeletedSessionDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeletedSessionDto&&(identical(other.ownerIdentity, ownerIdentity) || other.ownerIdentity == ownerIdentity)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeletedSessionDto&&(identical(other.ownerIdentity, ownerIdentity) || other.ownerIdentity == ownerIdentity)&&(identical(other.backendSessionId, backendSessionId) || other.backendSessionId == backendSessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,ownerIdentity,sessionId,pluginId,deletedAt);
+int get hashCode => Object.hash(runtimeType,ownerIdentity,backendSessionId,pluginId,deletedAt);
 
 @override
 String toString() {
-  return 'DeletedSessionDto(ownerIdentity: $ownerIdentity, sessionId: $sessionId, pluginId: $pluginId, deletedAt: $deletedAt)';
+  return 'DeletedSessionDto(ownerIdentity: $ownerIdentity, backendSessionId: $backendSessionId, pluginId: $pluginId, deletedAt: $deletedAt)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $DeletedSessionDtoCopyWith<$Res>  {
   factory $DeletedSessionDtoCopyWith(DeletedSessionDto value, $Res Function(DeletedSessionDto) _then) = _$DeletedSessionDtoCopyWithImpl;
 @useResult
 $Res call({
- String ownerIdentity, String sessionId, String pluginId, int deletedAt
+ String ownerIdentity, String backendSessionId, String pluginId, int deletedAt
 });
 
 
@@ -62,10 +62,10 @@ class _$DeletedSessionDtoCopyWithImpl<$Res>
 
 /// Create a copy of DeletedSessionDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? ownerIdentity = null,Object? sessionId = null,Object? pluginId = null,Object? deletedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? ownerIdentity = null,Object? backendSessionId = null,Object? pluginId = null,Object? deletedAt = null,}) {
   return _then(_self.copyWith(
 ownerIdentity: null == ownerIdentity ? _self.ownerIdentity : ownerIdentity // ignore: cast_nullable_to_non_nullable
-as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,backendSessionId: null == backendSessionId ? _self.backendSessionId : backendSessionId // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,deletedAt: null == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
 as int,
@@ -80,11 +80,11 @@ as int,
 
 
 class _DeletedSessionDto extends DeletedSessionDto {
-  const _DeletedSessionDto({required this.ownerIdentity, required this.sessionId, required this.pluginId, required this.deletedAt}): super._();
+  const _DeletedSessionDto({required this.ownerIdentity, required this.backendSessionId, required this.pluginId, required this.deletedAt}): super._();
   
 
 @override final  String ownerIdentity;
-@override final  String sessionId;
+@override final  String backendSessionId;
 @override final  String pluginId;
 @override final  int deletedAt;
 
@@ -98,16 +98,16 @@ _$DeletedSessionDtoCopyWith<_DeletedSessionDto> get copyWith => __$DeletedSessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeletedSessionDto&&(identical(other.ownerIdentity, ownerIdentity) || other.ownerIdentity == ownerIdentity)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeletedSessionDto&&(identical(other.ownerIdentity, ownerIdentity) || other.ownerIdentity == ownerIdentity)&&(identical(other.backendSessionId, backendSessionId) || other.backendSessionId == backendSessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,ownerIdentity,sessionId,pluginId,deletedAt);
+int get hashCode => Object.hash(runtimeType,ownerIdentity,backendSessionId,pluginId,deletedAt);
 
 @override
 String toString() {
-  return 'DeletedSessionDto(ownerIdentity: $ownerIdentity, sessionId: $sessionId, pluginId: $pluginId, deletedAt: $deletedAt)';
+  return 'DeletedSessionDto(ownerIdentity: $ownerIdentity, backendSessionId: $backendSessionId, pluginId: $pluginId, deletedAt: $deletedAt)';
 }
 
 
@@ -118,7 +118,7 @@ abstract mixin class _$DeletedSessionDtoCopyWith<$Res> implements $DeletedSessio
   factory _$DeletedSessionDtoCopyWith(_DeletedSessionDto value, $Res Function(_DeletedSessionDto) _then) = __$DeletedSessionDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String ownerIdentity, String sessionId, String pluginId, int deletedAt
+ String ownerIdentity, String backendSessionId, String pluginId, int deletedAt
 });
 
 
@@ -135,10 +135,10 @@ class __$DeletedSessionDtoCopyWithImpl<$Res>
 
 /// Create a copy of DeletedSessionDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? ownerIdentity = null,Object? sessionId = null,Object? pluginId = null,Object? deletedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? ownerIdentity = null,Object? backendSessionId = null,Object? pluginId = null,Object? deletedAt = null,}) {
   return _then(_DeletedSessionDto(
 ownerIdentity: null == ownerIdentity ? _self.ownerIdentity : ownerIdentity // ignore: cast_nullable_to_non_nullable
-as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,backendSessionId: null == backendSessionId ? _self.backendSessionId : backendSessionId // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,deletedAt: null == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
 as int,

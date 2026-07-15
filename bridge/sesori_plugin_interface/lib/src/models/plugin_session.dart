@@ -13,7 +13,6 @@ sealed class PluginSession with _$PluginSession {
     required String? parentID,
     required String? title,
     required PluginSessionTime? time,
-    required PluginSessionSummary? summary,
   }) = _PluginSession;
 }
 
@@ -24,13 +23,4 @@ sealed class PluginSessionTime with _$PluginSessionTime {
     required int updated,
     required int? archived,
   }) = _PluginSessionTime;
-}
-
-@freezed
-sealed class PluginSessionSummary with _$PluginSessionSummary {
-  const factory PluginSessionSummary({
-    required int additions,
-    required int deletions,
-    required int files,
-  }) = _PluginSessionSummary;
 }

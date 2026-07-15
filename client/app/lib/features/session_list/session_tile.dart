@@ -74,7 +74,6 @@ class SessionTile extends StatelessWidget {
   Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
     final loc = context.loc;
     final updatedAt = session.time?.updated;
-    final filesChanged = session.summary?.files ?? 0;
 
     return Dismissible(
       key: ValueKey(session.id),
@@ -124,11 +123,6 @@ class SessionTile extends StatelessWidget {
                     color: context.prego.colors.textSecondary,
                   ),
                 ),
-              if (filesChanged > 0)
-                Text(
-                  loc.sessionListFilesChanged(filesChanged),
-                  style: context.prego.textTheme.textXs.regular,
-                ),
               if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
               if (isActive)
                 _ActivityRow(
@@ -141,7 +135,6 @@ class SessionTile extends StatelessWidget {
           isThreeLine:
               [
                 updatedAt != null,
-                filesChanged > 0,
                 session.pullRequest != null,
                 isActive,
               ].where((v) => v).length >=

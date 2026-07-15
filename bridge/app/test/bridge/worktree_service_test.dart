@@ -61,7 +61,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // git branch --list session-001 → empty (branch does not exist)
+      // Generated session branch does not exist.
       processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
       processRunner.enqueue(result: _ok());
@@ -73,18 +73,18 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.path, equals("$_projectId/.worktrees/session-001"));
-      expect(success.branchName, equals("session-001"));
+      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
+      expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
       expect(success.baseBranch, equals("main"));
       expect(success.baseCommit, equals("abc123def456"));
 
       // Verify the worktree add command used "main" as base branch
       final worktreeAddCall = processRunner.invocations.last;
       expect(worktreeAddCall.arguments, contains("main"));
-      expect(worktreeAddCall.arguments, contains("session-001"));
+      expect(worktreeAddCall.arguments, contains(success.branchName));
     });
 
-    test("moved project: git runs in the recorded live directory, counter stays keyed on the id", () async {
+    test("moved project: git runs in the recorded live directory", () async {
       // The folder moved from _projectId to /moved/project and was re-opened
       // there; every git operation must run where the folder actually is.
       await projectsDao.recordOpenedProject(projectId: _projectId, path: "/moved/project", createdAt: 1, updatedAt: 1);
@@ -96,7 +96,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // git branch --list session-001 → empty (branch does not exist)
+      // Generated session branch does not exist.
       processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
       processRunner.enqueue(result: _ok());
@@ -108,13 +108,11 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.path, equals("/moved/project/.worktrees/session-001"));
+      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
+      expect(success.path, equals("/moved/project/.worktrees/${success.branchName}"));
       for (final invocation in processRunner.invocations) {
         expect(invocation.workingDirectory, equals("/moved/project"));
       }
-      // The worktree counter is durable per-project state on the id-keyed row.
-      final row = await projectsDao.getProject(projectId: _projectId);
-      expect(row!.worktreeCounter, equals(1));
     });
 
     test("parent session: reuses parent worktree when mapping exists", () async {
@@ -157,7 +155,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // git branch --list session-001 → empty
+      // Generated session branch does not exist.
       processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
       processRunner.enqueue(result: _ok());
@@ -169,7 +167,8 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.path, contains("session-001"));
+      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
+      expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
     });
 
     // -----------------------------------------------------------------------
@@ -223,9 +222,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // branch --list session-001 → non-empty (collision!)
-      processRunner.enqueue(result: _ok(stdout: "  session-001\n"));
-      // branch --list session-002 → empty (free)
+      // First generated branch collides; the second is free.
+      processRunner.enqueue(result: _ok(stdout: "existing\n"));
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -237,8 +235,17 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, equals("session-002"));
-      expect(success.path, equals("$_projectId/.worktrees/session-002"));
+      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
+      expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
+      expect(
+        processRunner.invocations.where(
+          (invocation) =>
+              invocation.arguments.length >= 2 &&
+              invocation.arguments[0] == "branch" &&
+              invocation.arguments[1] == "--list",
+        ),
+        hasLength(2),
+      );
     });
 
     // -----------------------------------------------------------------------
@@ -254,13 +261,11 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Attempt 1: branch --list session-001 → empty, worktree add → fail
+      // Each generated branch is free, but worktree creation fails.
       processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
-      // Attempt 2: branch --list session-002 → empty, worktree add → fail
       processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
-      // Attempt 3: branch --list session-003 → empty, worktree add → fail
       processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
 
@@ -417,7 +422,7 @@ void main() {
       expect(success.path, startsWith("$_projectId/.worktrees/my-feature-"));
     });
 
-    test("preferred branch name git fails: falls through to numbered naming", () async {
+    test("preferred branch name git fails: falls through to random naming", () async {
       // rev-parse HEAD → ok
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
@@ -430,7 +435,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → failure
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
-      // branch --list session-001 → empty (free)
+      // Generated session branch is free.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -443,10 +448,10 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, equals("session-001"));
+      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
     });
 
-    test("no preferred branch name: uses numbered naming", () async {
+    test("no preferred branch name: uses random naming", () async {
       // rev-parse HEAD → ok
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
@@ -455,7 +460,7 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // branch --list session-001 → empty
+      // Generated session branch does not exist.
       processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
@@ -468,7 +473,7 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, equals("session-001"));
+      expect(success.branchName, matches(RegExp(r"^session-[0-9a-f]{6}$")));
     });
 
     test("preferred branch name with parent session: ignored, reuses parent worktree", () async {

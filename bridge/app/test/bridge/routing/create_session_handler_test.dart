@@ -120,7 +120,6 @@ void main() {
         parentID: null,
         title: "Created",
         time: null,
-        summary: null,
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
@@ -185,7 +184,6 @@ void main() {
         parentID: null,
         title: "Defaults",
         time: null,
-        summary: null,
       );
 
       final result = await handler.handle(
@@ -222,7 +220,6 @@ void main() {
         parentID: null,
         title: "Simple",
         time: null,
-        summary: null,
       );
       worktreeService.resolveBaseBranchAndCommitResult = (
         baseBranch: "main",
@@ -275,7 +272,6 @@ void main() {
         parentID: null,
         title: "Moved",
         time: null,
-        summary: null,
       );
       worktreeService.resolveBaseBranchAndCommitResult = (
         baseBranch: "main",
@@ -323,7 +319,6 @@ void main() {
           parentID: null,
           title: "Fallback",
           time: null,
-          summary: null,
         );
         worktreeService.prepareResult = WorktreeFallback(
           originalPath: "/repo",
@@ -372,7 +367,6 @@ void main() {
         parentID: null,
         title: "Empty",
         time: null,
-        summary: null,
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-empty",
@@ -484,7 +478,6 @@ void main() {
         parentID: "parent-1",
         title: "Created",
         time: PluginSessionTime(created: 11, updated: 22, archived: 33),
-        summary: PluginSessionSummary(additions: 1, deletions: 2, files: 3),
       );
 
       final result = await handler.handle(
@@ -516,9 +509,6 @@ void main() {
       expect(result.time?.created, equals(11));
       expect(result.time?.updated, equals(22));
       expect(result.time?.archived, isNull);
-      expect(result.summary?.additions, equals(1));
-      expect(result.summary?.deletions, equals(2));
-      expect(result.summary?.files, equals(3));
     });
 
     test("hasWorktree is true when WorktreeSuccess", () async {
@@ -529,7 +519,6 @@ void main() {
         parentID: null,
         title: "Created",
         time: null,
-        summary: null,
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
@@ -584,7 +573,6 @@ void main() {
         parentID: null,
         title: "Created",
         time: null,
-        summary: null,
       );
 
       final result = await handler.handle(
@@ -615,7 +603,6 @@ void main() {
         parentID: null,
         title: "Fallback",
         time: null,
-        summary: null,
       );
       worktreeService.prepareResult = WorktreeFallback(
         originalPath: "/repo",
@@ -679,7 +666,6 @@ void main() {
         parentID: null,
         title: "Session",
         time: null,
-        summary: null,
       );
       plugin.renameSessionResult = const PluginSession(
         id: "s1",
@@ -688,7 +674,6 @@ void main() {
         parentID: null,
         title: "Fix Login Bug",
         time: null,
-        summary: null,
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/fix-login-bug",
@@ -729,7 +714,6 @@ void main() {
         parentID: null,
         title: "Session",
         time: null,
-        summary: null,
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
@@ -769,7 +753,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        summary: null,
       );
 
       final result = await handler.handle(
@@ -802,7 +785,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        summary: null,
       );
 
       final result = await handler.handle(
@@ -834,7 +816,6 @@ void main() {
         parentID: null,
         title: "Command Session",
         time: null,
-        summary: null,
       );
 
       final result = await handler.handle(
@@ -873,7 +854,6 @@ void main() {
         parentID: null,
         title: "Command Session",
         time: null,
-        summary: null,
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
@@ -915,7 +895,6 @@ void main() {
           parentID: null,
           title: "Ordered Session",
           time: null,
-          summary: null,
         );
       final orderedRepository = SessionRepository(
         plugin: orderedPlugin,
@@ -972,7 +951,6 @@ void main() {
         parentID: null,
         title: "Command Defaults",
         time: null,
-        summary: null,
       );
 
       await handler.handle(
@@ -1038,7 +1016,6 @@ void main() {
         parentID: null,
         title: "No Command",
         time: null,
-        summary: null,
       );
 
       await handler.handle(
@@ -1070,7 +1047,6 @@ void main() {
         parentID: null,
         title: "Blank Command",
         time: null,
-        summary: null,
       );
 
       await handler.handle(
@@ -1109,7 +1085,6 @@ void main() {
         parentID: null,
         title: "Session",
         time: null,
-        summary: null,
       );
       final throwingRepository = SessionRepository(
         plugin: throwingPlugin,

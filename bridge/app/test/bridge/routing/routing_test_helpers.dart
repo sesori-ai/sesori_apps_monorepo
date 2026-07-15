@@ -220,7 +220,6 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         );
   }
 
@@ -239,7 +238,6 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         );
   }
 
@@ -443,7 +441,10 @@ class FakeSessionDao {
   }) async {
     _sessions[sessionId] = SessionDto(
       sessionId: sessionId,
+      backendSessionId: sessionId,
       projectId: projectId,
+      parentSessionId: null,
+      directory: worktreePath ?? projectId,
       worktreePath: worktreePath,
       branchName: branchName,
       isDedicated: isDedicated,
@@ -453,11 +454,14 @@ class FakeSessionDao {
       lastAgent: lastAgent,
       lastAgentModel: lastAgentModel,
       createdAt: createdAt,
+      updatedAt: createdAt,
+      projectionUpdatedAt: createdAt,
       lastActivityAt: null,
       lastSeenAt: null,
       lastUserMessageAt: null,
       pluginId: pluginId,
       title: null,
+      catalogTitle: null,
     );
   }
 
@@ -711,7 +715,6 @@ Session _deletedSession(String sessionId) => Session(
   parentID: null,
   title: null,
   time: null,
-  summary: null,
   pullRequest: null,
   promptDefaults: null,
 );
@@ -752,7 +755,6 @@ class _NoopSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );
@@ -854,7 +856,6 @@ class _NoopSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );
@@ -943,7 +944,6 @@ class FakeSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );
@@ -1210,7 +1210,6 @@ class FakeSessionRepository implements SessionRepository {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
     pullRequest: null,
     promptDefaults: null,
   );

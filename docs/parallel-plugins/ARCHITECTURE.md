@@ -68,9 +68,7 @@ Sesori owns the durable catalog representation of:
 - bridge-owned names and archive or deletion intent;
 - worktree, base-branch, and prompt-default metadata;
 - unseen and activity state;
-- catalog provenance and last-known lifecycle/list metadata; and
-- durable owner/identity, even while every entity belongs to the current local
-  account.
+- catalog provenance and last-known lifecycle/list metadata.
 
 Plugins own:
 
@@ -164,11 +162,10 @@ Projects remain one cross-plugin entity per directory with shared hide, name,
 and base-branch metadata. The existing separation between project identity and
 live path leaves open the option of stronger Sesori-owned identity later.
 
-Catalog entities are durable and therefore carry an owner/identity from the first
-catalog migration, even though it currently only identifies the current local account.
-The exact representation is deferred, but ownership should be included in the
-same migration unless current persistence constraints make doing so concretely
-unsafe. It must not be silently postponed into an avoidable teams migration.
+The local catalog has one owner and does not persist a placeholder owner field.
+If a concrete multi-owner requirement arrives, ownership is added with an
+explicit migration and backfill based on that requirement's actual identity
+model.
 
 The catalog remains per-bridge. It does not collapse or replace the separate
 multi-bridge addressing axis.
@@ -278,8 +275,7 @@ Immediately before implementation:
 
 1. Re-verify this document and `CONSIDERATIONS.md` against current code.
 2. Decide durable identity migration and compatibility behavior.
-3. Design the smallest generic catalog projection and required Drift migration,
-   including owner identity and migration tests.
+3. Design the smallest generic catalog projection and required Drift migration.
 4. Define child ancestry, event-ordering, and targeted-recovery behavior.
 5. Define import completeness, non-destructive observation, atomicity,
    cancellation, and user-facing progress semantics.

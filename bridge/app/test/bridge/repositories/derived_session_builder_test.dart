@@ -13,7 +13,6 @@ void main() {
       parentID: null,
       title: null,
       time: const PluginSessionTime(created: 1, updated: 1, archived: null),
-      summary: null,
     );
   }
 

@@ -27,13 +27,34 @@ class AgentModelConverter extends TypeConverter<AgentModel, String> {
   }
 }
 
+@TableIndex(
+  name: "idx_sessions_plugin_backend",
+  columns: {#pluginId, #backendSessionId},
+  unique: true,
+)
+@TableIndex(
+  name: "idx_sessions_roots",
+  columns: {#projectId, #parentSessionId, #updatedAt, #sessionId},
+)
+@TableIndex(
+  name: "idx_sessions_children",
+  columns: {#parentSessionId, #updatedAt, #sessionId},
+)
+@TableIndex.sql(
+  "CREATE INDEX idx_sessions_archive ON sessions_table "
+  "(updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL",
+)
 @UseRowClass(SessionDto)
 class SessionTable extends Table {
   @override
   String get tableName => "sessions_table";
 
   TextColumn get sessionId => text()();
+  TextColumn get backendSessionId => text()();
   TextColumn get projectId => text().references(ProjectsTable, #projectId, onDelete: KeyAction.cascade)();
+  TextColumn get parentSessionId =>
+      text().nullable().references(SessionTable, #sessionId, onDelete: KeyAction.cascade)();
+  TextColumn get directory => text()();
   TextColumn get worktreePath => text().nullable()();
   TextColumn get branchName => text().nullable()();
   BoolColumn get isDedicated => boolean()();
@@ -43,6 +64,8 @@ class SessionTable extends Table {
   TextColumn get lastAgent => text().nullable()();
   TextColumn get lastAgentModel => text().nullable().map(const AgentModelConverter())();
   IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+  IntColumn get projectionUpdatedAt => integer()();
 
   // ── Unseen-changes tracking (ms since epoch; null == 0 == "seen") ──────────
   // Last activity of ANY kind (user OR AI message, question.asked,
@@ -68,6 +91,7 @@ class SessionTable extends Table {
   /// backend's enumeration title. Null for native plugins (their backend is
   /// authoritative) and for sessions with no bridge-known title.
   TextColumn get title => text().nullable()();
+  TextColumn get catalogTitle => text().nullable()();
 
   @override
   bool get withoutRowId => true;
@@ -80,7 +104,10 @@ class SessionTable extends Table {
 sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
   const factory SessionDto({
     required String sessionId,
+    required String backendSessionId,
     required String projectId,
+    required String? parentSessionId,
+    required String directory,
     required String? worktreePath,
     required String? branchName,
     required bool isDedicated,
@@ -90,11 +117,14 @@ sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
     required int createdAt,
+    required int updatedAt,
+    required int projectionUpdatedAt,
     required int? lastActivityAt,
     required int? lastSeenAt,
     required int? lastUserMessageAt,
     required String pluginId,
     required String? title,
+    required String? catalogTitle,
   }) = _SessionDto;
 
   const SessionDto._();

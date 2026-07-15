@@ -9,6 +9,7 @@ import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v10.dart' as v10;
+import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -500,9 +501,13 @@ void main() {
             .insert(
               SessionTableCompanion.insert(
                 sessionId: 'test',
+                backendSessionId: 'test',
                 projectId: 'nonexistent',
+                directory: '/nonexistent',
                 isDedicated: false,
                 createdAt: 0,
+                updatedAt: 0,
+                projectionUpdatedAt: 0,
                 pluginId: 'opencode',
               ),
             ),
@@ -712,16 +717,24 @@ void main() {
       await db
           .into(db.projectsTable)
           .insert(
-            ProjectsTableCompanion.insert(projectId: 'p1', path: 'p1'),
+            ProjectsTableCompanion.insert(
+              projectId: 'p1',
+              path: 'p1',
+              projectionUpdatedAt: 0,
+            ),
           );
       await db
           .into(db.sessionTable)
           .insert(
             SessionTableCompanion.insert(
               sessionId: 's1',
+              backendSessionId: 's1',
               projectId: 'p1',
+              directory: 'p1',
               isDedicated: false,
               createdAt: 1000,
+              updatedAt: 1000,
+              projectionUpdatedAt: 1000,
               pluginId: 'opencode',
             ),
           );
@@ -730,9 +743,13 @@ void main() {
           .insert(
             SessionTableCompanion.insert(
               sessionId: 's2',
+              backendSessionId: 's2',
               projectId: 'p1',
+              directory: 'p1',
               isDedicated: true,
               createdAt: 2000,
+              updatedAt: 2000,
+              projectionUpdatedAt: 2000,
               pluginId: 'opencode',
             ),
           );
@@ -1006,6 +1023,227 @@ void main() {
       },
     );
   });
+
+  test('migration v10 → v11 structural validation', () async {
+    final connection = await verifier.startAt(10);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(
+      db,
+      11,
+      options: const ValidationOptions(validateDropped: true),
+    );
+    await db.close();
+  });
+
+  test(
+    'migration v10 → v11 preserves rows and backfills catalog fields',
+    () async {
+      await verifier.testWithDataIntegrity(
+        oldVersion: 10,
+        newVersion: 11,
+        createOld: v10.DatabaseAtV10.new,
+        createNew: v11.DatabaseAtV11.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insert(
+            oldDb.projectsTable,
+            const v10.ProjectsTableData(
+              projectId: 'project-1',
+              path: '/projects/one',
+              hidden: 1,
+              baseBranch: 'main',
+              worktreeCounter: 2,
+              displayName: 'One',
+              createdAt: 50,
+              updatedAt: 200,
+            ),
+          );
+          batch.insertAll(oldDb.sessionsTable, const [
+            v10.SessionsTableData(
+              sessionId: 'root',
+              projectId: 'project-1',
+              worktreePath: null,
+              branchName: null,
+              isDedicated: 0,
+              archivedAt: null,
+              baseBranch: null,
+              baseCommit: null,
+              lastAgent: 'build',
+              lastAgentModel: 'anthropic|claude',
+              createdAt: 100,
+              lastActivityAt: 250,
+              lastSeenAt: 150,
+              lastUserMessageAt: 125,
+              pluginId: 'opencode',
+              title: 'Root title',
+            ),
+            v10.SessionsTableData(
+              sessionId: 'worktree',
+              projectId: 'project-1',
+              worktreePath: '/worktrees/one',
+              branchName: 'feature',
+              isDedicated: 1,
+              archivedAt: 400,
+              baseBranch: 'main',
+              baseCommit: 'abc',
+              lastAgent: null,
+              lastAgentModel: null,
+              createdAt: 300,
+              lastActivityAt: 200,
+              lastSeenAt: null,
+              lastUserMessageAt: null,
+              pluginId: 'codex',
+              title: null,
+            ),
+          ]);
+          batch.insert(
+            oldDb.deletedSessionsTable,
+            const v10.DeletedSessionsTableData(
+              ownerIdentity: 'local',
+              sessionId: 'deleted',
+              pluginId: 'codex',
+              deletedAt: 500,
+            ),
+          );
+        },
+        validateItems: (newDb) async {
+          final project =
+              (await newDb.select(newDb.projectsTable).get()).single;
+          expect(project.projectionUpdatedAt, 200);
+          expect(project.displayName, 'One');
+          final projectColumns = await newDb.customSelect("PRAGMA table_info('projects_table')").get();
+          expect(
+            projectColumns.map((row) => row.read<String>('name')),
+            isNot(contains('worktree_counter')),
+          );
+
+          final sessions = {
+            for (final row in await newDb.select(newDb.sessionsTable).get())
+              row.sessionId: row,
+          };
+          final root = sessions['root']!;
+          expect(root.backendSessionId, 'root');
+          expect(root.parentSessionId, isNull);
+          expect(root.directory, '/projects/one');
+          expect(root.updatedAt, 250);
+          expect(root.projectionUpdatedAt, 250);
+          expect(root.title, 'Root title');
+          expect(root.catalogTitle, isNull);
+          expect(root.lastAgent, 'build');
+          expect(root.lastSeenAt, 150);
+
+          final worktree = sessions['worktree']!;
+          expect(worktree.backendSessionId, 'worktree');
+          expect(worktree.directory, '/worktrees/one');
+          expect(worktree.updatedAt, 300);
+          expect(worktree.projectionUpdatedAt, 300);
+          expect(worktree.archivedAt, 400);
+          expect(worktree.baseCommit, 'abc');
+
+          final tombstone =
+              (await newDb.select(newDb.deletedSessionsTable).get()).single;
+          expect(tombstone.backendSessionId, 'deleted');
+          expect(tombstone.pluginId, 'codex');
+          expect(
+            await newDb.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+        },
+      );
+    },
+  );
+
+  test(
+    'v11 binding uniqueness is plugin-scoped and parent deletion cascades',
+    () async {
+      final connection = await verifier.startAt(10);
+      final db = AppDatabase(connection);
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(db, 11);
+
+      await db
+          .into(db.projectsTable)
+          .insert(
+            ProjectsTableCompanion.insert(
+              projectId: 'p1',
+              path: '/p1',
+              projectionUpdatedAt: 1,
+            ),
+          );
+      Future<void> insertSession({
+        required String id,
+        required String pluginId,
+        required String? parentId,
+      }) {
+        return db
+            .into(db.sessionTable)
+            .insert(
+              SessionTableCompanion.insert(
+                sessionId: id,
+                backendSessionId: 'shared-backend-id',
+                projectId: 'p1',
+                parentSessionId: Value(parentId),
+                directory: '/p1',
+                isDedicated: false,
+                createdAt: 1,
+                updatedAt: 1,
+                projectionUpdatedAt: 1,
+                pluginId: pluginId,
+              ),
+            );
+      }
+
+      await insertSession(id: 'parent', pluginId: 'opencode', parentId: null);
+      await insertSession(id: 'child', pluginId: 'codex', parentId: 'parent');
+      await expectLater(
+        insertSession(id: 'duplicate', pluginId: 'opencode', parentId: null),
+        throwsA(isA<SqliteException>()),
+      );
+
+      await (db.delete(
+        db.sessionTable,
+      )..where((table) => table.sessionId.equals('parent'))).go();
+      expect(await db.select(db.sessionTable).get(), isEmpty);
+    },
+  );
+
+  test(
+    'v11 keeps catalog tables WITHOUT ROWID and renames tombstone identity',
+    () async {
+      final connection = await verifier.startAt(10);
+      final db = AppDatabase(connection);
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(db, 11);
+
+      final definitions = await db
+          .customSelect(
+            "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name IN "
+            "('sessions_table', 'deleted_sessions_table', 'catalog_hydrations_table')",
+          )
+          .get();
+      expect(definitions, hasLength(3));
+      for (final definition in definitions) {
+        expect(
+          definition.read<String>('sql').toUpperCase(),
+          contains('WITHOUT ROWID'),
+        );
+      }
+      final tombstoneColumns = await db
+          .customSelect(
+            "SELECT name FROM pragma_table_info('deleted_sessions_table')",
+          )
+          .get();
+      expect(
+        tombstoneColumns.map((row) => row.read<String>('name')),
+        contains('backend_session_id'),
+      );
+      expect(
+        tombstoneColumns.map((row) => row.read<String>('name')),
+        isNot(contains('session_id')),
+      );
+    },
+  );
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
@@ -1016,7 +1254,7 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    10,
+    11,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

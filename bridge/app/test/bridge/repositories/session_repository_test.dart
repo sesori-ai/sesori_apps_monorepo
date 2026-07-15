@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:drift/drift.dart" hide isNotNull, isNull;
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
@@ -209,7 +210,6 @@ void main() {
           parentID: null,
           title: "session",
           time: SessionTime(created: 1, updated: 2, archived: null),
-          summary: null,
           pullRequest: null,
           promptDefaults: null,
         ),
@@ -268,7 +268,6 @@ void main() {
           parentID: null,
           title: "session",
           time: null,
-          summary: null,
           pullRequest: null,
           promptDefaults: null,
         ),
@@ -336,7 +335,6 @@ void main() {
             parentID: null,
             title: "stored",
             time: null,
-            summary: null,
             pullRequest: null,
             promptDefaults: null,
           ),
@@ -348,7 +346,6 @@ void main() {
             parentID: null,
             title: "unstored",
             time: SessionTime(created: 3, updated: 4, archived: null),
-            summary: null,
             pullRequest: null,
             promptDefaults: null,
           ),
@@ -645,7 +642,6 @@ void main() {
         parentID: null,
         title: "Renamed",
         time: PluginSessionTime(created: 1, updated: 2, archived: null),
-        summary: null,
       );
 
       final result = await repository.renameSession(sessionId: "s1", title: "Renamed");
@@ -723,7 +719,6 @@ void main() {
             parentID: null,
             title: "Session",
             time: null,
-            summary: null,
           ),
         ],
       };
@@ -788,7 +783,6 @@ void main() {
         parentID: null,
         title: "Event session",
         time: null,
-        summary: null,
         pullRequest: null,
         promptDefaults: null,
       ).toJson();
@@ -823,7 +817,6 @@ void main() {
               parentID: null,
               title: "Session",
               time: null,
-              summary: null,
             ),
           ],
         };
@@ -977,7 +970,6 @@ void main() {
       parentID: null,
       title: null,
       time: const PluginSessionTime(created: 1, updated: 1, archived: null),
-      summary: null,
     );
 
     Future<void> recordWorktreeSession(
@@ -1265,7 +1257,6 @@ void main() {
             parentID: null,
             title: "Backend auto-title",
             time: PluginSessionTime(created: 1, updated: 1, archived: null),
-            summary: null,
           ),
         ],
       );
@@ -1324,7 +1315,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone",
+        backendSessionId: "gone",
         pluginId: plugin.id,
         deletedAt: 1,
       );
@@ -1387,7 +1378,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "gone-child",
+        backendSessionId: "gone-child",
         pluginId: plugin.id,
         deletedAt: 1,
       );
@@ -1421,9 +1412,45 @@ void main() {
       expect(deleted.projectID, isEmpty);
       expect(plugin.deleteCalls, 1);
       expect(
-        await db.sessionDao.isSessionTombstoned(sessionId: "rowless", pluginId: plugin.id),
+        await db.sessionDao.isSessionTombstoned(backendSessionId: "rowless", pluginId: plugin.id),
         isTrue,
       );
+    });
+
+    test("deleteSession tombstones the stored backend identity", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final plugin = _FakeDerivedPlugin(launchDirectory: "/repo", allSessions: const []);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await repository.insertStoredSession(
+        sessionId: "sesori-id",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      await (db.update(db.sessionTable)..where((table) => table.sessionId.equals("sesori-id"))).write(
+        const SessionTableCompanion(backendSessionId: Value("backend-id")),
+      );
+
+      await repository.deleteSession(sessionId: "sesori-id");
+
+      expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "backend-id", pluginId: plugin.id), isTrue);
+      expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "sesori-id", pluginId: plugin.id), isFalse);
     });
 
     test("tombstoned sessions are filtered from enumeration and resolution", () async {
@@ -1451,7 +1478,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
-        sessionId: "deleted-s",
+        backendSessionId: "deleted-s",
         pluginId: "codex",
         deletedAt: 1,
       );
@@ -1532,7 +1559,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
     parentID: null,
     title: null,
     time: null,
-    summary: null,
   );
   PluginSession? renameSessionResult;
   String? lastRenameSessionId;
@@ -1711,7 +1737,6 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
       parentID: null,
       title: title,
       time: null,
-      summary: null,
     );
   }
 

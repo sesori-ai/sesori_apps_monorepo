@@ -92,7 +92,6 @@ void main() {
           parentID: null,
           title: null,
           time: null,
-          summary: null,
         ),
       ];
       final deletionEvent = expectLater(
@@ -193,7 +192,6 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
       parentID: null,
       title: title,
       time: null,
-      summary: null,
     );
   }
 

@@ -542,7 +542,6 @@ class AcpEventMapper {
               updated: updated ?? created!,
               archived: null,
             ),
-      summary: null,
       pullRequest: null,
       promptDefaults: null,
     );

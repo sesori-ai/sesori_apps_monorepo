@@ -49,7 +49,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        summary: null,
         pullRequest: null,
         promptDefaults: SessionPromptDefaults(
           agent: "agent-1",

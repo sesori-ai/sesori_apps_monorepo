@@ -42,7 +42,6 @@ sealed class Session with _$Session {
     required String? parentID,
     required String? title,
     required SessionTime? time,
-    required SessionSummary? summary,
     required PullRequestInfo? pullRequest,
     required SessionPromptDefaults? promptDefaults,
     @Default(false) bool hasWorktree,
@@ -77,17 +76,6 @@ sealed class SessionTime with _$SessionTime {
   factory SessionTime.fromJson(Map<String, dynamic> json) => _$SessionTimeFromJson(json);
 }
 
-@Freezed(fromJson: true, toJson: true)
-sealed class SessionSummary with _$SessionSummary {
-  const factory SessionSummary({
-    @Default(0) int additions,
-    @Default(0) int deletions,
-    @Default(0) int files,
-  }) = _SessionSummary;
-
-  factory SessionSummary.fromJson(Map<String, dynamic> json) => _$SessionSummaryFromJson(json);
-}
-
 /// Session with embedded project info, returned by `/experimental/session`.
 ///
 /// This is the `GlobalInfo` type from the backend server — a [Session] extended
@@ -102,7 +90,6 @@ sealed class GlobalSession with _$GlobalSession {
     required String? parentID,
     required String? title,
     required SessionTime? time,
-    required SessionSummary? summary,
     required SessionProject? project,
   }) = _GlobalSession;
 
