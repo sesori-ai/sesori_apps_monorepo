@@ -13,7 +13,6 @@ import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/command_picker_sheet.dart";
-import "../../../core/widgets/isolated_activity_indicator.dart";
 
 enum _VoiceState { idle, recording, transcribing }
 
@@ -536,8 +535,7 @@ class _TranscribingIndicator extends StatelessWidget {
           SizedBox(
             width: 16,
             height: 16,
-            child: IsolatedActivityIndicator(
-              strokeWidth: 2,
+            child: PregoActivityIndicator(
               color: prego.colors.bgBrandSolid,
             ),
           ),

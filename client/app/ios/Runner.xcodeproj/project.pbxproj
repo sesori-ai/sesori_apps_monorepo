@@ -18,7 +18,6 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A5EE45C42F71A36300D8D74A /* Sesori.icon in Resources */ = {isa = PBXBuildFile; fileRef = A5EE45C32F71A36300D8D74A /* Sesori.icon */; };
-		A104B9A32F17D00100A11C01 /* NativeActivityIndicatorPlatformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A104B9A22F17D00100A11C01 /* NativeActivityIndicatorPlatformView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,7 +65,6 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A5EE45C32F71A36300D8D74A /* Sesori.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Sesori.icon; sourceTree = "<group>"; };
-		A104B9A22F17D00100A11C01 /* NativeActivityIndicatorPlatformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeActivityIndicatorPlatformView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,7 +130,6 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
-				A104B9A12F17D00100A11C01 /* Platform */,
 				7884E86A2EC3DD0500D736F3 /* Runner.entitlements */,
 				7884E86B2EC3DD0500D736F4 /* RunnerRelease.entitlements */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
@@ -146,14 +143,6 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
-			sourceTree = "<group>";
-		};
-		A104B9A12F17D00100A11C01 /* Platform */ = {
-			isa = PBXGroup;
-			children = (
-				A104B9A22F17D00100A11C01 /* NativeActivityIndicatorPlatformView.swift */,
-			);
-			path = Platform;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -313,7 +302,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
-				A104B9A32F17D00100A11C01 /* NativeActivityIndicatorPlatformView.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 			);

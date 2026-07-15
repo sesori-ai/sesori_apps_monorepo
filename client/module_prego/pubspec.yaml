@@ -6,6 +6,7 @@ resolution: workspace
 
 environment:
   sdk: ^3.12.2
+  flutter: ">=3.35.0"
 
 dependencies:
   flutter:
@@ -17,6 +18,17 @@ dependencies:
   cue: ^0.3.1
 
 flutter:
+  plugin:
+    platforms:
+      android:
+        package: ai.sesori.theme_prego
+        pluginClass: ThemePregoPlugin
+      ios:
+        pluginClass: ThemePregoPlugin
+        sharedDarwinSource: true
+      macos:
+        pluginClass: ThemePregoPlugin
+        sharedDarwinSource: true
   assets:
     - assets/svgs/hero_icons/
   fonts:

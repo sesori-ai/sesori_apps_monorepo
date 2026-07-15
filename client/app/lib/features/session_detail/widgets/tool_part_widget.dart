@@ -4,7 +4,6 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
-import "../../../core/widgets/isolated_activity_indicator.dart";
 import "../../../l10n/app_localizations.dart";
 
 class ToolPartWidget extends StatelessWidget {
@@ -85,8 +84,7 @@ class ToolPartWidget extends StatelessWidget {
     ToolStatus.pending || ToolStatus.running => SizedBox(
       width: 16,
       height: 16,
-      child: IsolatedActivityIndicator(
-        strokeWidth: 2,
+      child: PregoActivityIndicator(
         color: prego.colors.bgBrandSolid,
       ),
     ),

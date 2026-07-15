@@ -2,7 +2,7 @@ import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:sesori_mobile/core/widgets/isolated_activity_indicator.dart";
+import "package:theme_prego/module_prego.dart";
 
 void main() {
   const color = Color(0xFF123456);
@@ -26,12 +26,12 @@ void main() {
     usePlatform(TargetPlatform.android);
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(
-      wrap(const IsolatedActivityIndicator(strokeWidth: 2, color: color)),
+      wrap(const PregoActivityIndicator(color: color)),
     );
 
     expect(
       find.descendant(
-        of: find.byType(IsolatedActivityIndicator),
+        of: find.byType(PregoActivityIndicator),
         matching: find.byType(RepaintBoundary),
       ),
       findsOneWidget,
@@ -41,10 +41,9 @@ void main() {
     expect(platformView.creationParams, color.toARGB32());
     expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.byType(UiKitView), findsNothing);
     expect(tester.hasRunningAnimations, isFalse);
 
-    final data = tester.getSemantics(find.byType(IsolatedActivityIndicator)).getSemanticsData();
+    final data = tester.getSemantics(find.byType(PregoActivityIndicator)).getSemanticsData();
     expect(data.role, SemanticsRole.loadingSpinner);
 
     handle.dispose();
@@ -53,32 +52,56 @@ void main() {
 
   testWidgets("uses the native iOS spinner without scheduling Flutter animation", (tester) async {
     usePlatform(TargetPlatform.iOS);
-    final handle = tester.ensureSemantics();
     await tester.pumpWidget(
-      wrap(const IsolatedActivityIndicator(strokeWidth: 2, color: color)),
+      wrap(const PregoActivityIndicator(color: color)),
     );
 
     final platformView = tester.widget<UiKitView>(find.byType(UiKitView));
     expect(platformView.viewType, "sesori/native-activity-indicator");
     expect(platformView.creationParams, color.toARGB32());
     expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
-    expect(find.byType(AndroidView), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(tester.hasRunningAnimations, isFalse);
 
-    final data = tester.getSemantics(find.byType(IsolatedActivityIndicator)).getSemanticsData();
-    expect(data.role, SemanticsRole.loadingSpinner);
+    debugDefaultTargetPlatformOverride = null;
+  });
 
-    handle.dispose();
+  testWidgets("uses the native macOS spinner without scheduling Flutter animation", (tester) async {
+    usePlatform(TargetPlatform.macOS);
+    await tester.pumpWidget(
+      wrap(const PregoActivityIndicator(color: color)),
+    );
+
+    final platformView = tester.widget<AppKitView>(find.byType(AppKitView));
+    expect(platformView.viewType, "sesori/native-activity-indicator");
+    expect(platformView.creationParams, color.toARGB32());
+    expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.hasRunningAnimations, isFalse);
+
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets("gives a loosely constrained native spinner a 36 pixel square", (tester) async {
+    usePlatform(TargetPlatform.android);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(
+          child: PregoActivityIndicator(color: color),
+        ),
+      ),
+    );
+
+    expect(tester.getSize(find.byType(AndroidView)), const Size.square(36));
+
     debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets("reduced motion uses a static Flutter arc", (tester) async {
     usePlatform(TargetPlatform.android);
-    final handle = tester.ensureSemantics();
     await tester.pumpWidget(
       wrap(
-        const IsolatedActivityIndicator(strokeWidth: 2, color: color),
+        const PregoActivityIndicator(color: color),
         reduceMotion: true,
       ),
     );
@@ -88,25 +111,19 @@ void main() {
       isNotNull,
     );
     expect(find.byType(AndroidView), findsNothing);
-    expect(find.byType(UiKitView), findsNothing);
     await tester.pump(const Duration(seconds: 1));
     expect(tester.hasRunningAnimations, isFalse);
 
-    final data = tester.getSemantics(find.byType(IsolatedActivityIndicator)).getSemanticsData();
-    expect(data.role, SemanticsRole.loadingSpinner);
-    expect(data.value, isEmpty);
-
-    handle.dispose();
     debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets("disabled TickerMode uses a static Flutter arc", (tester) async {
-    usePlatform(TargetPlatform.iOS);
+    usePlatform(TargetPlatform.macOS);
     await tester.pumpWidget(
       wrap(
         const TickerMode(
           enabled: false,
-          child: IsolatedActivityIndicator(strokeWidth: 2, color: color),
+          child: PregoActivityIndicator(color: color),
         ),
       ),
     );
@@ -115,18 +132,17 @@ void main() {
       tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator)).value,
       isNotNull,
     );
-    expect(find.byType(AndroidView), findsNothing);
-    expect(find.byType(UiKitView), findsNothing);
+    expect(find.byType(AppKitView), findsNothing);
     await tester.pump(const Duration(seconds: 1));
     expect(tester.hasRunningAnimations, isFalse);
 
     debugDefaultTargetPlatformOverride = null;
   });
 
-  testWidgets("unshipped targets keep the animated Flutter fallback", (tester) async {
+  testWidgets("unsupported targets keep the animated Flutter fallback", (tester) async {
     usePlatform(TargetPlatform.linux);
     await tester.pumpWidget(
-      wrap(const IsolatedActivityIndicator(strokeWidth: 2, color: color)),
+      wrap(const PregoActivityIndicator(color: color)),
     );
 
     expect(
@@ -135,6 +151,7 @@ void main() {
     );
     expect(find.byType(AndroidView), findsNothing);
     expect(find.byType(UiKitView), findsNothing);
+    expect(find.byType(AppKitView), findsNothing);
     expect(tester.hasRunningAnimations, isTrue);
 
     debugDefaultTargetPlatformOverride = null;

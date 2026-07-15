@@ -11,19 +11,9 @@ import android.widget.FrameLayout
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
 
 class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
-
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        val registered = flutterEngine.platformViewsController.registry.registerViewFactory(
-            NativeActivityIndicatorPlatformViewFactory.VIEW_TYPE,
-            NativeActivityIndicatorPlatformViewFactory()
-        )
-        check(registered) { "Unable to register the native activity indicator platform view" }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyEdgeToEdge()

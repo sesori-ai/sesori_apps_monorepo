@@ -3,25 +3,24 @@ import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 
-import "../extensions/build_context_x.dart";
-
-/// A smooth activity indicator that animates outside Flutter on mobile.
-class IsolatedActivityIndicator extends StatelessWidget {
+/// A Prego activity indicator that animates outside Flutter where supported.
+class PregoActivityIndicator extends StatelessWidget {
   static const _nativeViewType = "sesori/native-activity-indicator";
+  static const _defaultDimension = 36.0;
   static const _staticArcSweep = 0.75;
+  static const _fallbackStrokeWidth = 2.0;
 
-  final double strokeWidth;
   final Color color;
 
-  const IsolatedActivityIndicator({
+  const PregoActivityIndicator({
     super.key,
-    required this.strokeWidth,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    final animationsEnabled = !context.isReducedMotion && TickerMode.valuesOf(context).enabled;
+    final reducedMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final animationsEnabled = !reducedMotion && TickerMode.valuesOf(context).enabled;
 
     return Semantics(
       role: SemanticsRole.loadingSpinner,
@@ -38,30 +37,37 @@ class IsolatedActivityIndicator extends StatelessWidget {
       return _indicator(value: null);
     }
 
-    return switch (defaultTargetPlatform) {
-      TargetPlatform.iOS => UiKitView(
-        viewType: _nativeViewType,
-        creationParams: color.toARGB32(),
-        creationParamsCodec: const StandardMessageCodec(),
-        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
-      ),
+    final nativeView = switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidView(
         viewType: _nativeViewType,
         creationParams: color.toARGB32(),
         creationParamsCodec: const StandardMessageCodec(),
         hitTestBehavior: PlatformViewHitTestBehavior.transparent,
       ),
-      TargetPlatform.fuchsia ||
-      TargetPlatform.linux ||
-      TargetPlatform.macOS ||
-      TargetPlatform.windows => _indicator(value: null),
+      TargetPlatform.iOS => UiKitView(
+        viewType: _nativeViewType,
+        creationParams: color.toARGB32(),
+        creationParamsCodec: const StandardMessageCodec(),
+        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+      ),
+      TargetPlatform.macOS => AppKitView(
+        viewType: _nativeViewType,
+        creationParams: color.toARGB32(),
+        creationParamsCodec: const StandardMessageCodec(),
+        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+      ),
+      TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => null,
     };
+
+    return nativeView == null
+        ? _indicator(value: null)
+        : SizedBox.square(dimension: _defaultDimension, child: nativeView);
   }
 
   CircularProgressIndicator _indicator({required double? value}) {
     return CircularProgressIndicator(
       value: value,
-      strokeWidth: strokeWidth,
+      strokeWidth: _fallbackStrokeWidth,
       strokeCap: StrokeCap.round,
       color: color,
       backgroundColor: Colors.transparent,

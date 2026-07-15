@@ -48,6 +48,11 @@ shell-owned presentation. `module_app_ui` may depend on `module_core`,
 `module_prego`, `sesori_shared`, and direct Flutter UI dependencies; it must not
 import product shells or `module_desktop_core`.
 
+Reusable visual primitives belong in `module_prego`, including any native
+plugin renderer they require. Keep registration automatic through the package's
+Flutter plugin metadata; mobile and desktop shells consume the exported widget
+and must not duplicate it or register its platform view manually.
+
 Plugin identity is non-null inside client APIs, repositories, services, and
 cubits. `legacyMissingPluginId` is the concrete OpenCode identity because only
 OpenCode predates plugin attribution; use it only at flows that genuinely have
