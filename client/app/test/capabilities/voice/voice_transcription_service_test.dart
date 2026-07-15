@@ -243,6 +243,20 @@ void main() {
         expect(service.isRecording, isFalse);
       });
 
+      test("cancels overlapping file length check: deleted file still throws TranscriptionCancelledError", () async {
+        await service.startRecording();
+        await File(recordingPath).writeAsBytes([1, 2, 3]);
+
+        // Cancel immediately so cleanup can delete the file while
+        // stopAndTranscribe is still awaiting File.length().
+        final stopFuture = service.stopAndTranscribe();
+        await service.cancelRecording();
+
+        await expectLater(stopFuture, throwsA(isA<TranscriptionCancelledError>()));
+        expect(service.isBusy, isFalse);
+        expect(service.isRecording, isFalse);
+      });
+
       test("cancel then restart: stale transcript from first call is discarded", () async {
         // Start recording #1 and begin transcription.
         await service.startRecording();

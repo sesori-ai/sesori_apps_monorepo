@@ -142,8 +142,22 @@ class VoiceTranscriptionService {
         throw VoiceTranscriptionError.recordingFailed();
       }
 
+      if (generation != _transcriptionGeneration) {
+        throw VoiceTranscriptionError.cancelled();
+      }
+
       // Verify the file has actual content before uploading.
-      final fileSize = await File(path).length();
+      // cancelRecording may delete the file while this await is in flight.
+      final int fileSize;
+      try {
+        fileSize = await File(path).length();
+      } on FileSystemException catch (error, stackTrace) {
+        if (generation != _transcriptionGeneration) {
+          throw VoiceTranscriptionError.cancelled();
+        }
+        loge("Failed to read recording file", error, stackTrace);
+        throw VoiceTranscriptionError.recordingFailed();
+      }
       logt("[voice] recorded file: $fileSize bytes");
       if (fileSize == 0) {
         loge("Recording produced a 0-byte file");
