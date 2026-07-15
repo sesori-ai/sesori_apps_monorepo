@@ -7,10 +7,10 @@ class BufferedUntilFirstListener<T> {
   bool _isClosed = false;
 
   BufferedUntilFirstListener() {
-    _controller = StreamController<T>(
+    _controller = StreamController<T>.broadcast(
       onListen: () {
         if (_hasListener) {
-          throw StateError("This stream supports only one listener.");
+          return;
         }
         _hasListener = true;
         for (final event in _buffer) {
