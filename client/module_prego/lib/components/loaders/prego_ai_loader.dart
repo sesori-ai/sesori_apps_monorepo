@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 
 import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
+import "../../utils/lerp_utils.dart";
 
 /// A sparkle marking AI activity, twinkling while [animate] is set.
 ///
@@ -213,19 +214,27 @@ class _AiLoaderPainter extends CustomPainter {
   (Color, double, double) _keyframe(double t) {
     if (t < _outlineAt) {
       final p = t / _outlineAt;
-      return (_lerpColor(solid, outline, p), 1 - p, _lerpDouble(1.0, 0.86, p));
+      return (
+        lerpColorNonNull(solid, outline, p),
+        1 - p,
+        lerpDoubleNonNull(1.0, 0.86, p),
+      );
     }
     if (t < _fadedAt) {
       final p = (t - _outlineAt) / (_fadedAt - _outlineAt);
-      return (_lerpColor(outline, faded, p), p, _lerpDouble(0.86, 0.92, p));
+      return (
+        lerpColorNonNull(outline, faded, p),
+        p,
+        lerpDoubleNonNull(0.86, 0.92, p),
+      );
     }
     final p = (t - _fadedAt) / (1 - _fadedAt);
-    return (_lerpColor(faded, solid, p), 1, _lerpDouble(0.92, 1.0, p));
+    return (
+      lerpColorNonNull(faded, solid, p),
+      1,
+      lerpDoubleNonNull(0.92, 1.0, p),
+    );
   }
-
-  static Color _lerpColor(Color a, Color b, double t) => Color.lerp(a, b, t) ?? b;
-
-  static double _lerpDouble(double a, double b, double t) => a + (b - a) * t;
 
   @override
   bool shouldRepaint(_AiLoaderPainter oldDelegate) {

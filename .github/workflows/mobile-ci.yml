@@ -64,6 +64,10 @@ jobs:
         run: dart analyze --fatal-infos
         working-directory: client/module_auth
 
+      - name: Analyze module_prego
+        run: dart analyze --fatal-infos
+        working-directory: client/module_prego
+
       - name: Run tests for module_core
         run: dart test
         working-directory: client/module_core
@@ -71,6 +75,10 @@ jobs:
       - name: Run tests for module_auth
         run: dart test
         working-directory: client/module_auth
+
+      - name: Run tests for module_prego
+        run: flutter test
+        working-directory: client/module_prego
 
       - name: Run tests for client/app
         run: flutter test
