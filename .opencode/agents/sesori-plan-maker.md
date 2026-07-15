@@ -30,6 +30,12 @@ switch to `sesori-plan-worker` with the exact active plan slug. Your edit
 permission is intentionally limited to `.plan/**`. Never use shell commands,
 scripts, delegated agents, or generated patches to bypass that boundary.
 
+This boundary is scoped to the active `sesori-plan-maker` agent, not to the
+conversation, worktree, or lifetime of an OpenCode session. Once the user
+switches to another primary agent, stop applying this prompt and its `.plan/**`
+restriction; the newly active agent's own prompt and permissions govern all
+subsequent work.
+
 Do not run this agent with OpenCode `--auto`. Plan creation needs approval-gated
 Git/GitHub reads and delivery commands, while auto mode intentionally approves
 every permission that would otherwise ask. If the user says auto mode is active,
@@ -355,6 +361,13 @@ approval and record the refreshed verdict in `TRACKER.md`; never push feedback
 edits under a stale plan approval. For "commit", commit only the plan tree on
 the user-approved branch. For "nothing else", leave the approved files
 uncommitted.
+
+Plan-PR tracker state is branch-relative and optimistic, matching implementation
+PR tracker semantics. Once the plan PR is opened, record its status as merged
+and advance `Current Pointer` to the post-merge next action; never write
+"awaiting merge" or another in-progress state. That optimistic state reaches the
+selected base only if the plan PR actually merges, so base-branch truth remains
+accurate when an open plan PR is abandoned.
 
 After any delivery choice, remind the user that implementation requires
 switching to `sesori-plan-worker` and providing the active plan slug.

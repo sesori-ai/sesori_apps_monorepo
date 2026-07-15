@@ -38,10 +38,12 @@ Layer 3 — Services (business logic)
 
          ▲ consumed by
 
-Layer 4 — Request Handling & Event Delivery
+Layer 4 — Request Handling, Trigger Listening, & Event Delivery
   └─ Routing: RequestRouter + handlers (use Repositories/Services only)
+  └─ Listeners: one reactive/scheduled trigger lifecycle per class; delegate to
+     Repositories/Services and expose typed output for Orchestrator delivery
   └─ SSE: SseService + BridgeEventMapper
-  └─ Location: app/lib/src/routing/, app/lib/src/sse/
+  └─ Location: app/lib/src/routing/, app/lib/src/listeners/, app/lib/src/sse/
 
          ▲ all composed by
 
@@ -95,6 +97,8 @@ app/lib/src/
 ├── routing/                 # Layer 4
 │   ├── request_router.dart
 │   └── handlers/
+│
+├── listeners/               # Layer 4
 │
 ├── sse/                     # Layer 4
 │   ├── sse_service.dart

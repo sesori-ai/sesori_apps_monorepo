@@ -23,6 +23,7 @@ lib/src/
 │   │   ├── sse_manager.dart   SSE stream multiplexing to connected phones
 │   │   └── event_queue.dart   Per-subscriber event buffer with replay
 │   └── debug_server.dart      Debug HTTP server for local testing
+├── listeners/                 Layer 4 reactive/scheduled trigger consumers
 ├── server/                    Bridge instance / host services (single-live-bridge enforcement, startup mutex, plugin host abstractions)
 
 bridge/ workspace modules (siblings of app/):
@@ -47,6 +48,7 @@ bridge/ workspace modules (siblings of app/):
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
 | Request routing  | `lib/src/bridge/routing/`          | Explicit handlers; unmatched routes return 404          |
+| Trigger listeners | `lib/src/listeners/`               | One trigger lifecycle per class; typed output only      |
 | Plugin interface | `../sesori_plugin_interface/`       | BridgePlugin contract for all backends                  |
 | OpenCode plugin  | `../sesori_plugin_opencode/`        | OpenCode backend implementation + models + tests        |
 | Bridge instances | `lib/src/server/`                  | Single-live-bridge enforcement, startup mutex, plugin host abstractions |
@@ -56,6 +58,11 @@ bridge/ workspace modules (siblings of app/):
 - **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/` (e.g. `sesori_plugin_opencode`). The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point.
 - **Plugin CLI options are namespaced** — plugins declare **bare** option names in their descriptor (`port`, `host`, `bin`, …). `PluginCliOptionsMapper` namespaces each to `--<pluginId>-<name>` (e.g. `--opencode-host`) at registration so options can't collide once multiple plugins run in parallel. Never bake the plugin prefix into the declared name. When renaming/migrating a previously un-prefixed flag, keep the old spelling working via `PluginOption.deprecatedAliases` (registered hidden, emits a `Log.w` deprecation when used) rather than breaking existing invocations. Plugin code reads values by the **bare** name through `PluginConfig`, unaware of namespacing.
 - **Explicit routing** — every supported route has a dedicated handler; `RequestRouter` returns 404 for unmatched routes (no catch-all proxy).
+- **Layer 4 trigger listeners** — new reactive/scheduled consumers live in
+  `lib/src/listeners/`. Each owns one trigger's subscription/timer lifecycle,
+  delegates decisions to repositories/services, does not depend on listener
+  peers, and exposes typed output for the Orchestrator instead of emitting SSE
+  directly.
 - **User-facing output vs logging** — use `Console` (from `sesori_plugin_interface`) for anything the user must see to operate the bridge: prompts, requests, the login URL/code, essential startup status, and deprecation nudges. `Console.message` writes to stdout; `Console.warning` (yellow) and `Console.error` (red) write to stderr; none are gated by `--log-level`. Coloring is applied only when stderr is an interactive terminal, so redirected/piped output stays clean. Use `Log` only for diagnostics that can be safely ignored; all `Log` levels write to stderr and are suppressible via `--log-level`. `Log` warning/error lines are colorized (yellow/red) on a terminal, and the `[CallerClass]` tag is shown only at `debug`/`verbose` levels to keep normal output clean. The bridge must stay fully operable with logging silenced (`--log-level error` or `2>/dev/null`), so never put an essential prompt or actionable status behind `Log`.
 - **Crypto from `sesori_shared`** — all crypto primitives imported from shared package, not duplicated
 - **Linting**: `package:lints/recommended.yaml` (lighter than mobile's `all_lint_rules`)
