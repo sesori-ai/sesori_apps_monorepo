@@ -74,6 +74,13 @@ void main() {
       expect(mapper.classifyHaltNotice(text: "⚠️ Check your settings to continue"), isNotNull);
     });
 
+    test("non-ASCII letters are content, not strippable decoration", () {
+      // Letters (any script) adjacent to the phrase mean the message is more
+      // than the gate notice; only punctuation/symbol/emoji decoration is
+      // stripped before the exact match.
+      expect(mapper.classifyHaltNotice(text: "É Check your settings to continue"), isNull);
+    });
+
     test("ordinary prose that merely contains the phrase is not a gate", () {
       expect(
         mapper.classifyHaltNotice(

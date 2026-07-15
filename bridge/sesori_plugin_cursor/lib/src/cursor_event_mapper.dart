@@ -47,9 +47,14 @@ class CursorEventMapper extends AcpEventMapper {
   /// whitespace, lowercases, and strips surrounding punctuation/emoji so the
   /// leading newlines, case, or decoration cursor-agent varies do not defeat
   /// the match — while still requiring the whole message to BE the phrase, so
-  /// ordinary prose that merely mentions it is never misclassified.
+  /// ordinary prose that merely mentions it is never misclassified. Letters and
+  /// digits of any script are content, never strippable decoration: a message
+  /// carrying words beyond the phrase must not collapse into a gate match.
   static String _normalize(String text) {
     final collapsed = text.replaceAll(RegExp(r"\s+"), " ").trim().toLowerCase();
-    return collapsed.replaceAll(RegExp(r"^[^a-z0-9]+|[^a-z0-9]+$"), "");
+    return collapsed.replaceAll(
+      RegExp(r"^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$", unicode: true),
+      "",
+    );
   }
 }
