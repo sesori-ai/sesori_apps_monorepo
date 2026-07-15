@@ -53,6 +53,14 @@ plugin renderer they require. Keep registration automatic through the package's
 Flutter plugin metadata; mobile and desktop shells consume the exported widget
 and must not duplicate it or register its platform view manually.
 
+Before shipping a platform-view-backed visual primitive, profile its real
+lifecycle on every target it enables: repeated insertion/removal, clipping, and
+scrolling into and out of view. Verify surrounding blur, glass, and composited
+content as well as the native view itself. A static fixture, successful build,
+or idle power result is insufficient when the production UI changes the view
+hierarchy; use the Flutter renderer if platform-view lifecycle destabilizes the
+scene or lowers visible animation cadence.
+
 Plugin identity is non-null inside client APIs, repositories, services, and
 cubits. `legacyMissingPluginId` is the concrete OpenCode identity because only
 OpenCode predates plugin attribution; use it only at flows that genuinely have

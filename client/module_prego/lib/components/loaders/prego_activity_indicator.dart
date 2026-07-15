@@ -1,5 +1,4 @@
 import "package:flutter/foundation.dart";
-import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
@@ -27,67 +26,35 @@ class PregoActivityIndicator extends StatelessWidget {
       role: SemanticsRole.loadingSpinner,
       child: ExcludeSemantics(
         child: RepaintBoundary(
-          child: animationsEnabled ? _animatedIndicator(context: context) : _indicator(value: _staticArcSweep),
+          child: SizedBox.square(
+            dimension: _defaultDimension,
+            child: animationsEnabled ? _animatedIndicator() : _indicator(value: _staticArcSweep),
+          ),
         ),
       ),
     );
   }
 
-  Widget _animatedIndicator({required BuildContext context}) {
+  Widget _animatedIndicator() {
     if (kIsWeb) {
       return _indicator(value: null);
     }
 
     final nativeView = switch (defaultTargetPlatform) {
-      TargetPlatform.android => _androidIndicator(context: context),
       TargetPlatform.iOS => UiKitView(
         viewType: _nativeViewType,
         creationParams: color.toARGB32(),
         creationParamsCodec: const StandardMessageCodec(),
         hitTestBehavior: PlatformViewHitTestBehavior.transparent,
       ),
-      TargetPlatform.macOS => AppKitView(
-        viewType: _nativeViewType,
-        creationParams: color.toARGB32(),
-        creationParamsCodec: const StandardMessageCodec(),
-        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
-      ),
-      TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => null,
+      TargetPlatform.android ||
+      TargetPlatform.fuchsia ||
+      TargetPlatform.linux ||
+      TargetPlatform.macOS ||
+      TargetPlatform.windows => null,
     };
 
-    return nativeView == null
-        ? _indicator(value: null)
-        : SizedBox.square(dimension: _defaultDimension, child: nativeView);
-  }
-
-  Widget _androidIndicator({required BuildContext context}) {
-    final layoutDirection = Directionality.of(context);
-
-    return PlatformViewLink(
-      viewType: _nativeViewType,
-      surfaceFactory: (context, controller) {
-        if (controller is! AndroidViewController) {
-          throw StateError("Expected an Android platform view controller");
-        }
-        return AndroidViewSurface(
-          controller: controller,
-          gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
-          hitTestBehavior: PlatformViewHitTestBehavior.transparent,
-        );
-      },
-      onCreatePlatformView: (params) {
-        return PlatformViewsService.initExpensiveAndroidView(
-            id: params.id,
-            viewType: _nativeViewType,
-            layoutDirection: layoutDirection,
-            creationParams: color.toARGB32(),
-            creationParamsCodec: const StandardMessageCodec(),
-            onFocus: () => params.onFocusChanged(true),
-          )
-          ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
-          ..create();
-      },
-    );
+    return nativeView ?? _indicator(value: null);
   }
 
   CircularProgressIndicator _indicator({required double? value}) {
