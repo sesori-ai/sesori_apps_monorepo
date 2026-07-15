@@ -133,7 +133,10 @@ target path; do not create duplicate tables/DAOs/models.
   `git symbolic-ref --short -q HEAD`; exit 1/empty maps at the repository
   boundary to detached-null, while unexpected process failures throw.
 - `GitCliApi.resolveGitHeadPath` executes
-  `git rev-parse --git-path HEAD` in the stored session directory.
+  `git rev-parse --git-path HEAD` in the stored session directory and returns
+  the raw path. `SessionBranchRepository` resolves a relative result against
+  that exact stored directory before absolute normalization; it never resolves
+  against the bridge process working directory.
 - `SessionBranchDao` exposes raw Drift watch/read/write operations with required
   owner/session/project inputs. Selection and branch semantics stay out of DAO.
 - `SessionBranchRepository` receives the DAOs, `GitCliApi`, and
@@ -230,6 +233,8 @@ On each initial/event resolve:
 - Normal initial branch, switch, duplicate event, branch return, detached HEAD,
   and detach -> named transitions.
 - Main checkout and linked-worktree git `HEAD` path normalization.
+- Two unrelated normal checkouts that both return `.git/HEAD` resolve to
+  distinct absolute watch keys and cannot share/fan out events.
 - Two sessions sharing one checkout create one OS subscription and independent
   history rows.
 - Mapping changes, archive/delete, final-session removal, stream error, missing

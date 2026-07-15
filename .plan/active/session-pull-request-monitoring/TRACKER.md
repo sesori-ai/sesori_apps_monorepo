@@ -16,10 +16,10 @@
 
 ## Plan Review
 
-- **Verdict:** Approved after plan-PR feedback review
+- **Verdict:** Approved after canonical plan-PR feedback review
 - **Reviewer:** `aristotle-plan-review`
-- **Date:** 2026-07-14
-- **Reviewed commit:** `f772f15e3ffffc658d69890098383e74618e5546`
+- **Date:** 2026-07-15
+- **Reviewed commit:** `fdf2fd45d50f0581bdac6cb2e8e16f0188d0c871` plus the complete uncommitted plan-tree update
 
 ## Wave Baselines
 
@@ -52,6 +52,8 @@
 
 ## Findings and Plan Deltas
 
+- **2026-07-15 — Feedback review approval:** `aristotle-plan-review` approved the complete canonical tree after all current account/repository, dispatcher, scheduler, and client declaration corrections; no architecture violations remained.
+- **2026-07-15 — Canonical review hardening:** Made relative git `HEAD` paths checkout-relative before normalization; bound live/archived cache visibility to account, canonical repository, and verified project path; suspend live visibility once identity failure/change is detected while preserving cache-first reads; bounded disappeared-open finalization; correlated coalesced completions; prevented overdue all-state zero-delay loops; documented the pre-filter authored-row cap; and added bounded retries for lost connected project/null declarations. Retained the approved acyclic `SessionArchiveService -> WorktreeCleanupService` collaborator because it owns a standalone multi-caller policy and does not depend back on archive.
 - **2026-07-14 — Optimistic plan-PR state:** Plan-branch tracker state now reflects the post-merge result immediately after PR creation; the optimistic state reaches `main` only when the plan PR merges.
 - **2026-07-14 — Legacy cleanup:** Removed superseded `docs/pr-monitor/PLAN.md`; `.plan/active/session-pull-request-monitoring/` is the sole plan authority.
 - **2026-07-14 — Legacy-thread assessment:** Four bot threads on superseded `docs/pr-monitor/PLAN.md` required no canonical change: owner-scoped multi-user cache metadata is explicitly speculative, direct detail has no PR presentation, intermediate-wave historical freshness is not a shipped regression and remains explicitly refreshable, and unverifiable legacy archived cache rows intentionally fail closed rather than guessing GitHub authorship. Full plan review remained approved.

@@ -33,26 +33,29 @@ deliberately leaving archive snapshots and viewed-project timers for later waves
 
 ### In Scope
 
-- Export current schema; add owner/login scope to global PR cache and project
-  cache metadata.
-- Add active-login resolution, open/all authored query modes, 1,001-row
-  truncation detection, PR author parsing, exact timeouts, and author-aware
-  single-PR lookup to `GhCliApi`/`GhPullRequest`.
+- Export current schema; add owner/login/repository scope to global PR cache and
+  project cache metadata, including the project path at verification time.
+- Add active-login and canonical `nameWithOwner` repository resolution,
+  open/all authored query modes, 1,001-row truncation detection, PR author
+  parsing, exact timeouts, and author-aware single-PR lookup to
+  `GhCliApi`/`GhPullRequest`.
 - Keep `--author @me` on list commands only; verify `gh pr view` author after
   parsing.
 - Evolve `PrSourceRepository` to own cached GitHub-remote eligibility and return
   typed availability/login/query outcomes without writing durable state.
 - Make `PullRequestRepository` the sole writer/finalizer of global live PR rows
-  and project cache-login metadata.
+  and project cache visibility/login/repository/path metadata.
 - Add typed refresh request/result/completion models and
   `PrRefreshDispatcher` in target Layer 3.
 - Implement per-project serialization, safe coalescing, complete/truncated
   semantics, all-state replacement, open reconciliation, disappeared-open
-  finalization, login capture/recheck, and change-only completions.
+  finalization with bounded command fan-out, login/repository capture/recheck,
+  cache suspension, request correlation, and change-only completions.
 - Route both `GetSessionsHandler` request modes through the dispatcher. Awaited
   all-state retains the five-second budget; non-wait remains fire-and-forget.
-- If `pr_cache_github_login` is null, upgrade even an open request to all-state
-  and resolve the complete active branch scope first.
+- If any project cache login/repository/path metadata is null or mismatched,
+  upgrade even an open request to all-state and resolve the complete active
+  branch scope first.
 - On that first post-migration verification only, union active scope with
   durable branch history from archived sessions; never resolve archived paths.
 - Remove `SessionRepository -> PullRequestRepository`; inject read-only branch,
@@ -69,6 +72,9 @@ deliberately leaving archive snapshots and viewed-project timers for later waves
 - Project-view routing, scheduled polling, adaptive cadence, or client sends.
 - GitHub comments/check-run detail/PR mutation.
 - Full unbounded pagination beyond the supported 1,000 rows.
+- Additional pagination to recover older same-repository rows displaced by more
+  than 1,000 newer authored fork-head rows; truncation remains explicit and
+  non-destructive.
 - Deleting `PrSyncService` source in this wave if a thin compatibility facade is
   still needed by existing wiring/tests; dead internals are removed in S03-W02.
 - Reusing GitHub login as Sesori owner identity.
@@ -129,38 +135,48 @@ established in W01 and is not a second wiring site.
 ```text
 gh --version
 gh api user --hostname github.com --jq .login
+gh repo view --json nameWithOwner --jq .nameWithOwner
 gh pr list --state open --author @me --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
 gh pr list --state all --author @me --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author --limit 1001
 gh pr view <number> --json number,url,title,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup,author
 ```
 
-- Login/view timeout: 15 seconds.
+- Login/repository/view timeout: 15 seconds.
 - List timeout: 30 seconds.
 - A non-zero exit, malformed login/JSON, missing author, or timeout throws from
   API; repository/dispatcher maps it to typed non-success rather than `[]`.
 - Exactly 1,001 list rows means truncated; expose first 1,000 plus the flag.
+- The 1,001 bound applies before `isCrossRepository` rejection because `gh pr
+  list` has no same-repository pre-limit filter.
 
 ### Persistence
 
 `pull_requests_table` gains:
 
 - `owner_identity TEXT NOT NULL`, backfilled `local`;
-- `github_author_login TEXT NULL`, backfilled null; and
+- `github_author_login TEXT NULL`, backfilled null;
+- `github_repository_identity TEXT NULL`, canonical lowercase `owner/name`,
+  backfilled null; and
 - primary key `(owner_identity, project_id, pr_number)`.
 
-`projects_table` gains nullable `pr_cache_github_login`.
+`projects_table` gains nullable `pr_cache_github_login`,
+`pr_cache_repository_identity`, and `pr_cache_project_path`.
 
-Live reads require row `owner_identity = local`, non-null row login, non-null
-project cache login, and equality between those logins. Legacy/unverified rows
-are retained physically but hidden until verified replacement.
+Live reads require row `owner_identity = local`; non-null row/project login and
+repository identity with pairwise equality; and
+`projects.pr_cache_project_path = projects.path`. Legacy/unverified rows and
+rows from a prior path/repository/account are retained physically but hidden
+until verified replacement.
 
 ### Repository responsibilities
 
-- `PrSourceRepository` returns active login, authored observations, truncation,
-  and GitHub-remote eligibility. Its remote cache keeps the existing ten-minute
-  TTL; capability/login failures remain explicit.
+- `PrSourceRepository` returns active login, canonical lowercase GitHub
+  repository identity, authored observations, truncation, and GitHub-remote
+  eligibility. Its remote cache keeps the existing ten-minute TTL;
+  capability/login/repository failures remain explicit.
 - `PullRequestRepository` receives raw PR/project DAOs and owns transactionally
-  replacing/upserting rows and project cache login. Complete all-state results
+  suspending visibility (null project cache login), replacing/upserting rows,
+  and project cache login/repository/path metadata. Complete all-state results
   may delete absent branch-matched rows; truncated results may not.
 - `SessionRepository` receives raw read-only DAOs and pure mapper(s). Live
   association joins the session's complete branch history, then chooses the
@@ -172,10 +188,16 @@ are retained physically but hidden until verified replacement.
 
 Typed requests identify:
 
+- opaque request id;
 - project id;
 - mode `open` or `all` (archive-final lands W03);
-- origin (`sessionRequest`, later listener origins) for diagnostics only; and
+- typed origin (`sessionRequest`, later listener origins); and
 - whether the caller still owns one identity-change follow-up.
+
+`dispatch` returns a ticket containing that request id and a future result.
+Broadcast execution completions contain an execution id plus all satisfied
+request ids/origins after coalescing, so Orchestrator emits once per execution
+and later listeners can ignore unrelated results.
 
 Dispatcher flow:
 
@@ -185,19 +207,27 @@ Dispatcher flow:
    `SessionBranchRepository`. Before all-state, synchronously resolve/persist
    every active session branch so listener enrollment races cannot commit an
    incomplete cache-login baseline.
-3. Resolve eligibility and active login through `PrSourceRepository`.
-4. Execute open/all query. Reject cross-repository and any row whose
+3. Resolve eligibility, canonical repository identity, and active login through
+   `PrSourceRepository`.
+4. Compare current path/repository/login with project cache metadata. If login
+   or repository cannot be verified, or any value changed, atomically suspend
+   cache visibility before continuing/returning and publish rendered change if
+   previously visible. Rows remain physically retained. A path mismatch is
+   already hidden by the read predicate before this preflight runs.
+5. Execute open/all query. Reject cross-repository and any row whose
    `author.login` differs from captured login.
-5. Match only branches in durable project scope. For first null-cache-login
+6. Match only branches in durable project scope. For first null-cache-login
    verification, include archived-only persisted history.
-6. For complete open results, finalize previously cached open rows absent from
-   the list through author-verified `gh pr view`. For truncated results, absence
-   proves nothing and no finalization occurs.
-7. Re-resolve active login immediately before the write transaction. If it
-   differs or cannot be confirmed, discard data and return `identityChanged` or
-   explicit failure without writing.
-8. Write through `PullRequestRepository`; publish a broadcast completion with
-   mode, complete/truncated, authored-open count, and rendered-change flag.
+7. For a complete open result with exactly one absent cached open row, finalize
+   it through author-verified `gh pr view`. If more than one is absent, upgrade
+   the same serialized execution to one all-state list instead of issuing
+   unbounded per-row commands. For truncated results, absence proves nothing.
+8. Re-resolve active login and repository identity immediately before the write
+   transaction. If either differs or cannot be confirmed, suspend visibility,
+   discard observations, and return typed `identityChanged`/failure.
+9. Write through `PullRequestRepository`; publish one broadcast execution
+   completion with satisfied request ids/origins, effective mode,
+   complete/truncated, authored-open count, and rendered-change flag.
 
 The dispatcher never queues an identity follow-up. `GetSessionsHandler` may
 recheck that its request is still live and issue at most one all-state follow-up.
@@ -207,11 +237,16 @@ recheck that its request is still live and issue at most one all-state follow-up
 - `waitForPrData: true`: request all-state, await no more than existing five
   seconds, re-enrich already-fetched sessions on success, otherwise return
   current cached data and let later completion SSE refresh clients.
-- `waitForPrData: false`: fire-and-forget open request. Null project cache login
-  upgrades it to all-state. Add the exact compatibility marker above this
-  trigger because old clients rely on it after project presence ships.
+- `waitForPrData: false`: fire-and-forget open request. Null/mismatched project
+  cache login/repository/path metadata upgrades it to all-state. Add the exact
+  compatibility marker above this trigger because old clients rely on it after
+  project presence ships.
 - A timeout does not cancel the dispatcher process or lose its eventual write;
   it only releases the HTTP response budget.
+- Cache-first reads intentionally do not run `gh` synchronously. A local account
+  or remote change that has not yet been observed can remain visible until the
+  next request/view trigger; once observed, old visibility is suspended before
+  any query/write and cannot reappear without fresh verification.
 
 ### Concurrency, cancellation, lifecycle, and errors
 
@@ -248,7 +283,8 @@ recheck that its request is still live and issue at most one all-state follow-up
 1. Run pre-edit schema export from `bridge/app`.
 2. Allocate current `N+1`; rebuild key/table as required by Drift while
    preserving all existing rows and FKs.
-3. Backfill owner to `local`; author and project cache-login to null.
+3. Backfill owner to `local`; row author/repository and project
+   login/repository/path metadata to null.
 4. Run migration generation and implement callback body only.
 5. Run bridge-wide codegen.
 6. Add structural/data tests for key, row preservation, hidden unverified rows,
@@ -258,26 +294,38 @@ recheck that its request is still live and issue at most one all-state follow-up
 
 ### Automated tests
 
-- Exact command arguments, working directory, timeout, author JSON, login
-  parsing, state mapping, malformed output, non-zero, and timeout.
+- Exact command arguments, working directory, timeout, canonical repository
+  identity, author JSON, login parsing, state mapping, malformed output,
+  non-zero, and timeout.
 - 1,000 rows complete; 1,001 rows truncated; truncated results expose first
   1,000 and never trigger absent-row deletion/finalization.
+- Cross-repository rows are rejected after the cap; fixtures prove they can
+  consume supported slots, truncation remains visible, and displaced older
+  same-repository rows are not falsely deleted or claimed complete.
 - Remote eligibility/capability caching and non-GitHub/missing-gh outcomes.
-- Migration preserves cache rows, adds local owner key, nulls login metadata,
-  and keeps project/session/PR cascades valid.
-- SessionRepository hides null/mismatched login rows and maps headline/history
-  for current branch, previous branch, duplicate branch associations, detached
-  current branch, and archived-only first-verification scope.
+- Migration preserves cache rows, adds local owner key, nulls
+  login/repository/path metadata, and keeps project/session/PR cascades valid.
+- SessionRepository hides null/mismatched login, repository, or project-path
+  rows and maps headline/history for current branch, previous branch, duplicate
+  branch associations, detached current branch, and archived-only
+  first-verification scope.
 - Highest current-branch number wins regardless of state; history is descending
   and excludes headline.
 - Complete all-state replacement, complete open upsert/finalization, truncated
   non-destructive behavior, query failure non-empty semantics, and rendered
   change detection.
+- One disappeared open row uses one author-verified view; two or more upgrade to
+  one bounded all-state list with no per-row fan-out.
 - Per-project serialization, stronger queued request preservation, compatible
   waiter coalescing, independent project concurrency, shutdown, and no overlap.
-- Login switches before query, during query, and before commit; no stale account
-  write/render. Handler follow-up is at most one; dispatcher follow-up is zero.
-- Null cache-login open upgrade synchronously resolves active branch scope.
+- Request ids/origins survive coalescing and each waiter completes once; one
+  execution completion carries every satisfied id/origin.
+- Login/repository/path changes and failures before query, during query, and
+  before commit suspend prior visibility and emit change; retained rows cannot
+  reappear without fresh matching verification. Handler follow-up is at most
+  one; dispatcher follow-up is zero.
+- Null/mismatched cache identity/path open upgrade synchronously resolves active
+  branch scope.
 - `waitForPrData` true keeps five-second budget and re-enriches on success;
   false fires and returns; both retain existing response behavior.
 - Branch current change emits `sessionsUpdated` even with no PR cache change;
@@ -326,7 +374,11 @@ dart test test/bridge/routing/get_sessions_handler_test.dart
 ## 9. Risks
 
 - Account switch can race every async gap; capture/recheck login and verify each
-  author before transaction.
+  author before transaction, suspending old visibility when detected.
+- A stable project id can move to another path/repository; bind visible rows to
+  both canonical repository identity and the verified project path.
+- Per-row finalization can monopolize the dispatcher; allow at most one
+  `gh pr view`, then use one all-state list for larger disappearance sets.
 - All-state query may exceed response budget; handler timeout must not cancel
   eventual dispatcher completion.
 - Truncated results can falsely close/delete absent PRs; absence is never used
@@ -339,12 +391,14 @@ dart test test/bridge/routing/get_sessions_handler_test.dart
 ## 10. Acceptance Criteria
 
 - Every list query uses `--author @me`; every accepted row/view matches captured
-  active login and same repository.
+  active login and canonical same-repository identity.
 - 1,001st row produces explicit non-destructive truncation.
 - Live sessions render verified current/history under locked ordering.
 - No `SessionRepository -> PullRequestRepository` dependency remains.
 - Requests serialize/coalesce without dropping all-state work or looping on
-  identity change.
+  identity change; completions preserve request/origin correlation.
+- Detected account/repository/path changes suspend old cache visibility before
+  any new query result can be rendered.
 - Both shipped request paths and five-second wait behavior remain.
 - Branch and PR invalidations are independent and unseen-neutral.
 

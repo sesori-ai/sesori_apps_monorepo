@@ -34,7 +34,8 @@ being able to serve it.
 - Export current schema; add irreversible `pr_tracking_stopped_at` and
   owner-scoped archived PR snapshot table.
 - Migrate already-archived sessions to stopped state and snapshot only cache
-  rows already verified against project cache login; perform no network work.
+  rows already verified against project cache login, canonical repository
+  identity, and verified project path; perform no network work.
 - Add raw archive DAO/table, typed archive models, and
   `SessionArchiveRepository` as the sole terminal writer.
 - Move touched archive/unarchive persistence from
@@ -57,9 +58,9 @@ being able to serve it.
 - Publish one typed final-refresh request after each newly committed archive.
 - Add `ArchivePrRefreshListener`; extend `PrRefreshDispatcher` with
   archive-final target and `SessionArchiveRepository` dependency.
-- Implement unknown-login fail-closed clearing, mismatched-login clear-before-
-  query, same-login query-failure retention, identity recheck before replacement,
-  typed snapshot-cleared completion, and no retry/follow-up.
+- Implement unknown-login/repository fail-closed clearing, mismatched identity
+  clear-before-query, same-identity query-failure retention, identity recheck
+  before replacement, typed snapshot-cleared completion, and no retry/follow-up.
 - Change runtime branch eligibility/recheck from reversible `archived_at` to
   irreversible `pr_tracking_stopped_at`.
 - Preserve existing unarchive worktree restoration while never clearing stop
@@ -134,7 +135,8 @@ New target paths:
 cleared. `archived_session_pull_requests` key is
 `(owner_identity, session_id, pr_number)` with:
 
-- non-null owner, session FK/cascade, verified GitHub author login;
+- non-null owner, session FK/cascade, verified GitHub author login and canonical
+  repository identity;
 - branch, URL, title, typed state/mergeability/review/check fields;
 - original cache creation/check timestamps; and
 - non-null `snapshot_at`.
@@ -144,7 +146,7 @@ cleared. `archived_session_pull_requests` key is
 - `archiveAndSnapshot` transaction;
 - `unarchiveWithoutRestart` (clears only `archived_at`);
 - `clearSnapshotIfPresent` returning changed/unchanged;
-- `replaceSnapshotIfStillStopped` with expected active login; and
+- `replaceSnapshotIfStillStopped` with expected active login/repository; and
 - immutable snapshot reads only if kept there for focused archive operations.
 
 `SessionRepository` receives `SessionArchiveDao` directly for terminal mapping.
@@ -190,7 +192,9 @@ service, so the single allowed Layer-3 coordination edge is acyclic.
 4. Verify session existence under existing product behavior.
 5. In one repository transaction, re-read session, set `archived_at` and stop
    marker if not already stopped, freeze current/history, and replace immediate
-   snapshot with only rows whose author equals non-null project cache login.
+   snapshot with only rows whose author/repository equal non-null project cache
+   login/repository and whose verified cache path equals the current project
+   path.
 6. Return session enriched from terminal snapshot.
 7. Notify plugin best-effort and publish final request only for a newly committed
    archive transition.
@@ -198,28 +202,30 @@ service, so the single allowed Layer-3 coordination edge is acyclic.
 ### Final async sequence
 
 The typed request carries owner, session/project ids, persisted project path,
-frozen branches, and snapshot login. `ArchivePrRefreshListener` delegates once
-to dispatcher and logs a surfaced failure once.
+frozen branches, snapshot login, and snapshot repository identity.
+`ArchivePrRefreshListener` delegates once to dispatcher and logs a surfaced
+failure once.
 
 Dispatcher behavior:
 
-- Resolve active login first.
-- If login cannot be resolved, clear non-empty snapshot, emit
+- Resolve active login and canonical repository identity first.
+- If either cannot be resolved, clear non-empty snapshot, emit
   `snapshotCleared` only on mutation, return failure, and stop.
-- If snapshot login is non-null and differs, clear first and publish
-  `snapshotCleared` before any PR query; continue the same one attempt for the
-  new login.
-- A null snapshot login may establish the freshly resolved active account.
+- If snapshot login/repository is non-null and either differs, clear first and
+  publish `snapshotCleared` before any PR query; continue the same one attempt
+  for the new identity.
+- Null snapshot identity may establish the freshly resolved active
+  account/repository.
 - Query all authored state for frozen branches using W02's bound/truncation
   contract. A truncated result may upsert supported rows but must not claim a
   full immutable replacement; treat final snapshot replacement as failed and
-  keep the empty/same-login immediate snapshot.
-- Recheck login immediately before replacement. Identity change returns
+  keep the empty/same-identity immediate snapshot.
+- Recheck login and repository immediately before replacement. Identity change returns
   `identityChanged` and ends; archive origin never follows up.
 - Complete all-state success atomically replaces the full snapshot and publishes
   rendered change when content differs.
-- A PR query failure retains snapshot only when login was freshly confirmed
-  equal in this job. No retry exists.
+- A PR query failure retains snapshot only when login/repository were freshly
+  confirmed equal in this job. No retry exists.
 
 ### Concurrency, lifecycle, and races
 
@@ -244,9 +250,9 @@ Dispatcher behavior:
   PR state intentionally remains terminal. This is an approved shipped-behavior
   extension, not a silent compatibility fallback.
 - Old clients continue reading `pullRequest`; new clients can read history.
-- Snapshot/login null exists only where no honest verified legacy author can be
-  inferred. It is normalized to empty terminal display and resolved only by the
-  one final job for newly archived sessions.
+- Snapshot login/repository null exists only where no honest verified legacy
+  author/source can be inferred. It is normalized to empty terminal display and
+  resolved only by the one final job for newly archived sessions.
 - No compatibility repair is added for rows no released producer could write.
 - The persisted stop marker and snapshot schema are retained until an explicit
   future cleanup/migration; no temporary compatibility marker is required.
@@ -257,8 +263,8 @@ Dispatcher behavior:
 2. Allocate current `N+1` and add stop/snapshot source definitions.
 3. Generate migrations; implement predecessor -> new callback only.
 4. Backfill stop from existing non-null archive timestamp.
-5. Snapshot only author-verified rows matching project cache login; leave other
-   archived snapshots empty.
+5. Snapshot only author/repository/path-verified rows matching project cache
+   metadata; leave other archived snapshots empty.
 6. Generate code and add structural/data/FK/cascade tests.
 7. Preserve W01/W02 schema snapshots and migration callbacks unchanged.
 
@@ -279,12 +285,12 @@ Dispatcher behavior:
   performs direct filesystem or DAO access.
 - Archive response completes while `gh` never completes and while plugin notify
   never completes.
-- Immediate snapshot includes only same-login verified rows and terminal reads
-  never consult live global cache.
+- Immediate snapshot includes only same-login/repository/path verified rows and
+  terminal reads never consult live global cache.
 - One final success replaces snapshot; one query failure retains only after
-  same-login confirmation; unknown login clears; mismatch clears before later
-  failure; clearing emits independent invalidation.
-- Null snapshot login can establish active login.
+  same-login/repository confirmation; unknown identity clears; mismatch clears
+  before later failure; clearing emits independent invalidation.
+- Null snapshot login/repository can establish active identity.
 - Identity change before replacement writes nothing and receives no follow-up.
 - Truncated all-state does not claim/replace a complete immutable snapshot.
 - Re-archive produces no second final request; archive listener never retries.

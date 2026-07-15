@@ -76,7 +76,8 @@ the declaration until the next stage.
   and clears all on relay loss. Project presence follows the connection
   lifecycle shape but remains semantically separate.
 - S02-W02 dispatcher exposes typed results/completions including mode,
-  complete/truncated, authored-open count, identity change, and rendered change.
+  complete/truncated, authored-open count, identity change, rendered change,
+  and coalesced satisfied request ids/origins.
 - S02-W01 repository emits branch changes independently; S02-W03 final listener
   is already a peer in the target listener directory.
 - GitHub provides no push stream through current `gh` integration, making
@@ -139,14 +140,22 @@ calls no repository/dispatcher, and emits no transport event.
 
 - owns view transition and dispatcher completion subscriptions plus exactly one
   timer per viewed project;
-- marks the project active at 0->1, waits for the activation dispatcher's typed
-  completion, then cancels/reschedules from every subsequent completion;
+- marks the project active at 0->1 and waits only for an execution completion
+  whose satisfied origins include `projectActivation` for that project;
+- records the request id from each timer dispatch and thereafter
+  cancels/reschedules only from completions whose satisfied request ids include
+  its own id; session-request/branch/archive completions cannot rearm its timer
+  or grant it another origin's identity follow-up;
 - tracks last successful all-state completion, failure count, current tier, and
   generation token per project;
 - chooses one next delay equal to the minimum of tier/backoff delay and remaining
-  ten-minute all-state deadline;
+  ten-minute all-state deadline while the deadline is not already overdue;
 - upgrades the due trigger to all-state; only a complete successful all-state
   consumes the deadline;
+- after an overdue all-state attempt fails, truncates, or changes identity,
+  keeps the deadline pending but schedules the next all-state attempt from the
+  bounded failure-backoff delay alone; the overdue zero remainder cannot cause
+  an immediate retry loop;
 - if its own scheduled request returns `identityChanged`, rechecks its locally
   tracked viewed set and issues at most one immediate all-state follow-up;
 - schedules from completion time and never overlaps project work.
@@ -186,6 +195,9 @@ dispatcher completion
 - Success: zero failure count and normal 15/90 tier.
 - Ten-minute deadline is measured from last complete successful all-state. A
   truncated/failed/unavailable/identity-changed attempt does not consume it.
+- Once an unsuccessful all-state attempt occurs at/after that deadline, the
+  deadline remains due but backoff temporarily overrides its zero remainder;
+  the next timer is still all-state and success resumes normal deadline math.
 - The one-shot timer uses a generation token/cancellation check before dispatch
   and after await so a departed project's stale callback cannot rearm.
 
@@ -235,10 +247,14 @@ dispatcher completion
   before branch matching.
 - Timers are one-shot, scheduled after completion, non-overlapping, and
   generation-safe after viewer loss/dispose.
+- Coalesced completion correlation: activation is recognized by satisfied
+  origin, timer work by its recorded request id, and unrelated
+  session/branch/archive completions are ignored by scheduler state.
 - Failure backoff exact progression bounds/jitter with deterministic random;
   success reset.
 - Ten-minute deadline cannot be crossed by 15/90 tier, is not consumed by
-  truncated/failure/identity change, and uses no second timer.
+  truncated/failure/identity change, uses no second timer, and an unsuccessful
+  overdue attempt waits bounded backoff rather than spinning at zero delay.
 - Branch change while viewed dispatches all; unviewed persists/invalidation only.
 - Identity follow-up is at most one and only while still viewed for each origin;
   dispatcher still queues zero automatic follow-ups.

@@ -12,10 +12,10 @@
 ## 1. Outcome
 
 The headless bridge durably observes root-session branches, discovers authored
-same-repository PRs under the active local GitHub identity, serves current and
-historical PR data, freezes terminal archive snapshots, and schedules GitHub
-work only for viewed projects. Project/PR changes reach clients through the
-existing `sessionsUpdated` SSE seam without changing unseen state.
+same-repository PRs under the active local GitHub account/repository identity,
+serves current and historical PR data, freezes terminal archive snapshots, and
+schedules GitHub work only for viewed projects. Project/PR changes reach clients
+through the existing `sessionsUpdated` SSE seam without changing unseen state.
 
 ## 2. Entry Criteria and Baseline
 
@@ -79,8 +79,9 @@ starts from the current tip of `main` after its predecessor merges.
 - Every schema version introduced by S02 remains exported and migration-tested.
 - Branch watchers survive duplicates, shared checkouts, detach/reattach,
   failures, archive races, and shutdown without periodic git polling.
-- Authored PR cache and archive snapshots remain account-scoped under identity
-  switches and unknown-login failures.
+- Authored PR cache and archive snapshots remain account/repository/path-scoped;
+  detected identity changes suspend live visibility and terminal refreshes fail
+  closed.
 - No unviewed project schedules GitHub work; branch observation continues.
 - Existing wait/non-wait session request behavior and unseen behavior remain
   green.

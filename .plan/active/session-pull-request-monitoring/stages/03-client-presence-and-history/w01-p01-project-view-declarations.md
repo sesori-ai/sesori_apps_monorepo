@@ -46,7 +46,7 @@ together without adding presentation.
 - Add mandatory thin `ProjectViewRepository`.
 - Add singleton `ProjectViewingService` with separate guarded list and detail
   claims, detail precedence, lifecycle visibility, foreground reconnect
-  reassertion, serialized sends, and failure recovery.
+  reassertion, serialized sends, and bounded retry of failed connected sends.
 - Inject only `ProjectViewRepository`, `LifecycleSource`, and typed
   `Stream<ConnectionStatus>` into the service. Derive the stream from
   `ConnectionService.status` in the DI composition root; do not inject or import
@@ -131,7 +131,9 @@ Generated files are outputs only; run generation rather than editing them.
   `ConnectionService`, parallel to `RelayHttpApiClient`. It stores/uses the
   connection lifecycle component to reach the current raw `RelayClient`, sends
   only an injected `RelayMessage`, and never switches on session/project
-  variants or owns claims/retries.
+  variants or owns feature claims/retries. It reports typed `sent` versus
+  `disconnected`; unexpected send failure while the connection still reports
+  connected is surfaced to the API/service owner.
 - `SessionViewApi` and `ProjectViewApi` are independent Layer-1 peers. Each
   constructs its own `RelayMessage.sessionView` / `RelayMessage.projectView`
   value and calls `RelayControlClient.send`; neither calls `ConnectionService`
@@ -155,7 +157,8 @@ The service owns:
   the existing platform semantics established by `LifecycleSource` tests);
 - prior connected state;
 - last effective declaration successfully attempted/deduped as needed; and
-- one future tail that never remains failed.
+- one future tail that never remains failed; and
+- one generation-guarded retry timer plus consecutive connected-failure count.
 
 Expose intent-specific guarded methods, all with required named arguments:
 
@@ -184,8 +187,9 @@ not send a redundant value. Closing the final owner sends null.
 
 ### Lifecycle and reconnect behavior
 
-- First transition into hidden/paused/detached sends null once while retaining
-  both intended claims.
+- First transition into hidden/paused/detached enqueues one null transition while
+  retaining both intended claims. A failed connected send retries that same
+  current null intent until sent, superseded, disconnected, or disposed.
 - Repeated hidden -> paused events do not duplicate the clear.
 - Resume recomputes and reasserts the effective project immediately; unlike
   session view, project presence has no mark-seen effect and need not await a
@@ -196,14 +200,19 @@ not send a redundant value. Closing the final owner sends null.
   reassertion.
 - Every queued callback reads current claims/visibility when it executes rather
   than capturing an obsolete project id.
-- A send failure is logged once at the recovering service seam and the tail is
-  restored so later navigation/resume/reconnect sends still run.
-- Expected disconnected/no-current-relay sends are safe no-ops in
-  `RelayControlClient`; a disconnect race recovered inside that client is logged
-  once with error/stack. Unexpected surfaced failures are recovered by the
-  owning viewing service without poisoning its tail.
-- Service disposal cancels lifecycle/connection subscriptions; cubit closure
-  remains responsible for releasing its own claim.
+- A surfaced failure while still connected logs once and schedules one-shot
+  retry at 1s, 2s, 4s... capped at 30s. Each retry reads the current effective
+  declaration and generation, resets on sent success, and cannot resurrect an
+  older project/null after navigation or lifecycle change.
+- Expected disconnected/no-current-relay sends return typed `disconnected`; the
+  service does not retry because bridge connection release clears declarations.
+  Foreground reconnect reasserts current visible intent; hidden reconnect stays
+  null until resume.
+- A failed visible project declaration therefore remains pending without user
+  navigation, and a failed hidden null cannot leave indefinite ghost presence
+  on an otherwise live connection.
+- Service disposal cancels lifecycle/connection subscriptions and retry timer;
+  cubit closure remains responsible for releasing its own claim.
 
 ### Cubit behavior
 
@@ -251,7 +260,8 @@ Control transport regression:
 - `SessionViewApi` constructs the session-view variant through the same generic
   client and preserves its existing disconnected/race behavior;
 - `RelayControlClient` forwards arbitrary caller-built control messages without
-  inspecting feature variants, no-ops disconnected, and uses the current relay
+  inspecting feature variants, returns typed disconnected without throwing,
+  surfaces a failure if the connection remains live, and uses the current relay
   after reconnect;
 - no feature-specific session/project send method remains on
   `ConnectionService` or `RelayClient`.
@@ -268,8 +278,13 @@ Control transport regression:
   behavior matching platform contract;
 - foreground reconnect reassert, hidden reconnect no send, resume after hidden
   reconnect one reassert;
-- disconnect/send failure does not poison later tail;
-- subscription cancellation and no post-disposal sends.
+- connected visible-send failure retries current project without navigation;
+  connected hidden-clear failure retries null; 1/2/4/30-second cap, success
+  reset, generation supersession, disconnect cancellation, and no overlap;
+- disconnected outcome does not retry and reconnect/resume rules reassert only
+  when appropriate;
+- send failure does not poison later tail; subscription/timer cancellation and
+  no post-disposal sends.
 
 Cubits/integration:
 
@@ -332,6 +347,9 @@ flutter test
   an old owner from clearing a replacement.
 - Queued sends can overtake navigation intent; one tail reading current state at
   execution prevents stale captures.
+- A failed declaration can otherwise persist forever while the user remains on
+  one surface; bounded generation-guarded retry repairs live-connection failures
+  without polling or retrying after disconnect.
 - Session-view and project-view resume semantics differ intentionally; keeping
   separate services avoids accidental mark-seen reassertion.
 - A raw `ConnectionService` injection would leak transport into Layer 3; DI must
@@ -344,7 +362,8 @@ flutter test
 - Detail precedence and guarded fallback work without transient null.
 - Hidden/background and relay disconnect cannot leave ghost presence; visible
   resume/reconnect reasserts current intent.
-- Failures do not poison future ordered sends.
+- Connected declaration failures retry the latest intent with bounded backoff
+  and do not poison future ordered sends.
 - Session unseen and loading behavior remain unchanged.
 - New/old bridge-client pairings retain session functionality.
 
