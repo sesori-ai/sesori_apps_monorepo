@@ -1217,6 +1217,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
             error,
             stackTrace,
           );
+          // A command snapshot replayed before the rejection already mutated
+          // the process-global tracker, so consumers still need the refresh
+          // nudge — same flush as the success path below.
+          final commandRefresh = deferredCommandRefresh;
+          if (commandRefresh != null) _eventBuffer.add(commandRefresh);
           return collector.build();
         }
         // Any other RPC error is a genuine load failure — wrapped typed below.

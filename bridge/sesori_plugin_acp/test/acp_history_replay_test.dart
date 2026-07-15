@@ -124,6 +124,41 @@ void main() {
       expect(text, contains("partial reply"));
     });
 
+    test("a command snapshot replayed before a -32602 rejection still triggers a refresh", () async {
+      final emitted = <BridgeSseEvent>[];
+      plugin.events.listen(emitted.add);
+      final loading = plugin.getSessionMessages(sessionId);
+      await completeReplayHandshake();
+
+      final loadFrame = await waitForFrame("session/load");
+      // The agent replayed a command snapshot before rejecting the load. The
+      // process-global command tracker consumed it, so consumers must still be
+      // nudged to re-fetch commands on the degraded path.
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "from_replay"},
+            ],
+          },
+        },
+      });
+      await pump();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": loadFrame["id"],
+        "error": {"code": -32602, "message": "Invalid params"},
+      });
+      await loading;
+      await pump();
+
+      expect(emitted.whereType<BridgeSseSessionsUpdated>(), isNotEmpty);
+    });
+
     test("a genuine RPC error (not -32601/-32602) still surfaces as a typed failure", () async {
       final loading = plugin.getSessionMessages(sessionId);
       await completeReplayHandshake();
