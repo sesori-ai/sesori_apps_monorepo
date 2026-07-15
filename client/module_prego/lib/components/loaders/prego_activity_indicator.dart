@@ -26,7 +26,10 @@ class PregoActivityIndicator extends StatelessWidget {
       role: SemanticsRole.loadingSpinner,
       child: ExcludeSemantics(
         child: RepaintBoundary(
-          child: animationsEnabled ? _animatedIndicator() : _indicator(value: _staticArcSweep),
+          child: SizedBox.square(
+            dimension: _defaultDimension,
+            child: animationsEnabled ? _animatedIndicator() : _indicator(value: _staticArcSweep),
+          ),
         ),
       ),
     );
@@ -51,9 +54,7 @@ class PregoActivityIndicator extends StatelessWidget {
       TargetPlatform.windows => null,
     };
 
-    return nativeView == null
-        ? _indicator(value: null)
-        : SizedBox.square(dimension: _defaultDimension, child: nativeView);
+    return nativeView ?? _indicator(value: null);
   }
 
   CircularProgressIndicator _indicator({required double? value}) {

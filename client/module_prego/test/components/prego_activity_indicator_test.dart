@@ -86,8 +86,13 @@ void main() {
   testWidgets("gives a loosely constrained Flutter spinner a 36 pixel square", (tester) async {
     usePlatform(TargetPlatform.android);
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Center(
+      MaterialApp(
+        theme: ThemeData(
+          progressIndicatorTheme: const ProgressIndicatorThemeData(
+            constraints: BoxConstraints.tightFor(width: 72, height: 72),
+          ),
+        ),
+        home: const Center(
           child: PregoActivityIndicator(color: color),
         ),
       ),
