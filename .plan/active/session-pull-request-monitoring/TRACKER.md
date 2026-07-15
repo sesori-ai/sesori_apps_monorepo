@@ -10,9 +10,9 @@
 
 ## Current Pointer
 
-- **Stage:** S01 — Additive contracts
+- **Stage:** S02 — Durable bridge monitoring
 - **Wave:** W01
-- **Next action:** Pin the then-current `main` baseline for S01/W01 and implement S01-W01-P01 with `sesori-plan-worker`.
+- **Next action:** After S01-W01-P01 merges, pin the then-current `main` baseline for S02/W01 and implement S02-W01-P01 with `sesori-plan-worker`.
 
 ## Plan Review
 
@@ -31,7 +31,7 @@
 
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | S01-W01-P01 | S01 | W01 | — | `plan/session-pull-request-monitoring/s01-w01-p01-additive-pr-monitor-contracts` | Additive shared contracts; no behavior activation. |
+| [x] | S01-W01-P01 | S01 | W01 | — | `plan/session-pull-request-monitoring/s01-w01-p01-additive-pr-monitor-contracts` | This PR delivers additive shared contracts with no behavior activation from `plan/session-pull-request-monitoring/s01-w01-p01-additive-pr-monitor-contracts`. |
 | [ ] | S02-W01-P01 | S02 | W01 | — | `plan/session-pull-request-monitoring/s02-w01-p01-durable-branch-observation` | Exact directory and filesystem-driven branch history. |
 | [ ] | S02-W02-P01 | S02 | W02 | — | `plan/session-pull-request-monitoring/s02-w02-p01-authored-pr-refresh` | Authored identity-scoped live cache and dispatcher. |
 | [ ] | S02-W03-P01 | S02 | W03 | — | `plan/session-pull-request-monitoring/s02-w03-p01-terminal-archive-snapshots` | Irreversible PR stop and immutable archived snapshot. |
