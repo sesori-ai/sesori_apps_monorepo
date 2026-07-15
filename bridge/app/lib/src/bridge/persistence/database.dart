@@ -188,12 +188,16 @@ class AppDatabase extends _$AppDatabase {
             schema.projectsTable,
             newColumns: [schema.projectsTable.projectionUpdatedAt],
             columnTransformer: {
-              schema.projectsTable.projectionUpdatedAt: const CustomExpression<int>("updated_at"),
+              schema.projectsTable.projectionUpdatedAt: schema.projectsTable.updatedAt,
             },
           ),
         );
 
-        const updatedAt = CustomExpression<int>("MAX(COALESCE(last_activity_at, created_at), created_at)");
+        final createdAt = schema.sessionsTable.createdAt;
+        final updatedAt = FunctionCallExpression<int>("MAX", [
+          coalesce([schema.sessionsTable.lastActivityAt, createdAt]),
+          createdAt,
+        ]);
         await m.alterTable(
           TableMigration(
             schema.sessionsTable,
@@ -206,10 +210,13 @@ class AppDatabase extends _$AppDatabase {
               schema.sessionsTable.catalogTitle,
             ],
             columnTransformer: {
-              schema.sessionsTable.backendSessionId: const CustomExpression<String>("session_id"),
-              schema.sessionsTable.directory: const CustomExpression<String>(
-                "COALESCE(worktree_path, (SELECT path FROM projects_table WHERE project_id = sessions_table.project_id))",
-              ),
+              schema.sessionsTable.backendSessionId: schema.sessionsTable.sessionId,
+              schema.sessionsTable.directory: coalesce([
+                schema.sessionsTable.worktreePath,
+                const CustomExpression<String>(
+                  "(SELECT path FROM projects_table WHERE project_id = sessions_table.project_id)",
+                ),
+              ]),
               schema.sessionsTable.updatedAt: updatedAt,
               schema.sessionsTable.projectionUpdatedAt: updatedAt,
             },

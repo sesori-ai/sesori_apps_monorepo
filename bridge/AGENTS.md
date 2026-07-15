@@ -119,6 +119,11 @@ worktree names. Unless ordered names are a user-facing requirement, generate
 collision-checked random names at the worktree seam and keep project
 persistence free of naming-allocator state.
 
+Migration column transformers should compose typed Drift expressions such as
+schema columns, `coalesce`, and `FunctionCallExpression` instead of embedding
+equivalent raw SQL in `CustomExpression`. Reserve custom SQL for fragments with
+no practical typed representation, such as a correlated migration subquery.
+
 When a durable entity has separate identity and location fields, do not infer
 the location from an unknown identifier. Non-null persisted fields are
 authoritative; a missing row remains missing (`null`) and the repository or
