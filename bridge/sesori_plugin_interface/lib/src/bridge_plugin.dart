@@ -26,7 +26,8 @@ sealed class BridgePluginApi {
   /// Unique plugin identifier (e.g., "opencode", "codex")
   String get id;
 
-  /// Stream of bridge SSE events. Buffered until first listener subscribes.
+  /// Stream of bridge SSE events. Buffered until the first listener subscribes,
+  /// then broadcast to every attached listener.
   Stream<BridgeSseEvent> get events;
 
   /// Get sessions for a project directory.
