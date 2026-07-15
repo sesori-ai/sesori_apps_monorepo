@@ -115,10 +115,12 @@ void main() {
       await tester.pumpWidget(
         _harness([
           PregoMenuCustom(
+            height: 12,
             builder: (context, close) => const SizedBox(key: ValueKey("first-custom"), height: 12),
           ),
           PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
           PregoMenuCustom(
+            height: 12,
             builder: (context, close) => const SizedBox(key: ValueKey("last-custom"), height: 12),
           ),
         ], flat: true),
