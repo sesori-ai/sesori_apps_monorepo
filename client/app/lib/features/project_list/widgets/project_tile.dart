@@ -285,29 +285,39 @@ class _StatusRow extends StatelessWidget {
 
     // The line box is held open even when there is nothing to say, so a project
     // with no status and no timestamp doesn't shrink its row out of the list's
-    // pitch.
-    return SizedBox(
-      height: _statusLineHeight,
+    // pitch. A minimum rather than a fixed height: scaled-up accessibility text
+    // grows the row instead of being cropped to the 1x line box.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _statusLineHeight),
       child: Row(
         spacing: PregoSpacing.md,
         children: [
+          // The label yields and ellipsizes when the line runs out of width —
+          // a narrow screen under a large text size — so it can't push the
+          // timestamp out of the row.
           if (missing)
-            _StatusLabel(
-              icon: const Icon(TablerRegular.circle_x, size: _statusIconSize),
-              label: loc.projectFolderMissing,
+            Flexible(
+              child: _StatusLabel(
+                icon: const Icon(TablerRegular.circle_x, size: _statusIconSize),
+                label: loc.projectFolderMissing,
+              ),
             )
           else if (activeSessions > 0)
-            _StatusLabel(
-              icon: PregoAiLoader(phase: _phaseFor(project.id)),
-              label: loc.projectListRunning(activeSessions),
+            Flexible(
+              child: _StatusLabel(
+                icon: PregoAiLoader(phase: _phaseFor(project.id)),
+                label: loc.projectListRunning(activeSessions),
+              ),
             )
           else if (unseen)
-            _StatusLabel(
-              // Unopened activity is a state, not an event: the sparkle marks it
-              // without moving, and the label carries the emphasis instead.
-              icon: const PregoAiLoader(animate: false),
-              label: loc.projectListNewActivity,
-              emphasis: true,
+            Flexible(
+              child: _StatusLabel(
+                // Unopened activity is a state, not an event: the sparkle marks
+                // it without moving, and the label carries the emphasis instead.
+                icon: const PregoAiLoader(animate: false),
+                label: loc.projectListNewActivity,
+                emphasis: true,
+              ),
             ),
           // An unavailable project's timestamp is noise — the folder is gone.
           if (!missing && updatedAt != null)
@@ -347,16 +357,23 @@ class _StatusLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final prego = context.prego;
     return Row(
+      // Hugs its content: inside the status row's Flexible slot a max-sized Row
+      // would claim the whole allotment and strand the timestamp at the far end.
+      mainAxisSize: MainAxisSize.min,
       spacing: PregoSpacing.xs,
       children: [
         IconTheme.merge(
           data: IconThemeData(color: prego.colors.textTertiary),
           child: SizedBox(width: _statusSlotWidth, child: Center(child: icon)),
         ),
-        Text(
-          label,
-          style: prego.textTheme.textSm.regular.copyWith(
-            color: emphasis ? prego.colors.textPrimary : prego.colors.textTertiary,
+        Flexible(
+          child: Text(
+            label,
+            style: prego.textTheme.textSm.regular.copyWith(
+              color: emphasis ? prego.colors.textPrimary : prego.colors.textTertiary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -396,7 +413,15 @@ class ProjectTileSkeleton extends StatelessWidget {
                   spacing: PregoSpacing.sm,
                   children: [
                     Icon(TablerSolid.folder, size: _folderSize, color: prego.colors.textDisabled),
-                    const SizedBox(height: _titleLineHeight, child: PregoSkeletonBar(height: 20, width: 175)),
+                    // Align loosens the line box's tight height, so the bar is
+                    // centred in it rather than stretched to fill it.
+                    const SizedBox(
+                      height: _titleLineHeight,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: PregoSkeletonBar(height: 20, width: 175),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: _pathLineHeight, child: PregoSkeletonBar(height: 20, width: 141)),

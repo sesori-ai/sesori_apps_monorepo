@@ -253,6 +253,84 @@ void main() {
     });
   });
 
+  group("under scaled-up accessibility text", () {
+    /// Pumps a single bare tile — not the whole screen — at 3x text scale, so
+    /// these tests exercise the row's own layout and can't fail for the glass
+    /// scaffold's sake. [width] is the logical screen width.
+    Future<void> pumpScaledTile(
+      WidgetTester tester, {
+      required Project project,
+      required double width,
+      int activeSessions = 0,
+      bool unseen = false,
+    }) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 3.0;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      tester.view.physicalSize = Size(width, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Material(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ProjectTile(project: project, activeSessions: activeSessions, unseen: unseen),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets("the status line grows with the text instead of cropping it to the 1x line box", (tester) async {
+      final project = testProject(id: "p1", name: "my-app");
+
+      await pumpScaledTile(tester, project: project, width: 520, activeSessions: 1);
+
+      // The 14/20 status text needs three times its line box at 3x; a fixed
+      // 20px box would crop it to the top third of its glyphs.
+      expect(tester.getSize(find.text("Running")).height, greaterThan(20));
+    });
+
+    testWidgets("the status label yields to the timestamp instead of overflowing the row", (tester) async {
+      final project = testProject(id: "p1", name: "my-app").copyWith(
+        time: ProjectTime(created: 0, updated: DateTime.now().millisecondsSinceEpoch),
+      );
+
+      // Narrow enough that "New activity" plus "just now" cannot both fit —
+      // but wide enough for the timestamp alone, which the test font inflates
+      // to a full fontSize per glyph.
+      await pumpScaledTile(tester, project: project, width: 480, unseen: true);
+
+      // The ellipsized label is still the same Text; the timestamp keeps its
+      // full width inside the row.
+      expect(find.text("New activity"), findsOneWidget);
+      final tile = tester.getRect(find.byType(ProjectTile));
+      expect(tester.getRect(find.text("just now")).right, lessThanOrEqualTo(tile.right));
+    });
+  });
+
+  group("the loading skeleton", () {
+    testWidgets("keeps its bars at their designed height inside taller line boxes", (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: const Material(child: ProjectTileSkeleton()),
+        ),
+      );
+
+      // The title's 24px line box is taller than its 20px bar; the box must
+      // hold the line open without stretching the bar to fill it.
+      for (var i = 0; i < 3; i++) {
+        expect(tester.getSize(find.byType(PregoSkeletonBar).at(i)).height, 20);
+      }
+    });
+  });
+
   testWidgets("a row announces itself as one button, not three lines of text", (tester) async {
     // Both came free from ListTile, and the redesign has to supply them: an
     // InkWell contributes the actions but not the role, and leaves the row's
