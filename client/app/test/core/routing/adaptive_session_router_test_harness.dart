@@ -174,6 +174,7 @@ class AdaptiveSessionRouterTestHarness {
 
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectService>(projectService);
+    registerListServices(projectService: projectService);
     getIt.registerSingleton<BridgeRepository>(bridgeRepository);
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);
     getIt.registerSingleton<SessionService>(SessionService(repository: sessionRepository));

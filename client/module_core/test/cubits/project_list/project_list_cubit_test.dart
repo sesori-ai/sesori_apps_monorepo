@@ -11,6 +11,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/project_list/add_project_outcome.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
+import "package:sesori_dart_core/src/services/project_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -46,6 +47,8 @@ void main() {
 
   group("ProjectListCubit", () {
     late MockProjectService mockProjectService;
+    late MockProjectRepository mockProjectRepository;
+    late ProjectListService projectListService;
     late MockConnectionService mockConnectionService;
     late MockSseEventTracker mockSseEventTracker;
     late MockRouteSource mockRouteSource;
@@ -57,6 +60,8 @@ void main() {
 
     setUp(() {
       mockProjectService = MockProjectService();
+      mockProjectRepository = MockProjectRepository();
+      projectListService = ProjectListService(repository: mockProjectRepository);
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
       mockRouteSource = MockRouteSource();
@@ -66,6 +71,9 @@ void main() {
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         _connectedStatus,
       );
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) => mockProjectService.listProjects());
 
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
@@ -98,6 +106,7 @@ void main() {
       mockConnectionService,
       mockSseEventTracker,
       mockRouteSource,
+      projectListService: projectListService,
       sessionUnseenTracker: fakeSessionUnseenTracker,
       registeredBridgesService: mockRegisteredBridgesService,
       failureReporter: mockFailureReporter,
@@ -1320,7 +1329,7 @@ void main() {
     // =========================================================================
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "projectTimestampUpdates: updates matching project timestamp and re-sorts",
+      "projectTimestampUpdates: updates matching project timestamp without reordering",
       build: () {
         when(
           () => mockProjectService.listProjects(),
@@ -1347,7 +1356,7 @@ void main() {
         isA<ProjectListLoaded>().having(
           (s) => s.projects.map((p) => p.id).toList(),
           "projects order",
-          ["B", "A", "C"],
+          ["A", "B", "C"],
         ),
       ],
       verify: (_) {
@@ -1440,10 +1449,10 @@ void main() {
             .having(
               (state) => state.projects.map((project) => project.id).toList(),
               "project order",
-              ["B", "A"],
+              ["A", "B"],
             )
             .having(
-              (state) => state.projects.first.time?.updated,
+              (state) => state.projects.last.time?.updated,
               "live timestamp",
               4000,
             ),
@@ -1519,7 +1528,7 @@ void main() {
     );
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "projectTimestampUpdates: sorts by updated desc then effective name then id",
+      "projectTimestampUpdates: preserves effective name then id ordering",
       build: () {
         when(
           () => mockProjectService.listProjects(),
@@ -1567,7 +1576,7 @@ void main() {
     );
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "REST project list is sorted by updated desc then effective name then id",
+      "REST project list is sorted by effective name then id regardless of timestamp",
       build: () {
         when(
           () => mockProjectService.listProjects(),
@@ -1575,18 +1584,23 @@ void main() {
           (_) async => ApiResponse.success(
             const Projects(
               data: [
-                Project(id: "null", name: "First", path: "/null", time: null),
+                Project(
+                  id: "null",
+                  name: null,
+                  path: "charlie",
+                  time: ProjectTime(created: 1000, updated: 9000),
+                ),
                 Project(
                   id: "B",
                   name: "bravo",
                   path: "/B",
-                  time: ProjectTime(created: 1000, updated: 2000),
+                  time: ProjectTime(created: 1000, updated: 4000),
                 ),
                 Project(
                   id: "a",
                   name: "alpha",
                   path: "/a",
-                  time: ProjectTime(created: 1000, updated: 3000),
+                  time: ProjectTime(created: 1000, updated: 1000),
                 ),
                 Project(
                   id: "A",

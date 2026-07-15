@@ -63,10 +63,14 @@ import 'package:sesori_dart_core/src/services/new_session_selection_tracker.dart
     as _i913;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
     as _i659;
+import 'package:sesori_dart_core/src/services/project_list_service.dart'
+    as _i703;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
     as _i709;
+import 'package:sesori_dart_core/src/services/session_list_service.dart'
+    as _i763;
 import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
     as _i28;
 import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
@@ -216,6 +220,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i150.SessionViewRepository>(
       () => _i150.SessionViewRepository(api: gh<_i157.SessionViewApi>()),
+    );
+    gh.lazySingleton<_i703.ProjectListService>(
+      () => _i703.ProjectListService(repository: gh<_i80.ProjectRepository>()),
+    );
+    gh.lazySingleton<_i763.SessionListService>(
+      () => _i763.SessionListService(repository: gh<_i80.ProjectRepository>()),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(

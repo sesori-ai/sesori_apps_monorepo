@@ -71,6 +71,7 @@ void main() {
     ).thenAnswer((_) async {});
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
+    registerListServices(projectService: mockProjectService);
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);

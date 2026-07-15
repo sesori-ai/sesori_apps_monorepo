@@ -20,6 +20,7 @@ class SessionListCubitProvider extends StatelessWidget {
     return BlocProvider(
       create: (_) => SessionListCubit(
         sessionService: getIt<SessionService>(),
+        sessionListService: getIt<SessionListService>(),
         projectService: getIt<ProjectService>(),
         connectionService: getIt<ConnectionService>(),
         sseEventTracker: getIt<SseEventTracker>(),

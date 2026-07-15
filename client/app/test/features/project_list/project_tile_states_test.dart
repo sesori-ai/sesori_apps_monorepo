@@ -50,6 +50,7 @@ void main() {
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
 
     getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
+    registerListServices(projectService: mockProjectService);
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);

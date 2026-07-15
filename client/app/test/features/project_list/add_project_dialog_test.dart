@@ -176,6 +176,7 @@ void main() {
       getIt.unregister<ProjectService>();
     }
     getIt.registerSingleton<ProjectService>(mockProjectService);
+    registerListServices(projectService: mockProjectService);
     if (getIt.isRegistered<ConnectionService>()) {
       getIt.unregister<ConnectionService>();
     }
