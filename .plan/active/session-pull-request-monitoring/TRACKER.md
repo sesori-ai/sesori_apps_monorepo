@@ -2,7 +2,7 @@
 
 ## Plan State
 
-- **Status:** Approved — delivered on plan PR #436; awaiting merge
+- **Status:** Approved — plan PR #436 merged
 - **Implementation base:** `main`
 - **Plan slug:** `session-pull-request-monitoring`
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/436
@@ -12,7 +12,7 @@
 
 - **Stage:** S01 — Additive contracts
 - **Wave:** W01
-- **Next action:** Merge plan PR #436. Then pin the then-current `main` baseline for S01/W01 and implement S01-W01-P01 with `sesori-plan-worker`.
+- **Next action:** Pin the then-current `main` baseline for S01/W01 and implement S01-W01-P01 with `sesori-plan-worker`.
 
 ## Plan Review
 
@@ -52,6 +52,7 @@
 
 ## Findings and Plan Deltas
 
+- **2026-07-14 — Optimistic plan-PR state:** Plan-branch tracker state now reflects the post-merge result immediately after PR creation; the optimistic state reaches `main` only when the plan PR merges.
 - **2026-07-14 — Legacy cleanup:** Removed superseded `docs/pr-monitor/PLAN.md`; `.plan/active/session-pull-request-monitoring/` is the sole plan authority.
 - **2026-07-14 — Legacy-thread assessment:** Four bot threads on superseded `docs/pr-monitor/PLAN.md` required no canonical change: owner-scoped multi-user cache metadata is explicitly speculative, direct detail has no PR presentation, intermediate-wave historical freshness is not a shipped regression and remains explicitly refreshable, and unverifiable legacy archived cache rows intentionally fail closed rather than guessing GitHub authorship. Full plan review remained approved.
 - **2026-07-14 — Plan delivery:** The approved canonical plan tree was pushed to plan PR https://github.com/sesori-ai/sesori_apps_monorepo/pull/436.

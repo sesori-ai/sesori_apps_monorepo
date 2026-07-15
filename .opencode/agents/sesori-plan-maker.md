@@ -362,6 +362,13 @@ edits under a stale plan approval. For "commit", commit only the plan tree on
 the user-approved branch. For "nothing else", leave the approved files
 uncommitted.
 
+Plan-PR tracker state is branch-relative and optimistic, matching implementation
+PR tracker semantics. Once the plan PR is opened, record its status as merged
+and advance `Current Pointer` to the post-merge next action; never write
+"awaiting merge" or another in-progress state. That optimistic state reaches the
+selected base only if the plan PR actually merges, so base-branch truth remains
+accurate when an open plan PR is abandoned.
+
 After any delivery choice, remind the user that implementation requires
 switching to `sesori-plan-worker` and providing the active plan slug.
 
