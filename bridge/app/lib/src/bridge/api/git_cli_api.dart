@@ -96,7 +96,16 @@ class GitCliApi {
     required String projectPath,
     required String branchName,
   }) async {
-    final result = await runGit(projectPath: projectPath, arguments: ["branch", "--list", "--", branchName]);
+    final arguments = ["branch", "--list", "--", branchName];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        "git",
+        arguments,
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
     return result.stdout.toString().trim().isNotEmpty;
   }
 

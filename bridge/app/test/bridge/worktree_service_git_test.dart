@@ -134,6 +134,24 @@ void main() {
       expect(exists, isFalse);
     });
 
+    test("branchExists throws when git branch --list fails", () async {
+      processRunner.enqueue(
+        result: _processResult(exitCode: 128, stderr: "fatal: not a git repository"),
+      );
+
+      await expectLater(
+        () => service.branchExists(
+          projectPath: "/repo/project",
+          branchName: "feature/unknown",
+        ),
+        throwsA(
+          isA<ProcessException>()
+              .having((error) => error.errorCode, "errorCode", 128)
+              .having((error) => error.message, "message", contains("not a git repository")),
+        ),
+      );
+    });
+
     test("createWorktree runs git worktree add and returns success", () async {
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "prepared"));
 
