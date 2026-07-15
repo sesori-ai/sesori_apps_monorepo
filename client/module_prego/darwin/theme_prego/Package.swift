@@ -11,11 +11,15 @@ let package = Package(
   products: [
     .library(name: "theme-prego", targets: ["theme_prego"])
   ],
-  dependencies: [],
+  dependencies: [
+    .package(name: "FlutterFramework", path: "../FlutterFramework")
+  ],
   targets: [
     .target(
       name: "theme_prego",
-      dependencies: []
+      dependencies: [
+        .product(name: "FlutterFramework", package: "FlutterFramework")
+      ]
     )
   ]
 )
