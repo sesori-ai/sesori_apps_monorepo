@@ -5,7 +5,6 @@ import Foundation
   import UIKit
 #elseif os(macOS)
   import AppKit
-  import CoreImage
   import FlutterMacOS
 #else
   #error("Unsupported Darwin platform")
@@ -164,16 +163,15 @@ private struct ColorComponents {
   }
 #elseif os(macOS)
   private final class NativeActivityIndicatorPlatformView: NSProgressIndicator {
+    private let indicatorColor: NSColor
+
     init(frame: NSRect, color: NSColor) {
+      indicatorColor = color
       super.init(frame: frame)
 
       isIndeterminate = true
       style = .spinning
       controlSize = .small
-      let colorFilter = CIFilter(name: "CIColorMonochrome")
-      colorFilter?.setValue(CIColor(color: color), forKey: kCIInputColorKey)
-      colorFilter?.setValue(1.0, forKey: kCIInputIntensityKey)
-      contentFilters = [colorFilter].compactMap { $0 }
       isDisplayedWhenStopped = true
       setAccessibilityElement(false)
 
@@ -184,6 +182,14 @@ private struct ColorComponents {
         object: nil
       )
       updateAnimationState()
+    }
+
+    // AppKit has no spinner tint API; draw-pass compositing avoids layer filters
+    // that distort Flutter platform-view geometry.
+    override func draw(_ dirtyRect: NSRect) {
+      super.draw(dirtyRect)
+      indicatorColor.setFill()
+      dirtyRect.fill(using: .sourceAtop)
     }
 
     required init?(coder: NSCoder) {
