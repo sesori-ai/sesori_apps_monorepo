@@ -48,6 +48,26 @@ class FilesystemApi {
     return file.readAsStringSync();
   }
 
+  String resolveFilePath(String path) {
+    return File(path).resolveSymbolicLinksSync();
+  }
+
+  String resolveDirectoryPath(String path) {
+    return Directory(path).resolveSymbolicLinksSync();
+  }
+
+  int fileLength(String path) {
+    return File(path).lengthSync();
+  }
+
+  String readFileAsString(String path) {
+    return File(path).readAsStringSync();
+  }
+
+  List<int> readFileAsBytes(String path) {
+    return File(path).readAsBytesSync();
+  }
+
   /// Appends [content] to the file at [path], creating it if needed.
   void appendToFile(String path, String content) {
     File(path).writeAsStringSync(content, mode: FileMode.append);

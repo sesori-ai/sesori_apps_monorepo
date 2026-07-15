@@ -16,17 +16,19 @@ import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
 import "../server/services/bridge_restart_service.dart";
-import "foundation/process_runner.dart";
+import "api/git_cli_api.dart";
 import "key_exchange.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
+import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
+import "repositories/session_diff_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/abort_session_handler.dart";
 import "routing/create_project_handler.dart";
@@ -67,10 +69,10 @@ import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
 import "services/session_abort_service.dart";
-import "services/session_archive_service.dart";
-import "services/session_cleanup_service.dart";
 import "services/session_creation_service.dart";
+import "services/session_diff_service.dart";
 import "services/session_event_enrichment_service.dart";
+import "services/session_lifecycle_service.dart";
 import "services/session_mutation_dispatcher.dart";
 import "services/session_prompt_service.dart";
 import "services/session_unseen_service.dart";
@@ -99,6 +101,7 @@ class Orchestrator {
   final SessionUnseenService _sessionUnseenService;
   final SessionViewTracker _sessionViewTracker;
   final FilesystemRepository _filesystemRepository;
+  final GitCliApi _gitCliApi;
   final ProjectInitializationService _projectInitializationService;
   final ProjectActivityService _projectActivityService;
   final HealthRepository _healthRepository;
@@ -130,6 +133,7 @@ class Orchestrator {
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
     required FilesystemRepository filesystemRepository,
+    required GitCliApi gitCliApi,
     required ProjectInitializationService projectInitializationService,
     required ProjectActivityService projectActivityService,
     required HealthRepository healthRepository,
@@ -160,6 +164,7 @@ class Orchestrator {
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
        _filesystemRepository = filesystemRepository,
+       _gitCliApi = gitCliApi,
        _projectInitializationService = projectInitializationService,
        _projectActivityService = projectActivityService,
        _healthRepository = healthRepository,
@@ -198,17 +203,20 @@ class Orchestrator {
           );
         })
         .addTo(promptDefaultsSubscriptions);
-    final sessionCleanupService = SessionCleanupService(
+    final sessionLifecycleService = SessionLifecycleService(
       worktreeService: _worktreeService,
       sessionRepository: _sessionRepository,
-    );
-    final sessionArchiveService = SessionArchiveService(
-      worktreeService: _worktreeService,
-      sessionRepository: _sessionRepository,
-      sessionCleanupService: sessionCleanupService,
       filesystemRepository: _filesystemRepository,
     );
     final sessionAbortService = SessionAbortService(sessionRepository: _sessionRepository);
+    final sessionDiffService = SessionDiffService(
+      sessionRepository: _sessionRepository,
+      sessionDiffRepository: SessionDiffRepository(
+        gitCliApi: _gitCliApi,
+        outputMapper: const GitDiffOutputMapper(),
+      ),
+      filesystemRepository: _filesystemRepository,
+    );
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: _healthRepository),
@@ -230,11 +238,11 @@ class Orchestrator {
         RenameSessionHandler(sessionMutationDispatcher: _sessionMutationDispatcher),
         MarkSessionSeenHandler(sessionUnseenService: _sessionUnseenService),
         UpdateSessionArchiveStatusHandler(
-          sessionArchiveService: sessionArchiveService,
+          sessionLifecycleService: sessionLifecycleService,
           sessionUnseenService: _sessionUnseenService,
         ),
         DeleteSessionHandler(
-          sessionCleanupService: sessionCleanupService,
+          sessionLifecycleService: sessionLifecycleService,
           sessionMutationDispatcher: _sessionMutationDispatcher,
         ),
         SendPromptHandler(sessionPromptService: sessionPromptService),
@@ -262,9 +270,7 @@ class Orchestrator {
         SetBaseBranchHandler(projectRepository: _projectRepository),
         FilesystemSuggestionsHandler(filesystemRepository: _filesystemRepository),
         GetSessionDiffsHandler(
-          sessionRepository: _sessionRepository,
-          filesystemRepository: _filesystemRepository,
-          processRunner: ProcessRunner(),
+          sessionDiffService: sessionDiffService,
         ),
       ],
     );

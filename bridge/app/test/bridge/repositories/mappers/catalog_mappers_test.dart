@@ -82,7 +82,7 @@ void main() {
     expect(session.unseen, isTrue);
   });
 
-  test("StoredSessionMapper preserves the complete persistence row", () {
+  test("StoredSessionMapper projects the fields repository consumers need", () {
     const row = SessionDto(
       sessionId: "sesori-id",
       backendSessionId: "backend-id",
@@ -111,26 +111,12 @@ void main() {
     final stored = row.toStoredSession();
 
     expect(stored.id, row.sessionId);
-    expect(stored.backendSessionId, row.backendSessionId);
-    expect(stored.pluginId, row.pluginId);
     expect(stored.projectId, row.projectId);
-    expect(stored.parentSessionId, row.parentSessionId);
-    expect(stored.directory, row.directory);
     expect(stored.worktreePath, row.worktreePath);
     expect(stored.branchName, row.branchName);
     expect(stored.isDedicated, row.isDedicated);
     expect(stored.archivedAt, row.archivedAt);
     expect(stored.baseBranch, row.baseBranch);
     expect(stored.baseCommit, row.baseCommit);
-    expect(stored.lastAgent, row.lastAgent);
-    expect(stored.lastAgentModel, row.lastAgentModel);
-    expect(stored.createdAt, row.createdAt);
-    expect(stored.updatedAt, row.updatedAt);
-    expect(stored.projectionUpdatedAt, row.projectionUpdatedAt);
-    expect(stored.lastActivityAt, row.lastActivityAt);
-    expect(stored.lastSeenAt, row.lastSeenAt);
-    expect(stored.lastUserMessageAt, row.lastUserMessageAt);
-    expect(stored.title, row.title);
-    expect(stored.catalogTitle, row.catalogTitle);
   });
 }

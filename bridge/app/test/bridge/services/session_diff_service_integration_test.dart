@@ -1,18 +1,56 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/session_diffs/compute_session_diffs.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/git_diff_output_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_diff_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/session_diff_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
+import "../routing/routing_test_helpers.dart";
+
 void main() {
-  group("computeSessionDiffs", () {
+  group("SessionDiffService", () {
+    late AppDatabase db;
+    late FakeBridgePlugin plugin;
     late Directory repoDir;
     late Directory worktreeDir;
     late ProcessRunner processRunner;
+    late SessionDiffService service;
 
     setUp(() async {
+      db = createTestDatabase();
+      plugin = FakeBridgePlugin();
       processRunner = ProcessRunner();
+      final sessionRepository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      service = SessionDiffService(
+        sessionRepository: sessionRepository,
+        sessionDiffRepository: SessionDiffRepository(
+          gitCliApi: GitCliApi(
+            processRunner: processRunner,
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+          outputMapper: const GitDiffOutputMapper(),
+        ),
+        filesystemRepository: FilesystemRepository(
+          filesystemApi: const FilesystemApi(),
+          permissionValidator: const FilesystemPermissionValidator(),
+        ),
+      );
       repoDir = await Directory.systemTemp.createTemp("compute_session_diffs_repo_");
       worktreeDir = Directory("${repoDir.path}/session-wt");
 
@@ -39,9 +77,17 @@ void main() {
       File("${worktreeDir.path}/lib/new_untracked.dart")
         ..createSync(recursive: true)
         ..writeAsStringSync("class New {}\n");
+      await _insertStoredSession(
+        db: db,
+        sessionId: "session-1",
+        projectId: repoDir.path,
+        worktreePath: worktreeDir.path,
+      );
     });
 
     tearDown(() async {
+      await plugin.close();
+      await db.close();
       await _runGit(processRunner, repoDir.path, ["worktree", "remove", "--force", worktreeDir.path]);
       if (repoDir.existsSync()) {
         await repoDir.delete(recursive: true);
@@ -49,11 +95,7 @@ void main() {
     });
 
     test("includes committed, uncommitted, and untracked file changes", () async {
-      final diffs = await computeSessionDiffs(
-        worktreePath: worktreeDir.path,
-        baseBranch: "main",
-        processRunner: processRunner,
-      );
+      final diffs = await service.getDiffs(sessionId: "session-1");
 
       final byFile = <String, FileDiff>{
         for (final diff in diffs) diff.file: diff,
@@ -80,11 +122,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync("replacement tracked\n");
 
-      final diffs = await computeSessionDiffs(
-        worktreePath: worktreeDir.path,
-        baseBranch: "main",
-        processRunner: processRunner,
-      );
+      final diffs = await service.getDiffs(sessionId: "session-1");
 
       final replacement = diffs.singleWhere((diff) => diff.file == "tracked.txt");
       expect(replacement, isA<FileDiffContent>());
@@ -101,11 +139,7 @@ void main() {
 
       await Process.run("chmod", ["711", "${worktreeDir.path}/untouched.txt"]);
 
-      final diffs = await computeSessionDiffs(
-        worktreePath: worktreeDir.path,
-        baseBranch: "main",
-        processRunner: processRunner,
-      );
+      final diffs = await service.getDiffs(sessionId: "session-1");
 
       final modeOnly = diffs.singleWhere((diff) => diff.file == "untouched.txt");
       expect(modeOnly, isA<FileDiffContent>());
@@ -136,12 +170,14 @@ void main() {
       await _runGit(processRunner, deletionRepo.path, ["branch", "-M", "main"]);
       await _runGit(processRunner, deletionRepo.path, ["worktree", "add", deletionWorktree.path, "-b", "session-branch"]);
       File("${deletionWorktree.path}/tracked.txt").writeAsStringSync("line one\n");
-
-      final diffs = await computeSessionDiffs(
+      await _insertStoredSession(
+        db: db,
+        sessionId: "deletion-session",
+        projectId: deletionRepo.path,
         worktreePath: deletionWorktree.path,
-        baseBranch: "main",
-        processRunner: processRunner,
       );
+
+      final diffs = await service.getDiffs(sessionId: "deletion-session");
 
       final tracked = diffs.singleWhere((diff) => diff.file == "tracked.txt");
       expect(tracked, isA<FileDiffContent>());
@@ -151,6 +187,28 @@ void main() {
       expect(content.deletions, equals(1));
     });
   });
+}
+
+Future<void> _insertStoredSession({
+  required AppDatabase db,
+  required String sessionId,
+  required String projectId,
+  required String worktreePath,
+}) async {
+  await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+  await db.sessionDao.insertSession(
+    pluginId: "opencode",
+    sessionId: sessionId,
+    projectId: projectId,
+    isDedicated: true,
+    createdAt: 1,
+    worktreePath: worktreePath,
+    branchName: "session-branch",
+    baseBranch: "main",
+    baseCommit: "main",
+    lastAgent: null,
+    lastAgentModel: null,
+  );
 }
 
 Future<void> _runGit(ProcessRunner runner, String cwd, List<String> args) async {

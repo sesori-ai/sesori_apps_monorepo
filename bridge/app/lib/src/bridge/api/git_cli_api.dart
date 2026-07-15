@@ -123,6 +123,78 @@ class GitCliApi {
     return commit.isEmpty ? null : commit;
   }
 
+  Future<ProcessResult> verifyRevision({
+    required String projectPath,
+    required String revision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["rev-parse", "--verify", revision],
+    );
+  }
+
+  Future<ProcessResult> findMergeBase({
+    required String projectPath,
+    required String baseRevision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["merge-base", baseRevision, "HEAD"],
+    );
+  }
+
+  Future<ProcessResult> diffNameStatus({
+    required String projectPath,
+    required String revision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: [
+        "diff",
+        "--no-ext-diff",
+        "--no-color",
+        "--no-renames",
+        "--name-status",
+        revision,
+      ],
+    );
+  }
+
+  Future<ProcessResult> diffNumstat({
+    required String projectPath,
+    required String revision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: [
+        "diff",
+        "--no-ext-diff",
+        "--no-color",
+        "--no-renames",
+        "--numstat",
+        revision,
+      ],
+    );
+  }
+
+  Future<ProcessResult> listUntrackedFiles({required String projectPath}) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: const ["ls-files", "--others", "--exclude-standard"],
+    );
+  }
+
+  Future<ProcessResult> readFileAtRevision({
+    required String projectPath,
+    required String revision,
+    required String file,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["show", "$revision:$file"],
+    );
+  }
+
   Future<({String ref, String commit})> resolveStartPointForBranch({
     required String projectPath,
     required String baseBranch,
@@ -227,8 +299,7 @@ class GitCliApi {
 
       // If the parent .worktrees/ directory is now empty, clean it up too.
       final parentDir = worktreeDir.parent;
-      if (parentDir.existsSync() &&
-          parentDir.path.split(Platform.pathSeparator).last == ".worktrees") {
+      if (parentDir.existsSync() && parentDir.path.split(Platform.pathSeparator).last == ".worktrees") {
         try {
           if (parentDir.listSync().isEmpty) {
             parentDir.deleteSync();

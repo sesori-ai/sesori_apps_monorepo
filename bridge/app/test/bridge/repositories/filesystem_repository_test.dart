@@ -121,5 +121,20 @@ class _PermissionDeniedFilesystemApi implements FilesystemApi {
   String? readFileIfExists(String path) => null;
 
   @override
+  int fileLength(String path) => throw UnimplementedError();
+
+  @override
+  List<int> readFileAsBytes(String path) => throw UnimplementedError();
+
+  @override
+  String readFileAsString(String path) => throw UnimplementedError();
+
+  @override
+  String resolveDirectoryPath(String path) => throw UnimplementedError();
+
+  @override
+  String resolveFilePath(String path) => throw UnimplementedError();
+
+  @override
   void appendToFile(String path, String content) {}
 }

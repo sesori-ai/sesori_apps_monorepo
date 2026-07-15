@@ -175,12 +175,16 @@ class BridgeRuntime {
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
     );
+    final gitCliApi = GitCliApi(
+      processRunner: processRunner,
+      gitPathExists: _gitPathExists,
+    );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         plugin: plugin,
-        gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+        gitApi: gitCliApi,
       ),
       filesystemRepository: filesystemRepository,
     );
@@ -200,7 +204,7 @@ class BridgeRuntime {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         plugin: plugin,
-        gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+        gitApi: gitCliApi,
       ),
     );
     final sessionCreationService = SessionCreationService(
@@ -248,7 +252,7 @@ class BridgeRuntime {
         prSyncService: PrSyncService(
           prSource: PrSourceRepository(
             ghCli: GhCliApi(processRunner: processRunner),
-            gitCli: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+            gitCli: gitCliApi,
           ),
           pullRequestRepository: pullRequestRepository,
           sessionRepository: sessionRepository,
@@ -259,6 +263,7 @@ class BridgeRuntime {
         sessionUnseenService: sessionUnseenService,
         sessionViewTracker: sessionViewTracker,
         filesystemRepository: filesystemRepository,
+        gitCliApi: gitCliApi,
         projectInitializationService: projectInitializationService,
         projectActivityService: projectActivityService,
         healthRepository: healthRepository,

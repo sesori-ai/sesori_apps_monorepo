@@ -361,6 +361,10 @@ class _RegistrationHarness {
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
       ),
+      gitCliApi: GitCliApi(
+        processRunner: ProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
+      ),
       projectInitializationService: ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
           projectsDao: database.projectsDao,

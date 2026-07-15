@@ -1,12 +1,15 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
-import "package:sesori_bridge/src/bridge/services/session_cleanup_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -15,19 +18,23 @@ import "package:test/test.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
-  group("SessionCleanupService", () {
+  group("SessionLifecycleService cleanup", () {
     late AppDatabase db;
     late _FakeWorktreeService worktreeService;
     late _FakeSessionRepository sessionRepository;
-    late SessionCleanupService service;
+    late SessionLifecycleService service;
 
     setUp(() {
       db = createTestDatabase();
       worktreeService = _FakeWorktreeService(database: db);
       sessionRepository = _FakeSessionRepository();
-      service = SessionCleanupService(
+      service = SessionLifecycleService(
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        filesystemRepository: FilesystemRepository(
+          filesystemApi: const FilesystemApi(),
+          permissionValidator: const FilesystemPermissionValidator(),
+        ),
       );
     });
 
@@ -72,6 +79,31 @@ void main() {
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-002"));
       expect(worktreeService.deleteBranchCallCount, equals(0));
+    });
+
+    test("failed worktree removal throws instead of reporting success", () async {
+      worktreeService.safetyResult = WorktreeSafe();
+      worktreeService.removeResult = false;
+
+      await expectLater(
+        () => _cleanup(
+          service: service,
+          sessionRepository: sessionRepository,
+          sessionId: "s2-failed",
+          worktreePath: "/repo/.worktrees/session-002-failed",
+          branchName: "session-002-failed",
+          deleteWorktree: true,
+          deleteBranch: false,
+          force: false,
+        ),
+        throwsA(
+          isA<SessionCleanupFailedException>().having(
+            (error) => error.operation,
+            "operation",
+            SessionCleanupOperation.removeWorktree,
+          ),
+        ),
+      );
     });
 
     test("dirty worktree without force rejects with mapped issues", () async {
@@ -149,6 +181,30 @@ void main() {
       expect(worktreeService.removeCallCount, equals(1));
       expect(worktreeService.deleteBranchCallCount, equals(1));
       expect(worktreeService.lastDeleteBranchForce, isTrue);
+    });
+
+    test("failed branch deletion throws instead of reporting success", () async {
+      worktreeService.deleteBranchResult = false;
+
+      await expectLater(
+        () => _cleanup(
+          service: service,
+          sessionRepository: sessionRepository,
+          sessionId: "s5-failed",
+          worktreePath: "/repo/.worktrees/session-005-failed",
+          branchName: "session-005-failed",
+          deleteWorktree: false,
+          deleteBranch: true,
+          force: false,
+        ),
+        throwsA(
+          isA<SessionCleanupFailedException>().having(
+            (error) => error.operation,
+            "operation",
+            SessionCleanupOperation.deleteBranch,
+          ),
+        ),
+      );
     });
 
     test("shared worktree rejected when force=false", () async {
@@ -241,7 +297,7 @@ void main() {
 }
 
 Future<CleanupResult> _cleanup({
-  required SessionCleanupService service,
+  required SessionLifecycleService service,
   required _FakeSessionRepository sessionRepository,
   required String sessionId,
   required String worktreePath,
@@ -252,27 +308,13 @@ Future<CleanupResult> _cleanup({
 }) {
   sessionRepository.storedSession = StoredSession(
     id: sessionId,
-    backendSessionId: sessionId,
-    pluginId: "fake",
     projectId: "/repo",
-    parentSessionId: null,
-    directory: worktreePath,
     worktreePath: worktreePath,
     branchName: branchName,
     isDedicated: true,
     archivedAt: null,
     baseBranch: null,
     baseCommit: null,
-    lastAgent: null,
-    lastAgentModel: null,
-    createdAt: 1,
-    updatedAt: 1,
-    projectionUpdatedAt: 1,
-    lastActivityAt: null,
-    lastSeenAt: null,
-    lastUserMessageAt: null,
-    title: null,
-    catalogTitle: null,
   );
   return service.cleanup(
     sessionId: sessionId,

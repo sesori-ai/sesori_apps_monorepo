@@ -683,26 +683,12 @@ StoredSession _storedSession({
 }) {
   return StoredSession(
     id: id,
-    backendSessionId: id,
-    pluginId: "fake",
     projectId: "project-1",
-    parentSessionId: null,
-    directory: "/tmp/project-1",
     worktreePath: null,
     branchName: branchName,
     isDedicated: false,
     archivedAt: null,
     baseBranch: null,
     baseCommit: null,
-    lastAgent: null,
-    lastAgentModel: null,
-    createdAt: 1,
-    updatedAt: 1,
-    projectionUpdatedAt: 1,
-    lastActivityAt: null,
-    lastSeenAt: null,
-    lastUserMessageAt: null,
-    title: null,
-    catalogTitle: null,
   );
 }

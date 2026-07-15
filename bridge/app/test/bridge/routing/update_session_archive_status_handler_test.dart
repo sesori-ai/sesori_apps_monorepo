@@ -12,8 +12,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_cleanup_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -47,13 +46,9 @@ void main() {
         permissionValidator: const FilesystemPermissionValidator(),
       );
       handler = UpdateSessionArchiveStatusHandler(
-        sessionArchiveService: SessionArchiveService(
+        sessionLifecycleService: SessionLifecycleService(
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
-          sessionCleanupService: SessionCleanupService(
-            worktreeService: worktreeService,
-            sessionRepository: sessionRepository,
-          ),
           filesystemRepository: filesystemRepository,
         ),
         sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
@@ -243,6 +238,42 @@ void main() {
       expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-001"));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNotNull);
+    });
+
+    test("failed branch deletion preserves the unarchived session for retry", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1-failed",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/session-001-failed",
+        branchName: "session-001-failed",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      worktreeService.deleteBranchResult = false;
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("PATCH", "/session/update/archive"),
+          body: _archiveRequest(
+            sessionId: "s1-failed",
+            archived: true,
+            deleteWorktree: false,
+            deleteBranch: true,
+            force: false,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<SessionCleanupFailedException>()),
+      );
+
+      final persisted = await db.sessionDao.getSession(sessionId: "s1-failed");
+      expect(persisted?.archivedAt, isNull);
+      expect(worktreeService.deleteBranchCallCount, equals(1));
     });
 
     test("archive with cleanup on dirty worktree throws 409", () async {

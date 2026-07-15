@@ -2,19 +2,19 @@ import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../services/session_cleanup_service.dart";
+import "../services/session_lifecycle_service.dart";
 import "../services/session_mutation_dispatcher.dart";
 import "request_handler.dart";
 
 /// Handles `DELETE /session/delete` — deletes a session.
 class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
-  final SessionCleanupService _sessionCleanupService;
+  final SessionLifecycleService _sessionLifecycleService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
 
   DeleteSessionHandler({
-    required SessionCleanupService sessionCleanupService,
+    required SessionLifecycleService sessionLifecycleService,
     required SessionMutationDispatcher sessionMutationDispatcher,
-  }) : _sessionCleanupService = sessionCleanupService,
+  }) : _sessionLifecycleService = sessionLifecycleService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        super(
          HttpMethod.delete,
@@ -35,7 +35,7 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    final cleanupResult = await _sessionCleanupService.cleanup(
+    final cleanupResult = await _sessionLifecycleService.cleanup(
       sessionId: sessionId,
       deleteWorktree: body.deleteWorktree,
       deleteBranch: body.deleteBranch,

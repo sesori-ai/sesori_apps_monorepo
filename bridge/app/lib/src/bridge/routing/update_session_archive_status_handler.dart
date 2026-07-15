@@ -3,19 +3,19 @@ import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../services/session_archive_service.dart";
+import "../services/session_lifecycle_service.dart";
 import "../services/session_unseen_service.dart";
 import "request_handler.dart";
 
 /// Handles `PATCH /session/update/archive` — updates archive status for a session.
 class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSessionArchiveRequest, Session> {
-  final SessionArchiveService _sessionArchiveService;
+  final SessionLifecycleService _sessionLifecycleService;
   final SessionUnseenService _sessionUnseenService;
 
   UpdateSessionArchiveStatusHandler({
-    required SessionArchiveService sessionArchiveService,
+    required SessionLifecycleService sessionLifecycleService,
     required SessionUnseenService sessionUnseenService,
-  }) : _sessionArchiveService = sessionArchiveService,
+  }) : _sessionLifecycleService = sessionLifecycleService,
        _sessionUnseenService = sessionUnseenService,
        super(
          HttpMethod.patch,
@@ -36,7 +36,7 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       throw buildErrorResponse(request, 400, "empty session id");
     }
     try {
-      final update = await _sessionArchiveService.updateArchiveStatus(
+      final update = await _sessionLifecycleService.updateArchiveStatus(
         sessionId: sessionId,
         archived: body.archived,
         deleteWorktree: body.deleteWorktree,

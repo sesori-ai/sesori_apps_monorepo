@@ -1,13 +1,37 @@
 import "dart:async";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
-import "session_cleanup_service.dart";
 import "worktree_service.dart";
+
+sealed class CleanupResult {}
+
+class CleanupSuccess extends CleanupResult {}
+
+class CleanupRejected extends CleanupResult {
+  final SessionCleanupRejection rejection;
+
+  CleanupRejected({required this.rejection});
+}
+
+enum SessionCleanupOperation { removeWorktree, deleteBranch }
+
+class SessionCleanupFailedException implements Exception {
+  final String sessionId;
+  final SessionCleanupOperation operation;
+
+  SessionCleanupFailedException({
+    required this.sessionId,
+    required this.operation,
+  });
+
+  @override
+  String toString() => "session cleanup failed for $sessionId while ${operation.name}";
+}
 
 class SessionArchiveConflictException implements Exception {
   final SessionCleanupRejection rejection;
@@ -15,17 +39,12 @@ class SessionArchiveConflictException implements Exception {
   SessionArchiveConflictException({required this.rejection});
 }
 
-/// Result of an archive-status update: the resulting [session] and whether the
-/// archive state actually changed (false for a no-op transition, e.g.
-/// archiving an already-archived session).
 class ArchiveStatusUpdate {
   final Session session;
   final bool changed;
 
-  /// The STORED project id the session row is keyed by. For dedicated-worktree
-  /// sessions this can differ from `session.projectID` (the enriched plugin
-  /// session may report the worktree directory), so unseen emits must use this
-  /// to update the correct project's tracker bucket.
+  /// The stored project id the session row is keyed by. A dedicated-worktree
+  /// session can report its worktree directory as the enriched project id.
   final String projectId;
 
   ArchiveStatusUpdate({required this.session, required this.changed, required this.projectId});
@@ -35,21 +54,99 @@ class SessionNotFoundException implements Exception {}
 
 class SessionInitializationException implements Exception {}
 
-class SessionArchiveService {
+class SessionLifecycleService {
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
-  final SessionCleanupService _sessionCleanupService;
   final FilesystemRepository _filesystemRepository;
 
-  SessionArchiveService({
+  SessionLifecycleService({
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
-    required SessionCleanupService sessionCleanupService,
     required FilesystemRepository filesystemRepository,
   }) : _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
-       _sessionCleanupService = sessionCleanupService,
        _filesystemRepository = filesystemRepository;
+
+  Future<CleanupResult> cleanup({
+    required String sessionId,
+    required bool deleteWorktree,
+    required bool deleteBranch,
+    required bool force,
+  }) async {
+    final storedSession = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    if (!(deleteWorktree || deleteBranch) ||
+        storedSession == null ||
+        storedSession.worktreePath == null ||
+        storedSession.branchName == null) {
+      return CleanupSuccess();
+    }
+
+    final projectId = storedSession.projectId;
+    final worktreePath = storedSession.worktreePath!;
+    final branchName = storedSession.branchName!;
+
+    // Shared-worktree cleanup is forceable so the user can resolve a stalemate
+    // when multiple sessions point at the same worktree or branch.
+    if (!force) {
+      final hasSharing = await _sessionRepository.hasOtherActiveSessionsSharing(
+        sessionId: sessionId,
+        projectId: projectId,
+        worktreePath: deleteWorktree ? worktreePath : null,
+        branchName: deleteBranch ? branchName : null,
+      );
+      if (hasSharing) {
+        return CleanupRejected(
+          rejection: const SessionCleanupRejection(
+            issues: [CleanupIssue.sharedWorktree()],
+          ),
+        );
+      }
+    }
+
+    if (deleteWorktree && !force) {
+      final safety = await _worktreeService.checkWorktreeSafety(
+        worktreePath: worktreePath,
+        expectedBranch: branchName,
+      );
+      if (safety case WorktreeUnsafe(:final issues)) {
+        return CleanupRejected(
+          rejection: SessionCleanupRejection(
+            issues: _mapSafetyIssues(issues: issues),
+          ),
+        );
+      }
+    }
+
+    if (deleteWorktree) {
+      final removed = await _worktreeService.removeWorktree(
+        projectId: projectId,
+        worktreePath: worktreePath,
+        force: force,
+      );
+      if (!removed) {
+        throw SessionCleanupFailedException(
+          sessionId: sessionId,
+          operation: SessionCleanupOperation.removeWorktree,
+        );
+      }
+    }
+
+    if (deleteBranch) {
+      final deleted = await _worktreeService.deleteBranch(
+        projectId: projectId,
+        branchName: branchName,
+        force: deleteWorktree || force,
+      );
+      if (!deleted) {
+        throw SessionCleanupFailedException(
+          sessionId: sessionId,
+          operation: SessionCleanupOperation.deleteBranch,
+        );
+      }
+    }
+
+    return CleanupSuccess();
+  }
 
   Future<ArchiveStatusUpdate> updateArchiveStatus({
     required String sessionId,
@@ -151,7 +248,7 @@ class SessionArchiveService {
     if (!(deleteWorktree || deleteBranch)) {
       return;
     }
-    final cleanupResult = await _sessionCleanupService.cleanup(
+    final cleanupResult = await cleanup(
       sessionId: storedSession.id,
       deleteWorktree: deleteWorktree,
       deleteBranch: deleteBranch,
@@ -207,5 +304,19 @@ class SessionArchiveService {
       throw SessionInitializationException();
     }
     return resolved.baseBranch;
+  }
+
+  List<CleanupIssue> _mapSafetyIssues({required List<SafetyIssue> issues}) {
+    return issues
+        .map(
+          (issue) => switch (issue) {
+            UnstagedChanges() => const CleanupIssue.unstagedChanges(),
+            BranchMismatch(:final expected, :final actual) => CleanupIssue.branchMismatch(
+              expected: expected,
+              actual: actual,
+            ),
+          },
+        )
+        .toList();
   }
 }

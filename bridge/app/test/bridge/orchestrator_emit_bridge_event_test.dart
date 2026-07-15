@@ -173,6 +173,10 @@ void main() {
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
       ),
+      gitCliApi: GitCliApi(
+        processRunner: ProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
+      ),
       projectInitializationService: ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
           projectsDao: database.projectsDao,
@@ -503,6 +507,10 @@ void main() {
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
       ),
+      gitCliApi: GitCliApi(
+        processRunner: ProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
+      ),
       projectInitializationService: ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
           projectsDao: database.projectsDao,
@@ -685,6 +693,10 @@ void main() {
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+      ),
+      gitCliApi: GitCliApi(
+        processRunner: ProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
       ),
       projectInitializationService: ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
@@ -897,6 +909,10 @@ void main() {
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+      ),
+      gitCliApi: GitCliApi(
+        processRunner: ProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
       ),
       projectInitializationService: ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
@@ -1130,6 +1146,10 @@ void main() {
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
       ),
+      gitCliApi: GitCliApi(
+        processRunner: ProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
+      ),
       projectInitializationService: ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
           projectsDao: database.projectsDao,
@@ -1285,6 +1305,10 @@ void main() {
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+      ),
+      gitCliApi: GitCliApi(
+        processRunner: ProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
       ),
       projectInitializationService: ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
@@ -1466,6 +1490,10 @@ void main() {
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+      ),
+      gitCliApi: GitCliApi(
+        processRunner: ProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
       ),
       projectInitializationService: ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
