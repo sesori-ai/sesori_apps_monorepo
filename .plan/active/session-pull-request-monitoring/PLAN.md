@@ -612,8 +612,8 @@ server deployment is required.
 
 - GitHub credentials remain inside the local `gh` CLI; the bridge stores no
   token and sends no GitHub login to clients.
-- Active-login/repository capture and recheck plus row/project/path/Git-common-
-  directory verification prevent detected account, repository, or stable-id
+- Active-login/repository capture and recheck plus row/project/path and Git
+  common-directory verification prevent detected account, repository, or stable-id
   location changes from leaving prior cache visible or cross-associating an old
   session. Normal reads stay cache-first and detection occurs at the next
   existing refresh trigger rather than by blocking every response on `gh`.
