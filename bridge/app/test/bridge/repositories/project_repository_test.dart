@@ -212,49 +212,6 @@ void main() {
       expect(result.map((project) => project.id), ["a", "b", "z"]);
     });
 
-    test("getProjects includes the maximum persisted root user interaction", () async {
-      plugin.projectsResult = const [
-        PluginProject(id: "p1", directory: "/projects/one", name: "One"),
-        PluginProject(id: "p2", directory: "/projects/two", name: "Two"),
-      ];
-      await repo.getProjects(defaultTimestamp: 1);
-      for (final sessionId in ["active-root", "archived-root"]) {
-        await db.sessionDao.insertSession(
-          pluginId: "opencode",
-          sessionId: sessionId,
-          projectId: "p1",
-          isDedicated: false,
-          createdAt: 1,
-          worktreePath: null,
-          branchName: null,
-          baseBranch: null,
-          baseCommit: null,
-          lastAgent: null,
-          lastAgentModel: null,
-        );
-      }
-      await db.sessionDao.setActivityTimestamps(
-        sessionId: "active-root",
-        activityAt: 800,
-        userMessageAt: 100,
-        seenAt: 800,
-      );
-      await db.sessionDao.setActivityTimestamps(
-        sessionId: "archived-root",
-        activityAt: 400,
-        userMessageAt: 300,
-        seenAt: null,
-      );
-      await db.sessionDao.setArchived(sessionId: "archived-root", archivedAt: 500);
-
-      final projects = await repo.getProjects(defaultTimestamp: 1);
-      final byId = {for (final project in projects) project.id: project};
-
-      expect(byId["p1"]?.lastUserInteractionAt, 300);
-      expect(byId["p1"]?.hasUnseenChanges, isFalse, reason: "archived roots do not contribute unseen state");
-      expect(byId["p2"]?.lastUserInteractionAt, isNull);
-    });
-
     test("openProject discovers via plugin, unhides stored row, and maps result", () async {
       plugin.projectResult = const PluginProject(
         id: "p-open",

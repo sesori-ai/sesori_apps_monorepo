@@ -255,9 +255,14 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // Project & VCS
   // ---------------------------------------------------------------------------
 
+  /// Complete active-work snapshot. When [userInteractionOrdered] is true,
+  /// [projects] and each project's `activeSessions` are authoritative ordered
+  /// prefixes that consumers preserve ahead of their inactive entities.
   @FreezedUnionValue("projects.summary")
   const factory SesoriSseEvent.projectsSummary({
     required List<ProjectActivitySummary> projects,
+    // COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges did not define summary array order. Remove the fallback when those bridge versions are unsupported.
+    @Default(false) bool userInteractionOrdered,
   }) = SesoriProjectsSummary;
 
   @FreezedUnionValue("project.updated")
@@ -284,16 +289,11 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   /// can both update without a re-fetch. Cross-cutting list event (NOT a
   /// [SesoriSessionEvent]).
   @FreezedUnionValue("session.unseen_changed")
-  // ignore: no_slop_linter/prefer_required_named_parameters -- Freezed null defaults preserve older wire payloads.
   const factory SesoriSseEvent.sessionUnseenChanged({
     required String projectID,
     required String sessionId,
     required bool unseen,
     required bool projectHasUnseenChanges,
-    // COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges omit sessionLastUserInteractionAt, which means no persisted interaction is available. Remove the default and require the field once those bridges are unsupported.
-    @Default(null) int? sessionLastUserInteractionAt,
-    // COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges omit projectLastUserInteractionAt, which means no persisted aggregate is available. Remove the default and require the field once those bridges are unsupported.
-    @Default(null) int? projectLastUserInteractionAt,
   }) = SesoriSessionUnseenChanged;
 
   // ---------------------------------------------------------------------------

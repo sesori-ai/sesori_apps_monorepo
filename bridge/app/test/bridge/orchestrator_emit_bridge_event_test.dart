@@ -261,6 +261,11 @@ void main() {
       utf8.encode(jsonEncode(const RelayMessage.sseSubscribe(path: "/events").toJson())),
       encryptor: encryptor,
     );
+    final projectsSummaryFuture = _waitForEventType(
+      messages: messages,
+      roomKey: roomKey,
+      expectedType: "projects.summary",
+    );
     bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
@@ -275,11 +280,6 @@ void main() {
         tool: "bash",
         description: "update the project summary",
       ),
-    );
-    final projectsSummaryFuture = _waitForEventType(
-      messages: messages,
-      roomKey: roomKey,
-      expectedType: "projects.summary",
     );
     plugin.add(const BridgeSseProjectUpdated());
 
@@ -996,6 +996,12 @@ void main() {
 
     final summaryGate = Completer<void>();
     sessionRepository.projectSummariesDelay = summaryGate.future;
+    plugin.activeSummaries = const [
+      PluginProjectActivitySummary(
+        id: "p1",
+        activeSessions: [PluginActiveSession(id: "s1", mainAgentRunning: true)],
+      ),
+    ];
     plugin.add(const BridgeSseProjectUpdated());
     plugin.add(const BridgeSseSessionDiff(sessionID: "s1"));
     await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -2146,6 +2152,7 @@ class _EventPlugin extends _NoopPlugin {
   int subscribeCount = 0;
   final List<({String requestId, String sessionId, PluginPermissionReply reply})> permissionReplies = [];
   final List<PluginPendingPermission> pendingPermissions;
+  List<PluginProjectActivitySummary>? activeSummaries;
 
   _EventPlugin({required List<PluginPendingPermission> pendingPermissions})
     : pendingPermissions = List<PluginPendingPermission>.of(pendingPermissions);
@@ -2169,6 +2176,7 @@ class _EventPlugin extends _NoopPlugin {
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    if (activeSummaries case final summaries?) return summaries;
     if (pendingPermissions.isEmpty) return super.getActiveSessionsSummary();
     return const [
       PluginProjectActivitySummary(

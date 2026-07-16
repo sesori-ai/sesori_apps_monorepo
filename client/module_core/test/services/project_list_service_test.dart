@@ -1,73 +1,60 @@
-import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:mocktail/mocktail.dart";
+import "package:sesori_dart_core/src/repositories/project_repository.dart";
+import "package:sesori_dart_core/src/services/project_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../helpers/test_helpers.dart";
+class _MockProjectRepository extends Mock implements ProjectRepository {}
 
 void main() {
-  group("ProjectListService", () {
-    late ProjectListService service;
+  late ProjectListService service;
 
-    setUp(() {
-      service = ProjectListService(repository: MockProjectRepository());
-    });
+  setUp(() {
+    service = ProjectListService(repository: _MockProjectRepository());
+  });
 
-    test("active projects lead and sort by last user interaction", () {
-      final sorted = service.sortProjects(
-        projects: [
-          _project(id: "inactive", name: "Inactive", updated: 999, interaction: 999),
-          _project(id: "unknown", name: "Zulu", updated: 1, interaction: null),
-          _project(id: "older", name: "Beta", updated: 1, interaction: 100),
-          _project(id: "newer", name: "Alpha", updated: 1, interaction: 300),
-        ],
-        activeProjectIds: const {"unknown", "older", "newer"},
-        lastUserInteractionAtByProjectId: const {},
-      );
+  test("ordered summaries define the active prefix and preserve the legacy tail", () {
+    final result = service.orderProjects(
+      projects: [
+        _project(id: "inactive-z", name: "Zulu"),
+        _project(id: "active-a", name: "Alpha"),
+        _project(id: "inactive-a", name: "Alpha"),
+        _project(id: "active-z", name: "Zulu"),
+      ],
+      activeProjectIds: const ["active-z", "active-a"],
+      userInteractionOrdered: true,
+    );
 
-      expect(sorted.map((project) => project.id), ["newer", "older", "unknown", "inactive"]);
-    });
+    expect(result.map((project) => project.id), ["active-z", "active-a", "inactive-a", "inactive-z"]);
+  });
 
-    test("live values override snapshots and active ties use displayed name then id", () {
-      final sorted = service.sortProjects(
-        projects: [
-          _project(id: "z", name: "Alpha", updated: 1, interaction: 500),
-          _project(id: "a", name: "Alpha", updated: 1, interaction: 500),
-          _project(id: "beta", name: "Beta", updated: 1, interaction: 900),
-        ],
-        activeProjectIds: const {"z", "a", "beta"},
-        lastUserInteractionAtByProjectId: const {"z": 700, "a": 700, "beta": 600},
-      );
+  test("older summaries retain the complete legacy project order", () {
+    final result = service.orderProjects(
+      projects: [
+        _project(id: "z", name: "Zulu"),
+        _project(id: "a", name: "Alpha"),
+      ],
+      activeProjectIds: const ["z"],
+      userInteractionOrdered: false,
+    );
 
-      expect(sorted.map((project) => project.id), ["a", "z", "beta"]);
-    });
+    expect(result.map((project) => project.id), ["a", "z"]);
+  });
 
-    test("inactive projects preserve updated-desc null-last ordering", () {
-      final sorted = service.sortProjects(
-        projects: [
-          _project(id: "null", name: "A", updated: null, interaction: 999),
-          _project(id: "old", name: "Z", updated: 100, interaction: null),
-          _project(id: "new", name: "B", updated: 300, interaction: null),
-        ],
-        activeProjectIds: const {},
-        lastUserInteractionAtByProjectId: const {},
-      );
+  test("unknown active IDs do not disturb known projects", () {
+    final result = service.orderProjects(
+      projects: [
+        _project(id: "b", name: "Beta"),
+        _project(id: "a", name: "Alpha"),
+      ],
+      activeProjectIds: const ["missing", "b"],
+      userInteractionOrdered: true,
+    );
 
-      expect(sorted.map((project) => project.id), ["new", "old", "null"]);
-    });
+    expect(result.map((project) => project.id), ["b", "a"]);
   });
 }
 
-Project _project({
-  required String id,
-  required String name,
-  required int? updated,
-  required int? interaction,
-}) {
-  return Project(
-    id: id,
-    name: name,
-    path: "/projects/$id",
-    time: updated == null ? null : ProjectTime(created: 1, updated: updated),
-    lastUserInteractionAt: interaction,
-  );
+Project _project({required String id, required String name}) {
+  return Project(id: id, name: name, path: id, time: null);
 }

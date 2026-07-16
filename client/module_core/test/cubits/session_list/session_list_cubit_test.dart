@@ -27,7 +27,7 @@ void main() {
     late SessionListService sessionListService;
     late MockConnectionService mockConnectionService;
     late MockSseEventTracker mockSseEventTracker;
-    late FakeSessionAttentionTracker fakeSessionAttentionTracker;
+    late FakeSessionUnseenTracker fakeSessionUnseenTracker;
     late MockRouteSource mockRouteSource;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
@@ -41,7 +41,7 @@ void main() {
       sessionListService = SessionListService(repository: mockProjectRepository);
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
-      fakeSessionAttentionTracker = FakeSessionAttentionTracker();
+      fakeSessionUnseenTracker = FakeSessionUnseenTracker();
       mockFailureReporter = MockFailureReporter();
       eventController = StreamController<SseEvent>.broadcast();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -77,7 +77,7 @@ void main() {
       projectRepository: mockProjectRepository,
       connectionService: mockConnectionService,
       sseEventTracker: mockSseEventTracker,
-      sessionAttentionTracker: fakeSessionAttentionTracker,
+      sessionUnseenTracker: fakeSessionUnseenTracker,
       routeSource: mockRouteSource,
       projectId: projectId,
       failureReporter: mockFailureReporter,
@@ -122,7 +122,7 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
-      "REST inactive session list preserves updated-desc ordering",
+      "REST session list is sorted by title then id regardless of timestamp",
       build: () {
         when(
           () => mockProjectRepository.listSessions(
@@ -155,7 +155,88 @@ void main() {
         isA<SessionListLoaded>().having(
           (state) => state.sessions.map((session) => session.id).toList(),
           "session order",
-          ["untitled", "B", "A", "a"],
+          ["A", "a", "B", "untitled"],
+        ),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "ordered activity received after REST immediately replaces the active prefix",
+      build: () {
+        mockRouteSource = MockRouteSource();
+        mockSseEventTracker.userInteractionOrdered = true;
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [
+                testSession(id: "A", title: "Alpha"),
+                testSession(id: "B", title: "Bravo"),
+                testSession(id: "C", title: "Charlie"),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (_) async {
+        await Future<void>.delayed(Duration.zero);
+        mockSseEventTracker.emitSessionActivity({
+          projectId: {
+            "C": const SessionActivityInfo(),
+            "A": const SessionActivityInfo(),
+          },
+        });
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>().having(
+          (state) => state.sessions.map((session) => session.id).toList(),
+          "session order",
+          ["C", "A", "B"],
+        ),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "ordered activity received before REST is applied when entities arrive",
+      build: () {
+        mockRouteSource = MockRouteSource();
+        mockSseEventTracker.userInteractionOrdered = true;
+        mockSseEventTracker.emitSessionActivity({
+          projectId: {
+            "B": const SessionActivityInfo(),
+            "A": const SessionActivityInfo(),
+          },
+        });
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [
+                testSession(id: "A", title: "Alpha"),
+                testSession(id: "B", title: "Bravo"),
+                testSession(id: "C", title: "Charlie"),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      expect: () => [
+        isA<SessionListLoaded>().having(
+          (state) => state.sessions.map((session) => session.id).toList(),
+          "session order",
+          ["B", "A", "C"],
         ),
       ],
     );
@@ -1107,8 +1188,8 @@ void main() {
       expect: () => [
         isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
           (s) => s.sessions.map((session) => session.id).toList(),
-          "updated session order",
-          ["s2", "s1"],
+          "alphabetical session order",
+          ["s1", "s2"],
         ),
       ],
     );
@@ -1152,7 +1233,7 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
-      "SSE session.updated reorders inactive sessions by updated timestamp",
+      "SSE session.updated timestamp does not reorder sessions",
       build: () {
         when(
           () => mockProjectRepository.listSessions(
@@ -1194,10 +1275,10 @@ void main() {
             .having(
               (state) => state.sessions.map((session) => session.id).toList(),
               "session order",
-              ["B", "A"],
+              ["A", "B"],
             )
             .having(
-              (state) => state.sessions.first.time?.updated,
+              (state) => state.sessions.last.time?.updated,
               "updated timestamp",
               9000,
             ),
@@ -1646,7 +1727,7 @@ void main() {
           projectRepository: mockProjectRepository,
           connectionService: mockConnectionService,
           sseEventTracker: mockSseEventTracker,
-          sessionAttentionTracker: fakeSessionAttentionTracker,
+          sessionUnseenTracker: fakeSessionUnseenTracker,
           routeSource: mockRouteSource,
           projectId: "global",
           failureReporter: mockFailureReporter,
@@ -1765,49 +1846,6 @@ void main() {
             "s1": const SessionActivityInfo(mainAgentRunning: true),
             "s2": const SessionActivityInfo(mainAgentRunning: true),
           },
-        ),
-      ],
-    );
-
-    blocTest<SessionListCubit, SessionListState>(
-      "live user interaction immediately reorders active sessions",
-      build: () {
-        mockSseEventTracker.emitSessionActivity({
-          projectId: {
-            "A": const SessionActivityInfo(mainAgentRunning: true),
-            "B": const SessionActivityInfo(awaitingInput: true),
-          },
-        });
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            SessionListResponse(
-              items: [
-                testSession(id: "A", title: "Alpha").copyWith(lastUserInteractionAt: 100),
-                testSession(id: "B", title: "Beta").copyWith(lastUserInteractionAt: 200),
-              ],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (_) async {
-        await Future<void>.delayed(Duration.zero);
-        fakeSessionAttentionTracker.emitSessionLastUserInteractionAt({
-          projectId: const {"A": 300, "B": 200},
-        });
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>().having(
-          (state) => state.sessions.map((session) => session.id).toList(),
-          "active session order",
-          ["A", "B"],
         ),
       ],
     );
@@ -2136,7 +2174,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(
-        fakeSessionAttentionTracker.seededSessions.single.unseenBySessionId,
+        fakeSessionUnseenTracker.seededSessions.single.unseenBySessionId,
         equals({"s1": true, "s2": false}),
       );
       expect((cubit.state as SessionListLoaded).unseenBySessionId, equals({"s1": true, "s2": false}));
@@ -2158,7 +2196,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isFalse);
 
-      fakeSessionAttentionTracker.emitSessionUnseen({
+      fakeSessionUnseenTracker.emitSessionUnseen({
         projectId: {"s1": true},
       });
       await Future<void>.delayed(Duration.zero);
@@ -2188,7 +2226,7 @@ void main() {
       await cubit.markSessionSeen(sessionId: "s1", read: true);
       await Future<void>.delayed(Duration.zero);
 
-      expect(fakeSessionAttentionTracker.currentSessionUnseen[projectId]?["s1"], isFalse);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isFalse);
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isFalse);
       verify(() => mockSessionService.markSessionSeen(sessionId: "s1", read: true)).called(1);
     });
@@ -2223,7 +2261,7 @@ void main() {
           waitForPrData: any(named: "waitForPrData"),
         ),
       ).called(1);
-      expect(fakeSessionAttentionTracker.currentSessionUnseen[projectId]?["s1"], isTrue);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isTrue);
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
     });
   });

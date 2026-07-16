@@ -684,11 +684,13 @@ StoredSession _storedSession({
   return StoredSession(
     id: id,
     projectId: "project-1",
+    parentSessionId: null,
     worktreePath: null,
     branchName: branchName,
     isDedicated: false,
     archivedAt: null,
     baseBranch: null,
     baseCommit: null,
+    lastUserInteractionAt: null,
   );
 }

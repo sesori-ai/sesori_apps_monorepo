@@ -542,7 +542,7 @@ void main() {
       );
       getIt.registerSingleton<ConnectionService>(mockConnectionService);
       getIt.registerSingleton<SseEventTracker>(mockSseEventTracker);
-      getIt.registerSingleton<SessionAttentionTracker>(FakeSessionAttentionTracker());
+      getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
       getIt.registerSingleton<RouteSource>(mockRouteSource);
       getIt.registerSingleton<FailureReporter>(mockFailureReporter);
 

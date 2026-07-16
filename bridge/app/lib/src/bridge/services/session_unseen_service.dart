@@ -23,8 +23,7 @@ typedef UnseenChange = ({
   String sessionId,
   bool unseen,
   bool projectHasUnseenChanges,
-  int? sessionLastUserInteractionAt,
-  int? projectLastUserInteractionAt,
+  bool activeOrderMayHaveChanged,
 });
 
 /// Layer-3 owner of unseen-changes decisions. It consumes activity events,
@@ -163,7 +162,11 @@ class SessionUnseenService {
       // does not.
       if (isUserMessage && occurredAt != null) {
         await _unseenRepository.recordUserMessage(sessionId: sessionId, at: occurredAt);
-        await _emit(sessionId: sessionId, projectId: row.projectId);
+        await _emit(
+          sessionId: sessionId,
+          projectId: row.projectId,
+          activeOrderMayHaveChanged: true,
+        );
         return;
       }
       await _unseenRepository.recordActivity(
@@ -176,7 +179,11 @@ class SessionUnseenService {
         isUserMessage: isUserMessage,
         advanceSeen: viewedAtSubmit,
       );
-      await _emit(sessionId: sessionId, projectId: row.projectId);
+      await _emit(
+        sessionId: sessionId,
+        projectId: row.projectId,
+        activeOrderMayHaveChanged: isUserMessage,
+      );
     });
   }
 
@@ -213,7 +220,11 @@ class SessionUnseenService {
           existing != null &&
           (existing.activityAt != null || existing.userMessageAt != null || existing.seenAt != null);
       if (hasMarkers) {
-        await _emit(sessionId: sessionId, projectId: existing.projectId);
+        await _emit(
+          sessionId: sessionId,
+          projectId: existing.projectId,
+          activeOrderMayHaveChanged: false,
+        );
         return;
       }
       await _unseenRepository.ensureRootSessionActivity(
@@ -227,7 +238,7 @@ class SessionUnseenService {
         advanceSeen: viewedAtSubmit,
         isUserMessage: false,
       );
-      await _emit(sessionId: sessionId, projectId: projectId);
+      await _emit(sessionId: sessionId, projectId: projectId, activeOrderMayHaveChanged: false);
     });
   }
 
@@ -288,7 +299,7 @@ class SessionUnseenService {
       // follow-up SSE emit is a best-effort notification (_emit swallows+logs):
       // propagating its failure would fail a request whose write already
       // landed, desyncing the requesting client from the persisted state.
-      await _emit(sessionId: sessionId, projectId: row.projectId);
+      await _emit(sessionId: sessionId, projectId: row.projectId, activeOrderMayHaveChanged: false);
     });
   }
 
@@ -308,7 +319,7 @@ class SessionUnseenService {
       final at = _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt);
       await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: at);
       // Committed write; the emit is best-effort (see markRead).
-      await _emit(sessionId: sessionId, projectId: row.projectId);
+      await _emit(sessionId: sessionId, projectId: row.projectId, activeOrderMayHaveChanged: false);
     });
   }
 
@@ -318,7 +329,7 @@ class SessionUnseenService {
   /// [projectId] is the STORED project id of the row.
   Future<void> notifyExternalChange({required String sessionId, required String projectId}) {
     return _serialize(sessionId, () async {
-      await _emit(sessionId: sessionId, projectId: projectId);
+      await _emit(sessionId: sessionId, projectId: projectId, activeOrderMayHaveChanged: false);
     });
   }
 
@@ -331,7 +342,7 @@ class SessionUnseenService {
       final now = _nextTimestamp();
       final seenAt = (row.activityAt ?? 0) > now ? row.activityAt! : now;
       await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
-      await _emit(sessionId: sessionId, projectId: row.projectId);
+      await _emit(sessionId: sessionId, projectId: row.projectId, activeOrderMayHaveChanged: false);
     });
   }
 
@@ -346,14 +357,13 @@ class SessionUnseenService {
   /// `unseen: false` plus the recomputed project aggregate. Best-effort.
   Future<void> _emitDeleted({required String sessionId, required String projectId}) async {
     try {
-      final metadata = await _projectRepository.getSessionListMetadata(projectId: projectId);
+      final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
       _add(
         projectId: projectId,
         sessionId: sessionId,
         unseen: false,
-        projectHasUnseenChanges: metadata.hasUnseenChanges,
-        sessionLastUserInteractionAt: null,
-        projectLastUserInteractionAt: metadata.lastUserInteractionAt,
+        projectHasUnseenChanges: projectHasUnseen,
+        activeOrderMayHaveChanged: true,
       );
     } catch (error, stackTrace) {
       Log.w("failed to emit unseen clear for deleted session $sessionId", error, stackTrace);
@@ -363,17 +373,20 @@ class SessionUnseenService {
   /// Recomputes and emits the current unseen state. Best-effort: failures are
   /// swallowed + logged so they can't fail a caller whose own write already
   /// committed (or that is fire-and-forget from the SSE path).
-  Future<void> _emit({required String sessionId, required String projectId}) async {
+  Future<void> _emit({
+    required String sessionId,
+    required String projectId,
+    required bool activeOrderMayHaveChanged,
+  }) async {
     try {
-      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      final metadata = await _projectRepository.getSessionListMetadata(projectId: projectId);
+      final unseen = await _unseenRepository.isUnseen(sessionId: sessionId);
+      final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
       _add(
         projectId: projectId,
         sessionId: sessionId,
-        unseen: row != null && _unseenRepository.unseenForRow(row),
-        projectHasUnseenChanges: metadata.hasUnseenChanges,
-        sessionLastUserInteractionAt: row?.userMessageAt,
-        projectLastUserInteractionAt: metadata.lastUserInteractionAt,
+        unseen: unseen,
+        projectHasUnseenChanges: projectHasUnseen,
+        activeOrderMayHaveChanged: activeOrderMayHaveChanged,
       );
     } catch (error, stackTrace) {
       Log.w("failed to compute/emit unseen change for session $sessionId", error, stackTrace);
@@ -385,8 +398,7 @@ class SessionUnseenService {
     required String sessionId,
     required bool unseen,
     required bool projectHasUnseenChanges,
-    required int? sessionLastUserInteractionAt,
-    required int? projectLastUserInteractionAt,
+    required bool activeOrderMayHaveChanged,
   }) {
     if (_changes.isClosed) return;
     _changes.add(
@@ -395,8 +407,7 @@ class SessionUnseenService {
         sessionId: sessionId,
         unseen: unseen,
         projectHasUnseenChanges: projectHasUnseenChanges,
-        sessionLastUserInteractionAt: sessionLastUserInteractionAt,
-        projectLastUserInteractionAt: projectLastUserInteractionAt,
+        activeOrderMayHaveChanged: activeOrderMayHaveChanged,
       ),
     );
   }

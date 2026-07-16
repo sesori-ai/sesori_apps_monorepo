@@ -341,7 +341,7 @@ void main() {
 
       await service.recordSessionDeleted(sessionId: "s1", projectId: "p1");
       // Row is gone -> session is no longer unseen and can't keep the project bold.
-      expect((await projectRepository().getSessionListMetadata(projectId: "p1")).hasUnseenChanges, isFalse);
+      expect(await projectRepository().projectHasUnseenChanges(projectId: "p1"), isFalse);
     });
 
     test("recordSessionDeleted emits against the STORED project id, not the event's", () async {
@@ -532,6 +532,8 @@ void main() {
     });
 
     test("a re-emitted user message does not clear unseen state (OpenCode re-sends the user record)", () async {
+      final events = <UnseenChange>[];
+      final subscription = service.unseenChanges.listen(events.add);
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
@@ -558,6 +560,8 @@ void main() {
       clock = 5000;
       await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 5000);
       expect(await unseen("s1"), isFalse);
+      expect(events.map((event) => event.activeOrderMayHaveChanged), [true, false, true]);
+      await subscription.cancel();
     });
 
     test("re-emission guard holds when the bridge clock is BEHIND the server clock", () async {
@@ -773,23 +777,6 @@ void main() {
       expect(last.projectId, "p1");
       expect(last.unseen, isTrue);
       expect(last.projectHasUnseenChanges, isTrue);
-      expect(last.sessionLastUserInteractionAt, isNull);
-      expect(last.projectLastUserInteractionAt, isNull);
-
-      await service.recordActivity(sessionId: "root", isUserMessage: true, occurredAt: 2000);
-      await Future<void>.delayed(Duration.zero);
-      expect(events.last.sessionLastUserInteractionAt, 2000);
-      expect(events.last.projectLastUserInteractionAt, 2000);
-
-      await service.markRead(sessionId: "root");
-      await Future<void>.delayed(Duration.zero);
-      expect(events.last.sessionLastUserInteractionAt, 2000);
-      expect(events.last.projectLastUserInteractionAt, 2000);
-
-      await service.recordSessionDeleted(sessionId: "root", projectId: "p1");
-      await Future<void>.delayed(Duration.zero);
-      expect(events.last.sessionLastUserInteractionAt, isNull);
-      expect(events.last.projectLastUserInteractionAt, isNull);
 
       await sub.cancel();
     });
@@ -825,8 +812,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
 class _ThrowingProjectRepository implements ProjectRepository {
   @override
-  Future<ProjectSessionListMetadata> getSessionListMetadata({required String projectId}) async =>
-      throw Exception("boom");
+  Future<bool> projectHasUnseenChanges({required String projectId}) async => throw Exception("boom");
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -178,9 +178,7 @@ class DebugServer {
           // Mirrors the orchestrator: a project update rebuilds the full
           // summary from repository data; everything else maps 1:1.
           .asyncMap<SesoriSseEvent?>(
-            (event) async => event is BridgeSseProjectUpdated
-                ? _buildProjectsSummary()
-                : _mapper.map(event),
+            (event) async => event is BridgeSseProjectUpdated ? _buildProjectsSummary() : _mapper.map(event),
           )
           .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
           .listen(
@@ -244,6 +242,7 @@ class DebugServer {
     try {
       return _mapper.buildProjectsSummaryEvent(
         projects: await _sessionRepository.getProjectActivitySummaries(),
+        userInteractionOrdered: false,
       );
     } on Object catch (error, stackTrace) {
       Log.w("debug SSE projects-summary rebuild failed", error, stackTrace);

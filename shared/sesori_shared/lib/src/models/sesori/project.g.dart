@@ -24,8 +24,6 @@ _Project _$ProjectFromJson(Map json) => _Project(
       ? null
       : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
   hasUnseenChanges: json['hasUnseenChanges'] as bool? ?? false,
-  lastUserInteractionAt:
-      (json['lastUserInteractionAt'] as num?)?.toInt() ?? null,
   directoryMissing: json['directoryMissing'] as bool? ?? false,
 );
 
@@ -35,7 +33,6 @@ Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
   'path': instance.path,
   'time': ?instance.time?.toJson(),
   'hasUnseenChanges': instance.hasUnseenChanges,
-  'lastUserInteractionAt': ?instance.lastUserInteractionAt,
   'directoryMissing': instance.directoryMissing,
 };
 

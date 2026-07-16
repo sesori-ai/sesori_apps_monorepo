@@ -15,7 +15,6 @@ sealed class Projects with _$Projects {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class Project with _$Project {
-  // ignore: no_slop_linter/prefer_required_named_parameters -- Freezed null default preserves older wire payloads.
   const factory Project({
     required String id,
     required String? name,
@@ -34,8 +33,6 @@ sealed class Project with _$Project {
     // payloads (and the baseline) deserialize as "seen".
     // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
     @Default(false) bool hasUnseenChanges,
-    // COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges omit lastUserInteractionAt, which means no persisted interaction is available. Remove the default and require the field once those bridges are unsupported.
-    @Default(null) int? lastUserInteractionAt,
     // Whether the project's directory no longer exists on disk at its recorded
     // location (the folder was moved or deleted). The bridge stamps this from a
     // filesystem check; the client renders such projects as "folder not found"

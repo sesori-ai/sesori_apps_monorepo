@@ -330,12 +330,26 @@ void main() {
 
       expect(event, isA<SesoriProjectsSummary>());
       final cast = event as SesoriProjectsSummary;
+      expect(cast.userInteractionOrdered, isFalse);
       expect(cast.projects, hasLength(1));
       expect(cast.projects.first.id, '/foo');
       expect(cast.projects.first.activeSessions.length, 3);
       expect(cast.projects.first.activeSessions[0].id, 's1');
       expect(cast.projects.first.activeSessions[1].id, 's2');
       expect(cast.projects.first.activeSessions[2].id, 's3');
+    });
+
+    test('round-trips bridge-authored ordering semantics', () {
+      const event = SesoriSseEvent.projectsSummary(
+        projects: [],
+        userInteractionOrdered: true,
+      );
+
+      final json = event.toJson();
+      expect(json['userInteractionOrdered'], isTrue);
+
+      final parsed = SesoriSseEvent.fromJson(json) as SesoriProjectsSummary;
+      expect(parsed.userInteractionOrdered, isTrue);
     });
 
     test('round-trips correctly', () {
@@ -410,41 +424,6 @@ void main() {
       expect(json['projectID'], 'project-1');
       expect(json['updatedAt'], 1718400000000);
       expect(parsed, event);
-    });
-  });
-
-  group('sessionUnseenChanged interaction timestamps', () {
-    test('decodes older payloads with null interaction timestamps', () {
-      final parsed = SesoriSseEvent.fromJson({
-        'type': 'session.unseen_changed',
-        'projectID': 'project-1',
-        'sessionId': 'session-1',
-        'unseen': true,
-        'projectHasUnseenChanges': true,
-      });
-
-      expect(parsed, isA<SesoriSessionUnseenChanged>());
-      final event = parsed as SesoriSessionUnseenChanged;
-      expect(event.sessionLastUserInteractionAt, isNull);
-      expect(event.projectLastUserInteractionAt, isNull);
-      expect(event.toJson(), isNot(contains('sessionLastUserInteractionAt')));
-      expect(event.toJson(), isNot(contains('projectLastUserInteractionAt')));
-    });
-
-    test('round-trips populated interaction timestamps', () {
-      const event = SesoriSseEvent.sessionUnseenChanged(
-        projectID: 'project-1',
-        sessionId: 'session-1',
-        unseen: false,
-        projectHasUnseenChanges: false,
-        sessionLastUserInteractionAt: 123,
-        projectLastUserInteractionAt: 456,
-      );
-
-      final json = event.toJson();
-      expect(json['sessionLastUserInteractionAt'], 123);
-      expect(json['projectLastUserInteractionAt'], 456);
-      expect(SesoriSseEvent.fromJson(json), event);
     });
   });
 

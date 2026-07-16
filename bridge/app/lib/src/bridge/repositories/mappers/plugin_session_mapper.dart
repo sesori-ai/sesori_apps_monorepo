@@ -77,7 +77,6 @@ Session enrichSharedSession({
         userMessage: storedSession.lastUserMessageAt,
         seen: storedSession.lastSeenAt,
       ),
-      lastUserInteractionAt: storedSession.lastUserMessageAt,
     );
   }
 

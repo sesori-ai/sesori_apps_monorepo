@@ -33,7 +33,6 @@ sealed class SessionListRequest with _$SessionListRequest {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class Session with _$Session {
-  // ignore: no_slop_linter/prefer_required_named_parameters -- Freezed null default preserves older wire payloads.
   const factory Session({
     required String id,
     // COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove default; require pluginId.
@@ -53,8 +52,6 @@ sealed class Session with _$Session {
     // the session or an explicit mark-as-read. Defaults to false so older
     // payloads (and the baseline) deserialize as "seen".
     @Default(false) bool unseen,
-    // COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges omit lastUserInteractionAt, which means no persisted interaction is available. Remove the default and require the field once those bridges are unsupported.
-    @Default(null) int? lastUserInteractionAt,
   }) = _Session;
 
   factory Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

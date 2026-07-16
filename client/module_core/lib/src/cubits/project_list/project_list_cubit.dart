@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
+import "package:collection/collection.dart";
 import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -15,8 +16,8 @@ import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/project_list_service.dart";
 import "../../services/registered_bridges_service.dart";
+import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
-import "../../trackers/session_attention_tracker.dart";
 import "add_project_outcome.dart";
 import "project_list_state.dart";
 
@@ -33,7 +34,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectListService _projectListService;
   final ConnectionService _connectionService;
   final SseEventTracker _sseEventTracker;
-  final SessionAttentionTracker _sessionAttentionTracker;
+  final SessionUnseenTracker _sessionUnseenTracker;
   final RegisteredBridgesService _registeredBridgesService;
   final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
@@ -45,14 +46,14 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     SseEventTracker sseEventTracker,
     RouteSource routeSource, {
     required ProjectListService projectListService,
-    required SessionAttentionTracker sessionAttentionTracker,
+    required SessionUnseenTracker sessionUnseenTracker,
     required RegisteredBridgesService registeredBridgesService,
     required FailureReporter failureReporter,
   }) : _projectRepository = projectRepository,
        _projectListService = projectListService,
        _connectionService = connectionService,
        _sseEventTracker = sseEventTracker,
-       _sessionAttentionTracker = sessionAttentionTracker,
+       _sessionUnseenTracker = sessionUnseenTracker,
        _registeredBridgesService = registeredBridgesService,
        _failureReporter = failureReporter,
        super(const ProjectListState.loading()) {
@@ -70,12 +71,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
     // 1b. Immediate unseen (bold) updates (no API call).
     _subscriptions.add(
-      _sessionAttentionTracker.projectUnseen.listen((_) => _onUnseenUpdated()),
-    );
-
-    // 1c. Immediate user-interaction ordering updates (no API call).
-    _subscriptions.add(
-      _sessionAttentionTracker.projectLastUserInteractionAt.listen((_) => _onUserInteractionUpdated()),
+      _sessionUnseenTracker.projectUnseen.listen((_) => _onUnseenUpdated()),
     );
 
     // 2. Auto-refresh: throttled project data fetch, active only while the
@@ -85,11 +81,13 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       routeSource.currentRouteStream
           .switchMap((route) {
             if (route != AppRouteDef.projects) return const Stream<void>.empty();
-            return _sseEventTracker.projectActivity.throttleTime(
-              refreshThrottleDuration,
-              trailing: true,
-              leading: false,
-            );
+            return _sseEventTracker.projectActivity
+                .distinct(const MapEquality<String, int>().equals)
+                .throttleTime(
+                  refreshThrottleDuration,
+                  trailing: true,
+                  leading: false,
+                );
           })
           .listen((_) {
             if (isClosed) return;
@@ -138,7 +136,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// Merges the REST-loaded `Project.hasUnseenChanges` with the live tracker
   /// map (the tracker takes precedence once it has an entry).
   Map<String, bool> _unseenByProjectId(List<Project> projects) {
-    final live = _sessionAttentionTracker.currentProjectUnseen;
+    final live = _sessionUnseenTracker.currentProjectUnseen;
     return {
       for (final project in projects) project.id: live[project.id] ?? project.hasUnseenChanges,
     };
@@ -148,16 +146,16 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     try {
       if (state case final ProjectListLoaded loaded) {
         if (isClosed) return;
-        final sorted = _projectListService.sortProjects(
+        final ordered = _projectListService.orderProjects(
           projects: loaded.projects,
-          activeProjectIds: activityById.keys.toSet(),
-          lastUserInteractionAtByProjectId: _sessionAttentionTracker.currentProjectLastUserInteractionAt,
+          activeProjectIds: activityById.keys,
+          userInteractionOrdered: _sseEventTracker.currentUserInteractionOrdered,
         );
         emit(
           loaded.copyWith(
-            projects: sorted,
+            projects: ordered,
             activityById: activityById,
-            unseenByProjectId: _unseenByProjectId(sorted),
+            unseenByProjectId: _unseenByProjectId(ordered),
           ),
         );
       }
@@ -180,18 +178,6 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
-  void _onUserInteractionUpdated() {
-    if (isClosed) return;
-    if (state case final ProjectListLoaded loaded) {
-      final sorted = _projectListService.sortProjects(
-        projects: loaded.projects,
-        activeProjectIds: loaded.activityById.keys.toSet(),
-        lastUserInteractionAtByProjectId: _sessionAttentionTracker.currentProjectLastUserInteractionAt,
-      );
-      emit(loaded.copyWith(projects: sorted, unseenByProjectId: _unseenByProjectId(sorted)));
-    }
-  }
-
   void _onProjectTimestampUpdated(Map<String, int> timestampByProjectId) {
     try {
       if (isClosed) return;
@@ -202,16 +188,15 @@ class ProjectListCubit extends Cubit<ProjectListState> {
         );
         if (!merged.changed) return;
 
-        final sorted = _projectListService.sortProjects(
+        final ordered = _projectListService.orderProjects(
           projects: merged.projects,
-          activeProjectIds: loaded.activityById.keys.toSet(),
-          lastUserInteractionAtByProjectId: _sessionAttentionTracker.currentProjectLastUserInteractionAt,
+          activeProjectIds: loaded.activityById.keys,
+          userInteractionOrdered: _sseEventTracker.currentUserInteractionOrdered,
         );
-
         emit(
           loaded.copyWith(
-            projects: sorted,
-            unseenByProjectId: _unseenByProjectId(sorted),
+            projects: ordered,
+            unseenByProjectId: _unseenByProjectId(ordered),
           ),
         );
       }
@@ -499,24 +484,23 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       return false;
     }
     if (state case final ProjectListLoaded loaded) {
-      final remaining = _projectListService.removeProject(
-        projects: loaded.projects,
-        projectId: projectId,
-      );
-      final sorted = _projectListService.sortProjects(
-        projects: remaining,
-        activeProjectIds: loaded.activityById.keys.toSet(),
-        lastUserInteractionAtByProjectId: _sessionAttentionTracker.currentProjectLastUserInteractionAt,
+      final remaining = _projectListService.orderProjects(
+        projects: _projectListService.removeProject(
+          projects: loaded.projects,
+          projectId: projectId,
+        ),
+        activeProjectIds: loaded.activityById.keys,
+        userInteractionOrdered: _sseEventTracker.currentUserInteractionOrdered,
       );
       emit(
         loaded.copyWith(
-          projects: sorted,
-          unseenByProjectId: _unseenByProjectId(sorted),
+          projects: remaining,
+          unseenByProjectId: _unseenByProjectId(remaining),
         ),
       );
       // Hiding the last project lands on the connected-empty body, which
       // names the machine — same follow-up enrichment as an empty fetch.
-      if (sorted.isEmpty) unawaited(_enrichLoadedEmptyWithBridges());
+      if (remaining.isEmpty) unawaited(_enrichLoadedEmptyWithBridges());
     }
     return true;
   }
@@ -622,7 +606,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   Future<bool> _fetchProjects({bool silent = false}) async {
     // Captured BEFORE the fetch so the seed can't overwrite a live update that
     // arrives while the request is in flight.
-    final attentionTick = _sessionAttentionTracker.tick;
+    final unseenTick = _sessionUnseenTracker.tick;
     final projectResponse = await _projectListService.listProjects();
     if (isClosed) return false;
 
@@ -634,20 +618,17 @@ class ProjectListCubit extends Cubit<ProjectListState> {
               timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
             )
             .projects;
+        final sortedProjects = _projectListService.orderProjects(
+          projects: mergedProjects,
+          activeProjectIds: _sseEventTracker.currentProjectActivity.keys,
+          userInteractionOrdered: _sseEventTracker.currentUserInteractionOrdered,
+        );
         // The REST aggregate is authoritative at fetch time — seed the tracker
         // so a stale live `true` can't keep a project bold after its last
         // unseen session was archived/deleted while an echo was missed.
-        _sessionAttentionTracker.seedProjects(
-          {for (final p in mergedProjects) p.id: p.hasUnseenChanges},
-          lastUserInteractionAtByProjectId: {
-            for (final p in mergedProjects) p.id: p.lastUserInteractionAt,
-          },
-          sinceTick: attentionTick,
-        );
-        final sortedProjects = _projectListService.sortProjects(
-          projects: mergedProjects,
-          activeProjectIds: _sseEventTracker.currentProjectActivity.keys.toSet(),
-          lastUserInteractionAtByProjectId: _sessionAttentionTracker.currentProjectLastUserInteractionAt,
+        _sessionUnseenTracker.seedProjects(
+          {for (final p in sortedProjects) p.id: p.hasUnseenChanges},
+          sinceTick: unseenTick,
         );
         emit(
           ProjectListState.loaded(

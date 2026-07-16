@@ -6,12 +6,14 @@ extension StoredSessionMapper on SessionDto {
     return StoredSession(
       id: sessionId,
       projectId: projectId,
+      parentSessionId: parentSessionId,
       worktreePath: worktreePath,
       branchName: branchName,
       isDedicated: isDedicated,
       archivedAt: archivedAt,
       baseBranch: baseBranch,
       baseCommit: baseCommit,
+      lastUserInteractionAt: lastUserMessageAt,
     );
   }
 }

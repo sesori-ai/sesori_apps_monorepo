@@ -26,25 +26,6 @@ void main() {
       expect(project.path, isEmpty);
     });
 
-    test("last user interaction is additive and omits null", () {
-      final legacy = Project.fromJson({
-        "id": "/projects/legacy",
-        "name": "Legacy",
-        "time": null,
-      });
-      const populated = Project(
-        id: "/projects/a",
-        name: "A",
-        path: "/projects/a",
-        time: null,
-        lastUserInteractionAt: 456,
-      );
-
-      expect(legacy.lastUserInteractionAt, isNull);
-      expect(legacy.toJson(), isNot(contains("lastUserInteractionAt")));
-      expect(Project.fromJson(populated.toJson()).lastUserInteractionAt, 456);
-    });
-
     test("ProjectTime ignores the removed initialized field", () {
       final time = ProjectTime.fromJson({
         "created": 1,

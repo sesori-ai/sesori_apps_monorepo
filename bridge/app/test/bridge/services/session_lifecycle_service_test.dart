@@ -385,12 +385,14 @@ Future<CleanupResult> _cleanup({
   sessionRepository.storedSession = StoredSession(
     id: sessionId,
     projectId: "/repo",
+    parentSessionId: null,
     worktreePath: worktreePath,
     branchName: branchName,
     isDedicated: true,
     archivedAt: null,
     baseBranch: null,
     baseCommit: null,
+    lastUserInteractionAt: null,
   );
   return service.cleanup(
     sessionId: sessionId,

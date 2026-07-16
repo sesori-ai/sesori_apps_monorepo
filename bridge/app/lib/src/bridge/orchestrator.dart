@@ -65,6 +65,7 @@ import "routing/restart_bridge_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
+import "services/active_work_summary_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
@@ -209,6 +210,10 @@ class Orchestrator {
       filesystemRepository: _filesystemRepository,
     );
     final sessionAbortService = SessionAbortService(sessionRepository: _sessionRepository);
+    final activeWorkSummaryService = ActiveWorkSummaryService(
+      sessionRepository: _sessionRepository,
+      retryDelay: const Duration(seconds: 1),
+    );
     final sessionDiffService = SessionDiffService(
       sessionRepository: _sessionRepository,
       sessionDiffRepository: SessionDiffRepository(
@@ -300,6 +305,7 @@ class Orchestrator {
       projectActivityService: _projectActivityService,
       permissionRepository: _permissionRepository,
       sessionAbortService: sessionAbortService,
+      activeWorkSummaryService: activeWorkSummaryService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
       sessionMutationDispatcher: _sessionMutationDispatcher,
       restartService: _restartService,
@@ -343,6 +349,7 @@ class OrchestratorSession {
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionAbortService _sessionAbortService;
+  final ActiveWorkSummaryService _activeWorkSummaryService;
   final SessionPromptService _sessionPromptService;
   final CompositeSubscription _promptDefaultsSubscriptions;
   final ProjectActivityService _projectActivityService;
@@ -397,6 +404,7 @@ class OrchestratorSession {
     required ProjectActivityService projectActivityService,
     required PermissionRepository permissionRepository,
     required SessionAbortService sessionAbortService,
+    required ActiveWorkSummaryService activeWorkSummaryService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
@@ -424,6 +432,7 @@ class OrchestratorSession {
        _permissionRepository = permissionRepository,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionAbortService = sessionAbortService,
+       _activeWorkSummaryService = activeWorkSummaryService,
        _projectActivityService = projectActivityService,
        _restartService = restartService,
        _statusNotifier = statusNotifier,
@@ -466,6 +475,7 @@ class OrchestratorSession {
             _completionListener.handleSseEvent(event);
           })
           .addTo(_subscriptions);
+      _activeWorkSummaryService.changedSnapshots.listen(_publishActiveWorkSummary).addTo(_subscriptions);
 
       // Reconcile in one batch before publishing the startup baseline. Failure
       // is isolated so project activity cannot prevent the relay session from
@@ -474,13 +484,7 @@ class OrchestratorSession {
         Log.w("ProjectActivityService: startup reconciliation failed", e, st);
       });
       await _autoApprovePendingPermissions();
-      final startupSummary = await _buildProjectsSummary();
-      if (startupSummary != null) {
-        _completionListener.handleSseEvent(startupSummary);
-        if (startupSummary is SesoriProjectsSummary) {
-          _statusNotifier?.handleProjectsSummary(summary: startupSummary);
-        }
-      }
+      await _refreshActiveWorkSummary();
       Log.d("subscribing to plugin event stream...");
       MergeStream<BridgeSseEvent>([
             _plugin.events,
@@ -526,10 +530,11 @@ class OrchestratorSession {
                 sessionId: change.sessionId,
                 unseen: change.unseen,
                 projectHasUnseenChanges: change.projectHasUnseenChanges,
-                sessionLastUserInteractionAt: change.sessionLastUserInteractionAt,
-                projectLastUserInteractionAt: change.projectLastUserInteractionAt,
               ),
             );
+            if (change.activeOrderMayHaveChanged) {
+              unawaited(_refreshActiveWorkSummary());
+            }
           })
           .addTo(_subscriptions);
       // Live re-auth: when the token provider emits a token whose auth IDENTITY
@@ -652,6 +657,7 @@ class OrchestratorSession {
       Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
       await _sessionAbortService.dispose();
       Log.v("[shutdown] session abort service disposed (+${teardownSw.elapsedMilliseconds}ms)");
+      await _activeWorkSummaryService.dispose();
       await _completionListener.dispose();
       Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
       _maintenanceListener.dispose();
@@ -784,10 +790,13 @@ class OrchestratorSession {
         await _autoApprovePendingPermissions();
       }
 
-      // A project update means "activity changed" — rebuild the full summary
-      // (repository data: the bridge's session→project attribution), which the
-      // pure mapper cannot fetch itself.
-      final sesoriEvent = event is BridgeSseProjectUpdated ? await _buildProjectsSummary() : _mapper.map(event);
+      // Activity changes and committed user interactions share the same
+      // authoritative summary refresh pipeline.
+      if (event is BridgeSseProjectUpdated) {
+        await _refreshActiveWorkSummary();
+        return;
+      }
+      final sesoriEvent = _mapper.map(event);
       if (sesoriEvent != null) {
         Log.v(
           "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
@@ -895,38 +904,39 @@ class OrchestratorSession {
     }
   }
 
-  /// Builds the projects-summary SSE event: fetches the activity summary with
-  /// the bridge's session→project attribution applied (so a derived plugin's
-  /// worktree session badges land on the stored parent project) and wraps it
-  /// via the pure mapper. Failures are recorded and yield null so the SSE
-  /// pipeline keeps flowing — the summary refreshes on the next trigger.
-  Future<SesoriSseEvent?> _buildProjectsSummary() async {
-    try {
-      return _mapper.buildProjectsSummaryEvent(
-        projects: await _sessionRepository.getProjectActivitySummaries(),
-      );
-    } catch (e, st) {
-      Log.e("[sse] error building projects summary: $e\n$st");
+  void _publishActiveWorkSummary(List<ProjectActivitySummary> projects) {
+    final event = _mapper.buildProjectsSummaryEvent(
+      projects: projects,
+      userInteractionOrdered: true,
+    );
+    _completionListener.handleSseEvent(event);
+    if (event is SesoriProjectsSummary) {
+      _statusNotifier?.handleProjectsSummary(summary: event);
+    }
+    _sseManager.enqueueEvent(event);
+  }
+
+  Future<ActiveWorkRefresh> _refreshActiveWorkSummary() async {
+    final refresh = await _activeWorkSummaryService.refresh();
+    final error = refresh.error;
+    final stackTrace = refresh.stackTrace;
+    if (error != null && stackTrace != null) {
       unawaited(
         _failureReporter
             .recordFailure(
-              error: e,
-              stackTrace: st,
+              error: error,
+              stackTrace: stackTrace,
               uniqueIdentifier: "sse_projects_summary",
               fatal: false,
               reason: "Failed to build projects summary event",
               information: const [],
             )
             .catchError((Object reportError, StackTrace reportStackTrace) {
-              Log.w(
-                "[sse] projects-summary failure report failed",
-                reportError,
-                reportStackTrace,
-              );
+              Log.w("[sse] projects-summary failure report failed", reportError, reportStackTrace);
             }),
       );
-      return null;
     }
+    return refresh;
   }
 
   /// Feeds an already-mapped [SesoriSseEvent] into the unseen-changes tracking.
@@ -1356,10 +1366,9 @@ class OrchestratorSession {
         Log.v("SseSubscribe: path=${subscribe.path}");
         try {
           _sseManager.subscribePath(connID, subscribe.path, _client);
-          final projSummary = await _buildProjectsSummary();
-          if (projSummary != null) {
-            _sseManager.enqueueEvent(projSummary);
-            _completionListener.handleSseEvent(projSummary);
+          final refresh = await _refreshActiveWorkSummary();
+          if (!refresh.changed && _activeWorkSummaryService.currentSnapshot != null) {
+            _publishActiveWorkSummary(refresh.projects);
           }
           Log.v("initial projectsSummary enqueued");
         } catch (e) {

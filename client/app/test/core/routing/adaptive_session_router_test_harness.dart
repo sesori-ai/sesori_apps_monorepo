@@ -183,7 +183,7 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<SessionRepository>(sessionRepository);
     getIt.registerSingleton<ConnectionService>(connectionService);
     getIt.registerSingleton<SseEventTracker>(sseEventTracker);
-    getIt.registerSingleton<SessionAttentionTracker>(FakeSessionAttentionTracker());
+    getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
     getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
     getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
     getIt.registerSingleton<RouteSource>(routeSource);

@@ -377,6 +377,7 @@ SesoriProjectsSummary _$SesoriProjectsSummaryFromJson(Map json) =>
             ),
           )
           .toList(),
+      userInteractionOrdered: json['userInteractionOrdered'] as bool? ?? false,
       $type: json['type'] as String?,
     );
 
@@ -384,6 +385,7 @@ Map<String, dynamic> _$SesoriProjectsSummaryToJson(
   SesoriProjectsSummary instance,
 ) => <String, dynamic>{
   'projects': instance.projects.map((e) => e.toJson()).toList(),
+  'userInteractionOrdered': instance.userInteractionOrdered,
   'type': instance.$type,
 };
 
@@ -425,10 +427,6 @@ SesoriSessionUnseenChanged _$SesoriSessionUnseenChangedFromJson(Map json) =>
       sessionId: json['sessionId'] as String,
       unseen: json['unseen'] as bool,
       projectHasUnseenChanges: json['projectHasUnseenChanges'] as bool,
-      sessionLastUserInteractionAt:
-          (json['sessionLastUserInteractionAt'] as num?)?.toInt() ?? null,
-      projectLastUserInteractionAt:
-          (json['projectLastUserInteractionAt'] as num?)?.toInt() ?? null,
       $type: json['type'] as String?,
     );
 
@@ -439,8 +437,6 @@ Map<String, dynamic> _$SesoriSessionUnseenChangedToJson(
   'sessionId': instance.sessionId,
   'unseen': instance.unseen,
   'projectHasUnseenChanges': instance.projectHasUnseenChanges,
-  'sessionLastUserInteractionAt': ?instance.sessionLastUserInteractionAt,
-  'projectLastUserInteractionAt': ?instance.projectLastUserInteractionAt,
   'type': instance.$type,
 };
 
