@@ -5,8 +5,7 @@ import PackageDescription
 let package = Package(
   name: "theme_prego",
   platforms: [
-    .iOS("13.0"),
-    .macOS("10.15"),
+    .iOS("13.0")
   ],
   products: [
     .library(name: "theme-prego", targets: ["theme_prego"])
