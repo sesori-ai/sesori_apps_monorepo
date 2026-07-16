@@ -471,14 +471,23 @@ class FakeSessionDao {
 
   Future<SessionDto?> getSession({required String sessionId}) async => _sessions[sessionId];
 
-  Future<void> setArchived({required String sessionId, required int archivedAt, required int updatedAt}) async {
+  Future<void> setArchived({
+    required String sessionId,
+    required int archivedAt,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
     if (_sessions.containsKey(sessionId)) {
       final session = _sessions[sessionId]!;
       _sessions[sessionId] = session.copyWith(archivedAt: archivedAt);
     }
   }
 
-  Future<void> clearArchived({required String sessionId, required int updatedAt}) async {
+  Future<void> clearArchived({
+    required String sessionId,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
     if (_sessions.containsKey(sessionId)) {
       final session = _sessions[sessionId]!;
       _sessions[sessionId] = session.copyWith(archivedAt: null);

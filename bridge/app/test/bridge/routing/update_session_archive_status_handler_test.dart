@@ -1070,7 +1070,12 @@ Future<void> _insertSession({
     lastAgentModel: null,
   );
   if (archivedAt != null) {
-    await db.sessionDao.setArchived(sessionId: sessionId, archivedAt: archivedAt, updatedAt: archivedAt);
+    await db.sessionDao.setArchived(
+      sessionId: sessionId,
+      archivedAt: archivedAt,
+      updatedAt: archivedAt,
+      projectionUpdatedAt: archivedAt,
+    );
   }
 }
 

@@ -293,11 +293,20 @@ void main() {
         lastAgentModel: null,
       );
 
-      await dao.setArchived(sessionId: "ses-4", archivedAt: 1234567890, updatedAt: 1234567890);
+      await dao.setArchived(
+        sessionId: "ses-4",
+        archivedAt: 1234567890,
+        updatedAt: 1234567890,
+        projectionUpdatedAt: 1234567890,
+      );
       var result = await dao.getSession(sessionId: "ses-4");
       expect(result!.archivedAt, equals(1234567890));
 
-      await dao.clearArchived(sessionId: "ses-4", updatedAt: 1234567891);
+      await dao.clearArchived(
+        sessionId: "ses-4",
+        updatedAt: 1234567891,
+        projectionUpdatedAt: 1234567891,
+      );
       result = await dao.getSession(sessionId: "ses-4");
       expect(result!.archivedAt, isNull);
     });
@@ -532,7 +541,12 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
         );
-        await dao.setArchived(sessionId: "ses-b", archivedAt: 99999, updatedAt: 99999);
+        await dao.setArchived(
+          sessionId: "ses-b",
+          archivedAt: 99999,
+          updatedAt: 99999,
+          projectionUpdatedAt: 99999,
+        );
 
         final result = await dao.getOtherActiveSessionsSharing(
           sessionId: "ses-a",

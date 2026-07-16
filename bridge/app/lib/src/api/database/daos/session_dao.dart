@@ -45,12 +45,17 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   /// Sets the bridge-owned title copy for [sessionId] (null removes the copy).
   /// No-op for rowless sessions.
-  Future<void> setTitle({required String sessionId, required String? title, required int updatedAt}) async {
+  Future<void> setTitle({
+    required String sessionId,
+    required String? title,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         title: Value(title),
         updatedAt: Value(updatedAt),
-        projectionUpdatedAt: Value(updatedAt),
+        projectionUpdatedAt: Value(projectionUpdatedAt),
       ),
     );
   }
@@ -351,22 +356,31 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         .get();
   }
 
-  Future<void> setArchived({required String sessionId, required int archivedAt, required int updatedAt}) async {
+  Future<void> setArchived({
+    required String sessionId,
+    required int archivedAt,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         archivedAt: Value(archivedAt),
         updatedAt: Value(updatedAt),
-        projectionUpdatedAt: Value(updatedAt),
+        projectionUpdatedAt: Value(projectionUpdatedAt),
       ),
     );
   }
 
-  Future<void> clearArchived({required String sessionId, required int updatedAt}) async {
+  Future<void> clearArchived({
+    required String sessionId,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         archivedAt: const Value(null),
         updatedAt: Value(updatedAt),
-        projectionUpdatedAt: Value(updatedAt),
+        projectionUpdatedAt: Value(projectionUpdatedAt),
       ),
     );
   }

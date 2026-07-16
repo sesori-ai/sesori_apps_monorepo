@@ -202,6 +202,54 @@ void main() {
       expect(row?.projectionUpdatedAt, equals(200));
     });
 
+    test("local title and archive writes advance the projection marker", () async {
+      await db.sessionDao.insertSession(
+        sessionId: "stable-id",
+        backendSessionId: "backend-id",
+        projectId: "project-X",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: plugin.id,
+      );
+      final projectedAt = repository.captureProjectionTimestamp();
+      await db.sessionDao.updateObservedSessionProjection(
+        sessionId: "stable-id",
+        directory: "/newer",
+        catalogTitle: "newer",
+        updateCatalogTitle: true,
+        updatedAt: projectedAt,
+        projectionUpdatedAt: projectedAt,
+      );
+
+      await repository.setSessionTitleIfStored(sessionId: "stable-id", title: "local");
+      final titledAt = (await db.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
+      expect(titledAt, greaterThan(projectedAt));
+      await repository.archiveStoredSession(sessionId: "stable-id", archivedAt: projectedAt);
+      final archivedAt = (await db.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
+      expect(archivedAt, greaterThan(titledAt));
+      await repository.unarchiveStoredSession(sessionId: "stable-id");
+      final unarchivedAt = (await db.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
+      expect(unarchivedAt, greaterThan(archivedAt));
+
+      await db.sessionDao.updateObservedSessionProjection(
+        sessionId: "stable-id",
+        directory: "/stale",
+        catalogTitle: "stale",
+        updateCatalogTitle: true,
+        updatedAt: projectedAt,
+        projectionUpdatedAt: projectedAt,
+      );
+      final row = await db.sessionDao.getSession(sessionId: "stable-id");
+      expect(row?.directory, "/newer");
+      expect(row?.catalogTitle, "newer");
+    });
+
     test("publication transaction leaves no partial bindings when the batch fails", () async {
       plugin.sessions = [
         _pluginSession(id: "backend-1", directory: "/projects/X", title: null, createdAt: 1),

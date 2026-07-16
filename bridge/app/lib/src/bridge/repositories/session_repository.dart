@@ -406,6 +406,7 @@ class SessionRepository {
       sessionId: sessionId,
       title: title,
       updatedAt: DateTime.now().millisecondsSinceEpoch,
+      projectionUpdatedAt: captureProjectionTimestamp(),
     );
     return true;
   }
@@ -632,6 +633,9 @@ class SessionRepository {
       operation: SessionOperation.getSession,
     );
     if (binding.projectId != projectId) return null;
+    if (binding.parentSessionId != null) {
+      return getCatalogSession(sessionId: sessionId);
+    }
     final sessions = await getSessionsForProject(projectId: projectId, start: null, limit: null);
     for (final session in sessions) {
       if (session.id == sessionId) return session;
@@ -973,6 +977,7 @@ class SessionRepository {
       sessionId: sessionId,
       archivedAt: archivedAt,
       updatedAt: archivedAt,
+      projectionUpdatedAt: captureProjectionTimestamp(),
     );
   }
 
@@ -980,6 +985,7 @@ class SessionRepository {
     return _sessionDao.clearArchived(
       sessionId: sessionId,
       updatedAt: DateTime.now().millisecondsSinceEpoch,
+      projectionUpdatedAt: captureProjectionTimestamp(),
     );
   }
 

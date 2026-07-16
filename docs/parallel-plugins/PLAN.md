@@ -8,8 +8,8 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 3C - catalog write-through and stable session binding
-- **Next up:** Stage 4 - known-event projection and durable child hierarchy
+- **Last completed stage:** Stage 4 - known-event projection and durable child hierarchy
+- **Next up:** Stage 5 - explicit import and automatic hydration
 - **Runtime default:** one selected plugin until Stage 7
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)

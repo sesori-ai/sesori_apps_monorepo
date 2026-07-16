@@ -113,6 +113,39 @@ void main() {
       expect(tracker.length, 0);
     });
 
+    test("keeps child input ahead of a later pending child update", () {
+      final tracker = SessionEventTracker(maxPendingEntries: 4);
+      tracker.addChild(
+        event: _pending(pluginId: "a", sessionId: "child", parentId: "root"),
+      );
+      tracker.addTranslation(
+        event: _pendingTranslation(
+          pluginId: "a",
+          backendSessionId: "child",
+        ),
+      );
+      tracker.addChild(
+        event: _pending(
+          pluginId: "a",
+          sessionId: "child",
+          parentId: "root",
+          updated: true,
+        ),
+      );
+
+      final readyBindings = {
+        (pluginId: "a", backendSessionId: "root"),
+      };
+      final child = tracker.takeNextReady(readyBindings: readyBindings);
+      expect(child, isA<PendingSessionEvent>());
+      readyBindings.add((pluginId: "a", backendSessionId: "child"));
+      expect(tracker.takeNextReady(readyBindings: readyBindings), isA<PendingTranslationEvent>());
+      final update = tracker.takeNextReady(readyBindings: readyBindings);
+      expect(update, isA<PendingTranslationEvent>());
+      expect(update?.event, isA<BridgeSseSessionUpdated>());
+      expect(tracker.length, 0);
+    });
+
     test("rejects translation retention without a pending binding", () {
       final tracker = SessionEventTracker(maxPendingEntries: 1);
 
@@ -133,6 +166,7 @@ PendingSessionEvent _pending({
   required String pluginId,
   required String sessionId,
   required String? parentId,
+  bool updated = false,
 }) {
   final session = Session(
     id: sessionId,
@@ -147,7 +181,9 @@ PendingSessionEvent _pending({
   );
   return PendingSessionEvent(
     pluginId: pluginId,
-    event: BridgeSseSessionCreated(info: session.toJson()),
+    event: updated
+        ? BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false)
+        : BridgeSseSessionCreated(info: session.toJson()),
     session: session,
     projectionUpdatedAt: 1,
   );

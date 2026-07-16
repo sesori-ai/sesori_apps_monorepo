@@ -125,7 +125,7 @@ class SessionEventService {
   }
 
   Future<bool> canPublish({required BridgeSseEvent event}) async {
-    if (event is! BridgeSseSessionCreated) return true;
+    if (event is! BridgeSseSessionCreated && event is! BridgeSseSessionUpdated) return true;
     final session = _eventMapper.sessionInfo(event: event);
     if (session == null || await _sessionRepository.getStoredSession(sessionId: session.id) == null) return false;
     return !await _sessionRepository.isSessionTombstoned(sessionId: session.id);

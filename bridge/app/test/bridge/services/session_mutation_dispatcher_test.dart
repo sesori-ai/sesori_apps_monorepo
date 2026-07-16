@@ -72,7 +72,12 @@ void main() {
     test("applies a pending null by removing the stored title copy", () async {
       await dispatcher.captureTitle(sessionId: "s1", title: null);
       await insertSession();
-      await db.sessionDao.setTitle(sessionId: "s1", title: "stale", updatedAt: 2);
+      await db.sessionDao.setTitle(
+        sessionId: "s1",
+        title: "stale",
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
 
       await dispatcher.applyPendingTitle(sessionId: "s1");
 

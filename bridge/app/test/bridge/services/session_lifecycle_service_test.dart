@@ -480,7 +480,12 @@ void main() {
     });
 
     test("unarchive uses the existing root binding and returns its stable id", () async {
-      await db.sessionDao.setArchived(sessionId: "root-session", archivedAt: 2, updatedAt: 2);
+      await db.sessionDao.setArchived(
+        sessionId: "root-session",
+        archivedAt: 2,
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
 
       final update = await service.updateArchiveStatus(
         sessionId: "root-session",

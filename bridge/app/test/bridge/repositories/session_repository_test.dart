@@ -291,7 +291,12 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
-      await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 1234, updatedAt: 1234);
+      await db.sessionDao.setArchived(
+        sessionId: "s1",
+        archivedAt: 1234,
+        updatedAt: 1234,
+        projectionUpdatedAt: 1234,
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
@@ -1608,6 +1613,19 @@ void main() {
           backendSessionId: "new-backend-child",
         ))?.sessionId,
         discovered.id,
+      );
+      final childDetail = await repository.getSessionForProject(
+        projectId: "/repo",
+        sessionId: discovered.id,
+      );
+      expect(childDetail?.id, discovered.id);
+      expect(childDetail?.parentID, "stable-parent");
+      expect(
+        await repository.getSessionForProject(
+          projectId: "/other",
+          sessionId: discovered.id,
+        ),
+        isNull,
       );
 
       plugin.getChildSessionsError = const PluginOperationException(

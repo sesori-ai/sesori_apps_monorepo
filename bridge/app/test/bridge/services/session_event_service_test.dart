@@ -422,6 +422,61 @@ void main() {
       expect(eventTracker.length, 0);
     });
 
+    test("replays child input before a later pending child update", () async {
+      final rootEvent = BridgeSseSessionCreated(
+        info: _sessionInfo(
+          sessionId: "backend-root",
+          parentId: null,
+          projectId: "backend-project",
+          directory: "/repo",
+        ),
+      );
+      final childInfo = _sessionInfo(
+        sessionId: "backend-child",
+        parentId: "backend-root",
+        projectId: "backend-project",
+        directory: "/repo/child",
+      );
+      final events = <BridgeSseEvent>[
+        rootEvent,
+        BridgeSseSessionCreated(info: childInfo),
+        const BridgeSsePermissionAsked(
+          requestID: "child-permission",
+          sessionID: "backend-child",
+          displaySessionId: "backend-root",
+          tool: "bash",
+          description: "continue child",
+        ),
+        BridgeSseSessionUpdated(info: childInfo, titleChanged: false),
+      ];
+      for (var index = 0; index < events.length; index++) {
+        expect(
+          await service.normalize(
+            source: (pluginId: plugin.id, projectionUpdatedAt: 30 + index, event: events[index]),
+          ),
+          isEmpty,
+        );
+      }
+
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final output = await service.handleBindingsCommitted(
+        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+      );
+
+      expect(output, hasLength(4));
+      expect(output[0], isA<BridgeSseSessionCreated>());
+      expect(output[1], isA<BridgeSseSessionCreated>());
+      expect(output[2], isA<BridgeSsePermissionAsked>());
+      expect(output[3], isA<BridgeSseSessionUpdated>());
+      expect((output[2] as BridgeSsePermissionAsked).requestID, "child-permission");
+      expect(eventTracker.length, 0);
+    });
+
     test("rejects a queued event older than the current catalog projection", () async {
       await _insertRoot(
         database: database,
@@ -493,6 +548,34 @@ void main() {
         ),
         isFalse,
       );
+    });
+
+    test("does not publish an updated event after its durable row is removed", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final event = BridgeSseSessionUpdated(
+        info: Session(
+          id: "stable-root",
+          pluginId: plugin.id,
+          projectID: "project-stable-root",
+          directory: "/repo",
+          parentID: null,
+          title: "stale",
+          time: null,
+          pullRequest: null,
+          promptDefaults: null,
+        ).toJson(),
+        titleChanged: false,
+      );
+      expect(await service.canPublish(event: event), isTrue);
+
+      await database.sessionDao.deleteSession(sessionId: "stable-root");
+
+      expect(await service.canPublish(event: event), isFalse);
     });
   });
 }
