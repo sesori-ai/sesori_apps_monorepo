@@ -1,7 +1,7 @@
-import "../api/database/daos/pull_request_dao.dart";
-import "../api/database/tables/pull_requests_table.dart";
+import "../../api/database/daos/projects_dao.dart";
+import "../../api/database/daos/pull_request_dao.dart";
+import "../../api/database/tables/pull_requests_table.dart";
 import "../api/gh_pull_request.dart";
-import "../persistence/daos/projects_dao.dart";
 
 class PullRequestRepository {
   final PullRequestDao _pullRequestDao;

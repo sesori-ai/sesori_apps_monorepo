@@ -1,7 +1,7 @@
 import "package:drift/drift.dart" hide JsonKey;
 import "package:freezed_annotation/freezed_annotation.dart";
 
-import "../../../persistence/database.dart";
+import "../database.dart";
 
 part "catalog_hydrations_table.freezed.dart";
 

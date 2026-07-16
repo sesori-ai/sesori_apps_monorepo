@@ -8,11 +8,12 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 3A - corrected touched session boundaries
-- **Next up:** Stage 3B - relocate the database API layer
+- **Last completed stage:** Stage 3B - relocated the database API layer
+- **Next up:** Stage 3C - catalog write-through and stable session binding
 - **Runtime default:** one selected plugin until Stage 7
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
+- **Stage 3B implementation base:** `main` at `7c8b6440` (audited 2026-07-16)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -601,7 +602,7 @@ selection.
 | ☑ | 1B | Additive compatibility contracts | Shared/plugin/client round trips |
 | ☑ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
 | ☑ | 3A | Correct touched session architecture boundaries | Architecture tests; behavior parity |
-| ☐ | 3B | Relocate the database API layer | Rename-only diff; schema/tests unchanged |
+| ☑ | 3B | Relocate the database API layer | Rename-only diff; schema/tests unchanged |
 | ☐ | 3C | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☐ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
 | ☐ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
@@ -904,6 +905,11 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 3B:** The complete Drift Layer 1 implementation now lives under
+  `bridge/app/lib/src/api/database/`; startup-only bridge diagnostics remain in
+  `bridge/persistence/`. Schema v11, migration artifacts, queries, models, and
+  runtime behavior are unchanged. No plan decision or risk-register delta was
+  required.
 - **Stage 3A:** `RequestRouter` now routes an injected handler list while
   `Orchestrator` owns room-specific composition and prompt-default SSE delivery.
   Archive/delete cleanup has one service owner, filesystem probes stay behind

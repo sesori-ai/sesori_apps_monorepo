@@ -1,4 +1,4 @@
-import "../../persistence/tables/session_table.dart";
+import "../../../api/database/tables/session_table.dart";
 import "../models/stored_session.dart";
 
 extension StoredSessionMapper on SessionDto {

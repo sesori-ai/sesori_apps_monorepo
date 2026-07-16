@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";

@@ -1,9 +1,9 @@
 import "package:drift/drift.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../../persistence/database.dart";
-import "../../../persistence/tables/session_table.dart";
+import "../database.dart";
 import "../tables/pull_requests_table.dart";
+import "../tables/session_table.dart";
 
 part "pull_request_dao.g.dart";
 

@@ -1,9 +1,9 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
 
+import "../../api/database/daos/projects_dao.dart";
+import "../../api/database/daos/session_dao.dart";
+import "../../api/database/tables/session_table.dart";
 import "../api/git_cli_api.dart";
-import "../persistence/daos/projects_dao.dart";
-import "../persistence/daos/session_dao.dart";
-import "../persistence/tables/session_table.dart";
 import "../worktree_types.dart";
 import "models/project_not_found_exception.dart";
 

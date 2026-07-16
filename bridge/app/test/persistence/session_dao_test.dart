@@ -1,7 +1,7 @@
 import "package:drift/drift.dart" show Value;
-import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

@@ -29,6 +29,7 @@ import "package:sesori_shared/sesori_shared.dart" show AuthClientType, AuthDevic
 
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
+import "../../api/database/database.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_id_migration_service.dart";
 import "../../auth/bridge_id_storage.dart";
@@ -102,7 +103,6 @@ import "../foundation/process_runner_command_executor.dart";
 import "../log_failure_reporter.dart";
 import "../models/bridge_config.dart";
 import "../persistence/bridge_diagnostics.dart";
-import "../persistence/database.dart";
 import "../relay_client.dart";
 import "../sse/sse_manager.dart";
 import "bridge_cli_options.dart";

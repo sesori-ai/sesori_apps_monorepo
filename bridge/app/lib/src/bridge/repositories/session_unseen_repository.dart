@@ -1,9 +1,9 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show BridgeDerivedProjectsPluginApi, BridgePluginApi, Log, NativeProjectsPluginApi;
 
-import "../persistence/daos/projects_dao.dart";
-import "../persistence/daos/session_dao.dart";
-import "../persistence/database.dart";
+import "../../api/database/daos/projects_dao.dart";
+import "../../api/database/daos/session_dao.dart";
+import "../../api/database/database.dart";
 import "session_unseen_calculator.dart";
 
 /// The unseen-relevant timestamps for a single session, plus its project id.

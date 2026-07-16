@@ -150,13 +150,13 @@ paths.
 - `bridge/app/lib/src/bridge/api/gh_cli_api.dart:34-55` runs
   `gh pr list --state open --limit 100` without `--author @me` or PR author
   parsing. `gh pr view` likewise does not parse author identity.
-- `bridge/app/lib/src/bridge/api/database/daos/pull_request_dao.dart:24-49`
+- `bridge/app/lib/src/api/database/daos/pull_request_dao.dart:24-49`
   associates PRs by joining PR branch to the session row's single
   `branch_name`. The cache key is `(project_id, pr_number)`.
 - `bridge/app/lib/src/bridge/repositories/session_repository.dart:519-572`
   depends on peer `PullRequestRepository`, chooses an open PR before a newer
   closed PR, and exposes only one `Session.pullRequest`.
-- `bridge/app/lib/src/bridge/persistence/tables/session_table.dart:35-76` stores
+- `bridge/app/lib/src/api/database/tables/session_table.dart:35-76` stores
   worktree-creation `branch_name` but no exact generic session directory,
   current live branch, branch history, or terminal PR stop marker.
 - `bridge/app/lib/src/bridge/api/git_cli_api.dart:168-178` already resolves

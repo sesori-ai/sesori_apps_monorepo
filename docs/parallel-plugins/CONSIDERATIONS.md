@@ -33,14 +33,14 @@ They should be treated as settled unless planning finds a hard reason not to.
   history to `opencode`. Under parallel plugins this is the routing datum:
   it answers *which plugin* owns a session (prompt/abort/question routing for
   mixed lists) and keys every per-plugin query. Do not weaken it back to a
-  default. (`bridge/app/lib/src/bridge/persistence/tables/session_table.dart`)
+  default. (`bridge/app/lib/src/api/database/tables/session_table.dart`)
 
 - **Plugin-agnostic projects table keyed by `path`.** `projects_table` has no
   plugin column, deliberately: projects are cross-plugin entities. The
   mandatory `path` column (today always equal to `project_id`) exists so the
   project identity can stop being a path without a schema change, and so
   cross-plugin merging can join on the directory.
-  (`bridge/app/lib/src/bridge/persistence/tables/projects_table.dart`)
+  (`bridge/app/lib/src/api/database/tables/projects_table.dart`)
 
 - **DB rows as session→project attribution.** `SessionDao.getSessionProjectPaths`
   (sessions⋈projects join, filtered by `plugin_id`) is how derived plugins

@@ -7,6 +7,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../api/database/database.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_registration_service.dart";
 import "../../auth/token_refresher.dart";
@@ -32,7 +33,6 @@ import "../foundation/process_runner.dart";
 import "../metadata_service.dart";
 import "../models/bridge_config.dart";
 import "../orchestrator.dart";
-import "../persistence/database.dart";
 import "../relay_client.dart";
 import "../repositories/agent_repository.dart";
 import "../repositories/filesystem_repository.dart";

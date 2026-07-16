@@ -5,15 +5,15 @@ import "package:drift/native.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../api/database/daos/catalog_hydrations_dao.dart";
-import "../api/database/daos/pull_request_dao.dart";
-import "../api/database/tables/catalog_hydrations_table.dart";
-import "../api/database/tables/pull_requests_table.dart";
+import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
+import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
+import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/projects_table.dart";
+import "tables/pull_requests_table.dart";
 import "tables/session_table.dart";
 
 part "database.g.dart";

@@ -105,8 +105,8 @@ being able to serve it.
 
 Existing paths likely changed:
 
-- `bridge/app/lib/src/bridge/persistence/tables/session_table.dart`
-- `bridge/app/lib/src/bridge/persistence/database.dart`
+- `bridge/app/lib/src/api/database/tables/session_table.dart`
+- `bridge/app/lib/src/api/database/database.dart`
 - `bridge/app/lib/src/bridge/services/session_archive_service.dart`
 - `bridge/app/lib/src/bridge/services/session_persistence_service.dart`
 - `bridge/app/lib/src/bridge/routing/delete_session_handler.dart`

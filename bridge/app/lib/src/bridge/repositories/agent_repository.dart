@@ -3,7 +3,7 @@ import "dart:io" as io;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi;
 import "package:sesori_shared/sesori_shared.dart" show Agents, StringExtensions;
 
-import "../persistence/daos/projects_dao.dart";
+import "../../api/database/daos/projects_dao.dart";
 import "mappers/plugin_agent_mapper.dart";
 import "models/project_not_found_exception.dart";
 

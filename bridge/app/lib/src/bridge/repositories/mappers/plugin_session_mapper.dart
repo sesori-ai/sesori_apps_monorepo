@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../persistence/tables/session_table.dart";
+import "../../../api/database/tables/session_table.dart";
 import "../session_unseen_calculator.dart";
 
 /// Maps a [PluginSession] to the shared [Session] type used in relay responses.

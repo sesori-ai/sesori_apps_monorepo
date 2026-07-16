@@ -12,10 +12,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSessionTime;
 import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
 
+import "../../api/database/daos/projects_dao.dart";
+import "../../api/database/daos/session_dao.dart" show SessionDao, SessionUnseenRow;
+import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../api/filesystem_api.dart";
-import "../persistence/daos/projects_dao.dart";
-import "../persistence/daos/session_dao.dart" show SessionDao, SessionUnseenRow;
-import "../persistence/tables/projects_table.dart" show ProjectDto;
 import "derived_project_builder.dart";
 import "mappers/plugin_project_mapper.dart";
 import "models/project_activity.dart";
