@@ -13,6 +13,7 @@ import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
+import "../../repositories/models/repo_provider.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/models/session_activity_info.dart";
@@ -40,8 +41,10 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   SessionCleanupRejection? _lastCleanupRejection;
 
-  /// Cached base branch name, fetched alongside sessions.
-  String? _baseBranch;
+  /// Cached git context (base branch + remote repository identity), fetched
+  /// alongside sessions. Only overwritten on success so a failed refresh
+  /// keeps the last-known values.
+  ProjectGitContext? _gitContext;
 
   SessionListCubit({
     required SessionService sessionService,
@@ -181,9 +184,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     if (isClosed) return;
     final current = state;
     if (current is! SessionListLoaded) return;
-    final loaded = current;
-    final projectActivity = activityByProjectId[_projectId] ?? <String, SessionActivityInfo>{};
-    emit(loaded.copyWith(activeSessionIds: projectActivity));
+    _emitFiltered();
   }
 
   void _onUnseenUpdated() {
@@ -572,6 +573,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     final visible = _sessionListService.visibleSessions(
       sessions: _allSessions,
       showArchived: _showArchived,
+      activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
     );
 
     if (isClosed) return;
@@ -585,7 +587,9 @@ class SessionListCubit extends Cubit<SessionListState> {
         activeSessionIds: projectActivity,
         unseenBySessionId: _unseenBySessionId(visible),
         isRefreshing: isRefreshing,
-        baseBranch: _baseBranch,
+        baseBranch: _gitContext?.baseBranch,
+        repoSlug: _gitContext?.repoSlug,
+        repoProvider: _gitContext?.repoProvider ?? RepoProvider.other,
       ),
     );
   }
@@ -653,19 +657,19 @@ class SessionListCubit extends Cubit<SessionListState> {
     // Captured BEFORE the fetch so the seed can't overwrite a live update that
     // arrives while the (possibly PR-data-delayed) request is in flight.
     final unseenTick = _sessionUnseenTracker.tick;
-    final (sessionsResponse, baseBranchResponse) = await (
+    final (sessionsResponse, gitContextResponse) = await (
       _sessionListService.listSessions(
         projectId: _projectId,
         waitForPrData: waitForPrData,
       ),
-      _projectRepository.getBaseBranch(projectId: _projectId),
+      _projectRepository.getGitContext(projectId: _projectId),
     ).wait;
     if (isClosed) return false;
 
-    // Update cached base branch on success; silently ignore errors so
+    // Update cached git context on success; silently ignore errors so
     // the session list still loads even if the endpoint is unavailable.
-    if (baseBranchResponse case SuccessResponse(:final data)) {
-      _baseBranch = data.baseBranch;
+    if (gitContextResponse case SuccessResponse(:final data)) {
+      _gitContext = data;
     }
 
     switch (sessionsResponse) {

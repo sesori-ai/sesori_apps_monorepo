@@ -45,6 +45,7 @@ import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
 import "../helpers/fake_filesystem_api.dart";
+import "../helpers/fake_git_cli_api.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -350,6 +351,7 @@ class _ReauthHarness {
         calculator: const SessionUnseenCalculator(),
       ),
       projectRepository: ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
@@ -361,6 +363,7 @@ class _ReauthHarness {
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
     final projectRepository = ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,

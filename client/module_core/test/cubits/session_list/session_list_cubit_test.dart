@@ -11,7 +11,10 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
+import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
+import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
+import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -38,7 +41,10 @@ void main() {
     setUp(() {
       mockSessionService = MockSessionService();
       mockProjectRepository = MockProjectRepository();
-      sessionListService = SessionListService(repository: mockProjectRepository);
+      sessionListService = SessionListService(
+        repository: mockProjectRepository,
+        activityCalculator: const SessionActivityCalculator(),
+      );
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
       fakeSessionUnseenTracker = FakeSessionUnseenTracker();
@@ -51,8 +57,12 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(
-        () => mockProjectRepository.getBaseBranch(projectId: any(named: "projectId")),
-      ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null)));
+        () => mockProjectRepository.getGitContext(projectId: any(named: "projectId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const ProjectGitContext(baseBranch: null, repoSlug: null, repoProvider: RepoProvider.other),
+        ),
+      );
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -156,6 +166,85 @@ void main() {
           (state) => state.sessions.map((session) => session.id).toList(),
           "session order",
           ["untitled", "B", "A", "a"],
+        ),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "running activity received after REST creates an alphabetical prefix",
+      build: () {
+        mockRouteSource = MockRouteSource();
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [
+                testSession(id: "C", title: "Charlie"),
+                testSession(id: "B", title: "Bravo"),
+                testSession(id: "A", title: "Alpha"),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (_) async {
+        await Future<void>.delayed(Duration.zero);
+        mockSseEventTracker.emitSessionActivity({
+          projectId: {
+            "C": const SessionActivityInfo(mainAgentRunning: true),
+            "A": const SessionActivityInfo(isRetrying: true),
+          },
+        });
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoaded>().having(
+          (state) => state.sessions.map((session) => session.id).toList(),
+          "session order",
+          ["A", "C", "B"],
+        ),
+      ],
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
+      "running activity received before REST is applied when sessions arrive",
+      build: () {
+        mockRouteSource = MockRouteSource();
+        mockSseEventTracker.emitSessionActivity({
+          projectId: {
+            "C": const SessionActivityInfo(mainAgentRunning: true),
+            "A": const SessionActivityInfo(isRetrying: true),
+          },
+        });
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [
+                testSession(id: "C", title: "Charlie"),
+                testSession(id: "B", title: "Bravo"),
+                testSession(id: "A", title: "Alpha"),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      expect: () => [
+        isA<SessionListLoaded>().having(
+          (state) => state.sessions.map((session) => session.id).toList(),
+          "session order",
+          ["A", "C", "B"],
         ),
       ],
     );
@@ -1413,8 +1502,10 @@ void main() {
             waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => completer.future);
-        when(() => mockProjectRepository.getBaseBranch(projectId: projectId)).thenAnswer(
-          (_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: "main")),
+        when(() => mockProjectRepository.getGitContext(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success(
+            const ProjectGitContext(baseBranch: "main", repoSlug: null, repoProvider: RepoProvider.other),
+          ),
         );
 
         const config = ServerConnectionConfig(

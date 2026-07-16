@@ -10,6 +10,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         NativeProjectsPluginApi,
         PluginActiveSession,
         PluginOperationException,
+        PluginProjectActivitySummary,
         PluginSession,
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
@@ -526,10 +527,27 @@ class SessionRepository {
           ...active.childSessionIds,
         },
     };
-    final bindings = await _sessionDao.getSessionsByBackendIds(
+    var bindings = await _sessionDao.getSessionsByBackendIds(
       pluginId: _plugin.id,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
+    final missingRootIds = {
+      for (final summary in summaries)
+        for (final active in summary.activeSessions)
+          if (!bindings.containsKey(active.id)) active.id,
+    };
+    final plugin = _plugin;
+    if (missingRootIds.isNotEmpty && plugin is NativeProjectsPluginApi) {
+      await _hydrateActiveRootBindings(
+        plugin: plugin,
+        summaries: summaries,
+        missingRootIds: missingRootIds,
+      );
+      bindings = await _sessionDao.getSessionsByBackendIds(
+        pluginId: _plugin.id,
+        backendSessionIds: backendSessionIds.toList(growable: false),
+      );
+    }
 
     ActiveSession? mapActiveSession(PluginActiveSession active) {
       final binding = bindings[active.id];
@@ -579,6 +597,25 @@ class SessionRepository {
               ],
             ),
         ];
+    }
+  }
+
+  Future<void> _hydrateActiveRootBindings({
+    required NativeProjectsPluginApi plugin,
+    required List<PluginProjectActivitySummary> summaries,
+    required Set<String> missingRootIds,
+  }) async {
+    // A native project API can resolve an activity-summary directory to both
+    // stable project identity and live path. Derived plugins cannot safely do
+    // that for an unknown worktree, so their rowless activity stays omitted.
+    final hydratedProjectIds = <String>{};
+    for (final summary in summaries) {
+      if (!summary.activeSessions.any((active) => missingRootIds.contains(active.id))) continue;
+
+      final project = await plugin.getProject(summary.id);
+      if (!hydratedProjectIds.add(project.id)) continue;
+      await _projectsDao.insertProjectIfMissing(projectId: project.id, path: project.directory);
+      await getSessionsForProject(projectId: project.id, start: null, limit: null);
     }
   }
 
@@ -712,12 +749,40 @@ class SessionRepository {
   }
 
   Future<List<Session>> getChildSessions({required String sessionId}) async {
-    if (await _sessionDao.getSession(sessionId: sessionId) == null) {
-      throw PluginOperationException.notFound(
-        SessionOperation.getChildSessions.name,
-        message: "session $sessionId was not found",
+    final parent = await _requireActiveBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.getChildSessions,
+    );
+    await _primeDerivedSessionDirectory(binding: parent);
+    final durableRows = await _sessionDao.getChildCatalogSessions(parentSessionId: sessionId);
+    // COMPATIBILITY 2026-07-16 (pre-Stage 5 catalog import): released bridges
+    // kept backend children rowless. Remove this additive plugin discovery once
+    // automatic catalog hydration imports existing child ancestry.
+    final projectionUpdatedAt = captureProjectionTimestamp();
+    final List<PluginSession> pluginChildren;
+    try {
+      pluginChildren = await _plugin.getChildSessions(parent.backendSessionId);
+    } on PluginOperationException catch (error, stackTrace) {
+      if (durableRows.isEmpty) rethrow;
+      Log.w(
+        "Could not refresh children for ${parent.pluginId}/${parent.backendSessionId}; serving durable catalog history",
+        error,
+        stackTrace,
       );
+      return _mapCatalogSessions(rows: durableRows);
     }
+    final committedBackendIds = <String>[];
+    for (final pluginChild in pluginChildren) {
+      final child = pluginChild.copyWith(parentID: parent.backendSessionId).toSharedSession(pluginId: _plugin.id);
+      final committed = await insertObservedChild(
+        pluginId: _plugin.id,
+        observed: child,
+        parent: parent.toStoredSession(),
+        projectionUpdatedAt: projectionUpdatedAt,
+      );
+      if (committed != null) committedBackendIds.add(pluginChild.id);
+    }
+    _publishBindingsCommitted(backendSessionIds: committedBackendIds);
     return _mapCatalogSessions(
       rows: await _sessionDao.getChildCatalogSessions(parentSessionId: sessionId),
     );

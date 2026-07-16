@@ -10,6 +10,7 @@ import "../repositories/trackers/session_event_tracker.dart";
 import "session_mutation_dispatcher.dart";
 
 typedef SourcedBridgeEvent = ({String pluginId, int projectionUpdatedAt, BridgeSseEvent event});
+typedef _ProjectedSession = ({StoredSession binding, bool inserted});
 
 class SessionEventService {
   final SessionRepository _sessionRepository;
@@ -69,10 +70,14 @@ class SessionEventService {
       ];
     }
 
-    final binding = await _projectSession(source: source, observed: observed);
-    if (binding == null) return const [];
+    final projection = await _projectSession(source: source, observed: observed);
+    if (projection == null) return const [];
     final normalized = await _translate(source: source);
-    final output = <BridgeSseEvent>[?normalized];
+    final output = <BridgeSseEvent>[
+      if (projection.inserted && source.event is! BridgeSseSessionCreated)
+        ?await _createdEvent(sessionId: projection.binding.id),
+      ?normalized,
+    ];
     output.addAll(await _drainChildren(pluginId: source.pluginId, backendParentId: observed.id));
     return output;
   }
@@ -109,7 +114,7 @@ class SessionEventService {
     return !await _sessionRepository.isSessionTombstoned(sessionId: session.id);
   }
 
-  Future<StoredSession?> _projectSession({
+  Future<_ProjectedSession?> _projectSession({
     required SourcedBridgeEvent source,
     required Session observed,
   }) async {
@@ -126,7 +131,7 @@ class SessionEventService {
         );
         if (parent == null || existing.parentSessionId != parent.id) return null;
       }
-      return _sessionRepository.updateObservedSessionProjection(
+      final binding = await _sessionRepository.updateObservedSessionProjection(
         pluginId: source.pluginId,
         observed: observed,
         updateCatalogTitle: switch (source.event) {
@@ -136,6 +141,7 @@ class SessionEventService {
         },
         projectionUpdatedAt: source.projectionUpdatedAt,
       );
+      return binding == null ? null : (binding: binding, inserted: false);
     }
     if (backendParentId == null) {
       if (source.event is BridgeSseSessionCreated) {
@@ -170,12 +176,13 @@ class SessionEventService {
       );
       return null;
     }
-    return _sessionRepository.insertObservedChild(
+    final binding = await _sessionRepository.insertObservedChild(
       pluginId: source.pluginId,
       observed: observed,
       parent: parent,
       projectionUpdatedAt: source.projectionUpdatedAt,
     );
+    return binding == null ? null : (binding: binding, inserted: true);
   }
 
   Future<List<BridgeSseEvent>> _drainChildren({
@@ -266,5 +273,10 @@ class SessionEventService {
     return _sessionRepository.getCatalogSession(
       sessionId: session.id,
     );
+  }
+
+  Future<BridgeSseEvent?> _createdEvent({required String sessionId}) async {
+    final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+    return session == null ? null : BridgeSseSessionCreated(info: session.toJson());
   }
 }

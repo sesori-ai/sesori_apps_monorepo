@@ -272,7 +272,7 @@ void main() {
     }
 
     testWidgets("renders with stable key and localized text", (tester) async {
-      await pumpPanel(tester, overlayState: const ConnectionOverlayState.hidden());
+      await pumpPanel(tester, overlayState: const ConnectionOverlayState.hidden(connected: true));
 
       expect(find.byKey(const Key("empty-session-detail-panel")), findsOneWidget);
       expect(find.byType(Material), findsWidgets);
@@ -282,7 +282,7 @@ void main() {
     });
 
     testWidgets("hides the connection banner while the bridge is reachable", (tester) async {
-      await pumpPanel(tester, overlayState: const ConnectionOverlayState.hidden());
+      await pumpPanel(tester, overlayState: const ConnectionOverlayState.hidden(connected: true));
 
       expect(find.byType(ConnectionBanner), findsNothing);
     });

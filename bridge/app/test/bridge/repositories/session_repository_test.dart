@@ -1102,6 +1102,55 @@ void main() {
       expect(plugin.lastGetMessagesSessionId, isNull);
       expect(plugin.lastAbortSessionId, isNull);
     });
+
+    test("getProjectActivitySummaries hydrates an active root without a catalog binding", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const directory = "/projects/active";
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: directory,
+            activeSessions: [
+              PluginActiveSession(id: "backend-root", awaitingInput: true),
+            ],
+          ),
+        ]
+        ..sessionsByWorktree = const {
+          directory: [
+            PluginSession(
+              id: "backend-root",
+              projectID: directory,
+              directory: directory,
+              parentID: null,
+              title: "Active root",
+              time: PluginSessionTime(created: 1, updated: 2, archived: null),
+            ),
+          ],
+        };
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final summaries = await repository.getProjectActivitySummaries();
+
+      final active = summaries.single.activeSessions.single;
+      expect(active.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+      expect(active.awaitingInput, isTrue);
+      expect(plugin.lastGetProjectDirectory, directory);
+      expect(plugin.lastGetSessionsWorktree, directory);
+      expect(
+        (await db.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "backend-root",
+        ))?.sessionId,
+        active.id,
+      );
+    });
   });
 
   group("SessionRepository (bridge-derived)", () {
@@ -1495,10 +1544,20 @@ void main() {
       }
     });
 
-    test("getChildSessions reads durable children without plugin enumeration", () async {
+    test("getChildSessions backfills backend children and preserves durable history", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
-      final plugin = _FakeDerivedPlugin(launchDirectory: "/repo", allSessions: const []);
+      final plugin = _FakeDerivedPlugin(launchDirectory: "/repo", allSessions: const [])
+        ..childSessions = const [
+          PluginSession(
+            id: "new-backend-child",
+            projectID: "/repo",
+            directory: "/repo/new-child",
+            parentID: "live-parent",
+            title: "New child",
+            time: PluginSessionTime(created: 3, updated: 4, archived: null),
+          ),
+        ];
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -1537,9 +1596,30 @@ void main() {
 
       final children = await repository.getChildSessions(sessionId: "stable-parent");
 
-      expect(children.map((session) => session.id), ["stable-child"]);
-      expect(children.single.parentID, "stable-parent");
-      expect(children.single.pluginId, equals(plugin.id));
+      expect(plugin.lastGetChildSessionsParentId, "live-parent");
+      expect(children.map((session) => session.id), contains("stable-child"));
+      final discovered = children.singleWhere((session) => session.id != "stable-child");
+      expect(discovered.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+      expect(discovered.parentID, "stable-parent");
+      expect(discovered.pluginId, equals(plugin.id));
+      expect(
+        (await db.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "new-backend-child",
+        ))?.sessionId,
+        discovered.id,
+      );
+
+      plugin.getChildSessionsError = const PluginOperationException(
+        "getChildSessions",
+        statusCode: 503,
+        message: "backend unavailable",
+      );
+      final offlineChildren = await repository.getChildSessions(sessionId: "stable-parent");
+      expect(
+        offlineChildren.map((session) => session.id),
+        containsAll(["stable-child", discovered.id]),
+      );
     });
 
     test("deleteSession rejects a rowless session without plugin discovery", () async {
@@ -1714,6 +1794,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   int getSessionsCalls = 0;
   int sendPromptCalls = 0;
   String? lastAbortSessionId;
+  List<PluginProjectActivitySummary> activitySummaries = const [];
 
   @override
   String get id => "fake";
@@ -1806,6 +1887,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => sessionStatusesResult;
 
   @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() => activitySummaries;
+
+  @override
   Future<void> abortSession({required String sessionId}) async {
     lastAbortSessionId = sessionId;
   }
@@ -1861,10 +1945,12 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   List<PluginSession> allSessions;
   String? lastRenameSessionId;
   List<PluginSession> childSessions = const [];
+  Object? getChildSessionsError;
   Object? listAllSessionsError;
   int deleteCalls = 0;
   int listAllSessionsCalls = 0;
   int sendPromptCalls = 0;
+  String? lastGetChildSessionsParentId;
 
   /// The hint set received on the most recent [listAllSessions] call.
   Set<String>? receivedKnownDirectories;
@@ -1912,7 +1998,11 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => childSessions;
+  Future<List<PluginSession>> getChildSessions(String sessionId) async {
+    lastGetChildSessionsParentId = sessionId;
+    if (getChildSessionsError case final error?) throw error;
+    return childSessions;
+  }
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => activitySummaries;

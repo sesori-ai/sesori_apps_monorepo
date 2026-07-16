@@ -1,5 +1,6 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -14,7 +15,6 @@ void main() {
     const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
     const projects = Projects(data: [project]);
     const suggestions = FilesystemSuggestions(data: []);
-    const baseBranch = BaseBranchResponse(baseBranch: "main");
     const sessions = SessionListResponse(items: []);
 
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(projects));
@@ -24,9 +24,6 @@ void main() {
     when(
       () => filesystemApi.getSuggestions(prefix: "/projects"),
     ).thenAnswer((_) async => ApiResponse.success(suggestions));
-    when(
-      () => api.getBaseBranch(projectId: "project-1"),
-    ).thenAnswer((_) async => ApiResponse.success(baseBranch));
     when(
       () => api.listSessions(projectId: "project-1", waitForPrData: false),
     ).thenAnswer((_) async => ApiResponse.success(sessions));
@@ -43,10 +40,6 @@ void main() {
       ApiResponse<FilesystemSuggestions>.success(suggestions),
     );
     expect(
-      await repository.getBaseBranch(projectId: "project-1"),
-      ApiResponse<BaseBranchResponse>.success(baseBranch),
-    );
-    expect(
       await repository.listSessions(projectId: "project-1", waitForPrData: false),
       ApiResponse<SessionListResponse>.success(sessions),
     );
@@ -60,8 +53,56 @@ void main() {
     verify(() => api.discoverProject(path: "/project-1")).called(1);
     verify(() => api.hideProject(projectId: "project-1")).called(1);
     verify(() => filesystemApi.getSuggestions(prefix: "/projects")).called(1);
-    verify(() => api.getBaseBranch(projectId: "project-1")).called(1);
     verify(() => api.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
     verify(() => api.renameProject(projectId: "project-1", name: "Renamed")).called(1);
+  });
+
+  group("getGitContext", () {
+    late MockProjectApi api;
+    late ProjectRepository repository;
+
+    setUp(() {
+      api = MockProjectApi();
+      repository = ProjectRepository(api: api, filesystemApi: MockFilesystemApi());
+    });
+
+    void stubBaseBranch(BaseBranchResponse response) {
+      when(
+        () => api.getBaseBranch(projectId: "project-1"),
+      ).thenAnswer((_) async => ApiResponse.success(response));
+    }
+
+    test("maps the wire response into a git context with a classified provider", () async {
+      stubBaseBranch(
+        const BaseBranchResponse(baseBranch: "main", repoSlug: "org/repo", repoHost: "gitlab.company.com"),
+      );
+
+      final response = await repository.getGitContext(projectId: "project-1");
+
+      final context = (response as SuccessResponse<ProjectGitContext>).data;
+      expect(context.baseBranch, equals("main"));
+      expect(context.repoSlug, equals("org/repo"));
+      expect(context.repoProvider, equals(RepoProvider.gitlab));
+    });
+
+    test("classifies a missing host as RepoProvider.other", () async {
+      stubBaseBranch(const BaseBranchResponse(baseBranch: null, repoSlug: "org/repo", repoHost: null));
+
+      final response = await repository.getGitContext(projectId: "project-1");
+
+      final context = (response as SuccessResponse<ProjectGitContext>).data;
+      expect(context.repoProvider, equals(RepoProvider.other));
+    });
+
+    test("passes errors through", () async {
+      final error = ApiError.generic();
+      when(
+        () => api.getBaseBranch(projectId: "project-1"),
+      ).thenAnswer((_) async => ApiResponse.error(error));
+
+      final response = await repository.getGitContext(projectId: "project-1");
+
+      expect(response, ApiResponse<ProjectGitContext>.error(error));
+    });
   });
 }

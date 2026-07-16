@@ -31,6 +31,7 @@ import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/project_list_service.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
+import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
@@ -52,11 +53,13 @@ import "package:sesori_shared/sesori_shared.dart";
 ///
 /// Screens read the cubit through `ConnectionBanner.maybeFor` to decide
 /// whether the top-nav connection banner shows, so any harness that pumps a
-/// screen must provide one. Defaults to [ConnectionOverlayHidden] (no banner);
-/// pass e.g. `ConnectionOverlayState.bridgeOffline()` to exercise the banner.
+/// screen must provide one. Defaults to a connected [ConnectionOverlayHidden]
+/// (no banner, chain up); pass e.g. `ConnectionOverlayState.bridgeOffline()`
+/// to exercise the banner.
 class StubConnectionOverlayCubit extends Cubit<ConnectionOverlayState> implements ConnectionOverlayCubit {
-  StubConnectionOverlayCubit({ConnectionOverlayState initialState = const ConnectionOverlayState.hidden()})
-    : super(initialState);
+  StubConnectionOverlayCubit({
+    ConnectionOverlayState initialState = const ConnectionOverlayState.hidden(connected: true),
+  }) : super(initialState);
 
   @override
   void reconnect() {}
@@ -144,10 +147,16 @@ void registerListServices({
     getIt.unregister<SessionListService>();
   }
   getIt.registerSingleton<ProjectListService>(
-    ProjectListService(repository: projectRepository),
+    ProjectListService(
+      repository: projectRepository,
+      activityCalculator: const SessionActivityCalculator(),
+    ),
   );
   getIt.registerSingleton<SessionListService>(
-    SessionListService(repository: projectRepository),
+    SessionListService(
+      repository: projectRepository,
+      activityCalculator: const SessionActivityCalculator(),
+    ),
   );
 }
 

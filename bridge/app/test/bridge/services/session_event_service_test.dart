@@ -198,6 +198,38 @@ void main() {
       expect((await repository.getChildSessions(sessionId: "stable-root")).single.time?.archived, 30);
     });
 
+    test("announces a child created by its first full update event", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+
+      final output = await service.normalize(
+        source: (
+          pluginId: plugin.id,
+          projectionUpdatedAt: 6,
+          event: BridgeSseSessionUpdated(
+            info: _sessionInfo(
+              sessionId: "backend-child",
+              parentId: "backend-root",
+              projectId: "backend-project",
+              directory: "/repo/child",
+            ),
+            titleChanged: true,
+          ),
+        ),
+      );
+
+      expect(output, hasLength(2));
+      expect(output.first, isA<BridgeSseSessionCreated>());
+      expect(output.last, isA<BridgeSseSessionUpdated>());
+      final child = Session.fromJson((output.first as BridgeSseSessionCreated).info);
+      expect(child.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+      expect(child.parentID, "stable-root");
+    });
+
     test("does not attach a child to a parent owned by another plugin", () async {
       await _insertRoot(
         database: database,
@@ -209,7 +241,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
-          projectionUpdatedAt: 6,
+          projectionUpdatedAt: 7,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
               sessionId: "backend-child",
@@ -428,6 +460,9 @@ Map<String, dynamic> _sessionInfo({
 class _EventPlugin implements NativeProjectsPluginApi {
   @override
   String get id => "event-plugin";
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => const [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -7,6 +7,8 @@ import "package:drift/native.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -138,8 +140,12 @@ class _LiveListBenchmark {
     final derivedSmall = _DerivedBenchmarkPlugin(sessions: sessions1000);
     final filesystemApi = _ExistingFilesystemApi();
     const unseenCalculator = SessionUnseenCalculator();
+    // Never invoked by the benchmarked listing paths; wired only to satisfy
+    // the repository constructor.
+    final gitCliApi = GitCliApi(processRunner: ProcessRunner(), gitPathExists: ({required String gitPath}) => false);
 
     final nativeProjectRepository = ProjectRepository(
+      gitCliApi: gitCliApi,
       plugin: nativeLarge,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -147,6 +153,7 @@ class _LiveListBenchmark {
       filesystemApi: filesystemApi,
     );
     final derivedProjectRepository = ProjectRepository(
+      gitCliApi: gitCliApi,
       plugin: derivedLarge,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,

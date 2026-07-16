@@ -291,10 +291,13 @@ request handler
   -> shared response
 ```
 
-`GET /project`, project lookup, root sessions, session lookup, and child lists
-perform no plugin calls. Root lists filter `parent_session_id IS NULL`; child
-lists filter by the parent Sesori id. Sorting and pagination happen in SQL, with
-the Sesori id as the deterministic final tie-breaker.
+`GET /project`, project lookup, root sessions, and session lookup perform no
+plugin calls. Root lists filter `parent_session_id IS NULL`; child lists filter
+by the parent Sesori id. Until Stage 5 automatic import hydrates children from
+released bridges that kept them rowless, a child read for a known root performs
+additive plugin discovery before returning the catalog and falls back to
+existing durable rows when that refresh is unavailable. Sorting and pagination
+happen in SQL, with the Sesori id as the deterministic final tie-breaker.
 
 Filesystem existence checks are not plugin I/O, but per-row synchronous checks
 also leave the list critical path. Directory-missing state is refreshed on
@@ -364,6 +367,9 @@ Rules:
 - A child is inserted only when its direct parent binding belongs to the same
   plugin. It inherits project/plugin attribution and stores its own reported
   directory.
+- If a child's first complete event is an update, projection emits a durable
+  creation announcement before the translated update so clients can add the
+  newly learned child before applying its update.
 - An unresolved child waits in a bounded in-memory map keyed by
   `(pluginId, backendParentId)`. Committing a parent drains resolvable
   descendants recursively. Overflow drops the oldest unresolved entry with a
@@ -771,16 +777,23 @@ until Stage 4.
   one-trigger plugin/binding/deletion listeners.
 - Persist known-session projection updates, proven child ancestry, recursive
   descendants, and cascade behavior.
-- Make `SessionRepository.getChildSessions` read durable children from the
-  catalog. Make `QuestionRepository` and `PermissionRepository` resolve
-  durable root/child bindings and pass only backend handles to the owning
-  plugin.
+- Make `SessionRepository.getChildSessions` return durable children from the
+  catalog. Until Stage 5 automatic import, additively discover a known root's
+  backend children before that read and retain existing catalog history when
+  discovery is unavailable. Make `QuestionRepository` and
+  `PermissionRepository` resolve durable root/child bindings and pass only
+  backend handles to the owning plugin.
+- Hydrate a rowless active root from a native-project activity summary before
+  publishing the summary, using the native project API to resolve stable
+  identity and live path. Continue omitting unknown derived-project activity,
+  whose parent-project attribution cannot be inferred safely.
 - Translate every session-bearing event field from backend to Sesori identity.
 - Normalize the selected plugin stream before delivery and remove backend-
   global lifecycle events from bridge-global semantics. Multi-plugin listener
   construction and fan-in remain Stage 7 work.
-- Change child reads to the catalog while root/project lists remain on the old
-  path for one more stage.
+- Change child responses to catalog identities while retaining temporary
+  additive child discovery for released rowless history. Root/project lists
+  remain on the old path for one more stage.
 
 Acceptance: no backend handle reaches a shared event, child, question, or
 permission payload; unknown roots do not discover projects; bridge-created roots
@@ -833,15 +846,18 @@ PR-level implementation plan:
    create/event/list race, and preserve every existing id. Remove the temporary
    identity-preserving rowless-child capability and require durable bindings for
    messages, statuses, aborts, questions, and permissions.
-6. Switch child lists to `SessionDao.getChildCatalogSessions`. Update question
-   and permission reads, replies, and rejections to translate request and
-   response session references in batches, dropping plugin results whose
-   required references are unknown instead of exposing backend handles.
+6. Switch child responses to `SessionDao.getChildCatalogSessions`. Until Stage 5
+   automatic import, additively enumerate children for a known root, persist
+   newly discovered bindings, and serve existing durable rows if that refresh
+   is unavailable. Update question and permission reads, replies, and
+   rejections to translate request and response session references in batches,
+   dropping plugin results whose required references are unknown instead of
+   exposing backend handles.
 7. Add focused DAO/repository/service/listener/mapper tests for stable existing
    ids, random new ids, create/list/event races, exhaustive event variants,
    known and unknown roots, same-plugin ancestry, out-of-order grandchildren,
    1,024-entry retention plus overflow eviction, backend deletion history,
-   catalog-only child reads, question/permission translation, lifecycle
+   catalog-backed additive child reads, question/permission translation, lifecycle
    suppression, and selected-stream ordering. Add the deferred file-backed
    AOT `event_projection_benchmark` with warmup, percentile, RSS, database-size,
    and fixture metadata matching the Stage 1A report shape.

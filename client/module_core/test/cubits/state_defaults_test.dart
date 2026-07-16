@@ -32,7 +32,7 @@ void main() {
   });
 
   test("SessionListLoaded.isRefreshing defaults to false", () {
-    const state = SessionListState.loaded(sessions: [], baseBranch: null);
+    const state = SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null);
     expect((state as SessionListLoaded).isRefreshing, isFalse);
   });
 

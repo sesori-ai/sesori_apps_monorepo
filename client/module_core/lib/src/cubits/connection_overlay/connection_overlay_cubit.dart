@@ -49,8 +49,9 @@ class ConnectionOverlayCubit extends Cubit<ConnectionOverlayState> {
       ConnectionReconnecting() => const ConnectionOverlayState.reconnecting(),
       ConnectionBridgeOffline() => isRegistered
           ? const ConnectionOverlayState.bridgeOffline()
-          : const ConnectionOverlayState.hidden(),
-      ConnectionConnected() || ConnectionDisconnected() => const ConnectionOverlayState.hidden(),
+          : const ConnectionOverlayState.hidden(connected: false),
+      ConnectionConnected() => const ConnectionOverlayState.hidden(connected: true),
+      ConnectionDisconnected() => const ConnectionOverlayState.hidden(connected: false),
     };
   }
 

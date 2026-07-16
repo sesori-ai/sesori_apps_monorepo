@@ -4,6 +4,21 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "../../module_prego.dart";
 import "../../utils/color_extensions.dart";
 
+/// How [PregoTopNavigation] presents its title. The values map to the Figma
+/// `PregoTopNavigation` component types.
+enum PregoTopNavigationTitleMode {
+  /// Figma "Large Title": the bar title fades in as the page's large title
+  /// scrolls away (driven by [PregoTopNavigation.scrollController]).
+  collapsing,
+
+  /// Figma "Middle Title": a fixed, centred title (and subtitle).
+  inline,
+
+  /// Figma "Back Leading": a fixed, muted title/subtitle block left-aligned
+  /// beside the back button.
+  backLeading,
+}
+
 /// The app's glass top navigation bar — a [PreferredSizeWidget] wrapping the
 /// `liquid_glass_widgets` [GlassAppBar].
 ///
@@ -14,15 +29,22 @@ import "../../utils/color_extensions.dart";
 /// with the scaffold edge effect and reserves the glass (frost) effect for
 /// buttons rather than frosting the bar surface itself.
 ///
-/// It has two title modes:
-/// 1. **Inline** ([inlineTitle] `true`) — a fixed, centred [title] (and
-///    [subtitle]), rendered by [PregoNavTitle]. Self-contained; use it for a
-///    standalone bar or for bodies that own their own scroll.
-/// 2. **Collapsing** ([inlineTitle] `false`, the default) — the inline title
-///    fades in as a matching large title scrolls away. This mode is driven by
-///    [scrollController] and is meant to pair with [PregoGlassScaffold], which
-///    hosts the large title below the bar and owns the controller. Without a
-///    [scrollController] the collapsing title never appears.
+/// It has three title modes ([titleMode]):
+/// 1. **Collapsing** ([PregoTopNavigationTitleMode.collapsing], the default) —
+///    a centred title fades in as a matching large title scrolls away. This
+///    mode is driven by [scrollController] and is meant to pair with
+///    [PregoGlassScaffold], which hosts the large title below the bar and owns
+///    the controller. Without a [scrollController] the collapsing title never
+///    appears.
+/// 2. **Inline** ([PregoTopNavigationTitleMode.inline]) — a fixed, centred
+///    [title] (and [subtitleText]), rendered by [PregoNavTitle].
+///    Self-contained; use it for a standalone bar or for bodies that own
+///    their own scroll.
+/// 3. **Back leading** ([PregoTopNavigationTitleMode.backLeading]) — a fixed,
+///    muted [title] block ([PregoNavLeadingTitle]) sitting left-aligned
+///    beside the back button instead of centred, with the caller-composed
+///    [subtitle] widget (typically a [PregoNavSubtitle]) beneath it. There is
+///    no large or centred title in this mode; [scrollController] is ignored.
 ///
 /// [PregoGlassScaffold] and this bar share the collapse geometry through the
 /// static [collapseProgressOf]: the bar fades its inline title *in* by that
@@ -43,7 +65,7 @@ import "../../utils/color_extensions.dart";
 /// Usage (standalone, fixed title):
 /// ```dart
 /// GlassScaffold(
-///   appBar: PregoTopNavigation(title: loc.settingsTitle, inlineTitle: true),
+///   appBar: PregoTopNavigation(title: loc.settingsTitle, titleMode: PregoTopNavigationTitleMode.inline),
 ///   body: ...,
 /// )
 /// ```
@@ -52,7 +74,8 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
     super.key,
     required this.title,
     this.subtitle,
-    this.inlineTitle = false,
+    this.subtitleText,
+    this.titleMode = PregoTopNavigationTitleMode.collapsing,
     this.scrollController,
     this.actions,
     this.leading,
@@ -60,22 +83,27 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
     this.automaticallyImplyLeading = true,
   });
 
-  /// Primary title — shown inline (fixed, or fading in as the large title
-  /// collapses, depending on [inlineTitle]).
+  /// Primary title — fixed (inline and back-leading modes) or fading in as the
+  /// large title collapses (collapsing mode), depending on [titleMode].
   final String title;
 
-  /// Optional second line rendered beneath the [title] in a muted style. Only
-  /// shown in inline mode; a `null` or empty value renders the title on its own.
-  final String? subtitle;
+  /// The back-leading title block's second line — a self-contained,
+  /// caller-composed widget (typically a [PregoNavSubtitle]) holding
+  /// everything the row needs: icon, status dot, tap affordance. Back-leading
+  /// mode only; null renders the title on its own.
+  final Widget? subtitle;
 
-  /// When `true`, the bar shows a fixed, centred [title] (and [subtitle]). When
-  /// `false` (the default), it shows the collapsing title driven by
-  /// [scrollController]. See the class doc.
-  final bool inlineTitle;
+  /// Optional second text line rendered beneath the centred [title] in the
+  /// bar's own muted style (inline mode). A `null` or empty value renders the
+  /// title on its own.
+  final String? subtitleText;
 
-  /// Drives the collapsing title in non-inline mode: the bar fades its title in
-  /// as this controller's offset crosses [collapseDistance]. Ignored in inline
-  /// mode. Typically [PregoGlassScaffold]'s own controller.
+  /// How the bar presents its title. See the class doc for the three modes.
+  final PregoTopNavigationTitleMode titleMode;
+
+  /// Drives the collapsing title in collapsing mode: the bar fades its title in
+  /// as this controller's offset crosses [collapseDistance]. Ignored in the
+  /// other modes. Typically [PregoGlassScaffold]'s own controller.
   final ScrollController? scrollController;
 
   /// Trailing bar actions. Build these with [PregoButtonsIconGlass] so they
@@ -125,38 +153,78 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
 
   @override
   Widget build(BuildContext context) {
-    final actions = this.actions;
     final leading = _resolveLeading(context);
-    // [GlassAppBar] centres its [title] only within the gap *between* its own
-    // leading and actions slots, so a bar with a button on just one side (or
-    // with differently sized sides) pushes the title off-centre. Leave those
-    // slots empty and hand it a single full-width [NavigationToolbar] instead —
-    // the same layout Flutter's [AppBar] uses — so the title is centred across
-    // the whole bar and shifted only if it would otherwise overlap a side
-    // widget. (Do not move leading/trailing back onto GlassAppBar's slots: that
-    // reintroduces the off-centre title.)
     return GlassAppBar(
       preferredSize: preferredSize,
       // Override GlassAppBar's default 8px inset so the leading and trailing
-      // buttons sit 16pt from the bar edges. NavigationToolbar pins them flush
-      // to this padded area, so this padding is their distance from the edge.
+      // buttons sit 16pt from the bar edges. The full-width [title] content
+      // pins flush to this padded area, so this padding is their distance from
+      // the edge.
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
-      title: NavigationToolbar(
-        centerMiddle: true,
-        // NavigationToolbar stretches its leading slot to the full bar height
-        // and top-aligns it, which would squash the circular glass back button
-        // into an oval. Wrap it in an [Align] (widthFactor 1 so the slot is only
-        // as wide as the button) to keep the button its natural size, vertically
-        // centred. The trailing and middle slots are already laid out loose and
-        // centred, so they need no such wrapper.
-        leading: leading == null ? null : Align(widthFactor: 1, child: leading),
-        // Inline mode: a fixed, centred title+subtitle (PregoNavTitle).
-        // Collapsing mode: the title that fades in as the large title collapses.
-        middle: inlineTitle ? PregoNavTitle(title: title, subtitle: subtitle) : _buildCollapsedTitle(),
-        trailing: actions == null
-            ? null
-            : Row(mainAxisSize: MainAxisSize.min, spacing: PregoSpacing.md, children: actions),
-      ),
+      title: switch (titleMode) {
+        PregoTopNavigationTitleMode.collapsing ||
+        PregoTopNavigationTitleMode.inline => _buildCentredToolbar(leading: leading),
+        PregoTopNavigationTitleMode.backLeading => _buildBackLeadingRow(leading: leading),
+      },
+    );
+  }
+
+  /// The centred-title layouts (collapsing and inline modes).
+  ///
+  /// [GlassAppBar] centres its title only within the gap *between* its own
+  /// leading and actions slots, so a bar with a button on just one side (or
+  /// with differently sized sides) pushes the title off-centre. Leave those
+  /// slots empty and hand it a single full-width [NavigationToolbar] instead —
+  /// the same layout Flutter's [AppBar] uses — so the title is centred across
+  /// the whole bar and shifted only if it would otherwise overlap a side
+  /// widget. (Do not move leading/trailing back onto GlassAppBar's slots: that
+  /// reintroduces the off-centre title.)
+  Widget _buildCentredToolbar({required Widget? leading}) {
+    final actions = this.actions;
+    return NavigationToolbar(
+      centerMiddle: true,
+      // NavigationToolbar stretches its leading slot to the full bar height
+      // and top-aligns it, which would squash the circular glass back button
+      // into an oval. Wrap it in an [Align] (widthFactor 1 so the slot is only
+      // as wide as the button) to keep the button its natural size, vertically
+      // centred. The trailing and middle slots are already laid out loose and
+      // centred, so they need no such wrapper.
+      leading: leading == null ? null : Align(widthFactor: 1, child: leading),
+      // Inline mode: a fixed, centred title+subtitle (PregoNavTitle).
+      // Collapsing mode: the title that fades in as the large title collapses.
+      middle: titleMode == PregoTopNavigationTitleMode.inline
+          ? PregoNavTitle(title: title, subtitle: subtitleText)
+          : _buildCollapsedTitle(),
+      trailing: actions == null
+          ? null
+          : Row(mainAxisSize: MainAxisSize.min, spacing: PregoSpacing.md, children: actions),
+    );
+  }
+
+  /// The back-leading layout: no centred middle exists in this type, so a
+  /// plain [Row] replaces [NavigationToolbar] — back button, then the
+  /// title/subtitle block filling the remaining width (bounding it so long
+  /// titles ellipsise instead of overflowing, including narrow split-pane
+  /// widths), then the trailing actions.
+  Widget _buildBackLeadingRow({required Widget? leading}) {
+    final actions = this.actions;
+    return Row(
+      children: [
+        if (leading != null) ...[
+          leading,
+          const SizedBox(width: PregoSpacing.lg),
+        ],
+        Expanded(
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: PregoNavLeadingTitle(title: title, subtitle: subtitle),
+          ),
+        ),
+        if (actions != null) ...[
+          const SizedBox(width: PregoSpacing.md),
+          Row(mainAxisSize: MainAxisSize.min, spacing: PregoSpacing.md, children: actions),
+        ],
+      ],
     );
   }
 

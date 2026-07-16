@@ -44,10 +44,10 @@ void main() {
         ConnectionOverlayCubit(mockConnectionService, mockRegisteredBridgesService);
 
     blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
-      "starts hidden when disconnected and not registered",
+      "starts hidden and not connected when disconnected and not registered",
       build: buildCubit,
       verify: (cubit) {
-        expect(cubit.state, const ConnectionOverlayState.hidden());
+        expect(cubit.state, const ConnectionOverlayState.hidden(connected: false));
       },
     );
 
@@ -65,7 +65,22 @@ void main() {
       expect: () => const [
         ConnectionOverlayState.connectionLost(),
         ConnectionOverlayState.reconnecting(),
-        ConnectionOverlayState.hidden(),
+        ConnectionOverlayState.hidden(connected: true),
+      ],
+    );
+
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "a bannerless disconnect still flips hidden to not connected (drives availability dots)",
+      build: buildCubit,
+      act: (_) async {
+        statusStream.add(connected);
+        await Future<void>.delayed(Duration.zero);
+        statusStream.add(const ConnectionStatus.disconnected());
+        await Future<void>.delayed(Duration.zero);
+      },
+      expect: () => const [
+        ConnectionOverlayState.hidden(connected: true),
+        ConnectionOverlayState.hidden(connected: false),
       ],
     );
 
@@ -76,11 +91,12 @@ void main() {
         statusStream.add(bridgeOffline);
         await Future<void>.delayed(Duration.zero);
       },
-      // bridgeOffline + unregistered derives hidden, which equals the initial
-      // hidden state, so bloc dedupes it — the proof is the unchanged state.
+      // bridgeOffline + unregistered derives hidden(connected: false), which
+      // equals the initial hidden state, so bloc dedupes it — the proof is the
+      // unchanged state.
       expect: () => const <ConnectionOverlayState>[],
       verify: (cubit) {
-        expect(cubit.state, isA<ConnectionOverlayHidden>());
+        expect(cubit.state, const ConnectionOverlayState.hidden(connected: false));
       },
     );
 

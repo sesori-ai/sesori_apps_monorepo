@@ -531,7 +531,7 @@ void main() {
     final firstCubit = BlocProvider.of<SessionListCubit>(firstListElement);
 
     verify(() => harness.projectRepository.listSessions(projectId: "p1", waitForPrData: false)).called(1);
-    verify(() => harness.projectRepository.getBaseBranch(projectId: "p1")).called(1);
+    verify(() => harness.projectRepository.getGitContext(projectId: "p1")).called(1);
 
     harness.router.go("/projects/p1/sessions/session-1/diffs");
     await _pumpRouteFrames(tester);
@@ -560,6 +560,6 @@ void main() {
     );
     expect(identical(secondProjectCubit, firstCubit), isFalse);
     verify(() => harness.projectRepository.listSessions(projectId: "p2", waitForPrData: false)).called(1);
-    verify(() => harness.projectRepository.getBaseBranch(projectId: "p2")).called(1);
+    verify(() => harness.projectRepository.getGitContext(projectId: "p2")).called(1);
   });
 }

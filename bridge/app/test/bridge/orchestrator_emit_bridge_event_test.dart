@@ -58,6 +58,7 @@ import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
 import "../helpers/fake_filesystem_api.dart";
+import "../helpers/fake_git_cli_api.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -88,6 +89,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -506,6 +508,7 @@ void main() {
     );
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final projectRepository = ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -561,6 +564,7 @@ void main() {
           calculator: const SessionUnseenCalculator(),
         ),
         projectRepository: ProjectRepository(
+          gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
@@ -683,6 +687,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -887,6 +892,7 @@ void main() {
       delaySessionIds: {"s1": enrichGate.future},
     );
     final projectRepository = ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -981,6 +987,7 @@ void main() {
           calculator: const SessionUnseenCalculator(),
         ),
         projectRepository: ProjectRepository(
+          gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
@@ -1146,6 +1153,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -1207,6 +1215,7 @@ void main() {
           calculator: const SessionUnseenCalculator(),
         ),
         projectRepository: ProjectRepository(
+          gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
@@ -1308,6 +1317,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -1369,6 +1379,7 @@ void main() {
           calculator: const SessionUnseenCalculator(),
         ),
         projectRepository: ProjectRepository(
+          gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
@@ -1495,6 +1506,7 @@ void main() {
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -1556,6 +1568,7 @@ void main() {
           calculator: const SessionUnseenCalculator(),
         ),
         projectRepository: ProjectRepository(
+          gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,

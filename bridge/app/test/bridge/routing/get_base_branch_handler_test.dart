@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -20,6 +21,7 @@ void main() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
       projectRepository = ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -84,6 +86,51 @@ void main() {
       );
 
       expect(response.baseBranch, equals("main"));
+    });
+
+    test("returns repoSlug and repoHost null for a project without a stored path or remote", () async {
+      final response = await handler.handle(
+        makeRequest("POST", "/project/base-branch"),
+        body: const ProjectIdRequest(projectId: "unknown-project"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.repoSlug, isNull);
+      expect(response.repoHost, isNull);
+    });
+
+    test("returns the remote's slug and host parsed from the project's git remote alongside baseBranch", () async {
+      await db.projectsDao.recordOpenedProject(
+        projectId: "/Users/dev/my-app",
+        path: "/Users/dev/my-app",
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      await db.projectsDao.setBaseBranch(projectId: "/Users/dev/my-app", baseBranch: "develop");
+      final slugHandler = GetBaseBranchHandler(
+        projectRepository: ProjectRepository(
+          gitCliApi: FakeGitCliApi(remoteUrl: "https://github.com/sesori-ai/sesori_apps.git"),
+          plugin: plugin,
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
+        ),
+      );
+
+      final response = await slugHandler.handle(
+        makeRequest("POST", "/project/base-branch"),
+        body: const ProjectIdRequest(projectId: "/Users/dev/my-app"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.baseBranch, equals("develop"));
+      expect(response.repoSlug, equals("sesori-ai/sesori_apps"));
+      expect(response.repoHost, equals("github.com"));
     });
   });
 }

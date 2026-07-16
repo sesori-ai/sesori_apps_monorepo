@@ -15,7 +15,12 @@ sealed class ConnectionOverlayState with _$ConnectionOverlayState {
   /// Nothing shown — connected, pre-connection, or a bridge-offline park for an
   /// account that has never registered a bridge (its onboarding owns that
   /// messaging).
-  const factory ConnectionOverlayState.hidden() = ConnectionOverlayHidden;
+  ///
+  /// [connected] disambiguates those cases for consumers that need a positive
+  /// availability signal (the sessions bar's status dot): `true` only while the
+  /// relay↔bridge chain is fully up (`ConnectionConnected`), `false` for the
+  /// bannerless offline states.
+  const factory ConnectionOverlayState.hidden({required bool connected}) = ConnectionOverlayHidden;
 
   /// A subtle reconnecting indicator: the relay dropped and is auto-reconnecting.
   const factory ConnectionOverlayState.reconnecting() = ConnectionOverlayReconnecting;

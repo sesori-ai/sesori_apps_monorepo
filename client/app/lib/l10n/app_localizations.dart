@@ -451,6 +451,12 @@ abstract class AppLocalizations {
   /// **'Sessions'**
   String get sessionListTitle;
 
+  /// Screen-reader label for the sessions-list bar subtitle row, which opens a popover with the untruncated repository name.
+  ///
+  /// In en, this message translates to:
+  /// **'Show full repository name'**
+  String get sessionListRepoInfoSemantics;
+
   /// No description provided for @sessionListTitleWithName.
   ///
   /// In en, this message translates to:

@@ -51,7 +51,7 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
         final (fileCount, additions, deletions) = _statsOf(state);
         return PregoGlassScaffold(
           title: context.loc.diffFileChangesTitle,
-          subtitle: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
+          subtitleText: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
           banner: ConnectionBanner.maybeFor(context),
           // The diff viewer's pinned per-file headers must pin directly below
           // the bar, so the body cannot scroll behind a transparent bar.

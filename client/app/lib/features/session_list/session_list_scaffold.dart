@@ -7,7 +7,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
 import "../../core/widgets/connection_banner.dart";
-import "../../l10n/app_localizations.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
 
@@ -31,21 +30,55 @@ class SessionListScaffold extends StatelessWidget {
     required this.onBack,
   });
 
+  /// The repo's brand glyph. GitHub keeps the mock's filled glyph; the solid
+  /// Tabler set carries no other git-forge brands, so GitLab/Bitbucket use
+  /// their regular-weight glyphs and unrecognised hosts fall back to the
+  /// generic git mark.
+  static IconData _providerIcon(RepoProvider provider) => switch (provider) {
+    RepoProvider.github => TablerSolid.brand_github,
+    RepoProvider.gitlab => TablerRegular.brand_gitlab,
+    RepoProvider.bitbucket => TablerRegular.brand_bitbucket,
+    RepoProvider.other => TablerRegular.brand_git,
+  };
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
     final showArchived = state is SessionListLoaded && state.showArchived;
-    final baseBranch = state is SessionListLoaded ? state.baseBranch : null;
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
+    // Green only while the relay↔bridge chain is fully connected — a hidden
+    // banner alone is not enough, since disconnected and unregistered
+    // bridge-offline parks are bannerless too. Watching here re-runs this
+    // build on connection changes — the same cubit ConnectionBanner.maybeFor
+    // below already watches.
+    final overlay = context.watch<ConnectionOverlayCubit>().state;
+    final online = overlay is ConnectionOverlayHidden && overlay.connected;
 
     return PregoGlassScaffold(
       // The sessions route sits at the base of the nested pane navigator, so
       // the bar cannot imply a back button — the poppable route lives on the
       // root navigator. Render it explicitly from the injected callback.
       onBack: onBack,
-      title: _title(loc: loc),
-      subtitle: baseBranch,
+      // The bar's back-leading block identifies context: the project name over
+      // the repository slug of its git remote. The slot shimmers a skeleton
+      // pill (the list body's loading treatment) while the first load is in
+      // flight, then hides if no slug arrives — old bridges and remote-less
+      // projects never deliver one. Tapping the loaded row pops over the
+      // untruncated slug, which the bar ellipsises.
+      title: projectName ?? loc.sessionListTitle,
+      titleMode: PregoTopNavigationTitleMode.backLeading,
+      subtitle: switch (state) {
+        SessionListLoading() => const PregoNavSubtitleSkeleton(),
+        SessionListLoaded(repoSlug: final repoSlug?, :final repoProvider) => PregoNavSubtitle(
+          text: repoSlug,
+          icon: _providerIcon(repoProvider),
+          online: online,
+          infoMessage: repoSlug,
+          infoSemanticLabel: loc.sessionListRepoInfoSemantics,
+        ),
+        SessionListLoaded() || SessionListFailed() || SessionListStaleProject() => null,
+      },
       banner: ConnectionBanner.maybeFor(context),
       actions: [
         PregoButtonsIconGlass(
@@ -83,9 +116,4 @@ class SessionListScaffold extends StatelessWidget {
       ],
     );
   }
-
-  String _title({required AppLocalizations loc}) => switch (projectName) {
-    final name? => loc.sessionListTitleWithName(name),
-    null => loc.sessionListTitle,
-  };
 }
