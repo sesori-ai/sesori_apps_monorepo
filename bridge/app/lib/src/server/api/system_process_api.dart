@@ -1,11 +1,13 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:path/path.dart" as path;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../bridge/foundation/process_runner.dart";
+import "process_id_lookup_api.dart";
 
-class SystemProcessApi {
+class SystemProcessApi implements ProcessIdLookupApi {
   SystemProcessApi({
     required ProcessRunner processRunner,
     required ServerClock clock,
@@ -23,6 +25,20 @@ class SystemProcessApi {
 
   Future<List<ProcessIdentity>> listProcesses() async {
     return _isWindows ? _listWindowsProcesses() : _listPosixProcesses();
+  }
+
+  @override
+  Future<List<int>> listProcessIdsByExecutableName({required String executableName}) async {
+    if (_isWindows) {
+      final processes = await _listWindowsProcesses(imageName: "$executableName.exe");
+      return processes.map((process) => process.pid).toList();
+    }
+
+    final processes = await _listPosixProcesses();
+    return processes
+        .where((process) => process.executablePath != null && path.basename(process.executablePath!) == executableName)
+        .map((process) => process.pid)
+        .toList();
   }
 
   /// Spawns [executable] detached (inheriting stdio), returning its pid without
@@ -173,11 +189,17 @@ class SystemProcessApi {
     return processes;
   }
 
-  Future<List<ProcessIdentity>> _listWindowsProcesses() async {
+  Future<List<ProcessIdentity>> _listWindowsProcesses({String? imageName}) async {
     // The verbose form resolves extra metadata for every process and can hang
-    // long enough to abort bridge startup. Candidate discovery only needs the
-    // image name and PID supplied by the basic tasklist output.
-    final (command, args) = ("tasklist", <String>["/FO", "CSV", "/NH"]);
+    // long enough to abort bridge startup. Windows process listing only needs
+    // the image name and PID supplied by the basic tasklist output.
+    const command = "tasklist";
+    final args = <String>[
+      "/FO",
+      "CSV",
+      "/NH",
+      if (imageName != null) ...<String>["/FI", "IMAGENAME eq $imageName"],
+    ];
     final result = await _processRunner.run(command, args);
     if (result.exitCode != 0) {
       throw ProcessException(
@@ -240,7 +262,7 @@ class SystemProcessApi {
       }
 
       final executablePath = row[0];
-      final ownerUser = row.length > 6 ? ProcessUser.fromRawUser(row[6]) : null;
+      final ownerUser = row.length > 6 ? ProcessUser.fromRawUser(row[6].isEmpty ? null : row[6]) : null;
       processes.add(
         ProcessIdentity(
           pid: pid,

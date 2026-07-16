@@ -1,3 +1,4 @@
+import 'package:sesori_bridge/src/server/api/process_id_lookup_api.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
@@ -5,159 +6,104 @@ import 'package:test/test.dart';
 
 void main() {
   group('BridgeInstanceRepository', () {
-    late _FakeSystemProcessApi api;
+    late _FakeProcessIdLookupApi processIdLookupApi;
+    late _FakeSystemProcessApi processApi;
     late BridgeInstanceRepository repository;
 
     setUp(() {
-      api = _FakeSystemProcessApi();
-      repository = BridgeInstanceRepository(api: api, currentUser: ProcessUser.fromRawUser("alex"));
+      processIdLookupApi = _FakeProcessIdLookupApi();
+      processApi = _FakeSystemProcessApi();
+      repository = BridgeInstanceRepository(
+        processIdLookupApi: processIdLookupApi,
+        processApi: processApi,
+        currentUser: ProcessUser.fromRawUser('alex'),
+      );
     });
 
-    test('excludes current pid and returns multiple current-user bridge binaries', () async {
-      api.facts = <ProcessIdentity>[
-        _fact(
-          pid: 10,
-          executablePath: '/Users/alex/.local/bin/sesori-bridge',
-          commandLine: '/Users/alex/.local/bin/sesori-bridge',
-        ),
-        _fact(
-          pid: 11,
-          executablePath: '/Users/alex/.local/bin/sesori-bridge',
-          commandLine: '/Users/alex/.local/bin/sesori-bridge --relay wss://relay.sesori.com',
-        ),
-        _fact(
-          pid: 12,
-          executablePath: '/Users/alex/.local/bin/sesori-bridge',
-          commandLine: '/Users/alex/.local/bin/sesori-bridge',
-        ),
-      ];
+    test('returns inspected current-user release binaries and excludes the current pid', () async {
+      processIdLookupApi.processIds = <int>[10, 11, 12];
+      processApi.inspectionFacts.addAll(<int, ProcessIdentity>{
+        10: _fact(pid: 10, executablePath: '/Users/alex/.local/bin/sesori-bridge'),
+        12: _fact(pid: 12, executablePath: '/Users/alex/.local/bin/sesori-bridge'),
+      });
 
       final candidates = await repository.listLiveBridgeCandidates(currentPid: 11);
 
       expect(candidates.map((candidate) => candidate.pid), equals(<int>[10, 12]));
       expect(candidates.first.startMarker, equals('Fri May 15 12:00:00 2026'));
+      expect(processIdLookupApi.executableNames, equals(<String>['sesori-bridge']));
+      expect(processApi.inspectedPids, equals(<int>[10, 12]));
+      expect(processApi.listCallCount, equals(0));
     });
 
-    test('accepts source-run dart bridge command', () async {
-      api.facts = <ProcessIdentity>[
-        _fact(
+    test('filters other-user and pid-recycled non-bridge processes', () async {
+      processIdLookupApi.processIds = <int>[20, 21];
+      processApi.inspectionFacts.addAll(<int, ProcessIdentity>{
+        20: _fact(
           pid: 20,
-          executablePath: '/opt/homebrew/bin/dart',
-          commandLine: 'dart run bridge/app/bin/bridge.dart --relay wss://relay.sesori.com',
-        ),
-      ];
-
-      final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
-
-      expect(candidates.single.pid, equals(20));
-    });
-
-    test('accepts source-run dartvm bridge command (Flutter-bundled Dart SDK)', () async {
-      api.facts = <ProcessIdentity>[
-        _fact(
-          pid: 21,
-          executablePath: '/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dartvm',
-          commandLine: '/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dartvm '
-              '--resolved_executable_name=/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dart '
-              '--executable_name=/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dart '
-              'bridge/app/bin/bridge.dart --debug-port=7829 --log-level=debug --no-auto-start --port 4096',
-        ),
-      ];
-
-      final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
-
-      expect(candidates.single.pid, equals(21));
-    });
-
-    test('accepts source-run dartaotruntime bridge command', () async {
-      api.facts = <ProcessIdentity>[
-        _fact(
-          pid: 22,
-          executablePath: '/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dartaotruntime',
-          commandLine: '/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dartaotruntime '
-              'bridge/app/bin/bridge.dart --relay wss://relay.sesori.com',
-        ),
-      ];
-
-      final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
-
-      expect(candidates.single.pid, equals(22));
-    });
-
-    test('filters false positives and other-user bridge commands', () async {
-      api.facts = <ProcessIdentity>[
-        _fact(
-          pid: 30,
-          executablePath: '/usr/bin/python3',
-          commandLine: 'python bridge/app/bin/bridge.dart',
-        ),
-        _fact(
-          pid: 31,
-          executablePath: '/tmp/not-sesori-bridge',
-          commandLine: '/tmp/not-sesori-bridge',
-        ),
-        _fact(
-          pid: 32,
-          executablePath: '/Users/alex/.local/bin/sesori-bridge',
-          commandLine: '/Users/alex/.local/bin/sesori-bridge',
+          executablePath: 'sesori-bridge.exe',
           ownerUser: 'other',
         ),
-        _fact(
-          pid: 33,
-          executablePath: '/usr/local/bin/opencode',
-          commandLine: '/usr/local/bin/opencode serve --port 45111',
-        ),
-      ];
+        21: _fact(pid: 21, executablePath: '/usr/local/bin/opencode'),
+      });
 
       final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
 
       expect(candidates, isEmpty);
+      expect(processApi.inspectedPids, equals(<int>[20, 21]));
     });
 
-    test('keeps bridge candidates when current or process owner is unknown', () async {
-      repository = BridgeInstanceRepository(api: api, currentUser: null);
-      api.facts = <ProcessIdentity>[
-        _fact(
-          pid: 40,
-          executablePath: '/Users/alex/.local/bin/sesori-bridge',
-          commandLine: '/Users/alex/.local/bin/sesori-bridge',
-          ownerUser: null,
-        ),
-        _fact(
-          pid: 41,
-          executablePath: '/Users/alex/.local/bin/sesori-bridge',
-          commandLine: '/Users/alex/.local/bin/sesori-bridge',
-          ownerUser: 'other',
-        ),
-      ];
+    test('keeps a release bridge when its owner cannot be resolved', () async {
+      processIdLookupApi.processIds = <int>[30];
+      processApi.inspectionFacts[30] = _fact(
+        pid: 30,
+        executablePath: 'sesori-bridge.exe',
+        ownerUser: null,
+      );
 
       final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
 
-      expect(candidates.map((candidate) => candidate.pid), equals(<int>[40, 41]));
+      expect(candidates.single.pid, equals(30));
     });
 
-    test('keeps unknown-owner bridge candidate when current user is known', () async {
-      api.facts = <ProcessIdentity>[
-        _fact(
-          pid: 42,
-          executablePath: '/Users/alex/.local/bin/sesori-bridge',
-          commandLine: '/Users/alex/.local/bin/sesori-bridge',
-          ownerUser: null,
-        ),
-      ];
+    test('keeps a release bridge when the current user cannot be resolved', () async {
+      repository = BridgeInstanceRepository(
+        processIdLookupApi: processIdLookupApi,
+        processApi: processApi,
+        currentUser: null,
+      );
+      processIdLookupApi.processIds = <int>[31];
+      processApi.inspectionFacts[31] = _fact(
+        pid: 31,
+        executablePath: '/usr/local/bin/sesori-bridge',
+        ownerUser: 'other',
+      );
 
       final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
 
-      expect(candidates.single.pid, equals(42));
+      expect(candidates.single.pid, equals(31));
     });
 
-    test('ignores stale JSON or lock state because it only uses process facts', () async {
-      api.facts = <ProcessIdentity>[];
+    test('skips a candidate that exits before targeted inspection', () async {
+      processIdLookupApi.processIds = <int>[40];
 
       final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
 
       expect(candidates, isEmpty);
-      expect(api.listCallCount, equals(1));
+      expect(processApi.inspectedPids, equals(<int>[40]));
+    });
+
+    test('does not discover source-run bridges', () async {
+      processApi.inspectionFacts[50] = _fact(
+        pid: 50,
+        executablePath: '/usr/local/bin/dart',
+        commandLine: 'dart run bridge/app/bin/bridge.dart',
+      );
+
+      final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
+
+      expect(candidates, isEmpty);
+      expect(processApi.inspectedPids, isEmpty);
     });
   });
 }
@@ -165,42 +111,60 @@ void main() {
 ProcessIdentity _fact({
   required int pid,
   required String? executablePath,
-  required String commandLine,
   String? ownerUser = 'alex',
+  String? commandLine,
 }) {
   return ProcessIdentity(
     pid: pid,
     startMarker: 'Fri May 15 12:00:00 2026',
     executablePath: executablePath,
-    commandLine: commandLine,
+    commandLine: commandLine ?? executablePath ?? '',
     ownerUser: ProcessUser.fromRawUser(ownerUser),
     platform: 'macos',
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );
 }
 
-class _FakeSystemProcessApi implements SystemProcessApi {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
+class _FakeProcessIdLookupApi implements ProcessIdLookupApi {
+  List<int> processIds = <int>[];
+  final List<String> executableNames = <String>[];
 
-  List<ProcessIdentity> facts = <ProcessIdentity>[];
+  @override
+  Future<List<int>> listProcessIdsByExecutableName({required String executableName}) async {
+    executableNames.add(executableName);
+    return processIds;
+  }
+}
+
+class _FakeSystemProcessApi implements SystemProcessApi {
+  final Map<int, ProcessIdentity?> inspectionFacts = <int, ProcessIdentity?>{};
+  final List<int> inspectedPids = <int>[];
   int listCallCount = 0;
 
   @override
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
-    return facts.where((fact) => fact.pid == pid).firstOrNull;
+    inspectedPids.add(pid);
+    return inspectionFacts[pid];
   }
 
   @override
   Future<List<ProcessIdentity>> listProcesses() async {
     listCallCount += 1;
-    return facts;
+    return const <ProcessIdentity>[];
+  }
+
+  @override
+  Future<List<int>> listProcessIdsByExecutableName({required String executableName}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) {
+    throw UnimplementedError();
   }
 
   @override

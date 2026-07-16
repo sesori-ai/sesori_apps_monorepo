@@ -51,6 +51,8 @@ import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
+import "../../server/api/pgrep_api.dart";
+import "../../server/api/process_id_lookup_api.dart";
 import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
 import "../../server/api/terminal_prompt_api.dart";
@@ -222,6 +224,9 @@ class BridgeRuntimeRunner {
       isWindows: io.Platform.isWindows,
       platform: io.Platform.operatingSystem,
     );
+    final ProcessIdLookupApi processIdLookupApi = io.Platform.isWindows
+        ? systemProcessApi
+        : PgrepApi(processRunner: processRunner);
     final processRepository = ProcessRepository(
       api: systemProcessApi,
       currentUser: currentUser,
@@ -360,7 +365,8 @@ class BridgeRuntimeRunner {
       final BridgeReplacePrompt replacePrompt = controlPromptService ?? terminalPromptRepository;
       final bridgeInstanceService = BridgeInstanceService(
         bridgeInstanceRepository: BridgeInstanceRepository(
-          api: systemProcessApi,
+          processIdLookupApi: processIdLookupApi,
+          processApi: systemProcessApi,
           currentUser: currentUser,
         ),
         replacePrompt: replacePrompt,

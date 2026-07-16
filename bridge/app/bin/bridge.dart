@@ -27,6 +27,8 @@ import 'package:sesori_bridge/src/bridge/runtime/plugin_registry.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
+import 'package:sesori_bridge/src/server/api/pgrep_api.dart';
+import 'package:sesori_bridge/src/server/api/process_id_lookup_api.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/api/terminal_prompt_api.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
@@ -218,17 +220,22 @@ class LogoutCommand extends cli.Command<void> {
       environment: Platform.environment,
       defaultAuthUrl: _defaultAuthURL,
     );
+    final processRunner = ProcessRunner();
     final systemProcessApi = SystemProcessApi(
-      processRunner: ProcessRunner(),
+      processRunner: processRunner,
       clock: const ServerClock(),
       isWindows: Platform.isWindows,
       platform: Platform.operatingSystem,
     );
+    final ProcessIdLookupApi processIdLookupApi = Platform.isWindows
+        ? systemProcessApi
+        : PgrepApi(processRunner: processRunner);
     final currentUser = ProcessUser.fromRawUser(
       Platform.environment['USER'] ?? Platform.environment['USERNAME'],
     );
     final bridgeInstanceRepository = BridgeInstanceRepository(
-      api: systemProcessApi,
+      processIdLookupApi: processIdLookupApi,
+      processApi: systemProcessApi,
       currentUser: currentUser,
     );
     final terminalPromptRepository = TerminalPromptRepository(
