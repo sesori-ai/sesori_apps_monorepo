@@ -129,9 +129,11 @@ Pick a class suffix that accurately reflects the class's role. Vague names (`Man
 
 ### Class Cohesion Rules
 
-These four rules catch the common structural failures that layer rules alone miss. Apply them at author time, not just at review time.
+These rules catch the common structural failures that layer rules alone miss. Apply them at author time, not just at review time.
 
 - **No pass-through parameters.** If a constructor parameter is used only to construct another object inside the class — never stored on `this`, never read by any method, never part of the class's own logic — it's a pass-through. Inject the already-constructed subcomponent instead, or move its configuration inside the class as defaults.
+
+- **Prefer sealed platform capability factories.** When one package-internal capability has multiple mutually exclusive platform implementations, expose one sealed public abstraction with private implementations in the same file and select them through a named `forPlatform` factory. The factory may receive and forward low-level dependencies required by every implementation; that narrow selection seam is not a pass-through ownership violation. Keep platform branching and implementation classes out of consumers. This preference does not apply to cross-package product-shell adapters or implementations that have independent public consumers.
 
 - **No peer-as-child dependency overlap.** If class X constructs class Y internally and Y's constructor takes 2+ dependencies that X also takes, Y is a peer being miscast as a subcomponent. Extract Y to the same composition level as X; wire both from the subsystem entrypoint.
 

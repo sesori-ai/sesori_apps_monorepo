@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/server/api/process_id_lookup_api.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
@@ -6,22 +9,25 @@ import 'package:test/test.dart';
 
 void main() {
   group('BridgeInstanceRepository', () {
-    late _FakeProcessIdLookupApi processIdLookupApi;
+    late _LookupProcessRunner processIdLookupRunner;
     late _FakeSystemProcessApi processApi;
     late BridgeInstanceRepository repository;
 
     setUp(() {
-      processIdLookupApi = _FakeProcessIdLookupApi();
+      processIdLookupRunner = _LookupProcessRunner();
       processApi = _FakeSystemProcessApi();
       repository = BridgeInstanceRepository(
-        processIdLookupApi: processIdLookupApi,
+        processIdLookupApi: ProcessIdLookupApi.forPlatform(
+          isWindows: false,
+          processRunner: processIdLookupRunner,
+        ),
         processApi: processApi,
         currentUser: ProcessUser.fromRawUser('alex'),
       );
     });
 
     test('returns inspected current-user release binaries and excludes the current pid', () async {
-      processIdLookupApi.processIds = <int>[10, 11, 12];
+      processIdLookupRunner.processIds = <int>[10, 11, 12];
       processApi.inspectionFacts.addAll(<int, ProcessIdentity>{
         10: _fact(pid: 10, executablePath: '/Users/alex/.local/bin/sesori-bridge'),
         12: _fact(pid: 12, executablePath: '/Users/alex/.local/bin/sesori-bridge'),
@@ -31,13 +37,13 @@ void main() {
 
       expect(candidates.map((candidate) => candidate.pid), equals(<int>[10, 12]));
       expect(candidates.first.startMarker, equals('Fri May 15 12:00:00 2026'));
-      expect(processIdLookupApi.executableNames, equals(<String>['sesori-bridge']));
+      expect(processIdLookupRunner.executableNames, equals(<String>['sesori-bridge']));
       expect(processApi.inspectedPids, equals(<int>[10, 12]));
       expect(processApi.listCallCount, equals(0));
     });
 
     test('filters other-user and pid-recycled non-bridge processes', () async {
-      processIdLookupApi.processIds = <int>[20, 21];
+      processIdLookupRunner.processIds = <int>[20, 21];
       processApi.inspectionFacts.addAll(<int, ProcessIdentity>{
         20: _fact(
           pid: 20,
@@ -54,7 +60,7 @@ void main() {
     });
 
     test('keeps a release bridge when its owner cannot be resolved', () async {
-      processIdLookupApi.processIds = <int>[30];
+      processIdLookupRunner.processIds = <int>[30];
       processApi.inspectionFacts[30] = _fact(
         pid: 30,
         executablePath: 'sesori-bridge.exe',
@@ -68,11 +74,14 @@ void main() {
 
     test('keeps a release bridge when the current user cannot be resolved', () async {
       repository = BridgeInstanceRepository(
-        processIdLookupApi: processIdLookupApi,
+        processIdLookupApi: ProcessIdLookupApi.forPlatform(
+          isWindows: false,
+          processRunner: processIdLookupRunner,
+        ),
         processApi: processApi,
         currentUser: null,
       );
-      processIdLookupApi.processIds = <int>[31];
+      processIdLookupRunner.processIds = <int>[31];
       processApi.inspectionFacts[31] = _fact(
         pid: 31,
         executablePath: '/usr/local/bin/sesori-bridge',
@@ -85,7 +94,7 @@ void main() {
     });
 
     test('skips a candidate that exits before targeted inspection', () async {
-      processIdLookupApi.processIds = <int>[40];
+      processIdLookupRunner.processIds = <int>[40];
 
       final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
 
@@ -125,14 +134,37 @@ ProcessIdentity _fact({
   );
 }
 
-class _FakeProcessIdLookupApi implements ProcessIdLookupApi {
+class _LookupProcessRunner implements ProcessRunner {
   List<int> processIds = <int>[];
   final List<String> executableNames = <String>[];
 
   @override
-  Future<List<int>> listProcessIdsByExecutableName({required String executableName}) async {
-    executableNames.add(executableName);
-    return processIds;
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    if (executable != 'pgrep' || arguments.length != 2 || arguments.first != '-x') {
+      throw StateError('Unexpected process lookup command: $executable $arguments');
+    }
+    executableNames.add(arguments[1]);
+    return ProcessResult(
+      1,
+      processIds.isEmpty ? 1 : 0,
+      processIds.join('\n'),
+      '',
+    );
+  }
+
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) {
+    throw UnimplementedError();
   }
 }
 
@@ -151,11 +183,6 @@ class _FakeSystemProcessApi implements SystemProcessApi {
   Future<List<ProcessIdentity>> listProcesses() async {
     listCallCount += 1;
     return const <ProcessIdentity>[];
-  }
-
-  @override
-  Future<List<int>> listProcessIdsByExecutableName({required String executableName}) {
-    throw UnimplementedError();
   }
 
   @override

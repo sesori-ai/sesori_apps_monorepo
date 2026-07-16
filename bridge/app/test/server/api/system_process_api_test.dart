@@ -34,27 +34,6 @@ void main() {
       expect(identities.map((identity) => identity.ownerUser), everyElement(isNull));
     });
 
-    test("listProcessIdsByExecutableName applies a tasklist image filter", () async {
-      final runner = _RecordingProcessRunner(
-        stdout: '"sesori-bridge.exe","321","Console","1","12,345 K"\r\n',
-      );
-      final api = SystemProcessApi(
-        processRunner: runner,
-        clock: const ServerClock(),
-        isWindows: true,
-        platform: "windows",
-      );
-
-      final processIds = await api.listProcessIdsByExecutableName(executableName: "sesori-bridge");
-
-      expect(runner.calls, hasLength(1));
-      expect(
-        runner.calls.single.arguments,
-        equals(<String>["/FO", "CSV", "/NH", "/FI", "IMAGENAME eq sesori-bridge.exe"]),
-      );
-      expect(processIds, equals(<int>[321]));
-    });
-
     test("inspectProcess issues a PID-scoped tasklist filter", () async {
       final runner = _RecordingProcessRunner(
         stdout: '"sesori-bridge.exe","321","Console","1","12,345 K","Running","HOST\\alex","0:00:01","N/A"\r\n',
@@ -129,26 +108,6 @@ void main() {
   });
 
   group("SystemProcessApi (POSIX)", () {
-    test("listProcessIdsByExecutableName exact-filters the ps fallback", () async {
-      final runner = _RecordingProcessRunner(
-        stdout:
-            "  321 alex     Mon Jun 22 09:15:01 2026 /usr/local/bin/sesori-bridge --relay wss://relay\n"
-            "  654 alex     Mon Jun 22 09:16:01 2026 /usr/local/bin/opencode serve\n",
-      );
-      final api = SystemProcessApi(
-        processRunner: runner,
-        clock: const ServerClock(),
-        isWindows: false,
-        platform: "macos",
-      );
-
-      final processIds = await api.listProcessIdsByExecutableName(executableName: "sesori-bridge");
-
-      expect(processIds, equals(<int>[321]));
-      expect(runner.calls.single.executable, equals("ps"));
-      expect(runner.calls.single.arguments, contains("-axwwo"));
-    });
-
     test("inspectProcess issues a PID-scoped ps query and parses one identity", () async {
       final runner = _RecordingProcessRunner(
         stdout: "  321 alex     Mon Jun 22 09:15:01 2026 /usr/local/bin/sesori-bridge --relay wss://relay\n",

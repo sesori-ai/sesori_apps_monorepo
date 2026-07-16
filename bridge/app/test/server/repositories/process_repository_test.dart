@@ -145,11 +145,6 @@ class _FakeSystemProcessApi implements SystemProcessApi {
   }
 
   @override
-  Future<List<int>> listProcessIdsByExecutableName({required String executableName}) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add("force:$pid");
     return forceResult!;
