@@ -586,8 +586,6 @@ void main() {
     });
 
     test("a re-emitted user message does not clear unseen state (OpenCode re-sends the user record)", () async {
-      final events = <UnseenChange>[];
-      final subscription = service.unseenChanges.listen(events.add);
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
@@ -623,8 +621,6 @@ void main() {
       clock = 5000;
       await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 5000);
       expect(await unseen("s1"), isFalse);
-      expect(events.map((event) => event.activeOrderMayHaveChanged), [true, false, true]);
-      await subscription.cancel();
     });
 
     test("re-emission guard holds when the bridge clock is BEHIND the server clock", () async {

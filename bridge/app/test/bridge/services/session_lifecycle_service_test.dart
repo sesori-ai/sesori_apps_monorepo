@@ -84,7 +84,6 @@ void main() {
         backendSessionId: "backend-mismatch",
         pluginId: "other",
         projectId: "/repo",
-        parentSessionId: null,
         directory: "/repo/.worktrees/mismatch",
         worktreePath: "/repo/.worktrees/mismatch",
         branchName: "mismatch",
@@ -92,7 +91,6 @@ void main() {
         archivedAt: null,
         baseBranch: "main",
         baseCommit: "abc123",
-        lastUserInteractionAt: null,
       );
 
       await expectLater(
@@ -514,7 +512,6 @@ Future<CleanupResult> _cleanup({
     backendSessionId: "backend-$sessionId",
     pluginId: "fake",
     projectId: "/repo",
-    parentSessionId: null,
     directory: worktreePath,
     worktreePath: worktreePath,
     branchName: branchName,
@@ -522,7 +519,6 @@ Future<CleanupResult> _cleanup({
     archivedAt: null,
     baseBranch: null,
     baseCommit: null,
-    lastUserInteractionAt: null,
   );
   return service.cleanup(
     sessionId: sessionId,

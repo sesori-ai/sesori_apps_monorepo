@@ -1393,6 +1393,42 @@ void main() {
       expect(byId["/tmp/proj/beta"]!.activeSessions.single.awaitingInput, isTrue);
     });
 
+    test("getProjectActivitySummaries excludes tombstoned backend sessions", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const project = "/tmp/proj/alpha";
+      final plugin = _FakeDerivedPlugin(launchDirectory: project, allSessions: const [])
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: project,
+            activeSessions: [
+              PluginActiveSession(
+                id: "gone",
+                mainAgentRunning: true,
+                awaitingInput: false,
+                isRetrying: false,
+                childSessionIds: [],
+              ),
+            ],
+          ),
+        ];
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.sessionDao.insertSessionTombstone(
+        backendSessionId: "gone",
+        pluginId: plugin.id,
+        deletedAt: 1,
+      );
+
+      expect(await repository.getProjectActivitySummaries(), isEmpty);
+    });
+
     test("setSessionTitleIfStored makes a derived title win over enumeration", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
-import "package:collection/collection.dart";
 import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -81,13 +80,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       routeSource.currentRouteStream
           .switchMap((route) {
             if (route != AppRouteDef.projects) return const Stream<void>.empty();
-            return _sseEventTracker.projectActivity
-                .distinct(const MapEquality<String, int>().equals)
-                .throttleTime(
-                  refreshThrottleDuration,
-                  trailing: true,
-                  leading: false,
-                );
+            return _sseEventTracker.projectActivity.throttleTime(
+              refreshThrottleDuration,
+              trailing: true,
+              leading: false,
+            );
           })
           .listen((_) {
             if (isClosed) return;
@@ -146,18 +143,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     try {
       if (state case final ProjectListLoaded loaded) {
         if (isClosed) return;
-        final ordered = _projectListService.orderProjects(
-          projects: loaded.projects,
-          activeProjectIds: activityById.keys,
-          userInteractionOrdered: _sseEventTracker.currentUserInteractionOrdered,
-        );
-        emit(
-          loaded.copyWith(
-            projects: ordered,
-            activityById: activityById,
-            unseenByProjectId: _unseenByProjectId(ordered),
-          ),
-        );
+        emit(loaded.copyWith(activityById: activityById));
       }
     } catch (e, st) {
       loge("Activity update handler error", e, st);
@@ -188,15 +174,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
         );
         if (!merged.changed) return;
 
-        final ordered = _projectListService.orderProjects(
-          projects: merged.projects,
-          activeProjectIds: loaded.activityById.keys,
-          userInteractionOrdered: _sseEventTracker.currentUserInteractionOrdered,
-        );
         emit(
           loaded.copyWith(
-            projects: ordered,
-            unseenByProjectId: _unseenByProjectId(ordered),
+            projects: merged.projects,
+            unseenByProjectId: _unseenByProjectId(merged.projects),
           ),
         );
       }
@@ -484,13 +465,9 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       return false;
     }
     if (state case final ProjectListLoaded loaded) {
-      final remaining = _projectListService.orderProjects(
-        projects: _projectListService.removeProject(
-          projects: loaded.projects,
-          projectId: projectId,
-        ),
-        activeProjectIds: loaded.activityById.keys,
-        userInteractionOrdered: _sseEventTracker.currentUserInteractionOrdered,
+      final remaining = _projectListService.removeProject(
+        projects: loaded.projects,
+        projectId: projectId,
       );
       emit(
         loaded.copyWith(
@@ -612,17 +589,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
     switch (projectResponse) {
       case SuccessResponse(data: Projects(data: final projects)):
-        final mergedProjects = _projectListService
+        final sortedProjects = _projectListService
             .mergeTimestampUpdates(
               projects: projects,
               timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
             )
             .projects;
-        final sortedProjects = _projectListService.orderProjects(
-          projects: mergedProjects,
-          activeProjectIds: _sseEventTracker.currentProjectActivity.keys,
-          userInteractionOrdered: _sseEventTracker.currentUserInteractionOrdered,
-        );
         // The REST aggregate is authoritative at fetch time — seed the tracker
         // so a stale live `true` can't keep a project bold after its last
         // unseen session was archived/deleted while an echo was missed.

@@ -122,7 +122,7 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
-      "REST session list is sorted by title then id regardless of timestamp",
+      "REST session list is sorted by updated timestamp descending",
       build: () {
         when(
           () => mockProjectRepository.listSessions(
@@ -155,88 +155,7 @@ void main() {
         isA<SessionListLoaded>().having(
           (state) => state.sessions.map((session) => session.id).toList(),
           "session order",
-          ["A", "a", "B", "untitled"],
-        ),
-      ],
-    );
-
-    blocTest<SessionListCubit, SessionListState>(
-      "ordered activity received after REST immediately replaces the active prefix",
-      build: () {
-        mockRouteSource = MockRouteSource();
-        mockSseEventTracker.userInteractionOrdered = true;
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            SessionListResponse(
-              items: [
-                testSession(id: "A", title: "Alpha"),
-                testSession(id: "B", title: "Bravo"),
-                testSession(id: "C", title: "Charlie"),
-              ],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (_) async {
-        await Future<void>.delayed(Duration.zero);
-        mockSseEventTracker.emitSessionActivity({
-          projectId: {
-            "C": const SessionActivityInfo(),
-            "A": const SessionActivityInfo(),
-          },
-        });
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>().having(
-          (state) => state.sessions.map((session) => session.id).toList(),
-          "session order",
-          ["C", "A", "B"],
-        ),
-      ],
-    );
-
-    blocTest<SessionListCubit, SessionListState>(
-      "ordered activity received before REST is applied when entities arrive",
-      build: () {
-        mockRouteSource = MockRouteSource();
-        mockSseEventTracker.userInteractionOrdered = true;
-        mockSseEventTracker.emitSessionActivity({
-          projectId: {
-            "B": const SessionActivityInfo(),
-            "A": const SessionActivityInfo(),
-          },
-        });
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            SessionListResponse(
-              items: [
-                testSession(id: "A", title: "Alpha"),
-                testSession(id: "B", title: "Bravo"),
-                testSession(id: "C", title: "Charlie"),
-              ],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      expect: () => [
-        isA<SessionListLoaded>().having(
-          (state) => state.sessions.map((session) => session.id).toList(),
-          "session order",
-          ["B", "A", "C"],
+          ["untitled", "B", "A", "a"],
         ),
       ],
     );
@@ -1188,8 +1107,8 @@ void main() {
       expect: () => [
         isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
           (s) => s.sessions.map((session) => session.id).toList(),
-          "alphabetical session order",
-          ["s1", "s2"],
+          "session order",
+          ["s2", "s1"],
         ),
       ],
     );
@@ -1233,7 +1152,7 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
-      "SSE session.updated timestamp does not reorder sessions",
+      "SSE session.updated timestamp reorders sessions",
       build: () {
         when(
           () => mockProjectRepository.listSessions(
@@ -1275,10 +1194,10 @@ void main() {
             .having(
               (state) => state.sessions.map((session) => session.id).toList(),
               "session order",
-              ["A", "B"],
+              ["B", "A"],
             )
             .having(
-              (state) => state.sessions.last.time?.updated,
+              (state) => state.sessions.first.time?.updated,
               "updated timestamp",
               9000,
             ),

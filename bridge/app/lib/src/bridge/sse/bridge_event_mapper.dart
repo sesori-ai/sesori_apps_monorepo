@@ -181,14 +181,8 @@ class BridgeEventMapper {
 
   /// Builds a projects summary event from already-remapped summary data
   /// (see `SessionRepository.getProjectActivitySummaries`).
-  SesoriSseEvent buildProjectsSummaryEvent({
-    required List<ProjectActivitySummary> projects,
-    required bool userInteractionOrdered,
-  }) {
-    return SesoriSseEvent.projectsSummary(
-      projects: projects,
-      userInteractionOrdered: userInteractionOrdered,
-    );
+  SesoriSseEvent buildProjectsSummaryEvent({required List<ProjectActivitySummary> projects}) {
+    return SesoriSseEvent.projectsSummary(projects: projects);
   }
 
   /// Attempts to parse an SSE event from a JSON payload.

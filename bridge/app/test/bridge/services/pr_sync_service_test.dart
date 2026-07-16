@@ -688,7 +688,6 @@ StoredSession _storedSession({
     backendSessionId: id,
     pluginId: "fake",
     projectId: "project-1",
-    parentSessionId: null,
     directory: "/tmp/project-1",
     worktreePath: null,
     branchName: branchName,
@@ -696,6 +695,5 @@ StoredSession _storedSession({
     archivedAt: null,
     baseBranch: null,
     baseCommit: null,
-    lastUserInteractionAt: null,
   );
 }

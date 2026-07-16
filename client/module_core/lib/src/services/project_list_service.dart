@@ -34,46 +34,34 @@ class ProjectListService {
         mergedProjects.add(project);
       }
     }
-    return (changed: changed, projects: mergedProjects);
+    return (changed: changed, projects: _sortProjects(mergedProjects));
   }
 
   List<Project> removeProject({required Iterable<Project> projects, required String projectId}) {
     return _sortProjects(projects.where((project) => project.id != projectId));
   }
 
-  List<Project> orderProjects({
-    required Iterable<Project> projects,
-    required Iterable<String> activeProjectIds,
-    required bool userInteractionOrdered,
-  }) {
-    if (!userInteractionOrdered) return _sortProjects(projects);
-
-    final projectById = {for (final project in projects) project.id: project};
-    final active = <Project>[];
-    for (final id in activeProjectIds) {
-      final project = projectById.remove(id);
-      if (project != null) active.add(project);
-    }
-    return [...active, ..._sortProjects(projectById.values)];
-  }
-
   List<Project> _sortProjects(Iterable<Project> projects) {
-    return projects.toList()..sort((a, b) => _compareProjectsByNameAndId(a: a, b: b));
+    return projects.toList()..sort((a, b) => _compareProjectsByTimestampAndName(a: a, b: b));
   }
 
-  int _compareProjectsByNameAndId({required Project a, required Project b}) {
+  int _compareProjectsByTimestampAndName({required Project a, required Project b}) {
+    final aUpdated = a.time?.updated;
+    final bUpdated = b.time?.updated;
+    if (aUpdated == null && bUpdated != null) return 1;
+    if (aUpdated != null && bUpdated == null) return -1;
+
+    final updatedCompare = switch ((aUpdated, bUpdated)) {
+      (final aUpdatedValue?, final bUpdatedValue?) => bUpdatedValue.compareTo(aUpdatedValue),
+      _ => 0,
+    };
+    if (updatedCompare != 0) return updatedCompare;
+
     final nameCompare = _effectiveName(a).toLowerCase().compareTo(_effectiveName(b).toLowerCase());
     if (nameCompare != 0) return nameCompare;
 
     return a.id.compareTo(b.id);
   }
 
-  String _effectiveName(Project project) {
-    final name = project.name;
-    if (name != null) return name;
-
-    final path = project.path.isEmpty ? project.id : project.path;
-    final segments = path.replaceAll(r"\", "/").split("/").where((segment) => segment.isNotEmpty);
-    return segments.isEmpty ? path : segments.last;
-  }
+  String _effectiveName(Project project) => project.name ?? project.path;
 }
