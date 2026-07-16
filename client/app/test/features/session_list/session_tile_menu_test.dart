@@ -9,6 +9,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_list/session_list_panel.dart";
 import "package:sesori_mobile/features/session_list/session_list_screen.dart";
+import "package:sesori_mobile/features/session_list/session_tile.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -64,7 +65,7 @@ void main() {
   }
 
   Future<void> longPressTile(WidgetTester tester, {required String title}) async {
-    await tester.longPress(find.widgetWithText(ListTile, title));
+    await tester.longPress(find.widgetWithText(SessionTile, title));
     await tester.pumpAndSettle();
   }
 
@@ -85,7 +86,7 @@ void main() {
     expect(find.byType(PregoBottomSheet), findsNothing);
 
     // …and the row it is anchored to stays on screen behind the menu.
-    expect(find.widgetWithText(ListTile, "My Session"), findsOneWidget);
+    expect(find.widgetWithText(SessionTile, "My Session"), findsOneWidget);
   });
 
   testWidgets("right-clicking a session opens the same anchored menu", (tester) async {
@@ -94,7 +95,7 @@ void main() {
     await pumpPanel(tester, session: session);
 
     // The mouse counterpart of the long-press, for the desktop app.
-    await tester.tap(find.widgetWithText(ListTile, "My Session"), buttons: kSecondaryMouseButton);
+    await tester.tap(find.widgetWithText(SessionTile, "My Session"), buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
@@ -201,7 +202,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // The row is gone before the bridge call resolves…
-    expect(find.widgetWithText(ListTile, "My Session"), findsNothing);
+    expect(find.widgetWithText(SessionTile, "My Session"), findsNothing);
     expect(find.text("Session archived"), findsNothing);
 
     // …the call resolves…

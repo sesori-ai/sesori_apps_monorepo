@@ -481,12 +481,6 @@ abstract class AppLocalizations {
   /// **'Untitled session'**
   String get sessionListUntitled;
 
-  /// No description provided for @sessionListUpdated.
-  ///
-  /// In en, this message translates to:
-  /// **'Updated {timestamp}'**
-  String sessionListUpdated(String timestamp);
-
   /// No description provided for @sessionListRefreshSuccess.
   ///
   /// In en, this message translates to:
@@ -1050,12 +1044,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Login session expired. Please start again.'**
   String get loginPkceStateMissing;
-
-  /// Label shown next to the green dot for sessions that are currently active
-  ///
-  /// In en, this message translates to:
-  /// **'Running'**
-  String get sessionListRunning;
 
   /// Label shown next to the red dot for sessions that are active but in a retry/error state
   ///

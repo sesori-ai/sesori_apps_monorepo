@@ -190,6 +190,7 @@ void main() {
 
       final result = await repository.enrichSession(
         session: const Session(
+          branchName: null,
           id: "s1",
           pluginId: "fake",
           projectID: "p1",
@@ -246,6 +247,7 @@ void main() {
 
       final result = await repository.enrichSession(
         session: const Session(
+          branchName: null,
           id: "s1",
           pluginId: "fake",
           projectID: "p1",
@@ -311,6 +313,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            branchName: null,
             id: "s1",
             pluginId: "fake",
             projectID: "p1",
@@ -322,6 +325,7 @@ void main() {
             promptDefaults: null,
           ),
           Session(
+            branchName: null,
             id: "s2",
             pluginId: "fake",
             projectID: "p1",
@@ -784,6 +788,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final sessionJson = const Session(
+        branchName: null,
         id: "event-session",
         pluginId: legacyMissingPluginId,
         projectID: "/repo",

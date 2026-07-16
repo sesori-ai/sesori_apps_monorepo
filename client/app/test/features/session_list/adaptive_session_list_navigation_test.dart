@@ -6,6 +6,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_list/session_list_panel.dart";
+import "package:sesori_mobile/features/session_list/session_tile.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -151,7 +152,7 @@ void main() {
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
     expect(find.text("Project One — Sessions"), findsOneWidget);
 
-    final tile = tester.widget<ListTile>(find.widgetWithText(ListTile, "Session One"));
+    final tile = tester.widget<SessionTile>(find.widgetWithText(SessionTile, "Session One"));
     expect(tile.selected, isTrue);
   });
 

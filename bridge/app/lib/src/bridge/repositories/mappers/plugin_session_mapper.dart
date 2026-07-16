@@ -12,6 +12,7 @@ extension PluginSessionMapper on PluginSession {
 
   Session toSharedSessionWithId({required String sessionId, required String pluginId}) {
     return Session(
+      branchName: null,
       id: sessionId,
       pluginId: pluginId,
       projectID: projectID,
@@ -68,6 +69,7 @@ Session enrichSharedSession({
       projectID: adoptStoredProjectId ? storedSession.projectId : session.projectID,
       title: storedSession.title ?? session.title ?? storedSession.catalogTitle,
       time: mergedTime,
+      branchName: storedSession.branchName,
       hasWorktree: storedSession.worktreePath != null,
       promptDefaults: _promptDefaultsFromStoredSession(storedSession),
       unseen: unseenCalculator.isUnseen(

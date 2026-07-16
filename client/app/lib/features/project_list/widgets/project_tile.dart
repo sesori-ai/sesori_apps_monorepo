@@ -358,7 +358,7 @@ class _StatusRow extends StatelessWidget {
           else if (activeSessions > 0)
             Flexible(
               child: _StatusLabel(
-                icon: PregoAiLoader(phase: _phaseFor(project.id)),
+                icon: PregoAiLoader(phase: PregoAiLoader.phaseFor(project.id)),
                 label: loc.projectListRunning(activeSessions),
               ),
             )
@@ -383,13 +383,6 @@ class _StatusRow extends StatelessWidget {
     );
   }
 
-  /// Where in its twinkle a project's sparkle starts.
-  ///
-  /// Every row builds in the same frame, so without an offset a list of running
-  /// projects would pulse in lockstep and read as one flickering block instead
-  /// of several agents working independently. Derived from the id so a row's
-  /// phase survives rebuilds.
-  static double _phaseFor(String projectId) => (projectId.hashCode % 100) / 100;
 }
 
 /// An icon and its label, as one status.

@@ -177,14 +177,6 @@
     "description": "Headline on the sessions list when a project has no active sessions yet, inviting the user to begin."
   },
   "sessionListUntitled": "Untitled session",
-  "sessionListUpdated": "Updated {timestamp}",
-  "@sessionListUpdated": {
-    "placeholders": {
-      "timestamp": {
-        "type": "String"
-      }
-    }
-  },
   "sessionListRefreshSuccess": "Sessions updated",
   "sessionListRefreshFailed": "Could not refresh sessions",
   "sessionListErrorTitle": "Failed to load sessions",
@@ -316,10 +308,6 @@
   "loginCallbackMissingParams": "Invalid authorization callback. Please try again.",
   "loginStateMismatch": "Authorization state mismatch. Please try again.",
   "loginPkceStateMissing": "Login session expired. Please start again.",
-  "sessionListRunning": "Running",
-  "@sessionListRunning": {
-    "description": "Label shown next to the green dot for sessions that are currently active"
-  },
   "sessionListRunningRetrying": "Running (retrying)",
   "@sessionListRunningRetrying": {
     "description": "Label shown next to the red dot for sessions that are active but in a retry/error state"

@@ -456,8 +456,10 @@ Session testSession({
   DateTime? archivedAt,
   SessionPromptDefaults? promptDefaults,
   String pluginId = "plugin-1",
+  String? branchName,
 }) {
   return Session(
+    branchName: branchName,
     id: id ?? "session-1",
     pluginId: pluginId,
     projectID: "project-1",

@@ -19,6 +19,7 @@ void main() {
   group("SessionApi", () {
     test("createSessionWithMessage builds a request body with null variant when omitted", () async {
       const session = Session(
+        branchName: null,
         id: "session-1",
         pluginId: "plugin-1",
         projectID: "project-1",

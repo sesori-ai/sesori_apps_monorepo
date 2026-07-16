@@ -5,6 +5,7 @@ void main() {
   group("Session.pluginId", () {
     test("round-trips a non-null value", () {
       const session = Session(
+        branchName: null,
         id: "session-1",
         pluginId: "opencode",
         projectID: "project-1",

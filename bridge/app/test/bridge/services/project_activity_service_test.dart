@@ -256,6 +256,7 @@ void main() {
     await service.handleEvent(
       const SesoriSseEvent.sessionCreated(
         info: Session(
+          branchName: null,
           id: "new-session",
           pluginId: "fake",
           projectID: "project",

@@ -2498,6 +2498,7 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 }
 
 Session _deletedSession(String sessionId) => Session(
+  branchName: null,
   id: sessionId,
   pluginId: "fake",
   projectID: "",
@@ -2538,6 +2539,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async => const Session(
+    branchName: null,
     id: "",
     pluginId: "fake",
     projectID: "",
@@ -2669,6 +2671,7 @@ class _NoopSessionRepository implements SessionRepository {
 
   @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
+    branchName: null,
     id: "",
     pluginId: "fake",
     projectID: "",
