@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -26,6 +27,7 @@ void main() {
       projectsDao = db.projectsDao;
       projectActivityService = ProjectActivityService(
         projectRepository: ProjectRepository(
+          gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: projectsDao,
           sessionDao: db.sessionDao,

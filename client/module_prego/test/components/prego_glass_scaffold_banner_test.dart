@@ -24,7 +24,7 @@ Widget _harness({
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     home: PregoGlassScaffold(
       title: "Title",
-      inlineTitle: true,
+      titleMode: PregoTopNavigationTitleMode.inline,
       automaticallyImplyLeading: false,
       banner: banner,
       extendBodyBehindBar: extendBodyBehindBar,

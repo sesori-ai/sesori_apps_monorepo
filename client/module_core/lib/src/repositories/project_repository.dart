@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/filesystem_api.dart";
 import "../api/project_api.dart";
+import "models/repo_provider.dart";
 
 @lazySingleton
 class ProjectRepository {
@@ -39,8 +40,21 @@ class ProjectRepository {
     return _filesystemApi.getSuggestions(prefix: prefix);
   }
 
-  Future<ApiResponse<BaseBranchResponse>> getBaseBranch({required String projectId}) {
-    return _api.getBaseBranch(projectId: projectId);
+  /// The project's git context: its configured base branch plus the
+  /// repository identity of its git remote, with the hosting provider
+  /// classified from the remote's host.
+  Future<ApiResponse<ProjectGitContext>> getGitContext({required String projectId}) async {
+    final response = await _api.getBaseBranch(projectId: projectId);
+    return switch (response) {
+      SuccessResponse(:final data) => ApiResponse.success(
+        ProjectGitContext(
+          baseBranch: data.baseBranch,
+          repoSlug: data.repoSlug,
+          repoProvider: RepoProvider.fromHost(host: data.repoHost),
+        ),
+      ),
+      ErrorResponse(:final error) => ApiResponse.error(error),
+    };
   }
 
   Future<ApiResponse<SessionListResponse>> listSessions({
@@ -96,4 +110,19 @@ class ProjectSessionContext {
   final String? sessionTitle;
 
   const ProjectSessionContext({required this.projectId, required this.sessionTitle});
+}
+
+/// A project's git context: the configured base branch and the repository
+/// identity of its git remote. [repoSlug] is null when the project has no
+/// usable remote; [repoProvider] is then [RepoProvider.other].
+class ProjectGitContext {
+  final String? baseBranch;
+  final String? repoSlug;
+  final RepoProvider repoProvider;
+
+  const ProjectGitContext({
+    required this.baseBranch,
+    required this.repoSlug,
+    required this.repoProvider,
+  });
 }

@@ -11,6 +11,8 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
+import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
+import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -51,8 +53,12 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(
-        () => mockProjectRepository.getBaseBranch(projectId: any(named: "projectId")),
-      ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null)));
+        () => mockProjectRepository.getGitContext(projectId: any(named: "projectId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const ProjectGitContext(baseBranch: null, repoSlug: null, repoProvider: RepoProvider.other),
+        ),
+      );
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -1413,8 +1419,10 @@ void main() {
             waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => completer.future);
-        when(() => mockProjectRepository.getBaseBranch(projectId: projectId)).thenAnswer(
-          (_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: "main")),
+        when(() => mockProjectRepository.getGitContext(projectId: projectId)).thenAnswer(
+          (_) async => ApiResponse.success(
+            const ProjectGitContext(baseBranch: "main", repoSlug: null, repoProvider: RepoProvider.other),
+          ),
         );
 
         const config = ServerConnectionConfig(

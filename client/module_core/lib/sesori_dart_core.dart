@@ -90,6 +90,7 @@ export "src/platform/route_dispatcher.dart";
 export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
 export "src/repositories/bridge_repository.dart";
+export "src/repositories/models/repo_provider.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";

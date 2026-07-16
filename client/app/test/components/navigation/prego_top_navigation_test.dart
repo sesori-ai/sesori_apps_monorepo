@@ -26,7 +26,7 @@ void main() {
         home: Scaffold(
           appBar: PregoTopNavigation(
             title: title,
-            inlineTitle: true,
+            titleMode: PregoTopNavigationTitleMode.inline,
             // Pin leading resolution to the explicit widget (or nothing) so the
             // test never depends on route-implied back buttons.
             automaticallyImplyLeading: false,
@@ -88,5 +88,74 @@ void main() {
     final barHeight = const PregoTopNavigation(title: title).preferredSize.height;
     expect(renderedHeight, 40);
     expect(renderedHeight, lessThan(barHeight));
+  });
+
+  group("back-leading mode", () {
+    Future<void> pumpBackLeadingBar(
+      WidgetTester tester, {
+      String barTitle = "Project name",
+      String? subtitle,
+      VoidCallback? onBack,
+      List<Widget>? actions,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            appBar: PregoTopNavigation(
+              title: barTitle,
+              subtitle: subtitle == null ? null : PregoNavSubtitle(text: subtitle),
+              titleMode: PregoTopNavigationTitleMode.backLeading,
+              automaticallyImplyLeading: false,
+              onBack: onBack,
+              actions: actions,
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets("renders the title block instead of a centred title", (tester) async {
+      await pumpBackLeadingBar(tester, subtitle: "org/repo");
+
+      expect(find.byType(PregoNavLeadingTitle), findsOneWidget);
+      expect(find.byType(PregoNavTitle), findsNothing);
+      expect(find.text("org/repo"), findsOneWidget);
+    });
+
+    testWidgets("block sits at the bar's 16pt leading inset without a back button", (tester) async {
+      await pumpBackLeadingBar(tester);
+
+      expect(tester.getTopLeft(find.byType(PregoNavLeadingTitle)).dx, 16);
+    });
+
+    testWidgets("block sits 12pt after the glass back button when onBack is set", (tester) async {
+      await pumpBackLeadingBar(tester, onBack: () {});
+
+      final backButton = find.byType(PregoButtonsIconGlass);
+      expect(backButton, findsOneWidget);
+      final backRight = tester.getTopRight(backButton).dx;
+      expect(tester.getTopLeft(find.byType(PregoNavLeadingTitle)).dx, backRight + 12);
+    });
+
+    testWidgets("actions stay pinned to the bar's trailing inset", (tester) async {
+      const trailingKey = Key("trailing");
+      await pumpBackLeadingBar(tester, actions: [sideBox(40, key: trailingKey)]);
+
+      final screenWidth = tester.getSize(find.byType(MaterialApp)).width;
+      expect(tester.getTopRight(find.byKey(trailingKey)).dx, screenWidth - 16);
+    });
+
+    testWidgets("long titles ellipsise instead of overflowing the bar", (tester) async {
+      await pumpBackLeadingBar(
+        tester,
+        barTitle: "An unreasonably long project directory name that cannot possibly fit the bar width",
+        subtitle: "some-organisation/an-equally-unreasonably-long-repository-name",
+        onBack: () {},
+        actions: [sideBox(40), sideBox(40)],
+      );
+
+      expect(tester.takeException(), isNull);
+    });
   });
 }

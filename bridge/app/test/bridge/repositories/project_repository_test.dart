@@ -11,6 +11,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -23,6 +24,7 @@ void main() {
       db = createTestDatabase();
       plugin = _FakeBridgePlugin();
       repo = ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -184,6 +186,7 @@ void main() {
       ];
       final projectsDao = _CountingProjectsDao(database: db);
       final countingRepo = ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: projectsDao,
         sessionDao: db.sessionDao,
@@ -298,6 +301,7 @@ void main() {
           PluginProject(id: "/projects/a", directory: "/projects/a", name: "A"),
         ];
         final repoWithMissing = ProjectRepository(
+          gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -364,6 +368,7 @@ void main() {
         PluginProject(id: "/moved", directory: "/moved", name: "Moved"),
       ];
       final repoWithMissing = ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -391,6 +396,7 @@ void main() {
       plugin.projectResult = const PluginProject(id: "/gone", directory: "/gone", name: "Gone");
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/gone"]);
       final repoWithMissing = ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -408,6 +414,7 @@ void main() {
         PluginProject(id: "/denied", directory: "/denied", name: "Denied"),
       ];
       final repoWithThrow = ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -430,6 +437,7 @@ void main() {
       db = createTestDatabase();
       plugin = _FakeDerivedPlugin([]);
       repo = ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -582,6 +590,7 @@ void main() {
       await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 30, updatedAt: 40);
       final projectsDao = _CountingProjectsDao(database: db);
       final countingRepo = ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: projectsDao,
         sessionDao: db.sessionDao,
@@ -650,6 +659,7 @@ void main() {
         _session("/tmp/proj/beta", id: "b1", created: 1, updated: 1),
       ];
       final repoWithMissing = ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -671,6 +681,59 @@ void main() {
 
       expect(result.firstWhere((p) => p.id == "/tmp/proj/alpha").directoryMissing, isFalse);
       expect(result.firstWhere((p) => p.id == "/tmp/proj/beta").directoryMissing, isTrue);
+    });
+  });
+
+  group("ProjectRepository getRemoteIdentity", () {
+    late AppDatabase db;
+    late _FakeBridgePlugin plugin;
+
+    setUp(() {
+      db = createTestDatabase();
+      plugin = _FakeBridgePlugin();
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    ProjectRepository repoWith({required String? remoteUrl}) => ProjectRepository(
+      gitCliApi: FakeGitCliApi(remoteUrl: remoteUrl),
+      plugin: plugin,
+      projectsDao: db.projectsDao,
+      sessionDao: db.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
+    );
+
+    test("returns null for a project with no stored row", () async {
+      final repo = repoWith(remoteUrl: "git@github.com:org/repo.git");
+
+      expect(await repo.getRemoteIdentity(projectId: "unknown"), isNull);
+    });
+
+    test("returns null when the project has no usable remote", () async {
+      await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
+      final repo = repoWith(remoteUrl: null);
+
+      expect(await repo.getRemoteIdentity(projectId: "/dev/app"), isNull);
+    });
+
+    test("parses the remote URL of the stored project path into host and slug", () async {
+      await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
+      final repo = repoWith(remoteUrl: "git@github.com:sesori-ai/sesori.git");
+
+      expect(
+        await repo.getRemoteIdentity(projectId: "/dev/app"),
+        equals((host: "github.com", slug: "sesori-ai/sesori")),
+      );
+    });
+
+    test("returns null for a local filesystem remote", () async {
+      await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
+      final repo = repoWith(remoteUrl: "/srv/git/repo.git");
+
+      expect(await repo.getRemoteIdentity(projectId: "/dev/app"), isNull);
     });
   });
 }

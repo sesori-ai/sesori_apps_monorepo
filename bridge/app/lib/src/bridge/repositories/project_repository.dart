@@ -16,7 +16,9 @@ import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart" show SessionDao, SessionUnseenRow;
 import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../api/filesystem_api.dart";
+import "../api/git_cli_api.dart";
 import "derived_project_builder.dart";
+import "mappers/git_remote_identity_parser.dart";
 import "mappers/plugin_project_mapper.dart";
 import "models/project_activity.dart";
 import "models/project_activity_evidence.dart";
@@ -42,12 +44,14 @@ import "session_unseen_calculator.dart";
 /// targets, and performs exact reads and writes. It does not order timestamps.
 class ProjectRepository {
   static const DerivedProjectBuilder _derivedProjectBuilder = DerivedProjectBuilder();
+  static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
 
   final BridgePluginApi _plugin;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final SessionUnseenCalculator _unseenCalculator;
   final FilesystemApi _filesystemApi;
+  final GitCliApi _gitCliApi;
 
   ProjectRepository({
     required BridgePluginApi plugin,
@@ -55,11 +59,13 @@ class ProjectRepository {
     required SessionDao sessionDao,
     required SessionUnseenCalculator unseenCalculator,
     required FilesystemApi filesystemApi,
+    required GitCliApi gitCliApi,
   }) : _plugin = plugin,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _unseenCalculator = unseenCalculator,
-       _filesystemApi = filesystemApi;
+       _filesystemApi = filesystemApi,
+       _gitCliApi = gitCliApi;
 
   Future<List<Project>> getProjects({required int defaultTimestamp}) async {
     switch (_plugin) {
@@ -309,6 +315,23 @@ class ProjectRepository {
       projectId: projectId,
       baseBranch: baseBranch,
     );
+  }
+
+  /// Forge identity — host plus `org/repo` slug — parsed from the project's
+  /// git remote. Null when the project directory is unknown, is not a git
+  /// repository, has no remotes, or its remote has no forge-style identity
+  /// (e.g. a local filesystem remote) — absence is a legitimate state the
+  /// client renders by omitting repository identity.
+  Future<GitRemoteIdentity?> getRemoteIdentity({required String projectId}) async {
+    final path = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (path == null) {
+      return null;
+    }
+    final remoteUrl = await _gitCliApi.getRemoteUrl(projectPath: path);
+    if (remoteUrl == null) {
+      return null;
+    }
+    return _remoteIdentityParser.parse(remoteUrl: remoteUrl);
   }
 
   Future<StoredProjectActivity?> getStoredSessionActivity({required String sessionId}) async {

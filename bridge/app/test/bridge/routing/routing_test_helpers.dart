@@ -30,6 +30,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 
 import "../../helpers/fake_filesystem_api.dart";
+import "../../helpers/fake_git_cli_api.dart";
 
 /// Builds a real [SessionUnseenService] backed by [db] for handler/router tests.
 SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginApi plugin) {
@@ -43,6 +44,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       calculator: calculator,
     ),
     projectRepository: ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,

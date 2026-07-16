@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -26,6 +27,7 @@ void main() {
     );
 
     ProjectRepository projectRepository() => ProjectRepository(
+      gitCliApi: FakeGitCliApi(),
       plugin: const _FakePlugin(),
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
@@ -107,6 +109,7 @@ void main() {
           calculator: const SessionUnseenCalculator(),
         ),
         projectRepository: ProjectRepository(
+          gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -168,6 +171,7 @@ void main() {
           calculator: const SessionUnseenCalculator(),
         ),
         projectRepository: ProjectRepository(
+          gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
