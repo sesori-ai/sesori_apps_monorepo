@@ -10,15 +10,22 @@ import 'package:theme_prego/module_prego.dart';
 /// - commit threshold: 0.6 * 800 = 480.
 /// Drags lose ~18px to touch slop before the recognizer reports, so distances
 /// keep a margin on their side of each threshold.
+///
+/// Rows built with a leading action declare a 120px one, so the leading
+/// reveal is 16 (start inset) + 120 + 6 (end gap) = 142, settle-open
+/// threshold 71. The commit threshold is the same 480 on either side.
 const double _surfaceWidth = 800;
 const double _revealWidth = 204;
 const double _primaryWidth = 136;
+const double _leadingWidth = 120;
 
 class _Counters {
   int contentTaps = 0;
   int actionTaps = 0;
   int primaryTaps = 0;
   int fullSwipes = 0;
+  int leadingTaps = 0;
+  int leadingFullSwipes = 0;
 }
 
 Widget _row({
@@ -26,8 +33,22 @@ Widget _row({
   required _Counters counters,
   bool closeOnAction = false,
   double primaryWidth = _primaryWidth,
+  double? leadingWidth,
 }) {
   return PregoSwipeActions(
+    leadingPrimaryActionBuilder: leadingWidth == null
+        ? null
+        : (context, close) => SizedBox(
+            width: leadingWidth,
+            child: TextButton(
+              onPressed: () {
+                counters.leadingTaps++;
+                if (closeOnAction) close();
+              },
+              child: Text('Unread $label'),
+            ),
+          ),
+    onLeadingFullSwipe: leadingWidth == null ? null : () => counters.leadingFullSwipes++,
     actionsBuilder: (context, close) => [
       GestureDetector(
         key: ValueKey('action-$label'),
@@ -94,6 +115,10 @@ Future<void> _swipe(WidgetTester tester, {required String label, required double
 /// The primary action's tappable rect for [label]'s row.
 Rect _primaryRect(WidgetTester tester, String label) =>
     tester.getRect(find.widgetWithText(TextButton, 'Hide $label'));
+
+/// The leading action's tappable rect for [label]'s row.
+Rect _leadingRect(WidgetTester tester, String label) =>
+    tester.getRect(find.widgetWithText(TextButton, 'Unread $label'));
 
 /// Moves a held gesture in steps, the way a finger streams move events.
 ///
@@ -344,6 +369,167 @@ void main() {
     await tester.tap(find.text('Hide A'));
     await tester.pumpAndSettle();
     expect(counters.primaryTaps, 1);
+  });
+
+  testWidgets('an end-ward drag on a row with no leading action stays closed', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+
+    final before = tester.getTopLeft(find.text('A content'));
+    await _swipe(tester, label: 'A', dx: 150);
+
+    expect(tester.getTopLeft(find.text('A content')), before);
+    // No catcher was raised either — the content still activates directly.
+    await tester.tap(find.text('A content'));
+    await tester.pumpAndSettle();
+    expect(counters.contentTaps, 1);
+  });
+
+  testWidgets('rests with the leading action off-row; a drag past half its reveal settles it open', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+    );
+
+    // The leading strip is laid out past the row's start edge, clipped out of
+    // view.
+    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+
+    // ~102px after slop — past the 71px settle-open threshold.
+    await _swipe(tester, label: 'A', dx: 120);
+
+    // Open geometry: the action sits at the start inset, at its natural
+    // width; the reveal width was measured, not declared.
+    final rect = _leadingRect(tester, 'A');
+    expect(rect.left, moreOrLessEquals(16, epsilon: 1));
+    expect(rect.width, moreOrLessEquals(_leadingWidth, epsilon: 1));
+
+    // The trailing side rides along closed.
+    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+
+    await tester.tap(find.text('Unread A'));
+    await tester.pumpAndSettle();
+    expect(counters.leadingTaps, 1);
+    expect(counters.leadingFullSwipes, 0);
+  });
+
+  testWidgets('tapping the row open on its leading action closes it without activating the content', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+    );
+
+    await _swipe(tester, label: 'A', dx: 120);
+    // The tap intentionally lands on the close-catcher covering the content.
+    await tester.tap(find.text('A content'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(counters.contentTaps, 0);
+    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+  });
+
+  testWidgets('a full end-ward swipe commits the leading action once and closes', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+    );
+
+    // ~502px after slop — past the 480px commit threshold.
+    await _swipe(tester, label: 'A', dx: 520);
+
+    expect(counters.leadingFullSwipes, 1);
+    expect(counters.leadingTaps, 0);
+    expect(counters.fullSwipes, 0);
+    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+  });
+
+  testWidgets('the leading action stretches during the overdrag, leading edge pinned to the row start', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+    );
+
+    // 8 steps of 70; the first step is spent winning the arena, leaving
+    // ~490px of extent — past the 480px commit threshold.
+    final gesture = await tester.startGesture(tester.getCenter(find.text('A content')));
+    await _moveInSteps(tester, gesture, total: const Offset(560, 0));
+
+    final rect = _leadingRect(tester, 'A');
+    expect(rect.left, moreOrLessEquals(16, epsilon: 1));
+    expect(rect.width, greaterThan(_leadingWidth + 200));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(counters.leadingFullSwipes, 1);
+  });
+
+  testWidgets('one drag can carry an open trailing row across to its leading side', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+    );
+
+    await _swipe(tester, label: 'A', dx: -150);
+    expect(_primaryRect(tester, 'A').left, lessThan(_surfaceWidth));
+
+    // From the +204 trailing reveal, ~402px of rightward extent after the
+    // arena's first step crosses zero to about -198 — short of the commit
+    // threshold, past half the leading reveal. Slow steps keep the release
+    // under the fling velocity.
+    final gesture = await tester.startGesture(tester.getCenter(find.text('A content')));
+    await _moveInSteps(
+      tester,
+      gesture,
+      total: const Offset(460, 0),
+      pumpEach: const Duration(milliseconds: 100),
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_leadingRect(tester, 'A').left, moreOrLessEquals(16, epsilon: 1));
+    expect(counters.fullSwipes, 0);
+    expect(counters.leadingFullSwipes, 0);
+  });
+
+  testWidgets('reveals the leading action with an end-edge drag under RTL', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+        textDirection: TextDirection.rtl,
+      ),
+    );
+
+    // In RTL the leading action lives past the right edge and a leftward drag
+    // reveals it.
+    expect(_leadingRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+
+    await _swipe(tester, label: 'A', dx: -120);
+
+    final rect = _leadingRect(tester, 'A');
+    expect(rect.right, moreOrLessEquals(_surfaceWidth - 16, epsilon: 1));
+
+    await tester.tap(find.text('Unread A'));
+    await tester.pumpAndSettle();
+    expect(counters.leadingTaps, 1);
+  });
+
+  testWidgets('the leading action joins semantics only while its side is open', (tester) async {
+    final handle = tester.ensureSemantics();
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+    );
+
+    expect(find.bySemanticsLabel('Unread A'), findsNothing);
+
+    await _swipe(tester, label: 'A', dx: 120);
+
+    expect(find.bySemanticsLabel('Unread A'), findsOneWidget);
+    // The other side's actions stay excluded while this one is open.
+    expect(find.bySemanticsLabel('Hide A'), findsNothing);
+    handle.dispose();
   });
 
   testWidgets('the close callback is safe to call after the row is unmounted', (tester) async {
