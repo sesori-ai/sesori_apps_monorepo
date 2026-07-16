@@ -245,7 +245,6 @@ class CursorPlugin extends AcpPlugin {
     _appliedModelId = null;
     _appliedModeId = null;
     _appliedThoughtLevelId = null;
-    _catalogService.onConnectionReset();
   }
 
   Future<void> _ensureCatalog({required String projectId}) {

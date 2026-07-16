@@ -79,6 +79,24 @@ void main() {
       expect(repository.resetCount, 1);
     });
 
+    test("retries a failed scope once on the next request", () async {
+      repository.candidates = CursorCatalogCandidateListResult(
+        candidates: const [],
+        exhaustive: false,
+      );
+
+      await service.ensureCatalog(scope: "/project");
+      await service.ensureCatalog(scope: "/project");
+      await service.ensureCatalog(scope: "/project");
+
+      expect(repository.listedScopes, ["/project", "/project"]);
+      expect(repository.resetCount, 2);
+      expect(
+        tracker.outcomeForScope(scope: "/project"),
+        CursorCatalogProbeOutcome.retryableFailure,
+      );
+    });
+
     test("does not repeat an exhausted scope", () async {
       repository.candidates = CursorCatalogCandidateListResult(
         candidates: const [],
@@ -124,22 +142,24 @@ void main() {
       expect(repository.maxConcurrentLists, 1);
     });
 
-    test("connection reset invalidates retryable failure for a later retry", () async {
+    test("waiting callers share the one retry for a failed scope", () async {
       repository.candidates = CursorCatalogCandidateListResult(
         candidates: const [],
         exhaustive: false,
       );
+      repository.listGate = Completer<void>();
 
-      await service.ensureCatalog(scope: "/project");
-      await service.ensureCatalog(scope: "/project");
-      expect(repository.listedScopes, ["/project"]);
-
-      service.onConnectionReset();
+      final first = service.ensureCatalog(scope: "/project");
+      final second = service.ensureCatalog(scope: "/project");
+      final third = service.ensureCatalog(scope: "/project");
       await Future<void>.delayed(Duration.zero);
+      repository.listGate!.complete();
+      await Future.wait([first, second, third]);
       await service.ensureCatalog(scope: "/project");
 
       expect(repository.listedScopes, ["/project", "/project"]);
-      expect(repository.resetCount, 3, reason: "failure, connection reset, failure");
+      expect(repository.maxConcurrentLists, 1);
+      expect(repository.resetCount, 2);
     });
 
     test("short deadline completes and resets a timed-out repository", () async {

@@ -33,6 +33,7 @@ class CursorCatalogRepository {
     final stopwatch = Stopwatch()..start();
     final normalizedScope = normalizeProjectDirectory(directory: scope);
     final candidatesById = <String, CursorCatalogCandidate>{};
+    final unfilteredFallbackCandidates = <String>{};
     var exhaustive = true;
     final scopes = <String?>[
       null,
@@ -50,15 +51,28 @@ class CursorCatalogRepository {
           final sessionId = session.sessionId.trim();
           if (sessionId.isEmpty) continue;
           final rawCwd = session.cwd;
+          final hasCwd = rawCwd != null && rawCwd.trim().isNotEmpty;
           final fallbackScope = scanScope ?? _launchScope;
-          final cwd = rawCwd == null || rawCwd.trim().isEmpty
-              ? fallbackScope
-              : normalizeProjectDirectory(directory: rawCwd);
+          final cwd = !hasCwd ? fallbackScope : normalizeProjectDirectory(directory: rawCwd);
+          final previous = candidatesById[sessionId];
+          final replaceFallbackCwd =
+              previous == null || (unfilteredFallbackCandidates.contains(sessionId) && (hasCwd || scanScope != null));
+          final previousUpdatedAtMs = previous?.updatedAtMs;
+          final updatedAtMs = previousUpdatedAtMs == null
+              ? session.updatedAtMs
+              : session.updatedAtMs == null || previousUpdatedAtMs >= session.updatedAtMs!
+              ? previousUpdatedAtMs
+              : session.updatedAtMs;
           candidatesById[sessionId] = CursorCatalogCandidate(
             sessionId: sessionId,
-            cwd: cwd,
-            updatedAtMs: session.updatedAtMs,
+            cwd: replaceFallbackCwd ? cwd : previous.cwd,
+            updatedAtMs: updatedAtMs,
           );
+          if (scanScope == null && !hasCwd && previous == null) {
+            unfilteredFallbackCandidates.add(sessionId);
+          } else if (replaceFallbackCwd) {
+            unfilteredFallbackCandidates.remove(sessionId);
+          }
         }
       } on AcpRpcException catch (error, stack) {
         if (scanScope == null && (error.code == -32601 || error.code == -32602)) {

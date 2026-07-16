@@ -82,19 +82,19 @@ void main() {
       );
     });
 
-    test("connection reset removes only retryable outcomes", () {
-      tracker.recordOutcome(scope: "/complete", outcome: CursorCatalogProbeOutcome.complete);
-      tracker.recordOutcome(scope: "/exhausted", outcome: CursorCatalogProbeOutcome.exhausted);
-      tracker.recordOutcome(
-        scope: "/retryable",
-        outcome: CursorCatalogProbeOutcome.retryableFailure,
+    test("falls back when a fresh session reports an unknown model", () {
+      tracker.applySnapshot(
+        snapshot: _snapshot(
+          loadedModelId: "unknown",
+          loadedModeId: "agent",
+          includeThoughtLevel: false,
+        ),
+        fromNewSession: true,
+        thoughtLevelModelId: null,
+        captureThoughtLevelDefault: true,
       );
 
-      tracker.onConnectionReset();
-
-      expect(tracker.outcomeForScope(scope: "/complete"), CursorCatalogProbeOutcome.complete);
-      expect(tracker.outcomeForScope(scope: "/exhausted"), CursorCatalogProbeOutcome.exhausted);
-      expect(tracker.outcomeForScope(scope: "/retryable"), isNull);
+      expect(tracker.currentModelId, "gpt-5.4");
     });
   });
 }

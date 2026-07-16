@@ -32,7 +32,9 @@ class CursorCatalogTracker {
     if (snapshot.modelConfigId != null) _modelConfigId = snapshot.modelConfigId;
     if (snapshot.models.isNotEmpty) _models = snapshot.models;
     final loadedModelId = snapshot.loadedModelId;
-    if (fromNewSession && loadedModelId != null) _currentModelId = loadedModelId;
+    if (fromNewSession && loadedModelId != null) {
+      _currentModelId = hasModel(modelId: loadedModelId) ? loadedModelId : firstModelId;
+    }
 
     if (snapshot.modeConfigId != null) _modeConfigId = snapshot.modeConfigId;
     if (snapshot.modes.isNotEmpty) _modes = snapshot.modes;
@@ -42,9 +44,7 @@ class CursorCatalogTracker {
 
     final thoughtLevel = snapshot.thoughtLevel;
     final resolvedThoughtLevelModelId = thoughtLevelModelId ?? loadedModelId ?? _currentModelId;
-    if (thoughtLevel != null &&
-        resolvedThoughtLevelModelId != null &&
-        resolvedThoughtLevelModelId.isNotEmpty) {
+    if (thoughtLevel != null && resolvedThoughtLevelModelId != null && resolvedThoughtLevelModelId.isNotEmpty) {
       final previous = _thoughtLevelsByModel[resolvedThoughtLevelModelId];
       _thoughtLevelsByModel[resolvedThoughtLevelModelId] = CursorThoughtLevelSnapshot(
         configId: thoughtLevel.configId,
@@ -90,14 +90,6 @@ class CursorCatalogTracker {
 
   CursorCatalogProbeOutcome? outcomeForScope({required String scope}) =>
       _outcomesByScope[_normalizeScope(scope: scope)];
-
-  bool hasAttemptedScope({required String scope}) => outcomeForScope(scope: scope) != null;
-
-  void onConnectionReset() {
-    _outcomesByScope.removeWhere(
-      (_, outcome) => outcome == CursorCatalogProbeOutcome.retryableFailure,
-    );
-  }
 
   String _normalizeScope({required String scope}) => normalizeProjectDirectory(directory: scope);
 }

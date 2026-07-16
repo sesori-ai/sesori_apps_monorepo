@@ -50,6 +50,36 @@ void main() {
       );
     });
 
+    test("preserves authoritative cwd and the newest duplicate timestamp", () async {
+      api.sessionsByScope[null] = [
+        _session("authoritative", cwd: "/actual", updatedAtMs: 300),
+        _session("newer", cwd: "/newer-actual", updatedAtMs: 100),
+      ];
+      api.sessionsByScope["/launch"] = [
+        _session("authoritative", cwd: null, updatedAtMs: 200),
+        _session("newer", cwd: null, updatedAtMs: 400),
+      ];
+      api.sessionsByScope["/project"] = [
+        _session("authoritative", cwd: null, updatedAtMs: null),
+      ];
+
+      final result = await repository.listCandidates(
+        scope: "/project",
+        timeout: const Duration(seconds: 1),
+      );
+
+      final authoritative = result.candidates.singleWhere(
+        (candidate) => candidate.sessionId == "authoritative",
+      );
+      expect(authoritative.cwd, "/actual");
+      expect(authoritative.updatedAtMs, 300);
+      final newer = result.candidates.singleWhere(
+        (candidate) => candidate.sessionId == "newer",
+      );
+      expect(newer.cwd, "/newer-actual");
+      expect(newer.updatedAtMs, 400);
+    });
+
     test("known unsupported unfiltered listing remains exhaustive", () async {
       api.errorsByScope[null] = AcpRpcException(
         method: AcpMethods.sessionList,

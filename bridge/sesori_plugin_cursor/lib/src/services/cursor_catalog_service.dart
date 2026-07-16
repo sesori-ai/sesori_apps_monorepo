@@ -24,13 +24,22 @@ class CursorCatalogService {
   final Duration _totalTimeout;
   final int _maxCandidates;
   Future<void>? _inFlight;
+  final Set<String> _retriedScopes = {};
 
   Future<void> ensureCatalog({required String scope}) async {
-    while (!_tracker.isComplete && !_tracker.hasAttemptedScope(scope: scope)) {
+    while (!_tracker.isComplete) {
       final pending = _inFlight;
       if (pending != null) {
         await pending;
         continue;
+      }
+
+      final outcome = _tracker.outcomeForScope(scope: scope);
+      if (outcome == CursorCatalogProbeOutcome.complete || outcome == CursorCatalogProbeOutcome.exhausted) {
+        return;
+      }
+      if (outcome == CursorCatalogProbeOutcome.retryableFailure && !_retriedScopes.add(scope)) {
+        return;
       }
 
       final operation = _probe(scope: scope);
@@ -40,6 +49,7 @@ class CursorCatalogService {
       } finally {
         if (identical(_inFlight, operation)) _inFlight = null;
       }
+      return;
     }
   }
 
@@ -55,15 +65,6 @@ class CursorCatalogService {
       fromNewSession: fromNewSession,
       thoughtLevelModelId: thoughtLevelModelId,
       captureThoughtLevelDefault: captureThoughtLevelDefault,
-    );
-  }
-
-  void onConnectionReset() {
-    _tracker.onConnectionReset();
-    unawaited(
-      _resetRepository(
-        failureMessage: "[cursor] failed to reset catalog probe after agent connection reset",
-      ),
     );
   }
 
