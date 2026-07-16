@@ -18,7 +18,7 @@ import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../api/filesystem_api.dart";
 import "../api/git_cli_api.dart";
 import "derived_project_builder.dart";
-import "mappers/git_remote_slug_parser.dart";
+import "mappers/git_remote_identity_parser.dart";
 import "mappers/plugin_project_mapper.dart";
 import "models/project_activity.dart";
 import "models/project_activity_evidence.dart";
@@ -44,7 +44,7 @@ import "session_unseen_calculator.dart";
 /// targets, and performs exact reads and writes. It does not order timestamps.
 class ProjectRepository {
   static const DerivedProjectBuilder _derivedProjectBuilder = DerivedProjectBuilder();
-  static const GitRemoteSlugParser _remoteSlugParser = GitRemoteSlugParser();
+  static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
 
   final BridgePluginApi _plugin;
   final ProjectsDao _projectsDao;
@@ -317,12 +317,12 @@ class ProjectRepository {
     );
   }
 
-  /// Forge-style repository slug (`org/repo`) parsed from the project's git
-  /// remote. Null when the project directory is unknown, is not a git
-  /// repository, has no remotes, or its remote has no forge-style path (e.g. a
-  /// local filesystem remote) — absence is a legitimate state the client
-  /// renders by omitting repository identity.
-  Future<String?> getRepoSlug({required String projectId}) async {
+  /// Forge identity — host plus `org/repo` slug — parsed from the project's
+  /// git remote. Null when the project directory is unknown, is not a git
+  /// repository, has no remotes, or its remote has no forge-style identity
+  /// (e.g. a local filesystem remote) — absence is a legitimate state the
+  /// client renders by omitting repository identity.
+  Future<GitRemoteIdentity?> getRemoteIdentity({required String projectId}) async {
     final path = await _projectsDao.getResolvedPath(projectId: projectId);
     if (path == null) {
       return null;
@@ -331,7 +331,7 @@ class ProjectRepository {
     if (remoteUrl == null) {
       return null;
     }
-    return _remoteSlugParser.parse(remoteUrl: remoteUrl);
+    return _remoteIdentityParser.parse(remoteUrl: remoteUrl);
   }
 
   Future<StoredProjectActivity?> getStoredSessionActivity({required String sessionId}) async {

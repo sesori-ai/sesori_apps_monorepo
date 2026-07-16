@@ -13,6 +13,12 @@ sealed class BaseBranchResponse with _$BaseBranchResponse {
     // from payloads of bridges that predate the field, which decodes to the
     // same null.
     required String? repoSlug,
+    // Hostname the git remote points at (`github.com`), lowercased, without
+    // user info or port — lets clients recognise the hosting provider without
+    // re-parsing remote URLs. Non-null exactly when [repoSlug] is non-null;
+    // absent from payloads of bridges that predate the field, which decodes
+    // to null.
+    required String? repoHost,
   }) = _BaseBranchResponse;
 
   factory BaseBranchResponse.fromJson(Map<String, dynamic> json) => _$BaseBranchResponseFromJson(json);

@@ -98,10 +98,16 @@ class AdaptiveSessionRouterTestHarness {
       return ApiResponse.success(SessionListResponse(items: sessionsByProject[projectId] ?? const []));
     });
     when(
-      () => projectRepository.getBaseBranch(projectId: any(named: "projectId")),
+      () => projectRepository.getGitContext(projectId: any(named: "projectId")),
     ).thenAnswer((invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;
-      return ApiResponse.success(BaseBranchResponse(baseBranch: baseBranchByProject[projectId], repoSlug: null));
+      return ApiResponse.success(
+        ProjectGitContext(
+          baseBranch: baseBranchByProject[projectId],
+          repoSlug: null,
+          repoProvider: RepoProvider.other,
+        ),
+      );
     });
 
     when(

@@ -2,6 +2,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
+import "../../repositories/models/repo_provider.dart";
 import "../../services/models/session_activity_info.dart";
 
 part "session_list_state.freezed.dart";
@@ -32,6 +33,11 @@ sealed class SessionListState with _$SessionListState {
     /// Repository slug of the project's git remote (e.g. "org/repo"). Null
     /// when the project has no usable remote or the bridge predates the field.
     required String? repoSlug,
+
+    /// Hosting provider of the git remote, classified from its host. [RepoProvider.other]
+    /// when the host is unrecognised or unknown; only meaningful alongside a
+    /// non-null [repoSlug].
+    @Default(RepoProvider.other) RepoProvider repoProvider,
   }) = SessionListLoaded;
 
   /// The requested project ID no longer resolves to the expected project on

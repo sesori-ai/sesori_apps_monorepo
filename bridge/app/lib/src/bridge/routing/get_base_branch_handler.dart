@@ -28,11 +28,15 @@ class GetBaseBranchHandler extends BodyRequestHandler<ProjectIdRequest, BaseBran
   }) async {
     final projectId = body.projectId;
 
-    final (baseBranch, repoSlug) = await (
+    final (baseBranch, remote) = await (
       _projectRepository.getBaseBranch(projectId: projectId),
-      _projectRepository.getRepoSlug(projectId: projectId),
+      _projectRepository.getRemoteIdentity(projectId: projectId),
     ).wait;
 
-    return BaseBranchResponse(baseBranch: baseBranch, repoSlug: repoSlug);
+    return BaseBranchResponse(
+      baseBranch: baseBranch,
+      repoSlug: remote?.slug,
+      repoHost: remote?.host,
+    );
   }
 }

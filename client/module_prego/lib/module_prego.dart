@@ -13,6 +13,7 @@ export 'components/menus/prego_info_popover.dart';
 export 'components/menus/prego_popover.dart';
 export 'components/navigation/prego_glass_scaffold.dart';
 export 'components/navigation/prego_nav_leading_title.dart';
+export 'components/navigation/prego_nav_subtitle.dart';
 export 'components/navigation/prego_nav_title.dart';
 export 'components/navigation/prego_top_navigation.dart';
 export 'components/navigation/prego_top_navigation_sheets.dart';

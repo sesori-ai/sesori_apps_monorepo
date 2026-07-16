@@ -37,13 +37,14 @@ enum PregoTopNavigationTitleMode {
 ///    the controller. Without a [scrollController] the collapsing title never
 ///    appears.
 /// 2. **Inline** ([PregoTopNavigationTitleMode.inline]) — a fixed, centred
-///    [title] (and [subtitle]), rendered by [PregoNavTitle]. Self-contained;
-///    use it for a standalone bar or for bodies that own their own scroll.
+///    [title] (and [subtitleText]), rendered by [PregoNavTitle].
+///    Self-contained; use it for a standalone bar or for bodies that own
+///    their own scroll.
 /// 3. **Back leading** ([PregoTopNavigationTitleMode.backLeading]) — a fixed,
-///    muted [title]/[subtitle] block ([PregoNavLeadingTitle]) sitting
-///    left-aligned beside the back button instead of centred, with optional
-///    status dot, subtitle icon and info-popover affordance. There is no large
-///    or centred title in this mode; [scrollController] is ignored.
+///    muted [title] block ([PregoNavLeadingTitle]) sitting left-aligned
+///    beside the back button instead of centred, with the caller-composed
+///    [subtitle] widget (typically a [PregoNavSubtitle]) beneath it. There is
+///    no large or centred title in this mode; [scrollController] is ignored.
 ///
 /// [PregoGlassScaffold] and this bar share the collapse geometry through the
 /// static [collapseProgressOf]: the bar fades its inline title *in* by that
@@ -73,11 +74,8 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
     super.key,
     required this.title,
     this.subtitle,
+    this.subtitleText,
     this.titleMode = PregoTopNavigationTitleMode.collapsing,
-    this.subtitleIcon,
-    this.online,
-    this.subtitleInfoMessage,
-    this.subtitleInfoSemanticLabel,
     this.scrollController,
     this.actions,
     this.leading,
@@ -89,29 +87,19 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
   /// large title collapses (collapsing mode), depending on [titleMode].
   final String title;
 
-  /// Optional second line rendered beneath the [title] in a muted style. Only
-  /// shown in the inline and back-leading modes; a `null` or empty value
-  /// renders the title on its own.
-  final String? subtitle;
+  /// The back-leading title block's second line — a self-contained,
+  /// caller-composed widget (typically a [PregoNavSubtitle]) holding
+  /// everything the row needs: icon, status dot, tap affordance. Back-leading
+  /// mode only; null renders the title on its own.
+  final Widget? subtitle;
+
+  /// Optional second text line rendered beneath the centred [title] in the
+  /// bar's own muted style (inline mode). A `null` or empty value renders the
+  /// title on its own.
+  final String? subtitleText;
 
   /// How the bar presents its title. See the class doc for the three modes.
   final PregoTopNavigationTitleMode titleMode;
-
-  /// Optional icon before the [subtitle] text. Back-leading mode only.
-  final IconData? subtitleIcon;
-
-  /// Status dot before the [subtitle]: green when `true`, muted when `false`,
-  /// absent when `null`. Back-leading mode only.
-  final bool? online;
-
-  /// When set (back-leading mode only), the subtitle row becomes tappable and
-  /// opens an info popover with this message — see
-  /// [PregoNavLeadingTitle.infoMessage].
-  final String? subtitleInfoMessage;
-
-  /// Screen-reader label for the tappable subtitle row; only used with
-  /// [subtitleInfoMessage].
-  final String? subtitleInfoSemanticLabel;
 
   /// Drives the collapsing title in non-inline mode: the bar fades its title in
   /// as this controller's offset crosses [collapseDistance]. Ignored in inline
@@ -205,7 +193,7 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
       // Inline mode: a fixed, centred title+subtitle (PregoNavTitle).
       // Collapsing mode: the title that fades in as the large title collapses.
       middle: titleMode == PregoTopNavigationTitleMode.inline
-          ? PregoNavTitle(title: title, subtitle: subtitle)
+          ? PregoNavTitle(title: title, subtitle: subtitleText)
           : _buildCollapsedTitle(),
       trailing: actions == null
           ? null
@@ -229,14 +217,7 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
         Expanded(
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: PregoNavLeadingTitle(
-              title: title,
-              subtitle: subtitle,
-              subtitleIcon: subtitleIcon,
-              online: online,
-              infoMessage: subtitleInfoMessage,
-              infoSemanticLabel: subtitleInfoSemanticLabel,
-            ),
+            child: PregoNavLeadingTitle(title: title, subtitle: subtitle),
           ),
         ),
         if (actions != null) ...[

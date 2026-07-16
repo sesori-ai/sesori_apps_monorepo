@@ -88,7 +88,7 @@ void main() {
       expect(response.baseBranch, equals("main"));
     });
 
-    test("returns repoSlug null for a project without a stored path or remote", () async {
+    test("returns repoSlug and repoHost null for a project without a stored path or remote", () async {
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "unknown-project"),
@@ -98,9 +98,10 @@ void main() {
       );
 
       expect(response.repoSlug, isNull);
+      expect(response.repoHost, isNull);
     });
 
-    test("returns repoSlug parsed from the project's git remote alongside baseBranch", () async {
+    test("returns the remote's slug and host parsed from the project's git remote alongside baseBranch", () async {
       await db.projectsDao.recordOpenedProject(
         projectId: "/Users/dev/my-app",
         path: "/Users/dev/my-app",
@@ -129,6 +130,7 @@ void main() {
 
       expect(response.baseBranch, equals("develop"));
       expect(response.repoSlug, equals("sesori-ai/sesori_apps"));
+      expect(response.repoHost, equals("github.com"));
     });
   });
 }

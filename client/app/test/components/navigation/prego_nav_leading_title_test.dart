@@ -2,16 +2,17 @@ import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:theme_prego/module_prego.dart";
 
-/// Rendering guards for [PregoNavLeadingTitle], the left-aligned title block
-/// of the top bar's back-leading mode: which subtitle adornments render for
-/// which inputs, the status-dot colours, the info popover, and that the
-/// two-line block clears the 54pt bar.
+/// Rendering guards for [PregoNavLeadingTitle] composed with its canonical
+/// subtitle content, [PregoNavSubtitle] — the pairing the top bar's
+/// back-leading mode renders: which subtitle adornments render for which
+/// inputs, the status-dot colours, the info popover, and that the two-line
+/// block clears the 54pt bar.
 void main() {
   Future<void> pumpBlock(
     WidgetTester tester, {
     required String title,
     String? subtitle,
-    IconData? subtitleIcon,
+    IconData? icon,
     bool? online,
     String? infoMessage,
     String? infoSemanticLabel,
@@ -30,11 +31,15 @@ void main() {
               height: slotHeight,
               child: PregoNavLeadingTitle(
                 title: title,
-                subtitle: subtitle,
-                subtitleIcon: subtitleIcon,
-                online: online,
-                infoMessage: infoMessage,
-                infoSemanticLabel: infoSemanticLabel,
+                subtitle: subtitle == null
+                    ? null
+                    : PregoNavSubtitle(
+                        text: subtitle,
+                        icon: icon,
+                        online: online,
+                        infoMessage: infoMessage,
+                        infoSemanticLabel: infoSemanticLabel,
+                      ),
               ),
             ),
           ),
@@ -61,7 +66,7 @@ void main() {
       tester,
       title: "Sesori_app_monorepo",
       subtitle: "sesori-ai/Sesori_app_mo",
-      subtitleIcon: TablerSolid.brand_github,
+      icon: TablerSolid.brand_github,
       online: true,
       infoMessage: "sesori-ai/Sesori_app_monorepo",
       infoSemanticLabel: "Show full repository name",
@@ -74,13 +79,14 @@ void main() {
     expect(dotFinder, findsOneWidget);
   });
 
-  testWidgets("renders the title alone when there is no subtitle", (tester) async {
-    await pumpBlock(tester, title: "Just a project", subtitleIcon: TablerSolid.brand_github, online: true);
+  testWidgets("renders the title alone when there is no subtitle widget", (tester) async {
+    await pumpBlock(tester, title: "Just a project", icon: TablerSolid.brand_github, online: true);
 
     expect(find.text("Just a project"), findsOneWidget);
-    // The whole row is hidden — dot and icon included — not just the text.
+    // Nothing of the row renders — the block has no second line at all.
     expect(dotFinder, findsNothing);
     expect(find.byIcon(TablerSolid.brand_github), findsNothing);
+    expect(find.byType(PregoNavSubtitle), findsNothing);
   });
 
   testWidgets("status dot is green when online and muted when offline", (tester) async {
@@ -134,7 +140,7 @@ void main() {
       tester,
       title: "Sesori_app_monorepo",
       subtitle: "sesori-ai/Sesori_app_monorepo",
-      subtitleIcon: TablerSolid.brand_github,
+      icon: TablerSolid.brand_github,
       online: true,
       infoMessage: "sesori-ai/Sesori_app_monorepo",
     );
@@ -146,7 +152,7 @@ void main() {
       tester,
       title: "Sesori_app_monorepo",
       subtitle: "sesori-ai/Sesori_app_monorepo",
-      subtitleIcon: TablerSolid.brand_github,
+      icon: TablerSolid.brand_github,
       online: true,
       infoMessage: "sesori-ai/Sesori_app_monorepo",
       slotHeight: PregoTopNavigation.barHeight,

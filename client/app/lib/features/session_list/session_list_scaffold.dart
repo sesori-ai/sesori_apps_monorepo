@@ -30,12 +30,24 @@ class SessionListScaffold extends StatelessWidget {
     required this.onBack,
   });
 
+  /// The repo's brand glyph. GitHub keeps the mock's filled glyph; the solid
+  /// Tabler set carries no other git-forge brands, so GitLab/Bitbucket use
+  /// their regular-weight glyphs and unrecognised hosts fall back to the
+  /// generic git mark.
+  static IconData _providerIcon(RepoProvider provider) => switch (provider) {
+    RepoProvider.github => TablerSolid.brand_github,
+    RepoProvider.gitlab => TablerRegular.brand_gitlab,
+    RepoProvider.bitbucket => TablerRegular.brand_bitbucket,
+    RepoProvider.other => TablerRegular.brand_git,
+  };
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
     final showArchived = state is SessionListLoaded && state.showArchived;
     final repoSlug = state is SessionListLoaded ? state.repoSlug : null;
+    final repoProvider = state is SessionListLoaded ? state.repoProvider : RepoProvider.other;
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
     // Green only while the relay↔bridge chain is fully connected (no overlay
     // condition pending); bridge-offline, connection-lost and reconnecting all
@@ -54,11 +66,15 @@ class SessionListScaffold extends StatelessWidget {
       // pops over the untruncated slug, which the bar ellipsises.
       title: projectName ?? loc.sessionListTitle,
       titleMode: PregoTopNavigationTitleMode.backLeading,
-      subtitle: repoSlug,
-      subtitleIcon: TablerSolid.brand_github,
-      online: online,
-      subtitleInfoMessage: repoSlug,
-      subtitleInfoSemanticLabel: loc.sessionListRepoInfoSemantics,
+      subtitle: repoSlug == null
+          ? null
+          : PregoNavSubtitle(
+              text: repoSlug,
+              icon: _providerIcon(repoProvider),
+              online: online,
+              infoMessage: repoSlug,
+              infoSemanticLabel: loc.sessionListRepoInfoSemantics,
+            ),
       banner: ConnectionBanner.maybeFor(context),
       actions: [
         PregoButtonsIconGlass(

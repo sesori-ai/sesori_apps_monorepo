@@ -104,7 +104,7 @@ void main() {
           home: Scaffold(
             appBar: PregoTopNavigation(
               title: barTitle,
-              subtitle: subtitle,
+              subtitle: subtitle == null ? null : PregoNavSubtitle(text: subtitle),
               titleMode: PregoTopNavigationTitleMode.backLeading,
               automaticallyImplyLeading: false,
               onBack: onBack,

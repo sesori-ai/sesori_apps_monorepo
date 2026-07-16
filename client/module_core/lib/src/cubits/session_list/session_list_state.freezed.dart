@@ -78,7 +78,7 @@ String toString() {
 
 
 class SessionListLoaded implements SessionListState {
-  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false, final  Map<String, SessionActivityInfo> activeSessionIds = const {}, this.isRefreshing = false, final  Map<String, bool> unseenBySessionId = const {}, required this.baseBranch, required this.repoSlug}): _sessions = sessions,_activeSessionIds = activeSessionIds,_unseenBySessionId = unseenBySessionId;
+  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false, final  Map<String, SessionActivityInfo> activeSessionIds = const {}, this.isRefreshing = false, final  Map<String, bool> unseenBySessionId = const {}, required this.baseBranch, required this.repoSlug, this.repoProvider = RepoProvider.other}): _sessions = sessions,_activeSessionIds = activeSessionIds,_unseenBySessionId = unseenBySessionId;
   
 
  final  List<Session> _sessions;
@@ -123,6 +123,10 @@ class SessionListLoaded implements SessionListState {
 /// Repository slug of the project's git remote (e.g. "org/repo"). Null
 /// when the project has no usable remote or the bridge predates the field.
  final  String? repoSlug;
+/// Hosting provider of the git remote, classified from its host. [RepoProvider.other]
+/// when the host is unrecognised or unknown; only meaningful alongside a
+/// non-null [repoSlug].
+@JsonKey() final  RepoProvider repoProvider;
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
@@ -134,16 +138,16 @@ $SessionListLoadedCopyWith<SessionListLoaded> get copyWith => _$SessionListLoade
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoaded&&const DeepCollectionEquality().equals(other._sessions, _sessions)&&(identical(other.showArchived, showArchived) || other.showArchived == showArchived)&&const DeepCollectionEquality().equals(other._activeSessionIds, _activeSessionIds)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other._unseenBySessionId, _unseenBySessionId)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoaded&&const DeepCollectionEquality().equals(other._sessions, _sessions)&&(identical(other.showArchived, showArchived) || other.showArchived == showArchived)&&const DeepCollectionEquality().equals(other._activeSessionIds, _activeSessionIds)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other._unseenBySessionId, _unseenBySessionId)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug)&&(identical(other.repoProvider, repoProvider) || other.repoProvider == repoProvider));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),showArchived,const DeepCollectionEquality().hash(_activeSessionIds),isRefreshing,const DeepCollectionEquality().hash(_unseenBySessionId),baseBranch,repoSlug);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),showArchived,const DeepCollectionEquality().hash(_activeSessionIds),isRefreshing,const DeepCollectionEquality().hash(_unseenBySessionId),baseBranch,repoSlug,repoProvider);
 
 @override
 String toString() {
-  return 'SessionListState.loaded(sessions: $sessions, showArchived: $showArchived, activeSessionIds: $activeSessionIds, isRefreshing: $isRefreshing, unseenBySessionId: $unseenBySessionId, baseBranch: $baseBranch, repoSlug: $repoSlug)';
+  return 'SessionListState.loaded(sessions: $sessions, showArchived: $showArchived, activeSessionIds: $activeSessionIds, isRefreshing: $isRefreshing, unseenBySessionId: $unseenBySessionId, baseBranch: $baseBranch, repoSlug: $repoSlug, repoProvider: $repoProvider)';
 }
 
 
@@ -154,7 +158,7 @@ abstract mixin class $SessionListLoadedCopyWith<$Res> implements $SessionListSta
   factory $SessionListLoadedCopyWith(SessionListLoaded value, $Res Function(SessionListLoaded) _then) = _$SessionListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<Session> sessions, bool showArchived, Map<String, SessionActivityInfo> activeSessionIds, bool isRefreshing, Map<String, bool> unseenBySessionId, String? baseBranch, String? repoSlug
+ List<Session> sessions, bool showArchived, Map<String, SessionActivityInfo> activeSessionIds, bool isRefreshing, Map<String, bool> unseenBySessionId, String? baseBranch, String? repoSlug, RepoProvider repoProvider
 });
 
 
@@ -171,7 +175,7 @@ class _$SessionListLoadedCopyWithImpl<$Res>
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessions = null,Object? showArchived = null,Object? activeSessionIds = null,Object? isRefreshing = null,Object? unseenBySessionId = null,Object? baseBranch = freezed,Object? repoSlug = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessions = null,Object? showArchived = null,Object? activeSessionIds = null,Object? isRefreshing = null,Object? unseenBySessionId = null,Object? baseBranch = freezed,Object? repoSlug = freezed,Object? repoProvider = null,}) {
   return _then(SessionListLoaded(
 sessions: null == sessions ? _self._sessions : sessions // ignore: cast_nullable_to_non_nullable
 as List<Session>,showArchived: null == showArchived ? _self.showArchived : showArchived // ignore: cast_nullable_to_non_nullable
@@ -180,7 +184,8 @@ as Map<String, SessionActivityInfo>,isRefreshing: null == isRefreshing ? _self.i
 as bool,unseenBySessionId: null == unseenBySessionId ? _self._unseenBySessionId : unseenBySessionId // ignore: cast_nullable_to_non_nullable
 as Map<String, bool>,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
 as String?,repoSlug: freezed == repoSlug ? _self.repoSlug : repoSlug // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,repoProvider: null == repoProvider ? _self.repoProvider : repoProvider // ignore: cast_nullable_to_non_nullable
+as RepoProvider,
   ));
 }
 

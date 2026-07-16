@@ -120,7 +120,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
 
     return PregoGlassScaffold(
       title: title,
-      subtitle: subtitle.isEmpty ? null : subtitle,
+      subtitleText: subtitle.isEmpty ? null : subtitle,
       banner: ConnectionBanner.maybeFor(context),
       // A chat owns its own (reversed) scroll, so there is no top-anchored
       // scroll for a large title to collapse against. Use the fixed, centred

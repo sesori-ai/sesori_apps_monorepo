@@ -331,8 +331,12 @@ void main() {
       ),
     );
     when(
-      () => mockProjectRepository.getBaseBranch(projectId: any(named: "projectId")),
-    ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null, repoSlug: null)));
+      () => mockProjectRepository.getGitContext(projectId: any(named: "projectId")),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const ProjectGitContext(baseBranch: null, repoSlug: null, repoProvider: RepoProvider.other),
+      ),
+    );
     when(
       () => mockFailureReporter.recordFailure(
         error: any(named: "error"),

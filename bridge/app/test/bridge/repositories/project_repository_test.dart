@@ -684,7 +684,7 @@ void main() {
     });
   });
 
-  group("ProjectRepository getRepoSlug", () {
+  group("ProjectRepository getRemoteIdentity", () {
     late AppDatabase db;
     late _FakeBridgePlugin plugin;
 
@@ -709,28 +709,31 @@ void main() {
     test("returns null for a project with no stored row", () async {
       final repo = repoWith(remoteUrl: "git@github.com:org/repo.git");
 
-      expect(await repo.getRepoSlug(projectId: "unknown"), isNull);
+      expect(await repo.getRemoteIdentity(projectId: "unknown"), isNull);
     });
 
     test("returns null when the project has no usable remote", () async {
       await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
       final repo = repoWith(remoteUrl: null);
 
-      expect(await repo.getRepoSlug(projectId: "/dev/app"), isNull);
+      expect(await repo.getRemoteIdentity(projectId: "/dev/app"), isNull);
     });
 
-    test("parses the remote URL of the stored project path into a slug", () async {
+    test("parses the remote URL of the stored project path into host and slug", () async {
       await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
       final repo = repoWith(remoteUrl: "git@github.com:sesori-ai/sesori.git");
 
-      expect(await repo.getRepoSlug(projectId: "/dev/app"), equals("sesori-ai/sesori"));
+      expect(
+        await repo.getRemoteIdentity(projectId: "/dev/app"),
+        equals((host: "github.com", slug: "sesori-ai/sesori")),
+      );
     });
 
     test("returns null for a local filesystem remote", () async {
       await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
       final repo = repoWith(remoteUrl: "/srv/git/repo.git");
 
-      expect(await repo.getRepoSlug(projectId: "/dev/app"), isNull);
+      expect(await repo.getRemoteIdentity(projectId: "/dev/app"), isNull);
     });
   });
 }

@@ -55,10 +55,14 @@ void main() {
     await tester.pump();
   }
 
-  SessionListState loadedState({required String? repoSlug}) => SessionListState.loaded(
+  SessionListState loadedState({
+    required String? repoSlug,
+    RepoProvider repoProvider = RepoProvider.other,
+  }) => SessionListState.loaded(
     sessions: [testSession(id: "s1", title: "A task")],
     baseBranch: "main",
     repoSlug: repoSlug,
+    repoProvider: repoProvider,
   );
 
   Color dotColor(WidgetTester tester) {
@@ -79,7 +83,10 @@ void main() {
   }
 
   testWidgets("bar shows the project name over the repo-slug subtitle row", (tester) async {
-    await pumpScaffold(tester, state: loadedState(repoSlug: "sesori-ai/sesori_apps_monorepo"));
+    await pumpScaffold(
+      tester,
+      state: loadedState(repoSlug: "sesori-ai/sesori_apps_monorepo", repoProvider: RepoProvider.github),
+    );
 
     // Exactly one occurrence: the bar's leading block — no large title below.
     expect(find.text("Sesori_app_monorepo"), findsOneWidget);
@@ -92,7 +99,24 @@ void main() {
     await pumpScaffold(tester, state: loadedState(repoSlug: null));
 
     expect(find.text("Sesori_app_monorepo"), findsOneWidget);
+    expect(find.byType(PregoNavSubtitle), findsNothing);
     expect(find.byIcon(TablerSolid.brand_github), findsNothing);
+  });
+
+  testWidgets("subtitle icon follows the recognised hosting provider", (tester) async {
+    await pumpScaffold(
+      tester,
+      state: loadedState(repoSlug: "org/group/repo", repoProvider: RepoProvider.gitlab),
+    );
+
+    expect(find.byIcon(TablerRegular.brand_gitlab), findsOneWidget);
+    expect(find.byIcon(TablerSolid.brand_github), findsNothing);
+  });
+
+  testWidgets("unrecognised providers fall back to the generic git icon", (tester) async {
+    await pumpScaffold(tester, state: loadedState(repoSlug: "org/repo"));
+
+    expect(find.byIcon(TablerRegular.brand_git), findsOneWidget);
   });
 
   testWidgets("falls back to the generic title without a project name", (tester) async {
