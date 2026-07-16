@@ -19,6 +19,7 @@ export 'components/surfaces/prego_bottom_sheet.dart';
 export 'components/surfaces/prego_surfaces.dart';
 export 'icons/tabler_icons.g.dart';
 export 'icons/vespr_icons.g.dart';
+export 'interactions/prego_swipe_actions.dart';
 export 'motion/prego_reduced_motion.dart';
 export 'theme/prego_glass.dart';
 export 'theme/prego_theme.dart';

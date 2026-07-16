@@ -221,7 +221,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
             itemCount: projects.length,
             itemBuilder: (context, index) {
               final project = projects[index];
+              // Keyed so a recycled element can't carry one project's revealed
+              // swipe actions onto another project's row.
               return ProjectTile(
+                key: ValueKey(project.id),
                 project: project,
                 activeSessions: activityById[project.id] ?? 0,
                 unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
