@@ -1,13 +1,16 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -34,15 +37,18 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = DeleteSessionHandler(
-        worktreeService: worktreeService,
-        sessionRepository: sessionRepository,
+        sessionLifecycleService: SessionLifecycleService(
+          worktreeService: worktreeService,
+          sessionRepository: sessionRepository,
+          filesystemRepository: FilesystemRepository(
+            filesystemApi: const FilesystemApi(),
+            permissionValidator: const FilesystemPermissionValidator(),
+          ),
+        ),
         sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
       );
     });
@@ -160,6 +166,42 @@ void main() {
       expect(plugin.lastDeleteSessionId, equals("s2"));
       expect(await db.sessionDao.getSession(sessionId: "s2"), isNull);
       expect(operationLog, equals(["checkSafety", "removeWorktree", "pluginDelete"]));
+    });
+
+    test("failed worktree removal preserves the session for retry", () async {
+      final worktree = Directory.systemTemp.createTempSync("delete_cleanup_failure_");
+      addTearDown(() {
+        if (worktree.existsSync()) worktree.deleteSync(recursive: true);
+      });
+      await _insertSession(
+        db: db,
+        sessionId: "s2-failed",
+        projectId: "/repo",
+        worktreePath: worktree.path,
+        branchName: "session-002-failed",
+      );
+      worktreeService.safetyResult = WorktreeSafe();
+      worktreeService.removeResult = false;
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("DELETE", "/session/delete"),
+          body: const DeleteSessionRequest(
+            sessionId: "s2-failed",
+            deleteWorktree: true,
+            deleteBranch: false,
+            force: false,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<SessionCleanupFailedException>()),
+      );
+
+      expect(plugin.lastDeleteSessionId, isNull);
+      expect(await db.sessionDao.getSession(sessionId: "s2-failed"), isNotNull);
+      expect(operationLog, equals(["checkSafety", "removeWorktree"]));
     });
 
     test("3) deleteBranch=true: deletes branch", () async {

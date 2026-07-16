@@ -6,7 +6,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
 import "../services/session_mutation_dispatcher.dart";
-import "../services/session_persistence_service.dart";
 import "../services/session_unseen_service.dart";
 import "request_handler.dart";
 
@@ -16,7 +15,6 @@ import "request_handler.dart";
 class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
-  final SessionPersistenceService _sessionPersistenceService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionUnseenService _sessionUnseenService;
   final Duration _prRefreshTimeout;
@@ -24,13 +22,11 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
   GetSessionsHandler({
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
-    required SessionPersistenceService sessionPersistenceService,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required SessionUnseenService sessionUnseenService,
     Duration prRefreshTimeout = const Duration(seconds: 5),
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
-       _sessionPersistenceService = sessionPersistenceService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionUnseenService = sessionUnseenService,
        _prRefreshTimeout = prRefreshTimeout,
@@ -72,7 +68,7 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 
     var persisted = false;
     try {
-      await _sessionPersistenceService.persistSessionsForProject(
+      await _sessionRepository.persistSessionsForProject(
         projectId: projectId,
         sessions: sessions,
       );

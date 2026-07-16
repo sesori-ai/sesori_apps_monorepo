@@ -96,7 +96,16 @@ class GitCliApi {
     required String projectPath,
     required String branchName,
   }) async {
-    final result = await runGit(projectPath: projectPath, arguments: ["branch", "--list", "--", branchName]);
+    final arguments = ["branch", "--list", "--", branchName];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        "git",
+        arguments,
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
     return result.stdout.toString().trim().isNotEmpty;
   }
 
@@ -121,6 +130,91 @@ class GitCliApi {
 
     final commit = result.stdout.toString().trim();
     return commit.isEmpty ? null : commit;
+  }
+
+  Future<ProcessResult> verifyRevision({
+    required String projectPath,
+    required String revision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["rev-parse", "--verify", revision],
+    );
+  }
+
+  Future<ProcessResult> findMergeBase({
+    required String projectPath,
+    required String baseRevision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["merge-base", baseRevision, "HEAD"],
+    );
+  }
+
+  Future<ProcessResult> diffNameStatus({
+    required String projectPath,
+    required String revision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: [
+        "diff",
+        "--no-ext-diff",
+        "--no-color",
+        "--no-renames",
+        "--name-status",
+        "-z",
+        revision,
+      ],
+    );
+  }
+
+  Future<ProcessResult> diffNumstat({
+    required String projectPath,
+    required String revision,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: [
+        "diff",
+        "--no-ext-diff",
+        "--no-color",
+        "--no-renames",
+        "--numstat",
+        "-z",
+        revision,
+      ],
+    );
+  }
+
+  Future<ProcessResult> listUntrackedFiles({required String projectPath}) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: const ["ls-files", "--others", "--exclude-standard", "-z"],
+    );
+  }
+
+  Future<ProcessResult> fileSizeAtRevision({
+    required String projectPath,
+    required String revision,
+    required String file,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["cat-file", "-s", "$revision:$file"],
+    );
+  }
+
+  Future<ProcessResult> readFileAtRevision({
+    required String projectPath,
+    required String revision,
+    required String file,
+  }) {
+    return runGit(
+      projectPath: projectPath,
+      arguments: ["show", "$revision:$file"],
+    );
   }
 
   Future<({String ref, String commit})> resolveStartPointForBranch({
@@ -227,8 +321,7 @@ class GitCliApi {
 
       // If the parent .worktrees/ directory is now empty, clean it up too.
       final parentDir = worktreeDir.parent;
-      if (parentDir.existsSync() &&
-          parentDir.path.split(Platform.pathSeparator).last == ".worktrees") {
+      if (parentDir.existsSync() && parentDir.path.split(Platform.pathSeparator).last == ".worktrees") {
         try {
           if (parentDir.listSync().isEmpty) {
             parentDir.deleteSync();

@@ -30,6 +30,9 @@ class FakeProcessRunner implements ProcessRunner {
   /// Shared responder for git commands introduced alongside session diff
   /// collection (e.g. untracked file listing).
   static ProcessResult? supportGitDiffCalls(List<String> arguments, {String untrackedOutput = ""}) {
+    if (arguments.isNotEmpty && arguments[0] == "cat-file") {
+      return ProcessResult(1, 0, "0\n", "");
+    }
     if (arguments.length >= 3 &&
         arguments[0] == "ls-files" &&
         arguments[1] == "--others" &&

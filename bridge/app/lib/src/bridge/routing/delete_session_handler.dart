@@ -2,25 +2,19 @@ import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/tables/session_table.dart";
-import "../repositories/session_repository.dart";
+import "../services/session_lifecycle_service.dart";
 import "../services/session_mutation_dispatcher.dart";
-import "../services/worktree_service.dart";
 import "request_handler.dart";
-import "worktree_cleanup.dart";
 
 /// Handles `DELETE /session/delete` — deletes a session.
 class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, SuccessEmptyResponse> {
-  final WorktreeService _worktreeService;
-  final SessionRepository _sessionRepository;
+  final SessionLifecycleService _sessionLifecycleService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
 
   DeleteSessionHandler({
-    required WorktreeService worktreeService,
-    required SessionRepository sessionRepository,
+    required SessionLifecycleService sessionLifecycleService,
     required SessionMutationDispatcher sessionMutationDispatcher,
-  }) : _worktreeService = worktreeService,
-       _sessionRepository = sessionRepository,
+  }) : _sessionLifecycleService = sessionLifecycleService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        super(
          HttpMethod.delete,
@@ -41,36 +35,21 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    final sessionDto = await _sessionRepository.getStoredSession(sessionId: sessionId);
-    final wantsGitCleanup = body.deleteWorktree || body.deleteBranch;
-    if (wantsGitCleanup) {
-      if (sessionDto case SessionDto(
-        :final projectId,
-        :final worktreePath?,
-        :final branchName?,
-      )) {
-        final cleanupResult = await performWorktreeCleanup(
-          worktreeService: _worktreeService,
-          sessionRepository: _sessionRepository,
-          sessionId: sessionId,
-          projectId: projectId,
-          worktreePath: worktreePath,
-          branchName: branchName,
-          deleteWorktree: body.deleteWorktree,
-          deleteBranch: body.deleteBranch,
-          force: body.force,
-        );
-        if (cleanupResult case CleanupRejected(:final rejection)) {
-          // IMPORTANT: Do not change this response structure — the mobile app
-          // parses the 409 body as SessionCleanupRejection JSON.
-          throw RelayResponse(
-            id: request.id,
-            status: 409,
-            headers: {"content-type": "application/json"},
-            body: jsonEncode(rejection.toJson()),
-          );
-        }
-      }
+    final cleanupResult = await _sessionLifecycleService.cleanup(
+      sessionId: sessionId,
+      deleteWorktree: body.deleteWorktree,
+      deleteBranch: body.deleteBranch,
+      force: body.force,
+    );
+    if (cleanupResult case CleanupRejected(:final rejection)) {
+      // IMPORTANT: Do not change this response structure — the mobile app
+      // parses the 409 body as SessionCleanupRejection JSON.
+      throw RelayResponse(
+        id: request.id,
+        status: 409,
+        headers: {"content-type": "application/json"},
+        body: jsonEncode(rejection.toJson()),
+      );
     }
 
     // Unconditional (not gated on a stored row): the repository delete also

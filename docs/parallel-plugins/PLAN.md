@@ -8,10 +8,11 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 2 - catalog schema and indexed DAO queries
-- **Next up:** Stage 3 - catalog write-through and stable session binding
+- **Last completed stage:** Stage 3A - corrected touched session boundaries
+- **Next up:** Stage 3B - relocate the database API layer
 - **Runtime default:** one selected plugin until Stage 7
 - **Catalog projection version:** 1
+- **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -90,6 +91,12 @@ The migration preserves every existing `session_id` and backfills
 request links, and deep links therefore keep working. After the identity cutover,
 newly created or imported bindings receive a random Sesori id; uniqueness is
 enforced on `(plugin_id, backend_session_id)`.
+
+Stage 3C makes every root-session path binding-aware while keeping new
+production bindings identity-preserving. Stage 4 activates random Sesori ids
+together with exhaustive event translation and durable child binding. This
+keeps each intermediate release honest: no random root id ships while current
+event or child-operation paths can still carry backend handles.
 
 There is no backend-id fallback after cutover. Every session-addressed request
 must resolve a stored binding. A missing row is a 404; an unavailable owning
@@ -593,7 +600,9 @@ selection.
 | ☑ | 1A | Pre-change baseline harness | AOT baseline JSON; app/Codex analysis |
 | ☑ | 1B | Additive compatibility contracts | Shared/plugin/client round trips |
 | ☑ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
-| ☐ | 3 | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
+| ☑ | 3A | Correct touched session architecture boundaries | Architecture tests; behavior parity |
+| ☐ | 3B | Relocate the database API layer | Rename-only diff; schema/tests unchanged |
+| ☐ | 3C | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☐ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
 | ☐ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
 | ☐ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
@@ -646,28 +655,93 @@ backend handle, directory, and timestamps are backfilled; parent/project delete
 cascades work; equal backend handles across plugins are legal; query-plan tests
 use the intended indexes.
 
-### Stage 3 - Catalog Write-Through and Stable Session Binding
+### Stage 3A - Correct Touched Session Architecture Boundaries
 
-- Teach `SessionRepository` to resolve Sesori ids to backend bindings and route
-  every targeted operation through the selected plugin API.
-- Start consuming request `pluginId` to select the owning plugin. Until this
-  stage, the single-plugin bridge deliberately carries but does not validate or
-  route on that field.
-- Allocate independent Sesori ids for newly created sessions while preserving
-  migrated ids.
-- Write complete project/session projections on create/open/rename/archive/
-  unarchive/delete and return the catalog mapping.
-- Expand `SessionMutationDispatcher` and remove persistence decisions from
-  handlers/services that bypass repositories.
-- Keep current live list enumeration temporarily, but map observed backend
-  sessions through bindings so client ids are already stable.
+Prepare the existing seams that Stage 3B must relocate and Stage 3C must
+materially change, without changing session behavior.
 
-Acceptance: two plugin ids may own the same backend id without collision; every
-targeted call receives the backend handle; unknown ids never discover; create is
-durable before response; failed delete leaves catalog state intact.
+- Make `RequestRouter` accept only an ordered handler list. `Orchestrator.create`
+  constructs the room-specific `SessionPromptService`, handlers, and router after
+  its `SSEManager`, then injects the completed router into `OrchestratorSession`.
+  The running session receives no construction-only collaborators.
+- Remove the Layer 3 `SessionPromptService -> SSEManager` dependency. The service
+  owns a typed broadcast stream of committed prompt-default changes;
+  `Orchestrator.create` subscribes, maps those changes to shared SSE events, and
+  owns enqueue/subscription/disposal through the running session lifecycle.
+- Move shared archive/delete cleanup policy from the routing free function into
+  `SessionCleanupService`; route filesystem existence through
+  `FilesystemRepository`. `DeleteSessionHandler` consumes cleanup + mutation
+  collaborators only; `SessionArchiveService` imports no routing/database types.
+  The Layer 5 `Orchestrator.create` factory constructs cleanup/archive/abort
+  peers; `BridgeRuntime.create` does not gain another composition role.
+- Remove `SessionRepository -> PullRequestRepository` peer dependency by using
+  `PullRequestDao`, and map database rows to an expanded repository-owned
+  `StoredSession` before services/handlers consume them.
+- Move the four existing `SessionPersistenceService` methods behind
+  `SessionRepository` with unchanged insert/archive semantics, then remove the
+  service. `GetSessionsHandler` may call the repository's existing-behavior
+  publication method until Stage 3C folds publication into the list result;
+  `SessionArchiveService` delegates placeholder/archive writes to the repository.
+
+Data flow after this PR:
+
+```text
+handler -> repository/service -> repository-owned model
+repository -> legacy database API (relocated unchanged in Stage 3B)
+Orchestrator.create -> handlers -> RequestRouter
+SessionPromptService stream -> Orchestrator -> SSEManager
+```
+
+Acceptance: behavior tests remain unchanged; routing/services import no database
+rows in corrected seams; `RequestRouter` constructs nothing; architecture review
+approves the resulting dependency graph; only `Orchestrator` composes layers or
+enqueues prompt-default SSE events.
+
+### Stage 3B - Relocate the Database API Layer
+
+With all higher-layer imports removed, consolidate the complete Drift Layer 1
+implementation under canonical `bridge/app/lib/src/api/database/`.
+
+- Move `AppDatabase`, every DAO, and every database table from both legacy
+  `lib/src/bridge/persistence/` and `lib/src/bridge/api/database/` into the
+  canonical subtree, including pull-request and hydration database APIs.
+- Update `build.yaml` and every production, test, migration-test, and benchmark
+  import. Regenerate generated parts; do not edit them or schema snapshots.
+- Leave `persistence/bridge_diagnostics.dart` in place because it is process
+  startup diagnostics, not a database API.
+- Make no schema, query, model, constructor, or runtime behavior change.
+
+Acceptance: Git detects handwritten/generated database files as moves; only
+Layer 2 repositories and composition import the database API; schema remains
+v11; migration artifacts are unchanged; all bridge verification passes.
+
+### Stage 3C - Catalog Write-Through and Stable Session Binding
+
+- Make `SessionRepository`, `QuestionRepository`, and `PermissionRepository`
+  resolve stored Sesori ids and pass only backend handles to the active plugin.
+  Missing bindings return 404 without discovery; bindings owned by a non-running
+  plugin return 503.
+- Consume create/plugin-scoped `pluginId`; never substitute the active plugin.
+- Carry `sessionId` and `backendSessionId` independently in every DAO/repository
+  write, but keep new production allocation identity-preserving until Stage 4.
+  Divergent-id tests prove routing before that cutover.
+- Publish complete observed root projections inside `SessionRepository`, map live
+  lists/statuses through bindings, and fold the temporary repository publication
+  call into the required list result.
+- Persist create/open/rename/archive/unarchive/delete write-through before the
+  response while preserving bridge-owned fields and failure ordering.
+
+Acceptance: equal backend handles under different plugin ids remain legal;
+divergent stored ids route every targeted call with the backend handle; unknown
+ids make zero plugin calls; create/list writes commit before response; failed
+delete leaves row and tombstone state unchanged; production ids remain unchanged
+until Stage 4.
 
 ### Stage 4 - Known Events and Durable Children
 
+- Activate random Sesori-id allocation for newly created and newly observed
+  bindings only after exhaustive event translation is active. Existing ids stay
+  unchanged.
 - Add the internal source-plugin envelope, `SessionEventMapper`,
   `SessionChildTracker`, `SessionEventService`, and per-plugin
   `PluginEventListener`.
@@ -679,7 +753,8 @@ durable before response; failed delete leaves catalog state intact.
 - Change child reads to the catalog while root/project lists remain on the old
   path for one more stage.
 
-Acceptance: unknown roots are ignored; cross-plugin parent links fail; out-of-
+Acceptance: no backend handle reaches a shared event; unknown roots are ignored;
+cross-plugin parent links fail; out-of-
 order descendants drain when ancestry arrives; backend deletion preserves
 history; the pending-child bound retains the largest expected event burst;
 blocked plugin A normalization does not block plugin B.
@@ -808,7 +883,7 @@ release notes must identify that minimum rollback version.
 
 | Risk | Mitigation / owning stage |
 |---|---|
-| Session id collisions across plugins | Separate Sesori/backend identity and unique binding index (2-3) |
+| Session id collisions across plugins | Separate Sesori/backend identity and unique binding index (2-3C); activate random production ids with event translation (4) |
 | Migration loses routes or metadata | Preserve old ids and exhaustive migration fixtures (2) |
 | Import overwrites a newer event/rename | `projection_updated_at` guard and bridge-owned override fields (3-5) |
 | Partial or destructive import | enumerate before one transaction; never delete absence (5) |
@@ -829,6 +904,20 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 3A:** `RequestRouter` now routes an injected handler list while
+  `Orchestrator` owns room-specific composition and prompt-default SSE delivery.
+  Archive/delete cleanup has one service owner, filesystem probes stay behind
+  `FilesystemRepository`, services/handlers consume repository-owned session
+  models, and the obsolete persistence service/repository-peer dependency are
+  gone. The full change preserves current request and persistence behavior.
+- **Stage 3 planning:** The first combined Stage 3 draft touched 97 tracked
+  paths before its final composition work and was not reviewable. It was
+  discarded from the delivery branch and preserved only as a local recovery
+  stash. Stage 3 is split into behavior-neutral boundary correction (3A),
+  mechanical relocation of the now-contained database API (3B), and binding/
+  write-through behavior (3C). The audit also found that random root ids must
+  activate with Stage 4 event and child translation rather than leaving an
+  intermediate backend-id leak.
 - **Stage 1B:** `PluginProject.directory` now declares the native plugin's live
   directory independently from its backend id. Shared session/create/composer
   contracts carry nullable plugin identity for older-peer compatibility. The

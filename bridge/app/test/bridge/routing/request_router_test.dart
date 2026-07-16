@@ -1,569 +1,170 @@
-import "dart:convert";
-
-import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
-import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
-import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
-import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
-import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/fake_filesystem_api.dart";
-import "../../helpers/restart_test_support.dart";
-import "../../helpers/test_database.dart";
-import "get_session_diffs_handler_test_helpers.dart";
-import "routing_test_helpers.dart";
-
 void main() {
   group("RequestRouter", () {
-    late FakeBridgePlugin plugin;
-    late FakeMetadataService metadataService;
-    late RequestRouter router;
-    late AppDatabase db;
-
-    setUp(() async {
-      plugin = FakeBridgePlugin();
-      metadataService = FakeMetadataService();
-      db = createTestDatabase();
-      await db.projectsDao.insertProjectsIfMissing(
-        projectIds: ["/repo", "/tmp", "/tmp/project"],
-      );
-      final sessionRepository = SessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-      final projectRepository = ProjectRepository(
-        plugin: plugin,
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-      );
-      final filesystemRepository = FilesystemRepository(
-        filesystemApi: const FilesystemApi(),
-        permissionValidator: const FilesystemPermissionValidator(),
-      );
-      final projectInitializationService = ProjectInitializationService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: FakeProcessRunner(),
-            gitPathExists: ({required String gitPath}) => true,
+    test("routes to the first matching handler and extracts URI values", () async {
+      final calls = <String>[];
+      final router = RequestRouter(
+        handlers: [
+          _TestHandler(
+            method: HttpMethod.get,
+            path: "/session/:id",
+            handle: ({required request, required pathParams, required queryParams, required fragment}) async {
+              calls.add("first");
+              expect(pathParams, {"id": "s1"});
+              expect(queryParams, {"view": "full"});
+              expect(fragment, "messages");
+              return _response(request: request, status: 201, body: "first");
+            },
           ),
-          plugin: plugin,
-        ),
-        filesystemRepository: filesystemRepository,
-      );
-      final healthRepository = HealthRepository(
-        plugin: plugin,
-        bridgeVersion: "0.0.0-test",
-        filesystemAccessOk: true,
-      );
-      final agentRepository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
-      final providerRepository = ProviderRepository(plugin: plugin, projectsDao: db.projectsDao);
-      final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
-      final questionRepository = QuestionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-      );
-      final sessionPersistenceService = SessionPersistenceService(
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        db: db,
-        pluginId: "opencode",
-      );
-      final worktreeService = WorktreeService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: FakeProcessRunner(),
-            gitPathExists: ({required String gitPath}) => true,
+          _TestHandler(
+            method: HttpMethod.get,
+            path: "/session/:id",
+            handle: ({required request, required pathParams, required queryParams, required fragment}) async {
+              calls.add("second");
+              return _response(request: request, status: 202, body: "second");
+            },
           ),
-          plugin: plugin,
-        ),
-      );
-      final sessionDiffsHandler = GetSessionDiffsHandler(
-        sessionRepository: sessionRepository,
-        processRunner: FakeProcessRunner(),
-      );
-      final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
-      final projectActivityService = ProjectActivityService(
-        projectRepository: projectRepository,
-        now: () => DateTime.now().millisecondsSinceEpoch,
-      );
-      final sessionCreationService = SessionCreationService(
-        metadataService: metadataService,
-        worktreeService: worktreeService,
-        sessionRepository: sessionRepository,
-        sessionMutationDispatcher: sessionMutationDispatcher,
-      );
-      final sessionArchiveService = SessionArchiveService(
-        worktreeService: worktreeService,
-        sessionRepository: sessionRepository,
-        sessionPersistenceService: sessionPersistenceService,
-      );
-      router = RequestRouter(
-        plugin: plugin,
-        getCommandsHandler: GetCommandsHandler(
-          sessionRepository: sessionRepository,
-        ),
-        sessionRepository: sessionRepository,
-        abortSessionHandler: AbortSessionHandler(
-          sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
-        ),
-        sessionCreationService: sessionCreationService,
-        sessionArchiveService: sessionArchiveService,
-        sendPromptHandler: SendPromptHandler(
-          sessionPromptService: SessionPromptService(
-            sessionRepository: sessionRepository,
-            sseManager: FakeSSEManager(),
-          ),
-        ),
-        prSyncService: FakePrSyncService(),
-        projectRepository: projectRepository,
-        filesystemRepository: filesystemRepository,
-        projectInitializationService: projectInitializationService,
-        projectActivityService: projectActivityService,
-        healthRepository: healthRepository,
-        providerRepository: providerRepository,
-        agentRepository: agentRepository,
-        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
-        sessionMutationDispatcher: sessionMutationDispatcher,
-        permissionRepository: permissionRepository,
-        questionRepository: questionRepository,
-        sessionPersistenceService: sessionPersistenceService,
-        worktreeService: worktreeService,
-        sessionDiffsHandler: sessionDiffsHandler,
-        restartService: buildTestRestartService(),
-      );
-    });
-
-    tearDown(() async {
-      await plugin.close();
-      await db.close();
-    });
-
-    test("routes GET /global/health to HealthCheckHandler", () async {
-      final response = await router.route(makeRequest("GET", "/global/health"));
-      expect(response.status, equals(200));
-    });
-
-    test("routes GET /projects to GetProjectsHandler", () async {
-      plugin.projectsResult = [
-        const PluginProject(id: "p1", directory: "p1", name: "P"),
-      ];
-      final response = await router.route(makeRequest("GET", "/projects"));
-      expect(response.status, equals(200));
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final data = body["data"] as List<dynamic>;
-      expect(data.length, equals(1));
-    });
-
-    test("routes POST /sessions to GetSessionsHandler", () async {
-      final response = await router.route(
-        makeRequest(
-          "POST",
-          "/sessions",
-          body: jsonEncode({"projectId": "/tmp", "start": null, "limit": null}),
-        ),
-      );
-      expect(response.status, equals(200));
-    });
-
-    test("routes POST /command and forwards the project body", () async {
-      plugin.commandsResult = [
-        PluginCommand.fromJson({
-          "name": "review",
-          "template": "/review",
-          "hints": ["file.dart"],
-          "provider": null,
-          "source": "command",
-        }),
-      ];
-
-      final response = await router.route(
-        makeRequest(
-          "POST",
-          "/command",
-          body: jsonEncode({"projectId": "/repo"}),
-        ),
+        ],
       );
 
-      expect(response.status, equals(200));
-      expect(plugin.lastGetCommandsProjectId, equals("/repo"));
-      final body = jsonDecode(response.body!) as Map<String, dynamic>;
-      final items = body["items"] as List<dynamic>;
-      final item = items.single as Map<String, dynamic>;
-      expect(item["name"], equals("review"));
+      final response = await router.route(_request(method: "GET", path: "/session/s1?view=full#messages"));
+
+      expect(response.status, 201);
+      expect(response.body, "first");
+      expect(calls, ["first"]);
     });
 
-    test("POST /sessions without body returns 400", () async {
-      final response = await router.route(makeRequest("POST", "/sessions"));
-      expect(response.status, equals(400));
-    });
-
-    test("routes POST /session/messages to GetSessionMessagesHandler", () async {
-      await router.route(
-        makeRequest(
-          "POST",
-          "/session/messages",
-          body: jsonEncode({"sessionId": "abc"}),
-        ),
-      );
-      expect(plugin.lastGetMessagesSessionId, equals("abc"));
-    });
-
-    test("session id is extracted from body correctly", () async {
-      await router.route(
-        makeRequest(
-          "POST",
-          "/session/messages",
-          body: jsonEncode({"sessionId": "sess-99"}),
-        ),
-      );
-      expect(plugin.lastGetMessagesSessionId, equals("sess-99"));
-    });
-
-    test("pagination params are forwarded to handler", () async {
-      await router.route(
-        makeRequest(
-          "POST",
-          "/sessions",
-          body: jsonEncode({"projectId": "/tmp", "start": 3, "limit": 7}),
-        ),
-      );
-      expect(plugin.lastGetSessionsStart, equals(3));
-      expect(plugin.lastGetSessionsLimit, equals(7));
-    });
-
-    test("unknown route returns 404", () async {
-      final response = await router.route(makeRequest("GET", "/unknown"));
-
-      expect(response.status, equals(404));
-      expect(response.body, equals("no handler found for GET /unknown"));
-    });
-
-    test("GET /session/{id}/shell remains unsupported in RequestRouter", () async {
-      final response = await router.route(makeRequest("GET", "/session/abc/shell"));
-
-      expect(response.status, equals(404));
-      expect(response.body, equals("no handler found for GET /session/abc/shell"));
-    });
-
-    test("routes POST /session/create to CreateSessionHandler", () async {
-      plugin.createSessionResult = const PluginSession(
-        id: "s1",
-        projectID: "p1",
-        directory: "/tmp",
-        parentID: null,
-        title: null,
-        time: null,
-      );
-
-      final response = await router.route(
-        makeRequest(
-          "POST",
-          "/session/create",
-          body: jsonEncode(
-            CreateSessionRequest.fromJson({
-              "projectId": "/tmp",
-              "dedicatedWorktree": false,
-              "parts": [const PromptPart.text(text: "Start").toJson()],
-              "agent": "architect",
-              "model": PromptModel.fromJson({"providerID": "openai", "modelID": "gpt-5"}).toJson(),
-              "command": null,
-            }).toJson(),
-          ),
-        ),
-      );
-
-      expect(response.status, equals(200));
-      expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
-      expect(plugin.lastCreateSessionParentId, isNull);
-      expect(plugin.lastCreateSessionProjectId, equals("/tmp"));
-      expect(plugin.lastCreateSessionParts, equals([const PluginPromptPart.text(text: "Start")]));
-      expect(plugin.lastCreateSessionAgent, equals("architect"));
-      expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
-    });
-
-    test("routes DELETE /session/delete to DeleteSessionHandler", () async {
-      final response = await router.route(
-        makeRequest(
-          "DELETE",
-          "/session/delete",
-          body: jsonEncode({
-            "sessionId": "abc",
-            "deleteWorktree": false,
-            "deleteBranch": false,
-            "force": false,
-          }),
-        ),
-      );
-      expect(response.status, equals(200));
-      expect(plugin.lastDeleteSessionId, equals("abc"));
-    });
-
-    test("routes GET /agent to GetAgentsHandler", () async {
-      final response = await router.route(makeRequest("GET", "/agent"));
-      expect(response.status, equals(200));
-    });
-
-    test("routes POST /agent to PostAgentsHandler and forwards the project body", () async {
-      final response = await router.route(
-        makeRequest(
-          "POST",
-          "/agent",
-          body: jsonEncode({"projectId": "/repo"}),
-        ),
-      );
-
-      expect(response.status, equals(200));
-      expect(plugin.lastAgentsProjectId, equals("/repo"));
-    });
-
-    test("routes POST /session/questions to GetSessionQuestionsHandler", () async {
-      final response = await router.route(
-        makeRequest(
-          "POST",
-          "/session/questions",
-          body: jsonEncode({"sessionId": "s-1"}),
-        ),
-      );
-      expect(response.status, equals(200));
-    });
-
-    test("routes POST /project/questions to GetProjectQuestionsHandler", () async {
-      final response = await router.route(
-        makeRequest(
-          "POST",
-          "/project/questions",
-          body: jsonEncode({"projectId": "/tmp/project"}),
-        ),
-      );
-      expect(response.status, equals(200));
-    });
-
-    test("returns 500 when handler throws", () async {
-      plugin.throwOnGetProjects = true;
-      final response = await router.route(makeRequest("GET", "/projects"));
-      expect(response.status, equals(500));
-      expect(response.body, contains("Internal Server Error"));
-    });
-
-    test("returns plugin status when handler throws PluginApiException", () async {
-      plugin.throwOnGetProjectsError = PluginApiException("/projects", 404);
-
-      final response = await router.route(makeRequest("GET", "/projects"));
-
-      expect(response.status, equals(404));
-      expect(response.body, contains("PluginApiException"));
-    });
-
-    test("500 body contains the original error message", () async {
-      plugin.throwOnHealthCheck = true;
-      final response = await router.route(makeRequest("GET", "/global/health"));
-      expect(response.status, equals(500));
-      expect(response.body, contains("healthCheck error"));
-    });
-
-    test("integrates PR merge and background refresh trigger for session list", () async {
-      plugin.currentProjectResult = const PluginProject(id: "/tmp/project", directory: "/tmp/project");
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s1",
-          projectID: "/tmp/project",
-          directory: "/tmp/project",
-          parentID: null,
-          title: "session",
-          time: null,
+    test("stores an unmodifiable copy of the handler list", () async {
+      final handlers = <RequestHandlerBase>[
+        _TestHandler(
+          method: HttpMethod.get,
+          path: "/original",
+          handle: ({required request, required pathParams, required queryParams, required fragment}) async {
+            return _response(request: request, status: 200, body: "original");
+          },
         ),
       ];
-
-      final fakePullRequestRepository = FakePullRequestRepository();
-      fakePullRequestRepository.setPr(
-        sessionId: "s1",
-        pullRequest: const PullRequestDto(
-          projectId: "/tmp/project",
-          prNumber: 101,
-          branchName: "feature/test",
-          url: "https://github.com/org/repo/pull/101",
-          title: "Integration PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.unknown,
-          reviewDecision: PrReviewDecision.unknown,
-          checkStatus: PrCheckStatus.unknown,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
-
-      final spyPrSyncService = FakePrSyncService();
-      final sessionRepository = FakeSessionRepository(
-        plugin: plugin,
-        sessionDao: FakeSessionDao(),
-        pullRequestRepository: fakePullRequestRepository,
-      );
-
-      final projectRepository = ProjectRepository(
-        plugin: plugin,
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-      );
-      final filesystemRepository = FilesystemRepository(
-        filesystemApi: const FilesystemApi(),
-        permissionValidator: const FilesystemPermissionValidator(),
-      );
-      final projectInitializationService = ProjectInitializationService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: FakeProcessRunner(),
-            gitPathExists: ({required String gitPath}) => true,
+      final router = RequestRouter(handlers: handlers);
+      handlers
+        ..clear()
+        ..add(
+          _TestHandler(
+            method: HttpMethod.get,
+            path: "/replacement",
+            handle: ({required request, required pathParams, required queryParams, required fragment}) async {
+              return _response(request: request, status: 200, body: "replacement");
+            },
           ),
-          plugin: plugin,
-        ),
-        filesystemRepository: filesystemRepository,
-      );
-      final healthRepository = HealthRepository(
-        plugin: plugin,
-        bridgeVersion: "0.0.0-test",
-        filesystemAccessOk: true,
-      );
-      final agentRepository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
-      final providerRepository = ProviderRepository(plugin: plugin, projectsDao: db.projectsDao);
-      final permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
-      final sessionPersistenceService = SessionPersistenceService(
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        db: db,
-        pluginId: "opencode",
-      );
-      final worktreeService = WorktreeService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: FakeProcessRunner(),
-            gitPathExists: ({required String gitPath}) => true,
+        );
+
+      expect((await router.route(_request(method: "GET", path: "/original"))).status, 200);
+      expect((await router.route(_request(method: "GET", path: "/replacement"))).status, 404);
+    });
+
+    test("returns 404 when no handler matches", () async {
+      final router = RequestRouter(handlers: const []);
+
+      final response = await router.route(_request(method: "GET", path: "/unknown"));
+
+      expect(response.status, 404);
+      expect(response.body, "no handler found for GET /unknown");
+    });
+
+    test("maps plugin operation failures to their status", () async {
+      final router = RequestRouter(
+        handlers: [
+          _TestHandler(
+            method: HttpMethod.get,
+            path: "/plugin-failure",
+            handle: ({required request, required pathParams, required queryParams, required fragment}) {
+              throw const PluginOperationException.notFound("test");
+            },
           ),
-          plugin: plugin,
-        ),
+        ],
       );
-      final sessionDiffsHandler = GetSessionDiffsHandler(
-        sessionRepository: SessionRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          projectsDao: db.projectsDao,
-          pullRequestRepository: PullRequestRepository(
-            pullRequestDao: db.pullRequestDao,
-            projectsDao: db.projectsDao,
+
+      final response = await router.route(_request(method: "GET", path: "/plugin-failure"));
+
+      expect(response.status, 404);
+      expect(response.body, contains("PluginOperationException"));
+    });
+
+    test("maps unexpected routing failures to 502", () async {
+      final router = RequestRouter(
+        handlers: [
+          _TestHandler(
+            method: HttpMethod.get,
+            path: "/failure",
+            handle: ({required request, required pathParams, required queryParams, required fragment}) {
+              throw StateError("boom");
+            },
           ),
-          unseenCalculator: const SessionUnseenCalculator(),
-        ),
-        processRunner: FakeProcessRunner(),
-      );
-      final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
-      final projectActivityService = ProjectActivityService(
-        projectRepository: projectRepository,
-        now: () => DateTime.now().millisecondsSinceEpoch,
+        ],
       );
 
-      router = RequestRouter(
-        plugin: plugin,
-        getCommandsHandler: GetCommandsHandler(
-          sessionRepository: sessionRepository,
-        ),
-        sessionRepository: sessionRepository,
-        abortSessionHandler: AbortSessionHandler(
-          sessionAbortService: SessionAbortService(sessionRepository: sessionRepository),
-        ),
-        sessionCreationService: SessionCreationService(
-          metadataService: metadataService,
-          worktreeService: worktreeService,
-          sessionRepository: sessionRepository,
-          sessionMutationDispatcher: sessionMutationDispatcher,
-        ),
-        sessionArchiveService: SessionArchiveService(
-          worktreeService: worktreeService,
-          sessionRepository: sessionRepository,
-          sessionPersistenceService: sessionPersistenceService,
-        ),
-        sendPromptHandler: SendPromptHandler(
-          sessionPromptService: SessionPromptService(
-            sessionRepository: sessionRepository,
-            sseManager: FakeSSEManager(),
-          ),
-        ),
-        prSyncService: spyPrSyncService,
-        projectRepository: projectRepository,
-        filesystemRepository: filesystemRepository,
-        projectInitializationService: projectInitializationService,
-        projectActivityService: projectActivityService,
-        healthRepository: healthRepository,
-        providerRepository: providerRepository,
-        agentRepository: agentRepository,
-        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
-        sessionMutationDispatcher: sessionMutationDispatcher,
-        permissionRepository: permissionRepository,
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
-        sessionPersistenceService: sessionPersistenceService,
-        worktreeService: worktreeService,
-        sessionDiffsHandler: sessionDiffsHandler,
-        restartService: buildTestRestartService(),
-      );
+      final response = await router.route(_request(method: "GET", path: "/failure"));
 
-      final response = await router.route(
-        makeRequest(
-          "POST",
-          "/sessions",
-          body: jsonEncode({"projectId": "/tmp/project", "start": null, "limit": null, "waitForPrData": true}),
-        ),
-      );
-
-      final responseModel = SessionListResponse.fromJson(
-        jsonDecode(response.body!) as Map<String, dynamic>,
-      );
-
-      expect(responseModel.items.single.pullRequest?.number, equals(101));
-      expect(responseModel.items.single.pullRequest?.title, equals("Integration PR"));
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(spyPrSyncService.calls, hasLength(1));
-      expect(spyPrSyncService.calls.single, equals((projectId: "/tmp/project", projectPath: "/tmp/project")));
+      expect(response.status, 502);
+      expect(response.body, contains("boom"));
     });
   });
+}
+
+typedef _HandleRequest =
+    Future<RelayResponse> Function({
+      required RelayRequest request,
+      required Map<String, String> pathParams,
+      required Map<String, String> queryParams,
+      required String? fragment,
+    });
+
+class _TestHandler extends RequestHandlerBase {
+  final _HandleRequest _handle;
+
+  _TestHandler({
+    required HttpMethod method,
+    required String path,
+    required _HandleRequest handle,
+  }) : _handle = handle,
+       super(method, path);
+
+  @override
+  Future<RelayResponse> handleInternal(
+    RelayRequest request, {
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    required String? fragment,
+  }) {
+    return _handle(
+      request: request,
+      pathParams: pathParams,
+      queryParams: queryParams,
+      fragment: fragment,
+    );
+  }
+}
+
+RelayRequest _request({required String method, required String path}) {
+  return RelayMessage.request(
+        id: "test-id",
+        method: method,
+        path: path,
+        headers: const {},
+        body: null,
+      )
+      as RelayRequest;
+}
+
+RelayResponse _response({required RelayRequest request, required int status, required String body}) {
+  return RelayResponse(
+    id: request.id,
+    status: status,
+    headers: const {},
+    body: body,
+  );
 }

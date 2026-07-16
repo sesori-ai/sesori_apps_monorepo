@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -34,11 +35,75 @@ enum FilesystemEntityKind { notFound, notDirectory, directory }
 /// The outcome of preparing a directory for project creation.
 enum CreatableDirectoryStatus { creatable, parentMissing, alreadyExists }
 
+sealed class BoundedTextFileReadResult {}
+
+class BoundedTextFileContent extends BoundedTextFileReadResult {
+  final String content;
+
+  BoundedTextFileContent({required this.content});
+}
+
+class BoundedTextFileMissing extends BoundedTextFileReadResult {}
+
+class BoundedTextFileBinary extends BoundedTextFileReadResult {}
+
+class BoundedTextFileTooLarge extends BoundedTextFileReadResult {}
+
+class BoundedTextFileReadFailure extends BoundedTextFileReadResult {}
+
 /// Layer 2 aggregator over [FilesystemApi]. Owns the mapping from raw
 /// `dart:io` results into shared models and the classification of
 /// [FileSystemException]s into typed domain errors. Handlers consume the typed
 /// results/exceptions and map them to HTTP statuses.
 class FilesystemRepository {
+  static const _binaryExtensions = <String>{
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "ico",
+    "webp",
+    "bmp",
+    "tiff",
+    "woff",
+    "woff2",
+    "ttf",
+    "otf",
+    "eot",
+    "zip",
+    "tar",
+    "gz",
+    "bz2",
+    "xz",
+    "7z",
+    "rar",
+    "mp3",
+    "mp4",
+    "wav",
+    "ogg",
+    "webm",
+    "avi",
+    "mov",
+    "flac",
+    "pdf",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "ppt",
+    "pptx",
+    "exe",
+    "dll",
+    "so",
+    "dylib",
+    "bin",
+    "wasm",
+    "class",
+    "pyc",
+    "sqlite",
+    "db",
+  };
+
   final FilesystemApi _filesystemApi;
   final FilesystemPermissionValidator _permissionValidator;
 
@@ -47,6 +112,65 @@ class FilesystemRepository {
     required FilesystemPermissionValidator permissionValidator,
   }) : _filesystemApi = filesystemApi,
        _permissionValidator = permissionValidator;
+
+  bool directoryExists({required String path}) {
+    return _guard(path: path, () => _filesystemApi.directoryExists(path));
+  }
+
+  bool isKnownBinaryFile({required String relativePath}) {
+    final extension = p.extension(relativePath).toLowerCase();
+    return extension.isNotEmpty && _binaryExtensions.contains(extension.substring(1));
+  }
+
+  BoundedTextFileReadResult readBoundedTextFile({
+    required String rootDirectoryPath,
+    required String relativePath,
+    required int maxBytes,
+  }) {
+    if (isKnownBinaryFile(relativePath: relativePath)) {
+      return BoundedTextFileBinary();
+    }
+
+    final absoluteRootPath = p.normalize(p.absolute(rootDirectoryPath));
+    final candidatePath = p.normalize(p.absolute(p.join(rootDirectoryPath, relativePath)));
+    if (candidatePath != absoluteRootPath && !p.isWithin(absoluteRootPath, candidatePath)) {
+      return BoundedTextFileReadFailure();
+    }
+
+    try {
+      final entityType = _filesystemApi.entityType(candidatePath);
+      if (entityType == FileSystemEntityType.link) {
+        return BoundedTextFileReadFailure();
+      }
+      if (entityType == FileSystemEntityType.notFound) {
+        return BoundedTextFileMissing();
+      }
+
+      final resolvedPath = p.normalize(_filesystemApi.resolveFilePath(candidatePath));
+      final resolvedRootPath = p.normalize(_filesystemApi.resolveDirectoryPath(rootDirectoryPath));
+      if (resolvedPath != resolvedRootPath && !p.isWithin(resolvedRootPath, resolvedPath)) {
+        return BoundedTextFileReadFailure();
+      }
+
+      final bytes = _filesystemApi.readFilePrefix(
+        path: candidatePath,
+        maxBytes: maxBytes,
+      );
+      if (bytes.length > maxBytes) {
+        return BoundedTextFileTooLarge();
+      }
+      if (bytes.contains(0)) {
+        return BoundedTextFileBinary();
+      }
+      try {
+        return BoundedTextFileContent(content: utf8.decode(bytes));
+      } on FormatException {
+        return BoundedTextFileBinary();
+      }
+    } on FileSystemException {
+      return BoundedTextFileReadFailure();
+    }
+  }
 
   /// Lists child directories of [prefix], skipping dotfiles, mapped to shared
   /// [FilesystemSuggestion]s sorted by name.
@@ -74,7 +198,10 @@ class FilesystemRepository {
 
       final suggestions = selected
           .take(maxResults)
-          .map((e) => FilesystemSuggestion(path: e.path, name: e.name, isGitRepo: _filesystemApi.gitDirectoryExists(e.path)))
+          .map(
+            (e) =>
+                FilesystemSuggestion(path: e.path, name: e.name, isGitRepo: _filesystemApi.gitDirectoryExists(e.path)),
+          )
           .toList();
 
       return FilesystemSuggestions(data: suggestions);

@@ -2,16 +2,17 @@ import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -37,22 +38,18 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final filesystemRepository = FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
       handler = UpdateSessionArchiveStatusHandler(
-        sessionArchiveService: SessionArchiveService(
+        sessionLifecycleService: SessionLifecycleService(
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
-          sessionPersistenceService: SessionPersistenceService(
-            projectsDao: db.projectsDao,
-            sessionDao: db.sessionDao,
-            db: db,
-            pluginId: "opencode",
-          ),
+          filesystemRepository: filesystemRepository,
         ),
         sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
       );
@@ -241,6 +238,42 @@ void main() {
       expect(worktreeService.lastRemoveWorktreePath, equals("/repo/.worktrees/session-001"));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNotNull);
+    });
+
+    test("failed branch deletion preserves the unarchived session for retry", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1-failed",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/session-001-failed",
+        branchName: "session-001-failed",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+      );
+      worktreeService.deleteBranchResult = false;
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("PATCH", "/session/update/archive"),
+          body: _archiveRequest(
+            sessionId: "s1-failed",
+            archived: true,
+            deleteWorktree: false,
+            deleteBranch: true,
+            force: false,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<SessionCleanupFailedException>()),
+      );
+
+      final persisted = await db.sessionDao.getSession(sessionId: "s1-failed");
+      expect(persisted?.archivedAt, isNull);
+      expect(worktreeService.deleteBranchCallCount, equals(1));
     });
 
     test("archive with cleanup on dirty worktree throws 409", () async {
@@ -1051,6 +1084,7 @@ class _FakeWorktreeService extends WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
   bool deleteBranchResult = true;
+  bool branchExistsResult = true;
   bool restoreResult = true;
   ({String baseBranch, String baseCommit, String startPoint})? resolveBaseBranchAndCommitResult;
 
@@ -1121,6 +1155,14 @@ class _FakeWorktreeService extends WorktreeService {
     lastDeleteBranchName = branchName;
     lastDeleteBranchForce = force;
     return deleteBranchResult;
+  }
+
+  @override
+  Future<bool> branchExists({
+    required String projectId,
+    required String branchName,
+  }) async {
+    return branchExistsResult;
   }
 
   @override

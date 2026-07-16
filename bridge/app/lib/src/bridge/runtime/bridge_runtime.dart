@@ -53,7 +53,6 @@ import "../services/project_initialization_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_event_enrichment_service.dart";
 import "../services/session_mutation_dispatcher.dart";
-import "../services/session_persistence_service.dart";
 import "../services/session_unseen_service.dart";
 import "../services/session_view_tracker.dart";
 import "../services/worktree_service.dart";
@@ -120,7 +119,7 @@ class BridgeRuntime {
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: unseenCalculator,
     );
     final projectRepository = ProjectRepository(
@@ -176,12 +175,16 @@ class BridgeRuntime {
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
     );
+    final gitCliApi = GitCliApi(
+      processRunner: processRunner,
+      gitPathExists: _gitPathExists,
+    );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: WorktreeRepository(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         plugin: plugin,
-        gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+        gitApi: gitCliApi,
       ),
       filesystemRepository: filesystemRepository,
     );
@@ -201,7 +204,7 @@ class BridgeRuntime {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         plugin: plugin,
-        gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+        gitApi: gitCliApi,
       ),
     );
     final sessionCreationService = SessionCreationService(
@@ -249,7 +252,7 @@ class BridgeRuntime {
         prSyncService: PrSyncService(
           prSource: PrSourceRepository(
             ghCli: GhCliApi(processRunner: processRunner),
-            gitCli: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+            gitCli: gitCliApi,
           ),
           pullRequestRepository: pullRequestRepository,
           sessionRepository: sessionRepository,
@@ -260,6 +263,7 @@ class BridgeRuntime {
         sessionUnseenService: sessionUnseenService,
         sessionViewTracker: sessionViewTracker,
         filesystemRepository: filesystemRepository,
+        gitCliApi: gitCliApi,
         projectInitializationService: projectInitializationService,
         projectActivityService: projectActivityService,
         healthRepository: healthRepository,
@@ -270,12 +274,6 @@ class BridgeRuntime {
           plugin: plugin,
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
-        ),
-        sessionPersistenceService: SessionPersistenceService(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          db: database,
-          pluginId: plugin.id,
         ),
         worktreeService: worktreeService,
         sessionEventEnrichmentService: sessionEventEnrichmentService,

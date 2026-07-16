@@ -20,7 +20,6 @@ import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -31,7 +30,6 @@ import "package:sesori_bridge/src/bridge/services/project_initialization_service
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -336,16 +334,11 @@ class _ReauthHarness {
     final database = createTestDatabase();
     final plugin = FakeBridgePlugin();
     final registrationRepository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_initial";
-
-    final pullRequestRepository = PullRequestRepository(
-      pullRequestDao: database.pullRequestDao,
-      projectsDao: database.projectsDao,
-    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestRepository: pullRequestRepository,
+      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final sessionViewTracker = SessionViewTracker();
@@ -426,6 +419,10 @@ class _ReauthHarness {
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
       ),
+      gitCliApi: GitCliApi(
+        processRunner: ProcessRunner(),
+        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
+      ),
       projectInitializationService: ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
           projectsDao: database.projectsDao,
@@ -457,12 +454,6 @@ class _ReauthHarness {
         plugin: plugin,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
-      ),
-      sessionPersistenceService: SessionPersistenceService(
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        db: database,
-        pluginId: "opencode",
       ),
       worktreeService: WorktreeService(
         worktreeRepository: WorktreeRepository(

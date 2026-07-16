@@ -1,11 +1,17 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/git_diff_output_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_diff_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
+import "package:sesori_bridge/src/bridge/services/session_diff_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -27,16 +33,26 @@ void main() {
         plugin: FakeBridgePlugin(),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestRepository: PullRequestRepository(
-          pullRequestDao: db.pullRequestDao,
-          projectsDao: db.projectsDao,
-        ),
+        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       processRunner = FakeProcessRunner();
+      final filesystemRepository = FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
       handler = GetSessionDiffsHandler(
-        sessionRepository: sessionRepository,
-        processRunner: processRunner,
+        sessionDiffService: SessionDiffService(
+          sessionRepository: sessionRepository,
+          sessionDiffRepository: SessionDiffRepository(
+            gitCliApi: GitCliApi(
+              processRunner: processRunner,
+              gitPathExists: ({required String gitPath}) => true,
+            ),
+            outputMapper: const GitDiffOutputMapper(),
+          ),
+          filesystemRepository: filesystemRepository,
+        ),
       );
       tempDir = await Directory.systemTemp.createTemp("session_diff_handler_test_");
     });

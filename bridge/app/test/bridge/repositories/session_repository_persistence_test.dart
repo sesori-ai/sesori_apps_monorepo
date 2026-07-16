@@ -1,32 +1,40 @@
 import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
+import "../routing/routing_test_helpers.dart";
 
 void main() {
-  group("SessionPersistenceService", () {
+  group("SessionRepository persistence", () {
     late AppDatabase db;
     late ProjectsDao projectsDao;
     late SessionDao sessionDao;
-    late SessionPersistenceService service;
+    late FakeBridgePlugin plugin;
+    late SessionRepository repository;
 
     setUp(() {
       db = createTestDatabase();
       projectsDao = db.projectsDao;
       sessionDao = db.sessionDao;
-      service = SessionPersistenceService(
+      plugin = FakeBridgePlugin();
+      repository = SessionRepository(
+        plugin: plugin,
         projectsDao: projectsDao,
         sessionDao: sessionDao,
-        db: db,
-        pluginId: "opencode",
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
       );
     });
 
-    tearDown(() => db.close());
+    tearDown(() async {
+      await plugin.close();
+      await db.close();
+    });
 
     test("persistSessionsForProject inserts project + all sessions in a transaction", () async {
       final sessions = List<Session>.generate(
@@ -38,7 +46,7 @@ void main() {
         ),
       );
 
-      await service.persistSessionsForProject(projectId: "X", sessions: sessions);
+      await repository.persistSessionsForProject(projectId: "X", sessions: sessions);
 
       final projects = await db.select(db.projectsTable).get();
       final rows = await db.select(db.sessionTable).get();
@@ -74,7 +82,7 @@ void main() {
         ),
       );
 
-      await service.persistSessionsForProject(
+      await repository.persistSessionsForProject(
         projectId: "X",
         sessions: [_session(id: "s1", projectId: "X", createdAt: 999)],
       );
@@ -92,7 +100,7 @@ void main() {
     });
 
     test("createSession inserts a full session row with all fields and ensures project exists", () async {
-      await service.createSession(
+      await repository.createStoredSessionPlaceholder(
         sessionId: "sess-full",
         projectId: "proj-full",
         isDedicated: true,
@@ -130,7 +138,7 @@ void main() {
         _session(id: "s-active", projectId: "X", createdAt: 2000, archivedAt: null),
       ];
 
-      await service.persistSessionsForProject(projectId: "X", sessions: sessions);
+      await repository.persistSessionsForProject(projectId: "X", sessions: sessions);
 
       final archived = await sessionDao.getSession(sessionId: "s-archived");
       expect(archived, isNotNull);
@@ -143,15 +151,16 @@ void main() {
 
     test("persistSessionsForProject rolls back all inserts on failure", () async {
       final failingDao = _ThrowingSessionDao(db: db, throwOnCall: 1);
-      final failingService = SessionPersistenceService(
+      final failingRepository = SessionRepository(
+        plugin: plugin,
         projectsDao: projectsDao,
         sessionDao: failingDao,
-        db: db,
-        pluginId: "opencode",
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       await expectLater(
-        () => failingService.persistSessionsForProject(
+        () => failingRepository.persistSessionsForProject(
           projectId: "X",
           sessions: List<Session>.generate(
             5,
@@ -184,7 +193,7 @@ void main() {
         lastAgentModel: null,
       );
 
-      await service.archiveSession(sessionId: "sess-archive", archivedAt: 777);
+      await repository.archiveStoredSession(sessionId: "sess-archive", archivedAt: 777);
 
       expect((await sessionDao.getSession(sessionId: "sess-archive"))?.archivedAt, equals(777));
     });
@@ -207,7 +216,7 @@ void main() {
       );
       await sessionDao.setArchived(sessionId: "sess-unarchive", archivedAt: 888);
 
-      await service.unarchiveSession(sessionId: "sess-unarchive");
+      await repository.unarchiveStoredSession(sessionId: "sess-unarchive");
 
       expect((await sessionDao.getSession(sessionId: "sess-unarchive"))?.archivedAt, isNull);
     });

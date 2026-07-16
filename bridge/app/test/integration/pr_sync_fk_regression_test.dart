@@ -20,15 +20,15 @@
 ///   creates the project row and succeeds.
 ///
 /// Scenario C — GetSessions path (T7 flow):
-///   SessionPersistenceService.ensureProject + persistSessionsForProject
+///   SessionRepository.persistSessionsForProject
 ///   create the project row and session rows without FK exceptions.
 library;
 
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -147,20 +147,21 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // Scenario C — GetSessions path: T7 flow via SessionPersistenceService
+    // Scenario C — GetSessions path: T7 flow via SessionRepository
     // -------------------------------------------------------------------------
     test(
-      "Scenario C: SessionPersistenceService.ensureProject + persistSessionsForProject "
+      "Scenario C: SessionRepository.persistSessionsForProject "
       "create project and session rows without FK exception",
       () async {
         final db = createTestDatabase();
         addTearDown(db.close);
 
-        final service = SessionPersistenceService(
+        final repository = SessionRepository(
+          plugin: _FakeBridgePlugin(projects: const []),
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
-          db: db,
-          pluginId: "opencode",
+          pullRequestDao: db.pullRequestDao,
+          unseenCalculator: const SessionUnseenCalculator(),
         );
 
         // Verify projects_table is empty before the call.
@@ -176,7 +177,7 @@ void main() {
         // persistSessionsForProject inserts the project and all 3 session rows
         // atomically, satisfying the session→project FK without a separate
         // placeholder write.
-        await service.persistSessionsForProject(
+        await repository.persistSessionsForProject(
           projectId: "sess-proj",
           sessions: sessions,
         );
@@ -242,7 +243,7 @@ Session _session({
   promptDefaults: null,
 );
 
-/// Minimal [BridgePluginApi] fake that only implements [getProjects].
+/// Minimal [BridgePluginApi] fake that only implements identity and [getProjects].
 /// Every other member throws [UnimplementedError] so accidental use is loud.
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
   final List<PluginProject> _projects;
@@ -253,7 +254,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<List<PluginProject>> getProjects() async => _projects;
 
   @override
-  String get id => throw UnimplementedError();
+  String get id => "opencode";
 
   @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();
