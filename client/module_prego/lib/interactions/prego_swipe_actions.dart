@@ -335,7 +335,9 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
     // A deliberate fling back cancels a pending commit — position alone would
     // read a fast "changed my mind" swipe as a commit.
     if (_pastCommit && velocity > -_flingVelocity) {
-      (side < 0 ? widget.onLeadingFullSwipe! : widget.onFullSwipe)();
+      // A negative side only exists with a leading action, whose constructor
+      // pairs the builder with its commit.
+      (side < 0 ? widget.onLeadingFullSwipe : widget.onFullSwipe)?.call();
       _close();
       return;
     }
