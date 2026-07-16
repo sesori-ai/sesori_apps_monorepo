@@ -25,6 +25,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
       await db.sessionDao.insertSession(
         sessionId: sessionId,
+        backendSessionId: sessionId,
         projectId: parent,
         isDedicated: true,
         createdAt: 1,

@@ -76,6 +76,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "s1",
+        backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
@@ -180,6 +181,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "s1",
+        backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
@@ -245,6 +247,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "s1",
+        backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
@@ -314,6 +317,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "s1",
+        backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
@@ -382,6 +386,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "s1",
+        backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
@@ -447,6 +452,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "unicode-session",
+        backendSessionId: "unicode-session",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
@@ -507,6 +513,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "large-base-session",
+        backendSessionId: "large-base-session",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,

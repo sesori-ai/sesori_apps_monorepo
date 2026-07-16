@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../metadata_service.dart";
 import "../models/session_metadata.dart" as bridge_metadata;
+import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
 import "worktree_service.dart";
@@ -24,6 +25,10 @@ class SessionCreationService {
        _sessionMutationDispatcher = sessionMutationDispatcher;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
+    _sessionRepository.ensurePluginAvailable(
+      pluginId: request.pluginId,
+      operation: SessionOperation.createSession,
+    );
     // Validate the opaque project handle before metadata generation or any
     // plugin/git side effect. The stored path is authoritative; unknown ids
     // must not be treated as directories.
@@ -53,6 +58,8 @@ class SessionCreationService {
     );
     await _sessionRepository.insertStoredSession(
       sessionId: created.id,
+      backendSessionId: created.id,
+      pluginId: request.pluginId,
       projectId: request.projectId,
       isDedicated: request.dedicatedWorktree,
       createdAt: DateTime.now().millisecondsSinceEpoch,

@@ -111,7 +111,10 @@ void main() {
     final stored = row.toStoredSession();
 
     expect(stored.id, row.sessionId);
+    expect(stored.backendSessionId, row.backendSessionId);
+    expect(stored.pluginId, row.pluginId);
     expect(stored.projectId, row.projectId);
+    expect(stored.directory, row.directory);
     expect(stored.worktreePath, row.worktreePath);
     expect(stored.branchName, row.branchName);
     expect(stored.isDedicated, row.isDedicated);

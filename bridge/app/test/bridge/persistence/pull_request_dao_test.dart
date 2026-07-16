@@ -32,6 +32,7 @@ void main() {
       return db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: sessionId,
+        backendSessionId: sessionId,
         projectId: projectId,
         isDedicated: true,
         createdAt: 900,

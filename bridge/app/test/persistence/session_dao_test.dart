@@ -33,6 +33,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-1",
+        backendSessionId: "ses-1",
         projectId: "proj-1",
         isDedicated: true,
         createdAt: createdAt,
@@ -64,6 +65,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-simple",
+        backendSessionId: "ses-simple",
         projectId: "proj-1",
         isDedicated: false,
         createdAt: createdAt,
@@ -125,6 +127,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-insert-defaults",
+        backendSessionId: "ses-insert-defaults",
         projectId: "proj-1",
         isDedicated: false,
         createdAt: 1234,
@@ -153,6 +156,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-update-defaults",
+        backendSessionId: "ses-update-defaults",
         projectId: "proj-1",
         isDedicated: false,
         createdAt: 1234,
@@ -197,6 +201,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-2",
+        backendSessionId: "ses-2",
         projectId: "proj-2",
         isDedicated: true,
         createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -219,6 +224,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-3",
+        backendSessionId: "ses-3",
         projectId: "proj-3",
         isDedicated: true,
         createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -274,6 +280,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-4",
+        backendSessionId: "ses-4",
         projectId: "proj-4",
         isDedicated: false,
         createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -286,11 +293,11 @@ void main() {
         lastAgentModel: null,
       );
 
-      await dao.setArchived(sessionId: "ses-4", archivedAt: 1234567890);
+      await dao.setArchived(sessionId: "ses-4", archivedAt: 1234567890, updatedAt: 1234567890);
       var result = await dao.getSession(sessionId: "ses-4");
       expect(result!.archivedAt, equals(1234567890));
 
-      await dao.clearArchived(sessionId: "ses-4");
+      await dao.clearArchived(sessionId: "ses-4", updatedAt: 1234567891);
       result = await dao.getSession(sessionId: "ses-4");
       expect(result!.archivedAt, isNull);
     });
@@ -299,6 +306,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-a",
+        backendSessionId: "ses-a",
         projectId: "proj-x",
         isDedicated: true,
         createdAt: 1,
@@ -313,6 +321,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-b",
+        backendSessionId: "ses-b",
         projectId: "proj-x",
         isDedicated: false,
         createdAt: 2,
@@ -327,6 +336,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "ses-c",
+        backendSessionId: "ses-c",
         projectId: "proj-y",
         isDedicated: true,
         createdAt: 3,
@@ -355,6 +365,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-1",
+          backendSessionId: "ses-1",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 1,
@@ -381,6 +392,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-a",
+          backendSessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 1,
@@ -395,6 +407,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-b",
+          backendSessionId: "ses-b",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 2,
@@ -422,6 +435,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-a",
+          backendSessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 1,
@@ -436,6 +450,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-b",
+          backendSessionId: "ses-b",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 2,
@@ -463,6 +478,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-a",
+          backendSessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 1,
@@ -489,6 +505,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-a",
+          backendSessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 1,
@@ -503,6 +520,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-b",
+          backendSessionId: "ses-b",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 2,
@@ -514,7 +532,7 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
         );
-        await dao.setArchived(sessionId: "ses-b", archivedAt: 99999);
+        await dao.setArchived(sessionId: "ses-b", archivedAt: 99999, updatedAt: 99999);
 
         final result = await dao.getOtherActiveSessionsSharing(
           sessionId: "ses-a",
@@ -530,6 +548,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-a",
+          backendSessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 1,
@@ -544,6 +563,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-b",
+          backendSessionId: "ses-b",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 2,
@@ -558,6 +578,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-c",
+          backendSessionId: "ses-c",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 3,
@@ -587,6 +608,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-a",
+          backendSessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
           createdAt: 1,
@@ -601,6 +623,7 @@ void main() {
         await dao.insertSession(
           pluginId: "opencode",
           sessionId: "ses-b",
+          backendSessionId: "ses-b",
           projectId: "proj-2",
           isDedicated: true,
           createdAt: 2,
@@ -633,7 +656,9 @@ void main() {
           sessions: [
             (
               sessionId: "sess-1",
+              backendSessionId: "sess-1",
               projectId: "proj-1",
+              directory: "proj-1",
               createdAt: 1000,
               archivedAt: null,
             ),
@@ -661,7 +686,9 @@ void main() {
         sessions: [
           (
             sessionId: "sess-archived",
+            backendSessionId: "sess-archived",
             projectId: "proj-1",
+            directory: "proj-1",
             createdAt: 1000,
             archivedAt: 9999,
           ),
@@ -678,6 +705,7 @@ void main() {
       await dao.insertSession(
         pluginId: "opencode",
         sessionId: "sess-existing",
+        backendSessionId: "sess-existing",
         projectId: "proj-1",
         isDedicated: true,
         createdAt: 500,
@@ -696,7 +724,9 @@ void main() {
         sessions: [
           (
             sessionId: "sess-existing",
+            backendSessionId: "sess-existing",
             projectId: "proj-1",
+            directory: "proj-1",
             createdAt: 999,
             archivedAt: null,
           ),
@@ -725,7 +755,9 @@ void main() {
             sessions: [
               (
                 sessionId: "s1",
+                backendSessionId: "s1",
                 projectId: "nonexistent",
+                directory: "nonexistent",
                 createdAt: 0,
                 archivedAt: null,
               ),
@@ -741,9 +773,30 @@ void main() {
         await dao.insertSessionsIfMissing(
           pluginId: "opencode",
           sessions: [
-            (sessionId: "bulk-1", projectId: "proj-1", createdAt: 100, archivedAt: null),
-            (sessionId: "bulk-2", projectId: "proj-1", createdAt: 200, archivedAt: 9999),
-            (sessionId: "bulk-3", projectId: "proj-2", createdAt: 300, archivedAt: null),
+            (
+              sessionId: "bulk-1",
+              backendSessionId: "bulk-1",
+              projectId: "proj-1",
+              directory: "proj-1",
+              createdAt: 100,
+              archivedAt: null,
+            ),
+            (
+              sessionId: "bulk-2",
+              backendSessionId: "bulk-2",
+              projectId: "proj-1",
+              directory: "proj-1",
+              createdAt: 200,
+              archivedAt: 9999,
+            ),
+            (
+              sessionId: "bulk-3",
+              backendSessionId: "bulk-3",
+              projectId: "proj-2",
+              directory: "proj-2",
+              createdAt: 300,
+              archivedAt: null,
+            ),
           ],
         );
 
@@ -778,14 +831,35 @@ void main() {
         await dao.insertSessionsIfMissing(
           pluginId: "codex",
           sessions: [
-            (sessionId: "c-gone", projectId: "proj-1", createdAt: 100, archivedAt: null),
-            (sessionId: "c-kept", projectId: "proj-1", createdAt: 100, archivedAt: null),
+            (
+              sessionId: "c-gone",
+              backendSessionId: "c-gone",
+              projectId: "proj-1",
+              directory: "proj-1",
+              createdAt: 100,
+              archivedAt: null,
+            ),
+            (
+              sessionId: "c-kept",
+              backendSessionId: "c-kept",
+              projectId: "proj-1",
+              directory: "proj-1",
+              createdAt: 100,
+              archivedAt: null,
+            ),
           ],
         );
         await dao.insertSessionsIfMissing(
           pluginId: "opencode",
           sessions: [
-            (sessionId: "o-kept", projectId: "proj-1", createdAt: 100, archivedAt: null),
+            (
+              sessionId: "o-kept",
+              backendSessionId: "o-kept",
+              projectId: "proj-1",
+              directory: "proj-1",
+              createdAt: 100,
+              archivedAt: null,
+            ),
           ],
         );
 
@@ -807,14 +881,35 @@ void main() {
         await dao.insertSessionsIfMissing(
           pluginId: "codex",
           sessions: [
-            (sessionId: "c1", projectId: "proj-1", createdAt: 100, archivedAt: null),
-            (sessionId: "c2", projectId: "proj-2", createdAt: 200, archivedAt: null),
+            (
+              sessionId: "c1",
+              backendSessionId: "c1",
+              projectId: "proj-1",
+              directory: "proj-1",
+              createdAt: 100,
+              archivedAt: null,
+            ),
+            (
+              sessionId: "c2",
+              backendSessionId: "c2",
+              projectId: "proj-2",
+              directory: "proj-2",
+              createdAt: 200,
+              archivedAt: null,
+            ),
           ],
         );
         await dao.insertSessionsIfMissing(
           pluginId: "opencode",
           sessions: [
-            (sessionId: "o1", projectId: "proj-1", createdAt: 300, archivedAt: null),
+            (
+              sessionId: "o1",
+              backendSessionId: "o1",
+              projectId: "proj-1",
+              directory: "proj-1",
+              createdAt: 300,
+              archivedAt: null,
+            ),
           ],
         );
 
@@ -840,6 +935,7 @@ void main() {
           () async => dao.insertSession(
             pluginId: "opencode",
             sessionId: "s2",
+            backendSessionId: "s2",
             projectId: "nonexistent",
             isDedicated: false,
             createdAt: 0,

@@ -18,6 +18,9 @@ class CursorPlugin extends AcpPlugin {
   static const String pluginId = "cursor";
   static const String _providerId = "cursor";
 
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
+
   factory CursorPlugin({
     String binaryPath = CursorBinary.defaultBinary,
     String? launchDirectory,

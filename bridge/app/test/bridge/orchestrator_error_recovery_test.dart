@@ -560,6 +560,9 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
   String get id => "throwing-summary";
 
   @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
+
+  @override
   Stream<BridgeSseEvent> get events {
     return Stream<BridgeSseEvent>.multi((controller) {
       subscribeCount++;

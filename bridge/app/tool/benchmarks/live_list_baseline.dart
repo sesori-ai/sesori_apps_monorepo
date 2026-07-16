@@ -324,10 +324,6 @@ class _LiveListBenchmark {
       start: start,
       limit: limit,
     );
-    await repository.persistSessionsForProject(
-      projectId: _projectDirectory,
-      sessions: sessions,
-    );
     for (final session in sessions) {
       await mutationDispatcher.applyPendingTitle(sessionId: session.id);
     }

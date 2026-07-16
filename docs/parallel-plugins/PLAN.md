@@ -8,12 +8,13 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 3B - relocated the database API layer
-- **Next up:** Stage 3C - catalog write-through and stable session binding
+- **Last completed stage:** Stage 3C - catalog write-through and stable session binding
+- **Next up:** Stage 4 - known-event projection and durable child hierarchy
 - **Runtime default:** one selected plugin until Stage 7
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
 - **Stage 3B implementation base:** `main` at `7c8b6440` (audited 2026-07-16)
+- **Stage 3C implementation base:** `main` at `72ac20f4` (audited 2026-07-16)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -603,7 +604,7 @@ selection.
 | ☑ | 2 | Catalog schema and indexed DAO queries | Drift structural/data migration tests; query plans |
 | ☑ | 3A | Correct touched session architecture boundaries | Architecture tests; behavior parity |
 | ☑ | 3B | Relocate the database API layer | Rename-only diff; schema/tests unchanged |
-| ☐ | 3C | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
+| ☑ | 3C | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☐ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
 | ☐ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
 | ☐ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
@@ -718,10 +719,12 @@ v11; migration artifacts are unchanged; all bridge verification passes.
 
 ### Stage 3C - Catalog Write-Through and Stable Session Binding
 
-- Make `SessionRepository`, `QuestionRepository`, and `PermissionRepository`
-  resolve stored Sesori ids and pass only backend handles to the active plugin.
-  Missing bindings return 404 without discovery; bindings owned by a non-running
-  plugin return 503.
+- Make every root-targeted `SessionRepository` operation resolve stored Sesori
+  ids and pass only backend handles to the active plugin. Missing bindings
+  return 404 without discovery; bindings owned by a non-running plugin return
+  503 before plugin or cleanup side effects.
+- Validate plugin-scoped agent, provider, command, and create requests before
+  project resolution or plugin I/O.
 - Consume create/plugin-scoped `pluginId`; never substitute the active plugin.
 - Carry `sessionId` and `backendSessionId` independently in every DAO/repository
   write, but keep new production allocation identity-preserving until Stage 4.
@@ -731,6 +734,9 @@ v11; migration artifacts are unchanged; all bridge verification passes.
   call into the required list result.
 - Persist create/open/rename/archive/unarchive/delete write-through before the
   response while preserving bridge-owned fields and failure ordering.
+- Keep child lookup plus question/permission routing on the identity-preserving
+  path until Stage 4 can land durable child bindings and exhaustive event/child
+  translation atomically.
 
 Acceptance: equal backend handles under different plugin ids remain legal;
 divergent stored ids route every targeted call with the backend handle; unknown
@@ -748,14 +754,17 @@ until Stage 4.
   `PluginEventListener`.
 - Persist known-session projection updates, proven child ancestry, recursive
   descendants, and cascade behavior.
+- Make `SessionRepository.getChildSessions`, `QuestionRepository`, and
+  `PermissionRepository` resolve durable root/child bindings and pass only
+  backend handles to the owning plugin.
 - Translate every session-bearing event field from backend to Sesori identity.
 - Normalize each plugin stream before merge and remove backend-global lifecycle
   events from bridge-global semantics.
 - Change child reads to the catalog while root/project lists remain on the old
   path for one more stage.
 
-Acceptance: no backend handle reaches a shared event; unknown roots are ignored;
-cross-plugin parent links fail; out-of-
+Acceptance: no backend handle reaches a shared event, child, question, or
+permission payload; unknown roots are ignored; cross-plugin parent links fail; out-of-
 order descendants drain when ancestry arrives; backend deletion preserves
 history; the pending-child bound retains the largest expected event burst;
 blocked plugin A normalization does not block plugin B.
@@ -905,6 +914,19 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 3C:** Root session lists now publish complete observed projections
+  transactionally before returning, preserve stable ids for existing backend
+  bindings, and reject stale snapshots from overwriting bridge-owned title,
+  archive, worktree, and prompt state. Every root-targeted plugin operation
+  resolves the stored backend handle first; missing bindings return 404 and a
+  non-running stored/requested plugin returns 503 before plugin or local cleanup
+  side effects. Create, project open/rename, archive/unarchive, delete, status,
+  and message responses write through or map back to stable ids while new
+  production bindings remain identity-preserving. Schema v11 is unchanged.
+  The implementation audit found that moving only root lookup into
+  `QuestionRepository`, `PermissionRepository`, or `getChildSessions` would
+  still expose untranslated child/event handles, so all child-facing routing
+  moved to Stage 4 with durable child binding and exhaustive event translation.
 - **Stage 3B:** The complete Drift Layer 1 implementation now lives under
   `bridge/app/lib/src/api/database/`; startup-only bridge diagnostics remain in
   `bridge/persistence/`. Schema v11, migration artifacts, queries, models, and

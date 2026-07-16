@@ -51,9 +51,9 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   }
 
   /// Records [projectId] as an explicitly-opened folder by storing [path] and
-  /// the exact timestamps, creating the row if missing. On conflict only
-  /// [path], [createdAt] and [updatedAt] are replaced with the supplied values,
-  /// preserving other user-set fields. Lets a folder with no sessions yet
+  /// the exact timestamps, creating the row if missing. On conflict [path],
+  /// [createdAt], [updatedAt], and the hidden flag are replaced with the
+  /// supplied values, preserving other user-set fields. Lets a folder with no sessions yet
   /// survive a refresh and refreshes the stored path when a moved folder is
   /// re-opened.
   Future<void> recordOpenedProject({
@@ -69,6 +69,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
         createdAt: Value(createdAt),
         updatedAt: Value(updatedAt),
         projectionUpdatedAt: updatedAt,
+        hidden: const Value(false),
       ),
       onConflict: DoUpdate(
         (old) => ProjectsTableCompanion(
@@ -76,6 +77,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
           createdAt: Value(createdAt),
           updatedAt: Value(updatedAt),
           projectionUpdatedAt: Value(updatedAt),
+          hidden: const Value(false),
         ),
         target: [projectsTable.projectId],
       ),
@@ -86,16 +88,19 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// the row if missing. Updates only displayName on conflict, preserving all
   /// other fields. Used to persist a rename for a bridge-derived plugin that
   /// has no backend to store the name.
-  Future<void> setDisplayName({required String projectId, required String displayName}) async {
-    final insertedAt = DateTime.now().millisecondsSinceEpoch;
+  Future<void> setDisplayName({
+    required String projectId,
+    required String displayName,
+    required int updatedAt,
+  }) async {
     await into(projectsTable).insert(
       ProjectsTableCompanion.insert(
         projectId: projectId,
         path: projectId,
         displayName: Value(displayName),
-        createdAt: Value(insertedAt),
-        updatedAt: Value(insertedAt),
-        projectionUpdatedAt: insertedAt,
+        createdAt: Value(updatedAt),
+        updatedAt: Value(updatedAt),
+        projectionUpdatedAt: updatedAt,
       ),
       onConflict: DoUpdate(
         (old) => ProjectsTableCompanion(displayName: Value(displayName)),

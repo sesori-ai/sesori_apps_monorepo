@@ -5,10 +5,8 @@
 /// With `PRAGMA foreign_keys = ON`, this caused `FOREIGN KEY constraint failed`
 /// because `pull_requests_table.projectId` references `projects_table.project_id`.
 ///
-/// This test proves that the three forward-prevention paths (T5, T7, T9) fix
-/// the bug WITHOUT requiring the v5 schema migration. The v5 migration adds a
-/// belt-and-suspenders FK from `session_table.projectId` → `projects_table`,
-/// but the core PR sync bug is already fixed by the time T10 runs.
+/// This test proves that project discovery, defensive PR upsert, and session
+/// binding publication all preserve the relevant foreign-key invariants.
 ///
 /// Scenario A — Primary path (GetProjects before PR sync):
 ///   ProjectRepository.getProjects() persists projects; subsequent
@@ -19,9 +17,9 @@
 ///   defensively (T9), so even if GetProjects never ran, the PR upsert
 ///   creates the project row and succeeds.
 ///
-/// Scenario C — GetSessions path (T7 flow):
-///   SessionRepository.persistSessionsForProject
-///   create the project row and session rows without FK exceptions.
+/// Scenario C — GetSessions path:
+///   SessionRepository.getSessionsForProject publishes session bindings after
+///   project discovery without FK exceptions.
 library;
 
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
@@ -57,6 +55,7 @@ void main() {
               activity: PluginProjectActivity(createdAt: 0, updatedAt: 100),
             ),
           ],
+          sessions: const [],
         );
 
         final projectRepo = ProjectRepository(
@@ -71,7 +70,7 @@ void main() {
           projectsDao: db.projectsDao,
         );
 
-        // Primary fix (T5): getProjects persists the project row.
+        // Project discovery persists the project row.
         await projectRepo.getProjects(defaultTimestamp: 1234);
 
         final projectRows = await db.select(db.projectsTable).get();
@@ -121,7 +120,7 @@ void main() {
         final emptyRows = await db.select(db.projectsTable).get();
         expect(emptyRows, isEmpty, reason: "projects_table must be empty before the call");
 
-        // Defensive fix (T9): upsertFromGhPr calls insertProjectIfMissing.
+        // The defensive upsert path calls insertProjectIfMissing.
         // Direct await — if FK exception were thrown, the test would fail here.
         await prRepo.upsertFromGhPr(
           projectId: "ghost",
@@ -147,39 +146,40 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // Scenario C — GetSessions path: T7 flow via SessionRepository
+    // Scenario C — GetSessions path via SessionRepository
     // -------------------------------------------------------------------------
     test(
-      "Scenario C: SessionRepository.persistSessionsForProject "
-      "create project and session rows without FK exception",
+      "Scenario C: SessionRepository.getSessionsForProject publishes bindings without FK exception",
       () async {
         final db = createTestDatabase();
         addTearDown(db.close);
 
+        final plugin = _FakeBridgePlugin(
+          projects: const [],
+          sessions: [
+            _session(id: "sess-1", projectId: "sess-proj", createdAt: 1000),
+            _session(id: "sess-2", projectId: "sess-proj", createdAt: 2000),
+            _session(id: "sess-3", projectId: "sess-proj", createdAt: 3000),
+          ],
+        );
         final repository = SessionRepository(
-          plugin: _FakeBridgePlugin(projects: const []),
+          plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         );
 
-        // Verify projects_table is empty before the call.
-        final emptyRows = await db.select(db.projectsTable).get();
-        expect(emptyRows, isEmpty, reason: "projects_table must be empty before the call");
-
-        final sessions = [
-          _session(id: "sess-1", projectId: "sess-proj", createdAt: 1000),
-          _session(id: "sess-2", projectId: "sess-proj", createdAt: 2000),
-          _session(id: "sess-3", projectId: "sess-proj", createdAt: 3000),
-        ];
-
-        // persistSessionsForProject inserts the project and all 3 session rows
-        // atomically, satisfying the session→project FK without a separate
-        // placeholder write.
-        await repository.persistSessionsForProject(
+        await db.projectsDao.recordOpenedProject(
           projectId: "sess-proj",
-          sessions: sessions,
+          path: "/tmp/sess-proj",
+          createdAt: 1,
+          updatedAt: 1,
+        );
+        final sessions = await repository.getSessionsForProject(
+          projectId: "sess-proj",
+          start: null,
+          limit: null,
         );
 
         // projects_table has "sess-proj".
@@ -187,24 +187,27 @@ void main() {
         expect(
           projectRows.map((r) => r.projectId).toList(),
           contains("sess-proj"),
-          reason: "persistSessionsForProject must create the project row",
+          reason: "the discovered project remains available for binding publication",
         );
 
-        // session_table has 3 placeholder rows.
+        // The list is not returned until all three stable/backend bindings exist.
         final sessionRows = await db.select(db.sessionTable).get();
         expect(
           sessionRows,
           hasLength(3),
-          reason: "persistSessionsForProject must insert 3 session rows",
+          reason: "getSessionsForProject must publish 3 session bindings",
         );
         expect(
           sessionRows.map((r) => r.sessionId).toSet(),
           equals({"sess-1", "sess-2", "sess-3"}),
         );
         for (final row in sessionRows) {
+          expect(row.backendSessionId, equals(row.sessionId));
+          expect(row.pluginId, equals(plugin.id));
           expect(row.projectId, equals("sess-proj"));
-          expect(row.isDedicated, isFalse, reason: "placeholder sessions are non-dedicated");
+          expect(row.directory, equals("/tmp/sess-proj"));
         }
+        expect(sessions.map((session) => session.id).toSet(), equals({"sess-1", "sess-2", "sess-3"}));
       },
     );
   });
@@ -226,29 +229,29 @@ GhPullRequest _fakePr() => const GhPullRequest(
   statusCheckRollup: PrCheckStatus.success,
 );
 
-/// Constructs a minimal [Session] for use in session persistence tests.
-Session _session({
+/// Constructs a minimal [PluginSession] for use in session publication tests.
+PluginSession _session({
   required String id,
   required String projectId,
   required int createdAt,
-}) => Session(
+}) => PluginSession(
   id: id,
-  pluginId: "fake",
   projectID: projectId,
   directory: "/tmp/$projectId",
   parentID: null,
   title: null,
-  time: SessionTime(created: createdAt, updated: createdAt, archived: null),
-  pullRequest: null,
-  promptDefaults: null,
+  time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
 );
 
 /// Minimal [BridgePluginApi] fake that only implements identity and [getProjects].
 /// Every other member throws [UnimplementedError] so accidental use is loud.
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
   final List<PluginProject> _projects;
+  final List<PluginSession> _sessions;
 
-  _FakeBridgePlugin({required List<PluginProject> projects}) : _projects = projects;
+  _FakeBridgePlugin({required List<PluginProject> projects, required List<PluginSession> sessions})
+    : _projects = projects,
+      _sessions = sessions;
 
   @override
   Future<List<PluginProject>> getProjects() async => _projects;
@@ -257,10 +260,13 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String get id => "opencode";
 
   @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
+
+  @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) => throw UnimplementedError();
+  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async => _sessions;
 
   @override
   Future<PluginSession> createSession({

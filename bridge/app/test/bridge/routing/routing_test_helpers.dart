@@ -11,9 +11,11 @@ import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_status_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/prompt_part_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
@@ -156,6 +158,9 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "fake";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => _controller.stream;
@@ -427,6 +432,7 @@ class FakeSessionDao {
 
   Future<void> insertSession({
     required String sessionId,
+    required String backendSessionId,
     required String projectId,
     required bool isDedicated,
     required int createdAt,
@@ -440,7 +446,7 @@ class FakeSessionDao {
   }) async {
     _sessions[sessionId] = SessionDto(
       sessionId: sessionId,
-      backendSessionId: sessionId,
+      backendSessionId: backendSessionId,
       projectId: projectId,
       parentSessionId: null,
       directory: worktreePath ?? projectId,
@@ -466,14 +472,14 @@ class FakeSessionDao {
 
   Future<SessionDto?> getSession({required String sessionId}) async => _sessions[sessionId];
 
-  Future<void> setArchived({required String sessionId, required int archivedAt}) async {
+  Future<void> setArchived({required String sessionId, required int archivedAt, required int updatedAt}) async {
     if (_sessions.containsKey(sessionId)) {
       final session = _sessions[sessionId]!;
       _sessions[sessionId] = session.copyWith(archivedAt: archivedAt);
     }
   }
 
-  Future<void> clearArchived({required String sessionId}) async {
+  Future<void> clearArchived({required String sessionId, required int updatedAt}) async {
     if (_sessions.containsKey(sessionId)) {
       final session = _sessions[sessionId]!;
       _sessions[sessionId] = session.copyWith(archivedAt: null);
@@ -737,22 +743,24 @@ class _NoopSessionRepository implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
-  Future<void> persistSessionsForProject({
-    required String projectId,
-    required List<Session> sessions,
-  }) async {}
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    throw PluginOperationException.notFound(
+      operation.name,
+      message: "session $sessionId was not found",
+    );
+  }
 
   @override
-  Future<void> createStoredSessionPlaceholder({
-    required String sessionId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-  }) async {}
+  Future<Session?> getCatalogSession({required String sessionId}) async => null;
+
+  @override
+  Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
+
+  @override
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {}
 
   @override
   Future<void> archiveStoredSession({
@@ -766,6 +774,8 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<void> insertStoredSession({
     required String sessionId,
+    required String backendSessionId,
+    required String pluginId,
     required String projectId,
     required bool isDedicated,
     required int createdAt,
@@ -847,6 +857,7 @@ class FakeSessionRepository implements SessionRepository {
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
   final Map<String, String?> enrichedTitleOverrides = {};
+  Object? publicationError;
 
   /// Settable so handler tests can exercise the non-authoritative
   /// (bridge-derived) reconcile gating.
@@ -866,7 +877,7 @@ class FakeSessionRepository implements SessionRepository {
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
-    return pluginMessages.toSharedMessageWithParts();
+    return pluginMessages.toSharedMessageWithParts(sessionId: sessionId);
   }
 
   /// Recorded setSessionTitleIfStored calls (sessionId → title).
@@ -954,12 +965,34 @@ class FakeSessionRepository implements SessionRepository {
       return session;
     }).toList();
     final prsBySessionId = await _pullRequestRepository.getPrsBySessionIds(sessionIds: sessionIds);
-    return mergedSessions.map((session) {
+    final result = mergedSessions.map((session) {
       final prs = prsBySessionId[session.id];
       final pr = _selectBestPr(prs);
       if (pr == null) return session;
       return session.copyWith(pullRequest: pullRequestInfoFromDto(pr));
     }).toList();
+    final database = _persistenceDatabase;
+    if (database != null) {
+      if (publicationError case final error?) throw error;
+      await database.transaction(() async {
+        await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+        await database.sessionDao.insertSessionsIfMissing(
+          pluginId: _plugin.id,
+          sessions: [
+            for (final session in result)
+              (
+                sessionId: session.id,
+                backendSessionId: session.id,
+                projectId: projectId,
+                directory: session.directory,
+                createdAt: session.time?.created ?? DateTime.now().millisecondsSinceEpoch,
+                archivedAt: session.time?.archived,
+              ),
+          ],
+        );
+      });
+    }
+    return result;
   }
 
   @override
@@ -1060,40 +1093,45 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<void> persistSessionsForProject({
-    required String projectId,
-    required List<Session> sessions,
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
   }) async {
-    final database = _persistenceDatabase;
-    if (database == null) return;
-    await database.transaction(() async {
-      await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
-      await database.sessionDao.insertSessionsIfMissing(
-        pluginId: _plugin.id,
-        sessions: [
-          for (final session in sessions)
-            (
-              sessionId: session.id,
-              projectId: projectId,
-              createdAt: session.time?.created ?? DateTime.now().millisecondsSinceEpoch,
-              archivedAt: session.time?.archived,
-            ),
-        ],
+    final stored = await getStoredSession(sessionId: sessionId);
+    if (stored == null) {
+      throw PluginOperationException.notFound(
+        operation.name,
+        message: "session $sessionId was not found",
       );
-    });
+    }
+    ensurePluginAvailable(pluginId: stored.pluginId, operation: operation);
+    return stored;
   }
 
   @override
-  Future<void> createStoredSessionPlaceholder({
-    required String sessionId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-  }) async {}
+  Future<Session?> getCatalogSession({required String sessionId}) async => null;
+
+  @override
+  Future<SessionStatusResponse> getSessionStatuses() async {
+    final statuses = await _plugin.getSessionStatuses();
+    return SessionStatusResponse(
+      statuses: {
+        for (final entry in statuses.entries)
+          if (await _sessionDao.getSession(sessionId: entry.key) case final stored?)
+            stored.sessionId: entry.value.toSharedSessionStatus(),
+      },
+    );
+  }
+
+  @override
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {
+    if (pluginId == _plugin.id) return;
+    throw PluginOperationException(
+      operation.name,
+      statusCode: 503,
+      message: "plugin $pluginId is not running",
+    );
+  }
 
   @override
   Future<void> archiveStoredSession({
@@ -1107,6 +1145,8 @@ class FakeSessionRepository implements SessionRepository {
   @override
   Future<void> insertStoredSession({
     required String sessionId,
+    required String backendSessionId,
+    required String pluginId,
     required String projectId,
     required bool isDedicated,
     required int createdAt,
@@ -1119,6 +1159,7 @@ class FakeSessionRepository implements SessionRepository {
   }) {
     return _sessionDao.insertSession(
       sessionId: sessionId,
+      backendSessionId: backendSessionId,
       projectId: projectId,
       isDedicated: isDedicated,
       createdAt: createdAt,
@@ -1128,7 +1169,7 @@ class FakeSessionRepository implements SessionRepository {
       baseCommit: baseCommit,
       lastAgent: agent,
       lastAgentModel: agentModel,
-      pluginId: "opencode",
+      pluginId: pluginId,
     );
   }
 

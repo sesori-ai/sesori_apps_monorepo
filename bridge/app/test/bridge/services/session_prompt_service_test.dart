@@ -17,7 +17,7 @@ void main() {
     late SessionRepository sessionRepository;
     late SessionPromptService service;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
       sessionRepository = SessionRepository(
@@ -29,6 +29,20 @@ void main() {
       );
       service = SessionPromptService(
         sessionRepository: sessionRepository,
+      );
+      await sessionRepository.insertStoredSession(
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
       );
     });
 
@@ -52,7 +66,7 @@ void main() {
     test("sends the command and records normalized arguments", () async {
       await sendCommand();
 
-      expect(plugin.lastSendCommandSessionId, equals("s1"));
+      expect(plugin.lastSendCommandSessionId, equals("backend-s1"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("extra args"));
     });
@@ -64,10 +78,12 @@ void main() {
       final completer = Completer<void>();
       plugin.sendCommandCompleter = completer;
 
-      // Attach the expectation before failing the completer: sendCommand has
-      // async steps ahead of the plugin call, so a pre-completed error future
-      // would count as unhandled before anyone listens.
+      // Attach the expectation first, then wait until the plugin has reached
+      // and started awaiting its injected future before failing it.
       final pending = expectLater(sendCommand(), throwsA(isA<StateError>()));
+      while (plugin.lastSendCommandSessionId == null) {
+        await Future<void>.delayed(Duration.zero);
+      }
       completer.completeError(StateError("unknown command"));
       await pending;
     });
@@ -75,6 +91,8 @@ void main() {
     test("updates prompt defaults after the command is dispatched", () async {
       await sessionRepository.insertStoredSession(
         sessionId: "s-defaults-command",
+        backendSessionId: "backend-defaults-command",
+        pluginId: "fake",
         projectId: "/repo",
         isDedicated: false,
         createdAt: 1,
@@ -105,6 +123,8 @@ void main() {
     test("emits committed prompt default changes", () async {
       await sessionRepository.insertStoredSession(
         sessionId: "s-defaults-event",
+        backendSessionId: "backend-defaults-event",
+        pluginId: "fake",
         projectId: "/repo",
         isDedicated: false,
         createdAt: 1,
@@ -144,7 +164,7 @@ void main() {
         command: null,
       );
 
-      expect(plugin.lastSendPromptSessionId, equals("s1"));
+      expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
       expect(plugin.lastSendCommand, isNull);
     });
   });

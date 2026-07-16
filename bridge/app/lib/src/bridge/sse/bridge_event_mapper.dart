@@ -57,7 +57,7 @@ class BridgeEventMapper {
         BridgeSseMessagePartUpdated(:final part) => () {
           if (!part.type.isVisible) return null;
           final truncated = _truncateToolOutput(part);
-          return SesoriSseEvent.messagePartUpdated(part: truncated.toShared());
+          return SesoriSseEvent.messagePartUpdated(part: truncated.toShared(sessionId: truncated.sessionID));
         }(),
         BridgeSseMessagePartDelta(
           :final sessionID,

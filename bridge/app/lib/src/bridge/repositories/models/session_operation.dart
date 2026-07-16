@@ -1,0 +1,15 @@
+enum SessionOperation {
+  createSession,
+  renameSession,
+  getCommands,
+  sendCommand,
+  sendPrompt,
+  getSessionMessages,
+  deleteSession,
+  getSession,
+  archiveSession,
+  abortSession,
+  getChildSessions,
+  cleanupSession,
+  updateSessionArchiveStatus,
+}
