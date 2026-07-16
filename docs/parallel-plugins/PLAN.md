@@ -15,7 +15,7 @@
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
 - **Stage 3B implementation base:** `main` at `7c8b6440` (audited 2026-07-16)
 - **Stage 3C implementation base:** `main` at `72ac20f4` (audited 2026-07-16)
-- **Stage 4 implementation base:** `main` at `142b55b4` (audited 2026-07-16)
+- **Stage 4 implementation base:** `main` at `86816cee` (audited 2026-07-16)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
