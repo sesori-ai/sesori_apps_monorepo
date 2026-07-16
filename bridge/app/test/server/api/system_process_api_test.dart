@@ -7,6 +7,33 @@ import "package:test/test.dart";
 
 void main() {
   group("SystemProcessApi (Windows)", () {
+    test("listProcesses avoids verbose tasklist and parses basic rows", () async {
+      final runner = _RecordingProcessRunner(
+        stdout:
+            '"sesori-bridge.exe","321","Console","1","12,345 K"\r\n'
+            '"opencode.exe","654","Console","1","98,765 K"\r\n',
+      );
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+        platform: "windows",
+      );
+
+      final identities = await api.listProcesses();
+
+      expect(runner.calls, hasLength(1));
+      final call = runner.calls.single;
+      expect(call.executable, equals("tasklist"));
+      expect(call.arguments, equals(<String>["/FO", "CSV", "/NH"]));
+      expect(identities.map((identity) => identity.pid), equals(<int>[321, 654]));
+      expect(
+        identities.map((identity) => identity.executablePath),
+        equals(<String>["sesori-bridge.exe", "opencode.exe"]),
+      );
+      expect(identities.map((identity) => identity.ownerUser), everyElement(isNull));
+    });
+
     test("inspectProcess issues a PID-scoped tasklist filter", () async {
       final runner = _RecordingProcessRunner(
         stdout: '"sesori-bridge.exe","321","Console","1","12,345 K","Running","HOST\\alex","0:00:01","N/A"\r\n',

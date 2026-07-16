@@ -174,7 +174,10 @@ class SystemProcessApi {
   }
 
   Future<List<ProcessIdentity>> _listWindowsProcesses() async {
-    final (command, args) = ("tasklist", <String>["/V", "/FO", "CSV", "/NH"]);
+    // The verbose form resolves extra metadata for every process and can hang
+    // long enough to abort bridge startup. Candidate discovery only needs the
+    // image name and PID supplied by the basic tasklist output.
+    final (command, args) = ("tasklist", <String>["/FO", "CSV", "/NH"]);
     final result = await _processRunner.run(command, args);
     if (result.exitCode != 0) {
       throw ProcessException(
@@ -227,7 +230,7 @@ class SystemProcessApi {
       }
 
       final row = _parseCsvLine(line: trimmed);
-      if (row.length < 7) {
+      if (row.length < 2) {
         continue;
       }
 
@@ -237,13 +240,14 @@ class SystemProcessApi {
       }
 
       final executablePath = row[0];
+      final ownerUser = row.length > 6 ? ProcessUser.fromRawUser(row[6]) : null;
       processes.add(
         ProcessIdentity(
           pid: pid,
           startMarker: null,
           executablePath: executablePath,
           commandLine: executablePath,
-          ownerUser: ProcessUser.fromRawUser(row[6].isEmpty ? null : row[6]),
+          ownerUser: ownerUser,
           platform: _platform,
           capturedAt: capturedAt,
         ),
