@@ -66,6 +66,8 @@ import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
+import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
+    as _i84;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
     as _i709;
 import 'package:sesori_dart_core/src/services/session_list_service.dart'
@@ -91,6 +93,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1002.DraftStore>(() => _i1002.DraftStore());
     gh.lazySingleton<_i913.NewSessionSelectionTracker>(
       () => _i913.NewSessionSelectionTracker(),
+    );
+    gh.lazySingleton<_i84.SessionActivityCalculator>(
+      () => const _i84.SessionActivityCalculator(),
     );
     gh.lazySingleton<_i895.RoomKeyStorage>(
       () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
@@ -160,6 +165,18 @@ extension GetItInjectableX on _i174.GetIt {
         filesystemApi: gh<_i1068.FilesystemApi>(),
       ),
     );
+    gh.lazySingleton<_i703.ProjectListService>(
+      () => _i703.ProjectListService(
+        repository: gh<_i80.ProjectRepository>(),
+        activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
+    );
+    gh.lazySingleton<_i763.SessionListService>(
+      () => _i763.SessionListService(
+        repository: gh<_i80.ProjectRepository>(),
+        activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
+    );
     gh.lazySingleton<_i471.NotificationRepository>(
       () => _i471.NotificationRepository(api: gh<_i400.NotificationApi>()),
     );
@@ -176,12 +193,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i458.NotificationPreferencesRepository(
         api: gh<_i396.NotificationPreferencesApi>(),
       ),
-    );
-    gh.lazySingleton<_i703.ProjectListService>(
-      () => _i703.ProjectListService(repository: gh<_i80.ProjectRepository>()),
-    );
-    gh.lazySingleton<_i763.SessionListService>(
-      () => _i763.SessionListService(repository: gh<_i80.ProjectRepository>()),
     );
     gh.lazySingleton<_i157.SessionViewApi>(
       () => _i157.SessionViewApi(

@@ -3,12 +3,19 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/project_repository.dart";
+import "models/session_activity_info.dart";
+import "session_activity_calculator.dart";
 
 @lazySingleton
 class ProjectListService {
   final ProjectRepository _repository;
+  final SessionActivityCalculator _activityCalculator;
 
-  ProjectListService({required ProjectRepository repository}) : _repository = repository;
+  ProjectListService({
+    required ProjectRepository repository,
+    required SessionActivityCalculator activityCalculator,
+  }) : _repository = repository,
+       _activityCalculator = activityCalculator;
 
   Future<ApiResponse<Projects>> listProjects() async {
     final response = await _repository.listProjects();
@@ -41,6 +48,24 @@ class ProjectListService {
     return _sortProjects(projects.where((project) => project.id != projectId));
   }
 
+  List<Project> orderProjects({
+    required Iterable<Project> projects,
+    required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
+  }) {
+    final running = <Project>[];
+    final remaining = <Project>[];
+    for (final project in projects) {
+      final activity = activityByProjectId[project.id];
+      if (activity != null && activity.values.any((session) => _activityCalculator.isRunning(activity: session))) {
+        running.add(project);
+      } else {
+        remaining.add(project);
+      }
+    }
+    running.sort((a, b) => _compareProjectsByNameAndId(a: a, b: b));
+    return [...running, ..._sortProjects(remaining)];
+  }
+
   List<Project> _sortProjects(Iterable<Project> projects) {
     return projects.toList()..sort((a, b) => _compareProjectsByTimestampAndName(a: a, b: b));
   }
@@ -57,6 +82,13 @@ class ProjectListService {
     };
     if (updatedCompare != 0) return updatedCompare;
 
+    final nameCompare = _effectiveName(a).toLowerCase().compareTo(_effectiveName(b).toLowerCase());
+    if (nameCompare != 0) return nameCompare;
+
+    return a.id.compareTo(b.id);
+  }
+
+  int _compareProjectsByNameAndId({required Project a, required Project b}) {
     final nameCompare = _effectiveName(a).toLowerCase().compareTo(_effectiveName(b).toLowerCase());
     if (nameCompare != 0) return nameCompare;
 

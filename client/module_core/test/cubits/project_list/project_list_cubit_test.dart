@@ -11,7 +11,9 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/project_list/add_project_outcome.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
+import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/project_list_service.dart";
+import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -59,7 +61,10 @@ void main() {
 
     setUp(() {
       mockProjectRepository = MockProjectRepository();
-      projectListService = ProjectListService(repository: mockProjectRepository);
+      projectListService = ProjectListService(
+        repository: mockProjectRepository,
+        activityCalculator: const SessionActivityCalculator(),
+      );
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
       mockRouteSource = MockRouteSource();
@@ -1255,6 +1260,53 @@ void main() {
       skip: 1,
       expect: () => [
         isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_projectId: 3}),
+      ],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "running activity received after REST creates an alphabetical prefix",
+      build: () {
+        when(() => mockProjectRepository.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
+        );
+        return buildCubit();
+      },
+      act: (_) async {
+        await Future<void>.delayed(Duration.zero);
+        mockSseEventTracker.emitSessionActivity({
+          "A": {"a": const SessionActivityInfo(mainAgentRunning: true)},
+          "C": {"c": const SessionActivityInfo(backgroundTaskCount: 1)},
+        });
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (state) => state.projects.map((project) => project.id).toList(),
+          "project order",
+          ["A", "C", "B"],
+        ),
+      ],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "running activity received before REST is applied when projects arrive",
+      build: () {
+        mockSseEventTracker.emitSessionActivity({
+          "A": {"a": const SessionActivityInfo(mainAgentRunning: true)},
+          "C": {"c": const SessionActivityInfo(backgroundTaskCount: 1)},
+        });
+        when(() => mockProjectRepository.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
+        );
+        return buildCubit();
+      },
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (state) => state.projects.map((project) => project.id).toList(),
+          "project order",
+          ["A", "C", "B"],
+        ),
       ],
     );
 
