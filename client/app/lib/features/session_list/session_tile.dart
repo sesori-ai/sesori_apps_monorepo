@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
@@ -28,7 +29,15 @@ typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext c
 /// Tapping opens the session; long-pressing — or right-clicking with a mouse —
 /// opens its actions in a [PregoAnchorMenu] anchored to the row, which blurs
 /// the rest of the list back and holds this row sharp so the session being
-/// acted on stays in view. Swiping still archives, as before.
+/// acted on stays in view.
+///
+/// The frequent actions are also behind swipes ([PregoSwipeActions]): toward
+/// the start edge the row opens on a delete pill and an archive pill, with a
+/// full swipe committing the archive — reversible, so it can afford the quick
+/// path, where delete stays behind a deliberate tap. Toward the end edge the
+/// row opens on the mail-style read toggle, committed by a full swipe
+/// likewise. The swipes are the quick paths; the menu stays the discoverable
+/// and assistive one.
 class SessionTile extends StatelessWidget {
   final Session session;
   final bool isArchived;
@@ -42,10 +51,18 @@ class SessionTile extends StatelessWidget {
 
   /// Builds this row's long-press actions; the session — and the stable
   /// context the actions run against — are already closed over by the list,
-  /// like [onTap] and [onSwipe] (see [SessionMenuEntriesBuilder]).
+  /// like [onTap] and the swipe callbacks (see [SessionMenuEntriesBuilder]).
   final List<PregoMenuEntry> Function() menuEntries;
 
-  final VoidCallback onSwipe;
+  /// Archives — or unarchives, per [isArchived] — this session: the trailing
+  /// swipe's primary pill, which is also what a full swipe commits.
+  final VoidCallback onArchive;
+
+  /// Deletes this session, from the trailing swipe's destructive pill.
+  final VoidCallback onDelete;
+
+  /// Flips this session's read state, from the leading swipe.
+  final VoidCallback onToggleUnread;
 
   const SessionTile({
     super.key,
@@ -59,7 +76,9 @@ class SessionTile extends StatelessWidget {
     this.backgroundTaskCount = 0,
     required this.onTap,
     required this.menuEntries,
-    required this.onSwipe,
+    required this.onArchive,
+    required this.onDelete,
+    required this.onToggleUnread,
   });
 
   /// Wide enough for the longest action label ("Mark as unread") without the
@@ -82,59 +101,50 @@ class SessionTile extends StatelessWidget {
   Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
     final prego = context.prego;
 
-    return Dismissible(
-      key: ValueKey(session.id),
-      direction: DismissDirection.startToEnd,
-      confirmDismiss: (_) async {
-        onSwipe();
-        return false;
-      },
-      background: ColoredBox(
-        color: prego.colors.bgSurface1,
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.only(start: 24),
-            child: Icon(
-              isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
-              color: prego.colors.textPrimary,
-            ),
-          ),
-        ),
+    // The hairline sits outside the swipe stack so the divider holds still
+    // while the row's content slides. A zero-width side is a single physical
+    // pixel and costs the row no height, so the divider doesn't push the list
+    // off its pitch.
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: prego.colors.borderTertiary, width: 0)),
       ),
-      // Right-click is the mouse counterpart of long-press. The row announces
-      // itself as one button, so its two lines aren't separate nodes to swipe
-      // past.
-      child: GestureDetector(
-        onSecondaryTap: openMenu,
-        child: MergeSemantics(
-          child: Semantics(
-            button: true,
-            // Ink rather than a plain colour so the tap ripple stays visible
-            // over the selected tint (a widget's own colour would cover it).
-            child: Ink(
-              color: selected ? prego.colors.bgBrandSolid.withValues(alpha: 0.08) : null,
-              child: InkWell(
-                onTap: onTap,
-                onLongPress: openMenu,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: PregoSpacing.xl,
-                    vertical: PregoSpacing.lg,
-                  ),
-                  decoration: BoxDecoration(
-                    // A zero-width side is a single physical pixel and costs
-                    // the row no height, so the divider doesn't push the list
-                    // off its pitch.
-                    border: Border(bottom: BorderSide(color: prego.colors.borderTertiary, width: 0)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: PregoSpacing.xxs,
-                    children: [
-                      _titleRow(context: context),
-                      _footerRow(context: context),
-                    ],
+      child: PregoSwipeActions(
+        actionsBuilder: (context, close) => [
+          _deleteAction(context: context, close: close),
+        ],
+        primaryActionBuilder: (context, close) => _archiveAction(context: context, close: close),
+        onFullSwipe: onArchive,
+        leadingPrimaryActionBuilder: (context, close) => _markUnreadAction(context: context, close: close),
+        onLeadingFullSwipe: onToggleUnread,
+        // Right-click is the mouse counterpart of long-press. The row announces
+        // itself as one button, so its two lines aren't separate nodes to swipe
+        // past.
+        child: GestureDetector(
+          onSecondaryTap: openMenu,
+          child: MergeSemantics(
+            child: Semantics(
+              button: true,
+              // Ink rather than a plain colour so the tap ripple stays visible
+              // over the selected tint (a widget's own colour would cover it).
+              child: Ink(
+                color: selected ? prego.colors.bgBrandSolid.withValues(alpha: 0.08) : null,
+                child: InkWell(
+                  onTap: onTap,
+                  onLongPress: openMenu,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: PregoSpacing.xl,
+                      vertical: PregoSpacing.lg,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: PregoSpacing.xxs,
+                      children: [
+                        _titleRow(context: context),
+                        _footerRow(context: context),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -142,6 +152,58 @@ class SessionTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// The swipe strip's delete pill. Destructive, so it is deliberately not
+  /// the full-swipe commit — it opens the same confirmation flow as the menu
+  /// entry.
+  Widget _deleteAction({required BuildContext context, required VoidCallback close}) {
+    return PregoButtonsSolid(
+      label: context.loc.sessionListDelete,
+      leadingIcon: TablerRegular.trash,
+      hierarchy: PregoButtonsSolidHierarchy.primary,
+      type: PregoButtonsSolidType.destructive,
+      size: PregoButtonsSolidSize.md,
+      onPressed: () {
+        close();
+        onDelete();
+      },
+    );
+  }
+
+  /// The swipe strip's archive pill — the primary action, which is also what
+  /// a full swipe commits. Flips to unarchive on archived rows. Sized by its
+  /// own content at rest; when [PregoSwipeActions] widens its box during an
+  /// overdrag, the button's centered content rides the stretch.
+  Widget _archiveAction({required BuildContext context, required VoidCallback close}) {
+    final loc = context.loc;
+    return PregoButtonsSolid(
+      label: isArchived ? loc.sessionListUnarchive : loc.sessionListArchive,
+      leadingIcon: isArchived ? TablerRegular.archive_off : TablerRegular.archive,
+      hierarchy: PregoButtonsSolidHierarchy.primary,
+      type: PregoButtonsSolidType.warning,
+      size: PregoButtonsSolidSize.md,
+      onPressed: () {
+        close();
+        onArchive();
+      },
+    );
+  }
+
+  /// The leading swipe's single action, the mail-app read toggle: label and
+  /// icon follow the row's current unseen state.
+  Widget _markUnreadAction({required BuildContext context, required VoidCallback close}) {
+    final loc = context.loc;
+    return PregoButtonsSolid(
+      label: unseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
+      leadingIcon: unseen ? TablerRegular.mail_opened : TablerRegular.mail,
+      hierarchy: PregoButtonsSolidHierarchy.primary,
+      size: PregoButtonsSolidSize.md,
+      onPressed: () {
+        close();
+        onToggleUnread();
+      },
     );
   }
 

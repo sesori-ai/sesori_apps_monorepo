@@ -33,7 +33,9 @@ class SessionListContent extends StatelessWidget {
   final String? selectedSessionId;
   final ValueChanged<Session> onSessionTap;
   final SessionMenuEntriesBuilder sessionMenuEntries;
-  final ValueChanged<Session> onSessionSwipe;
+  final ValueChanged<Session> onSessionArchive;
+  final ValueChanged<Session> onSessionDelete;
+  final ValueChanged<Session> onSessionToggleUnread;
 
   const SessionListContent({
     super.key,
@@ -41,7 +43,9 @@ class SessionListContent extends StatelessWidget {
     this.selectedSessionId,
     required this.onSessionTap,
     required this.sessionMenuEntries,
-    required this.onSessionSwipe,
+    required this.onSessionArchive,
+    required this.onSessionDelete,
+    required this.onSessionToggleUnread,
   });
 
   /// Returns the page content as a single sliver per state, so it slots
@@ -75,6 +79,9 @@ class SessionListContent extends StatelessWidget {
                     final activityInfo = activeSessionIds[session.id];
 
                     return SessionTile(
+                      // Keyed so a swiped-open row keeps its state with its
+                      // session when the list reorders around it.
+                      key: ValueKey(session.id),
                       session: session,
                       isArchived: isArchived,
                       isActive: activityInfo != null,
@@ -87,7 +94,9 @@ class SessionListContent extends StatelessWidget {
                       // The list's context, not the row's: archive/delete
                       // unmount the row before their follow-ups run.
                       menuEntries: () => sessionMenuEntries(context, session),
-                      onSwipe: () => onSessionSwipe(session),
+                      onArchive: () => onSessionArchive(session),
+                      onDelete: () => onSessionDelete(session),
+                      onToggleUnread: () => onSessionToggleUnread(session),
                     );
                   },
                 ),

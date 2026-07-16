@@ -199,7 +199,9 @@ void main() {
           child: SessionListScaffold(
             onSessionTap: (_) {},
             sessionMenuEntries: (_, _) => const [],
-            onSessionSwipe: (_) {},
+            onSessionArchive: (_) {},
+            onSessionDelete: (_) {},
+            onSessionToggleUnread: (_) {},
             onNewSession: () {},
             onBack: null,
           ),

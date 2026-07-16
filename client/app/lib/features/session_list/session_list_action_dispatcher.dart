@@ -13,10 +13,7 @@ class SessionListActionDispatcher {
     final loc = context.loc;
     final cubit = context.read<SessionListCubit>();
     final isArchived = session.time?.archived != null;
-    final state = cubit.state;
-    final isUnseen = state is SessionListLoaded
-        ? (state.unseenBySessionId[session.id] ?? session.unseen)
-        : session.unseen;
+    final isUnseen = _isUnseen(cubit: cubit, session: session);
 
     return [
       PregoMenuItem(
@@ -56,12 +53,33 @@ class SessionListActionDispatcher {
     ];
   }
 
-  void handleSessionSwipe({required BuildContext context, required Session session}) {
+  /// Archives — or unarchives — [session], from the row's trailing swipe pill
+  /// or its full-swipe commit.
+  void handleSessionArchive({required BuildContext context, required Session session}) {
     final cubit = context.read<SessionListCubit>();
     if (session.time?.archived != null) {
       _unarchiveSession(context: context, cubit: cubit, sessionId: session.id);
     } else {
       _showArchiveSheet(context: context, cubit: cubit, session: session);
     }
+  }
+
+  /// Deletes [session] behind the same confirmation flow as the menu entry,
+  /// from the row's trailing swipe pill.
+  void handleSessionDelete({required BuildContext context, required Session session}) {
+    _showDeleteSheet(context: context, cubit: context.read<SessionListCubit>(), session: session);
+  }
+
+  /// Flips [session]'s read state, from the row's leading swipe.
+  void handleSessionToggleUnread({required BuildContext context, required Session session}) {
+    final cubit = context.read<SessionListCubit>();
+    unawaited(cubit.markSessionSeen(sessionId: session.id, read: _isUnseen(cubit: cubit, session: session)));
+  }
+
+  /// The row's effective unseen state: the cubit's live tracking when loaded,
+  /// else what the session payload said.
+  bool _isUnseen({required SessionListCubit cubit, required Session session}) {
+    final state = cubit.state;
+    return state is SessionListLoaded ? (state.unseenBySessionId[session.id] ?? session.unseen) : session.unseen;
   }
 }
