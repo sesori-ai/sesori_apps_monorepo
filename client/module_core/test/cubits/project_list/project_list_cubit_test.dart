@@ -1258,6 +1258,49 @@ void main() {
       ],
     );
 
+    blocTest<ProjectListCubit, ProjectListState>(
+      "ordered activity received after REST immediately replaces the active prefix",
+      build: () {
+        mockSseEventTracker.userInteractionOrdered = true;
+        when(() => mockProjectRepository.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
+        );
+        return buildCubit();
+      },
+      act: (_) async {
+        await Future<void>.delayed(Duration.zero);
+        mockSseEventTracker.emitProjectActivity({"C": 1, "A": 1});
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (state) => state.projects.map((project) => project.id).toList(),
+          "project order",
+          ["C", "A", "B"],
+        ),
+      ],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "ordered activity received before REST is applied when entities arrive",
+      build: () {
+        mockSseEventTracker.userInteractionOrdered = true;
+        mockSseEventTracker.emitProjectActivity({"B": 1, "A": 1});
+        when(() => mockProjectRepository.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
+        );
+        return buildCubit();
+      },
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (state) => state.projects.map((project) => project.id).toList(),
+          "project order",
+          ["B", "A", "C"],
+        ),
+      ],
+    );
+
     // -------------------------------------------------------------------------
     // Test 11: activity update ignored when not loaded
     // -------------------------------------------------------------------------
@@ -1700,6 +1743,30 @@ void main() {
 
           async.elapse(const Duration(seconds: 25));
           expect(fetchCount, baseline + 1, reason: "one refresh despite 5 events");
+          cubit.close();
+        });
+      });
+
+      test("order-only activity changes do not refetch projects", () {
+        fakeAsync((FakeAsync async) {
+          var fetchCount = 0;
+          when(() => mockProjectRepository.listProjects()).thenAnswer((_) async {
+            fetchCount++;
+            return ApiResponse.success(Projects(data: [projectA, projectB]));
+          });
+          mockSseEventTracker.userInteractionOrdered = true;
+          mockRouteSource.emitRoute(AppRouteDef.projects);
+          final cubit = buildCubit();
+          async.elapse(Duration.zero);
+
+          mockSseEventTracker.emitProjectActivity({"A": 1, "B": 1});
+          async.elapse(refreshThrottleDuration);
+          final baseline = fetchCount;
+
+          mockSseEventTracker.emitProjectActivity({"B": 1, "A": 1});
+          async.elapse(refreshThrottleDuration);
+
+          expect(fetchCount, baseline);
           cubit.close();
         });
       });

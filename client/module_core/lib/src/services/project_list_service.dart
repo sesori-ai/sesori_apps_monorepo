@@ -41,6 +41,22 @@ class ProjectListService {
     return _sortProjects(projects.where((project) => project.id != projectId));
   }
 
+  List<Project> orderProjects({
+    required Iterable<Project> projects,
+    required Iterable<String> activeProjectIds,
+    required bool userInteractionOrdered,
+  }) {
+    if (!userInteractionOrdered) return _sortProjects(projects);
+
+    final projectById = {for (final project in projects) project.id: project};
+    final active = <Project>[];
+    for (final id in activeProjectIds) {
+      final project = projectById.remove(id);
+      if (project != null) active.add(project);
+    }
+    return [...active, ..._sortProjects(projectById.values)];
+  }
+
   List<Project> _sortProjects(Iterable<Project> projects) {
     return projects.toList()..sort((a, b) => _compareProjectsByNameAndId(a: a, b: b));
   }

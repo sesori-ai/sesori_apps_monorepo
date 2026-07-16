@@ -114,6 +114,7 @@ void main() {
     expect(stored.backendSessionId, row.backendSessionId);
     expect(stored.pluginId, row.pluginId);
     expect(stored.projectId, row.projectId);
+    expect(stored.parentSessionId, row.parentSessionId);
     expect(stored.directory, row.directory);
     expect(stored.worktreePath, row.worktreePath);
     expect(stored.branchName, row.branchName);
@@ -121,5 +122,6 @@ void main() {
     expect(stored.archivedAt, row.archivedAt);
     expect(stored.baseBranch, row.baseBranch);
     expect(stored.baseCommit, row.baseCommit);
+    expect(stored.lastUserInteractionAt, row.lastUserMessageAt);
   });
 }

@@ -235,6 +235,7 @@ class MockSseEventTracker extends Mock implements SseEventTracker {
     const {},
   );
   final BehaviorSubject<Map<String, int>> _projectTimestampUpdates = BehaviorSubject.seeded(const {});
+  bool userInteractionOrdered = false;
 
   @override
   ValueStream<Map<String, int>> get projectActivity => _projectActivity.stream;
@@ -247,6 +248,9 @@ class MockSseEventTracker extends Mock implements SseEventTracker {
 
   @override
   Map<String, Map<String, SessionActivityInfo>> get currentSessionActivity => _sessionActivity.value;
+
+  @override
+  bool get currentUserInteractionOrdered => userInteractionOrdered;
 
   @override
   ValueStream<Map<String, int>> get projectTimestampUpdates => _projectTimestampUpdates.stream;

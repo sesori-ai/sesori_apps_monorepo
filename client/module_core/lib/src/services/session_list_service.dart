@@ -29,9 +29,19 @@ class SessionListService {
   List<Session> visibleSessions({
     required Iterable<Session> sessions,
     required bool showArchived,
+    required Iterable<String> activeSessionIds,
+    required bool userInteractionOrdered,
   }) {
     final visible = showArchived ? sessions : sessions.where((session) => session.time?.archived == null);
-    return _sortSessions(visible);
+    if (!userInteractionOrdered) return _sortSessions(visible);
+
+    final sessionById = {for (final session in visible) session.id: session};
+    final active = <Session>[];
+    for (final id in activeSessionIds) {
+      final session = sessionById.remove(id);
+      if (session != null) active.add(session);
+    }
+    return [...active, ..._sortSessions(sessionById.values)];
   }
 
   List<Session> upsertSession({required Iterable<Session> sessions, required Session session}) {

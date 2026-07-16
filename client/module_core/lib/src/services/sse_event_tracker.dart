@@ -24,6 +24,7 @@ class SseEventTracker with Disposable {
   final BehaviorSubject<Map<String, Map<String, SessionActivityInfo>>> _sessionActivity = BehaviorSubject.seeded(
     const {},
   );
+  bool _userInteractionOrdered = false;
 
   /// Map of project ID -> latest updated timestamp from complete
   /// [SesoriProjectUpdated] events seen for every project.
@@ -62,6 +63,10 @@ class SseEventTracker with Disposable {
   /// The latest session activity map, synchronously available.
   Map<String, Map<String, SessionActivityInfo>> get currentSessionActivity => _sessionActivity.value;
 
+  /// Whether the current activity maps preserve a bridge-authored user
+  /// interaction order. False for summaries from older bridges.
+  bool get currentUserInteractionOrdered => _userInteractionOrdered;
+
   /// Map of project ID -> latest updated timestamp from complete
   /// [SesoriProjectUpdated] events.
   ///
@@ -86,8 +91,11 @@ class SseEventTracker with Disposable {
     try {
       final data = event.data;
       switch (data) {
-        case SesoriProjectsSummary(:final projects):
-          _updateActivityFromSummary(projects);
+        case SesoriProjectsSummary(:final projects, :final userInteractionOrdered):
+          _updateActivityFromSummary(
+            projects,
+            userInteractionOrdered: userInteractionOrdered,
+          );
         case SesoriProjectUpdated(:final projectID, :final updatedAt):
           if (projectID != null && updatedAt != null) {
             final currentUpdates = _projectTimestampUpdates.value;
@@ -162,7 +170,10 @@ class SseEventTracker with Disposable {
     }
   }
 
-  void _updateActivityFromSummary(List<ProjectActivitySummary> projects) {
+  void _updateActivityFromSummary(
+    List<ProjectActivitySummary> projects, {
+    required bool userInteractionOrdered,
+  }) {
     final projectMap = <String, int>{};
     final sessionMap = <String, Map<String, SessionActivityInfo>>{};
     for (final summary in projects) {
@@ -180,6 +191,7 @@ class SseEventTracker with Disposable {
         sessionMap[summary.id] = infoMap;
       }
     }
+    _userInteractionOrdered = userInteractionOrdered;
     _projectActivity.add(projectMap);
     _sessionActivity.add(sessionMap);
   }

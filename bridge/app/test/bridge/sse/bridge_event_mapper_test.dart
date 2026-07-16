@@ -377,11 +377,13 @@ void main() {
             ],
           ),
         ],
+        userInteractionOrdered: true,
       );
 
       final event = result as SesoriProjectsSummary;
       expect(event.projects.single.id, "/repo");
       expect(event.projects.single.activeSessions.single.id, "s1");
+      expect(event.userInteractionOrdered, isTrue);
     });
   });
 }
