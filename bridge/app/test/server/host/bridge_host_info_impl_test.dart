@@ -159,16 +159,6 @@ class _FakeProcessRepository implements ProcessRepository {
   }
 
   @override
-  Future<List<ProcessIdentity>> listProcessIdentities({required int? excludePid}) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<ProcessMatch>> listProcesses({required int? excludePid}) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<SignalResult> sendGracefulSignal({required int pid}) {
     throw UnimplementedError();
   }

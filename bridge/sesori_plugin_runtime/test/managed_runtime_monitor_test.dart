@@ -596,9 +596,6 @@ class _FakeHostProcessService implements HostProcessService {
   }
 
   @override
-  Future<List<ProcessIdentity>> list({required int? excludePid}) async => const <ProcessIdentity>[];
-
-  @override
   Future<SignalResult> signalForce({required int pid}) async {
     signalRequests.add("force:$pid");
     forceHooks[pid]?.call();

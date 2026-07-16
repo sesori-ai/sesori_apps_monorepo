@@ -146,9 +146,6 @@ class _ProbeProcessService implements HostProcessService {
   Future<ProcessIdentity?> inspect({required int pid}) async => null;
 
   @override
-  Future<List<ProcessIdentity>> list({required int? excludePid}) async => const <ProcessIdentity>[];
-
-  @override
   Future<SignalResult> signalGraceful({required int pid}) async => _signal(pid);
 
   @override

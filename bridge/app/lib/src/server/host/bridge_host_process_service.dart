@@ -77,11 +77,6 @@ class BridgeHostProcessService implements HostProcessService {
   }
 
   @override
-  Future<List<ProcessIdentity>> list({required int? excludePid}) {
-    return _processRepository.listProcessIdentities(excludePid: excludePid);
-  }
-
-  @override
   Future<SignalResult> signalGraceful({required int pid}) {
     return _processRepository.sendGracefulSignal(pid: pid);
   }

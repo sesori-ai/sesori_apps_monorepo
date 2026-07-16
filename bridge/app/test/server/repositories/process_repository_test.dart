@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
@@ -44,46 +42,40 @@ void main() {
       expect(identity.capturedAt, equals(capturedAt));
     });
 
-    test("process inspection classifies bridge, OpenCode, and unknown matches", () async {
-      api.listFacts = <ProcessIdentity>[
-        ProcessIdentity(
-          pid: 10,
-          startMarker: null,
-          executablePath: "/Users/alex/.local/bin/sesori-bridge",
-          commandLine: "/Users/alex/.local/bin/sesori-bridge --relay wss://relay.sesori.com",
-          ownerUser: ProcessUser.fromRawUser("alex"),
-          platform: "macos",
-          capturedAt: DateTime.utc(2026, 5, 15, 12),
-        ),
-        ProcessIdentity(
-          pid: 11,
-          startMarker: null,
-          executablePath: "/usr/local/bin/opencode",
-          commandLine: "/usr/local/bin/opencode serve --port 45111",
-          ownerUser: ProcessUser.fromRawUser("alex"),
-          platform: "macos",
-          capturedAt: DateTime.utc(2026, 5, 15, 12, 1),
-        ),
-        ProcessIdentity(
-          pid: 12,
-          startMarker: null,
-          executablePath: "/usr/bin/python3",
-          commandLine: "python3 worker.py",
-          ownerUser: ProcessUser.fromRawUser("other"),
-          platform: "macos",
-          capturedAt: DateTime.utc(2026, 5, 15, 12, 2),
-        ),
-      ];
+    test("targeted process inspection classifies bridge and unknown matches", () async {
+      api.inspectFact = ProcessIdentity(
+        pid: 10,
+        startMarker: null,
+        executablePath: "/Users/alex/.local/bin/sesori-bridge",
+        commandLine: "/Users/alex/.local/bin/sesori-bridge --relay wss://relay.sesori.com",
+        ownerUser: ProcessUser.fromRawUser("alex"),
+        platform: "macos",
+        capturedAt: DateTime.utc(2026, 5, 15, 12),
+      );
 
-      final matches = await repository.listProcesses(excludePid: 11);
+      final bridgeMatch = await repository.inspectProcessMatch(pid: 10);
 
-      expect(matches, hasLength(2));
-      expect(matches.first.kind, equals(ProcessMatchKind.sesoriBridge));
-      expect(matches.first.isCurrentUserProcess, isTrue);
-      expect(matches.first.identity.pid, equals(10));
-      expect(matches.last.kind, equals(ProcessMatchKind.unknown));
-      expect(matches.last.isCurrentUserProcess, isFalse);
-      expect(matches.last.identity.startMarker, isNull);
+      expect(bridgeMatch, isNotNull);
+      expect(bridgeMatch!.kind, equals(ProcessMatchKind.sesoriBridge));
+      expect(bridgeMatch.isCurrentUserProcess, isTrue);
+      expect(bridgeMatch.identity.pid, equals(10));
+
+      api.inspectFact = ProcessIdentity(
+        pid: 12,
+        startMarker: null,
+        executablePath: "/usr/bin/python3",
+        commandLine: "python3 worker.py",
+        ownerUser: ProcessUser.fromRawUser("other"),
+        platform: "macos",
+        capturedAt: DateTime.utc(2026, 5, 15, 12, 2),
+      );
+
+      final unknownMatch = await repository.inspectProcessMatch(pid: 12);
+
+      expect(unknownMatch, isNotNull);
+      expect(unknownMatch!.kind, equals(ProcessMatchKind.unknown));
+      expect(unknownMatch.isCurrentUserProcess, isFalse);
+      expect(unknownMatch.identity.startMarker, isNull);
     });
 
     test("process repository exposes graceful and force signal primitives", () async {
@@ -109,7 +101,6 @@ void main() {
       expect(force.requestedSignal, equals(ShutdownSignal.force));
       expect(api.signalRequests, equals(<String>["graceful:44", "force:44"]));
       expect(api.inspectPid, isNull);
-      expect(api.listCallCount, equals(0));
     });
   });
 }
@@ -125,23 +116,15 @@ class _FakeSystemProcessApi implements SystemProcessApi {
   }
 
   ProcessIdentity? inspectFact;
-  List<ProcessIdentity> listFacts = <ProcessIdentity>[];
   SignalResult? gracefulResult;
   SignalResult? forceResult;
   int? inspectPid;
-  int listCallCount = 0;
   final List<String> signalRequests = <String>[];
 
   @override
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     inspectPid = pid;
     return inspectFact;
-  }
-
-  @override
-  Future<List<ProcessIdentity>> listProcesses() async {
-    listCallCount += 1;
-    return listFacts;
   }
 
   @override

@@ -28,10 +28,6 @@ abstract class HostProcessService {
   /// process is running.
   Future<ProcessIdentity?> inspect({required int pid});
 
-  /// Lists the identities of all visible processes, optionally excluding
-  /// [excludePid] (typically the caller's own pid; pass `null` to list all).
-  Future<List<ProcessIdentity>> list({required int? excludePid});
-
   /// Sends the platform's graceful-stop signal to [pid] (SIGTERM on POSIX;
   /// Windows has no graceful signal and delivers a kill instead — the
   /// returned [SignalResult] records what was actually sent).

@@ -143,6 +143,8 @@ These rules catch the common structural failures that layer rules alone miss. Ap
 
 - **Ownership boundary test.** A split done only to reduce file length is a violation. An extracted class must still deserve to exist when line count pressure disappears. It must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep private methods in the original class. Reviewers must ask: **Would this class still deserve to exist if the original file were under the line limit?**
 
+- **Remove code made obsolete by a refactor in the same change.** Delete superseded production methods, contracts, fake overrides, state, imports, and tests alongside their replacement. Do not preserve an internal dead surface for hypothetical compatibility or a later cleanup; concrete shipped, wire, and persisted compatibility remains governed by the compatibility rules below.
+
 ### Bridge workspace (`bridge/`)
 
 **`bridge/app` — target directory structure:**

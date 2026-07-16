@@ -21,10 +21,6 @@ class SystemProcessApi {
   final bool _isWindows;
   final String _platform;
 
-  Future<List<ProcessIdentity>> listProcesses() async {
-    return _isWindows ? _listWindowsProcesses() : _listPosixProcesses();
-  }
-
   /// Spawns [executable] detached (inheriting stdio), returning its pid without
   /// waiting. Used to launch a successor bridge during a restart.
   Future<int> startDetached({
@@ -74,25 +70,6 @@ class SystemProcessApi {
       wasRequested: wasRequested,
       attemptedAt: _clock.now(),
     );
-  }
-
-  Future<List<ProcessIdentity>> _listPosixProcesses() async {
-    final (command, args) = ("ps", <String>["-axwwo", "pid=,user=,lstart=,command="]);
-    final result = await _processRunner.run(
-      command,
-      args,
-      environment: {"LC_ALL": "C"},
-    );
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        command,
-        args,
-        result.stderr.toString(),
-        result.exitCode,
-      );
-    }
-
-    return _parsePosixProcesses(stdout: result.stdout.toString());
   }
 
   /// Inspects a single POSIX process by querying `ps -p <pid>` so the OS
@@ -171,25 +148,6 @@ class SystemProcessApi {
       );
     }
     return processes;
-  }
-
-  Future<List<ProcessIdentity>> _listWindowsProcesses() async {
-    // The verbose form resolves extra metadata for every process and can hang
-    // long enough to abort bridge startup. Windows process listing only needs
-    // the image name and PID supplied by the basic tasklist output.
-    const command = "tasklist";
-    final args = <String>["/FO", "CSV", "/NH"];
-    final result = await _processRunner.run(command, args);
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        command,
-        args,
-        result.stderr.toString(),
-        result.exitCode,
-      );
-    }
-
-    return _parseWindowsProcesses(stdout: result.stdout.toString());
   }
 
   /// Inspects a single Windows process by querying `tasklist` with its
