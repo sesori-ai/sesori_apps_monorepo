@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/persistence/tables/projects_table.dart";
+import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";

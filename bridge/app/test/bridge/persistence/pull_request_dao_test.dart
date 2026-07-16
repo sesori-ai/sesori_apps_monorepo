@@ -1,6 +1,6 @@
-import "package:sesori_bridge/src/bridge/api/database/daos/pull_request_dao.dart";
-import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/api/database/daos/pull_request_dao.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

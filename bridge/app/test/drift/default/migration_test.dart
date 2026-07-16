@@ -1,7 +1,7 @@
 // dart format width=80
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift_dev/api/migrations_native.dart';
-import 'package:sesori_bridge/src/bridge/persistence/database.dart';
+import 'package:sesori_bridge/src/api/database/database.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';

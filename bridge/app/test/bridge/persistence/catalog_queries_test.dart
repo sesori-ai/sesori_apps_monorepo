@@ -1,6 +1,6 @@
 import "package:drift/drift.dart";
-import "package:sesori_bridge/src/bridge/api/database/tables/catalog_hydrations_table.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/catalog_hydrations_table.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";

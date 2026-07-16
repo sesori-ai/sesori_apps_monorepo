@@ -3,7 +3,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSession;
 import "package:sesori_shared/sesori_shared.dart" show Project;
 
-import "../persistence/tables/projects_table.dart" show ProjectDto;
+import "../../api/database/tables/projects_table.dart" show ProjectDto;
 
 /// Derives the canonical project list for a bridge-derived plugin from its
 /// sessions and the bridge's stored project rows. Pure transformation —

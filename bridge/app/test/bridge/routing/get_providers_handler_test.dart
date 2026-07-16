@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_providers_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";

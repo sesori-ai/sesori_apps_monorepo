@@ -13,5 +13,5 @@ targets:
       drift_dev:
         options:
           databases:
-            default: lib/src/bridge/persistence/database.dart
+            default: lib/src/api/database/database.dart
           write_to_columns_mixins: true

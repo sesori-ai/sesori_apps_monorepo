@@ -1,7 +1,7 @@
 import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../persistence/tables/projects_table.dart";
+import "../../../api/database/tables/projects_table.dart";
 
 class ProjectCatalogMapper {
   const ProjectCatalogMapper();

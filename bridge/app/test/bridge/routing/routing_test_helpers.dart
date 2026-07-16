@@ -1,13 +1,13 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
-import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
-import "package:sesori_bridge/src/bridge/persistence/daos/session_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
@@ -26,6 +26,7 @@ import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
+
 import "../../helpers/fake_filesystem_api.dart";
 
 /// Builds a real [SessionUnseenService] backed by [db] for handler/router tests.

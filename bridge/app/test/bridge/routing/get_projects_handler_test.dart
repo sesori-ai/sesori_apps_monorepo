@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";

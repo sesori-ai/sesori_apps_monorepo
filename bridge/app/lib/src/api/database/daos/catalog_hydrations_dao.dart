@@ -1,6 +1,6 @@
 import "package:drift/drift.dart";
 
-import "../../../persistence/database.dart";
+import "../database.dart";
 import "../tables/catalog_hydrations_table.dart";
 
 part "catalog_hydrations_dao.g.dart";

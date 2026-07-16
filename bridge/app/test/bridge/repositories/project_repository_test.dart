@@ -1,6 +1,6 @@
-import "package:sesori_bridge/src/bridge/persistence/daos/projects_dao.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/persistence/tables/projects_table.dart";
+import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_activity.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";

@@ -22,10 +22,10 @@ import "package:sesori_shared/sesori_shared.dart"
         Session,
         SessionVariant;
 
-import "../api/database/daos/pull_request_dao.dart";
-import "../api/database/tables/pull_requests_table.dart";
-import "../persistence/daos/projects_dao.dart";
-import "../persistence/daos/session_dao.dart";
+import "../../api/database/daos/projects_dao.dart";
+import "../../api/database/daos/pull_request_dao.dart";
+import "../../api/database/daos/session_dao.dart";
+import "../../api/database/tables/pull_requests_table.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";

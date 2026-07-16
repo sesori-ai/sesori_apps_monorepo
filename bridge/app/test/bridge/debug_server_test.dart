@@ -4,12 +4,12 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
-import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/server/api/system_process_api.dart";

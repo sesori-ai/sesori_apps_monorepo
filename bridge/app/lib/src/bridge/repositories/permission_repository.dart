@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/daos/session_dao.dart";
+import "../../api/database/daos/session_dao.dart";
 import "mappers/plugin_permission_mapper.dart";
 
 /// Layer 2 repository wrapping [plugin_interface.BridgePlugin] for permission operations.

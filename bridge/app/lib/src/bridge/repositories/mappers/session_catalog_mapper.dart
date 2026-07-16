@@ -1,6 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../persistence/tables/session_table.dart";
+import "../../../api/database/tables/session_table.dart";
 
 class SessionCatalogMapper {
   const SessionCatalogMapper();

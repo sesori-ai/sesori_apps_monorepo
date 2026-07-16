@@ -1,8 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../persistence/daos/projects_dao.dart";
-import "../persistence/daos/session_dao.dart";
+import "../../api/database/daos/projects_dao.dart";
+import "../../api/database/daos/session_dao.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_question_mapper.dart";
 import "models/project_not_found_exception.dart";

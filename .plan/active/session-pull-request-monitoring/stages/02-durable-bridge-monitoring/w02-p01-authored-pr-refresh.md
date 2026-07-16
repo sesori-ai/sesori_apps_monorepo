@@ -110,11 +110,11 @@ Existing paths likely changed:
 - `bridge/app/lib/src/bridge/repositories/pr_source_repository.dart`
 - `bridge/app/lib/src/bridge/repositories/pull_request_repository.dart`
 - `bridge/app/lib/src/bridge/repositories/session_repository.dart`
-- `bridge/app/lib/src/bridge/api/database/tables/pull_requests_table.dart`
-- `bridge/app/lib/src/bridge/api/database/daos/pull_request_dao.dart`
-- `bridge/app/lib/src/bridge/persistence/tables/projects_table.dart`
-- `bridge/app/lib/src/bridge/persistence/daos/projects_dao.dart`
-- `bridge/app/lib/src/bridge/persistence/database.dart`
+- `bridge/app/lib/src/api/database/tables/pull_requests_table.dart`
+- `bridge/app/lib/src/api/database/daos/pull_request_dao.dart`
+- `bridge/app/lib/src/api/database/tables/projects_table.dart`
+- `bridge/app/lib/src/api/database/daos/projects_dao.dart`
+- `bridge/app/lib/src/api/database/database.dart`
 - `bridge/app/lib/src/bridge/routing/get_sessions_handler.dart`
 - `bridge/app/lib/src/bridge/routing/request_router.dart`
 - `bridge/app/lib/src/bridge/services/pr_sync_service.dart` (thin transition or removal if no caller remains)

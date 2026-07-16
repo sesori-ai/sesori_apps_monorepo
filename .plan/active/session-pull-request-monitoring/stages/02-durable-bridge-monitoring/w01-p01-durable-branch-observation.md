@@ -106,9 +106,9 @@ writes, and typed changes—without introducing GitHub/network behavior.
 
 Existing source paths likely changed:
 
-- `bridge/app/lib/src/bridge/persistence/tables/session_table.dart`
-- `bridge/app/lib/src/bridge/persistence/daos/session_dao.dart`
-- `bridge/app/lib/src/bridge/persistence/database.dart`
+- `bridge/app/lib/src/api/database/tables/session_table.dart`
+- `bridge/app/lib/src/api/database/daos/session_dao.dart`
+- `bridge/app/lib/src/api/database/database.dart`
 - `bridge/app/lib/src/bridge/repositories/session_repository.dart`
 - `bridge/app/lib/src/bridge/services/session_mutation_dispatcher.dart`
 - `bridge/app/lib/src/bridge/services/session_persistence_service.dart`

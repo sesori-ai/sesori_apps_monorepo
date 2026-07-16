@@ -498,7 +498,7 @@ The bridge uses Drift (SQLite) for local persistence. Schema changes require a s
 ### Migration Workflow
 
 1. **Before modifying tables**: Run `dart run drift_dev make-migrations` from `bridge/app/` to export the current schema version.
-2. **Make schema changes**: Modify table definitions in `bridge/app/lib/src/bridge/persistence/tables/`, add new tables, register in `database.dart`.
+2. **Make schema changes**: Modify table definitions in `bridge/app/lib/src/api/database/tables/`, add new tables, register in `database.dart`.
 3. **Bump `schemaVersion`**: Increment the version number in `database.dart`.
 4. **Generate migration code**: Run `dart run drift_dev make-migrations` again. This generates:
    - Schema export in `bridge/app/drift_schemas/`
