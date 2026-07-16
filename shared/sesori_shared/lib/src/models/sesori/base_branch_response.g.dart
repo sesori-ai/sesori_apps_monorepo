@@ -7,7 +7,13 @@ part of 'base_branch_response.dart';
 // **************************************************************************
 
 _BaseBranchResponse _$BaseBranchResponseFromJson(Map json) =>
-    _BaseBranchResponse(baseBranch: json['baseBranch'] as String?);
+    _BaseBranchResponse(
+      baseBranch: json['baseBranch'] as String?,
+      repoSlug: json['repoSlug'] as String?,
+    );
 
 Map<String, dynamic> _$BaseBranchResponseToJson(_BaseBranchResponse instance) =>
-    <String, dynamic>{'baseBranch': ?instance.baseBranch};
+    <String, dynamic>{
+      'baseBranch': ?instance.baseBranch,
+      'repoSlug': ?instance.repoSlug,
+    };

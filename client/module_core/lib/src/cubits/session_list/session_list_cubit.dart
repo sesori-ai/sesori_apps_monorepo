@@ -43,6 +43,10 @@ class SessionListCubit extends Cubit<SessionListState> {
   /// Cached base branch name, fetched alongside sessions.
   String? _baseBranch;
 
+  /// Cached repository slug of the project's git remote, fetched alongside
+  /// sessions from the same response as [_baseBranch].
+  String? _repoSlug;
+
   SessionListCubit({
     required SessionService sessionService,
     required SessionListService sessionListService,
@@ -586,6 +590,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         unseenBySessionId: _unseenBySessionId(visible),
         isRefreshing: isRefreshing,
         baseBranch: _baseBranch,
+        repoSlug: _repoSlug,
       ),
     );
   }
@@ -662,10 +667,11 @@ class SessionListCubit extends Cubit<SessionListState> {
     ).wait;
     if (isClosed) return false;
 
-    // Update cached base branch on success; silently ignore errors so
+    // Update cached git context on success; silently ignore errors so
     // the session list still loads even if the endpoint is unavailable.
     if (baseBranchResponse case SuccessResponse(:final data)) {
       _baseBranch = data.baseBranch;
+      _repoSlug = data.repoSlug;
     }
 
     switch (sessionsResponse) {

@@ -159,6 +159,10 @@
   "notificationCategorySystemUpdate": "System Updates",
   "notificationCategorySystemUpdateDescription": "App and bridge updates or maintenance notices",
   "sessionListTitle": "Sessions",
+  "sessionListRepoInfoSemantics": "Show full repository name",
+  "@sessionListRepoInfoSemantics": {
+    "description": "Screen-reader label for the sessions-list bar subtitle row, which opens a popover with the untruncated repository name."
+  },
   "sessionListTitleWithName": "{name} — Sessions",
   "@sessionListTitleWithName": {
     "placeholders": {

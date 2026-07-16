@@ -14,7 +14,7 @@ void main() {
     const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
     const projects = Projects(data: [project]);
     const suggestions = FilesystemSuggestions(data: []);
-    const baseBranch = BaseBranchResponse(baseBranch: "main");
+    const baseBranch = BaseBranchResponse(baseBranch: "main", repoSlug: null);
     const sessions = SessionListResponse(items: []);
 
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(projects));

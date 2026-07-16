@@ -125,7 +125,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       // A chat owns its own (reversed) scroll, so there is no top-anchored
       // scroll for a large title to collapse against. Use the fixed, centred
       // inline title (Figma "Middle Title") instead.
-      inlineTitle: true,
+      titleMode: PregoTopNavigationTitleMode.inline,
       // The chat owns its own scroll and insets itself, so the messages scroll
       // behind the transparent bar like every other screen. Skip the auto top
       // spacer that would otherwise confine the loaded view below the bar.

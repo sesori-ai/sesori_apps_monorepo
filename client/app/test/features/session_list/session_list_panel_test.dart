@@ -24,7 +24,7 @@ void main() {
   setUp(() {
     cubit = _MockSessionListCubit();
     when(() => cubit.state).thenReturn(
-      const SessionListState.loaded(sessions: [], baseBranch: null),
+      const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null),
     );
   });
 

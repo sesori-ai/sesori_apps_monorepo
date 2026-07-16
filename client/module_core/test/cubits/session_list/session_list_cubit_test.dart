@@ -52,7 +52,7 @@ void main() {
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(
         () => mockProjectRepository.getBaseBranch(projectId: any(named: "projectId")),
-      ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null)));
+      ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null, repoSlug: null)));
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -1495,7 +1495,7 @@ void main() {
           ),
         ).thenAnswer((_) => completer.future);
         when(() => mockProjectRepository.getBaseBranch(projectId: projectId)).thenAnswer(
-          (_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: "main")),
+          (_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: "main", repoSlug: null)),
         );
 
         const config = ServerConnectionConfig(

@@ -32,7 +32,7 @@ void main() {
   /// Renders the real panel with the real action dispatcher behind the rows.
   Future<void> pumpPanel(WidgetTester tester, {required Session session}) async {
     when(() => cubit.state).thenReturn(
-      SessionListState.loaded(sessions: [session], baseBranch: null),
+      SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
     );
 
     const dispatcher = SessionListActionDispatcher();
@@ -153,7 +153,7 @@ void main() {
     whenListen(
       cubit,
       states.stream,
-      initialState: SessionListState.loaded(sessions: [session], baseBranch: null),
+      initialState: SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
     );
     when(
       () => cubit.archiveSession(
@@ -163,7 +163,7 @@ void main() {
         force: any(named: "force"),
       ),
     ).thenAnswer((_) async {
-      states.add(const SessionListState.loaded(sessions: [], baseBranch: null));
+      states.add(const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null));
       // Keeps the call pending across a few frames, like a real network
       // round-trip, so the optimistic removal lands first.
       await Future<void>.delayed(const Duration(seconds: 1));

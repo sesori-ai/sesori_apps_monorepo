@@ -7,7 +7,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
 import "../../core/widgets/connection_banner.dart";
-import "../../l10n/app_localizations.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
 
@@ -36,16 +35,30 @@ class SessionListScaffold extends StatelessWidget {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
     final showArchived = state is SessionListLoaded && state.showArchived;
-    final baseBranch = state is SessionListLoaded ? state.baseBranch : null;
+    final repoSlug = state is SessionListLoaded ? state.repoSlug : null;
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
+    // Green only while the relay↔bridge chain is fully connected (no overlay
+    // condition pending); bridge-offline, connection-lost and reconnecting all
+    // mute the dot. Watching here re-runs this build on connection changes —
+    // the same cubit ConnectionBanner.maybeFor below already watches.
+    final online = context.watch<ConnectionOverlayCubit>().state is ConnectionOverlayHidden;
 
     return PregoGlassScaffold(
       // The sessions route sits at the base of the nested pane navigator, so
       // the bar cannot imply a back button — the poppable route lives on the
       // root navigator. Render it explicitly from the injected callback.
       onBack: onBack,
-      title: _title(loc: loc),
-      subtitle: baseBranch,
+      // The bar's back-leading block identifies context: the project name over
+      // the repository slug of its git remote (hidden until known — old
+      // bridges and remote-less projects never deliver one). Tapping the row
+      // pops over the untruncated slug, which the bar ellipsises.
+      title: projectName ?? loc.sessionListTitle,
+      titleMode: PregoTopNavigationTitleMode.backLeading,
+      subtitle: repoSlug,
+      subtitleIcon: TablerSolid.brand_github,
+      online: online,
+      subtitleInfoMessage: repoSlug,
+      subtitleInfoSemanticLabel: loc.sessionListRepoInfoSemantics,
       banner: ConnectionBanner.maybeFor(context),
       actions: [
         PregoButtonsIconGlass(
@@ -83,9 +96,4 @@ class SessionListScaffold extends StatelessWidget {
       ],
     );
   }
-
-  String _title({required AppLocalizations loc}) => switch (projectName) {
-    final name? => loc.sessionListTitleWithName(name),
-    null => loc.sessionListTitle,
-  };
 }

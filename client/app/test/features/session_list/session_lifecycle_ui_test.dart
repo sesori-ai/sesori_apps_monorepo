@@ -332,7 +332,7 @@ void main() {
     );
     when(
       () => mockProjectRepository.getBaseBranch(projectId: any(named: "projectId")),
-    ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null)));
+    ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null, repoSlug: null)));
     when(
       () => mockFailureReporter.recordFailure(
         error: any(named: "error"),
@@ -374,7 +374,7 @@ void main() {
     testWidgets("shows checkboxes for delete worktree and branch", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session], baseBranch: null),
+        SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
       );
 
       await tester.pumpWidget(_buildApp(cubit: mockCubit));
@@ -396,7 +396,7 @@ void main() {
     testWidgets("checkboxes are checked by default", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session], baseBranch: null),
+        SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
       );
 
       await tester.pumpWidget(_buildApp(cubit: mockCubit));
@@ -421,7 +421,7 @@ void main() {
     testWidgets("unchecking worktree checkbox and confirming passes false", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session], baseBranch: null),
+        SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
       );
       when(
         () => mockCubit.deleteSession(
@@ -467,7 +467,7 @@ void main() {
     testWidgets("shows archive checkboxes and confirm button", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session], baseBranch: null),
+        SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
       );
 
       await tester.pumpWidget(_buildApp(cubit: mockCubit));
@@ -486,7 +486,7 @@ void main() {
     testWidgets("archive confirm calls cubit with checkbox values", (tester) async {
       final session = testSession(title: "My Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session], baseBranch: null),
+        SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
       );
       when(
         () => mockCubit.archiveSession(
@@ -570,7 +570,7 @@ void main() {
     testWidgets("renders without an internal Scaffold", (tester) async {
       final session = testSession(title: "Panel Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session], baseBranch: null),
+        SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
       );
 
       await tester.pumpWidget(
@@ -598,7 +598,7 @@ void main() {
     testWidgets("selected session is visually marked", (tester) async {
       final session = testSession(title: "Selected Session");
       when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session], baseBranch: null),
+        SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
       );
 
       await tester.pumpWidget(

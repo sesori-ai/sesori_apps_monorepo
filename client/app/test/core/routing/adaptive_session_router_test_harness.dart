@@ -101,7 +101,7 @@ class AdaptiveSessionRouterTestHarness {
       () => projectRepository.getBaseBranch(projectId: any(named: "projectId")),
     ).thenAnswer((invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;
-      return ApiResponse.success(BaseBranchResponse(baseBranch: baseBranchByProject[projectId]));
+      return ApiResponse.success(BaseBranchResponse(baseBranch: baseBranchByProject[projectId], repoSlug: null));
     });
 
     when(

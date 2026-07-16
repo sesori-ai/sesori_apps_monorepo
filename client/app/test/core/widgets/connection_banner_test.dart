@@ -146,7 +146,7 @@ void main() {
         home: Builder(
           builder: (context) => PregoGlassScaffold(
             title: "Sessions",
-            inlineTitle: true,
+            titleMode: PregoTopNavigationTitleMode.inline,
             automaticallyImplyLeading: false,
             banner: ConnectionBanner.maybeFor(context),
             slivers: const [SliverToBoxAdapter(child: SizedBox(height: 10))],

@@ -92,6 +92,32 @@ class GitCliApi {
     return "main";
   }
 
+  /// URL of the repository's remote in [projectPath], preferring `origin` and
+  /// falling back to the first listed remote. Null when the directory is not a
+  /// git repository, has no remotes, or the remote has no URL configured.
+  Future<String?> getRemoteUrl({required String projectPath}) async {
+    final remotesResult = await runGit(projectPath: projectPath, arguments: const ["remote"]);
+    if (remotesResult.exitCode != 0) {
+      return null;
+    }
+    final remotes = remotesResult.stdout
+        .toString()
+        .split("\n")
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    if (remotes.isEmpty) {
+      return null;
+    }
+    final remote = remotes.contains("origin") ? "origin" : remotes.first;
+    final urlResult = await runGit(projectPath: projectPath, arguments: ["remote", "get-url", remote]);
+    if (urlResult.exitCode != 0) {
+      return null;
+    }
+    final url = urlResult.stdout.toString().trim();
+    return url.isEmpty ? null : url;
+  }
+
   Future<bool> branchExists({
     required String projectPath,
     required String branchName,

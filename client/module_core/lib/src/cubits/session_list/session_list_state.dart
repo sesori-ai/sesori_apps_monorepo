@@ -28,6 +28,10 @@ sealed class SessionListState with _$SessionListState {
 
     /// The base branch of the project (e.g. "main", "develop"), if available.
     required String? baseBranch,
+
+    /// Repository slug of the project's git remote (e.g. "org/repo"). Null
+    /// when the project has no usable remote or the bridge predates the field.
+    required String? repoSlug,
   }) = SessionListLoaded;
 
   /// The requested project ID no longer resolves to the expected project on

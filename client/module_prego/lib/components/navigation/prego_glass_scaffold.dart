@@ -40,14 +40,18 @@ import "../../utils/color_extensions.dart";
 /// the full height behind the bar; the body must pad its scrollable content
 /// down via [PregoTopBarInsetBuilder] so it clears the bar — and any inline
 /// [banner] — at rest. Only meaningful with [extendBodyBehindBar] and, in
-/// practice, [inlineTitle] (a collapsing large title has nothing to reserve
-/// against here).
+/// practice, a fixed-title [titleMode] (a collapsing large title has nothing
+/// to reserve against here).
 ///
-/// Set [inlineTitle] to `true` for a fixed, centred title (and [subtitle]) in
-/// the bar — the showcase's inline-title pattern (`_InlineTitleDemo`) — instead
-/// of the large title that collapses on scroll. Use it for screens whose body
-/// owns its own scroll (e.g. a chat with a reversed controller), where a
-/// collapsing large title has nothing to collapse against.
+/// Set [titleMode] to [PregoTopNavigationTitleMode.inline] for a fixed,
+/// centred title (and [subtitle]) in the bar — the showcase's inline-title
+/// pattern (`_InlineTitleDemo`) — instead of the large title that collapses on
+/// scroll. Use it for screens whose body owns its own scroll (e.g. a chat with
+/// a reversed controller), where a collapsing large title has nothing to
+/// collapse against. Set it to [PregoTopNavigationTitleMode.backLeading] for
+/// the muted title/subtitle block beside the back button (with optional
+/// [subtitleIcon], [online] dot and [subtitleInfoMessage] popover); like
+/// inline, this mode hosts no large title below the bar.
 ///
 /// Usage:
 /// ```dart
@@ -64,7 +68,11 @@ class PregoGlassScaffold extends StatefulWidget {
     required this.title,
     required this.slivers,
     this.subtitle,
-    this.inlineTitle = false,
+    this.titleMode = PregoTopNavigationTitleMode.collapsing,
+    this.subtitleIcon,
+    this.online,
+    this.subtitleInfoMessage,
+    this.subtitleInfoSemanticLabel,
     this.banner,
     this.actions,
     this.leading,
@@ -88,9 +96,26 @@ class PregoGlassScaffold extends StatefulWidget {
   /// Optional second line rendered beneath the [title] in a muted style.
   final String? subtitle;
 
-  /// When `true`, the bar shows a fixed, centred [title] (and [subtitle]) inline
-  /// instead of the large title that collapses on scroll. See the class doc.
-  final bool inlineTitle;
+  /// How the bar presents its title — collapsing large title (default), fixed
+  /// centred inline title, or the back-leading title block. See the class doc.
+  final PregoTopNavigationTitleMode titleMode;
+
+  /// Optional icon before the bar's [subtitle] text
+  /// ([PregoTopNavigationTitleMode.backLeading] only).
+  final IconData? subtitleIcon;
+
+  /// Status dot before the bar's [subtitle]: green when `true`, muted when
+  /// `false`, absent when `null` ([PregoTopNavigationTitleMode.backLeading]
+  /// only).
+  final bool? online;
+
+  /// When set ([PregoTopNavigationTitleMode.backLeading] only), the bar's
+  /// subtitle row opens an info popover with this message on tap.
+  final String? subtitleInfoMessage;
+
+  /// Screen-reader label for the tappable subtitle row; only used with
+  /// [subtitleInfoMessage].
+  final String? subtitleInfoSemanticLabel;
 
   /// An inline alert hosted in the top-navigation area, below the status bar
   /// and above the bar row (e.g. a [PregoInlineAlertsNotifications]).
@@ -196,14 +221,18 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
     final backgroundColor = widget.backgroundColor ?? context.prego.colors.bgSurface1;
     final topPad = MediaQuery.paddingOf(context).top;
     final extendBehind = widget.extendBodyBehindBar;
-    final inline = widget.inlineTitle;
+    final collapsing = widget.titleMode == PregoTopNavigationTitleMode.collapsing;
 
     // The bar. It shares this scaffold's [_scrollController] so its collapsing
     // title fades in as the large-title sliver below scrolls away.
     final topNav = PregoTopNavigation(
       title: widget.title,
       subtitle: widget.subtitle,
-      inlineTitle: inline,
+      titleMode: widget.titleMode,
+      subtitleIcon: widget.subtitleIcon,
+      online: widget.online,
+      subtitleInfoMessage: widget.subtitleInfoMessage,
+      subtitleInfoSemanticLabel: widget.subtitleInfoSemanticLabel,
       scrollController: _scrollController,
       actions: widget.actions,
       leading: widget.leading,
@@ -259,9 +288,9 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
                   SizedBox(height: topPad + topNav.preferredSize.height + bannerHeight),
             ),
           ),
-        // Inline mode shows a fixed title in the bar, so there is no large
-        // title sliver to scroll away.
-        if (!inline)
+        // The fixed-title modes (inline, back-leading) show their title in the
+        // bar, so there is no large title sliver to scroll away.
+        if (collapsing)
           _LargeTitleSliver(
             title: widget.title,
             subtitle: widget.subtitle,

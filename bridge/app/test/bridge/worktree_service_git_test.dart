@@ -55,6 +55,56 @@ void main() {
       expect(hasCommit, isFalse);
     });
 
+    test("getRemoteUrl prefers origin over other remotes", () async {
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "upstream\norigin\n"));
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "git@github.com:org/repo.git\n"));
+
+      final url = await service.getRemoteUrl(projectPath: "/repo/project");
+
+      expect(url, equals("git@github.com:org/repo.git"));
+      expect(processRunner.invocations, hasLength(2));
+      expect(processRunner.invocations.first.arguments, equals(["remote"]));
+      expect(processRunner.invocations.last.arguments, equals(["remote", "get-url", "origin"]));
+      expect(processRunner.invocations.last.workingDirectory, equals("/repo/project"));
+    });
+
+    test("getRemoteUrl falls back to the first listed remote without origin", () async {
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "upstream\nfork\n"));
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "https://github.com/org/repo.git\n"));
+
+      final url = await service.getRemoteUrl(projectPath: "/repo/project");
+
+      expect(url, equals("https://github.com/org/repo.git"));
+      expect(processRunner.invocations.last.arguments, equals(["remote", "get-url", "upstream"]));
+    });
+
+    test("getRemoteUrl returns null when the directory is not a git repository", () async {
+      processRunner.enqueue(result: _processResult(exitCode: 128, stderr: "fatal: not a git repository"));
+
+      final url = await service.getRemoteUrl(projectPath: "/repo/project");
+
+      expect(url, isNull);
+      expect(processRunner.invocations, hasLength(1));
+    });
+
+    test("getRemoteUrl returns null when the repository has no remotes", () async {
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "\n"));
+
+      final url = await service.getRemoteUrl(projectPath: "/repo/project");
+
+      expect(url, isNull);
+      expect(processRunner.invocations, hasLength(1));
+    });
+
+    test("getRemoteUrl returns null when get-url fails or is empty", () async {
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"));
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "  \n"));
+
+      final url = await service.getRemoteUrl(projectPath: "/repo/project");
+
+      expect(url, isNull);
+    });
+
     test("resolveDefaultBranch uses origin HEAD symbolic-ref when available", () async {
       processRunner.enqueue(
         result: _processResult(exitCode: 0, stdout: "refs/remotes/origin/main\n"),

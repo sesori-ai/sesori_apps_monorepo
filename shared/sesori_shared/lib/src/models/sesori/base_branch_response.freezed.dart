@@ -15,7 +15,12 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BaseBranchResponse {
 
- String? get baseBranch;
+ String? get baseBranch;// Forge-style repository slug (`org/repo`) parsed from the project's git
+// remote by the bridge. Null when the project has no usable remote (not a
+// git repository, no remotes, or a local filesystem remote) — and absent
+// from payloads of bridges that predate the field, which decodes to the
+// same null.
+ String? get repoSlug;
 /// Create a copy of BaseBranchResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +33,16 @@ $BaseBranchResponseCopyWith<BaseBranchResponse> get copyWith => _$BaseBranchResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BaseBranchResponse&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BaseBranchResponse&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,baseBranch);
+int get hashCode => Object.hash(runtimeType,baseBranch,repoSlug);
 
 @override
 String toString() {
-  return 'BaseBranchResponse(baseBranch: $baseBranch)';
+  return 'BaseBranchResponse(baseBranch: $baseBranch, repoSlug: $repoSlug)';
 }
 
 
@@ -48,7 +53,7 @@ abstract mixin class $BaseBranchResponseCopyWith<$Res>  {
   factory $BaseBranchResponseCopyWith(BaseBranchResponse value, $Res Function(BaseBranchResponse) _then) = _$BaseBranchResponseCopyWithImpl;
 @useResult
 $Res call({
- String? baseBranch
+ String? baseBranch, String? repoSlug
 });
 
 
@@ -65,9 +70,10 @@ class _$BaseBranchResponseCopyWithImpl<$Res>
 
 /// Create a copy of BaseBranchResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? baseBranch = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? baseBranch = freezed,Object? repoSlug = freezed,}) {
   return _then(_self.copyWith(
 baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
+as String?,repoSlug: freezed == repoSlug ? _self.repoSlug : repoSlug // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -80,10 +86,16 @@ as String?,
 @JsonSerializable()
 
 class _BaseBranchResponse implements BaseBranchResponse {
-  const _BaseBranchResponse({required this.baseBranch});
+  const _BaseBranchResponse({required this.baseBranch, required this.repoSlug});
   factory _BaseBranchResponse.fromJson(Map<String, dynamic> json) => _$BaseBranchResponseFromJson(json);
 
 @override final  String? baseBranch;
+// Forge-style repository slug (`org/repo`) parsed from the project's git
+// remote by the bridge. Null when the project has no usable remote (not a
+// git repository, no remotes, or a local filesystem remote) — and absent
+// from payloads of bridges that predate the field, which decodes to the
+// same null.
+@override final  String? repoSlug;
 
 /// Create a copy of BaseBranchResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -98,16 +110,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BaseBranchResponse&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BaseBranchResponse&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,baseBranch);
+int get hashCode => Object.hash(runtimeType,baseBranch,repoSlug);
 
 @override
 String toString() {
-  return 'BaseBranchResponse(baseBranch: $baseBranch)';
+  return 'BaseBranchResponse(baseBranch: $baseBranch, repoSlug: $repoSlug)';
 }
 
 
@@ -118,7 +130,7 @@ abstract mixin class _$BaseBranchResponseCopyWith<$Res> implements $BaseBranchRe
   factory _$BaseBranchResponseCopyWith(_BaseBranchResponse value, $Res Function(_BaseBranchResponse) _then) = __$BaseBranchResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String? baseBranch
+ String? baseBranch, String? repoSlug
 });
 
 
@@ -135,9 +147,10 @@ class __$BaseBranchResponseCopyWithImpl<$Res>
 
 /// Create a copy of BaseBranchResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? baseBranch = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? baseBranch = freezed,Object? repoSlug = freezed,}) {
   return _then(_BaseBranchResponse(
 baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
+as String?,repoSlug: freezed == repoSlug ? _self.repoSlug : repoSlug // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

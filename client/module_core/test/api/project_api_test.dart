@@ -168,7 +168,7 @@ void main() {
 
   group("getBaseBranch", () {
     test("posts the project ID and returns the base branch", () async {
-      const baseBranch = BaseBranchResponse(baseBranch: "main");
+      const baseBranch = BaseBranchResponse(baseBranch: "main", repoSlug: null);
       when(
         () => client.post<BaseBranchResponse>(
           "/project/base-branch",
