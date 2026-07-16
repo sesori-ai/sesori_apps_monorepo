@@ -346,6 +346,29 @@ void main() {
     expect(counters.primaryTaps, 1);
   });
 
+  testWidgets('the close callback is safe to call after the row is unmounted', (tester) async {
+    late VoidCallback close;
+    await tester.pumpWidget(
+      _harness(rows: [
+        PregoSwipeActions(
+          actionsBuilder: (context, c) {
+            close = c;
+            return const [SizedBox(width: 40, height: 40)];
+          },
+          primaryActionBuilder: (context, _) => const SizedBox(width: _primaryWidth),
+          onFullSwipe: () {},
+          child: const SizedBox(height: 96),
+        ),
+      ]),
+    );
+
+    // A host may hold [close] across an await (a confirmation dialog, an undo
+    // snackbar) while the row is removed underneath it.
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+
+    expect(close, returnsNormally);
+  });
+
   testWidgets('disposing mid-settle does not throw', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));

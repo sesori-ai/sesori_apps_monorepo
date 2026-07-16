@@ -317,7 +317,9 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
   }
 
   void _settleTo(double target) {
-    if (_rowWidth <= 0) return;
+    // The close callback escapes to host action handlers, which may hold it
+    // across an await that outlives the row.
+    if (!mounted || _rowWidth <= 0) return;
     final value = (target / _rowWidth).clamp(0.0, 1.0);
     if (prefersReducedMotion(context)) {
       _controller.value = value;
