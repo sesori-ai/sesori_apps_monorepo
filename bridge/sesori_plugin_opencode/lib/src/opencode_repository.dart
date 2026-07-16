@@ -103,6 +103,47 @@ class OpenCodeRepository {
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
+    return _sendPrompt(
+      sessionId: sessionId,
+      directory: directory,
+      parts: parts,
+      agent: agent,
+      variant: variant,
+      model: model,
+      noReply: false,
+    );
+  }
+
+  /// Adds user-provided compaction guidance to the session without starting a
+  /// separate agent run. The following summarize call consumes it as context.
+  Future<void> addCompactionInstructions({
+    required String sessionId,
+    required String? directory,
+    required String instructions,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID}) model,
+  }) {
+    return _sendPrompt(
+      sessionId: sessionId,
+      directory: directory,
+      parts: [PluginPromptPart.text(text: instructions)],
+      agent: agent,
+      variant: variant,
+      model: model,
+      noReply: true,
+    );
+  }
+
+  Future<void> _sendPrompt({
+    required String sessionId,
+    required String? directory,
+    required List<PluginPromptPart> parts,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+    required bool noReply,
+  }) {
     return _api.sendPrompt(
       sessionId: sessionId,
       directory: directory?.normalize(),
@@ -111,6 +152,7 @@ class OpenCodeRepository {
         agent: agent,
         variant: variant?.id,
         model: model,
+        noReply: noReply,
       ),
     );
   }
