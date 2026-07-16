@@ -578,24 +578,6 @@ class _FakeSessionRepository implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
-  Future<void> persistSessionsForProject({
-    required String projectId,
-    required List<Session> sessions,
-  }) async {}
-
-  @override
-  Future<void> createStoredSessionPlaceholder({
-    required String sessionId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-  }) async {}
-
-  @override
   Future<void> archiveStoredSession({
     required String sessionId,
     required int archivedAt,
@@ -607,6 +589,8 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   Future<void> insertStoredSession({
     required String sessionId,
+    required String backendSessionId,
+    required String pluginId,
     required String projectId,
     required bool isDedicated,
     required int createdAt,
@@ -675,6 +659,20 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
+
+  @override
+  void ensurePluginAvailable({required String pluginId, required String operation}) {}
+
+  @override
+  Future<Session?> getCatalogSession({required String sessionId}) async => null;
+
+  @override
+  Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
+
+  @override
+  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) async {
+    throw StateError("No stored session configured for $sessionId");
+  }
 }
 
 StoredSession _storedSession({
@@ -683,7 +681,10 @@ StoredSession _storedSession({
 }) {
   return StoredSession(
     id: id,
+    backendSessionId: id,
+    pluginId: "fake",
     projectId: "project-1",
+    directory: "/tmp/project-1",
     worktreePath: null,
     branchName: branchName,
     isDedicated: false,

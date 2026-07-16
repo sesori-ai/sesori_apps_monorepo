@@ -5,17 +5,17 @@ import "../../plugin_to_shared_mapping.dart";
 
 /// Maps plugin-level message types to shared [Message] types.
 extension PluginMessageMapper on PluginMessage {
-  Message toSharedMessage() => switch (this) {
-    PluginMessageUser(:final id, :final sessionID, :final agent, :final time) => Message.user(
+  Message toSharedMessage({required String sessionId}) => switch (this) {
+    PluginMessageUser(:final id, :final agent, :final time) => Message.user(
       id: id,
-      sessionID: sessionID,
+      sessionID: sessionId,
       agent: agent,
       time: time.toShared(),
     ),
-    PluginMessageAssistant(:final id, :final sessionID, :final agent, :final modelID, :final providerID, :final time) =>
+    PluginMessageAssistant(:final id, :final agent, :final modelID, :final providerID, :final time) =>
       Message.assistant(
         id: id,
-        sessionID: sessionID,
+        sessionID: sessionId,
         agent: agent,
         modelID: modelID,
         providerID: providerID,
@@ -23,7 +23,6 @@ extension PluginMessageMapper on PluginMessage {
       ),
     PluginMessageError(
       :final id,
-      :final sessionID,
       :final agent,
       :final modelID,
       :final providerID,
@@ -33,7 +32,7 @@ extension PluginMessageMapper on PluginMessage {
     ) =>
       Message.error(
         id: id,
-        sessionID: sessionID,
+        sessionID: sessionId,
         agent: agent,
         modelID: modelID,
         providerID: providerID,
@@ -52,16 +51,16 @@ extension on PluginMessageTime? {
 }
 
 extension PluginMessageWithPartsMapper on PluginMessageWithParts {
-  MessageWithParts toSharedMessageWithParts() {
+  MessageWithParts toSharedMessageWithParts({required String sessionId}) {
     return MessageWithParts(
-      info: info.toSharedMessage(),
-      parts: parts.map((p) => p.toShared()).toList(),
+      info: info.toSharedMessage(sessionId: sessionId),
+      parts: parts.map((part) => part.toShared(sessionId: sessionId)).toList(),
     );
   }
 }
 
 extension PluginMessagePartsMapper on Iterable<PluginMessageWithParts> {
-  List<MessageWithParts> toSharedMessageWithParts() {
-    return map((m) => m.toSharedMessageWithParts()).toList(growable: false);
+  List<MessageWithParts> toSharedMessageWithParts({required String sessionId}) {
+    return map((message) => message.toSharedMessageWithParts(sessionId: sessionId)).toList(growable: false);
   }
 }

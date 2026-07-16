@@ -24,6 +24,7 @@ class SessionCreationService {
        _sessionMutationDispatcher = sessionMutationDispatcher;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
+    _sessionRepository.ensurePluginAvailable(pluginId: request.pluginId, operation: "createSession");
     // Validate the opaque project handle before metadata generation or any
     // plugin/git side effect. The stored path is authoritative; unknown ids
     // must not be treated as directories.
@@ -53,6 +54,8 @@ class SessionCreationService {
     );
     await _sessionRepository.insertStoredSession(
       sessionId: created.id,
+      backendSessionId: created.id,
+      pluginId: request.pluginId,
       projectId: request.projectId,
       isDedicated: request.dedicatedWorktree,
       createdAt: DateTime.now().millisecondsSinceEpoch,

@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -107,28 +108,30 @@ void main() {
       expect(operationLog, equals(["pluginDelete"]));
     });
 
-    test("a delete records a tombstone even for a rowless session", () async {
-      // No stored row (e.g. a backend-only session never persisted): the
-      // delete must still tombstone it, or a backend without session deletion
-      // resurrects it on the next enumeration.
-      final response = await handler.handle(
-        makeRequest("DELETE", "/session/delete"),
-        body: const DeleteSessionRequest(
-          sessionId: "ghost",
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
+    test("missing binding returns 404 before plugin or cleanup calls", () async {
+      final response = await handler.handleInternal(
+        makeRequest(
+          "DELETE",
+          "/session/delete",
+          body: jsonEncode(
+            const DeleteSessionRequest(
+              sessionId: "ghost",
+              deleteWorktree: true,
+              deleteBranch: true,
+              force: false,
+            ).toJson(),
+          ),
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response, isA<SuccessEmptyResponse>());
-      expect(
-        await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
-        contains("ghost"),
-      );
+      expect(response.status, 404);
+      expect(plugin.lastDeleteSessionId, isNull);
+      expect(worktreeService.checkCallCount, 0);
+      expect(worktreeService.removeCallCount, 0);
+      expect(worktreeService.deleteBranchCallCount, 0);
     });
 
     test("2) deleteWorktree=true on clean worktree: safety check then plugin then worktree", () async {
@@ -373,27 +376,41 @@ void main() {
       expect(operationLog, equals(["pluginDelete"]));
     });
 
-    test("9) missing DB session: plugin delete only", () async {
-      final response = await handler.handle(
-        makeRequest("DELETE", "/session/delete"),
-        body: const DeleteSessionRequest(
-          sessionId: "s9",
-          deleteWorktree: true,
-          deleteBranch: true,
-          force: false,
+    test("stored plugin mismatch returns 503 before plugin I/O or cleanup", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s9",
+        projectId: "/repo",
+        worktreePath: "/repo/.worktrees/session-009",
+        branchName: "session-009",
+        pluginId: "stopped-plugin",
+      );
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "DELETE",
+          "/session/delete",
+          body: jsonEncode(
+            const DeleteSessionRequest(
+              sessionId: "s9",
+              deleteWorktree: true,
+              deleteBranch: true,
+              force: false,
+            ).toJson(),
+          ),
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      expect(response, isA<SuccessEmptyResponse>());
-      expect(plugin.lastDeleteSessionId, equals("s9"));
+      expect(response.status, 503);
+      expect(plugin.lastDeleteSessionId, isNull);
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
-      expect(await db.sessionDao.getSession(sessionId: "s9"), isNull);
-      expect(operationLog, equals(["pluginDelete"]));
+      expect(await db.sessionDao.getSession(sessionId: "s9"), isNotNull);
+      expect(operationLog, isEmpty);
     });
 
     test("10) plugin delete non-404 failure: cleanup already ran and DB row remains", () async {
@@ -492,11 +509,13 @@ Future<void> _insertSession({
   required String projectId,
   required String? worktreePath,
   required String? branchName,
+  String pluginId = "fake",
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
-    pluginId: "opencode",
+    pluginId: pluginId,
     sessionId: sessionId,
+    backendSessionId: sessionId,
     projectId: projectId,
     isDedicated: true,
     createdAt: 1,

@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -17,7 +19,7 @@ void main() {
     late SessionRepository sessionRepository;
     late SendPromptHandler handler;
 
-    setUp(() {
+    setUp(() async {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
       sessionRepository = SessionRepository(
@@ -32,6 +34,16 @@ void main() {
           sessionRepository: sessionRepository,
         ),
       );
+      for (final sessionId in ["s1", "s42", "s7", "s8", "s10", "s-update-fails", "s9"]) {
+        await _insertStoredSession(
+          repository: sessionRepository,
+          sessionId: sessionId,
+          backendSessionId: "backend-$sessionId",
+          pluginId: "fake",
+          agent: null,
+          agentModel: null,
+        );
+      }
     });
 
     tearDown(() async {
@@ -69,7 +81,7 @@ void main() {
         fragment: null,
       );
 
-      expect(plugin.lastSendPromptSessionId, equals("s1"));
+      expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
     });
 
     test("parses parts", () async {
@@ -123,6 +135,8 @@ void main() {
       await _insertStoredSession(
         repository: sessionRepository,
         sessionId: "s-defaults-prompt",
+        backendSessionId: "backend-s-defaults-prompt",
+        pluginId: "fake",
         agent: "old-agent",
         agentModel: const AgentModel(
           providerID: "old-provider",
@@ -147,7 +161,7 @@ void main() {
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
-      expect(plugin.lastSendPromptSessionId, equals("s-defaults-prompt"));
+      expect(plugin.lastSendPromptSessionId, equals("backend-s-defaults-prompt"));
       final dbSession = await db.sessionDao.getSession(sessionId: "s-defaults-prompt");
       expect(dbSession, isNotNull);
       expect(dbSession!.lastAgent, equals("planner"));
@@ -175,7 +189,7 @@ void main() {
         fragment: null,
       );
 
-      expect(plugin.lastSendPromptSessionId, equals("s42"));
+      expect(plugin.lastSendPromptSessionId, equals("backend-s42"));
       expect(plugin.lastSendPromptParts, hasLength(1));
       expect(plugin.lastSendPromptParts![0], equals(const PluginPromptPart.text(text: "Ship it")));
       expect(plugin.lastSendPromptAgent, equals("coder"));
@@ -218,7 +232,7 @@ void main() {
         fragment: null,
       );
 
-      expect(plugin.lastSendPromptSessionId, equals("s1"));
+      expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
       expect(plugin.lastSendCommandSessionId, isNull);
       expect(plugin.lastSendCommand, isNull);
     });
@@ -240,7 +254,7 @@ void main() {
       );
 
       expect(plugin.lastSendPromptSessionId, isNull);
-      expect(plugin.lastSendCommandSessionId, equals("s7"));
+      expect(plugin.lastSendCommandSessionId, equals("backend-s7"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("review this"));
       expect(plugin.lastSendCommandVariant, equals("xhigh"));
@@ -266,7 +280,7 @@ void main() {
         fragment: null,
       );
 
-      expect(plugin.lastSendCommandSessionId, equals("s8"));
+      expect(plugin.lastSendCommandSessionId, equals("backend-s8"));
       expect(plugin.lastSendCommand, equals("attach"));
       expect(plugin.lastSendCommandArguments, equals(""));
     });
@@ -288,7 +302,7 @@ void main() {
       );
 
       expect(plugin.lastSendPromptSessionId, isNull);
-      expect(plugin.lastSendCommandSessionId, equals("s10"));
+      expect(plugin.lastSendCommandSessionId, equals("backend-s10"));
       expect(plugin.lastSendCommandAgent, equals("coder"));
       expect(plugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5.4")));
     });
@@ -297,6 +311,8 @@ void main() {
       await _insertStoredSession(
         repository: sessionRepository,
         sessionId: "s-defaults-command",
+        backendSessionId: "backend-s-defaults-command",
+        pluginId: "fake",
         agent: "old-agent",
         agentModel: const AgentModel(
           providerID: "old-provider",
@@ -321,7 +337,7 @@ void main() {
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
-      expect(plugin.lastSendCommandSessionId, equals("s-defaults-command"));
+      expect(plugin.lastSendCommandSessionId, equals("backend-s-defaults-command"));
       final dbSession = await db.sessionDao.getSession(sessionId: "s-defaults-command");
       expect(dbSession, isNotNull);
       expect(dbSession!.lastAgent, equals("reviewer"));
@@ -334,6 +350,8 @@ void main() {
       await _insertStoredSession(
         repository: sessionRepository,
         sessionId: "s-failing-prompt",
+        backendSessionId: "backend-s-failing-prompt",
+        pluginId: "fake",
         agent: "old-agent",
         agentModel: const AgentModel(
           providerID: "old-provider",
@@ -384,6 +402,8 @@ void main() {
       await _insertStoredSession(
         repository: sessionRepository,
         sessionId: "s-failing-command",
+        backendSessionId: "backend-s-failing-command",
+        pluginId: "fake",
         agent: "old-agent",
         agentModel: const AgentModel(
           providerID: "old-provider",
@@ -463,7 +483,7 @@ void main() {
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
-      expect(plugin.lastSendPromptSessionId, equals("s-update-fails"));
+      expect(plugin.lastSendPromptSessionId, equals("backend-s-update-fails"));
       expect(throwingRepository.updatePromptDefaultsCallCount, equals(1));
       expect(changes, isEmpty);
     });
@@ -484,7 +504,7 @@ void main() {
         fragment: null,
       );
 
-      expect(plugin.lastSendPromptSessionId, equals("s9"));
+      expect(plugin.lastSendPromptSessionId, equals("backend-s9"));
       expect(plugin.lastSendPromptAgent, equals("coder"));
       expect(plugin.lastSendPromptModel?.providerID, equals("openai"));
       expect(plugin.lastSendPromptVariant, isNull);
@@ -510,17 +530,82 @@ void main() {
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
     });
+
+    test("missing binding returns 404 before plugin I/O", () async {
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/prompt_async",
+          body: jsonEncode(
+            const SendPromptRequest(
+              sessionId: "missing",
+              parts: [PromptPart.text(text: "Hello")],
+              variant: null,
+              agent: null,
+              model: null,
+              command: null,
+            ).toJson(),
+          ),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, 404);
+      expect(plugin.lastSendPromptSessionId, isNull);
+      expect(plugin.lastSendCommandSessionId, isNull);
+    });
+
+    test("stored plugin mismatch returns 503 before plugin I/O", () async {
+      await _insertStoredSession(
+        repository: sessionRepository,
+        sessionId: "stale-plugin-session",
+        backendSessionId: "backend-stale-plugin-session",
+        pluginId: "stopped-plugin",
+        agent: null,
+        agentModel: null,
+      );
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/prompt_async",
+          body: jsonEncode(
+            const SendPromptRequest(
+              sessionId: "stale-plugin-session",
+              parts: [PromptPart.text(text: "Hello")],
+              variant: null,
+              agent: null,
+              model: null,
+              command: null,
+            ).toJson(),
+          ),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, 503);
+      expect(plugin.lastSendPromptSessionId, isNull);
+      expect(plugin.lastSendCommandSessionId, isNull);
+    });
   });
 }
 
 Future<void> _insertStoredSession({
   required SessionRepository repository,
   required String sessionId,
+  required String backendSessionId,
+  required String pluginId,
   required String? agent,
   required AgentModel? agentModel,
 }) {
   return repository.insertStoredSession(
     sessionId: sessionId,
+    backendSessionId: backendSessionId,
+    pluginId: pluginId,
     projectId: "/repo",
     isDedicated: false,
     createdAt: 1,

@@ -243,7 +243,6 @@ class ProjectRepository {
       createdAt: activity.createdAt,
       updatedAt: activity.updatedAt,
     );
-    await _projectsDao.unhideProject(projectId: projectId);
   }
 
   Future<Project> mapOpenedProject({required ProjectOpenTarget target}) async {
@@ -261,12 +260,17 @@ class ProjectRepository {
       throw ProjectNotFoundException(projectId: projectId);
     }
     final activity = _mapActivity(await _projectsDao.getProject(projectId: projectId));
+    final renamedAt = DateTime.now().millisecondsSinceEpoch;
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
         // codex has no backend to store a project name, so persist a display-name
         // override that _deriveProjects applies on the next listing.
         final canonical = normalizeProjectDirectory(directory: path);
-        await _projectsDao.setDisplayName(projectId: canonical, displayName: name);
+        await _projectsDao.setDisplayName(
+          projectId: projectId,
+          displayName: name,
+          updatedAt: renamedAt,
+        );
         final project = await _findDerivedProject(plugin, canonical);
         return project.copyWith(
           hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
@@ -278,6 +282,11 @@ class ProjectRepository {
         // The backend looks the project up by directory, so hand it the live
         // path rather than the (possibly moved-away-from) id.
         final updated = await plugin.renameProject(projectId: path, name: name);
+        await _projectsDao.setDisplayName(
+          projectId: projectId,
+          displayName: name,
+          updatedAt: renamedAt,
+        );
         return updated.toSharedProject(
           path: path,
           hasUnseenChanges: await projectHasUnseenChanges(projectId: updated.id),
@@ -350,7 +359,7 @@ class ProjectRepository {
           },
         );
         final pathBySessionId = {
-          for (final row in sessionProjectPaths) row.sessionId: row.projectPath,
+          for (final row in sessionProjectPaths) row.backendSessionId: row.projectPath,
         };
         final grouped = <String, List<PluginSessionTime>>{};
         for (final session in sessions) {
@@ -412,7 +421,7 @@ class ProjectRepository {
       sessions: sessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
       storedProjects: storedProjects,
       projectPathBySessionId: {
-        for (final row in sessionProjectPaths) row.sessionId: row.projectPath,
+        for (final row in sessionProjectPaths) row.backendSessionId: row.projectPath,
       },
     );
   }

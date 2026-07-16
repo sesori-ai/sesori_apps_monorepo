@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart" show ProviderListResponse;
 
 import "../../api/database/daos/projects_dao.dart";
@@ -15,6 +15,13 @@ class ProviderRepository {
       _projectsDao = projectsDao;
 
   Future<ProviderListResponse> getProviders({required String projectId, required String pluginId}) async {
+    if (pluginId != _plugin.id) {
+      throw PluginOperationException(
+        "getProviders",
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
+    }
     // The plugin reads provider config from the project's directory, so
     // resolve the id to the live path first.
     final directory = await _projectsDao.getResolvedPath(projectId: projectId);

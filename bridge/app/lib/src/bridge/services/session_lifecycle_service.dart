@@ -73,11 +73,11 @@ class SessionLifecycleService {
     required bool deleteBranch,
     required bool force,
   }) async {
-    final storedSession = await _sessionRepository.getStoredSession(sessionId: sessionId);
-    if (!(deleteWorktree || deleteBranch) ||
-        storedSession == null ||
-        storedSession.worktreePath == null ||
-        storedSession.branchName == null) {
+    final storedSession = await _sessionRepository.requireActiveStoredSession(
+      sessionId: sessionId,
+      operation: "cleanupSession",
+    );
+    if (!(deleteWorktree || deleteBranch) || storedSession.worktreePath == null || storedSession.branchName == null) {
       return CleanupSuccess();
     }
 
@@ -177,28 +177,10 @@ class SessionLifecycleService {
   }
 
   Future<StoredSession> _getStoredSession({required String sessionId}) async {
-    if (await _sessionRepository.getStoredSession(sessionId: sessionId) case final storedSession?) {
-      return storedSession;
-    }
-    final projectId = await _sessionRepository.findProjectIdForSession(sessionId: sessionId);
-    if (projectId == null) {
-      throw SessionNotFoundException();
-    }
-    await _sessionRepository.createStoredSessionPlaceholder(
+    return _sessionRepository.requireActiveStoredSession(
       sessionId: sessionId,
-      projectId: projectId,
-      isDedicated: true,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-      worktreePath: null,
-      branchName: null,
-      baseBranch: null,
-      baseCommit: null,
+      operation: "updateSessionArchiveStatus",
     );
-    final initialized = await _sessionRepository.getStoredSession(sessionId: sessionId);
-    if (initialized == null) {
-      throw SessionInitializationException();
-    }
-    return initialized;
   }
 
   Future<Session> _doArchive({
@@ -214,13 +196,6 @@ class SessionLifecycleService {
       deleteBranch: deleteBranch,
       force: force,
     );
-    if (await _sessionRepository.getSessionForProject(
-          projectId: storedSession.projectId,
-          sessionId: storedSession.id,
-        ) ==
-        null) {
-      throw SessionNotFoundException();
-    }
     await _sessionRepository.archiveStoredSession(
       sessionId: storedSession.id,
       archivedAt: archivedAt,
@@ -233,10 +208,7 @@ class SessionLifecycleService {
         Log.w("[archive] failed to notify plugin for session ${storedSession.id}", error, stackTrace);
       }),
     );
-    final session = await _sessionRepository.getSessionForProject(
-      projectId: storedSession.projectId,
-      sessionId: storedSession.id,
-    );
+    final session = await _sessionRepository.getCatalogSession(sessionId: storedSession.id);
     if (session == null) {
       throw SessionNotFoundException();
     }
@@ -286,10 +258,7 @@ class SessionLifecycleService {
         );
       }
     }
-    final session = await _sessionRepository.getSessionForProject(
-      projectId: storedSession.projectId,
-      sessionId: storedSession.id,
-    );
+    final session = await _sessionRepository.getCatalogSession(sessionId: storedSession.id);
     if (session == null) {
       throw SessionNotFoundException();
     }

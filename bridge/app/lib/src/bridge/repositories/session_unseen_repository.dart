@@ -140,7 +140,16 @@ class SessionUnseenRepository {
       await _projectsDao.insertProjectIfMissing(projectId: projectId, path: projectPath);
       await _sessionDao.insertSessionsIfMissing(
         pluginId: _plugin.id,
-        sessions: [(sessionId: sessionId, projectId: projectId, createdAt: createdAt, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: sessionId,
+            backendSessionId: sessionId,
+            projectId: projectId,
+            directory: sessionDirectory,
+            createdAt: createdAt,
+            archivedAt: null,
+          ),
+        ],
       );
       await _sessionDao.setActivityTimestamps(
         sessionId: sessionId,

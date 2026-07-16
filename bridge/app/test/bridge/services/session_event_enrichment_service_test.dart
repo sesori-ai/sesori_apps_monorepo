@@ -57,6 +57,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "s1",
+        backendSessionId: "s1",
         projectId: "p1",
         isDedicated: true,
         createdAt: 10,
@@ -109,6 +110,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "s1",
+        backendSessionId: "s1",
         projectId: "p1",
         isDedicated: true,
         createdAt: 10,
@@ -219,6 +221,7 @@ void main() {
         await db.sessionDao.insertSession(
           pluginId: "codex",
           sessionId: "s1",
+          backendSessionId: "s1",
           projectId: "/repo",
           isDedicated: false,
           createdAt: 10,
@@ -229,7 +232,7 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
         );
-        await db.sessionDao.setTitle(sessionId: "s1", title: title);
+        await db.sessionDao.setTitle(sessionId: "s1", title: title, updatedAt: 11);
       }
 
       Map<String, dynamic> sessionInfo({required String? title}) => {
@@ -288,6 +291,8 @@ void main() {
 
         await derivedRepository.insertStoredSession(
           sessionId: "s1",
+          backendSessionId: "s1",
+          pluginId: "codex",
           projectId: "/repo",
           isDedicated: false,
           createdAt: 10,

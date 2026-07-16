@@ -5,6 +5,7 @@ import "dart:typed_data";
 import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
@@ -20,6 +21,7 @@ import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
@@ -389,13 +391,20 @@ void main() {
     );
     expect(found, isTrue);
 
-    await sessionTitleService.deleteSession(sessionId: "rowless-session");
+    await _insertRootSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "delete-session",
+      backendSessionId: "backend-delete-session",
+    );
+    await sessionTitleService.deleteSession(sessionId: "delete-session");
     final deleted = await _waitForEventType(
       messages: messages,
       roomKey: roomKey,
       expectedType: "session.deleted",
     );
     expect(deleted, isTrue);
+    expect(plugin.deletedSessionIds, equals(["backend-delete-session"]));
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
@@ -828,6 +837,7 @@ void main() {
     await database.sessionDao.insertSession(
       pluginId: "opencode",
       sessionId: "s1",
+      backendSessionId: "s1",
       projectId: "p1",
       isDedicated: true,
       createdAt: 10,
@@ -1193,6 +1203,13 @@ void main() {
     final runFuture = session.run();
     await relayServer.nextClient();
 
+    await _insertRootSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "session-42",
+      backendSessionId: "backend-session-42",
+    );
+
     final request =
         RelayMessage.request(
               id: "abort-request",
@@ -1205,7 +1222,7 @@ void main() {
     final response = await session.router.route(request);
 
     expect(response.status, equals(200));
-    expect(plugin.abortedSessionIds, equals(["session-42"]));
+    expect(plugin.abortedSessionIds, equals(["backend-session-42"]));
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
@@ -1354,6 +1371,13 @@ void main() {
     await plugin.waitForSubscription();
     await relayServer.nextClient();
 
+    await _insertRootSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "session-42",
+      backendSessionId: "backend-session-42",
+    );
+
     plugin.add(
       BridgeSseSessionStatus(
         sessionID: "session-42",
@@ -1388,7 +1412,7 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 700));
 
     expect(notificationClient.payloads, isEmpty);
-    expect(plugin.abortedSessionIds, equals(["session-42"]));
+    expect(plugin.abortedSessionIds, equals(["backend-session-42"]));
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
@@ -1539,6 +1563,13 @@ void main() {
     await plugin.waitForSubscription();
     await relayServer.nextClient();
 
+    await _insertRootSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "session-42",
+      backendSessionId: "backend-session-42",
+    );
+
     plugin.add(
       BridgeSseSessionStatus(
         sessionID: "session-42",
@@ -1576,7 +1607,7 @@ void main() {
     final response = await responseFuture;
 
     expect(response.status, equals(200));
-    expect(plugin.abortedSessionIds, equals(["session-42"]));
+    expect(plugin.abortedSessionIds, equals(["backend-session-42"]));
     expect(notificationClient.payloads, isEmpty);
 
     await session.cancel();
@@ -1585,6 +1616,30 @@ void main() {
     await database.close();
     await relayServer.close();
   });
+}
+
+Future<void> _insertRootSessionBinding({
+  required AppDatabase database,
+  required String pluginId,
+  required String sessionId,
+  required String backendSessionId,
+}) async {
+  final projectId = "project-$sessionId";
+  await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+  await database.sessionDao.insertSession(
+    pluginId: pluginId,
+    sessionId: sessionId,
+    backendSessionId: backendSessionId,
+    projectId: projectId,
+    isDedicated: false,
+    createdAt: 1,
+    worktreePath: null,
+    branchName: null,
+    baseBranch: null,
+    baseCommit: null,
+    lastAgent: null,
+    lastAgentModel: null,
+  );
 }
 
 Future<List<int>> _nextBinaryMessage({required Stream<dynamic> messages}) async {
@@ -2144,6 +2199,7 @@ class _NoopPlugin implements NativeProjectsPluginApi {
 
 class _EventPlugin extends _NoopPlugin {
   int subscribeCount = 0;
+  final List<String> deletedSessionIds = <String>[];
   final List<({String requestId, String sessionId, PluginPermissionReply reply})> permissionReplies = [];
   final List<PluginPendingPermission> pendingPermissions;
 
@@ -2165,6 +2221,11 @@ class _EventPlugin extends _NoopPlugin {
 
   void add(BridgeSseEvent event) {
     _controller.add(event);
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    deletedSessionIds.add(sessionId);
   }
 
   @override
@@ -2388,7 +2449,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<Session> enrichSession({required Session session}) async => session;
   @override
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
-      Session.fromJson(pluginSession.toJson());
+      pluginSession.toSharedSession(pluginId: "fake");
   @override
   Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async =>
       Session.fromJson(sessionJson);
@@ -2412,22 +2473,18 @@ class _NoopSessionRepository implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
-  Future<void> persistSessionsForProject({
-    required String projectId,
-    required List<Session> sessions,
-  }) async {}
+  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) async {
+    throw PluginOperationException.notFound(operation, message: "session $sessionId was not found");
+  }
 
   @override
-  Future<void> createStoredSessionPlaceholder({
-    required String sessionId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-  }) async {}
+  Future<Session?> getCatalogSession({required String sessionId}) async => null;
+
+  @override
+  Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
+
+  @override
+  void ensurePluginAvailable({required String pluginId, required String operation}) {}
 
   @override
   Future<void> archiveStoredSession({
@@ -2441,6 +2498,8 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<void> insertStoredSession({
     required String sessionId,
+    required String backendSessionId,
+    required String pluginId,
     required String projectId,
     required bool isDedicated,
     required int createdAt,
@@ -2612,7 +2671,7 @@ class _DelayingSessionRepository implements SessionRepository {
 
   @override
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) async {
-    return enrichSession(session: Session.fromJson(pluginSession.toJson()));
+    return enrichSession(session: pluginSession.toSharedSession(pluginId: "fake"));
   }
 
   @override
@@ -2670,34 +2729,23 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<void> persistSessionsForProject({
-    required String projectId,
-    required List<Session> sessions,
-  }) {
-    return _base.persistSessionsForProject(projectId: projectId, sessions: sessions);
+  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) {
+    return _base.requireActiveStoredSession(sessionId: sessionId, operation: operation);
   }
 
   @override
-  Future<void> createStoredSessionPlaceholder({
-    required String sessionId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-  }) {
-    return _base.createStoredSessionPlaceholder(
-      sessionId: sessionId,
-      projectId: projectId,
-      isDedicated: isDedicated,
-      createdAt: createdAt,
-      worktreePath: worktreePath,
-      branchName: branchName,
-      baseBranch: baseBranch,
-      baseCommit: baseCommit,
-    );
+  Future<Session?> getCatalogSession({required String sessionId}) {
+    return _base.getCatalogSession(sessionId: sessionId);
+  }
+
+  @override
+  Future<SessionStatusResponse> getSessionStatuses() {
+    return _base.getSessionStatuses();
+  }
+
+  @override
+  void ensurePluginAvailable({required String pluginId, required String operation}) {
+    _base.ensurePluginAvailable(pluginId: pluginId, operation: operation);
   }
 
   @override
@@ -2716,6 +2764,8 @@ class _DelayingSessionRepository implements SessionRepository {
   @override
   Future<void> insertStoredSession({
     required String sessionId,
+    required String backendSessionId,
+    required String pluginId,
     required String projectId,
     required bool isDedicated,
     required int createdAt,
@@ -2728,6 +2778,8 @@ class _DelayingSessionRepository implements SessionRepository {
   }) {
     return _base.insertStoredSession(
       sessionId: sessionId,
+      backendSessionId: backendSessionId,
+      pluginId: pluginId,
       projectId: projectId,
       isDedicated: isDedicated,
       createdAt: createdAt,

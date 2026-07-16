@@ -15,7 +15,7 @@ void main() {
     late AppDatabase db;
 
     setUp(() async {
-      plugin = FakeBridgePlugin();
+      plugin = _OpenCodeFakeBridgePlugin();
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       addTearDown(db.close);
@@ -47,7 +47,7 @@ void main() {
     test("passes projectId from body to plugin", () async {
       await handler.handle(
         makeRequest("POST", "/provider"),
-        body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "fake"),
+        body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "opencode"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -398,4 +398,9 @@ void main() {
       expect(response.items, hasLength(3));
     });
   });
+}
+
+class _OpenCodeFakeBridgePlugin extends FakeBridgePlugin {
+  @override
+  String get id => "opencode";
 }

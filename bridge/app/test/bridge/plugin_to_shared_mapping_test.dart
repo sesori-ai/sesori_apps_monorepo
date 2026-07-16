@@ -44,9 +44,10 @@ void main() {
         retryError: null,
       );
 
-      final shared = part.toShared();
+      final shared = part.toShared(sessionId: "stable-session");
 
       expect(shared.agentName, equals("my-agent"));
+      expect(shared.sessionID, equals("stable-session"));
     });
 
     test("passes through attempt", () {
@@ -66,7 +67,7 @@ void main() {
         retryError: null,
       );
 
-      final shared = part.toShared();
+      final shared = part.toShared(sessionId: "stable-session");
 
       expect(shared.attempt, equals(3));
     });
@@ -88,7 +89,7 @@ void main() {
         retryError: "connection timeout",
       );
 
-      final shared = part.toShared();
+      final shared = part.toShared(sessionId: "stable-session");
 
       expect(shared.retryError, equals("connection timeout"));
     });
@@ -110,7 +111,7 @@ void main() {
         retryError: null,
       );
 
-      final shared = part.toShared();
+      final shared = part.toShared(sessionId: "stable-session");
 
       expect(shared.agentName, isNull);
       expect(shared.attempt, isNull);

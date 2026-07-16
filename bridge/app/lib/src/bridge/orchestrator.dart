@@ -224,7 +224,7 @@ class Orchestrator {
         GetCurrentProjectHandler(projectRepository: _projectRepository),
         GetProjectsHandler(projectActivityService: _projectActivityService),
         GetCommandsHandler(sessionRepository: _sessionRepository),
-        GetSessionStatusesHandler(_plugin),
+        GetSessionStatusesHandler(sessionRepository: _sessionRepository),
         GetChildSessionsHandler(sessionRepository: _sessionRepository),
         GetSessionHandler(_sessionRepository),
         GetSessionMessagesHandler(sessionRepository: _sessionRepository),

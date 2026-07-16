@@ -218,6 +218,7 @@ Future<void> _insertStoredSession({
   await db.sessionDao.insertSession(
     pluginId: "opencode",
     sessionId: sessionId,
+    backendSessionId: sessionId,
     projectId: projectId,
     isDedicated: true,
     createdAt: 1,

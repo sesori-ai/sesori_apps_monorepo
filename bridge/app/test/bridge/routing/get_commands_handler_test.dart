@@ -20,7 +20,7 @@ void main() {
     setUp(() async {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
-      plugin = FakeBridgePlugin();
+      plugin = _OpenCodeFakeBridgePlugin();
       handler = GetCommandsHandler(
         sessionRepository: SessionRepository(
           plugin: plugin,
@@ -106,7 +106,7 @@ void main() {
     test("accepts the active plugin selection", () async {
       await handler.handle(
         makeRequest("POST", "/command"),
-        body: const PluginProjectIdRequest(projectId: "/repo", pluginId: "fake"),
+        body: const PluginProjectIdRequest(projectId: "/repo", pluginId: "opencode"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -115,4 +115,9 @@ void main() {
       expect(plugin.lastGetCommandsProjectId, equals("/repo"));
     });
   });
+}
+
+class _OpenCodeFakeBridgePlugin extends FakeBridgePlugin {
+  @override
+  String get id => "opencode";
 }

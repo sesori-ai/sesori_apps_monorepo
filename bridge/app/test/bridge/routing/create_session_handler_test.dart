@@ -41,7 +41,7 @@ IMPORTANT: Do NOT create new worktrees, branches, or working directories for thi
 
 void main() {
   group("CreateSessionHandler", () {
-    late FakeBridgePlugin plugin;
+    late _OpenCodeFakeBridgePlugin plugin;
     late FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
     late SessionRepository sessionRepository;
@@ -51,7 +51,7 @@ void main() {
     setUp(() async {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo", "/tmp"]);
-      plugin = FakeBridgePlugin();
+      plugin = _OpenCodeFakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
       sessionRepository = SessionRepository(
@@ -477,7 +477,7 @@ void main() {
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
-          pluginId: "fake",
+          pluginId: "opencode",
           dedicatedWorktree: false,
           parts: [PromptPart.text(text: "Start")],
           variant: null,
@@ -491,7 +491,7 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
-      expect(result.pluginId, equals("fake"));
+      expect(result.pluginId, equals("opencode"));
       // The created session belongs to the requested project by construction,
       // so the response is re-keyed to the request's stable projectId — the
       // plugin can only echo the directory it created the session in.
@@ -1186,7 +1186,12 @@ class _NoopProcessRunner implements ProcessRunner {
   }
 }
 
-class _ThrowingCreateSessionPlugin extends FakeBridgePlugin {
+class _OpenCodeFakeBridgePlugin extends FakeBridgePlugin {
+  @override
+  String get id => "opencode";
+}
+
+class _ThrowingCreateSessionPlugin extends _OpenCodeFakeBridgePlugin {
   @override
   Future<PluginSession> createSession({
     required String directory,
@@ -1200,7 +1205,7 @@ class _ThrowingCreateSessionPlugin extends FakeBridgePlugin {
   }
 }
 
-class _ThrowingRenameSessionPlugin extends FakeBridgePlugin {
+class _ThrowingRenameSessionPlugin extends _OpenCodeFakeBridgePlugin {
   @override
   Future<PluginSession> renameSession({
     required String sessionId,
@@ -1210,7 +1215,7 @@ class _ThrowingRenameSessionPlugin extends FakeBridgePlugin {
   }
 }
 
-class _OrderCheckingCommandPlugin extends FakeBridgePlugin {
+class _OrderCheckingCommandPlugin extends _OpenCodeFakeBridgePlugin {
   final AppDatabase _database;
 
   bool hadStoredRowWhenCommandSent = false;
@@ -1239,7 +1244,7 @@ class _OrderCheckingCommandPlugin extends FakeBridgePlugin {
   }
 }
 
-class _FakeBridgePlugin extends FakeBridgePlugin {
+class _FakeBridgePlugin extends _OpenCodeFakeBridgePlugin {
   @override
   Future<void> deleteWorkspace({
     required String projectId,

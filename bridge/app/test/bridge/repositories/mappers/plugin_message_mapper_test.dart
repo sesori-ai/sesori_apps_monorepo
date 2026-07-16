@@ -14,11 +14,11 @@ void main() {
       );
 
       expect(
-        message.toSharedMessage(),
+        message.toSharedMessage(sessionId: "stable-session"),
         equals(
           const Message.user(
             id: "m1",
-            sessionID: "s1",
+            sessionID: "stable-session",
             agent: null,
             time: MessageTime(created: 1718400000000, completed: null),
           ),
@@ -37,11 +37,11 @@ void main() {
       );
 
       expect(
-        message.toSharedMessage(),
+        message.toSharedMessage(sessionId: "stable-session"),
         equals(
           const Message.assistant(
             id: "m2",
-            sessionID: "s1",
+            sessionID: "stable-session",
             agent: "build",
             modelID: "gpt",
             providerID: "openai",
@@ -64,11 +64,11 @@ void main() {
       );
 
       expect(
-        message.toSharedMessage(),
+        message.toSharedMessage(sessionId: "stable-session"),
         equals(
           const Message.error(
             id: "m3",
-            sessionID: "s1",
+            sessionID: "stable-session",
             agent: null,
             modelID: "gpt",
             providerID: "openai",
@@ -88,7 +88,7 @@ void main() {
         time: null,
       );
 
-      expect(message.toSharedMessage().time, isNull);
+      expect(message.toSharedMessage(sessionId: "stable-session").time, isNull);
     });
   });
 }

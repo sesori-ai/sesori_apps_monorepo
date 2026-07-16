@@ -38,6 +38,8 @@ void main() {
     Future<void> insertSession() async {
       await repository.insertStoredSession(
         sessionId: "s1",
+        backendSessionId: "backend-s1",
+        pluginId: "codex",
         projectId: "/repo",
         isDedicated: false,
         createdAt: 1,
@@ -59,20 +61,18 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Early title");
     });
 
-    test("buffers a rename until its session row exists", () async {
-      final renamed = await dispatcher.renameSession(sessionId: "s1", title: "User rename");
-      expect(renamed.title, "User rename");
-      await insertSession();
-
-      await dispatcher.applyPendingTitle(sessionId: "s1");
-
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "User rename");
+    test("rejects a rename when its root binding does not exist", () async {
+      await expectLater(
+        dispatcher.renameSession(sessionId: "s1", title: "User rename"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(plugin.renameCalls, isZero);
     });
 
     test("applies a pending null by removing the stored title copy", () async {
       await dispatcher.captureTitle(sessionId: "s1", title: null);
       await insertSession();
-      await db.sessionDao.setTitle(sessionId: "s1", title: "stale");
+      await db.sessionDao.setTitle(sessionId: "s1", title: "stale", updatedAt: 2);
 
       await dispatcher.applyPendingTitle(sessionId: "s1");
 
@@ -90,6 +90,7 @@ void main() {
           time: null,
         ),
       ];
+      await insertSession();
       final deletionEvent = expectLater(
         dispatcher.deletedSessions,
         emits(
@@ -114,6 +115,7 @@ void main() {
       plugin
         ..deleteStarted = deleteStarted
         ..releaseDelete = releaseDelete.future;
+      await insertSession();
 
       final deletion = dispatcher.deleteSession(sessionId: "s1");
       await deleteStarted.future;
@@ -136,6 +138,7 @@ void main() {
       plugin
         ..deleteStarted = deleteStarted
         ..releaseDelete = releaseDelete.future;
+      await insertSession();
       final events = expectLater(
         dispatcher.deletedSessions,
         emitsInOrder([

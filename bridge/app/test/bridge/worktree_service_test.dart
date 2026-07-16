@@ -121,6 +121,7 @@ void main() {
       await sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "parent-001",
+        backendSessionId: "parent-001",
         projectId: _projectId,
         isDedicated: true,
         createdAt: 123,
@@ -482,6 +483,7 @@ void main() {
       await sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "parent-001",
+        backendSessionId: "parent-001",
         projectId: _projectId,
         isDedicated: true,
         createdAt: 123,
