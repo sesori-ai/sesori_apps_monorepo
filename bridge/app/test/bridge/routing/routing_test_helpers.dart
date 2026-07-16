@@ -15,6 +15,7 @@ import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_sta
 import "package:sesori_bridge/src/bridge/repositories/mappers/prompt_part_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
@@ -157,6 +158,9 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "fake";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => _controller.stream;
@@ -739,8 +743,14 @@ class _NoopSessionRepository implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
-  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) async {
-    throw PluginOperationException.notFound(operation, message: "session $sessionId was not found");
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    throw PluginOperationException.notFound(
+      operation.name,
+      message: "session $sessionId was not found",
+    );
   }
 
   @override
@@ -750,7 +760,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
 
   @override
-  void ensurePluginAvailable({required String pluginId, required String operation}) {}
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {}
 
   @override
   Future<void> archiveStoredSession({
@@ -1083,10 +1093,16 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) async {
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
     final stored = await getStoredSession(sessionId: sessionId);
     if (stored == null) {
-      throw PluginOperationException.notFound(operation, message: "session $sessionId was not found");
+      throw PluginOperationException.notFound(
+        operation.name,
+        message: "session $sessionId was not found",
+      );
     }
     ensurePluginAvailable(pluginId: stored.pluginId, operation: operation);
     return stored;
@@ -1108,9 +1124,13 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  void ensurePluginAvailable({required String pluginId, required String operation}) {
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {
     if (pluginId == _plugin.id) return;
-    throw PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is not running");
+    throw PluginOperationException(
+      operation.name,
+      statusCode: 503,
+      message: "plugin $pluginId is not running",
+    );
   }
 
   @override

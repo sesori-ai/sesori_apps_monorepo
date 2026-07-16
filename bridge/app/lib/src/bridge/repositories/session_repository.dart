@@ -39,6 +39,7 @@ import "mappers/pull_request_mapper.dart";
 import "mappers/session_catalog_mapper.dart";
 import "mappers/stored_session_mapper.dart";
 import "models/project_not_found_exception.dart";
+import "models/session_operation.dart";
 import "models/stored_session.dart";
 import "session_unseen_calculator.dart";
 
@@ -79,31 +80,51 @@ class SessionRepository {
       start: start,
       limit: limit,
     );
-    final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
-      pluginId: _plugin.id,
-      backendSessionIds: [for (final session in pluginSessions) session.id],
-    );
-    final committedByBackendId = await _sessionDao.attachedDatabase.transaction(() {
+    final backendSessionIds = [for (final session in pluginSessions) session.id];
+    final committedByBackendId = await _sessionDao.attachedDatabase.transaction(() async {
+      final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
+        pluginId: _plugin.id,
+        backendSessionIds: backendSessionIds,
+      );
+      final existingBySessionId = await _sessionDao.getSessionsByIds(
+        sessionIds: backendSessionIds,
+      );
+      final tombstoned = await _sessionDao.getTombstonedSessionIds(
+        pluginId: _plugin.id,
+      );
+      final observedRoots = <ObservedRootSession>[];
+      for (final session in pluginSessions) {
+        if (tombstoned.contains(session.id)) continue;
+        final existingBinding = existingByBackendId[session.id];
+        final occupiedSessionId = existingBySessionId[session.id];
+        if (existingBinding == null && occupiedSessionId != null) {
+          Log.w(
+            "Skipping ${_plugin.id} session ${session.id}: its stable id is already bound to "
+            "${occupiedSessionId.pluginId}/${occupiedSessionId.backendSessionId}",
+          );
+          continue;
+        }
+        observedRoots.add((
+          sessionId: existingBinding?.sessionId ?? session.id,
+          backendSessionId: session.id,
+          projectId: projectId,
+          directory: session.directory,
+          catalogTitle: session.title,
+          createdAt: session.time?.created ?? existingBinding?.createdAt ?? projectionUpdatedAt,
+          updatedAt: session.time?.updated ?? existingBinding?.updatedAt ?? projectionUpdatedAt,
+          archivedAt: session.time?.archived,
+          projectionUpdatedAt: projectionUpdatedAt,
+        ));
+      }
       return _sessionDao.upsertObservedRootSessions(
         pluginId: _plugin.id,
-        sessions: [
-          for (final session in pluginSessions)
-            (
-              sessionId: existingByBackendId[session.id]?.sessionId ?? session.id,
-              backendSessionId: session.id,
-              projectId: projectId,
-              directory: session.directory,
-              catalogTitle: session.title,
-              createdAt: session.time?.created ?? existingByBackendId[session.id]?.createdAt ?? projectionUpdatedAt,
-              updatedAt: session.time?.updated ?? existingByBackendId[session.id]?.updatedAt ?? projectionUpdatedAt,
-              archivedAt: session.time?.archived,
-              projectionUpdatedAt: projectionUpdatedAt,
-            ),
-        ],
+        sessions: observedRoots,
       );
     });
     return _mapCatalogSessions(
-      rows: [for (final session in pluginSessions) committedByBackendId[session.id]!],
+      rows: [
+        for (final session in pluginSessions) ?committedByBackendId[session.id],
+      ],
     );
   }
 
@@ -219,7 +240,7 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
-    ensurePluginAvailable(pluginId: pluginId, operation: "createSession");
+    ensurePluginAvailable(pluginId: pluginId, operation: SessionOperation.createSession);
     final created = await _plugin.createSession(
       directory: directory,
       parentSessionId: parentSessionId,
@@ -235,14 +256,17 @@ class SessionRepository {
   }
 
   Future<Session> renameSession({required String sessionId, required String title}) async {
-    final binding = await _requireActiveBinding(sessionId: sessionId, operation: "renameSession");
+    final binding = await _requireActiveBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.renameSession,
+    );
     await _primeDerivedSessionDirectory(binding: binding);
     final updated = await _plugin.renameSession(sessionId: binding.backendSessionId, title: title);
     return updated.toSharedSessionWithId(sessionId: binding.sessionId, pluginId: binding.pluginId);
   }
 
   Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async {
-    ensurePluginAvailable(pluginId: pluginId, operation: "getCommands");
+    ensurePluginAvailable(pluginId: pluginId, operation: SessionOperation.getCommands);
     final normalizedProjectId = projectId?.trim();
     final commands = await _plugin.getCommands(
       // The plugin reads commands from the project's directory, so resolve
@@ -264,7 +288,10 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
-    final binding = await _requireActiveBinding(sessionId: sessionId, operation: "sendCommand");
+    final binding = await _requireActiveBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.sendCommand,
+    );
     await _primeDerivedSessionDirectory(binding: binding);
     return _plugin.sendCommand(
       sessionId: binding.backendSessionId,
@@ -286,7 +313,10 @@ class SessionRepository {
     required String? agent,
     required PromptModel? model,
   }) async {
-    final binding = await _requireActiveBinding(sessionId: sessionId, operation: "sendPrompt");
+    final binding = await _requireActiveBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.sendPrompt,
+    );
     await _primeDerivedSessionDirectory(binding: binding);
     return _plugin.sendPrompt(
       sessionId: binding.backendSessionId,
@@ -305,10 +335,13 @@ class SessionRepository {
   /// be the FIRST plugin call for a stored worktree session, and a
   /// directory-scoped backend would otherwise replay in its launch directory.
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
-    final binding = await _requireActiveBinding(sessionId: sessionId, operation: "getSessionMessages");
-    await _primeDerivedSessionDirectory(binding: binding);
-    final pluginMessages = await _plugin.getSessionMessages(binding.backendSessionId);
-    return pluginMessages.toSharedMessageWithParts(sessionId: binding.sessionId);
+    final binding = await _resolveSessionTargetAllowingRowlessChild(
+      sessionId: sessionId,
+      operation: SessionOperation.getSessionMessages,
+    );
+    if (binding != null) await _primeDerivedSessionDirectory(binding: binding);
+    final pluginMessages = await _plugin.getSessionMessages(binding?.backendSessionId ?? sessionId);
+    return pluginMessages.toSharedMessageWithParts(sessionId: binding?.sessionId ?? sessionId);
   }
 
   /// Persists the bridge-owned title override. Null removes the override so
@@ -358,7 +391,10 @@ class SessionRepository {
   /// Deletes the backend root, then tombstones every persisted binding in its
   /// subtree and removes the stable root atomically.
   Future<Session> deleteSession({required String sessionId}) async {
-    final stored = await _requireActiveBinding(sessionId: sessionId, operation: "deleteSession");
+    final stored = await _requireActiveBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.deleteSession,
+    );
     final subtree = await _getSessionSubtree(root: stored);
     final deletionSnapshot = (await _mapCatalogSessions(rows: [stored])).single;
     try {
@@ -466,7 +502,10 @@ class SessionRepository {
   }
 
   Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async {
-    final binding = await _requireActiveBinding(sessionId: sessionId, operation: "getSession");
+    final binding = await _requireActiveBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.getSession,
+    );
     if (binding.projectId != projectId) return null;
     final sessions = await getSessionsForProject(projectId: projectId, start: null, limit: null);
     for (final session in sessions) {
@@ -480,25 +519,40 @@ class SessionRepository {
   }
 
   Future<void> notifySessionArchived({required String sessionId}) async {
-    final binding = await _requireActiveBinding(sessionId: sessionId, operation: "archiveSession");
+    final binding = await _requireActiveBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.archiveSession,
+    );
     return _plugin.archiveSession(sessionId: binding.backendSessionId);
   }
 
   Future<void> abortSession({required String sessionId}) async {
-    final binding = await _requireActiveBinding(sessionId: sessionId, operation: "abortSession");
-    return _plugin.abortSession(sessionId: binding.backendSessionId);
+    final binding = await _resolveSessionTargetAllowingRowlessChild(
+      sessionId: sessionId,
+      operation: SessionOperation.abortSession,
+    );
+    return _plugin.abortSession(sessionId: binding?.backendSessionId ?? sessionId);
   }
 
   Future<SessionStatusResponse> getSessionStatuses() async {
     final pluginStatuses = await _plugin.getSessionStatuses();
-    final bindings = await _sessionDao.getSessionsByBackendIds(
-      pluginId: _plugin.id,
-      backendSessionIds: pluginStatuses.keys.toList(growable: false),
-    );
+    final (bindings, tombstoned) = await (
+      _sessionDao.getSessionsByBackendIds(
+        pluginId: _plugin.id,
+        backendSessionIds: pluginStatuses.keys.toList(growable: false),
+      ),
+      _sessionDao.getTombstonedSessionIds(pluginId: _plugin.id),
+    ).wait;
     return SessionStatusResponse(
       statuses: {
         for (final entry in pluginStatuses.entries)
           if (bindings[entry.key] case final binding?) binding.sessionId: entry.value.toSharedSessionStatus(),
+        // COMPATIBILITY 2026-07-16 (v1.5.0): OpenCode exposes identity-preserving child ids without durable bridge rows. Remove this passthrough when child bindings translate every status key.
+        for (final entry in pluginStatuses.entries)
+          if (_plugin.supportsIdentityPreservingRowlessChildSessions &&
+              bindings[entry.key] == null &&
+              !tombstoned.contains(entry.key))
+            entry.key: entry.value.toSharedSessionStatus(),
       },
     );
   }
@@ -583,7 +637,7 @@ class SessionRepository {
       final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
       if (tombstoned.contains(sessionId)) {
         throw PluginOperationException.notFound(
-          "getChildSessions",
+          SessionOperation.getChildSessions.name,
           message: "session $sessionId was deleted",
         );
       }
@@ -652,7 +706,10 @@ class SessionRepository {
     return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
   }
 
-  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) async {
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
     return (await _requireActiveBinding(sessionId: sessionId, operation: operation)).toStoredSession();
   }
 
@@ -700,7 +757,7 @@ class SessionRepository {
       if (placeholder != null &&
           (placeholder.pluginId != pluginId || placeholder.backendSessionId != backendSessionId)) {
         throw PluginOperationException(
-          "createSession",
+          SessionOperation.createSession.name,
           statusCode: 409,
           message: "session id $sessionId is already bound to another plugin session",
         );
@@ -755,21 +812,46 @@ class SessionRepository {
     );
   }
 
-  void ensurePluginAvailable({required String pluginId, required String operation}) {
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {
     if (pluginId == _plugin.id) return;
     throw PluginOperationException(
-      operation,
+      operation.name,
       statusCode: 503,
       message: "plugin $pluginId is not running",
     );
   }
 
-  Future<SessionDto> _requireActiveBinding({required String sessionId, required String operation}) async {
+  Future<SessionDto> _requireActiveBinding({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
     final binding = await _sessionDao.getSession(sessionId: sessionId);
     if (binding == null) {
-      throw PluginOperationException.notFound(operation, message: "session $sessionId was not found");
+      throw PluginOperationException.notFound(
+        operation.name,
+        message: "session $sessionId was not found",
+      );
     }
     ensurePluginAvailable(pluginId: binding.pluginId, operation: operation);
     return binding;
+  }
+
+  Future<SessionDto?> _resolveSessionTargetAllowingRowlessChild({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    final binding = await _sessionDao.getSession(sessionId: sessionId);
+    if (binding != null) {
+      ensurePluginAvailable(pluginId: binding.pluginId, operation: operation);
+      return binding;
+    }
+    // COMPATIBILITY 2026-07-16 (v1.5.0): OpenCode exposes identity-preserving child ids without durable bridge rows. Remove this fallback when child bindings resolve every targeted operation.
+    if (_plugin.supportsIdentityPreservingRowlessChildSessions && !await isSessionTombstoned(sessionId: sessionId)) {
+      return null;
+    }
+    throw PluginOperationException.notFound(
+      operation.name,
+      message: "session $sessionId was not found",
+    );
   }
 }

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
@@ -207,6 +209,94 @@ void main() {
       );
       expect(await db.select(db.sessionTable).get(), isEmpty);
     });
+
+    test("stale enumeration cannot recreate a session deleted before publication", () async {
+      await repository.insertStoredSession(
+        sessionId: "stable-id",
+        backendSessionId: "backend-id",
+        pluginId: plugin.id,
+        projectId: "project-X",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      plugin.sessions = [
+        _pluginSession(
+          id: "backend-id",
+          directory: "/projects/X",
+          title: "Stale session",
+          createdAt: 1,
+        ),
+      ];
+      final fetchStarted = Completer<void>();
+      final releaseFetch = Completer<void>();
+      plugin.fetchStarted = fetchStarted;
+      plugin.releaseFetch = releaseFetch.future;
+
+      final sessionsFuture = repository.getSessionsForProject(
+        projectId: "project-X",
+        start: null,
+        limit: null,
+      );
+      await fetchStarted.future;
+      await repository.deleteSession(sessionId: "stable-id");
+      releaseFetch.complete();
+
+      expect(await sessionsFuture, isEmpty);
+      expect(await db.sessionDao.getSession(sessionId: "stable-id"), isNull);
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
+        contains("backend-id"),
+      );
+    });
+
+    test("publication skips a cross-plugin id collision without dropping other sessions", () async {
+      await db.sessionDao.insertSession(
+        pluginId: "other-plugin",
+        sessionId: "collision-id",
+        backendSessionId: "other-backend-id",
+        projectId: "project-X",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      plugin.sessions = [
+        _pluginSession(
+          id: "collision-id",
+          directory: "/projects/X",
+          title: "Colliding session",
+          createdAt: 1,
+        ),
+        _pluginSession(
+          id: "backend-live",
+          directory: "/projects/X",
+          title: "Live session",
+          createdAt: 2,
+        ),
+      ];
+
+      final sessions = await repository.getSessionsForProject(
+        projectId: "project-X",
+        start: null,
+        limit: null,
+      );
+      final retained = await db.sessionDao.getSession(sessionId: "collision-id");
+
+      expect(sessions.map((session) => session.id), equals(["backend-live"]));
+      expect(retained?.pluginId, "other-plugin");
+      expect(retained?.backendSessionId, "other-backend-id");
+      expect(await db.sessionDao.getSession(sessionId: "backend-live"), isNotNull);
+    });
   });
 
   group("SessionRepository stored archive state", () {
@@ -299,12 +389,22 @@ class _ThrowingSessionDao extends SessionDao {
 
 class _FakeNativePlugin implements NativeProjectsPluginApi {
   List<PluginSession> sessions = const [];
+  Completer<void>? fetchStarted;
+  Future<void>? releaseFetch;
 
   @override
   String get id => "fake";
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async => sessions;
+  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async {
+    final snapshot = List<PluginSession>.of(sessions);
+    fetchStarted?.complete();
+    if (releaseFetch case final release?) await release;
+    return snapshot;
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

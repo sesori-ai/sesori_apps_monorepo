@@ -162,6 +162,9 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   String get id => "opencode";
 
   @override
+  bool get supportsIdentityPreservingRowlessChildSessions => true;
+
+  @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
 
   @override

@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -553,19 +554,29 @@ class _FakeSessionRepository implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => storedSession;
 
   @override
-  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) async {
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
     final session = storedSession;
     if (session == null) {
-      throw PluginOperationException.notFound(operation, message: "session $sessionId was not found");
+      throw PluginOperationException.notFound(
+        operation.name,
+        message: "session $sessionId was not found",
+      );
     }
     ensurePluginAvailable(pluginId: session.pluginId, operation: operation);
     return session;
   }
 
   @override
-  void ensurePluginAvailable({required String pluginId, required String operation}) {
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {
     if (pluginId == "fake") return;
-    throw PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is not running");
+    throw PluginOperationException(
+      operation.name,
+      statusCode: 503,
+      message: "plugin $pluginId is not running",
+    );
   }
 
   @override
@@ -656,6 +667,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "fake";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();

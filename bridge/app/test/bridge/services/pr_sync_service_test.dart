@@ -3,6 +3,7 @@ import "dart:async";
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
@@ -661,7 +662,7 @@ class _FakeSessionRepository implements SessionRepository {
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 
   @override
-  void ensurePluginAvailable({required String pluginId, required String operation}) {}
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {}
 
   @override
   Future<Session?> getCatalogSession({required String sessionId}) async => null;
@@ -670,7 +671,10 @@ class _FakeSessionRepository implements SessionRepository {
   Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
 
   @override
-  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) async {
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
     throw StateError("No stored session configured for $sessionId");
   }
 }

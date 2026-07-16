@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
+import "../repositories/models/session_operation.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "worktree_service.dart";
@@ -75,7 +76,7 @@ class SessionLifecycleService {
   }) async {
     final storedSession = await _sessionRepository.requireActiveStoredSession(
       sessionId: sessionId,
-      operation: "cleanupSession",
+      operation: SessionOperation.cleanupSession,
     );
     if (!(deleteWorktree || deleteBranch) || storedSession.worktreePath == null || storedSession.branchName == null) {
       return CleanupSuccess();
@@ -179,7 +180,7 @@ class SessionLifecycleService {
   Future<StoredSession> _getStoredSession({required String sessionId}) async {
     return _sessionRepository.requireActiveStoredSession(
       sessionId: sessionId,
-      operation: "updateSessionArchiveStatus",
+      operation: SessionOperation.updateSessionArchiveStatus,
     );
   }
 

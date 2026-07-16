@@ -22,6 +22,7 @@ import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
@@ -130,7 +131,7 @@ void main() {
       db: database,
       calculator: const SessionUnseenCalculator(),
     );
-    final sessionUnseenService = SessionUnseenService(
+    final sessionUnseenService = _GatedSessionUnseenService(
       unseenRepository: unseenRepository,
       projectRepository: projectRepository,
       viewTracker: sessionViewTracker,
@@ -265,6 +266,43 @@ void main() {
     );
     bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
     await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    final persistenceStarted = Completer<void>();
+    final releasePersistence = Completer<void>();
+    sessionUnseenService.gateSession(
+      sessionId: "ordered-session",
+      started: persistenceStarted,
+      release: releasePersistence.future,
+    );
+    var deliveredWhilePersistenceBlocked = false;
+    final orderedCreatedFuture =
+        _waitForEventType(
+          messages: messages,
+          roomKey: roomKey,
+          expectedType: "session.created",
+        ).then((delivered) {
+          deliveredWhilePersistenceBlocked = delivered;
+          return delivered;
+        });
+    plugin.add(
+      const BridgeSseSessionCreated(
+        info: {
+          "id": "ordered-session",
+          "projectID": "ordered-project",
+          "directory": "/tmp/ordered-project",
+          "parentID": null,
+          "title": "ordered session",
+          "time": {"created": 1, "updated": 1, "archived": null},
+          "summary": null,
+        },
+      ),
+    );
+    await persistenceStarted.future;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    final deliveredBeforeRelease = deliveredWhilePersistenceBlocked;
+    releasePersistence.complete();
+    expect(await orderedCreatedFuture, isTrue);
+    expect(deliveredBeforeRelease, isFalse);
 
     final sentByteCounts = <int>[];
     final sentBytesSubscription = session.bytesSent.listen(sentByteCounts.add);
@@ -1659,29 +1697,23 @@ Future<bool> _waitForEventType({
   final crypto = RelayCryptoService();
   final decryptor = crypto.createSessionEncryptor(SecretKey(List<int>.from(roomKey)));
 
-  final deadline = DateTime.now().add(const Duration(seconds: 2));
-  while (DateTime.now().isBefore(deadline)) {
-    List<int> framedWithConnID;
-    try {
-      framedWithConnID = await _nextBinaryMessage(messages: messages);
-    } on TimeoutException {
-      return false;
-    }
-    final framed = framedWithConnID.sublist(2);
-    final decrypted = await unframe(framed, encryptor: decryptor);
-    final message = RelayMessage.fromJson(jsonDecode(utf8.decode(decrypted)) as Map<String, dynamic>);
-    if (message is! RelaySseEvent) {
-      continue;
-    }
+  try {
+    await for (final dynamic rawMessage in messages.timeout(const Duration(seconds: 2))) {
+      if (rawMessage is! List<int>) continue;
+      final framed = rawMessage.sublist(2);
+      final decrypted = await unframe(framed, encryptor: decryptor);
+      final message = RelayMessage.fromJson(jsonDecode(utf8.decode(decrypted)) as Map<String, dynamic>);
+      if (message is! RelaySseEvent) continue;
 
-    final decodedData = jsonDecode(message.data);
-    final payload = switch (decodedData) {
-      final Map<String, dynamic> dataMap => dataMap["payload"] as Map<String, dynamic>,
-      _ => <String, dynamic>{},
-    };
-    if (payload["type"] == expectedType) {
-      return true;
+      final decodedData = jsonDecode(message.data);
+      final payload = switch (decodedData) {
+        final Map<String, dynamic> dataMap => dataMap["payload"] as Map<String, dynamic>,
+        _ => <String, dynamic>{},
+      };
+      if (payload["type"] == expectedType) return true;
     }
+  } on TimeoutException {
+    return false;
   }
 
   return false;
@@ -1835,6 +1867,50 @@ class _AbortPlugin extends _NoopPlugin {
   }
 }
 
+class _GatedSessionUnseenService extends SessionUnseenService {
+  String? _gatedSessionId;
+  Completer<void>? _started;
+  Future<void>? _release;
+
+  _GatedSessionUnseenService({
+    required super.unseenRepository,
+    required super.projectRepository,
+    required super.viewTracker,
+    super.now,
+  });
+
+  void gateSession({
+    required String sessionId,
+    required Completer<void> started,
+    required Future<void> release,
+  }) {
+    _gatedSessionId = sessionId;
+    _started = started;
+    _release = release;
+  }
+
+  @override
+  Future<void> recordSessionCreated({
+    required String sessionId,
+    required String projectId,
+    required String sessionDirectory,
+    required String? parentId,
+    int? occurredAt,
+  }) async {
+    if (sessionId == _gatedSessionId) {
+      _started?.complete();
+      if (_release case final release?) await release;
+    }
+    await super.recordSessionCreated(
+      sessionId: sessionId,
+      projectId: projectId,
+      sessionDirectory: sessionDirectory,
+      parentId: parentId,
+      occurredAt: occurredAt,
+    );
+  }
+}
+
 class _AbortEventPlugin extends _EventPlugin {
   final List<String> abortedSessionIds = <String>[];
   Completer<void>? abortCompleter;
@@ -1864,6 +1940,9 @@ class _SummaryPlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "summary-plugin";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events {
@@ -2060,6 +2139,9 @@ class _NoopPlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "noop-plugin";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => _controller.stream;
@@ -2473,8 +2555,14 @@ class _NoopSessionRepository implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
-  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) async {
-    throw PluginOperationException.notFound(operation, message: "session $sessionId was not found");
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    throw PluginOperationException.notFound(
+      operation.name,
+      message: "session $sessionId was not found",
+    );
   }
 
   @override
@@ -2484,7 +2572,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
 
   @override
-  void ensurePluginAvailable({required String pluginId, required String operation}) {}
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {}
 
   @override
   Future<void> archiveStoredSession({
@@ -2729,7 +2817,10 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<StoredSession> requireActiveStoredSession({required String sessionId, required String operation}) {
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) {
     return _base.requireActiveStoredSession(sessionId: sessionId, operation: operation);
   }
 
@@ -2744,7 +2835,7 @@ class _DelayingSessionRepository implements SessionRepository {
   }
 
   @override
-  void ensurePluginAvailable({required String pluginId, required String operation}) {
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {
     _base.ensurePluginAvailable(pluginId: pluginId, operation: operation);
   }
 

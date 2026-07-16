@@ -29,6 +29,9 @@ import "cursor_model_probe.dart";
 class CursorPlugin extends AcpPlugin {
   static const String pluginId = "cursor";
 
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
+
   factory CursorPlugin({
     String binaryPath = CursorBinary.defaultBinary,
     String? launchDirectory,

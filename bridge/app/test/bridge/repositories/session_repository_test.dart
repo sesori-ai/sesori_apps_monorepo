@@ -1094,6 +1094,60 @@ void main() {
       expect(messages.single.parts.single.sessionID, equals("stable-s1"));
       expect(statuses.statuses, equals({"stable-s1": const SessionStatus.busy()}));
     });
+
+    test("identity-preserving rowless children keep message, status, and abort access", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      plugin.supportsRowlessChildRouting = true;
+      plugin.messagesResult = const [
+        PluginMessageWithParts(
+          info: PluginMessageUser(id: "message-1", sessionID: "child-1", agent: null, time: null),
+          parts: [],
+        ),
+      ];
+      plugin.sessionStatusesResult = const {
+        "child-1": PluginSessionStatus.busy(),
+      };
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final messages = await repository.getSessionMessages(sessionId: "child-1");
+      final statuses = await repository.getSessionStatuses();
+      await repository.abortSession(sessionId: "child-1");
+
+      expect(plugin.lastGetMessagesSessionId, "child-1");
+      expect(messages.single.info.sessionID, "child-1");
+      expect(statuses.statuses, {"child-1": const SessionStatus.busy()});
+      expect(plugin.lastAbortSessionId, "child-1");
+    });
+
+    test("plugins without rowless child routing reject an unknown session", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      await expectLater(
+        repository.getSessionMessages(sessionId: "unknown"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      await expectLater(
+        repository.abortSession(sessionId: "unknown"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+      expect(plugin.lastGetMessagesSessionId, isNull);
+      expect(plugin.lastAbortSessionId, isNull);
+    });
   });
 
   group("SessionRepository (bridge-derived)", () {
@@ -1650,6 +1704,11 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   int getProjectsCalls = 0;
   int getSessionsCalls = 0;
   int sendPromptCalls = 0;
+  bool supportsRowlessChildRouting = false;
+  String? lastAbortSessionId;
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => supportsRowlessChildRouting;
 
   @override
   String get id => "fake";
@@ -1742,6 +1801,11 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => sessionStatusesResult;
 
   @override
+  Future<void> abortSession({required String sessionId}) async {
+    lastAbortSessionId = sessionId;
+  }
+
+  @override
   Future<void> deleteWorkspace({
     required String projectId,
     required String worktreePath,
@@ -1809,6 +1873,9 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
   @override
   String get id => "codex";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
