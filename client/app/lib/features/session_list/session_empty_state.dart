@@ -67,7 +67,7 @@ class _EmptyTerminalGlyph extends StatelessWidget {
         border: Border.all(width: 0.5, color: prego.colors.borderInsideReversedBottom),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(7, 6, 7, 7),
+        padding: const EdgeInsetsDirectional.fromSTEB(7, 6, 7, 7),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
