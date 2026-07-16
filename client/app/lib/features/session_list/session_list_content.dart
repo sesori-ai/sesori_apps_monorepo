@@ -8,6 +8,7 @@ import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
+import "session_empty_state.dart";
 import "session_tile.dart";
 
 /// Pull-to-refresh handler shared by [SessionListScaffold] and
@@ -28,6 +29,7 @@ Future<void> refreshSessionList(BuildContext context) async {
 }
 
 class SessionListContent extends StatelessWidget {
+  final String? projectName;
   final String? selectedSessionId;
   final ValueChanged<Session> onSessionTap;
   final SessionMenuEntriesBuilder sessionMenuEntries;
@@ -35,6 +37,7 @@ class SessionListContent extends StatelessWidget {
 
   const SessionListContent({
     super.key,
+    required this.projectName,
     this.selectedSessionId,
     required this.onSessionTap,
     required this.sessionMenuEntries,
@@ -58,9 +61,9 @@ class SessionListContent extends StatelessWidget {
         sessions.isEmpty
             ? SliverFillRemaining(
                 hasScrollBody: false,
-                child: Center(
-                  child: Text(showArchived ? loc.sessionListEmptyArchived : loc.sessionListEmpty),
-                ),
+                child: showArchived
+                    ? Center(child: Text(loc.sessionListEmptyArchived))
+                    : SessionEmptyState(projectName: projectName),
               )
             : SliverPadding(
                 padding: const EdgeInsets.symmetric(vertical: 8),

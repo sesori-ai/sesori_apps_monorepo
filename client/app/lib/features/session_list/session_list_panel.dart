@@ -139,6 +139,7 @@ class SessionListPanel extends StatelessWidget {
       slivers: [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         SessionListContent(
+          projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
           sessionMenuEntries: sessionMenuEntries,
