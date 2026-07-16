@@ -74,6 +74,38 @@ void main() {
     expect(result.projects.last.activeSessions.map((session) => session.id), ["session-old", "session-null"]);
   });
 
+  test("inactive sessions do not contribute to project rank", () async {
+    repository.loadSummaries = () async => const [
+      ProjectActivitySummary(
+        id: "project-inactive-newest",
+        activeSessions: [ActiveSession(id: "active-old")],
+      ),
+      ProjectActivitySummary(
+        id: "project-active-newest",
+        activeSessions: [ActiveSession(id: "active-new")],
+      ),
+    ];
+    repository.loadStoredSessions = (projectId) async {
+      return switch (projectId) {
+        "project-inactive-newest" => [
+          _stored(id: "active-old", projectId: projectId, parentSessionId: null, interactionAt: 100),
+          _stored(id: "inactive", projectId: projectId, parentSessionId: null, interactionAt: 1000),
+        ],
+        "project-active-newest" => [
+          _stored(id: "active-new", projectId: projectId, parentSessionId: null, interactionAt: 200),
+        ],
+        _ => <StoredSession>[],
+      };
+    };
+
+    final result = await service.refresh();
+
+    expect(result.projects.map((project) => project.id), [
+      "project-active-newest",
+      "project-inactive-newest",
+    ]);
+  });
+
   test("does not publish an unchanged snapshot twice", () async {
     _stubSingleProject(repository);
     final published = <List<ProjectActivitySummary>>[];

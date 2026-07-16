@@ -103,8 +103,9 @@ class ActiveWorkSummaryService {
     final interactionByProjectId = <String, int?>{};
     for (final project in summaries) {
       int? projectInteraction;
+      final activeSessionIds = {for (final session in project.activeSessions) session.id};
       for (final session in storedByProject[project.id] ?? const <StoredSession>[]) {
-        if (session.parentSessionId != null) continue;
+        if (session.parentSessionId != null || !activeSessionIds.contains(session.id)) continue;
         final interaction = session.lastUserInteractionAt;
         interactionBySessionId[session.id] = interaction;
         if (interaction != null && (projectInteraction == null || interaction > projectInteraction)) {
