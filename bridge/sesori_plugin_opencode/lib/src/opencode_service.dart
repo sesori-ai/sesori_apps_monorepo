@@ -307,9 +307,12 @@ class OpenCodeService {
     // OpenCode command counterpart — route it to the summarize endpoint, which
     // performs manual compaction. Everything else is a real slash command.
     final sendFuture = command == compactionCommandName
-        ? repository.summarize(
+        ? _compact(
             sessionId: sessionId,
             directory: directory,
+            arguments: arguments,
+            agent: agent,
+            variant: variant,
             model: _requireCompactionModel(model: model, sessionId: sessionId),
           )
         : repository.sendCommand(
@@ -348,6 +351,34 @@ class OpenCodeService {
           }),
         );
       },
+    );
+  }
+
+  Future<void> _compact({
+    required String sessionId,
+    required String? directory,
+    required String arguments,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID}) model,
+  }) async {
+    final instructions = arguments.normalize();
+    if (instructions != null) {
+      // OpenCode's summarize payload has no instructions field. A no-reply
+      // prompt persists the guidance as context without running the agent.
+      await repository.addCompactionInstructions(
+        sessionId: sessionId,
+        directory: directory,
+        instructions: instructions,
+        agent: agent,
+        variant: variant,
+        model: model,
+      );
+    }
+    await repository.summarize(
+      sessionId: sessionId,
+      directory: directory,
+      model: model,
     );
   }
 

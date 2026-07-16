@@ -297,9 +297,23 @@ void main() {
         agent: null,
         variant: null,
         model: null,
+        noReply: false,
       );
 
       expect(body.toJson().containsKey("variant"), isFalse);
+      expect(body.toJson().containsKey("noReply"), isFalse);
+    });
+
+    test("SendPromptBody includes noReply when enabled", () {
+      const body = SendPromptBody(
+        parts: [PluginPromptPart.text(text: "Keep auth decisions")],
+        agent: "build",
+        variant: null,
+        model: (providerID: "openai", modelID: "gpt-4.1"),
+        noReply: true,
+      );
+
+      expect(body.toJson()["noReply"], isTrue);
     });
 
     test("SendCommandBody includes variant when provided", () {
