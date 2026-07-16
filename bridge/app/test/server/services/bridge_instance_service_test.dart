@@ -573,16 +573,6 @@ class _FakeProcessRepository implements ProcessRepository {
   }
 
   @override
-  Future<List<ProcessIdentity>> listProcessIdentities({required int? excludePid}) async {
-    return const <ProcessIdentity>[];
-  }
-
-  @override
-  Future<List<ProcessMatch>> listProcesses({required int? excludePid}) async {
-    return const <ProcessMatch>[];
-  }
-
-  @override
   Future<SignalResult> sendGracefulSignal({required int pid}) async {
     signalRequests.add('graceful:$pid');
     if (throwGraceful) {

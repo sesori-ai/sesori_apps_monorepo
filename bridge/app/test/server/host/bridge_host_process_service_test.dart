@@ -121,7 +121,7 @@ void main() {
 
     test('spawn falls back when inspection throws instead of failing the spawn', () async {
       starter.process = _FakeProcess(pidValue: 7001);
-      processRepository.inspectError = const ProcessException('ps', <String>['-axwwo']);
+      processRepository.inspectError = const ProcessException('ps', <String>['-p', '7001']);
 
       final spawned = await spawnAgent();
 
@@ -217,7 +217,7 @@ void main() {
       expect(await spawned.exitCode, 3);
     });
 
-    test('inspect and list delegate to the process repository', () async {
+    test('inspect delegates to the process repository', () async {
       final identity = _identity(
         pid: 211,
         startMarker: 'marker',
@@ -225,11 +225,8 @@ void main() {
         commandLine: '/usr/local/bin/opencode serve',
       );
       processRepository.inspectResults[211] = <ProcessIdentity?>[identity];
-      processRepository.identities = <ProcessIdentity>[identity];
 
       expect(await service().inspect(pid: 211), same(identity));
-      expect(await service().list(excludePid: 100), equals(<ProcessIdentity>[identity]));
-      expect(processRepository.lastExcludePid, 100);
     });
 
     test('signalGraceful and signalForce delegate to the process repository', () async {
@@ -409,8 +406,6 @@ class _FakeProcessRepository implements ProcessRepository {
 
   final Map<int, List<ProcessIdentity?>> inspectResults = <int, List<ProcessIdentity?>>{};
   Object? inspectError;
-  List<ProcessIdentity> identities = <ProcessIdentity>[];
-  int? lastExcludePid;
   SignalResult? gracefulResult;
   SignalResult? forceResult;
   final List<String> signalRequests = <String>[];
@@ -429,12 +424,6 @@ class _FakeProcessRepository implements ProcessRepository {
   }
 
   @override
-  Future<List<ProcessIdentity>> listProcessIdentities({required int? excludePid}) async {
-    lastExcludePid = excludePid;
-    return identities;
-  }
-
-  @override
   Future<SignalResult> sendGracefulSignal({required int pid}) async {
     signalRequests.add('graceful:$pid');
     return gracefulResult!;
@@ -448,11 +437,6 @@ class _FakeProcessRepository implements ProcessRepository {
 
   @override
   Future<ProcessMatch?> inspectProcessMatch({required int pid}) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<ProcessMatch>> listProcesses({required int? excludePid}) {
     throw UnimplementedError();
   }
 }
