@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
@@ -132,6 +133,96 @@ void main() {
     });
   });
 
+  group("AcpStdioClient reset", () {
+    Future<void> pump() => Future<void>.delayed(Duration.zero);
+
+    test("permits reconnect while keeping notification streams open", () async {
+      final first = FakeAcpProcess();
+      final replacement = FakeAcpProcess();
+      final processes = <FakeAcpProcess>[first, replacement];
+      var spawnIndex = 0;
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        processFactory: (_) async => processes[spawnIndex++],
+      );
+      addTearDown(() async {
+        await client.dispose();
+        await first.close();
+        await replacement.close();
+      });
+      final notifications = <AcpNotification>[];
+      final serverRequests = <AcpServerRequest>[];
+      client.notifications.listen(notifications.add);
+      client.serverRequests.listen(serverRequests.add);
+
+      await client.connect();
+      final pending = client.request(method: "session/prompt");
+      final pendingFailure = expectLater(pending, throwsA(isA<StateError>()));
+
+      await client.reset(gracefulTimeout: const Duration(seconds: 5));
+      await pendingFailure;
+      expect(client.isConnected, isFalse);
+
+      await client.connect();
+      expect(client.isConnected, isTrue);
+      replacement.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {"sessionId": "replacement"},
+      });
+      replacement.emit({
+        "jsonrpc": "2.0",
+        "id": 42,
+        "method": "session/request_permission",
+        "params": {"sessionId": "replacement"},
+      });
+      await pump();
+      expect(notifications.single.params["sessionId"], "replacement");
+      expect(serverRequests.single.params["sessionId"], "replacement");
+
+      final request = client.request(method: "initialize");
+      final id = replacement.written.single["id"];
+      replacement.emit({"jsonrpc": "2.0", "id": id, "result": {"ok": true}});
+      expect((await request as Map)["ok"], isTrue);
+      expect(spawnIndex, 2);
+    });
+
+    test("a late old-process exit cannot fail or mark the replacement", () async {
+      final old = _LateExitAcpProcess();
+      final replacement = FakeAcpProcess();
+      var spawnIndex = 0;
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        processFactory: (_) async => spawnIndex++ == 0 ? old : replacement,
+      );
+      addTearDown(() async {
+        await client.dispose();
+        await old.close();
+        await replacement.close();
+      });
+
+      await client.connect();
+      await client.reset(gracefulTimeout: Duration.zero);
+      await client.connect();
+
+      var replacementExited = false;
+      unawaited(client.processExit.then((_) => replacementExited = true));
+      final outcome = client.request(method: "initialize").then<Object>(
+        (result) => result as Object,
+        onError: (Object error, StackTrace _) => error,
+      );
+      final id = replacement.written.single["id"];
+
+      old.exit(23);
+      await pump();
+      expect(client.isConnected, isTrue);
+      expect(replacementExited, isFalse);
+
+      replacement.emit({"jsonrpc": "2.0", "id": id, "result": {"ok": true}});
+      expect((await outcome as Map)["ok"], isTrue);
+    });
+  });
+
   group("AcpStdioClient disposed mid-connect", () {
     test("reaps the just-spawned process instead of wiring a disposed client", () async {
       final fake = FakeAcpProcess();
@@ -158,4 +249,27 @@ void main() {
       await fake.close();
     });
   });
+}
+
+class _LateExitAcpProcess implements AcpProcessHandle {
+  final FakeAcpProcess _delegate = FakeAcpProcess();
+
+  @override
+  Stream<List<int>> get stdout => _delegate.stdout;
+
+  @override
+  Stream<List<int>> get stderr => _delegate.stderr;
+
+  @override
+  io.IOSink get stdin => _delegate.stdin;
+
+  @override
+  Future<int> get exitCode => _delegate.exitCode;
+
+  @override
+  bool kill([io.ProcessSignal signal = io.ProcessSignal.sigterm]) => true;
+
+  void exit(int code) => _delegate.exit(code);
+
+  Future<void> close() => _delegate.close();
 }

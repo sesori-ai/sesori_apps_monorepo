@@ -378,6 +378,72 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
+      "selectModel leaves provider-only model variant at Default",
+      build: () {
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const ProviderListResponse(
+              connectedOnly: false,
+              items: [
+                ProviderInfo(
+                  id: "openai",
+                  name: "OpenAI",
+                  defaultModelID: "gpt-4",
+                  models: {
+                    "gpt-4": ProviderModel(
+                      id: "gpt-4",
+                      providerID: "openai",
+                      name: "GPT-4",
+                      variants: [],
+                      family: null,
+                      releaseDate: null,
+                    ),
+                    "gpt-5": ProviderModel(
+                      id: "gpt-5",
+                      providerID: "openai",
+                      name: "GPT-5",
+                      variants: ["provisional-effort", "high"],
+                      family: null,
+                      releaseDate: null,
+                    ),
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        cubit.selectModel(providerID: "openai", modelID: "gpt-5");
+      },
+      expect: () => [
+        isA<NewSessionIdle>().having(
+          (state) => state.selectedAgentModel,
+          "initial selectedAgentModel",
+          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
+        ),
+        isA<NewSessionIdle>()
+            .having(
+              (state) => state.availableVariants.map((variant) => variant.id),
+              "availableVariants",
+              ["provisional-effort", "high"],
+            )
+            .having(
+              (state) => state.selectedAgentModel,
+              "selectedAgentModel",
+              const AgentModel(providerID: "openai", modelID: "gpt-5", variant: null),
+            ),
+      ],
+    );
+
+    blocTest<NewSessionCubit, NewSessionState>(
       "selectVariant updates selectedAgentModel variant",
       build: () {
         when(
