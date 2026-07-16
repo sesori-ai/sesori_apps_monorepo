@@ -47,11 +47,13 @@ class SessionListScaffold extends StatelessWidget {
     final state = context.watch<SessionListCubit>().state;
     final showArchived = state is SessionListLoaded && state.showArchived;
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
-    // Green only while the relay↔bridge chain is fully connected (no overlay
-    // condition pending); bridge-offline, connection-lost and reconnecting all
-    // mute the dot. Watching here re-runs this build on connection changes —
-    // the same cubit ConnectionBanner.maybeFor below already watches.
-    final online = context.watch<ConnectionOverlayCubit>().state is ConnectionOverlayHidden;
+    // Green only while the relay↔bridge chain is fully connected — a hidden
+    // banner alone is not enough, since disconnected and unregistered
+    // bridge-offline parks are bannerless too. Watching here re-runs this
+    // build on connection changes — the same cubit ConnectionBanner.maybeFor
+    // below already watches.
+    final overlay = context.watch<ConnectionOverlayCubit>().state;
+    final online = overlay is ConnectionOverlayHidden && overlay.connected;
 
     return PregoGlassScaffold(
       // The sessions route sits at the base of the nested pane navigator, so

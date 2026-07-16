@@ -26,7 +26,7 @@ void main() {
   Future<void> pumpScaffold(
     WidgetTester tester, {
     required SessionListState state,
-    ConnectionOverlayState overlay = const ConnectionOverlayState.hidden(),
+    ConnectionOverlayState overlay = const ConnectionOverlayState.hidden(connected: true),
     String? projectName = "Sesori_app_monorepo",
   }) async {
     when(() => cubit.state).thenReturn(state);
@@ -143,6 +143,18 @@ void main() {
     await pumpScaffold(tester, state: loadedState(repoSlug: "org/repo"));
 
     expect(dotColor(tester), PregoDesignSystem.light.colors.fgSuccessSecondary);
+  });
+
+  testWidgets("connection dot mutes while disconnected even though no banner shows", (tester) async {
+    // hidden(connected: false) is the bannerless offline park: e.g. the user
+    // chose Disconnect on the connection-lost card. Green would be a lie.
+    await pumpScaffold(
+      tester,
+      state: loadedState(repoSlug: "org/repo"),
+      overlay: const ConnectionOverlayState.hidden(connected: false),
+    );
+
+    expect(dotColor(tester), PregoDesignSystem.light.colors.fgDisabledSubtle);
   });
 
   testWidgets("connection dot mutes while the bridge is offline", (tester) async {

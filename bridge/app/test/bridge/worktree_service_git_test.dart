@@ -87,6 +87,18 @@ void main() {
       expect(processRunner.invocations, hasLength(1));
     });
 
+    test("getRemoteUrl returns null when the git process cannot start", () async {
+      // Process.start throws (rather than exiting non-zero) when the stored
+      // project directory was moved or deleted.
+      processRunner.enqueueError(
+        error: const ProcessException("git", ["remote"], "No such file or directory", -1),
+      );
+
+      final url = await service.getRemoteUrl(projectPath: "/repo/deleted");
+
+      expect(url, isNull);
+    });
+
     test("getRemoteUrl returns null when the repository has no remotes", () async {
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "\n"));
 
@@ -407,10 +419,16 @@ class _FakeProcessRunner implements ProcessRunner {
   }
 
   final List<_Invocation> invocations = <_Invocation>[];
-  final List<ProcessResult> _results = <ProcessResult>[];
+
+  /// Queued outcomes: a [ProcessResult] to return or an error object to throw.
+  final List<Object> _results = <Object>[];
 
   void enqueue({required ProcessResult result}) {
     _results.add(result);
+  }
+
+  void enqueueError({required Object error}) {
+    _results.add(error);
   }
 
   @override
@@ -433,6 +451,8 @@ class _FakeProcessRunner implements ProcessRunner {
       throw StateError("No ProcessResult queued for invocation: $executable $arguments");
     }
 
-    return _results.removeAt(0);
+    final next = _results.removeAt(0);
+    if (next is ProcessResult) return next;
+    throw next;
   }
 }

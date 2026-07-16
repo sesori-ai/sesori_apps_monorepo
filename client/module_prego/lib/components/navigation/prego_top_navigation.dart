@@ -101,9 +101,9 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
   /// How the bar presents its title. See the class doc for the three modes.
   final PregoTopNavigationTitleMode titleMode;
 
-  /// Drives the collapsing title in non-inline mode: the bar fades its title in
-  /// as this controller's offset crosses [collapseDistance]. Ignored in inline
-  /// mode. Typically [PregoGlassScaffold]'s own controller.
+  /// Drives the collapsing title in collapsing mode: the bar fades its title in
+  /// as this controller's offset crosses [collapseDistance]. Ignored in the
+  /// other modes. Typically [PregoGlassScaffold]'s own controller.
   final ScrollController? scrollController;
 
   /// Trailing bar actions. Build these with [PregoButtonsIconGlass] so they

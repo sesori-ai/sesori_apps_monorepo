@@ -67,7 +67,8 @@ void main() {
         await resolveFor(tester, const ConnectionOverlayState.connectionLost()),
         isA<ConnectionBanner>(),
       );
-      expect(await resolveFor(tester, const ConnectionOverlayState.hidden()), isNull);
+      expect(await resolveFor(tester, const ConnectionOverlayState.hidden(connected: true)), isNull);
+      expect(await resolveFor(tester, const ConnectionOverlayState.hidden(connected: false)), isNull);
       expect(await resolveFor(tester, const ConnectionOverlayState.reconnecting()), isNull);
     });
   });
@@ -167,7 +168,7 @@ void main() {
     expect(bannerHeight, greaterThan(0));
     expect(tester.getTopLeft(find.byType(GlassAppBar)).dy, restingBarTop + bannerHeight);
 
-    cubit.setOverlayState(const ConnectionOverlayState.hidden());
+    cubit.setOverlayState(const ConnectionOverlayState.hidden(connected: true));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
     // Mid-exit the retained banner content is still what slides away.
