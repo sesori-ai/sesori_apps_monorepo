@@ -103,11 +103,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
         projectionUpdatedAt: updatedAt,
       ),
       onConflict: DoUpdate(
-        (old) => ProjectsTableCompanion(
-          displayName: Value(displayName),
-          updatedAt: Value(updatedAt),
-          projectionUpdatedAt: Value(updatedAt),
-        ),
+        (old) => ProjectsTableCompanion(displayName: Value(displayName)),
         target: [projectsTable.projectId],
       ),
     );

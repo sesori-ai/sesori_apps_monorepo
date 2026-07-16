@@ -101,6 +101,45 @@ void main() {
       expect(row?.lastAgentModel?.modelID, equals("model-1"));
     });
 
+    test("publication preserves stored timestamps when the plugin omits time", () async {
+      await repository.insertStoredSession(
+        sessionId: "stable-id",
+        backendSessionId: "backend-id",
+        pluginId: plugin.id,
+        projectId: "project-X",
+        isDedicated: false,
+        createdAt: 123,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      plugin.sessions = const [
+        PluginSession(
+          id: "backend-id",
+          projectID: "project-X",
+          directory: "/projects/X",
+          parentID: null,
+          title: "Untimed session",
+          time: null,
+        ),
+      ];
+
+      final sessions = await repository.getSessionsForProject(
+        projectId: "project-X",
+        start: null,
+        limit: null,
+      );
+      final row = await db.sessionDao.getSession(sessionId: "stable-id");
+
+      expect(sessions.single.time?.created, 123);
+      expect(sessions.single.time?.updated, 123);
+      expect(row?.createdAt, 123);
+      expect(row?.updatedAt, 123);
+    });
+
     test("bridge title override wins over later catalog publication", () async {
       plugin.sessions = [
         _pluginSession(

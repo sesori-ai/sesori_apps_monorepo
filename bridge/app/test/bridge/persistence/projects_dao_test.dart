@@ -223,6 +223,27 @@ void main() {
       });
     });
 
+    test("setDisplayName preserves existing activity timestamps", () async {
+      await dao.recordOpenedProject(
+        projectId: "/projects/a",
+        path: "/projects/a",
+        createdAt: 100,
+        updatedAt: 500,
+      );
+
+      await dao.setDisplayName(
+        projectId: "/projects/a",
+        displayName: "Renamed",
+        updatedAt: 200,
+      );
+
+      final row = await dao.getProject(projectId: "/projects/a");
+      expect(row?.displayName, "Renamed");
+      expect(row?.createdAt, 100);
+      expect(row?.updatedAt, 500);
+      expect(row?.projectionUpdatedAt, 500);
+    });
+
     group("getResolvedPath", () {
       test("returns null when no row exists", () async {
         final path = await dao.getResolvedPath(projectId: "/projects/a");
