@@ -85,11 +85,9 @@ class SessionTable extends Table {
   /// v7→v8 migration backfills pre-existing rows itself.
   TextColumn get pluginId => text()();
 
-  /// The bridge's last-known title for a derived-plugin session (from a
-  /// rename or a title-bearing `session.updated` event). Derived backends
-  /// (ACP, codex) don't persist renames, so this stored copy wins over the
-  /// backend's enumeration title. Null for native plugins (their backend is
-  /// authoritative) and for sessions with no bridge-known title.
+  /// The bridge-owned title override from an explicit rename or a
+  /// title-bearing `session.updated` event. This wins over the latest observed
+  /// catalog title for every plugin. Null means the catalog title is rendered.
   TextColumn get title => text().nullable()();
   TextColumn get catalogTitle => text().nullable()();
 

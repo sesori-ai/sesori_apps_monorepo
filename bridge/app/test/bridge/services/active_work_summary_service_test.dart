@@ -137,6 +137,26 @@ void main() {
     expect(buildCount, 2);
     expect(service.currentSnapshot, isNotNull);
   });
+
+  test("dispose waits for an in-flight refresh", () async {
+    final buildBlock = Completer<void>();
+    repository.loadSummaries = () async {
+      await buildBlock.future;
+      return const [];
+    };
+    repository.loadStoredSessions = (_) async => const [];
+
+    final refresh = service.refresh();
+    var disposed = false;
+    final dispose = service.dispose().then((_) => disposed = true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(disposed, isFalse);
+
+    buildBlock.complete();
+    await Future.wait([refresh, dispose]);
+    expect(disposed, isTrue);
+  });
 }
 
 void _stubSingleProject(_FakeSessionRepository repository) {
@@ -159,8 +179,11 @@ StoredSession _stored({
 }) {
   return StoredSession(
     id: id,
+    backendSessionId: id,
+    pluginId: "fake",
     projectId: projectId,
     parentSessionId: parentSessionId,
+    directory: projectId,
     worktreePath: null,
     branchName: null,
     isDedicated: false,

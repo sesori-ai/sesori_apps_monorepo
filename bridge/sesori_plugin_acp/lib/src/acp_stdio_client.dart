@@ -78,13 +78,14 @@ class AcpStdioClient {
   StreamSubscription<String>? _stderrSubscription;
   bool _disposed = false;
   int _nextId = 1;
+  int _connectionGeneration = 0;
 
   final Map<Object, Completer<dynamic>> _pending = {};
   final StreamController<AcpNotification> _notifications =
       StreamController.broadcast();
   final StreamController<AcpServerRequest> _serverRequests =
       StreamController.broadcast();
-  final Completer<int> _exited = Completer<int>();
+  Completer<int> _exited = Completer<int>();
 
   /// Server-originated notifications (broadcast).
   Stream<AcpNotification> get notifications => _notifications.stream;
@@ -112,15 +113,26 @@ class AcpStdioClient {
       throw StateError("AcpStdioClient is disposed");
     }
 
+    final generation = ++_connectionGeneration;
     final process = await _processFactory(_launchSpec);
-    if (_disposed) {
-      // dispose() ran while the spawn was still in flight: it saw
+    if (_disposed || generation != _connectionGeneration) {
+      // dispose()/reset() ran while the spawn was still in flight: it saw
       // _process == null and had nothing to reap. Kill the just-spawned process
-      // here instead of wiring stdio onto an already-disposed client and
-      // leaking the agent subprocess past shutdown.
-      process.kill(io.ProcessSignal.sigkill);
-      throw StateError("AcpStdioClient disposed during connect");
+      // here instead of wiring stdio onto a stale connection and leaking the
+      // agent subprocess past teardown.
+      try {
+        process.kill(io.ProcessSignal.sigkill);
+      } on Object catch (error, stack) {
+        Log.w("[$_logTag] failed to reap process spawned during teardown", error, stack);
+      }
+      throw StateError(
+        _disposed
+            ? "AcpStdioClient disposed during connect"
+            : "AcpStdioClient reset during connect",
+      );
     }
+    final exited = Completer<int>();
+    _exited = exited;
     _process = process;
 
     // Writes to stdin surface broken-pipe errors asynchronously on `stdin.done`
@@ -133,8 +145,14 @@ class AcpStdioClient {
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen(
-          _handleLine,
-          onError: _handleStreamError,
+          (line) {
+            if (generation == _connectionGeneration) _handleLine(line);
+          },
+          onError: (Object error, StackTrace stack) {
+            if (generation == _connectionGeneration) {
+              _handleStreamError(error, stack);
+            }
+          },
           cancelOnError: false,
         );
 
@@ -150,7 +168,8 @@ class AcpStdioClient {
 
     unawaited(
       process.exitCode.then((code) {
-        if (!_exited.isCompleted) _exited.complete(code);
+        if (!exited.isCompleted) exited.complete(code);
+        if (generation != _connectionGeneration) return;
         if (!_disposed) {
           Log.w("[$_logTag] agent process exited with code $code");
         }
@@ -332,6 +351,18 @@ class AcpStdioClient {
     }
   }
 
+  /// Tears down the current connection while retaining the launch configuration
+  /// and public streams so [connect] can spawn a replacement process.
+  Future<void> reset({
+    required Duration gracefulTimeout,
+  }) async {
+    if (_disposed) return;
+    await _teardownConnection(
+      gracefulTimeout: gracefulTimeout,
+      pendingError: StateError("AcpStdioClient reset"),
+    );
+  }
+
   /// Kills the agent process, fails in-flight requests, and closes streams.
   Future<void> dispose({
     Duration gracefulTimeout = const Duration(seconds: 5),
@@ -339,8 +370,47 @@ class AcpStdioClient {
     if (_disposed) return;
     _disposed = true;
 
+    await _teardownConnection(
+      gracefulTimeout: gracefulTimeout,
+      pendingError: StateError("AcpStdioClient disposed"),
+    );
+    try {
+      await _notifications.close();
+    } on Object catch (e, st) {
+      Log.w("[$_logTag] failed to close notifications stream", e, st);
+    }
+    try {
+      await _serverRequests.close();
+    } on Object catch (e, st) {
+      Log.w("[$_logTag] failed to close server-requests stream", e, st);
+    }
+  }
+
+  Future<void> _teardownConnection({
+    required Duration gracefulTimeout,
+    required Object pendingError,
+  }) async {
+    // Invalidate callbacks before the first await so a late event from this
+    // process cannot affect a replacement connected while teardown is pending.
+    _connectionGeneration++;
     final process = _process;
     _process = null;
+    Future<void>? stdoutCancellation;
+    try {
+      stdoutCancellation = _stdoutSubscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[$_logTag] failed to cancel stdout subscription", e, st);
+    }
+    _stdoutSubscription = null;
+    Future<void>? stderrCancellation;
+    try {
+      stderrCancellation = _stderrSubscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[$_logTag] failed to cancel stderr subscription", e, st);
+    }
+    _stderrSubscription = null;
+    _failPending(pendingError, StackTrace.current);
+
     if (process != null) {
       try {
         if (io.Platform.isWindows) {
@@ -353,37 +423,23 @@ class AcpStdioClient {
             process.kill(io.ProcessSignal.sigkill);
           }
         }
-      } catch (_) {
-        // Process may already be dead.
+      } on Object catch (error, stack) {
+        Log.w("[$_logTag] failed to stop agent process during teardown", error, stack);
       }
     }
 
     // Isolate each teardown step so a failure in one does not skip the rest
     // (notably _failPending, which unblocks callers awaiting in-flight
-    // requests). dispose() must not throw — log and continue.
+    // requests). Teardown must not throw — log and continue.
     try {
-      await _stdoutSubscription?.cancel();
+      await stdoutCancellation;
     } on Object catch (e, st) {
       Log.w("[$_logTag] failed to cancel stdout subscription", e, st);
     }
     try {
-      await _stderrSubscription?.cancel();
+      await stderrCancellation;
     } on Object catch (e, st) {
       Log.w("[$_logTag] failed to cancel stderr subscription", e, st);
-    }
-    _failPending(
-      StateError("AcpStdioClient disposed"),
-      StackTrace.current,
-    );
-    try {
-      await _notifications.close();
-    } on Object catch (e, st) {
-      Log.w("[$_logTag] failed to close notifications stream", e, st);
-    }
-    try {
-      await _serverRequests.close();
-    } on Object catch (e, st) {
-      Log.w("[$_logTag] failed to close server-requests stream", e, st);
     }
   }
 }

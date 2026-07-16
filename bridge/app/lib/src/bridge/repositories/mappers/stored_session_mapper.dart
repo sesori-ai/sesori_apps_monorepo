@@ -5,8 +5,11 @@ extension StoredSessionMapper on SessionDto {
   StoredSession toStoredSession() {
     return StoredSession(
       id: sessionId,
+      backendSessionId: backendSessionId,
+      pluginId: pluginId,
       projectId: projectId,
       parentSessionId: parentSessionId,
+      directory: directory,
       worktreePath: worktreePath,
       branchName: branchName,
       isDedicated: isDedicated,

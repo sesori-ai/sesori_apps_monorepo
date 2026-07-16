@@ -158,7 +158,6 @@ void main() {
         final branch = await dao.getBaseBranch(projectId: "proj-hidden");
         expect(branch, equals("feature"));
       });
-
     });
 
     group("recordOpenedProject", () {
@@ -198,10 +197,14 @@ void main() {
         expect(row.updatedAt, equals(222));
       });
 
-      test("preserves hidden, baseBranch and displayName on conflict", () async {
+      test("atomically reopens while preserving baseBranch and displayName on conflict", () async {
         await dao.hideProject(projectId: "/projects/a");
         await dao.setBaseBranch(projectId: "/projects/a", baseBranch: "develop");
-        await dao.setDisplayName(projectId: "/projects/a", displayName: "My App");
+        await dao.setDisplayName(
+          projectId: "/projects/a",
+          displayName: "My App",
+          updatedAt: 222,
+        );
 
         await dao.recordOpenedProject(
           projectId: "/projects/a",
@@ -211,13 +214,34 @@ void main() {
         );
 
         final row = await dao.getProject(projectId: "/projects/a");
-        expect(row!.hidden, isTrue);
+        expect(row!.hidden, isFalse);
         expect(row.baseBranch, equals("develop"));
         expect(row.displayName, equals("My App"));
         expect(row.path, equals("/moved/a"));
         expect(row.createdAt, equals(111));
         expect(row.updatedAt, equals(333));
       });
+    });
+
+    test("setDisplayName preserves existing activity timestamps", () async {
+      await dao.recordOpenedProject(
+        projectId: "/projects/a",
+        path: "/projects/a",
+        createdAt: 100,
+        updatedAt: 500,
+      );
+
+      await dao.setDisplayName(
+        projectId: "/projects/a",
+        displayName: "Renamed",
+        updatedAt: 200,
+      );
+
+      final row = await dao.getProject(projectId: "/projects/a");
+      expect(row?.displayName, "Renamed");
+      expect(row?.createdAt, 100);
+      expect(row?.updatedAt, 500);
+      expect(row?.projectionUpdatedAt, 500);
     });
 
     group("getResolvedPath", () {
@@ -256,7 +280,11 @@ void main() {
         await dao.hideProject(projectId: "/projects/a");
         await dao.unhideProject(projectId: "/projects/a");
         await dao.setBaseBranch(projectId: "/projects/a", baseBranch: "main");
-        await dao.setDisplayName(projectId: "/projects/a", displayName: "My App");
+        await dao.setDisplayName(
+          projectId: "/projects/a",
+          displayName: "My App",
+          updatedAt: 2,
+        );
         await dao.insertProjectsIfMissing(projectIds: ["/projects/a"]);
 
         final path = await dao.getResolvedPath(projectId: "/projects/a");

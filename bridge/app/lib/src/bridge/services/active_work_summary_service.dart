@@ -155,6 +155,7 @@ class ActiveWorkSummaryService {
     _disposed = true;
     _retryTimer?.cancel();
     _retryTimer = null;
+    await _refreshing;
     await _changes.close();
   }
 }

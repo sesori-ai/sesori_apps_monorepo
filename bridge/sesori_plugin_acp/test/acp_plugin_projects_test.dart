@@ -761,17 +761,14 @@ void main() {
       expect(await loading, isEmpty, reason: "no history capability = empty thread; the session stays usable");
     });
 
-    test("catalog probe scans the launch directory and every extra directory", () async {
+    test("listAllSessions scans the launch directory and every known directory", () async {
       await connect(sessionCapabilities: true);
       const opened = "/Users/x/kustos";
 
-      // Empty everywhere: the probe scans all directories and returns without
-      // loading (nothing to probe), keeping the test free of a probe
-      // sub-client. The catalog is account-global, so the probe must not
-      // restrict itself to the launch cwd — otherwise a bridge launched from a
-      // session-less directory leaves the model picker empty.
+      // Empty everywhere: enumeration still scans both the launch directory
+      // and the directory supplied by the bridge.
       final stop = autoListResponder();
-      await plugin.probeCatalogFromExistingSession(extraDirectories: const {opened});
+      await plugin.listAllSessions(knownDirectories: const {opened});
       stop();
 
       final listedCwds = fake().written
@@ -781,7 +778,7 @@ void main() {
       expect(
         listedCwds,
         containsAll(<Object?>[cwd, opened]),
-        reason: "the catalog probe must scan the launch CWD AND the requested project",
+        reason: "enumeration must scan the launch CWD AND the requested project",
       );
     });
 

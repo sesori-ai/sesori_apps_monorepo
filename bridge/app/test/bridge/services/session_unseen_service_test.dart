@@ -200,7 +200,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       expect(await unseen("s1"), isFalse);
 
@@ -242,7 +251,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       // Some AI activity exists, but it's currently seen.
       clock = 600;
@@ -264,7 +282,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       // Latest activity is the user's own message -> normally NOT bold.
       clock = 600;
@@ -312,7 +339,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       // Persist markers far in the future (e.g. stored before a clock rollback).
       await db.sessionDao.setActivityTimestamps(
@@ -482,7 +518,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       expect(await unseen("s1"), isFalse);
 
@@ -499,7 +544,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
 
       final events = <UnseenChange>[];
@@ -537,7 +591,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       // The user sends a message (payload created at 2000, processed now).
       clock = 2000;
@@ -568,7 +631,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       // Server creation time (5000) is ahead of the bridge's local clock
       // (1000). The marker is stamped from the creation time, so the domains
@@ -593,7 +665,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       // A reconnect backlog processed late (local clock 9000+): user message
       // created at 2000, assistant reply created at 2500, user reply created
@@ -645,7 +726,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       // Assistant activity bolds the session.
       clock = 5000;
@@ -669,7 +759,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       clock = 2000;
       await service.recordActivity(sessionId: "s1", isUserMessage: false);
@@ -711,7 +810,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       // Bold the row so mark-read has a real effect.
       clock = 600;
@@ -740,7 +848,16 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
-        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+        sessions: [
+          (
+            sessionId: "s1",
+            backendSessionId: "s1",
+            projectId: "p1",
+            directory: "p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
       );
       expect(await unseen("s1"), isFalse);
 

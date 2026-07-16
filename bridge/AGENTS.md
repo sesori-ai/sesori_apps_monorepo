@@ -107,6 +107,14 @@ Only create an interface if **at least one** of these is true:
 
 One API class wraps one external binary/tool. Use separate classes for separate tools (for example, `GhCliApi` for `gh`, `GitCliApi` for `git`). Do not merge tool wrappers just because features are related. Within one tool wrapper, keep all operations together instead of splitting by use-case. This also applies to external providers — e.g., a `GithubApi` wrapping GitHub's web API is separate from `GhCliApi`.
 
+The root sealed-platform-capability preference is the narrow exception. When
+one package-internal capability has mutually exclusive platform
+implementations, keep its private implementations with the sealed capability
+and let each call its platform tool directly, even when another API uses that
+tool for different operations. Do not expose public per-platform tool classes
+or branch in consumers merely to preserve a tool boundary. Outside this
+sealed, private, factory-selected pattern, the per-tool rule still applies.
+
 ### DAOs Are Dumb
 
 DAOs execute raw queries and return raw data. No decision-making logic, no selection algorithms, no business rules. All mapping and selection logic belongs in the Repository layer.

@@ -66,30 +66,17 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       limit: limit,
     );
 
-    var persisted = false;
-    try {
-      await _sessionRepository.persistSessionsForProject(
-        projectId: projectId,
-        sessions: sessions,
-      );
-      persisted = true;
-    } on Object catch (e, st) {
-      Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId", e, st);
-    }
-
-    if (persisted) {
-      for (final session in sessions) {
-        try {
-          await _sessionMutationDispatcher.applyPendingTitle(sessionId: session.id);
-        } on Object catch (e, st) {
-          Log.w("GetSessionsHandler: pending title failed for sessionId=${session.id}", e, st);
-        }
-      }
+    for (final session in sessions) {
       try {
-        sessions = await _sessionRepository.enrichSessions(sessions: sessions);
+        await _sessionMutationDispatcher.applyPendingTitle(sessionId: session.id);
       } on Object catch (e, st) {
-        Log.w("GetSessionsHandler: post-persistence enrichment failed for projectId=$projectId", e, st);
+        Log.w("GetSessionsHandler: pending title failed for sessionId=${session.id}", e, st);
       }
+    }
+    try {
+      sessions = await _sessionRepository.enrichSessions(sessions: sessions);
+    } on Object catch (e, st) {
+      Log.w("GetSessionsHandler: post-publication enrichment failed for projectId=$projectId", e, st);
     }
 
     if (start == null && limit == null && _sessionRepository.sessionListIsAuthoritative) {

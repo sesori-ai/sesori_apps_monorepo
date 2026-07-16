@@ -145,6 +145,7 @@ Do NOT flag:
 
 - Parameters that are stored and read by methods, even if also passed to a subcomponent
 - Configuration values (durations, flags, limits) that are genuinely the class's own settings and happen to be forwarded to one collaborator
+- Low-level dependencies forwarded by an A13-compliant `forPlatform` factory to every private platform implementation. The factory is the deliberate selection seam, not a subcomponent owner.
 
 **A8. No Peer-As-Child Dependency Overlap**
 
@@ -213,6 +214,18 @@ Concretely checkable in code:
 For the remaining `docs/VISION.md` invariants (per-bridge addressing, headless-first, teams ownership only when concrete, autonomy at the bridge seam), flag only when the change concretely breaks them in the diff; do not speculate.
 
 **Mirror image (A5):** new abstraction or infrastructure built for a future `docs/VISION.md` / `docs/ROADMAP.md` item with no present consumer is an **A5** violation — reject under A5. Direction never licences premature construction.
+
+**A13. Sealed Platform Capability Factories**
+
+When one package-internal capability has two or more mutually exclusive platform implementations, prefer this boundary:
+
+- One sealed public abstraction owns the capability contract.
+- Private platform implementations live in the same file as that abstraction.
+- A named `forPlatform` factory is the only public implementation-selection seam.
+- The factory may receive and forward low-level dependencies required by every implementation. This narrow forwarding is explicitly allowed by A7.
+- Consumers depend only on the abstraction and never branch on platform to select or import implementations.
+
+Reject changed code that exposes public per-platform implementations, separates those private implementations into files, or repeats implementation-selection branches in consumers without a concrete need. Do not apply this preference to cross-package product-shell adapters or implementations with independent public consumers. A workspace per-tool API rule does not require public tool wrappers or consumer branching for this pattern: each private platform implementation may call the tool needed by its capability directly, even when another API uses that tool for different operations.
 
 ---
 
@@ -1040,7 +1053,7 @@ Applied: [B-Client / B-Bridge / B-Shared]
 Skipped: [the others, with reason]
 
 ### Section A — General Architecture
-[List each violated principle (A1-A12) with file:line references. Only list violations.]
+[List each violated principle (A1-A13) with file:line references. Only list violations.]
 
 ### Section B — Project-Specific Rules
 [For each applied subsection, list violated rules with file:line references. Only list violations.]

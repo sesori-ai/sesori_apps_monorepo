@@ -1,7 +1,10 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -76,6 +79,23 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   Future<void> abortSession({required String sessionId}) async {
     await onAbort?.call(sessionId: sessionId);
+  }
+
+  @override
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {}
+
+  @override
+  Future<Session?> getCatalogSession({required String sessionId}) async => null;
+
+  @override
+  Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
+
+  @override
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    throw StateError("No stored session configured for $sessionId");
   }
 
   @override

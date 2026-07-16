@@ -128,6 +128,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "s1",
+        backendSessionId: "s1",
         projectId: "p1",
         isDedicated: true,
         createdAt: 10,
@@ -346,6 +347,20 @@ void main() {
           parts: [],
         ),
       ];
+      await db.sessionDao.insertSession(
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "/tmp/test",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
 
       final client = HttpClient();
       addTearDown(client.close);
@@ -364,6 +379,7 @@ void main() {
       final decoded = jsonDecode(body) as Map<String, dynamic>;
       final messages = decoded["messages"] as List<dynamic>;
       expect(messages.length, equals(1));
+      expect(plugin.messageSessionIds, equals(["backend-s1"]));
     });
 
     test("returns 500 on plugin error", () async {
@@ -603,11 +619,15 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = [];
   List<PluginSession> sessionsResult = [];
   List<PluginMessageWithParts> messagesResult = [];
+  List<String> messageSessionIds = [];
   bool throwOnGetProjects = false;
   bool throwOnActiveSummary = false;
 
   @override
   String get id => "fake";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => _controller.stream;
@@ -677,7 +697,10 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
-  ) async => messagesResult;
+  ) async {
+    messageSessionIds.add(sessionId);
+    return messagesResult;
+  }
 
   @override
   Future<void> sendPrompt({
@@ -764,6 +787,9 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "tracking";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events {

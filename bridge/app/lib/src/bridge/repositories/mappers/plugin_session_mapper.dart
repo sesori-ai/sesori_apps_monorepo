@@ -7,8 +7,12 @@ import "../session_unseen_calculator.dart";
 /// Maps a [PluginSession] to the shared [Session] type used in relay responses.
 extension PluginSessionMapper on PluginSession {
   Session toSharedSession({required String pluginId}) {
+    return toSharedSessionWithId(sessionId: id, pluginId: pluginId);
+  }
+
+  Session toSharedSessionWithId({required String sessionId, required String pluginId}) {
     return Session(
-      id: id,
+      id: sessionId,
       pluginId: pluginId,
       projectID: projectID,
       directory: directory,
@@ -49,7 +53,7 @@ Session enrichSharedSession({
         ? currentTime.copyWith(archived: storedSession.archivedAt)
         : SessionTime(
             created: storedSession.createdAt,
-            updated: storedSession.createdAt,
+            updated: storedSession.updatedAt,
             archived: storedSession.archivedAt,
           );
     result = result.copyWith(
@@ -62,13 +66,7 @@ Session enrichSharedSession({
       // owns its own attribution, so its reported projectID is kept. The
       // directory intentionally stays the session's real cwd either way.
       projectID: adoptStoredProjectId ? storedSession.projectId : session.projectID,
-      // A derived backend doesn't persist renames, so the bridge's stored
-      // title copy (kept fresh by renames AND by the backend's own title
-      // events, captured before enrichment) wins over the enumeration title.
-      // Known accepted edge: a backend title generated while the bridge was
-      // down isn't reflected until its next title event or rename. Native
-      // backends stay authoritative for their own titles.
-      title: adoptStoredProjectId ? (storedSession.title ?? session.title) : session.title,
+      title: storedSession.title ?? session.title ?? storedSession.catalogTitle,
       time: mergedTime,
       hasWorktree: storedSession.worktreePath != null,
       promptDefaults: _promptDefaultsFromStoredSession(storedSession),

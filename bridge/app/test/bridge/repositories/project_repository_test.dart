@@ -617,6 +617,7 @@ void main() {
       final persistedActivity = await db.projectsDao.getProject(projectId: parent);
       await db.sessionDao.insertSession(
         sessionId: "w1",
+        backendSessionId: "w1",
         projectId: parent,
         isDedicated: true,
         createdAt: 200,
@@ -708,6 +709,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => throw UnimplementedError();
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();

@@ -177,6 +177,24 @@ void main() {
       expect(result.items.map((session) => session.id), equals(["s1", "s2", "s3"]));
     });
 
+    test("does not swallow mandatory session publication failure", () async {
+      final failure = StateError("session publication failed");
+      sessionRepository.publicationError = failure;
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/sessions"),
+          body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(same(failure)),
+      );
+      expect(plugin.lastGetSessionsWorktree, "project-1");
+      expect(sessionTitleService.appliedSessionIds, isEmpty);
+    });
+
     test("emits an unseen change for rows deleted by a complete-list refresh", () async {
       // A stale row exists in the DB for a session the backend no longer has.
       // Recorded by the ACTIVE plugin — reconciliation is plugin-scoped, so
@@ -185,6 +203,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "fake",
         sessionId: "gone",
+        backendSessionId: "gone",
         projectId: "project-1",
         isDedicated: false,
         createdAt: 1,
@@ -235,6 +254,7 @@ void main() {
       await db.sessionDao.insertSession(
         pluginId: "fake",
         sessionId: "fresh",
+        backendSessionId: "fresh",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 1,
@@ -834,7 +854,7 @@ void main() {
       expect(pr?.checkStatus, equals(PrCheckStatus.success));
     });
 
-    test("preserves stored pull request metadata when plugin list replaces the session payload", () async {
+    test("writes through catalog fields while preserving stored worktree and pull request metadata", () async {
       final realRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -850,8 +870,9 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
-        pluginId: "opencode",
+        pluginId: "fake",
         sessionId: "s1",
+        backendSessionId: "s1",
         projectId: "p1",
         isDedicated: true,
         createdAt: 10,
@@ -889,6 +910,7 @@ void main() {
         ),
       ];
 
+      final beforeFetch = DateTime.now().millisecondsSinceEpoch;
       final result = await realHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null),
@@ -896,12 +918,26 @@ void main() {
         queryParams: {},
         fragment: null,
       );
+      final afterFetch = DateTime.now().millisecondsSinceEpoch;
 
       expect(result.items, hasLength(1));
       expect(result.items.single.title, equals("replacement payload"));
+      expect(result.items.single.time?.created, 10);
+      expect(result.items.single.time?.updated, 200);
       expect(result.items.single.hasWorktree, isTrue);
       expect(result.items.single.pullRequest?.number, equals(84));
       expect(result.items.single.pullRequest?.title, equals("Stored PR survives replacement"));
+      final stored = await db.sessionDao.getSession(sessionId: "s1");
+      expect(stored?.pluginId, "fake");
+      expect(stored?.backendSessionId, "s1");
+      expect(stored?.directory, "/tmp/project");
+      expect(stored?.catalogTitle, "replacement payload");
+      expect(stored?.createdAt, 10);
+      expect(stored?.updatedAt, 200);
+      expect(stored?.projectionUpdatedAt, inInclusiveRange(beforeFetch, afterFetch));
+      expect(stored?.worktreePath, "/tmp/worktree");
+      expect(stored?.branchName, "feature/preserved-pr");
+      expect(stored?.isDedicated, isTrue);
     });
 
     test("keeps pullRequest null when session has no PR", () async {

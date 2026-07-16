@@ -63,9 +63,9 @@ extension PluginQuestionInfoMapping on PluginQuestionInfo {
 
 /// Maps [PluginMessagePart] to the shared [MessagePart].
 extension PluginMessagePartMapping on PluginMessagePart {
-  MessagePart toShared() => MessagePart(
+  MessagePart toShared({required String sessionId}) => MessagePart(
     id: id,
-    sessionID: sessionID,
+    sessionID: sessionId,
     messageID: messageID,
     type: type.toShared(),
     text: text,

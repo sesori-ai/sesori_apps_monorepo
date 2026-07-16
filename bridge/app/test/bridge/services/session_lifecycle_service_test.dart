@@ -6,8 +6,10 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -58,6 +60,55 @@ void main() {
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
       expect(worktreeService.deleteBranchCallCount, equals(0));
+    });
+
+    test("missing root binding is an explicit not-found failure", () async {
+      await expectLater(
+        service.cleanup(
+          sessionId: "missing",
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: false,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+
+      expect(worktreeService.checkCallCount, isZero);
+      expect(worktreeService.removeCallCount, isZero);
+      expect(worktreeService.deleteBranchCallCount, isZero);
+    });
+
+    test("plugin mismatch is rejected before archive cleanup or plugin I/O", () async {
+      sessionRepository.storedSession = const StoredSession(
+        id: "s-mismatch",
+        backendSessionId: "backend-mismatch",
+        pluginId: "other",
+        projectId: "/repo",
+        parentSessionId: null,
+        directory: "/repo/.worktrees/mismatch",
+        worktreePath: "/repo/.worktrees/mismatch",
+        branchName: "mismatch",
+        isDedicated: true,
+        archivedAt: null,
+        baseBranch: "main",
+        baseCommit: "abc123",
+        lastUserInteractionAt: null,
+      );
+
+      await expectLater(
+        service.updateArchiveStatus(
+          sessionId: "s-mismatch",
+          archived: true,
+          deleteWorktree: true,
+          deleteBranch: true,
+          force: true,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
+      );
+
+      expect(worktreeService.checkCallCount, isZero);
+      expect(worktreeService.removeCallCount, isZero);
+      expect(worktreeService.deleteBranchCallCount, isZero);
     });
 
     test("clean worktree removes worktree and returns success", () async {
@@ -370,6 +421,82 @@ void main() {
       expect(worktreeService.deleteBranchCallCount, equals(1));
     });
   });
+
+  group("SessionLifecycleService archive binding", () {
+    late AppDatabase db;
+    late _FakeBridgePlugin plugin;
+    late SessionLifecycleService service;
+
+    setUp(() async {
+      db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      plugin = _FakeBridgePlugin();
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      service = SessionLifecycleService(
+        worktreeService: _FakeWorktreeService(database: db),
+        sessionRepository: repository,
+        filesystemRepository: FilesystemRepository(
+          filesystemApi: const FilesystemApi(),
+          permissionValidator: const FilesystemPermissionValidator(),
+        ),
+      );
+      await db.sessionDao.insertSession(
+        sessionId: "root-session",
+        backendSessionId: "backend-session",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: "fake",
+      );
+    });
+
+    tearDown(() => db.close());
+
+    test("archive routes plugin I/O through the stored backend id", () async {
+      final update = await service.updateArchiveStatus(
+        sessionId: "root-session",
+        archived: true,
+        deleteWorktree: false,
+        deleteBranch: false,
+        force: false,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(update.session.id, "root-session");
+      expect(update.changed, isTrue);
+      expect(plugin.lastArchivedSessionId, "backend-session");
+      expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNotNull);
+    });
+
+    test("unarchive uses the existing root binding and returns its stable id", () async {
+      await db.sessionDao.setArchived(sessionId: "root-session", archivedAt: 2, updatedAt: 2);
+
+      final update = await service.updateArchiveStatus(
+        sessionId: "root-session",
+        archived: false,
+        deleteWorktree: false,
+        deleteBranch: false,
+        force: false,
+      );
+
+      expect(update.session.id, "root-session");
+      expect(update.changed, isTrue);
+      expect(plugin.lastArchivedSessionId, isNull);
+      expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNull);
+    });
+  });
 }
 
 Future<CleanupResult> _cleanup({
@@ -384,8 +511,11 @@ Future<CleanupResult> _cleanup({
 }) {
   sessionRepository.storedSession = StoredSession(
     id: sessionId,
+    backendSessionId: "backend-$sessionId",
+    pluginId: "fake",
     projectId: "/repo",
     parentSessionId: null,
+    directory: worktreePath,
     worktreePath: worktreePath,
     branchName: branchName,
     isDedicated: true,
@@ -426,6 +556,38 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => storedSession;
+
+  @override
+  Future<StoredSession> requireActiveStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    final session = storedSession;
+    if (session == null) {
+      throw PluginOperationException.notFound(
+        operation.name,
+        message: "session $sessionId was not found",
+      );
+    }
+    ensurePluginAvailable(pluginId: session.pluginId, operation: operation);
+    return session;
+  }
+
+  @override
+  void ensurePluginAvailable({required String pluginId, required SessionOperation operation}) {
+    if (pluginId == "fake") return;
+    throw PluginOperationException(
+      operation.name,
+      statusCode: 503,
+      message: "plugin $pluginId is not running",
+    );
+  }
+
+  @override
+  Future<Session?> getCatalogSession({required String sessionId}) async => null;
+
+  @override
+  Future<SessionStatusResponse> getSessionStatuses() async => const SessionStatusResponse(statuses: {});
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -505,8 +667,13 @@ class _FakeWorktreeService extends WorktreeService {
 }
 
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
+  String? lastArchivedSessionId;
+
   @override
   String get id => "fake";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
@@ -548,7 +715,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<void> deleteSession(String sessionId) async {}
 
   @override
-  Future<void> archiveSession({required String sessionId}) async {}
+  Future<void> archiveSession({required String sessionId}) async {
+    lastArchivedSessionId = sessionId;
+  }
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => [];

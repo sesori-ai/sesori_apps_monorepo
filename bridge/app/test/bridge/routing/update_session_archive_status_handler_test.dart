@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -482,81 +483,72 @@ void main() {
       expect(persisted?.archivedAt, isNull);
     });
 
-    test("archive pre-migration session auto-inserts DB row", () async {
-      plugin.projectsResult = const [PluginProject(id: "/repo", directory: "/repo")];
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s-pre-migration",
-          projectID: "/repo",
-          directory: "/repo/.worktrees/session-001",
-          parentID: null,
-          title: "Pre-migration Session",
-          time: PluginSessionTime(created: 10, updated: 20, archived: null),
-        ),
-      ];
-
-      // Seed the project row to satisfy the v5 FK constraint before the handler
-      // auto-inserts the session row.
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
-
-      await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s-pre-migration",
-          archived: true,
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
+    test("missing binding returns 404 before plugin or cleanup calls", () async {
+      final response = await handler.handleInternal(
+        makeRequest(
+          "PATCH",
+          "/session/update/archive",
+          body: jsonEncode(
+            _archiveRequest(
+              sessionId: "missing",
+              archived: true,
+              deleteWorktree: true,
+              deleteBranch: true,
+              force: false,
+            ).toJson(),
+          ),
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      final persisted = await db.sessionDao.getSession(sessionId: "s-pre-migration");
-      expect(persisted, isNotNull);
-      expect(persisted?.projectId, equals("/repo"));
-      expect(persisted?.isDedicated, isTrue);
-      expect(persisted?.worktreePath, isNull);
-      expect(persisted?.branchName, isNull);
-      expect(persisted?.baseBranch, isNull);
-      expect(persisted?.baseCommit, isNull);
-      expect(persisted?.archivedAt, isNotNull);
+      expect(response.status, 404);
+      expect(plugin.lastArchiveSessionId, isNull);
+      expect(worktreeService.checkCallCount, 0);
+      expect(worktreeService.removeCallCount, 0);
+      expect(worktreeService.deleteBranchCallCount, 0);
     });
 
-    test("archives first-time project (no prior projects_table row) without FK violation", () async {
-      // Empty projects_table — no pre-seeding at all.
-      plugin.projectsResult = const [PluginProject(id: "brand-new", directory: "brand-new")];
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s-brand-new",
-          projectID: "brand-new",
-          directory: "brand-new",
-          parentID: null,
-          title: "Brand New Session",
-          time: PluginSessionTime(created: 10, updated: 20, archived: null),
-        ),
-      ];
+    test("stored plugin mismatch returns 503 before plugin I/O or cleanup", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "stale-plugin-session",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/stale",
+        branchName: "stale",
+        baseBranch: null,
+        archivedAt: null,
+        baseCommit: null,
+        pluginId: "stopped-plugin",
+      );
 
-      // Should not throw FK violation even though projects_table is empty.
-      await handler.handle(
-        makeRequest("PATCH", "/session/update/archive"),
-        body: _archiveRequest(
-          sessionId: "s-brand-new",
-          archived: true,
-          deleteWorktree: false,
-          deleteBranch: false,
-          force: false,
+      final response = await handler.handleInternal(
+        makeRequest(
+          "PATCH",
+          "/session/update/archive",
+          body: jsonEncode(
+            _archiveRequest(
+              sessionId: "stale-plugin-session",
+              archived: true,
+              deleteWorktree: true,
+              deleteBranch: true,
+              force: false,
+            ).toJson(),
+          ),
         ),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
-      final persisted = await db.sessionDao.getSession(sessionId: "s-brand-new");
-      expect(persisted, isNotNull);
-      expect(persisted?.projectId, equals("brand-new"));
-      expect(persisted?.archivedAt, isNotNull);
+      expect(response.status, 503);
+      expect(plugin.lastArchiveSessionId, isNull);
+      expect(worktreeService.checkCallCount, 0);
+      expect(worktreeService.removeCallCount, 0);
+      expect(worktreeService.deleteBranchCallCount, 0);
+      expect((await db.sessionDao.getSession(sessionId: "stale-plugin-session"))?.archivedAt, isNull);
     });
 
     test("unarchive simple session clears archivedAt without worktree ops", () async {
@@ -1059,11 +1051,13 @@ Future<void> _insertSession({
   required String? baseBranch,
   required int? archivedAt,
   required String? baseCommit,
+  String pluginId = "fake",
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
-    pluginId: "opencode",
+    pluginId: pluginId,
     sessionId: sessionId,
+    backendSessionId: sessionId,
     projectId: projectId,
     isDedicated: isDedicated,
     createdAt: 1,
@@ -1076,7 +1070,7 @@ Future<void> _insertSession({
     lastAgentModel: null,
   );
   if (archivedAt != null) {
-    await db.sessionDao.setArchived(sessionId: sessionId, archivedAt: archivedAt);
+    await db.sessionDao.setArchived(sessionId: sessionId, archivedAt: archivedAt, updatedAt: archivedAt);
   }
 }
 
@@ -1193,6 +1187,9 @@ class _FakeWorktreeService extends WorktreeService {
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
   @override
   String get id => "fake";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();

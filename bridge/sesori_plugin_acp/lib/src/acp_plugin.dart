@@ -44,6 +44,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   @override
   final String id;
 
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
+
   /// Human-facing agent name used for synthesized agents/providers.
   final String agentDisplayName;
 
@@ -74,9 +77,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   /// Every canonical directory the bridge has hinted at this run (see
   /// [listAllSessions]). Internal enumerations that have no hints of their own
-  /// — the pre-resume warm-up, the catalog probe — scan these too, so a
-  /// never-enumerated prior-run session in a bridge-known directory is still
-  /// discoverable when the agent lacks the unfiltered `session/list` form.
+  /// scan these too, so a never-enumerated prior-run session in a bridge-known
+  /// directory is still discoverable when the agent lacks the unfiltered
+  /// `session/list` form.
   final Set<String> _hintedDirectories = {};
 
   AcpStdioClient? _client;
@@ -183,13 +186,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   ///
   /// [fromNewSession] distinguishes a `session/new` response — the only source
   /// that carries the backend's *new-session default* model/mode — from a
-  /// `session/load` (resume, history replay, catalog probe), which replays some
-  /// existing session's own model and must never redefine the default. The
-  /// `sessionId`'s presence alone can't tell them apart: a `session/new`
-  /// carries a fresh id, and a catalog probe carries none. Base does nothing;
-  /// Cursor overrides for its `configOptions` picker.
+  /// `session/load` (resume or history replay), which replays some existing
+  /// session's own model and must never redefine the default. The
+  /// `sessionId`'s presence alone can't tell them apart because both new and
+  /// load operations can supply one. Base does nothing; Cursor overrides for
+  /// its `configOptions` picker.
   void captureSessionConfig(
-    Map<String, dynamic> result, {
+    AcpNewSessionResult result, {
     String? sessionId,
     bool fromNewSession = false,
   }) {}
@@ -632,7 +635,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     );
     // A session/new response is the authoritative source of the backend's
     // new-session default model/mode.
-    captureSessionConfig(session.raw, sessionId: session.sessionId, fromNewSession: true);
+    captureSessionConfig(session, sessionId: session.sessionId, fromNewSession: true);
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
@@ -786,10 +789,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       );
       // A resume load: capture the catalog + this session's own model, but do
       // not let it redefine the new-session default.
-      captureSessionConfig(
+      final result = AcpNewSessionResult.fromJson(
         raw is Map ? raw.cast<String, dynamic>() : const {},
-        sessionId: sessionId,
       );
+      captureSessionConfig(result, sessionId: sessionId);
       // Keep suppressing until the (post-response) replay stream goes quiet.
       await _drainReplay(() => _suppressedReplayCounts[sessionId] ?? 0);
       _residentSessions.add(sessionId);
@@ -835,10 +838,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // The resume result carries the modes/configOptions catalog (and this
       // session's current selection) — capture it, but never as the
       // new-session default.
-      captureSessionConfig(
+      final result = AcpNewSessionResult.fromJson(
         raw is Map ? raw.cast<String, dynamic>() : const {},
-        sessionId: sessionId,
       );
+      captureSessionConfig(result, sessionId: sessionId);
       _residentSessions.add(sessionId);
     } on AcpRpcException catch (error, stack) {
       if (error.code == -32601 || error.code == -32602) {
@@ -1233,10 +1236,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       // The load result also carries the model/mode catalog (and the loaded
       // session's current model) — capture it so the picker is populated and
       // replayed messages are stamped with the session's real model.
-      captureSessionConfig(
+      final result = AcpNewSessionResult.fromJson(
         raw is Map ? raw.cast<String, dynamic>() : const {},
-        sessionId: sessionId,
       );
+      captureSessionConfig(result, sessionId: sessionId);
       // The ACP spec replays the whole thread via `session/update` BEFORE the
       // `session/load` response resolves, but cursor-agent streams later turns
       // AFTER it. Drain until the replay stream goes quiet so multi-turn history
@@ -1292,66 +1295,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       elapsed += quiet;
     }
   }
-
-  /// Populates the config catalog (models/modes) by `session/load`-ing the most
-  /// recent existing session on a short-lived client and feeding the result to
-  /// [captureSessionConfig]. Reads the catalog from the load *result*, so it
-  /// never pollutes the live event stream with replayed history, and — unlike
-  /// a `session/new` probe — creates no throwaway session (the ACP agents this
-  /// drives have no session-delete). No-op when there are no existing sessions
-  /// (a brand-new account's first `session/new` populates the catalog instead).
-  ///
-  /// The catalog (models/modes) is account-global, so ANY existing session is
-  /// a valid source. Enumeration goes through [listAllSessions] — the launch
-  /// directory is often a fresh directory with no history, so callers serving
-  /// a specific project pass it via [extraDirectories] to widen the scan
-  /// beyond the launch directory and this run's sessions.
-  Future<void> probeCatalogFromExistingSession({Set<String> extraDirectories = const {}}) async {
-    if (_client == null) return;
-    final sessions = await listAllSessions(knownDirectories: extraDirectories);
-    PluginSession? newest;
-    for (final session in sessions) {
-      if (session.id.isEmpty) continue;
-      if (newest == null || _sessionRecency(session) > _sessionRecency(newest)) {
-        newest = session;
-      }
-    }
-    if (newest == null) return;
-    final probe = AcpStdioClient(
-      launchSpec: launchSpec,
-      processFactory: _processFactory,
-      logTag: "$id-probe",
-    );
-    try {
-      await probe.connect();
-      final init = await _initialize(probe);
-      if (!init.agentCapabilities.loadSession) return;
-      final raw = await probe.request(
-        method: AcpMethods.sessionLoad,
-        params: {
-          "sessionId": newest.id,
-          "cwd": newest.directory,
-          "mcpServers": const <Object?>[],
-        },
-        timeout: const Duration(minutes: 1),
-      );
-      // This loads an EXISTING session purely to populate the model/mode
-      // catalog list. It must not be treated as a new-session default source,
-      // or the probed session's own (possibly non-default) model would become
-      // the new-session default (fromNewSession stays false).
-      captureSessionConfig(raw is Map ? raw.cast<String, dynamic>() : const {});
-    } catch (error, stack) {
-      Log.d("[$id] catalog probe failed: $error\n$stack");
-    } finally {
-      await probe.dispose();
-    }
-  }
-
-  /// Recency key for picking the freshest session as the catalog source. A
-  /// missing timestamp sorts oldest — any session is a valid catalog source, so
-  /// falling back to 0 just means "no better candidate than first-seen".
-  static int _sessionRecency(PluginSession session) =>
-      session.time?.updated ?? session.time?.created ?? 0;
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {

@@ -1,6 +1,6 @@
 import "dart:io" as io;
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart" show Agents, StringExtensions;
 
 import "../../api/database/daos/projects_dao.dart";
@@ -18,6 +18,13 @@ class AgentRepository {
   String get pluginId => _plugin.id;
 
   Future<Agents> getAgents({required String? projectId, required String pluginId}) async {
+    if (pluginId != _plugin.id) {
+      throw PluginOperationException(
+        "getAgents",
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
+    }
     // A null/blank projectId comes from the deprecated GET /agent route,
     // which carries no project context. Fall back to the bridge CWD, which
     // plugins treat as the active project. A real id resolves to the

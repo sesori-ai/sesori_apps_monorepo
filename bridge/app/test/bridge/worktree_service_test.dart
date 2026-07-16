@@ -121,6 +121,7 @@ void main() {
       await sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "parent-001",
+        backendSessionId: "parent-001",
         projectId: _projectId,
         isDedicated: true,
         createdAt: 123,
@@ -482,6 +483,7 @@ void main() {
       await sessionDao.insertSession(
         pluginId: "opencode",
         sessionId: "parent-001",
+        backendSessionId: "parent-001",
         projectId: _projectId,
         isDedicated: true,
         createdAt: 123,
@@ -1093,6 +1095,9 @@ class _FakeProcessRunner implements ProcessRunner {
 class _FakeBridgePluginApi implements NativeProjectsPluginApi {
   @override
   String get id => "fake";
+
+  @override
+  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();

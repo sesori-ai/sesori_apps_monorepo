@@ -229,7 +229,7 @@ class Orchestrator {
         GetCurrentProjectHandler(projectRepository: _projectRepository),
         GetProjectsHandler(projectActivityService: _projectActivityService),
         GetCommandsHandler(sessionRepository: _sessionRepository),
-        GetSessionStatusesHandler(_plugin),
+        GetSessionStatusesHandler(sessionRepository: _sessionRepository),
         GetChildSessionsHandler(sessionRepository: _sessionRepository),
         GetSessionHandler(_sessionRepository),
         GetSessionMessagesHandler(sessionRepository: _sessionRepository),
@@ -805,12 +805,18 @@ class OrchestratorSession {
         if (sesoriEvent is SesoriProjectsSummary) {
           _statusNotifier?.handleProjectsSummary(summary: sesoriEvent);
         }
-        _sseManager.enqueueEvent(sesoriEvent);
-        // The original event is enqueued before either persistence side effect.
-        try {
+        // A newly announced root must be queryable as soon as a phone receives
+        // the event; unlike other activity, its binding is mandatory first.
+        if (sesoriEvent is SesoriSessionCreated) {
           await _routeUnseenActivity(sesoriEvent);
-        } catch (e, st) {
-          Log.w("failed to route unseen activity for ${sesoriEvent.runtimeType}", e, st);
+        }
+        _sseManager.enqueueEvent(sesoriEvent);
+        if (sesoriEvent is! SesoriSessionCreated) {
+          try {
+            await _routeUnseenActivity(sesoriEvent);
+          } catch (e, st) {
+            Log.w("failed to route unseen activity for ${sesoriEvent.runtimeType}", e, st);
+          }
         }
         try {
           await _projectActivityService.handleEvent(sesoriEvent);

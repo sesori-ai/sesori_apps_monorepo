@@ -2,8 +2,7 @@ import "dart:async";
 import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show CommandResult, HostProcessCommandExecutor;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandResult, HostProcessCommandExecutor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../cursor_binary.dart";
@@ -193,7 +192,8 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   }
 
   String _outdatedMessage({required String executablePath, required String version}) {
-    final headline = "Cursor CLI $version is too old for the Sesori bridge — "
+    final headline =
+        "Cursor CLI $version is too old for the Sesori bridge — "
         "model switching and chat history need $minVersion or newer.";
     return [
       headline,
@@ -259,12 +259,9 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
     }
 
     // Eagerly warm the model/mode catalog so the mobile's first providers fetch
-    // (which it caches) already has the full list. Bounded so a slow probe never
-    // stalls startup; the lazy path in getProviders/getAgents is the fallback.
-    await cursor.warmCatalog().timeout(
-      const Duration(seconds: 12),
-      onTimeout: () => Log.d("[cursor] catalog warm-up timed out; will populate lazily"),
-    );
+    // (which it caches) already has the full list. The catalog service owns the
+    // total deadline; the lazy path in getProviders/getAgents is the fallback.
+    await cursor.warmCatalog();
 
     // Warm-up can run for seconds: re-check so an abort observed during it still
     // rolls back instead of returning a started plugin.
