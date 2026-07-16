@@ -17,6 +17,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -434,6 +435,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       service = SessionLifecycleService(

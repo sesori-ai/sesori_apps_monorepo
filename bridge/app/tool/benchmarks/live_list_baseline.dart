@@ -140,9 +140,14 @@ class _LiveListBenchmark {
     final derivedSmall = _DerivedBenchmarkPlugin(sessions: sessions1000);
     final filesystemApi = _ExistingFilesystemApi();
     const unseenCalculator = SessionUnseenCalculator();
-    // Never invoked by the benchmarked listing paths; wired only to satisfy
-    // the repository constructor.
-    final gitCliApi = GitCliApi(processRunner: ProcessRunner(), gitPathExists: ({required String gitPath}) => false);
+    // Backed by a runner that answers instead of spawning: the listing path
+    // asks git for each session directory's branch, and every benchmark session
+    // shares one fake directory, so a real `git` here would only measure how
+    // fast it fails.
+    final gitCliApi = GitCliApi(
+      processRunner: _AnsweringProcessRunner(),
+      gitPathExists: ({required String gitPath}) => false,
+    );
 
     final nativeProjectRepository = ProjectRepository(
       gitCliApi: gitCliApi,
@@ -207,10 +212,10 @@ class _LiveListBenchmark {
         ),
       },
     );
-    final nativeLargeRepository = _sessionRepository(database: database, plugin: nativeLarge);
-    final nativeSmallRepository = _sessionRepository(database: database, plugin: nativeSmall);
-    final derivedLargeRepository = _sessionRepository(database: database, plugin: derivedLarge);
-    final derivedSmallRepository = _sessionRepository(database: database, plugin: derivedSmall);
+    final nativeLargeRepository = _sessionRepository(database: database, plugin: nativeLarge, gitCliApi: gitCliApi);
+    final nativeSmallRepository = _sessionRepository(database: database, plugin: nativeSmall, gitCliApi: gitCliApi);
+    final derivedLargeRepository = _sessionRepository(database: database, plugin: derivedLarge, gitCliApi: gitCliApi);
+    final derivedSmallRepository = _sessionRepository(database: database, plugin: derivedSmall, gitCliApi: gitCliApi);
     final nativeLargeDispatcher = SessionMutationDispatcher(sessionRepository: nativeLargeRepository);
     final nativeSmallDispatcher = SessionMutationDispatcher(sessionRepository: nativeSmallRepository);
     final derivedLargeDispatcher = SessionMutationDispatcher(sessionRepository: derivedLargeRepository);
@@ -310,12 +315,17 @@ class _LiveListBenchmark {
     }
   }
 
-  SessionRepository _sessionRepository({required AppDatabase database, required BridgePluginApi plugin}) {
+  SessionRepository _sessionRepository({
+    required AppDatabase database,
+    required BridgePluginApi plugin,
+    required GitCliApi gitCliApi,
+  }) {
     return SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
+      gitCliApi: gitCliApi,
       unseenCalculator: const SessionUnseenCalculator(),
     );
   }
@@ -573,4 +583,28 @@ class _ExistingFilesystemApi implements FilesystemApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Answers every git invocation the way a non-repository would, without paying
+/// for a process. Keeps the measured cost of a list read to the list read.
+class _AnsweringProcessRunner implements ProcessRunner {
+  @override
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    return ProcessResult(0, 128, "", "not a git repository");
+  }
+
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnsupportedError("the benchmark never starts processes");
+  }
 }

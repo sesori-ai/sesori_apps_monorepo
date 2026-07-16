@@ -18,6 +18,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -59,6 +60,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = CreateSessionHandler(
@@ -421,6 +423,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = CreateSessionHandler(
@@ -894,6 +897,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = CreateSessionHandler(
@@ -1081,6 +1085,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = CreateSessionHandler(

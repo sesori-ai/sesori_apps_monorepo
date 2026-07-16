@@ -1030,6 +1030,10 @@ class FakeSessionRepository implements SessionRepository {
       sessions: sessions,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
+      // No git to consult here, so a session's branch is whatever its row says.
+      branchNamesBySessionId: {
+        for (final session in sessions) session.id: dbSessions[session.id]?.branchName,
+      },
       unseenCalculator: const SessionUnseenCalculator(),
       adoptStoredProjectId: false,
     );

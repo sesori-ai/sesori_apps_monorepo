@@ -92,6 +92,30 @@ class GitCliApi {
     return "main";
   }
 
+  /// The branch [projectPath] currently has checked out. Null when the
+  /// directory has no branch to report: it is missing (git cannot even start
+  /// there — e.g. a stored project folder that was moved or deleted), is not a
+  /// git repository, or its HEAD is detached.
+  Future<String?> getCurrentBranch({required String projectPath}) async {
+    try {
+      final result = await runGit(projectPath: projectPath, arguments: const ["rev-parse", "--abbrev-ref", "HEAD"]);
+      if (result.exitCode != 0) {
+        return null;
+      }
+      final branch = result.stdout.toString().trim();
+      // A detached HEAD succeeds and answers with the literal "HEAD" rather
+      // than failing, and a repository without commits yet has no branch to
+      // name. Neither is a branch the caller can show.
+      if (branch.isEmpty || branch == "HEAD") {
+        return null;
+      }
+      return branch;
+    } on Object catch (e) {
+      Log.w("[GitCli] failed to read current branch: $e");
+      return null;
+    }
+  }
+
   /// URL of the repository's remote in [projectPath], preferring `origin` and
   /// falling back to the first listed remote. Null when the directory is
   /// missing (git cannot even start there — e.g. a stored project folder that

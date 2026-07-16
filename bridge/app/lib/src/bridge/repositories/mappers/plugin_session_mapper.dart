@@ -39,14 +39,21 @@ extension PluginSessionsMapper on Iterable<PluginSession> {
   }
 }
 
+/// [branchName] is the branch the session sits on, decided by the caller —
+/// a worktree session's is recorded on its row, while a plain checkout's is
+/// only knowable by asking git (see `SessionRepository`).
 Session enrichSharedSession({
   required Session session,
   required SessionDto? storedSession,
   required PullRequestInfo? pullRequest,
+  required String? branchName,
   required SessionUnseenCalculator unseenCalculator,
   required bool adoptStoredProjectId,
 }) {
-  var result = session;
+  // The plugin never reports a branch of its own. Applied outside the block
+  // below so a session the catalog has no row for yet still names the branch
+  // its directory is on.
+  var result = session.copyWith(branchName: branchName);
 
   if (storedSession != null) {
     final currentTime = session.time;
@@ -69,7 +76,6 @@ Session enrichSharedSession({
       projectID: adoptStoredProjectId ? storedSession.projectId : session.projectID,
       title: storedSession.title ?? session.title ?? storedSession.catalogTitle,
       time: mergedTime,
-      branchName: storedSession.branchName,
       hasWorktree: storedSession.worktreePath != null,
       promptDefaults: _promptDefaultsFromStoredSession(storedSession),
       unseen: unseenCalculator.isUnseen(
@@ -102,6 +108,7 @@ List<Session> enrichSharedSessions({
   required List<Session> sessions,
   required Map<String, SessionDto> storedSessionsById,
   required Map<String, PullRequestInfo> pullRequestsBySessionId,
+  required Map<String, String?> branchNamesBySessionId,
   required SessionUnseenCalculator unseenCalculator,
   required bool adoptStoredProjectId,
 }) {
@@ -111,6 +118,7 @@ List<Session> enrichSharedSessions({
           session: session,
           storedSession: storedSessionsById[session.id],
           pullRequest: pullRequestsBySessionId[session.id],
+          branchName: branchNamesBySessionId[session.id],
           unseenCalculator: unseenCalculator,
           adoptStoredProjectId: adoptStoredProjectId,
         ),

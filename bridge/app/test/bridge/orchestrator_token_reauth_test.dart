@@ -340,6 +340,7 @@ class _ReauthHarness {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
+      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final sessionViewTracker = SessionViewTracker();

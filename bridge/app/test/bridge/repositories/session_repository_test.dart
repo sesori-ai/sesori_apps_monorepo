@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -11,6 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -29,6 +31,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["proj-tomb"]);
@@ -78,6 +81,7 @@ void main() {
         sessionDao: sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -102,6 +106,7 @@ void main() {
         sessionDao: sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -119,6 +124,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -225,6 +231,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -273,6 +280,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -360,6 +368,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -405,6 +414,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -460,6 +470,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -510,6 +521,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -566,6 +578,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -615,6 +628,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -677,6 +691,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -712,6 +727,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -731,6 +747,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -759,6 +776,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -785,6 +803,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final sessionJson = const Session(
@@ -839,6 +858,7 @@ void main() {
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
           pullRequestDao: db.pullRequestDao,
+          gitCliApi: FakeGitCliApi(),
           unseenCalculator: const SessionUnseenCalculator(),
         );
         await repository.insertStoredSession(
@@ -886,6 +906,7 @@ void main() {
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
           pullRequestDao: db.pullRequestDao,
+          gitCliApi: FakeGitCliApi(),
           unseenCalculator: const SessionUnseenCalculator(),
         );
 
@@ -912,6 +933,7 @@ void main() {
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
           pullRequestDao: db.pullRequestDao,
+          gitCliApi: FakeGitCliApi(),
           unseenCalculator: const SessionUnseenCalculator(),
         );
 
@@ -930,6 +952,7 @@ void main() {
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
           pullRequestDao: db.pullRequestDao,
+          gitCliApi: FakeGitCliApi(),
           unseenCalculator: const SessionUnseenCalculator(),
         );
 
@@ -949,6 +972,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await repository.insertStoredSession(
@@ -1000,6 +1024,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1048,6 +1073,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await repository.insertStoredSession(
@@ -1118,6 +1144,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1139,6 +1166,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1208,6 +1236,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
@@ -1248,6 +1277,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "a1");
 
@@ -1270,6 +1300,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1291,6 +1322,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       // One dedicated-worktree session and one plain in-project session.
@@ -1351,6 +1383,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
@@ -1423,6 +1456,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
@@ -1459,6 +1493,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
@@ -1501,6 +1536,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
@@ -1561,6 +1597,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
@@ -1587,6 +1624,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1607,6 +1645,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await repository.insertStoredSession(
@@ -1648,6 +1687,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
@@ -1672,6 +1712,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final native = SessionRepository(
@@ -1679,6 +1720,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1704,6 +1746,7 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
+        gitCliApi: FakeGitCliApi(),
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
 
@@ -1713,6 +1756,276 @@ void main() {
       );
     });
   });
+
+  group("the branch a session's workspace is on", () {
+    late _FakeBridgePlugin plugin;
+
+    setUp(() {
+      plugin = _FakeBridgePlugin();
+    });
+
+    /// A project whose sessions the plugin reports from [directory].
+    Future<SessionRepository> repositoryListing({
+      required AppDatabase db,
+      required GitCliApi gitCliApi,
+      required String directory,
+      required List<String> sessionIds,
+    }) async {
+      await db.projectsDao.recordOpenedProject(
+        projectId: directory,
+        path: directory,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      plugin.sessionsByWorktree = {
+        directory: [
+          for (final id in sessionIds)
+            PluginSession(
+              id: id,
+              projectID: directory,
+              directory: directory,
+              parentID: null,
+              title: "Session $id",
+              time: null,
+            ),
+        ],
+      };
+      return SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        gitCliApi: gitCliApi,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+    }
+
+    test("reads a plain checkout's branch from git, which stores none of its own", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final gitCliApi = _StubGitCliApi(branches: {"/repo": "ui/session-list-item"});
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: gitCliApi,
+        directory: "/repo",
+        sessionIds: ["s1"],
+      );
+
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      expect(sessions.single.branchName, equals("ui/session-list-item"));
+    });
+
+    test("keeps the branch a worktree session was cut on over the one git reports now", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final gitCliApi = _StubGitCliApi(branches: {"/repo": "some/other-branch"});
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: gitCliApi,
+        directory: "/repo",
+        sessionIds: ["s1"],
+      );
+      await repository.insertStoredSession(
+        sessionId: "s1",
+        backendSessionId: "s1",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/repo/.worktrees/s1",
+        branchName: "sesori/s1",
+        baseBranch: "main",
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      expect(sessions.single.branchName, equals("sesori/s1"));
+      expect(gitCliApi.asked, isEmpty, reason: "the bridge cut the branch, so git can only echo it back");
+    });
+
+    test("asks git once for sessions that share a directory", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final gitCliApi = _StubGitCliApi(branches: {"/repo": "main"});
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: gitCliApi,
+        directory: "/repo",
+        sessionIds: ["s1", "s2", "s3"],
+      );
+
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      expect(sessions.map((session) => session.branchName), everyElement(equals("main")));
+      expect(gitCliApi.asked, equals(["/repo"]));
+    });
+
+    test("leaves the branch unknown when git names none for the directory", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: _StubGitCliApi(branches: const {}),
+        directory: "/not-a-repo",
+        sessionIds: ["s1"],
+      );
+
+      final sessions = await repository.getSessionsForProject(
+        projectId: "/not-a-repo",
+        start: null,
+        limit: null,
+      );
+
+      expect(sessions.single.branchName, isNull);
+    });
+
+    test("names the branch for a live session event, which carries none of its own", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final gitCliApi = _StubGitCliApi(branches: {"/repo": "main"});
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: gitCliApi,
+        directory: "/repo",
+        sessionIds: const [],
+      );
+
+      final enriched = await repository.enrichPluginEventSessionJson(
+        sessionJson: const Session(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Live",
+          time: null,
+          pullRequest: null,
+          promptDefaults: null,
+          branchName: null,
+        ).toJson(),
+      );
+
+      expect(enriched.branchName, equals("main"));
+    });
+
+    test("stores a plain checkout's resolved branch, which is how a PR reaches it", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: _StubGitCliApi(branches: {"/repo": "ui/session-list-item"}),
+        directory: "/repo",
+        sessionIds: ["s1"],
+      );
+
+      await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      final stored = await db.sessionDao.getSession(sessionId: "s1");
+      expect(stored?.branchName, equals("ui/session-list-item"));
+    });
+
+    test("re-reads the branch on every listing, so switching branches lands", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final gitCliApi = _StubGitCliApi(branches: {"/repo": "main"});
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: gitCliApi,
+        directory: "/repo",
+        sessionIds: ["s1"],
+      );
+      await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      gitCliApi.branches["/repo"] = "ui/session-list-item";
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      expect(sessions.single.branchName, equals("ui/session-list-item"));
+      final stored = await db.sessionDao.getSession(sessionId: "s1");
+      expect(
+        stored?.branchName,
+        equals("ui/session-list-item"),
+        reason: "the stored branch is a cache of what git said, not a record of what it once said",
+      );
+    });
+
+    test("keeps the last branch git named once it can name none, rather than dropping it", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final gitCliApi = _StubGitCliApi(branches: {"/repo": "main"});
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: gitCliApi,
+        directory: "/repo",
+        sessionIds: ["s1"],
+      );
+      await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      // A moved project folder and a detached HEAD are indistinguishable from
+      // here, and the first must not erase a branch the checkout is still on.
+      gitCliApi.branches.remove("/repo");
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      expect(sessions.single.branchName, equals("main"));
+      final stored = await db.sessionDao.getSession(sessionId: "s1");
+      expect(stored?.branchName, equals("main"));
+    });
+
+    test("shows every session sharing a checkout the PR open on its branch", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: _StubGitCliApi(branches: {"/repo": "ui/session-list-item"}),
+        directory: "/repo",
+        sessionIds: ["s1", "s2"],
+      );
+      // The branch has to be stored before the PR can be joined to a session,
+      // so this is the listing that puts it there.
+      await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "ui/session-list-item",
+          prNumber: 482,
+          url: "https://github.com/org/repo/pull/482",
+          title: "Redesign the session list item",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      expect(sessions, hasLength(2));
+      expect(
+        sessions.map((session) => session.pullRequest?.number),
+        everyElement(equals(482)),
+        reason: "sessions in one checkout are on one branch, so they share its PR",
+      );
+    });
+  });
+}
+
+/// Reports a fixed branch per directory and records what it was asked, for
+/// tests about which directories the repository resolves and how often.
+class _StubGitCliApi extends FakeGitCliApi {
+  _StubGitCliApi({required this.branches});
+
+  final Map<String, String> branches;
+  final List<String> asked = <String>[];
+
+  @override
+  Future<String?> getCurrentBranch({required String projectPath}) async {
+    asked.add(projectPath);
+    return branches[projectPath];
+  }
 }
 
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
