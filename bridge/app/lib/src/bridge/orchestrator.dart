@@ -70,6 +70,7 @@ import "routing/restart_bridge_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
+import "services/permission_auto_approval_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
@@ -235,6 +236,10 @@ class Orchestrator {
     final sessionEventDispatcher = SessionEventDispatcher(
       sessionEventService: sessionEventService,
     );
+    final permissionAutoApprovalService = PermissionAutoApprovalService(
+      sessionRepository: _sessionRepository,
+      permissionRepository: _permissionRepository,
+    );
     final pluginEventListener = PluginEventListener(
       pluginId: _pluginId,
       source: _plugin.events,
@@ -339,7 +344,7 @@ class Orchestrator {
       sessionUnseenService: _sessionUnseenService,
       sessionViewTracker: _sessionViewTracker,
       projectActivityService: _projectActivityService,
-      permissionRepository: _permissionRepository,
+      permissionAutoApprovalService: permissionAutoApprovalService,
       sessionAbortService: sessionAbortService,
       sessionMutationDispatcher: _sessionMutationDispatcher,
       restartService: _restartService,
@@ -384,7 +389,7 @@ class OrchestratorSession {
   final SessionUnseenService _sessionUnseenService;
   final SessionViewTracker _sessionViewTracker;
   final SessionRepository _sessionRepository;
-  final PermissionRepository _permissionRepository;
+  final PermissionAutoApprovalService _permissionAutoApprovalService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionAbortService _sessionAbortService;
   final SessionPromptService _sessionPromptService;
@@ -393,7 +398,6 @@ class OrchestratorSession {
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
   final CompositeSubscription _subscriptions = CompositeSubscription();
-  final Set<({String requestId, String sessionId})> _autoApprovedPermissions = {};
   final Random _backoffJitter = Random();
 
   bool _cancelled = false;
@@ -444,7 +448,7 @@ class OrchestratorSession {
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
     required ProjectActivityService projectActivityService,
-    required PermissionRepository permissionRepository,
+    required PermissionAutoApprovalService permissionAutoApprovalService,
     required SessionAbortService sessionAbortService,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
@@ -474,7 +478,7 @@ class OrchestratorSession {
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
        _sessionRepository = sessionRepository,
-       _permissionRepository = permissionRepository,
+       _permissionAutoApprovalService = permissionAutoApprovalService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
@@ -526,7 +530,7 @@ class OrchestratorSession {
       await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
         Log.w("ProjectActivityService: startup reconciliation failed", e, st);
       });
-      await _autoApprovePendingPermissions();
+      if (config.yolo) await _permissionAutoApprovalService.approvePending();
       final startupSummary = await _buildProjectsSummary();
       if (startupSummary != null) {
         _completionListener.handleSseEvent(startupSummary);
@@ -694,6 +698,7 @@ class OrchestratorSession {
       await _sessionBindingCommitListener.dispose();
       await _sessionDeletionListener.dispose();
       await _sessionEventDispatcher.dispose();
+      _permissionAutoApprovalService.dispose();
       await _sessionMutationDispatcher.dispose();
       await _projectActivityService.dispose();
       Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
@@ -736,6 +741,7 @@ class OrchestratorSession {
       Log.v("[shutdown] cancel() again (already shutting down)");
     }
     _cancelled = true;
+    _permissionAutoApprovalService.dispose();
     if (!_shutdownCompleter.isCompleted) {
       _shutdownCompleter.complete();
     }
@@ -802,15 +808,16 @@ class OrchestratorSession {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
 
       if (event is BridgeSsePermissionReplied) {
-        final wasAutoApproved = _autoApprovedPermissions.remove(
-          (requestId: event.requestID, sessionId: event.sessionID),
+        final wasAutoApproved = _permissionAutoApprovalService.consumeReply(
+          requestId: event.requestID,
+          sessionId: event.sessionID,
         );
         if (wasAutoApproved) return;
       }
 
       if (config.yolo && event is BridgeSsePermissionAsked) {
         if (_cancelled) return;
-        await _autoApprovePermission(
+        await _permissionAutoApprovalService.approve(
           requestId: event.requestID,
           sessionId: event.sessionID,
         );
@@ -824,11 +831,11 @@ class OrchestratorSession {
         await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
           Log.w("ProjectActivityService: server-connected reconciliation failed", e, st);
         });
-        await _autoApprovePendingPermissions();
+        if (config.yolo) await _permissionAutoApprovalService.approvePending();
       }
 
       if (config.yolo && event is BridgeSseProjectUpdated) {
-        await _autoApprovePendingPermissions();
+        await _permissionAutoApprovalService.approvePending();
       }
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
@@ -887,73 +894,6 @@ class OrchestratorSession {
       await _projectActivityService.handleEvent(event);
     } catch (e, st) {
       Log.w("failed to route project activity for ${event.runtimeType}", e, st);
-    }
-  }
-
-  Future<void> _autoApprovePendingPermissions() async {
-    if (!config.yolo || _cancelled) return;
-
-    List<ProjectActivitySummary> summaries;
-    try {
-      summaries = await _sessionRepository.getProjectActivitySummaries();
-    } on Object catch (error, stackTrace) {
-      Log.w("[permissions] failed to discover pending permissions for auto-approval", error, stackTrace);
-      return;
-    }
-
-    final rootSessionIds = {
-      for (final summary in summaries)
-        for (final session in summary.activeSessions)
-          if (session.awaitingInput) session.id,
-    };
-    for (final rootSessionId in rootSessionIds) {
-      if (_cancelled) return;
-
-      List<PendingPermission> permissions;
-      try {
-        permissions = await _permissionRepository.getPendingPermissions(sessionId: rootSessionId);
-      } on Object catch (error, stackTrace) {
-        Log.w(
-          "[permissions] failed to list pending permissions for session $rootSessionId",
-          error,
-          stackTrace,
-        );
-        continue;
-      }
-
-      for (final permission in permissions) {
-        if (_cancelled) return;
-
-        try {
-          await _autoApprovePermission(
-            requestId: permission.id,
-            sessionId: permission.sessionID,
-          );
-        } on Object catch (error, stackTrace) {
-          Log.w(
-            "[permissions] failed to auto-approve pending request ${permission.id}",
-            error,
-            stackTrace,
-          );
-        }
-      }
-    }
-  }
-
-  Future<void> _autoApprovePermission({required String requestId, required String sessionId}) async {
-    final key = (requestId: requestId, sessionId: sessionId);
-    if (!_autoApprovedPermissions.add(key)) return;
-
-    Log.i("[permissions] auto-approving request $requestId");
-    try {
-      await _permissionRepository.replyToPermission(
-        requestId: requestId,
-        sessionId: sessionId,
-        reply: PermissionReply.once,
-      );
-    } on Object {
-      _autoApprovedPermissions.remove(key);
-      rethrow;
     }
   }
 

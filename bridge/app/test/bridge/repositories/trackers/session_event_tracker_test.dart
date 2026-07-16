@@ -44,7 +44,7 @@ void main() {
         ),
       );
 
-      expect(evicted?.session.id, "root");
+      expect(evicted?.backendSessionId, "root");
       expect(tracker.length, SessionEventTracker.defaultMaxPendingEntries);
       expect(tracker.takeRoot(pluginId: "plugin-a", backendSessionId: "root"), isNull);
     });
@@ -87,6 +87,45 @@ void main() {
       expect(tracker.takeRoot(pluginId: "b", backendSessionId: "root")?.pluginId, "b");
       expect(tracker.length, 0);
     });
+
+    test("drains child projections and following input in source order", () {
+      final tracker = SessionEventTracker(maxPendingEntries: 4);
+      tracker.addRoot(
+        event: _pending(pluginId: "a", sessionId: "root", parentId: null),
+      );
+      tracker.addChild(
+        event: _pending(pluginId: "a", sessionId: "child", parentId: "root"),
+      );
+      tracker.addTranslation(
+        event: _pendingTranslation(
+          pluginId: "a",
+          backendSessionId: "child",
+        ),
+      );
+
+      expect(tracker.isBindingPending(pluginId: "a", backendSessionId: "child"), isTrue);
+      tracker.takeRoot(pluginId: "a", backendSessionId: "root");
+      final rootReady = tracker.takeReady(pluginId: "a", backendSessionId: "root");
+      expect(rootReady, [isA<PendingSessionEvent>()]);
+
+      final childReady = tracker.takeReady(pluginId: "a", backendSessionId: "child");
+      expect(childReady, [isA<PendingTranslationEvent>()]);
+      expect(tracker.length, 0);
+    });
+
+    test("rejects translation retention without a pending binding", () {
+      final tracker = SessionEventTracker(maxPendingEntries: 1);
+
+      expect(
+        () => tracker.addTranslation(
+          event: _pendingTranslation(
+            pluginId: "a",
+            backendSessionId: "unknown",
+          ),
+        ),
+        throwsArgumentError,
+      );
+    });
   });
 }
 
@@ -111,5 +150,23 @@ PendingSessionEvent _pending({
     event: BridgeSseSessionCreated(info: session.toJson()),
     session: session,
     projectionUpdatedAt: 1,
+  );
+}
+
+PendingTranslationEvent _pendingTranslation({
+  required String pluginId,
+  required String backendSessionId,
+}) {
+  return PendingTranslationEvent(
+    pluginId: pluginId,
+    event: BridgeSsePermissionAsked(
+      requestID: "permission-$backendSessionId",
+      sessionID: backendSessionId,
+      displaySessionId: "root",
+      tool: "bash",
+      description: "continue",
+    ),
+    backendSessionId: backendSessionId,
+    projectionUpdatedAt: 2,
   );
 }

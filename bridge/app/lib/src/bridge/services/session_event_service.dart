@@ -40,8 +40,15 @@ class SessionEventService {
   }
 
   Future<List<BridgeSseEvent>> normalize({required SourcedBridgeEvent source}) async {
+    return _normalizeGuarded(source: source, drainPending: true);
+  }
+
+  Future<List<BridgeSseEvent>> _normalizeGuarded({
+    required SourcedBridgeEvent source,
+    required bool drainPending,
+  }) async {
     try {
-      return await _normalize(source: source);
+      return await _normalize(source: source, drainPending: drainPending);
     } on Object catch (error, stackTrace) {
       Log.w("[sse] failed to normalize ${source.event.runtimeType}", error, stackTrace);
       try {
@@ -60,7 +67,10 @@ class SessionEventService {
     }
   }
 
-  Future<List<BridgeSseEvent>> _normalize({required SourcedBridgeEvent source}) async {
+  Future<List<BridgeSseEvent>> _normalize({
+    required SourcedBridgeEvent source,
+    required bool drainPending,
+  }) async {
     if (source.event is BridgeSseSessionDeleted) return const [];
 
     final observed = _eventMapper.sessionInfo(event: source.event);
@@ -78,7 +88,14 @@ class SessionEventService {
         ?await _createdEvent(sessionId: projection.binding.id),
       ?normalized,
     ];
-    output.addAll(await _drainChildren(pluginId: source.pluginId, backendParentId: observed.id));
+    if (drainPending) {
+      output.addAll(
+        await _drainPendingForBinding(
+          pluginId: source.pluginId,
+          backendSessionId: observed.id,
+        ),
+      );
+    }
     return output;
   }
 
@@ -98,9 +115,9 @@ class SessionEventService {
         if (catalog != null) output.add(BridgeSseSessionCreated(info: catalog.toJson()));
       }
       output.addAll(
-        await _drainChildren(
+        await _drainPendingForBinding(
           pluginId: commit.pluginId,
-          backendParentId: backendSessionId,
+          backendSessionId: backendSessionId,
         ),
       );
     }
@@ -185,33 +202,47 @@ class SessionEventService {
     return binding == null ? null : (binding: binding, inserted: true);
   }
 
-  Future<List<BridgeSseEvent>> _drainChildren({
+  Future<List<BridgeSseEvent>> _drainPendingForBinding({
     required String pluginId,
-    required String backendParentId,
+    required String backendSessionId,
   }) async {
     final output = <BridgeSseEvent>[];
-    final pendingChildren = _eventTracker.takeChildren(
-      pluginId: pluginId,
-      backendParentId: backendParentId,
-    );
-    for (final pending in pendingChildren) {
+    final readyBindings = {
+      (pluginId: pluginId, backendSessionId: backendSessionId),
+    };
+    while (true) {
+      final pending = _eventTracker.takeNextReady(readyBindings: readyBindings);
+      if (pending == null) break;
       output.addAll(
-        await normalize(
+        await _normalizeGuarded(
           source: (
             pluginId: pending.pluginId,
             projectionUpdatedAt: pending.projectionUpdatedAt,
             event: pending.event,
           ),
+          drainPending: false,
         ),
       );
+      if (pending is PendingSessionEvent) {
+        final binding = await _sessionRepository.getStoredSessionByBackendId(
+          pluginId: pending.pluginId,
+          backendSessionId: pending.session.id,
+        );
+        if (binding != null) {
+          readyBindings.add((
+            pluginId: pending.pluginId,
+            backendSessionId: pending.session.id,
+          ));
+        }
+      }
     }
     return output;
   }
 
-  void _warnIfEvicted({required PendingSessionEvent? evicted}) {
+  void _warnIfEvicted({required PendingTrackedEvent? evicted}) {
     if (evicted == null) return;
     Log.w(
-      "Dropping pending session event ${evicted.pluginId}/${evicted.session.id}: "
+      "Dropping pending session event ${evicted.pluginId}/${evicted.backendSessionId}: "
       "the ${_eventTracker.maxPendingEntries}-event ancestry buffer is full",
     );
   }
@@ -222,7 +253,28 @@ class SessionEventService {
       pluginId: source.pluginId,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
-    if (bindings.length != backendSessionIds.length) return null;
+    if (bindings.length != backendSessionIds.length) {
+      final missingBackendSessionIds = backendSessionIds.where((id) => !bindings.containsKey(id)).toList();
+      if (missingBackendSessionIds.isNotEmpty &&
+          missingBackendSessionIds.every(
+            (id) => _eventTracker.isBindingPending(
+              pluginId: source.pluginId,
+              backendSessionId: id,
+            ),
+          )) {
+        _warnIfEvicted(
+          evicted: _eventTracker.addTranslation(
+            event: PendingTranslationEvent(
+              pluginId: source.pluginId,
+              event: source.event,
+              backendSessionId: missingBackendSessionIds.first,
+              projectionUpdatedAt: source.projectionUpdatedAt,
+            ),
+          ),
+        );
+      }
+      return null;
+    }
     final translated = _eventMapper.map(
       event: source.event,
       sessionIdsByBackendId: {

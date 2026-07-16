@@ -363,7 +363,9 @@ Rules:
 - An unknown root event does not discover a project. An unknown
   `session.created` is retained only in the bounded in-memory tracker until an
   exact same-plugin create/list binding commit arrives; all other unknown-root
-  events are dropped.
+  events are dropped. A later session-bearing event may share that bound only
+  when every missing reference belongs to a same-plugin root/child binding
+  already pending in the tracker; it retries after the awaited binding commits.
 - A child is inserted only when its direct parent binding belongs to the same
   plugin. It inherits project/plugin attribution and stores its own reported
   directory.
@@ -399,10 +401,11 @@ backend-to-Sesori id map. The mapper owns only the exhaustive event-shape
 rewrite and performs no I/O.
 
 `SessionEventTracker` is constructed with only its maximum pending-entry count.
-It owns the in-memory pending root/child maps, shared insertion order, eviction
-invariant, and recursive drain bookkeeping. It has no service, repository, DAO,
-or plugin dependency and returns typed entries for `SessionEventService` to
-persist or release after a matching binding commit.
+It owns typed pending projection and translation entries, the in-memory
+root/child maps, same-plugin pending-binding index, shared insertion order,
+eviction invariant, and recursive drain bookkeeping. It has no service,
+repository, DAO, or plugin dependency and returns typed entries for
+`SessionEventService` to persist or retry after a matching binding commit.
 
 Each `PluginEventListener` is constructed with one already-selected raw
 `Stream<BridgeSseEvent>`, its explicit descriptor-selected plugin id, and the
@@ -787,6 +790,14 @@ until Stage 4.
   publishing the summary, using the native project API to resolve stable
   identity and live path. Continue omitting unknown derived-project activity,
   whose parent-project attribution cannot be inferred safely.
+- Retain permission, question, and other session-bearing follow-up events only
+  while all missing references have same-plugin bindings already pending in
+  `SessionEventTracker`; drain them in source order after root/child commit.
+- Move YOLO approval sequencing into session-scoped
+  `PermissionAutoApprovalService`. It owns deduplication, pending-root
+  discovery, best-effort legacy-child hydration, translated permission lookup,
+  approval, and cancellation; `OrchestratorSession` owns only trigger gating
+  and delegation.
 - Translate every session-bearing event field from backend to Sesori identity.
 - Normalize the selected plugin stream before delivery and remove backend-
   global lifecycle events from bridge-global semantics. Multi-plugin listener
@@ -818,9 +829,12 @@ PR-level implementation plan:
    commits, asks
    the repository for one batched binding map, delegates the pure rewrite to
    `SessionEventMapper`, and captures title-changing events through the existing
-   `SessionMutationDispatcher`. Unknown non-created roots, untranslatable
-   payloads, and backend deletion events produce no plugin-derived client event;
-   failures are reported and isolated per input event.
+   `SessionMutationDispatcher`. Unknown non-created roots and unrelated
+   untranslatable payloads produce no plugin-derived client event; follow-up
+   payloads wait only when every missing reference has a same-plugin binding
+   already pending in the shared bound. Backend deletion events produce no
+   plugin-derived client event; failures are reported and isolated per input
+   event.
 3. Add one Layer-4 listener per trigger: selected raw plugin events, committed
    root bindings, and committed bridge-owned deletions. Each owns one
    subscription and submits typed input to one Layer-3 `SessionEventDispatcher`,
@@ -853,14 +867,20 @@ PR-level implementation plan:
    rejections to translate request and response session references in batches,
    dropping plugin results whose required references are unknown instead of
    exposing backend handles.
-7. Add focused DAO/repository/service/listener/mapper tests for stable existing
+7. Add a session-scoped Layer-3 `PermissionAutoApprovalService` constructed by
+   `Orchestrator.create`. Move direct and discovered YOLO approval,
+   deduplication, legacy-child hydration, translated permission lookup, and
+   cancellation into it; leave only trigger gating and delegation in
+   `OrchestratorSession`.
+8. Add focused DAO/repository/service/listener/mapper tests for stable existing
    ids, random new ids, create/list/event races, exhaustive event variants,
    known and unknown roots, same-plugin ancestry, out-of-order grandchildren,
-   1,024-entry retention plus overflow eviction, backend deletion history,
-   catalog-backed additive child reads, question/permission translation, lifecycle
-   suppression, and selected-stream ordering. Add the deferred file-backed
-   AOT `event_projection_benchmark` with warmup, percentile, RSS, database-size,
-   and fixture metadata matching the Stage 1A report shape.
+   input following pending bindings, 1,024-entry retention plus overflow
+   eviction, backend deletion history, catalog-backed additive child reads,
+   legacy-child YOLO approval, question/permission translation, lifecycle
+   suppression, and selected-stream ordering. Add the deferred file-backed AOT
+   `event_projection_benchmark` with warmup, percentile, RSS, database-size, and
+   fixture metadata matching the Stage 1A report shape.
 
 ### Stage 5 - Explicit Import and Automatic Hydration
 

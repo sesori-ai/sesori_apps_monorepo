@@ -78,6 +78,16 @@ void main() {
           description: "resume a command",
         ),
       ],
+      childSessions: const [
+        PluginSession(
+          id: "pending-child-session",
+          projectID: "pending-project",
+          directory: "/tmp/pending-project/child",
+          parentID: "pending-root-session",
+          title: "Pending child",
+          time: PluginSessionTime(created: 1, updated: 1, archived: null),
+        ),
+      ],
     );
     final pushSubsystem = _createPushSubsystem();
     final fakePrSyncService = _FakePrSyncService();
@@ -149,13 +159,6 @@ void main() {
       pluginId: plugin.id,
       sessionId: "pending-root",
       backendSessionId: "pending-root-session",
-    );
-    await _insertChildSessionBinding(
-      database: database,
-      pluginId: plugin.id,
-      sessionId: "pending-child",
-      backendSessionId: "pending-child-session",
-      parentSessionId: "pending-root",
     );
     await _insertRootSessionBinding(
       database: database,
@@ -870,7 +873,7 @@ void main() {
   test("session SSE events stay ordered while async enrichment completes", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
-    final plugin = _EventPlugin(pendingPermissions: const []);
+    final plugin = _EventPlugin(pendingPermissions: const [], childSessions: const []);
     final pushDispatcher = _CapturingPushDispatcher();
     final pushListeners = _createPushListeners(
       tracker: pushDispatcher.tracker,
@@ -1965,7 +1968,7 @@ class _AbortEventPlugin extends _EventPlugin {
   Completer<void>? abortStartedCompleter;
   Object? abortError;
 
-  _AbortEventPlugin() : super(pendingPermissions: const []);
+  _AbortEventPlugin() : super(pendingPermissions: const [], childSessions: const []);
 
   @override
   Future<void> abortSession({required String sessionId}) async {
@@ -2326,9 +2329,12 @@ class _EventPlugin extends _NoopPlugin {
   final List<String> deletedSessionIds = <String>[];
   final List<({String requestId, String sessionId, PluginPermissionReply reply})> permissionReplies = [];
   final List<PluginPendingPermission> pendingPermissions;
+  final List<PluginSession> childSessions;
 
-  _EventPlugin({required List<PluginPendingPermission> pendingPermissions})
-    : pendingPermissions = List<PluginPendingPermission>.of(pendingPermissions);
+  _EventPlugin({
+    required List<PluginPendingPermission> pendingPermissions,
+    required this.childSessions,
+  }) : pendingPermissions = List<PluginPendingPermission>.of(pendingPermissions);
 
   @override
   Stream<BridgeSseEvent> get events {
@@ -2350,6 +2356,11 @@ class _EventPlugin extends _NoopPlugin {
   @override
   Future<void> deleteSession(String sessionId) async {
     deletedSessionIds.add(sessionId);
+  }
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async {
+    return childSessions.where((session) => session.parentID == sessionId).toList(growable: false);
   }
 
   @override

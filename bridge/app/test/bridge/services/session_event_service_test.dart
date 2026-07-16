@@ -339,6 +339,89 @@ void main() {
       expect(eventTracker.length, 0);
     });
 
+    test("replays child input after its pending ancestry commits", () async {
+      final rootEvent = BridgeSseSessionCreated(
+        info: _sessionInfo(
+          sessionId: "backend-root",
+          parentId: null,
+          projectId: "backend-project",
+          directory: "/repo",
+        ),
+      );
+      final childEvent = BridgeSseSessionCreated(
+        info: _sessionInfo(
+          sessionId: "backend-child",
+          parentId: "backend-root",
+          projectId: "backend-project",
+          directory: "/repo/child",
+        ),
+      );
+      const rootPermissionEvent = BridgeSsePermissionAsked(
+        requestID: "root-permission",
+        sessionID: "backend-root",
+        displaySessionId: "backend-root",
+        tool: "bash",
+        description: "continue root",
+      );
+      const childPermissionEvent = BridgeSsePermissionAsked(
+        requestID: "child-permission",
+        sessionID: "backend-child",
+        displaySessionId: "backend-root",
+        tool: "bash",
+        description: "continue child",
+      );
+
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, projectionUpdatedAt: 20, event: rootEvent),
+        ),
+        isEmpty,
+      );
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, projectionUpdatedAt: 21, event: childEvent),
+        ),
+        isEmpty,
+      );
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, projectionUpdatedAt: 22, event: rootPermissionEvent),
+        ),
+        isEmpty,
+      );
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, projectionUpdatedAt: 23, event: childPermissionEvent),
+        ),
+        isEmpty,
+      );
+      expect(eventTracker.length, 4);
+
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final output = await service.handleBindingsCommitted(
+        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+      );
+
+      expect(output, hasLength(4));
+      final root = Session.fromJson((output[0] as BridgeSseSessionCreated).info);
+      final child = Session.fromJson((output[1] as BridgeSseSessionCreated).info);
+      final rootPermission = output[2] as BridgeSsePermissionAsked;
+      final childPermission = output[3] as BridgeSsePermissionAsked;
+      expect(root.id, "stable-root");
+      expect(child.parentID, root.id);
+      expect(rootPermission.requestID, "root-permission");
+      expect(rootPermission.sessionID, root.id);
+      expect(childPermission.requestID, "child-permission");
+      expect(childPermission.sessionID, child.id);
+      expect(childPermission.displaySessionId, root.id);
+      expect(eventTracker.length, 0);
+    });
+
     test("rejects a queued event older than the current catalog projection", () async {
       await _insertRoot(
         database: database,
