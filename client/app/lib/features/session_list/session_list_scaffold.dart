@@ -46,8 +46,6 @@ class SessionListScaffold extends StatelessWidget {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
     final showArchived = state is SessionListLoaded && state.showArchived;
-    final repoSlug = state is SessionListLoaded ? state.repoSlug : null;
-    final repoProvider = state is SessionListLoaded ? state.repoProvider : RepoProvider.other;
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
     // Green only while the relay↔bridge chain is fully connected (no overlay
     // condition pending); bridge-offline, connection-lost and reconnecting all
@@ -61,20 +59,24 @@ class SessionListScaffold extends StatelessWidget {
       // root navigator. Render it explicitly from the injected callback.
       onBack: onBack,
       // The bar's back-leading block identifies context: the project name over
-      // the repository slug of its git remote (hidden until known — old
-      // bridges and remote-less projects never deliver one). Tapping the row
-      // pops over the untruncated slug, which the bar ellipsises.
+      // the repository slug of its git remote. The slot shimmers a skeleton
+      // pill (the list body's loading treatment) while the first load is in
+      // flight, then hides if no slug arrives — old bridges and remote-less
+      // projects never deliver one. Tapping the loaded row pops over the
+      // untruncated slug, which the bar ellipsises.
       title: projectName ?? loc.sessionListTitle,
       titleMode: PregoTopNavigationTitleMode.backLeading,
-      subtitle: repoSlug == null
-          ? null
-          : PregoNavSubtitle(
-              text: repoSlug,
-              icon: _providerIcon(repoProvider),
-              online: online,
-              infoMessage: repoSlug,
-              infoSemanticLabel: loc.sessionListRepoInfoSemantics,
-            ),
+      subtitle: switch (state) {
+        SessionListLoading() => const PregoNavSubtitleSkeleton(),
+        SessionListLoaded(repoSlug: final repoSlug?, :final repoProvider) => PregoNavSubtitle(
+          text: repoSlug,
+          icon: _providerIcon(repoProvider),
+          online: online,
+          infoMessage: repoSlug,
+          infoSemanticLabel: loc.sessionListRepoInfoSemantics,
+        ),
+        SessionListLoaded() || SessionListFailed() || SessionListStaleProject() => null,
+      },
       banner: ConnectionBanner.maybeFor(context),
       actions: [
         PregoButtonsIconGlass(

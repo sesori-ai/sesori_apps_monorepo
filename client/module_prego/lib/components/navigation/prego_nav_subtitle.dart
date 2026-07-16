@@ -106,3 +106,39 @@ class PregoNavSubtitle extends StatelessWidget {
     );
   }
 }
+
+/// The subtitle slot's loading placeholder: a single shimmering skeleton pill
+/// standing in for a [PregoNavSubtitle] whose data is still being fetched
+/// (e.g. the sessions bar before the project's repository identity arrives).
+///
+/// The pill sits in the same `text-xs` line box the real row occupies, so the
+/// title block keeps its height when data replaces the skeleton. It wraps its
+/// own [PregoShimmer] — the bar lives outside the page body, so it cannot
+/// join a body skeleton's sweep region — and inherits the shimmer's anti-flash
+/// appear delay, keeping fast loads from blinking a placeholder. Like all
+/// skeletons it is decorative: [PregoShimmer] excludes it from semantics.
+class PregoNavSubtitleSkeleton extends StatelessWidget {
+  const PregoNavSubtitleSkeleton({super.key});
+
+  /// The real row's height: the `text-xs` line box (12px glyphs, 18px line).
+  static const double _rowHeight = 18;
+
+  /// A 12px pill centred in the line box, wide enough to read as a typical
+  /// `owner/repo` slug.
+  static const double _barHeight = 12;
+  static const double _barWidth = 120;
+
+  @override
+  Widget build(BuildContext context) {
+    return const PregoShimmer(
+      child: SizedBox(
+        width: _barWidth,
+        height: _rowHeight,
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: PregoSkeletonBar(height: _barHeight, width: _barWidth),
+        ),
+      ),
+    );
+  }
+}

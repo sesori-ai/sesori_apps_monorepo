@@ -100,7 +100,21 @@ void main() {
 
     expect(find.text("Sesori_app_monorepo"), findsOneWidget);
     expect(find.byType(PregoNavSubtitle), findsNothing);
+    expect(find.byType(PregoNavSubtitleSkeleton), findsNothing);
     expect(find.byIcon(TablerSolid.brand_github), findsNothing);
+  });
+
+  testWidgets("subtitle slot shimmers a skeleton pill while the list loads", (tester) async {
+    await pumpScaffold(tester, state: const SessionListState.loading());
+    // Past the skeleton's anti-flash appear delay (300ms). No pumpAndSettle:
+    // the shimmer sweep animates indefinitely.
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      find.descendant(of: find.byType(PregoNavLeadingTitle), matching: find.byType(PregoNavSubtitleSkeleton)),
+      findsOneWidget,
+    );
+    expect(find.byType(PregoNavSubtitle), findsNothing);
   });
 
   testWidgets("subtitle icon follows the recognised hosting provider", (tester) async {

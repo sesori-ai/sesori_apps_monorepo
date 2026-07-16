@@ -164,6 +164,38 @@ void main() {
     });
   });
 
+  group("PregoNavSubtitleSkeleton", () {
+    testWidgets("shimmers one slug-width pill inside the subtitle row's line box", (tester) async {
+      await pumpVisible(
+        tester,
+        // Align loosens the harness's tight width.
+        const Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: PregoNavSubtitleSkeleton(),
+        ),
+      );
+
+      // Self-contained sweep region: the bar slot sits outside any page-body
+      // skeleton, so the widget carries its own shimmer.
+      expect(
+        find.descendant(of: find.byType(PregoNavSubtitleSkeleton), matching: find.byType(ShaderMask)),
+        findsOneWidget,
+      );
+      expect(tester.hasRunningAnimations, isTrue);
+
+      // The block spans the real row's 18px text-xs line box (so the title
+      // block keeps its height when data lands), with the 12px pill centred
+      // in it rather than stretched to fill it.
+      expect(tester.getSize(find.byType(PregoNavSubtitleSkeleton)), const Size(120, 18));
+      expect(
+        tester.getSize(
+          find.descendant(of: find.byType(PregoNavSubtitleSkeleton), matching: find.byType(PregoSkeletonBar)),
+        ),
+        const Size(120, 12),
+      );
+    });
+  });
+
   group("PregoSkeletonBar", () {
     testWidgets("paints a fully rounded pill fading from the quaternary foreground", (tester) async {
       await pumpVisible(
