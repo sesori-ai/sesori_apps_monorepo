@@ -99,6 +99,11 @@ const Duration _settleDuration = Duration(milliseconds: 220);
 /// swipe, on either side.
 const double _commitFraction = 0.6;
 
+/// The overdrag past a side's reveal before its commit can arm, when the
+/// reveal itself reaches further than the row-width fraction. Enough for the
+/// stretch cue to be seen before releasing means committing.
+const double _commitClearance = 64;
+
 /// Velocity (logical px/s along the drag axis) treated as a fling: an opening
 /// fling settles the row open from any distance, a closing fling settles it
 /// shut and cancels a pending commit.
@@ -153,8 +158,7 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
   /// The width imposed on a side's primary action while an overdrag stretches
   /// it. Null at rest and through the reveal, which leaves the action its
   /// natural width.
-  double? get _trailingStretchTarget =>
-      _stretchTarget(surplus: _trailingSurplus, natural: _trailingPrimaryWidth);
+  double? get _trailingStretchTarget => _stretchTarget(surplus: _trailingSurplus, natural: _trailingPrimaryWidth);
 
   double? get _leadingStretchTarget => _stretchTarget(surplus: _leadingSurplus, natural: _leadingPrimaryWidth);
 
@@ -308,7 +312,7 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
     _dragging = true;
     _controller.stop();
     _measureRestingWidths();
-    _pastCommit = _extent.abs() >= _commitThreshold;
+    _pastCommit = _extent.abs() >= _commitThreshold(extent: _extent);
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
@@ -317,7 +321,7 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
     final extent = (_extent + _toExtentDelta(details.primaryDelta ?? 0)).clamp(floor, _rowWidth);
     _controller.value = extent / _rowWidth;
 
-    final past = extent.abs() >= _commitThreshold;
+    final past = extent.abs() >= _commitThreshold(extent: extent);
     if (past == _pastCommit) return;
     _pastCommit = past;
     // The threshold is otherwise only visible as the stretch's progression;
@@ -362,7 +366,13 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
     _close();
   }
 
-  double get _commitThreshold => _commitFraction * _rowWidth;
+  /// The extent past which releasing commits, for the side [extent] is open
+  /// toward. A fraction of the row's width — but never inside the side's own
+  /// reveal: a strip that is wide on its row (long labels, large text scales,
+  /// narrow screens) must keep a reachable open state, so its commit only
+  /// arms once the overdrag has stretched visibly past it.
+  double _commitThreshold({required double extent}) =>
+      math.max(_commitFraction * _rowWidth, _revealOf(extent.sign) + _commitClearance);
 
   /// Extent grows positive toward the start edge: a leftward drag in LTR,
   /// rightward in RTL.

@@ -13,7 +13,9 @@ import 'package:theme_prego/module_prego.dart';
 ///
 /// Rows built with a leading action declare a 120px one, so the leading
 /// reveal is 16 (start inset) + 120 + 6 (end gap) = 142, settle-open
-/// threshold 71. The commit threshold is the same 480 on either side.
+/// threshold 71. The commit threshold is the same 480 on either side — for
+/// strips wider than that, it moves out to the reveal plus the 64px
+/// clearance.
 const double _surfaceWidth = 800;
 const double _revealWidth = 204;
 const double _primaryWidth = 136;
@@ -326,6 +328,43 @@ void main() {
 
     await gesture.up();
     await tester.pumpAndSettle();
+    expect(counters.fullSwipes, 1);
+  });
+
+  testWidgets('a strip wider than the commit fraction keeps a reachable open state', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters, primaryWidth: 500)]));
+
+    // Reveal: 6 + 40 + 6 + 500 + 16 = 568 — past the 480px fractional
+    // threshold, as happens with long labels, large text scales or narrow
+    // rows. A release beyond that fraction but short of the reveal must
+    // settle open, not commit…
+    final gesture = await tester.startGesture(tester.getCenter(find.text('A content')));
+    await _moveInSteps(
+      tester,
+      gesture,
+      total: const Offset(-560, 0),
+      pumpEach: const Duration(milliseconds: 100),
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(counters.fullSwipes, 0);
+    expect(_primaryRect(tester, 'A').left, moreOrLessEquals(_surfaceWidth - 16 - 500, epsilon: 1));
+
+    // …and the commit is still reachable once the drag clears the reveal by
+    // the stretch clearance. The content has slid off-row, so the re-grab
+    // starts on the row's body.
+    final commitGesture = await tester.startGesture(const Offset(100, 48));
+    await _moveInSteps(
+      tester,
+      commitGesture,
+      total: const Offset(-300, 0),
+      pumpEach: const Duration(milliseconds: 100),
+    );
+    await commitGesture.up();
+    await tester.pumpAndSettle();
+
     expect(counters.fullSwipes, 1);
   });
 
