@@ -293,41 +293,6 @@ void main() {
       await tracker.onDispose();
     });
 
-    test("projectsSummary retains bridge-authored project and session order", () async {
-      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
-      final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
-      final subscription = tracker.sessionActivity.skip(1).listen(completer.complete);
-
-      eventController.add(
-        SseEvent(
-          data: const SesoriProjectsSummary(
-            projects: [
-              ProjectActivitySummary(
-                id: "/z",
-                activeSessions: [
-                  ActiveSession(id: "s2"),
-                  ActiveSession(id: "s1"),
-                ],
-              ),
-              ProjectActivitySummary(
-                id: "/a",
-                activeSessions: [ActiveSession(id: "s3")],
-              ),
-            ],
-            userInteractionOrdered: true,
-          ),
-        ),
-      );
-
-      final activity = await completer.future;
-      expect(tracker.currentUserInteractionOrdered, isTrue);
-      expect(tracker.currentProjectActivity.keys, ["/z", "/a"]);
-      expect(activity["/z"]!.keys, ["s2", "s1"]);
-
-      await subscription.cancel();
-      await tracker.onDispose();
-    });
-
     // -------------------------------------------------------------------------
     // 8. projectActivity excludes projects with no active sessions
     // -------------------------------------------------------------------------

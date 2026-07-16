@@ -8,7 +8,6 @@ extension StoredSessionMapper on SessionDto {
       backendSessionId: backendSessionId,
       pluginId: pluginId,
       projectId: projectId,
-      parentSessionId: parentSessionId,
       directory: directory,
       worktreePath: worktreePath,
       branchName: branchName,
@@ -16,7 +15,6 @@ extension StoredSessionMapper on SessionDto {
       archivedAt: archivedAt,
       baseBranch: baseBranch,
       baseCommit: baseCommit,
-      lastUserInteractionAt: lastUserMessageAt,
     );
   }
 }
