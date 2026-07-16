@@ -1186,15 +1186,47 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           }
         }
       });
-      final raw = await replayClient.request(
-        method: AcpMethods.sessionLoad,
-        params: {
-          "sessionId": sessionId,
-          "cwd": _directoryForSession(sessionId),
-          "mcpServers": const <Object?>[],
-        },
-        timeout: const Duration(minutes: 2),
-      );
+      final Object? raw;
+      try {
+        raw = await replayClient.request(
+          method: AcpMethods.sessionLoad,
+          params: {
+            "sessionId": sessionId,
+            "cwd": _directoryForSession(sessionId),
+            "mcpServers": const <Object?>[],
+          },
+          timeout: const Duration(minutes: 2),
+        );
+      } on AcpRpcException catch (error, stackTrace) {
+        if (error.code == -32601 || error.code == -32602) {
+          // cursor-agent rejects `session/load` for some stored sessions with
+          // method-not-found / invalid-params (e.g. a session created by a
+          // prior agent process, or whose worktree was moved/removed). That is
+          // not a transport failure, so degrade to whatever history replayed
+          // before the rejection — fail-soft like the no-loadSession branch
+          // above — keeping the session openable and promptable instead of
+          // 502ing the whole detail view. Nothing is memoized: every open
+          // retries the load, so a rejection caused by a stale cwd recovers
+          // once a later enumeration repairs the session's directory. This
+          // catch is scoped to the load request alone — a rejected handshake
+          // (initialize/authenticate) must keep surfacing as the typed
+          // failure below, per the getSessionMessages contract.
+          Log.w(
+            "[$id] session/load rejected for $sessionId (code ${error.code}); "
+            "showing collected history",
+            error,
+            stackTrace,
+          );
+          // A command snapshot replayed before the rejection already mutated
+          // the process-global tracker, so consumers still need the refresh
+          // nudge — same flush as the success path below.
+          final commandRefresh = deferredCommandRefresh;
+          if (commandRefresh != null) _eventBuffer.add(commandRefresh);
+          return collector.build();
+        }
+        // Any other RPC error is a genuine load failure — wrapped typed below.
+        rethrow;
+      }
       // The load result also carries the model/mode catalog (and the loaded
       // session's current model) — capture it so the picker is populated and
       // replayed messages are stamped with the session's real model.
