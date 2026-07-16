@@ -922,7 +922,7 @@ void main() {
 
       expect(result.items, hasLength(1));
       expect(result.items.single.title, equals("replacement payload"));
-      expect(result.items.single.time?.created, 100);
+      expect(result.items.single.time?.created, 10);
       expect(result.items.single.time?.updated, 200);
       expect(result.items.single.hasWorktree, isTrue);
       expect(result.items.single.pullRequest?.number, equals(84));
@@ -932,7 +932,7 @@ void main() {
       expect(stored?.backendSessionId, "s1");
       expect(stored?.directory, "/tmp/project");
       expect(stored?.catalogTitle, "replacement payload");
-      expect(stored?.createdAt, 100);
+      expect(stored?.createdAt, 10);
       expect(stored?.updatedAt, 200);
       expect(stored?.projectionUpdatedAt, inInclusiveRange(beforeFetch, afterFetch));
       expect(stored?.worktreePath, "/tmp/worktree");
