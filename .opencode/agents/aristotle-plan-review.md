@@ -153,6 +153,7 @@ Do NOT flag:
 
 - Parameters that are stored and read by methods, even if also passed to a subcomponent
 - Configuration values (durations, flags, limits) that are genuinely the class's own settings and happen to be forwarded to one collaborator
+- Low-level dependencies forwarded by an A13-compliant `forPlatform` factory to every private platform implementation. The factory is the deliberate selection seam, not a subcomponent owner.
 
 **A8. No Peer-As-Child Dependency Overlap**
 
@@ -223,6 +224,18 @@ The invariants (see `docs/VISION.md` for the full statements):
 Reject a plan that violates any invariant above. State the invariant, the foreclosure, and the compliant alternative.
 
 **The mirror image is equally blocking.** This rule does NOT licence building for the future. A plan that adds abstraction, generalization, or infrastructure for a `docs/VISION.md` / `docs/ROADMAP.md` item that has no concrete present need is an **A5** violation (No Unnecessary Complexity) — reject it under A5. Direction breaks ties between otherwise-compliant designs; it never justifies premature construction. YAGNI wins.
+
+**A13. Sealed Platform Capability Factories**
+
+When one package-internal capability has two or more mutually exclusive platform implementations, prefer this boundary:
+
+- One sealed public abstraction owns the capability contract.
+- Private platform implementations live in the same file as that abstraction.
+- A named `forPlatform` factory is the only public implementation-selection seam.
+- The factory may receive and forward low-level dependencies required by every implementation. This narrow forwarding is explicitly allowed by A7.
+- Consumers depend only on the abstraction and never branch on platform to select or import implementations.
+
+Reject a plan that exposes public per-platform implementations, separates those private implementations into files, or repeats implementation-selection branches in consumers without a concrete need. Do not apply this preference to cross-package product-shell adapters or implementations with independent public consumers. A workspace per-tool API rule does not require public tool wrappers or consumer branching for this pattern: each private platform implementation may call the tool needed by its capability directly, even when another API uses that tool for different operations.
 
 ---
 
@@ -1000,7 +1013,7 @@ Applied: [B-Client / B-Bridge / B-Shared]
 Skipped: [the others, with reason]
 
 ### Section A — General Architecture
-[List each violated principle (A1-A12) with a reference to the specific plan step or class. Only list violations — do not list rules that pass.]
+[List each violated principle (A1-A13) with a reference to the specific plan step or class. Only list violations — do not list rules that pass.]
 
 ### Section B — Project-Specific Rules
 [For each applied subsection, list violated rules with references to specific plan steps or classes. Only list violations.]
