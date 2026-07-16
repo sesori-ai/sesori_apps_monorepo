@@ -142,7 +142,8 @@ class ProjectRepository {
   }
 
   /// Whether [projectId] has at least one non-archived session with unseen
-  /// changes. Child sessions never have a row, so they cannot contribute.
+  /// changes. Child activity remains owned by its root and does not contribute
+  /// independently to the project aggregate.
   Future<bool> projectHasUnseenChanges({required String projectId}) async {
     final rows = await _sessionDao.getUnseenRowsForProject(projectId: projectId);
     return _anyUnseen(rows);
@@ -159,6 +160,7 @@ class ProjectRepository {
 
   bool _anyUnseen(List<SessionUnseenRow> rows) {
     for (final row in rows) {
+      if (row.parentSessionId != null) continue;
       if (row.archivedAt != null) continue;
       if (_unseenCalculator.isUnseen(
         activity: row.activityAt,

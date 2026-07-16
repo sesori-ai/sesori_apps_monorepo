@@ -1156,6 +1156,51 @@ void main() {
         active.id,
       );
     });
+
+    test("getProjectActivitySummaries isolates a failed active-root hydration", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const failedDirectory = "/projects/failed";
+      const healthyDirectory = "/projects/healthy";
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: failedDirectory,
+            activeSessions: [PluginActiveSession(id: "failed-root", awaitingInput: true)],
+          ),
+          PluginProjectActivitySummary(
+            id: healthyDirectory,
+            activeSessions: [PluginActiveSession(id: "healthy-root", awaitingInput: true)],
+          ),
+        ]
+        ..failingProjectIds = {failedDirectory}
+        ..sessionsByWorktree = const {
+          healthyDirectory: [
+            PluginSession(
+              id: "healthy-root",
+              projectID: healthyDirectory,
+              directory: healthyDirectory,
+              parentID: null,
+              title: "Healthy root",
+              time: PluginSessionTime(created: 1, updated: 2, archived: null),
+            ),
+          ],
+        };
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final summaries = await repository.getProjectActivitySummaries();
+
+      expect(summaries.singleWhere((summary) => summary.id == failedDirectory).activeSessions, isEmpty);
+      final healthy = summaries.singleWhere((summary) => summary.id == healthyDirectory).activeSessions.single;
+      expect(healthy.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+      expect(healthy.awaitingInput, isTrue);
+    });
   });
 
   group("SessionRepository (bridge-derived)", () {
@@ -1813,6 +1858,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   int sendPromptCalls = 0;
   String? lastAbortSessionId;
   List<PluginProjectActivitySummary> activitySummaries = const [];
+  Set<String> failingProjectIds = const {};
 
   @override
   String get id => "fake";
@@ -1845,6 +1891,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   @override
   Future<PluginProject> getProject(String projectId) async {
     lastGetProjectDirectory = projectId;
+    if (failingProjectIds.contains(projectId)) throw StateError("project unavailable");
     return PluginProject(id: projectId, directory: projectId);
   }
 

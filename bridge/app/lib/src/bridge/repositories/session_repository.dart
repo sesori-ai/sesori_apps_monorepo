@@ -613,10 +613,18 @@ class SessionRepository {
     for (final summary in summaries) {
       if (!summary.activeSessions.any((active) => missingRootIds.contains(active.id))) continue;
 
-      final project = await plugin.getProject(summary.id);
-      if (!hydratedProjectIds.add(project.id)) continue;
-      await _projectsDao.insertProjectIfMissing(projectId: project.id, path: project.directory);
-      await getSessionsForProject(projectId: project.id, start: null, limit: null);
+      try {
+        final project = await plugin.getProject(summary.id);
+        if (!hydratedProjectIds.add(project.id)) continue;
+        await _projectsDao.insertProjectIfMissing(projectId: project.id, path: project.directory);
+        await getSessionsForProject(projectId: project.id, start: null, limit: null);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "Could not hydrate active project ${summary.id}; omitting unresolved sessions",
+          error,
+          stackTrace,
+        );
+      }
     }
   }
 

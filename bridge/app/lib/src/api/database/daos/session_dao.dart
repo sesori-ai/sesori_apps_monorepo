@@ -12,6 +12,7 @@ part "session_dao.g.dart";
 /// applied in the repository layer, not here.
 typedef SessionUnseenRow = ({
   String sessionId,
+  String? parentSessionId,
   int? archivedAt,
   int? activityAt,
   int? seenAt,
@@ -492,6 +493,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   static SessionUnseenRow _toUnseenRow(SessionDto r) => (
     sessionId: r.sessionId,
+    parentSessionId: r.parentSessionId,
     archivedAt: r.archivedAt,
     activityAt: r.lastActivityAt,
     seenAt: r.lastSeenAt,

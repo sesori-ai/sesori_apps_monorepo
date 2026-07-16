@@ -147,6 +147,8 @@ class SessionEventService {
           backendSessionId: backendParentId,
         );
         if (parent == null || existing.parentSessionId != parent.id) return null;
+      } else if (existing.parentSessionId != null) {
+        return null;
       }
       final binding = await _sessionRepository.updateObservedSessionProjection(
         pluginId: source.pluginId,

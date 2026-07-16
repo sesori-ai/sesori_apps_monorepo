@@ -264,6 +264,55 @@ void main() {
       );
     });
 
+    test("rejects a root-shaped update for a durable child", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final created = await service.normalize(
+        source: (
+          pluginId: plugin.id,
+          projectionUpdatedAt: 7,
+          event: BridgeSseSessionCreated(
+            info: _sessionInfo(
+              sessionId: "backend-child",
+              parentId: "backend-root",
+              projectId: "backend-project",
+              directory: "/repo/child",
+            ),
+          ),
+        ),
+      );
+      final child = Session.fromJson((created.single as BridgeSseSessionCreated).info);
+
+      final output = await service.normalize(
+        source: (
+          pluginId: plugin.id,
+          projectionUpdatedAt: 8,
+          event: BridgeSseSessionUpdated(
+            info: Session.fromJson(
+              _sessionInfo(
+                sessionId: "backend-child",
+                parentId: null,
+                projectId: "backend-project",
+                directory: "/wrong",
+              ),
+            ).copyWith(title: "wrong").toJson(),
+            titleChanged: true,
+          ),
+        ),
+      );
+
+      expect(output, isEmpty);
+      final row = await database.sessionDao.getSession(sessionId: child.id);
+      expect(row?.parentSessionId, "stable-root");
+      expect(row?.directory, "/repo/child");
+      expect(row?.catalogTitle, "title-backend-child");
+      expect(row?.projectionUpdatedAt, 7);
+    });
+
     test("drops multi-session events unless every reference has a durable binding", () async {
       await _insertRoot(
         database: database,

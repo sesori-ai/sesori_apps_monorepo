@@ -959,8 +959,7 @@ class OrchestratorSession {
           occurredAt: info.time?.created,
         );
       // For child/subagent requests, `displaySessionId` is the root session the
-      // UI surfaces the request under; the child has no persisted row, so route
-      // to the displayed root so it becomes unseen for pending input.
+      // UI surfaces the request under and the owner of its unseen state.
       case SesoriQuestionAsked(:final sessionID, :final displaySessionId):
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,

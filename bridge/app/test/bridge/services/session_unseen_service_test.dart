@@ -102,6 +102,32 @@ void main() {
       expect(await unseen("child"), isFalse); // never persisted
     });
 
+    test("durable child activity does not contribute to the project aggregate", () async {
+      await persistRoot(sessionId: "root");
+      await db.sessionDao.insertObservedChild(
+        sessionId: "child",
+        backendSessionId: "backend-child",
+        projectId: "p1",
+        parentSessionId: "root",
+        directory: "/projects/p1/child",
+        catalogTitle: "Child",
+        archivedAt: null,
+        createdAt: 500,
+        updatedAt: 500,
+        projectionUpdatedAt: 500,
+        pluginId: "opencode",
+      );
+      await unseenRepository().recordActivity(
+        sessionId: "child",
+        at: 1000,
+        isUserMessage: false,
+        advanceSeen: false,
+      );
+
+      expect(await unseen("child"), isTrue);
+      expect(await projectRepository().projectHasUnseenChanges(projectId: "p1"), isFalse);
+    });
+
     test("missing root creation does not invent a durable backend binding", () async {
       const projectId = "0190f4c6-opaque-project-id";
 

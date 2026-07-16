@@ -105,11 +105,10 @@ class SessionUnseenService {
   }
 
   /// Records activity for [sessionId]. No-op when the session has no persisted
-  /// row — child/subagent sessions never have one, and a root not yet learned
-  /// (e.g. created while the bridge was offline) self-heals once a `/sessions`
-  /// fetch inserts its row and later activity stamps it. While the session is
-  /// being viewed, the seen timestamp is advanced too so it never bolds under
-  /// the watcher.
+  /// row. While the session is being viewed, the seen timestamp is advanced too
+  /// so it never bolds under the watcher. Durable child timestamps remain
+  /// available for child reads but do not independently affect project unseen
+  /// aggregation.
   ///
   /// [occurredAt] is the triggering message's own creation time (ms epoch),
   /// when the caller has one. It keeps the message timeline in a single clock
