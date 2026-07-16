@@ -99,7 +99,10 @@ class CursorCatalogRepository {
     }
 
     return CursorCatalogCandidateListResult(
-      candidates: candidatesById.values.toList(growable: false),
+      candidates: [
+        for (final entry in candidatesById.entries)
+          if (!unfilteredFallbackCandidates.contains(entry.key)) entry.value,
+      ],
       exhaustive: exhaustive,
     );
   }

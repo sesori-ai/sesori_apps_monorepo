@@ -80,6 +80,25 @@ void main() {
       expect(newer.updatedAtMs, 400);
     });
 
+    test("drops unscoped candidates whose cwd is never established", () async {
+      api.sessionsByScope[null] = [
+        _session("unknown", cwd: null, updatedAtMs: 300),
+        _session("promoted", cwd: null, updatedAtMs: 200),
+      ];
+      api.sessionsByScope["/launch"] = [
+        _session("promoted", cwd: null, updatedAtMs: 200),
+      ];
+      api.sessionsByScope["/project"] = const [];
+
+      final result = await repository.listCandidates(
+        scope: "/project",
+        timeout: const Duration(seconds: 1),
+      );
+
+      expect(result.candidates.map((candidate) => candidate.sessionId), ["promoted"]);
+      expect(result.candidates.single.cwd, "/launch");
+    });
+
     test("known unsupported unfiltered listing remains exhaustive", () async {
       api.errorsByScope[null] = AcpRpcException(
         method: AcpMethods.sessionList,

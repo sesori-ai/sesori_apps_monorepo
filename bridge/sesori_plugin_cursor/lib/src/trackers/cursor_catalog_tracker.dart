@@ -32,8 +32,8 @@ class CursorCatalogTracker {
     if (snapshot.modelConfigId != null) _modelConfigId = snapshot.modelConfigId;
     if (snapshot.models.isNotEmpty) _models = snapshot.models;
     final loadedModelId = snapshot.loadedModelId;
-    if (fromNewSession && loadedModelId != null) {
-      _currentModelId = hasModel(modelId: loadedModelId) ? loadedModelId : firstModelId;
+    if (fromNewSession) {
+      _currentModelId = loadedModelId != null && hasModel(modelId: loadedModelId) ? loadedModelId : null;
     }
 
     if (snapshot.modeConfigId != null) _modeConfigId = snapshot.modeConfigId;

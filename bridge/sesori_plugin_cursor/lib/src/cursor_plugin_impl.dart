@@ -158,12 +158,6 @@ class CursorPlugin extends AcpPlugin {
           providerId: _providerId,
         );
       }
-    } else {
-      eventMapper.setSessionModel(
-        sessionId,
-        _catalogTracker.currentModelId,
-        providerId: _providerId,
-      );
     }
 
     final requestedMode = _catalogTracker.resolveModeId(agent: agent) ?? _catalogTracker.defaultModeId;

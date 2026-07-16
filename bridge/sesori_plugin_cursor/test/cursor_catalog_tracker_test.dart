@@ -82,7 +82,7 @@ void main() {
       );
     });
 
-    test("falls back when a fresh session reports an unknown model", () {
+    test("does not adopt an unknown fresh-session model as the default", () {
       tracker.applySnapshot(
         snapshot: _snapshot(
           loadedModelId: "unknown",
@@ -94,7 +94,8 @@ void main() {
         captureThoughtLevelDefault: true,
       );
 
-      expect(tracker.currentModelId, "gpt-5.4");
+      expect(tracker.currentModelId, isNull);
+      expect(tracker.firstModelId, "gpt-5.4");
     });
   });
 }

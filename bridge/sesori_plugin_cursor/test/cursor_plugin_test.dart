@@ -574,6 +574,42 @@ void main() {
       await client.dispose();
     });
 
+    test("a default turn preserves an unknown model reported by Cursor", () async {
+      capture(
+        {
+          "sessionId": "s1",
+          "configOptions": [
+            {
+              "id": "model",
+              "category": "model",
+              "currentValue": "cursor-internal-model",
+              "options": [
+                {"value": "gpt-5.4", "name": "GPT-5.4"},
+              ],
+            },
+          ],
+        },
+        sessionId: "s1",
+        fromNewSession: true,
+      );
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+
+      await plugin.applyTurnSelection(
+        client: client,
+        sessionId: "s1",
+        model: null,
+        variant: null,
+        agent: null,
+      );
+
+      expect(plugin.eventMapper.modelForSession("s1"), "cursor-internal-model");
+      expect(fake.written.where((frame) => frame["method"] == "session/set_config_option"), isEmpty);
+      await client.dispose();
+    });
+
     test("applyTurnSelection does not push unknown effort", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
