@@ -697,6 +697,14 @@ class SessionRepository {
     final db = _sessionDao.attachedDatabase;
     await db.transaction(() async {
       final placeholder = await _sessionDao.getSession(sessionId: sessionId);
+      if (placeholder != null &&
+          (placeholder.pluginId != pluginId || placeholder.backendSessionId != backendSessionId)) {
+        throw PluginOperationException(
+          "createSession",
+          statusCode: 409,
+          message: "session id $sessionId is already bound to another plugin session",
+        );
+      }
       await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSession(
         sessionId: sessionId,

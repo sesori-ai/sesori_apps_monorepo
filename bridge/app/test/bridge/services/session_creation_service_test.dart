@@ -124,6 +124,55 @@ void main() {
       expect(stored.worktreePath, "/repo/.worktrees/session-one");
       expect(plugin.lastCreateDirectory, "/repo/.worktrees/session-one");
     });
+
+    test("rejects a cross-plugin stable id collision without changing the retained binding", () async {
+      await db.projectsDao.recordOpenedProject(
+        projectId: "/retained",
+        path: "/retained",
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      await db.sessionDao.insertSession(
+        sessionId: "backend-session",
+        backendSessionId: "backend-session",
+        pluginId: "other",
+        projectId: "/retained",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      await expectLater(
+        service.createSession(
+          request: const CreateSessionRequest(
+            projectId: "/repo",
+            pluginId: "fake",
+            dedicatedWorktree: false,
+            parts: [],
+            variant: null,
+            agent: null,
+            model: null,
+            command: null,
+          ),
+        ),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.statusCode, "statusCode", 409)
+              .having((error) => error.operation, "operation", "createSession"),
+        ),
+      );
+
+      final retained = await db.sessionDao.getSession(sessionId: "backend-session");
+      expect(plugin.createCalls, 1);
+      expect(retained?.pluginId, "other");
+      expect(retained?.backendSessionId, "backend-session");
+      expect(retained?.projectId, "/retained");
+    });
   });
 }
 
