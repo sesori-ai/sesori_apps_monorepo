@@ -341,7 +341,7 @@ void main() {
 
       await service.recordSessionDeleted(sessionId: "s1", projectId: "p1");
       // Row is gone -> session is no longer unseen and can't keep the project bold.
-      expect(await projectRepository().projectHasUnseenChanges(projectId: "p1"), isFalse);
+      expect((await projectRepository().getSessionListMetadata(projectId: "p1")).hasUnseenChanges, isFalse);
     });
 
     test("recordSessionDeleted emits against the STORED project id, not the event's", () async {
@@ -773,6 +773,23 @@ void main() {
       expect(last.projectId, "p1");
       expect(last.unseen, isTrue);
       expect(last.projectHasUnseenChanges, isTrue);
+      expect(last.sessionLastUserInteractionAt, isNull);
+      expect(last.projectLastUserInteractionAt, isNull);
+
+      await service.recordActivity(sessionId: "root", isUserMessage: true, occurredAt: 2000);
+      await Future<void>.delayed(Duration.zero);
+      expect(events.last.sessionLastUserInteractionAt, 2000);
+      expect(events.last.projectLastUserInteractionAt, 2000);
+
+      await service.markRead(sessionId: "root");
+      await Future<void>.delayed(Duration.zero);
+      expect(events.last.sessionLastUserInteractionAt, 2000);
+      expect(events.last.projectLastUserInteractionAt, 2000);
+
+      await service.recordSessionDeleted(sessionId: "root", projectId: "p1");
+      await Future<void>.delayed(Duration.zero);
+      expect(events.last.sessionLastUserInteractionAt, isNull);
+      expect(events.last.projectLastUserInteractionAt, isNull);
 
       await sub.cancel();
     });
@@ -808,7 +825,8 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
 class _ThrowingProjectRepository implements ProjectRepository {
   @override
-  Future<bool> projectHasUnseenChanges({required String projectId}) async => throw Exception("boom");
+  Future<ProjectSessionListMetadata> getSessionListMetadata({required String projectId}) async =>
+      throw Exception("boom");
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

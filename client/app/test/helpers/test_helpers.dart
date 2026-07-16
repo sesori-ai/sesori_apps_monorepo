@@ -32,9 +32,9 @@ import "package:sesori_dart_core/src/services/models/session_activity_info.dart"
 import "package:sesori_dart_core/src/services/project_list_service.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
-import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
+import "package:sesori_dart_core/src/trackers/session_attention_tracker.dart";
 
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
@@ -151,11 +151,15 @@ void registerListServices({
   );
 }
 
-/// In-memory [SessionUnseenTracker] stand-in mirroring its lean contract:
+/// In-memory [SessionAttentionTracker] stand-in mirroring its lean contract:
 /// overwrite-only maps plus a tick guard.
-class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
+class FakeSessionAttentionTracker extends Mock implements SessionAttentionTracker {
   final BehaviorSubject<Map<String, bool>> _projectUnseen = BehaviorSubject.seeded(const {});
   final BehaviorSubject<Map<String, Map<String, bool>>> _sessionUnseen = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, int?>> _projectLastUserInteractionAt = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, Map<String, int?>>> _sessionLastUserInteractionAt = BehaviorSubject.seeded(
+    const {},
+  );
 
   @override
   ValueStream<Map<String, bool>> get projectUnseen => _projectUnseen.stream;
@@ -170,22 +174,46 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
   Map<String, Map<String, bool>> get currentSessionUnseen => _sessionUnseen.value;
 
   @override
+  ValueStream<Map<String, int?>> get projectLastUserInteractionAt => _projectLastUserInteractionAt.stream;
+
+  @override
+  Map<String, int?> get currentProjectLastUserInteractionAt => _projectLastUserInteractionAt.value;
+
+  @override
+  ValueStream<Map<String, Map<String, int?>>> get sessionLastUserInteractionAt => _sessionLastUserInteractionAt.stream;
+
+  @override
+  Map<String, Map<String, int?>> get currentSessionLastUserInteractionAt => _sessionLastUserInteractionAt.value;
+
+  @override
   int get tick => 0;
 
   @override
-  void seedProjects(Map<String, bool> unseenByProjectId, {required int sinceTick}) {
+  void seedProjects(
+    Map<String, bool> unseenByProjectId, {
+    required Map<String, int?> lastUserInteractionAtByProjectId,
+    required int sinceTick,
+  }) {
     _projectUnseen.add({..._projectUnseen.value, ...unseenByProjectId});
+    _projectLastUserInteractionAt.add({
+      ..._projectLastUserInteractionAt.value,
+      ...lastUserInteractionAtByProjectId,
+    });
   }
 
   @override
   void seedSessions({
     required String projectId,
     required Map<String, bool> unseenBySessionId,
+    required Map<String, int?> lastUserInteractionAtBySessionId,
     required int sinceTick,
   }) {
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
     sessions[projectId] = Map<String, bool>.from(unseenBySessionId);
     _sessionUnseen.add(sessions);
+    final interactions = Map<String, Map<String, int?>>.from(_sessionLastUserInteractionAt.value);
+    interactions[projectId] = Map<String, int?>.from(lastUserInteractionAtBySessionId);
+    _sessionLastUserInteractionAt.add(interactions);
   }
 
   @override

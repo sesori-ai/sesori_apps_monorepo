@@ -77,7 +77,7 @@ void main() {
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
     getIt.registerLazySingleton<RouteSource>(MockRouteSource.new);
-    getIt.registerLazySingleton<SessionUnseenTracker>(FakeSessionUnseenTracker.new);
+    getIt.registerLazySingleton<SessionAttentionTracker>(FakeSessionAttentionTracker.new);
     getIt.registerLazySingleton<RegisteredBridgesService>(() => mockRegisteredBridgesService);
     getIt.registerLazySingleton<FailureReporter>(MockFailureReporter.new);
     getIt.registerLazySingleton<AnalyticsReporter>(() => mockAnalyticsReporter);

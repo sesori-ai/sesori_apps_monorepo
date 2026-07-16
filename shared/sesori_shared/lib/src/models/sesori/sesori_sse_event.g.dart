@@ -425,6 +425,10 @@ SesoriSessionUnseenChanged _$SesoriSessionUnseenChangedFromJson(Map json) =>
       sessionId: json['sessionId'] as String,
       unseen: json['unseen'] as bool,
       projectHasUnseenChanges: json['projectHasUnseenChanges'] as bool,
+      sessionLastUserInteractionAt:
+          (json['sessionLastUserInteractionAt'] as num?)?.toInt() ?? null,
+      projectLastUserInteractionAt:
+          (json['projectLastUserInteractionAt'] as num?)?.toInt() ?? null,
       $type: json['type'] as String?,
     );
 
@@ -435,6 +439,8 @@ Map<String, dynamic> _$SesoriSessionUnseenChangedToJson(
   'sessionId': instance.sessionId,
   'unseen': instance.unseen,
   'projectHasUnseenChanges': instance.projectHasUnseenChanges,
+  'sessionLastUserInteractionAt': ?instance.sessionLastUserInteractionAt,
+  'projectLastUserInteractionAt': ?instance.projectLastUserInteractionAt,
   'type': instance.$type,
 };
 

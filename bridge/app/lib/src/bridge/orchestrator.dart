@@ -526,6 +526,8 @@ class OrchestratorSession {
                 sessionId: change.sessionId,
                 unseen: change.unseen,
                 projectHasUnseenChanges: change.projectHasUnseenChanges,
+                sessionLastUserInteractionAt: change.sessionLastUserInteractionAt,
+                projectLastUserInteractionAt: change.projectLastUserInteractionAt,
               ),
             );
           })

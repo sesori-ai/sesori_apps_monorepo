@@ -23,6 +23,11 @@ import "models/project_activity_evidence.dart";
 import "models/project_not_found_exception.dart";
 import "session_unseen_calculator.dart";
 
+typedef ProjectSessionListMetadata = ({
+  bool hasUnseenChanges,
+  int? lastUserInteractionAt,
+});
+
 /// Project data aggregator with two paths chosen by the plugin's sealed
 /// subtype:
 ///
@@ -81,14 +86,15 @@ class ProjectRepository {
         ], defaultTimestamp: defaultTimestamp);
         final hiddenIds = await _projectsDao.getHiddenProjectIds();
         final visible = derived.where((project) => !hiddenIds.contains(project.id)).toList();
-        final unseenById = await unseenByProjectId(
+        final metadataById = await getSessionListMetadataByProjectId(
           projectIds: [for (final project in visible) project.id],
         );
         final activityById = _mapActivities(await _projectsDao.getAllProjects());
         final projects = [
           for (final project in visible)
             project.copyWith(
-              hasUnseenChanges: unseenById[project.id] ?? false,
+              hasUnseenChanges: metadataById[project.id]?.hasUnseenChanges ?? false,
+              lastUserInteractionAt: metadataById[project.id]?.lastUserInteractionAt,
               directoryMissing: _directoryMissing(project.id),
               time: _activityToTime(activityById[project.id]!),
             ),
@@ -117,52 +123,66 @@ class ProjectRepository {
         };
         final hiddenIds = await _projectsDao.getHiddenProjectIds();
         final visible = pluginProjects.where((p) => !hiddenIds.contains(p.id)).toList(growable: false);
-        final unseenById = await unseenByProjectId(
+        final metadataById = await getSessionListMetadataByProjectId(
           projectIds: [for (final p in visible) p.id],
         );
         final activityById = _mapActivities(storedProjects);
         final projects = visible.map((p) {
           final path = pathById[p.id] ?? p.directory;
-          return p.toSharedProject(
-            path: path,
-            hasUnseenChanges: unseenById[p.id] ?? false,
-            directoryMissing: _directoryMissing(path),
-            time: _activityToTime(activityById[p.id]!),
-          );
+          final metadata = metadataById[p.id];
+          return p
+              .toSharedProject(
+                path: path,
+                hasUnseenChanges: metadata?.hasUnseenChanges ?? false,
+                directoryMissing: _directoryMissing(path),
+                time: _activityToTime(activityById[p.id]!),
+              )
+              .copyWith(lastUserInteractionAt: metadata?.lastUserInteractionAt);
         }).toList();
         projects.sort(_projectComparator);
         return projects;
     }
   }
 
-  /// Whether [projectId] has at least one non-archived session with unseen
-  /// changes. Child sessions never have a row, so they cannot contribute.
-  Future<bool> projectHasUnseenChanges({required String projectId}) async {
+  /// Session-list metadata aggregated over the persisted root sessions in
+  /// [projectId]. Archived roots remain valid user-interaction evidence, while
+  /// only non-archived roots contribute to unseen state.
+  Future<ProjectSessionListMetadata> getSessionListMetadata({required String projectId}) async {
     final rows = await _sessionDao.getUnseenRowsForProject(projectId: projectId);
-    return _anyUnseen(rows);
+    return _sessionListMetadata(rows);
   }
 
-  /// Batch variant of [projectHasUnseenChanges] for the `/projects` list. Reads
-  /// every project's sessions in a single query to avoid N+1.
-  Future<Map<String, bool>> unseenByProjectId({required List<String> projectIds}) async {
+  /// Batched variant of [getSessionListMetadata] for project-list snapshots.
+  Future<Map<String, ProjectSessionListMetadata>> getSessionListMetadataByProjectId({
+    required List<String> projectIds,
+  }) async {
     final rowsByProject = await _sessionDao.getUnseenRowsForProjects(projectIds: projectIds);
     return {
-      for (final id in projectIds) id: _anyUnseen(rowsByProject[id] ?? const []),
+      for (final id in projectIds) id: _sessionListMetadata(rowsByProject[id] ?? const []),
     };
   }
 
-  bool _anyUnseen(List<SessionUnseenRow> rows) {
+  ProjectSessionListMetadata _sessionListMetadata(List<SessionUnseenRow> rows) {
+    var hasUnseenChanges = false;
+    int? lastUserInteractionAt;
     for (final row in rows) {
-      if (row.archivedAt != null) continue;
-      if (_unseenCalculator.isUnseen(
-        activity: row.activityAt,
-        userMessage: row.userMessageAt,
-        seen: row.seenAt,
-      )) {
-        return true;
+      final userMessageAt = row.userMessageAt;
+      if (userMessageAt != null && (lastUserInteractionAt == null || userMessageAt > lastUserInteractionAt)) {
+        lastUserInteractionAt = userMessageAt;
+      }
+      if (row.archivedAt == null &&
+          _unseenCalculator.isUnseen(
+            activity: row.activityAt,
+            userMessage: userMessageAt,
+            seen: row.seenAt,
+          )) {
+        hasUnseenChanges = true;
       }
     }
-    return false;
+    return (
+      hasUnseenChanges: hasUnseenChanges,
+      lastUserInteractionAt: lastUserInteractionAt,
+    );
   }
 
   /// The project for [projectId]. A native plugin owns the lookup; for a
@@ -177,8 +197,10 @@ class ProjectRepository {
     switch (_plugin) {
       case final BridgeDerivedProjectsPluginApi plugin:
         final project = await _findDerivedProject(plugin, normalizeProjectDirectory(directory: path));
+        final metadata = await getSessionListMetadata(projectId: project.id);
         return project.copyWith(
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
+          hasUnseenChanges: metadata.hasUnseenChanges,
+          lastUserInteractionAt: metadata.lastUserInteractionAt,
           directoryMissing: _directoryMissing(project.id),
           time: _activityToTime(activity!),
         );
@@ -186,12 +208,15 @@ class ProjectRepository {
         // The backend needs the live directory — the id may point at a
         // location the folder has since moved away from.
         final pluginProject = await plugin.getProject(path);
-        return pluginProject.toSharedProject(
-          path: path,
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: pluginProject.id),
-          directoryMissing: _directoryMissing(path),
-          time: _activityToTime(activity!),
-        );
+        final metadata = await getSessionListMetadata(projectId: pluginProject.id);
+        return pluginProject
+            .toSharedProject(
+              path: path,
+              hasUnseenChanges: metadata.hasUnseenChanges,
+              directoryMissing: _directoryMissing(path),
+              time: _activityToTime(activity!),
+            )
+            .copyWith(lastUserInteractionAt: metadata.lastUserInteractionAt);
     }
   }
 
@@ -248,9 +273,11 @@ class ProjectRepository {
 
   Future<Project> mapOpenedProject({required ProjectOpenTarget target}) async {
     final activity = await getActivity(projectId: target.projectId);
+    final metadata = await getSessionListMetadata(projectId: target.projectId);
     return target.project.copyWith(
       time: _activityToTime(activity!),
-      hasUnseenChanges: await projectHasUnseenChanges(projectId: target.projectId),
+      hasUnseenChanges: metadata.hasUnseenChanges,
+      lastUserInteractionAt: metadata.lastUserInteractionAt,
       directoryMissing: _directoryMissing(target.path),
     );
   }
@@ -268,8 +295,10 @@ class ProjectRepository {
         final canonical = normalizeProjectDirectory(directory: path);
         await _projectsDao.setDisplayName(projectId: canonical, displayName: name);
         final project = await _findDerivedProject(plugin, canonical);
+        final metadata = await getSessionListMetadata(projectId: project.id);
         return project.copyWith(
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
+          hasUnseenChanges: metadata.hasUnseenChanges,
+          lastUserInteractionAt: metadata.lastUserInteractionAt,
           directoryMissing: _directoryMissing(project.id),
           time: _activityToTime(activity!),
         );
@@ -278,12 +307,15 @@ class ProjectRepository {
         // The backend looks the project up by directory, so hand it the live
         // path rather than the (possibly moved-away-from) id.
         final updated = await plugin.renameProject(projectId: path, name: name);
-        return updated.toSharedProject(
-          path: path,
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: updated.id),
-          directoryMissing: _directoryMissing(path),
-          time: _activityToTime(activity!),
-        );
+        final metadata = await getSessionListMetadata(projectId: updated.id);
+        return updated
+            .toSharedProject(
+              path: path,
+              hasUnseenChanges: metadata.hasUnseenChanges,
+              directoryMissing: _directoryMissing(path),
+              time: _activityToTime(activity!),
+            )
+            .copyWith(lastUserInteractionAt: metadata.lastUserInteractionAt);
     }
   }
 

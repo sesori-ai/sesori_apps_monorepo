@@ -23,6 +23,8 @@ typedef UnseenChange = ({
   String sessionId,
   bool unseen,
   bool projectHasUnseenChanges,
+  int? sessionLastUserInteractionAt,
+  int? projectLastUserInteractionAt,
 });
 
 /// Layer-3 owner of unseen-changes decisions. It consumes activity events,
@@ -344,8 +346,15 @@ class SessionUnseenService {
   /// `unseen: false` plus the recomputed project aggregate. Best-effort.
   Future<void> _emitDeleted({required String sessionId, required String projectId}) async {
     try {
-      final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
-      _add(projectId: projectId, sessionId: sessionId, unseen: false, projectHasUnseenChanges: projectHasUnseen);
+      final metadata = await _projectRepository.getSessionListMetadata(projectId: projectId);
+      _add(
+        projectId: projectId,
+        sessionId: sessionId,
+        unseen: false,
+        projectHasUnseenChanges: metadata.hasUnseenChanges,
+        sessionLastUserInteractionAt: null,
+        projectLastUserInteractionAt: metadata.lastUserInteractionAt,
+      );
     } catch (error, stackTrace) {
       Log.w("failed to emit unseen clear for deleted session $sessionId", error, stackTrace);
     }
@@ -356,9 +365,16 @@ class SessionUnseenService {
   /// committed (or that is fire-and-forget from the SSE path).
   Future<void> _emit({required String sessionId, required String projectId}) async {
     try {
-      final unseen = await _unseenRepository.isUnseen(sessionId: sessionId);
-      final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
-      _add(projectId: projectId, sessionId: sessionId, unseen: unseen, projectHasUnseenChanges: projectHasUnseen);
+      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+      final metadata = await _projectRepository.getSessionListMetadata(projectId: projectId);
+      _add(
+        projectId: projectId,
+        sessionId: sessionId,
+        unseen: row != null && _unseenRepository.unseenForRow(row),
+        projectHasUnseenChanges: metadata.hasUnseenChanges,
+        sessionLastUserInteractionAt: row?.userMessageAt,
+        projectLastUserInteractionAt: metadata.lastUserInteractionAt,
+      );
     } catch (error, stackTrace) {
       Log.w("failed to compute/emit unseen change for session $sessionId", error, stackTrace);
     }
@@ -369,6 +385,8 @@ class SessionUnseenService {
     required String sessionId,
     required bool unseen,
     required bool projectHasUnseenChanges,
+    required int? sessionLastUserInteractionAt,
+    required int? projectLastUserInteractionAt,
   }) {
     if (_changes.isClosed) return;
     _changes.add(
@@ -377,6 +395,8 @@ class SessionUnseenService {
         sessionId: sessionId,
         unseen: unseen,
         projectHasUnseenChanges: projectHasUnseenChanges,
+        sessionLastUserInteractionAt: sessionLastUserInteractionAt,
+        projectLastUserInteractionAt: projectLastUserInteractionAt,
       ),
     );
   }

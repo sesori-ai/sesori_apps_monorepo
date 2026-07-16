@@ -45,7 +45,7 @@ class ProjectListScreen extends StatelessWidget {
         getIt<SseEventTracker>(),
         getIt<RouteSource>(),
         projectListService: getIt<ProjectListService>(),
-        sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+        sessionAttentionTracker: getIt<SessionAttentionTracker>(),
         registeredBridgesService: getIt<RegisteredBridgesService>(),
         failureReporter: getIt<FailureReporter>(),
       ),

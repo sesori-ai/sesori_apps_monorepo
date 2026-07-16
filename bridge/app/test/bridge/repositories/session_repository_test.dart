@@ -142,6 +142,12 @@ void main() {
           variant: "variant-1",
         ),
       );
+      await db.sessionDao.setActivityTimestamps(
+        sessionId: "s1",
+        activityAt: 1000,
+        userMessageAt: 321,
+        seenAt: 999,
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
@@ -213,6 +219,7 @@ void main() {
       expect(result.promptDefaults?.model?.variant, equals("variant-1"));
       expect(result.pullRequest?.number, equals(11));
       expect(result.pullRequest?.state, equals(PrState.open));
+      expect(result.lastUserInteractionAt, 321, reason: "viewing the session is not a user-originated interaction");
     });
 
     test("enrichSession leaves promptDefaults null when stored defaults are all null", () async {

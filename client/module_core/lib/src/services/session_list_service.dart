@@ -20,7 +20,7 @@ class SessionListService {
     );
     return switch (response) {
       SuccessResponse(:final data) => ApiResponse.success(
-        SessionListResponse(items: _sortSessions(data.items)),
+        data,
       ),
       ErrorResponse(:final error) => ApiResponse.error(error),
     };
@@ -29,27 +29,68 @@ class SessionListService {
   List<Session> visibleSessions({
     required Iterable<Session> sessions,
     required bool showArchived,
+    required Set<String> activeSessionIds,
+    required Map<String, int?> lastUserInteractionAtBySessionId,
   }) {
     final visible = showArchived ? sessions : sessions.where((session) => session.time?.archived == null);
-    return _sortSessions(visible);
+    return _sortSessions(
+      sessions: visible,
+      activeSessionIds: activeSessionIds,
+      lastUserInteractionAtBySessionId: lastUserInteractionAtBySessionId,
+    );
   }
 
   List<Session> upsertSession({required Iterable<Session> sessions, required Session session}) {
-    return _sortSessions([
+    return [
       ...sessions.where((existing) => existing.id != session.id),
       session,
-    ]);
+    ];
   }
 
   List<Session> removeSession({required Iterable<Session> sessions, required String sessionId}) {
-    return _sortSessions(sessions.where((session) => session.id != sessionId));
+    return sessions.where((session) => session.id != sessionId).toList();
   }
 
-  List<Session> _sortSessions(Iterable<Session> sessions) {
-    return sessions.toList()..sort((a, b) => _compareSessionsByTitleAndId(a: a, b: b));
+  List<Session> _sortSessions({
+    required Iterable<Session> sessions,
+    required Set<String> activeSessionIds,
+    required Map<String, int?> lastUserInteractionAtBySessionId,
+  }) {
+    return sessions.toList()..sort(
+      (a, b) => _compareSessions(
+        a: a,
+        b: b,
+        activeSessionIds: activeSessionIds,
+        lastUserInteractionAtBySessionId: lastUserInteractionAtBySessionId,
+      ),
+    );
   }
 
-  int _compareSessionsByTitleAndId({required Session a, required Session b}) {
+  int _compareSessions({
+    required Session a,
+    required Session b,
+    required Set<String> activeSessionIds,
+    required Map<String, int?> lastUserInteractionAtBySessionId,
+  }) {
+    final aActive = activeSessionIds.contains(a.id);
+    final bActive = activeSessionIds.contains(b.id);
+    if (aActive != bActive) return aActive ? -1 : 1;
+    if (!aActive) {
+      return (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0);
+    }
+
+    final interactionCompare = _compareNullableDescending(
+      a: _lastUserInteractionAt(
+        session: a,
+        lastUserInteractionAtBySessionId: lastUserInteractionAtBySessionId,
+      ),
+      b: _lastUserInteractionAt(
+        session: b,
+        lastUserInteractionAtBySessionId: lastUserInteractionAtBySessionId,
+      ),
+    );
+    if (interactionCompare != 0) return interactionCompare;
+
     final titleCompare = switch ((a.title, b.title)) {
       (null, null) => 0,
       (null, _) => 1,
@@ -59,5 +100,20 @@ class SessionListService {
     if (titleCompare != 0) return titleCompare;
 
     return a.id.compareTo(b.id);
+  }
+
+  int? _lastUserInteractionAt({
+    required Session session,
+    required Map<String, int?> lastUserInteractionAtBySessionId,
+  }) {
+    return lastUserInteractionAtBySessionId.containsKey(session.id)
+        ? lastUserInteractionAtBySessionId[session.id]
+        : session.lastUserInteractionAt;
+  }
+
+  int _compareNullableDescending({required int? a, required int? b}) {
+    if (a == null) return b == null ? 0 : 1;
+    if (b == null) return -1;
+    return b.compareTo(a);
   }
 }

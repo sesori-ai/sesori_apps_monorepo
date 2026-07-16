@@ -167,7 +167,9 @@ mixin _$Project {
 // activity. Backend-derived from its sessions. Defaults to false so older
 // payloads (and the baseline) deserialize as "seen".
 // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
- bool get hasUnseenChanges;// Whether the project's directory no longer exists on disk at its recorded
+ bool get hasUnseenChanges;// COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges omit lastUserInteractionAt, which means no persisted interaction is available. Remove the default and require the field once those bridges are unsupported.
+// ignore: no_slop_linter/prefer_required_named_parameters -- Freezed null default preserves older wire payloads.
+ int? get lastUserInteractionAt;// Whether the project's directory no longer exists on disk at its recorded
 // location (the folder was moved or deleted). The bridge stamps this from a
 // filesystem check; the client renders such projects as "folder not found"
 // instead of driving into a dead path. Defaults to false so older payloads
@@ -186,16 +188,16 @@ $ProjectCopyWith<Project> get copyWith => _$ProjectCopyWithImpl<Project>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.lastUserInteractionAt, lastUserInteractionAt) || other.lastUserInteractionAt == lastUserInteractionAt)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,lastUserInteractionAt,directoryMissing);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
+  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, lastUserInteractionAt: $lastUserInteractionAt, directoryMissing: $directoryMissing)';
 }
 
 
@@ -206,7 +208,7 @@ abstract mixin class $ProjectCopyWith<$Res>  {
   factory $ProjectCopyWith(Project value, $Res Function(Project) _then) = _$ProjectCopyWithImpl;
 @useResult
 $Res call({
- String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, int? lastUserInteractionAt, bool directoryMissing
 });
 
 
@@ -223,14 +225,15 @@ class _$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? lastUserInteractionAt = freezed,Object? directoryMissing = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
-as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
+as bool,lastUserInteractionAt: freezed == lastUserInteractionAt ? _self.lastUserInteractionAt : lastUserInteractionAt // ignore: cast_nullable_to_non_nullable
+as int?,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -255,7 +258,7 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _Project implements Project {
-  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false});
+  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.lastUserInteractionAt = null, this.directoryMissing = false});
   factory _Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 
 @override final  String id;
@@ -275,6 +278,9 @@ class _Project implements Project {
 // payloads (and the baseline) deserialize as "seen".
 // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
 @override@JsonKey() final  bool hasUnseenChanges;
+// COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges omit lastUserInteractionAt, which means no persisted interaction is available. Remove the default and require the field once those bridges are unsupported.
+// ignore: no_slop_linter/prefer_required_named_parameters -- Freezed null default preserves older wire payloads.
+@override@JsonKey() final  int? lastUserInteractionAt;
 // Whether the project's directory no longer exists on disk at its recorded
 // location (the folder was moved or deleted). The bridge stamps this from a
 // filesystem check; the client renders such projects as "folder not found"
@@ -296,16 +302,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.lastUserInteractionAt, lastUserInteractionAt) || other.lastUserInteractionAt == lastUserInteractionAt)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,lastUserInteractionAt,directoryMissing);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
+  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, lastUserInteractionAt: $lastUserInteractionAt, directoryMissing: $directoryMissing)';
 }
 
 
@@ -316,7 +322,7 @@ abstract mixin class _$ProjectCopyWith<$Res> implements $ProjectCopyWith<$Res> {
   factory _$ProjectCopyWith(_Project value, $Res Function(_Project) _then) = __$ProjectCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, int? lastUserInteractionAt, bool directoryMissing
 });
 
 
@@ -333,14 +339,15 @@ class __$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? lastUserInteractionAt = freezed,Object? directoryMissing = null,}) {
   return _then(_Project(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
-as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
+as bool,lastUserInteractionAt: freezed == lastUserInteractionAt ? _self.lastUserInteractionAt : lastUserInteractionAt // ignore: cast_nullable_to_non_nullable
+as int?,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

@@ -413,6 +413,41 @@ void main() {
     });
   });
 
+  group('sessionUnseenChanged interaction timestamps', () {
+    test('decodes older payloads with null interaction timestamps', () {
+      final parsed = SesoriSseEvent.fromJson({
+        'type': 'session.unseen_changed',
+        'projectID': 'project-1',
+        'sessionId': 'session-1',
+        'unseen': true,
+        'projectHasUnseenChanges': true,
+      });
+
+      expect(parsed, isA<SesoriSessionUnseenChanged>());
+      final event = parsed as SesoriSessionUnseenChanged;
+      expect(event.sessionLastUserInteractionAt, isNull);
+      expect(event.projectLastUserInteractionAt, isNull);
+      expect(event.toJson(), isNot(contains('sessionLastUserInteractionAt')));
+      expect(event.toJson(), isNot(contains('projectLastUserInteractionAt')));
+    });
+
+    test('round-trips populated interaction timestamps', () {
+      const event = SesoriSseEvent.sessionUnseenChanged(
+        projectID: 'project-1',
+        sessionId: 'session-1',
+        unseen: false,
+        projectHasUnseenChanges: false,
+        sessionLastUserInteractionAt: 123,
+        projectLastUserInteractionAt: 456,
+      );
+
+      final json = event.toJson();
+      expect(json['sessionLastUserInteractionAt'], 123);
+      expect(json['projectLastUserInteractionAt'], 456);
+      expect(SesoriSseEvent.fromJson(json), event);
+    });
+  });
+
   // ---------------------------------------------------------------------------
   // Session-scoped event marker (SesoriSessionEvent)
   // ---------------------------------------------------------------------------

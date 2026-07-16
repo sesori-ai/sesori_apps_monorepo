@@ -52,7 +52,7 @@ void main() {
     late MockSseEventTracker mockSseEventTracker;
     late MockRouteSource mockRouteSource;
     late MockRegisteredBridgesService mockRegisteredBridgesService;
-    late FakeSessionUnseenTracker fakeSessionUnseenTracker;
+    late FakeSessionAttentionTracker fakeSessionAttentionTracker;
     late MockFailureReporter mockFailureReporter;
     late BehaviorSubject<ConnectionStatus> statusController;
     late Completer<ApiResponse<Projects>> projectFetchCompleter;
@@ -64,7 +64,7 @@ void main() {
       mockSseEventTracker = MockSseEventTracker();
       mockRouteSource = MockRouteSource();
       mockRegisteredBridgesService = MockRegisteredBridgesService();
-      fakeSessionUnseenTracker = FakeSessionUnseenTracker();
+      fakeSessionAttentionTracker = FakeSessionAttentionTracker();
       mockFailureReporter = MockFailureReporter();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         _connectedStatus,
@@ -101,7 +101,7 @@ void main() {
       mockSseEventTracker,
       mockRouteSource,
       projectListService: projectListService,
-      sessionUnseenTracker: fakeSessionUnseenTracker,
+      sessionAttentionTracker: fakeSessionAttentionTracker,
       registeredBridgesService: mockRegisteredBridgesService,
       failureReporter: mockFailureReporter,
     );
@@ -1318,12 +1318,43 @@ void main() {
       ],
     );
 
+    blocTest<ProjectListCubit, ProjectListState>(
+      "live user interaction immediately reorders active projects",
+      build: () {
+        mockSseEventTracker.emitProjectActivity(const {"A": 1, "B": 1});
+        when(() => mockProjectRepository.listProjects()).thenAnswer(
+          (_) async => ApiResponse.success(
+            Projects(
+              data: [
+                testProject(id: "A", name: "Alpha").copyWith(lastUserInteractionAt: 100),
+                testProject(id: "B", name: "Beta").copyWith(lastUserInteractionAt: 200),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (_) async {
+        await Future<void>.delayed(Duration.zero);
+        fakeSessionAttentionTracker.emitProjectLastUserInteractionAt(const {"A": 300, "B": 200});
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 1,
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (state) => state.projects.map((project) => project.id).toList(),
+          "active project order",
+          ["A", "B"],
+        ),
+      ],
+    );
+
     // =========================================================================
     // Project timestamp updates (no fetch)
     // =========================================================================
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "projectTimestampUpdates: updates matching project timestamp without reordering",
+      "projectTimestampUpdates: reorders inactive projects by updated timestamp",
       build: () {
         when(
           () => mockProjectRepository.listProjects(),
@@ -1350,7 +1381,7 @@ void main() {
         isA<ProjectListLoaded>().having(
           (s) => s.projects.map((p) => p.id).toList(),
           "projects order",
-          ["A", "B", "C"],
+          ["B", "A", "C"],
         ),
       ],
       verify: (_) {
@@ -1443,10 +1474,10 @@ void main() {
             .having(
               (state) => state.projects.map((project) => project.id).toList(),
               "project order",
-              ["A", "B"],
+              ["B", "A"],
             )
             .having(
-              (state) => state.projects.last.time?.updated,
+              (state) => state.projects.first.time?.updated,
               "live timestamp",
               4000,
             ),
@@ -1570,7 +1601,7 @@ void main() {
     );
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "REST project list is sorted by effective name then id regardless of timestamp",
+      "REST inactive project list preserves updated-desc ordering",
       build: () {
         when(
           () => mockProjectRepository.listProjects(),
@@ -1612,7 +1643,7 @@ void main() {
         isA<ProjectListLoaded>().having(
           (s) => s.projects.map((p) => p.id).toList(),
           "projects order",
-          ["A", "a", "B", "null"],
+          ["null", "B", "A", "a"],
         ),
       ],
     );

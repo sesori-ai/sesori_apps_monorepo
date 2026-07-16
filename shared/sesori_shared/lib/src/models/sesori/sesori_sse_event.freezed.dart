@@ -2567,13 +2567,19 @@ as String,
 @JsonSerializable()
 
 class SesoriSessionUnseenChanged implements SesoriSseEvent {
-  const SesoriSessionUnseenChanged({required this.projectID, required this.sessionId, required this.unseen, required this.projectHasUnseenChanges, final  String? $type}): $type = $type ?? 'session.unseen_changed';
+  const SesoriSessionUnseenChanged({required this.projectID, required this.sessionId, required this.unseen, required this.projectHasUnseenChanges, this.sessionLastUserInteractionAt = null, this.projectLastUserInteractionAt = null, final  String? $type}): $type = $type ?? 'session.unseen_changed';
   factory SesoriSessionUnseenChanged.fromJson(Map<String, dynamic> json) => _$SesoriSessionUnseenChangedFromJson(json);
 
  final  String projectID;
  final  String sessionId;
  final  bool unseen;
  final  bool projectHasUnseenChanges;
+// COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges omit sessionLastUserInteractionAt, which means no persisted interaction is available. Remove the default and require the field once those bridges are unsupported.
+// ignore: no_slop_linter/prefer_required_named_parameters -- Freezed null default preserves older wire payloads.
+@JsonKey() final  int? sessionLastUserInteractionAt;
+// COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges omit projectLastUserInteractionAt, which means no persisted aggregate is available. Remove the default and require the field once those bridges are unsupported.
+// ignore: no_slop_linter/prefer_required_named_parameters -- Freezed null default preserves older wire payloads.
+@JsonKey() final  int? projectLastUserInteractionAt;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -2592,16 +2598,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionUnseenChanged&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.unseen, unseen) || other.unseen == unseen)&&(identical(other.projectHasUnseenChanges, projectHasUnseenChanges) || other.projectHasUnseenChanges == projectHasUnseenChanges));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionUnseenChanged&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.unseen, unseen) || other.unseen == unseen)&&(identical(other.projectHasUnseenChanges, projectHasUnseenChanges) || other.projectHasUnseenChanges == projectHasUnseenChanges)&&(identical(other.sessionLastUserInteractionAt, sessionLastUserInteractionAt) || other.sessionLastUserInteractionAt == sessionLastUserInteractionAt)&&(identical(other.projectLastUserInteractionAt, projectLastUserInteractionAt) || other.projectLastUserInteractionAt == projectLastUserInteractionAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectID,sessionId,unseen,projectHasUnseenChanges);
+int get hashCode => Object.hash(runtimeType,projectID,sessionId,unseen,projectHasUnseenChanges,sessionLastUserInteractionAt,projectLastUserInteractionAt);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionUnseenChanged(projectID: $projectID, sessionId: $sessionId, unseen: $unseen, projectHasUnseenChanges: $projectHasUnseenChanges)';
+  return 'SesoriSseEvent.sessionUnseenChanged(projectID: $projectID, sessionId: $sessionId, unseen: $unseen, projectHasUnseenChanges: $projectHasUnseenChanges, sessionLastUserInteractionAt: $sessionLastUserInteractionAt, projectLastUserInteractionAt: $projectLastUserInteractionAt)';
 }
 
 
@@ -2612,7 +2618,7 @@ abstract mixin class $SesoriSessionUnseenChangedCopyWith<$Res> implements $Sesor
   factory $SesoriSessionUnseenChangedCopyWith(SesoriSessionUnseenChanged value, $Res Function(SesoriSessionUnseenChanged) _then) = _$SesoriSessionUnseenChangedCopyWithImpl;
 @useResult
 $Res call({
- String projectID, String sessionId, bool unseen, bool projectHasUnseenChanges
+ String projectID, String sessionId, bool unseen, bool projectHasUnseenChanges, int? sessionLastUserInteractionAt, int? projectLastUserInteractionAt
 });
 
 
@@ -2629,13 +2635,15 @@ class _$SesoriSessionUnseenChangedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? projectID = null,Object? sessionId = null,Object? unseen = null,Object? projectHasUnseenChanges = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? projectID = null,Object? sessionId = null,Object? unseen = null,Object? projectHasUnseenChanges = null,Object? sessionLastUserInteractionAt = freezed,Object? projectLastUserInteractionAt = freezed,}) {
   return _then(SesoriSessionUnseenChanged(
 projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
 as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,unseen: null == unseen ? _self.unseen : unseen // ignore: cast_nullable_to_non_nullable
 as bool,projectHasUnseenChanges: null == projectHasUnseenChanges ? _self.projectHasUnseenChanges : projectHasUnseenChanges // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,sessionLastUserInteractionAt: freezed == sessionLastUserInteractionAt ? _self.sessionLastUserInteractionAt : sessionLastUserInteractionAt // ignore: cast_nullable_to_non_nullable
+as int?,projectLastUserInteractionAt: freezed == projectLastUserInteractionAt ? _self.projectLastUserInteractionAt : projectLastUserInteractionAt // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
