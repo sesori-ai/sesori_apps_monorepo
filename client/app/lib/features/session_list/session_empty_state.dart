@@ -63,7 +63,7 @@ class _EmptyTerminalGlyph extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: prego.colors.bgSurface4,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(prego.radius.lg),
         border: Border.all(width: 0.5, color: prego.colors.borderInsideReversedBottom),
       ),
       child: Padding(
@@ -89,6 +89,10 @@ class _EmptyTerminalGlyph extends StatelessWidget {
               children: [
                 Text(
                   r"$",
+                  // The glyph is a fixed-size illustration whose other elements
+                  // (dots, cursor bar) don't scale, so the prompt must not
+                  // partially scale with accessibility fonts either.
+                  textScaler: TextScaler.noScaling,
                   style: prego.textTheme.textMd.regular.copyWith(
                     color: prego.colors.textSuccessPrimary,
                     height: 1,
@@ -152,17 +156,17 @@ class _ProjectChip extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 260),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: prego.spacing.lg, vertical: prego.spacing.md),
         decoration: BoxDecoration(
           color: prego.colors.bgSurface2,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(prego.radius.full),
           border: Border.all(color: prego.colors.borderSecondary),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(TablerSolid.brand_github, size: 14, color: prego.colors.textPrimary),
-            const SizedBox(width: 6),
+            SizedBox(width: prego.spacing.sm),
             Flexible(
               child: Text(
                 name,

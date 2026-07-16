@@ -11,6 +11,7 @@ void main() {
     WidgetTester tester, {
     required String? projectName,
     Brightness brightness = Brightness.light,
+    TextScaler textScaler = TextScaler.noScaling,
   }) async {
     final isDark = brightness == Brightness.dark;
     await tester.pumpWidget(
@@ -22,6 +23,10 @@ void main() {
         ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+          child: child!,
+        ),
         home: Scaffold(
           body: CustomScrollView(
             slivers: [
@@ -56,6 +61,20 @@ void main() {
     expect(find.text(emptyTitle(tester)), findsOneWidget);
     expect(find.byKey(const Key("session-empty-terminal")), findsOneWidget);
     expect(find.byIcon(TablerSolid.brand_github), findsNothing);
+  });
+
+  testWidgets("terminal glyph prompt ignores system text scaling", (tester) async {
+    await pumpEmptyState(tester, projectName: null);
+    final unscaled = tester.getSize(find.text(r"$"));
+
+    await pumpEmptyState(
+      tester,
+      projectName: null,
+      textScaler: const TextScaler.linear(3),
+    );
+
+    expect(tester.getSize(find.text(r"$")), unscaled);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("renders without overflow in dark mode", (tester) async {
