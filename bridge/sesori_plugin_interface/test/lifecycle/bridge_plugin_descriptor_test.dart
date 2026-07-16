@@ -204,9 +204,6 @@ class _UnusedProcessService implements HostProcessService {
   Future<ProcessIdentity?> inspect({required int pid}) => throw UnimplementedError();
 
   @override
-  Future<List<ProcessIdentity>> list({required int? excludePid}) => throw UnimplementedError();
-
-  @override
   Future<SignalResult> signalGraceful({required int pid}) => throw UnimplementedError();
 
   @override

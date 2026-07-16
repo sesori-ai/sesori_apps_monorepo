@@ -30,23 +30,6 @@ class ProcessRepository {
     return _toMatch(identity: identity);
   }
 
-  Future<List<ProcessIdentity>> listProcessIdentities({required int? excludePid}) async {
-    final processes = await _api.listProcesses();
-    final identities = <ProcessIdentity>[];
-    for (final identity in processes) {
-      if (excludePid != null && identity.pid == excludePid) {
-        continue;
-      }
-      identities.add(identity);
-    }
-    return identities;
-  }
-
-  Future<List<ProcessMatch>> listProcesses({required int? excludePid}) async {
-    final identities = await listProcessIdentities(excludePid: excludePid);
-    return identities.map((ProcessIdentity identity) => _toMatch(identity: identity)).toList();
-  }
-
   Future<int> startDetached({
     required String executable,
     required List<String> arguments,

@@ -39,7 +39,6 @@ void main() {
       expect(candidates.first.startMarker, equals('Fri May 15 12:00:00 2026'));
       expect(processIdLookupRunner.executableNames, equals(<String>['sesori-bridge']));
       expect(processApi.inspectedPids, equals(<int>[10, 12]));
-      expect(processApi.listCallCount, equals(0));
     });
 
     test('filters other-user and pid-recycled non-bridge processes', () async {
@@ -171,18 +170,11 @@ class _LookupProcessRunner implements ProcessRunner {
 class _FakeSystemProcessApi implements SystemProcessApi {
   final Map<int, ProcessIdentity?> inspectionFacts = <int, ProcessIdentity?>{};
   final List<int> inspectedPids = <int>[];
-  int listCallCount = 0;
 
   @override
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     inspectedPids.add(pid);
     return inspectionFacts[pid];
-  }
-
-  @override
-  Future<List<ProcessIdentity>> listProcesses() async {
-    listCallCount += 1;
-    return const <ProcessIdentity>[];
   }
 
   @override
