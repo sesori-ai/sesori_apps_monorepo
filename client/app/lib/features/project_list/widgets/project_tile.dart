@@ -83,11 +83,6 @@ class ProjectTile extends StatelessWidget {
   /// row it is anchored to.
   static const double _menuWidth = 200;
 
-  /// The hide pill's resting width, from the design. Wider than the label
-  /// needs, so the row's committing action reads as the bigger target; the
-  /// pill stretches from here during an overdrag.
-  static const double _hidePillWidth = 136;
-
   @override
   Widget build(BuildContext context) {
     return PregoAnchorMenu(
@@ -172,7 +167,6 @@ class ProjectTile extends StatelessWidget {
           _renameAction(context: context, close: close),
         ],
         primaryActionBuilder: (context, close) => _hideAction(context: context, close: close),
-        primaryActionWidth: _hidePillWidth,
         onFullSwipe: () => unawaited(_hide(context: context)),
         // Right-click is the mouse counterpart of long-press. The row also has
         // to announce itself as a button and as one thing: that came free from
@@ -248,8 +242,10 @@ class ProjectTile extends StatelessWidget {
   }
 
   /// The swipe strip's hide pill — the primary action, which is also what a
-  /// full swipe commits. Fills the width [PregoSwipeActions] gives it so it
-  /// can stretch during an overdrag.
+  /// full swipe commits. Sized by its own content at rest; when
+  /// [PregoSwipeActions] widens its box during an overdrag, the button's
+  /// centered content rides the stretch. Not `fullWidth`: that needs a
+  /// bounded parent, and at rest the strip's width is open-ended.
   Widget _hideAction({required BuildContext context, required VoidCallback close}) {
     return PregoButtonsSolid(
       label: context.loc.hide,
@@ -257,7 +253,6 @@ class ProjectTile extends StatelessWidget {
       hierarchy: PregoButtonsSolidHierarchy.primary,
       type: PregoButtonsSolidType.warning,
       size: PregoButtonsSolidSize.md,
-      fullWidth: true,
       onPressed: () {
         close();
         unawaited(_hide(context: context));

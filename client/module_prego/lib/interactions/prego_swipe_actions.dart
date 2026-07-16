@@ -46,7 +46,6 @@ class PregoSwipeActions extends StatefulWidget {
     required this.child,
     required this.actionsBuilder,
     required this.primaryActionBuilder,
-    required this.primaryActionWidth,
     required this.onFullSwipe,
   });
 
@@ -56,16 +55,12 @@ class PregoSwipeActions extends StatefulWidget {
   /// The secondary actions, laid out in order before the primary action.
   final PregoSwipeActionListBuilder actionsBuilder;
 
-  /// The primary action — the one a full swipe commits. Rendered inside a box
-  /// the component sizes ([primaryActionWidth] plus any overdrag surplus), so
-  /// it must expand to fill the width it is given.
+  /// The primary action — the one a full swipe commits. Rests at its own
+  /// natural width; during an overdrag the component re-boxes it wider (that
+  /// width plus the surplus), so it must fill any extra width it is given —
+  /// content that centers itself in a stretched box, the way the design
+  /// system's buttons lay out.
   final PregoSwipeActionBuilder primaryActionBuilder;
-
-  /// The primary action's resting width. The component owns the action's box
-  /// so it can stretch it during an overdrag, which means the natural width
-  /// must be declared rather than measured — a fixed-width child would defeat
-  /// the stretch.
-  final double primaryActionWidth;
 
   /// Committed by a full swipe: called once on release past the commit
   /// threshold, while the row settles shut. The action owns any row removal;
@@ -96,11 +91,18 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
 
   final GlobalKey _stripKey = GlobalKey();
 
+  final GlobalKey _primaryKey = GlobalKey();
+
   double _rowWidth = 0;
 
   /// Measured from the actions strip's laid-out size, so token or label
   /// changes never desync the settle target from the rendered actions.
   double? _revealWidth;
+
+  /// The primary action's natural width — the base the overdrag stretch grows
+  /// from. Measured alongside [_revealWidth], under the same staleness
+  /// contract.
+  double? _primaryWidth;
 
   bool _dragging = false;
 
@@ -115,6 +117,16 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
   double get _extent => _controller.value * _rowWidth;
 
   double get _overdragSurplus => math.max(0, _extent - (_revealWidth ?? double.infinity));
+
+  /// The width imposed on the primary action while the overdrag stretches it.
+  /// Null at rest and through the reveal, which leaves the action its natural
+  /// width.
+  double? get _primaryStretchTarget {
+    final surplus = _overdragSurplus;
+    final natural = _primaryWidth;
+    if (surplus <= 0 || natural == null) return null;
+    return natural + surplus;
+  }
 
   @override
   void initState() {
@@ -215,7 +227,7 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
           spacing: PregoSpacing.sm,
           children: [
             ...actions,
-            SizedBox(width: widget.primaryActionWidth + _overdragSurplus, child: primary),
+            SizedBox(key: _primaryKey, width: _primaryStretchTarget, child: primary),
           ],
         ),
       ),
@@ -227,7 +239,7 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
   void _handleDragStart(DragStartDetails details) {
     _dragging = true;
     _controller.stop();
-    _measureRevealWidth();
+    _measureRestingWidths();
     _pastCommit = _extent >= _commitThreshold;
   }
 
@@ -283,13 +295,16 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
   double _toExtentDelta(double primaryDelta) =>
       Directionality.of(context) == TextDirection.rtl ? primaryDelta : -primaryDelta;
 
-  /// The settle target is the actions strip as laid out. Only trustworthy
-  /// while nothing is stretched, so a re-grab mid-overdrag keeps the previous
-  /// measurement.
-  void _measureRevealWidth() {
+  /// The settle target is the actions strip as laid out, and the stretch base
+  /// is the primary action's own size within it. Only trustworthy while
+  /// nothing is stretched, so a re-grab mid-overdrag keeps the previous
+  /// measurements.
+  void _measureRestingWidths() {
     if (_overdragSurplus > 0) return;
     final strip = _stripKey.currentContext?.findRenderObject();
     if (strip is RenderBox && strip.hasSize) _revealWidth = strip.size.width;
+    final primary = _primaryKey.currentContext?.findRenderObject();
+    if (primary is RenderBox && primary.hasSize) _primaryWidth = primary.size.width;
   }
 
   // ── Settling ───────────────────────────────────────────────────────────────

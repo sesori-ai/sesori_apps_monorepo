@@ -4,8 +4,9 @@ import 'package:theme_prego/module_prego.dart';
 
 /// The default test surface is 800 logical px wide, so the geometry the tests
 /// assert against is:
-/// - reveal width: 6 (start gap) + 40 (action) + 6 (gap) + 136 (primary) + 16
-///   (end inset) = 204, settle-open threshold 102;
+/// - reveal width: 6 (start gap) + 40 (action) + 6 (gap) + 136 (the primary's
+///   natural width — the harness child declares it, the component measures
+///   it) + 16 (end inset) = 204, settle-open threshold 102;
 /// - commit threshold: 0.6 * 800 = 480.
 /// Drags lose ~18px to touch slop before the recognizer reports, so distances
 /// keep a margin on their side of each threshold.
@@ -24,6 +25,7 @@ Widget _row({
   required String label,
   required _Counters counters,
   bool closeOnAction = false,
+  double primaryWidth = _primaryWidth,
 }) {
   return PregoSwipeActions(
     actionsBuilder: (context, close) => [
@@ -37,14 +39,18 @@ Widget _row({
         child: const SizedBox(width: 40, height: 40, child: ColoredBox(color: Colors.blue)),
       ),
     ],
-    primaryActionBuilder: (context, close) => TextButton(
-      onPressed: () {
-        counters.primaryTaps++;
-        if (closeOnAction) close();
-      },
-      child: Text('Hide $label'),
+    // The SizedBox stands in for a real action's content-driven size — the
+    // component measures it rather than being told.
+    primaryActionBuilder: (context, close) => SizedBox(
+      width: primaryWidth,
+      child: TextButton(
+        onPressed: () {
+          counters.primaryTaps++;
+          if (closeOnAction) close();
+        },
+        child: Text('Hide $label'),
+      ),
     ),
-    primaryActionWidth: _primaryWidth,
     onFullSwipe: () => counters.fullSwipes++,
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -171,6 +177,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(counters.actionTaps, 1);
     expect(counters.fullSwipes, 0);
+  });
+
+  testWidgets("the reveal geometry follows the primary action's natural width", (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, primaryWidth: 100)]),
+    );
+
+    // Nothing boxes the primary at rest — the strip lays it out at whatever
+    // width its content asks for.
+    expect(_primaryRect(tester, 'A').width, moreOrLessEquals(100, epsilon: 1));
+
+    await _swipe(tester, label: 'A', dx: -150);
+
+    // Reveal: 6 + 40 + 6 + 100 + 16 = 168 — narrower than the default
+    // harness's 204, because the measured geometry tracked the primary.
+    final rect = _primaryRect(tester, 'A');
+    expect(rect.left, moreOrLessEquals(_surfaceWidth - 16 - 100, epsilon: 1));
+    expect(rect.width, moreOrLessEquals(100, epsilon: 1));
+    final actionTarget = tester.getCenter(find.byKey(const ValueKey('action-A')));
+    expect(actionTarget.dx, moreOrLessEquals(_surfaceWidth - 168 + 6 + 20, epsilon: 1));
   });
 
   testWidgets('an action can close the row through the builder callback', (tester) async {
