@@ -388,6 +388,59 @@ void main() {
       expect(eventTracker.length, 0);
     });
 
+    test("replays an update that follows a pending root creation", () async {
+      final created = BridgeSseSessionCreated(
+        info: _sessionInfo(
+          sessionId: "backend-root",
+          parentId: null,
+          projectId: "backend-project",
+          directory: "/repo",
+        ),
+      );
+      final updated = BridgeSseSessionUpdated(
+        info: Session.fromJson(
+          _sessionInfo(
+            sessionId: "backend-root",
+            parentId: null,
+            projectId: "backend-project",
+            directory: "/repo",
+          ),
+        ).copyWith(title: "Updated title").toJson(),
+        titleChanged: true,
+      );
+
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, projectionUpdatedAt: 12, event: created),
+        ),
+        isEmpty,
+      );
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, projectionUpdatedAt: 13, event: updated),
+        ),
+        isEmpty,
+      );
+
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final output = await service.handleBindingsCommitted(
+        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+      );
+
+      expect(output, hasLength(2));
+      expect(output.first, isA<BridgeSseSessionCreated>());
+      final normalizedUpdate = output.last as BridgeSseSessionUpdated;
+      final session = Session.fromJson(normalizedUpdate.info);
+      expect(session.id, "stable-root");
+      expect(session.title, "Updated title");
+      expect(eventTracker.length, 0);
+    });
+
     test("replays child input after its pending ancestry commits", () async {
       final rootEvent = BridgeSseSessionCreated(
         info: _sessionInfo(

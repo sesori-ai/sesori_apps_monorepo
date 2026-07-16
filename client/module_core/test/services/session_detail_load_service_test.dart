@@ -127,11 +127,13 @@ void main() {
 
       verifyNever(() => repository.getPendingQuestions(sessionId: "session-1"));
       verifyNever(() => repository.getPendingPermissions(sessionId: "session-1"));
+      verifyNever(() => repository.getSessionStatuses());
 
       children.complete(ApiResponse.success(const SessionListResponse(items: <Session>[])));
       expect(await load, isA<SessionDetailLoadResultLoaded>());
       verify(() => repository.getPendingQuestions(sessionId: "session-1")).called(1);
       verify(() => repository.getPendingPermissions(sessionId: "session-1")).called(1);
+      verify(() => repository.getSessionStatuses()).called(1);
     });
 
     test("connected API failure does not auto-loop", () async {

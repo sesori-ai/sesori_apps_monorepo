@@ -42,7 +42,6 @@ class SessionDetailLoadService {
       final routeProjectId = projectId.normalize();
       final messagesFuture = _repository.getMessages(sessionId: sessionId);
       final childrenFuture = _repository.getChildren(sessionId: sessionId);
-      final statusesFuture = _repository.getSessionStatuses();
       final sessionResponse = await _repository.getSession(sessionId: sessionId);
       final session = switch (sessionResponse) {
         SuccessResponse(:final data) => data,
@@ -63,6 +62,7 @@ class SessionDetailLoadService {
       final childrenResponse = await childrenFuture;
       final questionsFuture = _repository.getPendingQuestions(sessionId: sessionId);
       final permissionsFuture = _repository.getPendingPermissions(sessionId: sessionId);
+      final statusesFuture = _repository.getSessionStatuses();
       final (
         messagesResponse,
         questionsResponse,

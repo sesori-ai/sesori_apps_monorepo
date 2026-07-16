@@ -174,6 +174,20 @@ class SessionEventService {
             ),
           ),
         );
+      } else if (_eventTracker.isBindingPending(
+        pluginId: source.pluginId,
+        backendSessionId: observed.id,
+      )) {
+        _warnIfEvicted(
+          evicted: _eventTracker.addTranslation(
+            event: PendingTranslationEvent(
+              pluginId: source.pluginId,
+              event: source.event,
+              backendSessionId: observed.id,
+              projectionUpdatedAt: source.projectionUpdatedAt,
+            ),
+          ),
+        );
       }
       return null;
     }
