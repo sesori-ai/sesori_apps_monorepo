@@ -235,7 +235,6 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         onConflict: DoUpdate.withExcluded(
           (old, excluded) => SessionTableCompanion.custom(
             directory: excluded.directory,
-            createdAt: excluded.createdAt,
             updatedAt: excluded.updatedAt,
             projectionUpdatedAt: excluded.projectionUpdatedAt,
             catalogTitle: excluded.catalogTitle,

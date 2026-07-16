@@ -149,6 +149,7 @@ void main() {
       expect(dto?.lastAgent, equals("build"));
       expect(dto?.archivedAt, equals(150));
       expect(dto?.directory, equals("/observed/repo"));
+      expect(dto?.createdAt, equals(100));
       expect(dto?.updatedAt, equals(300));
     });
 
