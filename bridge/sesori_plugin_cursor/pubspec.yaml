@@ -18,6 +18,8 @@ dependencies:
   json_annotation: ^4.12.0
 
 dev_dependencies:
+  sesori_shared:
+    path: ../../shared/sesori_shared
   build_runner: any
   freezed: ^3.2.5
   json_serializable: ^6.14.0

@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "acp_content.dart";
+import "acp_event_mapper.dart" show AcpHaltNotice;
 
 /// Accumulates the `session/update` notifications replayed by `session/load`
 /// into ordered [PluginMessageWithParts] for `getSessionMessages`.
@@ -14,10 +15,17 @@ class AcpReplayCollector {
     required this.agentId,
     this.modelId,
     this.providerId,
+    required this.haltClassifier,
   });
 
   final String sessionId;
   final String agentId;
+
+  /// Classifies a fully-accumulated assistant message as a backend halt notice
+  /// (see [AcpEventMapper.classifyHaltNotice]) so a reloaded session renders the
+  /// notice as an error message exactly as it appeared live. Null on backends
+  /// with no halt notices.
+  final AcpHaltNotice? Function({required String text})? haltClassifier;
 
   /// Model/provider stamped on replayed assistant messages. Mutable so the
   /// plugin can set the loaded session's real model after `session/load`
@@ -86,6 +94,31 @@ class AcpReplayCollector {
   }
 
   PluginMessageWithParts _buildMessage(_Draft draft) {
+    // A recognized halt notice (e.g. Cursor's account/plan gate, streamed as a
+    // lone assistant message) is surfaced as an error message so a reloaded
+    // session matches the live rendering. Only a pure-text terminal notice
+    // qualifies — no reasoning, no tools — matching the shape the backend emits.
+    if (draft.role == "assistant" &&
+        draft.reasoning.isEmpty &&
+        draft.tools.isEmpty &&
+        draft.text.isNotEmpty) {
+      final halt = haltClassifier?.call(text: draft.text.toString());
+      if (halt != null) {
+        return PluginMessageWithParts(
+          info: PluginMessage.error(
+            id: draft.id,
+            sessionID: sessionId,
+            agent: agentId,
+            modelID: modelId,
+            providerID: providerId,
+            errorName: halt.errorName,
+            errorMessage: halt.message,
+            time: null,
+          ),
+          parts: const [],
+        );
+      }
+    }
     final parts = <PluginMessagePart>[];
     if (draft.reasoning.isNotEmpty) {
       parts.add(_textPart(draft, "reasoning", PluginMessagePartType.reasoning, draft.reasoning.toString()));

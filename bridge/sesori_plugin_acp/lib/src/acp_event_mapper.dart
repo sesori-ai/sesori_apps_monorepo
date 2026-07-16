@@ -6,6 +6,28 @@ import "acp_content.dart";
 import "acp_protocol.dart";
 import "acp_stdio_client.dart";
 
+/// A backend "halt notice": the agent ended a turn without doing the requested
+/// work and instead streamed a terminal notice telling the user to change
+/// something (account, plan, model, or settings). Cursor's account/plan gate
+/// ("Check your settings to continue") is the canonical case.
+///
+/// On the wire such a notice is an ordinary `agent_message_chunk` ending with
+/// `stopReason: end_turn` — indistinguishable from real assistant prose — so a
+/// backend that knows its own gate wording recognizes it (see
+/// [AcpEventMapper.classifyHaltNotice]) and it is surfaced as a
+/// [shared.Message.error] instead of quiet assistant text, giving the user an
+/// explicit "the turn did not run" signal.
+class AcpHaltNotice {
+  const AcpHaltNotice({required this.errorName, required this.message});
+
+  /// Short stable label for the halt class (e.g. "cursor_gate"), carried in
+  /// the error message's `errorName`.
+  final String errorName;
+
+  /// The user-facing notice text to show (the agent's own wording).
+  final String message;
+}
+
 /// Translates ACP `session/update` notifications into bridge-neutral
 /// [BridgeSseEvent]s.
 ///
@@ -307,6 +329,24 @@ class AcpEventMapper {
   /// Cursor's `cursor/update_todos`). Base implementation drops them.
   List<BridgeSseEvent> mapExtension(AcpNotification notification) => const [];
 
+  /// Hook: classify an assistant message's [text] as a backend halt notice
+  /// (see [AcpHaltNotice]) — the agent ended the turn without doing the
+  /// requested work and told the user to change something. Returns the notice
+  /// to surface as an error message, or null for ordinary assistant prose.
+  ///
+  /// Invoked with two text shapes: live, [text] is a single `agent_message_chunk`
+  /// (which equals the whole message only because the notice is emitted as one
+  /// atomic chunk); on history replay, [text] is the fully-accumulated message
+  /// text. An override that must gate on the complete message (e.g. a backend
+  /// that splits its notice across chunks) has to account for the live per-chunk
+  /// shape.
+  ///
+  /// Base backends never halt this way; harness subclasses that emit
+  /// recognizable gate text (e.g. Cursor) override this. Also consulted by the
+  /// history-replay collector so a reloaded session renders the notice the same
+  /// way it did live.
+  AcpHaltNotice? classifyHaltNotice({required String text}) => null;
+
   List<BridgeSseEvent> _textChunk({
     required String sessionId,
     required Map<String, dynamic> update,
@@ -316,6 +356,19 @@ class AcpEventMapper {
   }) {
     final text = acpContentText(update["content"]);
     if (text == null || text.isEmpty) return const [];
+
+    // A backend may end a turn without doing the requested work and instead
+    // emit a terminal "halt" notice as an ordinary assistant message (Cursor's
+    // account/plan gates: "Check your settings to continue"). Only a message
+    // chunk can be such a notice, never a reasoning chunk. A recognized notice
+    // is surfaced as an explicit error message so the user sees the turn did not
+    // run, rather than a quiet line of assistant text. Cursor emits the notice
+    // as one atomic chunk; a hypothetically split notice falls through to plain
+    // text (no regression).
+    if (partType == PluginMessagePartType.text) {
+      final halt = classifyHaltNotice(text: text);
+      if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt);
+    }
 
     // ACP v1: chunks of one message share a `messageId`; a change starts a new
     // message. Group by it when present, so an agent emitting several same-role
@@ -364,6 +417,41 @@ class AcpEventMapper {
       _openIdlessAssistant.add(sessionId);
     }
     return events;
+  }
+
+  /// Emits a backend halt [notice] (see [classifyHaltNotice]) as a single
+  /// error message so the client renders it with its explicit error card
+  /// instead of quiet assistant prose. The notice text rides in the error
+  /// message itself, so no separate part is needed. Deduped per turn: a
+  /// repeated identical chunk must not stack duplicate error cards.
+  List<BridgeSseEvent> _haltNoticeEvents({
+    required String sessionId,
+    required AcpHaltNotice notice,
+  }) {
+    final messageId = "$sessionId-t${_turn(sessionId)}-halt";
+    final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
+    if (!started.add(messageId)) return const [];
+    // Any id-less assistant envelope opened earlier this turn is abandoned: the
+    // halt notice is the turn's outcome and stands alone. Closing it bumps the
+    // fallback sequence, so a later reordered id-less chunk recomputes a fresh
+    // message id and opens a new envelope rather than appending a delta to the
+    // abandoned one. (The dedupe return above runs first, so a repeated halt
+    // chunk can't double-bump the sequence.)
+    _closeIdlessAssistantEnvelope(sessionId);
+    return [
+      BridgeSseMessageUpdated(
+        info: shared.Message.error(
+          id: messageId,
+          sessionID: sessionId,
+          agent: agentId,
+          modelID: modelForSession(sessionId),
+          providerID: providerForSession(sessionId),
+          errorName: notice.errorName,
+          errorMessage: notice.message,
+          time: null,
+        ).toJson(),
+      ),
+    ];
   }
 
   List<BridgeSseEvent> _toolCall({
