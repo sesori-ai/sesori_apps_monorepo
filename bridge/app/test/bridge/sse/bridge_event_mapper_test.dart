@@ -15,10 +15,17 @@ void main() {
       );
     });
 
-    test("filters heartbeat events", () {
-      final result = mapper.map(const BridgeSseServerHeartbeat());
+    test("filters plugin lifecycle events from bridge-global wire semantics", () {
+      const lifecycleEvents = <BridgeSseEvent>[
+        BridgeSseServerConnected(),
+        BridgeSseServerHeartbeat(),
+        BridgeSseServerInstanceDisposed(directory: "/repo"),
+        BridgeSseGlobalDisposed(),
+      ];
 
-      expect(result, isNull);
+      for (final event in lifecycleEvents) {
+        expect(mapper.map(event), isNull, reason: event.runtimeType.toString());
+      }
     });
 
     test("maps session.created with provided enriched payload", () {

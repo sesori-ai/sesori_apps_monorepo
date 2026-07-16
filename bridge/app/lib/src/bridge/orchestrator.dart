@@ -12,6 +12,7 @@ import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../control/control_status_notifier.dart";
+import "../listeners/plugin_event_listener.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
@@ -24,12 +25,14 @@ import "repositories/agent_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
+import "repositories/mappers/session_event_mapper.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
 import "repositories/session_diff_repository.dart";
 import "repositories/session_repository.dart";
+import "repositories/trackers/session_child_tracker.dart";
 import "routing/abort_session_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
@@ -72,7 +75,7 @@ import "services/project_initialization_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_diff_service.dart";
-import "services/session_event_enrichment_service.dart";
+import "services/session_event_service.dart";
 import "services/session_lifecycle_service.dart";
 import "services/session_mutation_dispatcher.dart";
 import "services/session_prompt_service.dart";
@@ -88,6 +91,7 @@ class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePluginApi _plugin;
+  final String _pluginId;
   final SessionCreationService _sessionCreationService;
   final PushDispatcher _pushDispatcher;
   final CompletionPushListener _completionListener;
@@ -111,7 +115,6 @@ class Orchestrator {
   final PermissionRepository _permissionRepository;
   final QuestionRepository _questionRepository;
   final WorktreeService _worktreeService;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
@@ -120,6 +123,7 @@ class Orchestrator {
     required this.config,
     required RelayClient client,
     required BridgePluginApi plugin,
+    required String pluginId,
     required SessionCreationService sessionCreationService,
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
@@ -143,7 +147,6 @@ class Orchestrator {
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required WorktreeService worktreeService,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
@@ -151,6 +154,7 @@ class Orchestrator {
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _plugin = plugin,
+       _pluginId = pluginId,
        _sessionCreationService = sessionCreationService,
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
@@ -174,7 +178,6 @@ class Orchestrator {
        _permissionRepository = permissionRepository,
        _questionRepository = questionRepository,
        _worktreeService = worktreeService,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _restartService = restartService,
        _statusNotifier = statusNotifier;
@@ -222,6 +225,25 @@ class Orchestrator {
       ),
       filesystemRepository: _filesystemRepository,
     );
+    final pluginEventListener = PluginEventListener(
+      pluginId: _pluginId,
+      source: _plugin.events,
+      sessionEventService: SessionEventService(
+        sessionRepository: _sessionRepository,
+        sessionMutationDispatcher: _sessionMutationDispatcher,
+        eventMapper: const SessionEventMapper(),
+        childTracker: SessionChildTracker(
+          maxPendingEntries: SessionChildTracker.defaultMaxPendingEntries,
+        ),
+        failureReporter: _failureReporter,
+      ),
+    );
+    final normalizedPluginEvents = MergeStream<BridgeSseEvent>([
+      pluginEventListener.events,
+      _sessionMutationDispatcher.deletedSessions.map(
+        (session) => BridgeSseSessionDeleted(info: session.toJson()),
+      ),
+    ]).share();
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: _healthRepository),
@@ -284,6 +306,8 @@ class Orchestrator {
       config: config,
       client: _client,
       plugin: _plugin,
+      pluginEvents: normalizedPluginEvents,
+      pluginEventListener: pluginEventListener,
       pushDispatcher: _pushDispatcher,
       completionListener: _completionListener,
       maintenanceListener: _maintenanceListener,
@@ -306,7 +330,6 @@ class Orchestrator {
       permissionRepository: _permissionRepository,
       sessionAbortService: sessionAbortService,
       activeWorkSummaryService: activeWorkSummaryService,
-      sessionEventEnrichmentService: _sessionEventEnrichmentService,
       sessionMutationDispatcher: _sessionMutationDispatcher,
       restartService: _restartService,
       statusNotifier: _statusNotifier,
@@ -329,6 +352,8 @@ class OrchestratorSession {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePluginApi _plugin;
+  final Stream<BridgeSseEvent> _pluginEvents;
+  final PluginEventListener _pluginEventListener;
   final List<int> _roomKey;
   final SSEManager _sseManager;
   final RequestRouter _router;
@@ -346,7 +371,6 @@ class OrchestratorSession {
   final SessionViewTracker _sessionViewTracker;
   final SessionRepository _sessionRepository;
   final PermissionRepository _permissionRepository;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionAbortService _sessionAbortService;
   final ActiveWorkSummaryService _activeWorkSummaryService;
@@ -383,6 +407,8 @@ class OrchestratorSession {
     required this.config,
     required RelayClient client,
     required BridgePluginApi plugin,
+    required Stream<BridgeSseEvent> pluginEvents,
+    required PluginEventListener pluginEventListener,
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
@@ -405,12 +431,13 @@ class OrchestratorSession {
     required PermissionRepository permissionRepository,
     required SessionAbortService sessionAbortService,
     required ActiveWorkSummaryService activeWorkSummaryService,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _plugin = plugin,
+       _pluginEvents = pluginEvents,
+       _pluginEventListener = pluginEventListener,
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
@@ -435,14 +462,14 @@ class OrchestratorSession {
        _activeWorkSummaryService = activeWorkSummaryService,
        _projectActivityService = projectActivityService,
        _restartService = restartService,
-       _statusNotifier = statusNotifier,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       _statusNotifier = statusNotifier;
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
   /// Includes both API responses and SSE events. Subscribe to this stream to
   /// track bandwidth (e.g. with [BandwidthTracker]).
   Stream<int> get bytesSent => _bytesSentController.stream;
+  Stream<BridgeSseEvent> get pluginEvents => _pluginEvents;
   RequestRouter get router => _router;
 
   Future<void> run() async {
@@ -486,15 +513,7 @@ class OrchestratorSession {
       await _autoApprovePendingPermissions();
       await _refreshActiveWorkSummary();
       Log.d("subscribing to plugin event stream...");
-      MergeStream<BridgeSseEvent>([
-            _plugin.events,
-            _sessionMutationDispatcher.deletedSessions.map(
-              (session) => BridgeSseSessionDeleted(info: session.toJson()),
-            ),
-          ])
-          .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
-          .where((event) => event != null)
-          .cast<BridgeSseEvent>()
+      _pluginEvents
           .asyncMap<void>(_processPluginEvent)
           .listen(
             (_) {},
@@ -652,6 +671,7 @@ class OrchestratorSession {
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
       await _promptDefaultsSubscriptions.cancel();
       await _sessionPromptService.dispose();
+      await _pluginEventListener.dispose();
       await _sessionMutationDispatcher.dispose();
       await _projectActivityService.dispose();
       Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");

@@ -9,15 +9,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../server/services/bridge_restart_service.dart";
 import "repositories/session_repository.dart";
 import "routing/request_router.dart";
-import "services/session_event_enrichment_service.dart";
 import "sse/bridge_event_mapper.dart";
 
 class DebugServer {
-  final BridgePluginApi _plugin;
+  final Stream<BridgeSseEvent> _pluginEvents;
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
   final SessionRepository _sessionRepository;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final FailureReporter _failureReporter;
   final BridgeRestartService _restartService;
   final Future<void> Function() _restartHandoff;
@@ -31,15 +29,14 @@ class DebugServer {
   int _nextRequestId = 1;
 
   DebugServer({
-    required BridgePluginApi plugin,
+    required Stream<BridgeSseEvent> pluginEvents,
     required RequestRouter router,
     required this.port,
     required FailureReporter failureReporter,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionRepository sessionRepository,
     required BridgeRestartService restartService,
     required Future<void> Function() restartHandoff,
-  }) : _plugin = plugin,
+  }) : _pluginEvents = pluginEvents,
        _router = router,
        _failureReporter = failureReporter,
        _sessionRepository = sessionRepository,
@@ -47,8 +44,7 @@ class DebugServer {
        _restartHandoff = restartHandoff,
        _mapper = BridgeEventMapper(
          failureReporter: failureReporter,
-       ),
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       );
 
   int? get boundPort => _server?.port;
   RequestRouter get router => _router;
@@ -171,10 +167,7 @@ class DebugServer {
 
       _sseClients.add(response);
 
-      _pluginEventsSub ??= _plugin.events
-          .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
-          .where((event) => event != null)
-          .cast<BridgeSseEvent>()
+      _pluginEventsSub ??= _pluginEvents
           // Mirrors the orchestrator: a project update rebuilds the full
           // summary from repository data; everything else maps 1:1.
           .asyncMap<SesoriSseEvent?>(

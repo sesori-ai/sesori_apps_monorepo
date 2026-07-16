@@ -160,9 +160,6 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   String get id => "fake";
 
   @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
-
-  @override
   Stream<BridgeSseEvent> get events => _controller.stream;
 
   @override
@@ -670,6 +667,46 @@ Session _deletedSession(String sessionId) => Session(
   promptDefaults: null,
 );
 
+Future<void> recordSessionBinding({
+  required AppDatabase database,
+  required String sessionId,
+  required String backendSessionId,
+  required String pluginId,
+  required String projectId,
+  required String? parentSessionId,
+}) async {
+  await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+  if (parentSessionId == null) {
+    await database.sessionDao.insertSession(
+      sessionId: sessionId,
+      backendSessionId: backendSessionId,
+      projectId: projectId,
+      isDedicated: false,
+      createdAt: 1,
+      worktreePath: null,
+      branchName: null,
+      baseBranch: null,
+      baseCommit: null,
+      lastAgent: null,
+      lastAgentModel: null,
+      pluginId: pluginId,
+    );
+    return;
+  }
+  await database.sessionDao.insertObservedChild(
+    sessionId: sessionId,
+    backendSessionId: backendSessionId,
+    projectId: projectId,
+    parentSessionId: parentSessionId,
+    directory: projectId,
+    catalogTitle: null,
+    createdAt: 1,
+    updatedAt: 1,
+    projectionUpdatedAt: 1,
+    pluginId: pluginId,
+  );
+}
+
 class _NoopSessionRepository implements SessionRepository {
   @override
   bool get sessionListIsAuthoritative => true;
@@ -692,12 +729,20 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<Session> createSession({
     required String pluginId,
+    required String projectId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
+    required bool isDedicated,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
   }) async => const Session(
     id: "",
     pluginId: "fake",
@@ -721,9 +766,6 @@ class _NoopSessionRepository implements SessionRepository {
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
       pluginSession.toSharedSession(pluginId: "fake");
   @override
-  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async =>
-      Session.fromJson(sessionJson);
-  @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
@@ -741,6 +783,34 @@ class _NoopSessionRepository implements SessionRepository {
   Future<String?> getProjectPath({required String projectId}) async => null;
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<StoredSession?> getStoredSessionByBackendId({
+    required String pluginId,
+    required String backendSessionId,
+  }) async => null;
+
+  @override
+  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+    required String pluginId,
+    required List<String> backendSessionIds,
+  }) async => const {};
+
+  @override
+  Future<StoredSession?> updateObservedSessionProjection({
+    required String pluginId,
+    required Session observed,
+    required bool updateCatalogTitle,
+    required int projectionUpdatedAt,
+  }) async => null;
+
+  @override
+  Future<StoredSession?> insertObservedChild({
+    required String pluginId,
+    required Session observed,
+    required StoredSession parent,
+    required int projectionUpdatedAt,
+  }) async => null;
 
   @override
   Future<StoredSession> requireActiveStoredSession({
@@ -916,12 +986,20 @@ class FakeSessionRepository implements SessionRepository {
   @override
   Future<Session> createSession({
     required String pluginId,
+    required String projectId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
+    required bool isDedicated,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
   }) async => const Session(
     id: "",
     pluginId: "fake",
@@ -1007,11 +1085,6 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async {
-    return enrichSession(session: Session.fromJson(sessionJson));
-  }
-
-  @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
     final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
@@ -1091,6 +1164,34 @@ class FakeSessionRepository implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async {
     return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
   }
+
+  @override
+  Future<StoredSession?> getStoredSessionByBackendId({
+    required String pluginId,
+    required String backendSessionId,
+  }) async => null;
+
+  @override
+  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+    required String pluginId,
+    required List<String> backendSessionIds,
+  }) async => const {};
+
+  @override
+  Future<StoredSession?> updateObservedSessionProjection({
+    required String pluginId,
+    required Session observed,
+    required bool updateCatalogTitle,
+    required int projectionUpdatedAt,
+  }) async => getStoredSessionByBackendId(pluginId: pluginId, backendSessionId: observed.id);
+
+  @override
+  Future<StoredSession?> insertObservedChild({
+    required String pluginId,
+    required Session observed,
+    required StoredSession parent,
+    required int projectionUpdatedAt,
+  }) async => null;
 
   @override
   Future<StoredSession> requireActiveStoredSession({

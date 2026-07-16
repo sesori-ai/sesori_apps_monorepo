@@ -38,7 +38,6 @@ import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -113,11 +112,6 @@ void main() {
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final sessionEventEnrichmentService = SessionEventEnrichmentService(
-      sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionTitleService,
-      failureReporter: FakeFailureReporter(),
-    );
 
     final projectActivityService = ProjectActivityService(
       projectRepository: projectRepository,
@@ -144,6 +138,32 @@ void main() {
       parentId: null,
     );
     expect(await unseenRepository.isUnseen(sessionId: "root-session"), isTrue);
+    await _insertRootSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "pending-root",
+      backendSessionId: "pending-root-session",
+    );
+    await _insertChildSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "pending-child",
+      backendSessionId: "pending-child-session",
+      parentSessionId: "pending-root",
+    );
+    await _insertRootSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "ordered-session",
+      backendSessionId: "backend-ordered-session",
+    );
+    await _insertChildSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "child-session",
+      backendSessionId: "backend-child-session",
+      parentSessionId: "root-session",
+    );
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -154,6 +174,7 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
+      pluginId: plugin.id,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -210,7 +231,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -292,7 +312,7 @@ void main() {
     plugin.add(
       const BridgeSseSessionCreated(
         info: {
-          "id": "ordered-session",
+          "id": "backend-ordered-session",
           "projectID": "ordered-project",
           "directory": "/tmp/ordered-project",
           "parentID": null,
@@ -351,7 +371,7 @@ void main() {
     plugin.add(
       const BridgeSsePermissionAsked(
         requestID: "permission-1",
-        sessionID: "child-session",
+        sessionID: "backend-child-session",
         displaySessionId: "root-session",
         tool: "bash",
         description: "run a command",
@@ -379,7 +399,7 @@ void main() {
         ),
         (
           requestId: "permission-1",
-          sessionId: "child-session",
+          sessionId: "backend-child-session",
           reply: PluginPermissionReply.once,
         ),
       ]),
@@ -393,7 +413,7 @@ void main() {
     plugin.add(
       const BridgeSsePermissionReplied(
         requestID: "permission-1",
-        sessionID: "child-session",
+        sessionID: "backend-child-session",
         displaySessionId: "root-session",
         reply: "once",
       ),
@@ -481,11 +501,6 @@ void main() {
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final sessionEventEnrichmentService = SessionEventEnrichmentService(
-      sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionTitleService,
-      failureReporter: FakeFailureReporter(),
-    );
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
@@ -516,6 +531,7 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
+      pluginId: plugin.id,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -591,7 +607,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -682,11 +697,6 @@ void main() {
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final sessionEventEnrichmentService = SessionEventEnrichmentService(
-      sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionTitleService,
-      failureReporter: FakeFailureReporter(),
-    );
     // Wired exactly like the supervised composition root: the notifier
     // observes the relay client's real connection-state stream and owns the
     // control-channel sends; the orchestrator only feeds it summaries.
@@ -698,6 +708,18 @@ void main() {
       registrations: const Stream<String>.empty(),
     );
     statusNotifier.start();
+    await _insertRootSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "session-1",
+      backendSessionId: "session-1",
+    );
+    await _insertRootSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "session-2",
+      backendSessionId: "session-2",
+    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -709,6 +731,7 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
+      pluginId: plugin.id,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -778,7 +801,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: statusNotifier,
@@ -873,7 +895,7 @@ void main() {
 
     await database.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
     await database.sessionDao.insertSession(
-      pluginId: "opencode",
+      pluginId: plugin.id,
       sessionId: "s1",
       backendSessionId: "s1",
       projectId: "p1",
@@ -904,11 +926,6 @@ void main() {
     );
 
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final sessionEventEnrichmentService = SessionEventEnrichmentService(
-      sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionTitleService,
-      failureReporter: FakeFailureReporter(),
-    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -920,6 +937,7 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
+      pluginId: plugin.id,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -995,7 +1013,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -1085,15 +1102,10 @@ void main() {
         },
       ),
     );
-    final persistenceTimeoutAt = DateTime.now().add(const Duration(seconds: 2));
-    while (await database.projectsDao.getProject(projectId: "0190f4c6-opaque-project-id") == null) {
-      if (DateTime.now().isAfter(persistenceTimeoutAt)) {
-        fail("Timed out waiting for the native project placeholder");
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
+    await Future<void>.delayed(const Duration(milliseconds: 100));
     final nativeProject = await database.projectsDao.getProject(projectId: "0190f4c6-opaque-project-id");
-    expect(nativeProject?.path, "/projects/native-repository");
+    expect(nativeProject, isNull, reason: "an unknown root event must not discover a project");
+    expect(pushDispatcher.events, hasLength(5));
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
@@ -1146,11 +1158,6 @@ void main() {
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final sessionEventEnrichmentService = SessionEventEnrichmentService(
-      sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionTitleService,
-      failureReporter: FakeFailureReporter(),
-    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -1162,6 +1169,7 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
+      pluginId: plugin.id,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -1237,7 +1245,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -1313,11 +1320,6 @@ void main() {
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final sessionEventEnrichmentService = SessionEventEnrichmentService(
-      sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionTitleService,
-      failureReporter: FakeFailureReporter(),
-    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -1329,6 +1331,7 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
+      pluginId: plugin.id,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -1404,7 +1407,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -1424,7 +1426,7 @@ void main() {
 
     plugin.add(
       BridgeSseSessionStatus(
-        sessionID: "session-42",
+        sessionID: "backend-session-42",
         status: const SessionStatus.busy().toJson(),
       ),
     );
@@ -1448,7 +1450,7 @@ void main() {
 
     plugin.add(
       BridgeSseSessionStatus(
-        sessionID: "session-42",
+        sessionID: "backend-session-42",
         status: const SessionStatus.idle().toJson(),
       ),
     );
@@ -1505,11 +1507,6 @@ void main() {
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final sessionEventEnrichmentService = SessionEventEnrichmentService(
-      sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionTitleService,
-      failureReporter: FakeFailureReporter(),
-    );
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -1521,6 +1518,7 @@ void main() {
       ),
       client: relayClient,
       plugin: plugin,
+      pluginId: plugin.id,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -1596,7 +1594,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -1616,7 +1613,7 @@ void main() {
 
     plugin.add(
       BridgeSseSessionStatus(
-        sessionID: "session-42",
+        sessionID: "backend-session-42",
         status: const SessionStatus.busy().toJson(),
       ),
     );
@@ -1639,7 +1636,7 @@ void main() {
 
     plugin.add(
       BridgeSseSessionStatus(
-        sessionID: "session-42",
+        sessionID: "backend-session-42",
         status: const SessionStatus.idle().toJson(),
       ),
     );
@@ -1683,6 +1680,29 @@ Future<void> _insertRootSessionBinding({
     baseCommit: null,
     lastAgent: null,
     lastAgentModel: null,
+  );
+}
+
+Future<void> _insertChildSessionBinding({
+  required AppDatabase database,
+  required String pluginId,
+  required String sessionId,
+  required String backendSessionId,
+  required String parentSessionId,
+}) async {
+  final parent = await database.sessionDao.getSession(sessionId: parentSessionId);
+  if (parent == null) throw StateError("missing parent session $parentSessionId");
+  await database.sessionDao.insertObservedChild(
+    sessionId: sessionId,
+    backendSessionId: backendSessionId,
+    projectId: parent.projectId,
+    parentSessionId: parentSessionId,
+    directory: parent.directory,
+    catalogTitle: null,
+    createdAt: 1,
+    updatedAt: 1,
+    projectionUpdatedAt: 1,
+    pluginId: pluginId,
   );
 }
 
@@ -1948,9 +1968,6 @@ class _SummaryPlugin implements NativeProjectsPluginApi {
   String get id => "summary-plugin";
 
   @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
-
-  @override
   Stream<BridgeSseEvent> get events {
     return Stream<BridgeSseEvent>.multi((controller) {
       onSubscribe();
@@ -2145,9 +2162,6 @@ class _NoopPlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "noop-plugin";
-
-  @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => _controller.stream;
@@ -2512,12 +2526,20 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<Session> createSession({
     required String pluginId,
+    required String projectId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
+    required bool isDedicated,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
   }) async => const Session(
     id: "",
     pluginId: "fake",
@@ -2541,9 +2563,6 @@ class _NoopSessionRepository implements SessionRepository {
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
       pluginSession.toSharedSession(pluginId: "fake");
   @override
-  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async =>
-      Session.fromJson(sessionJson);
-  @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const <Session>[];
@@ -2561,6 +2580,34 @@ class _NoopSessionRepository implements SessionRepository {
   Future<String?> getProjectPath({required String projectId}) async => null;
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<StoredSession?> getStoredSessionByBackendId({
+    required String pluginId,
+    required String backendSessionId,
+  }) async => null;
+
+  @override
+  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+    required String pluginId,
+    required List<String> backendSessionIds,
+  }) async => const {};
+
+  @override
+  Future<StoredSession?> updateObservedSessionProjection({
+    required String pluginId,
+    required Session observed,
+    required bool updateCatalogTitle,
+    required int projectionUpdatedAt,
+  }) async => null;
+
+  @override
+  Future<StoredSession?> insertObservedChild({
+    required String pluginId,
+    required Session observed,
+    required StoredSession parent,
+    required int projectionUpdatedAt,
+  }) async => null;
 
   @override
   Future<StoredSession> requireActiveStoredSession({
@@ -2712,21 +2759,37 @@ class _DelayingSessionRepository implements SessionRepository {
   @override
   Future<Session> createSession({
     required String pluginId,
+    required String projectId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
+    required bool isDedicated,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
   }) {
     return _base.createSession(
       pluginId: pluginId,
+      projectId: projectId,
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts,
       variant: variant,
       agent: agent,
       model: model,
+      isDedicated: isDedicated,
+      worktreePath: worktreePath,
+      branchName: branchName,
+      baseBranch: baseBranch,
+      baseCommit: baseCommit,
+      lastAgent: lastAgent,
+      lastAgentModel: lastAgentModel,
     );
   }
 
@@ -2768,11 +2831,6 @@ class _DelayingSessionRepository implements SessionRepository {
   @override
   Future<Session> enrichPluginSession({required PluginSession pluginSession}) async {
     return enrichSession(session: pluginSession.toSharedSession(pluginId: "fake"));
-  }
-
-  @override
-  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async {
-    return enrichSession(session: Session.fromJson(sessionJson));
   }
 
   @override
@@ -2822,6 +2880,60 @@ class _DelayingSessionRepository implements SessionRepository {
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async {
     return _base.getStoredSession(sessionId: sessionId);
+  }
+
+  @override
+  Future<StoredSession?> getStoredSessionByBackendId({
+    required String pluginId,
+    required String backendSessionId,
+  }) {
+    return _base.getStoredSessionByBackendId(
+      pluginId: pluginId,
+      backendSessionId: backendSessionId,
+    );
+  }
+
+  @override
+  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+    required String pluginId,
+    required List<String> backendSessionIds,
+  }) {
+    return _base.getStoredSessionsByBackendIds(
+      pluginId: pluginId,
+      backendSessionIds: backendSessionIds,
+    );
+  }
+
+  @override
+  Future<StoredSession?> updateObservedSessionProjection({
+    required String pluginId,
+    required Session observed,
+    required bool updateCatalogTitle,
+    required int projectionUpdatedAt,
+  }) async {
+    final delay = _delaySessionIds[observed.id];
+    if (delay != null) await delay;
+    return _base.updateObservedSessionProjection(
+      pluginId: pluginId,
+      observed: observed,
+      updateCatalogTitle: updateCatalogTitle,
+      projectionUpdatedAt: projectionUpdatedAt,
+    );
+  }
+
+  @override
+  Future<StoredSession?> insertObservedChild({
+    required String pluginId,
+    required Session observed,
+    required StoredSession parent,
+    required int projectionUpdatedAt,
+  }) {
+    return _base.insertObservedChild(
+      pluginId: pluginId,
+      observed: observed,
+      parent: parent,
+      projectionUpdatedAt: projectionUpdatedAt,
+    );
   }
 
   @override

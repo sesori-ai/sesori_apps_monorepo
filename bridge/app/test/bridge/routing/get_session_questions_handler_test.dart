@@ -12,13 +12,20 @@ void main() {
     late FakeBridgePlugin plugin;
     late GetSessionQuestionsHandler handler;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       final db = createTestDatabase();
       addTearDown(db.close);
+      await recordSessionBinding(
+        database: db,
+        sessionId: "s-1",
+        backendSessionId: "backend-s-1",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        parentSessionId: null,
+      );
       handler = GetSessionQuestionsHandler(
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
       );
     });
 
@@ -61,7 +68,7 @@ void main() {
       plugin.pendingQuestionsResult = [
         const PluginPendingQuestion(
           id: "q-1",
-          sessionID: "s-1",
+          sessionID: "backend-s-1",
           displaySessionId: null,
           questions: [
             PluginQuestionInfo(

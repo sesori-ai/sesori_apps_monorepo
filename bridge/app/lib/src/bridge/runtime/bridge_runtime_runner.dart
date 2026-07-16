@@ -664,6 +664,7 @@ class BridgeRuntimeRunner {
           yolo: bridgeSettings.yolo,
         ),
         plugin: plugin.api,
+        pluginId: pluginId,
         relayClient: relayClient,
         httpClient: httpClient,
         accessTokenProvider: accessTokenProvider,

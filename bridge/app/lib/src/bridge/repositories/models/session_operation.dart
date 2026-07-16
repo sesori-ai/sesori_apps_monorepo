@@ -10,6 +10,11 @@ enum SessionOperation {
   archiveSession,
   abortSession,
   getChildSessions,
+  getPendingQuestions,
+  replyToQuestion,
+  rejectQuestion,
+  getPendingPermissions,
+  replyToPermission,
   cleanupSession,
   updateSessionArchiveStatus,
 }

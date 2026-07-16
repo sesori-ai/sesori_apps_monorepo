@@ -15,6 +15,7 @@
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
 - **Stage 3B implementation base:** `main` at `7c8b6440` (audited 2026-07-16)
 - **Stage 3C implementation base:** `main` at `72ac20f4` (audited 2026-07-16)
+- **Stage 4 implementation base:** `main` at `142b55b4` (audited 2026-07-16)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -330,8 +331,10 @@ removed when its list-triggered persistence responsibility disappears.
 
 ### Known Events and Children
 
-Each plugin stream is normalized independently before streams merge, preserving
-per-plugin order without allowing a blocked plugin A event to block plugin B.
+Stage 4 normalizes the one selected plugin stream in source order. Stage 7
+constructs one listener per operational plugin and merges those already-
+normalized outputs, preserving per-plugin order without allowing a blocked
+plugin A event to block plugin B.
 
 ```text
 plugin.events
@@ -384,13 +387,16 @@ It owns the in-memory pending map, insertion order, eviction invariant, and
 recursive drain bookkeeping. It has no service, repository, DAO, or plugin
 dependency and returns typed entries for `SessionEventService` to persist.
 
-Each `PluginEventListener` is constructed with one already-started
-`BridgePluginApi` and the shared `SessionEventService`. It owns exactly one raw
-event subscription, attaches that plugin's id, delegates normalization, and
-exposes its normalized output stream. It does not construct the service or any
-of its collaborators. `BridgeRuntime` merges listener outputs into one
-broadcast stream consumed by the orchestrator and `DebugServer`, so the debug
-surface neither subscribes to one raw plugin nor repeats normalization. The
+Each `PluginEventListener` is constructed with one already-selected raw
+`Stream<BridgeSseEvent>`, its explicit descriptor-selected plugin id, and the
+shared `SessionEventService`. It owns exactly one raw event subscription,
+attaches that plugin id, delegates normalization, and exposes its normalized
+output stream. It does not depend on `BridgePluginApi` or construct the service
+or any of its collaborators. In Stage 4 the Layer-5 `Orchestrator` constructs
+the one selected listener, composes its output with bridge-owned committed
+deletions, and exposes that normalized broadcast stream to `DebugServer`, so the
+debug surface neither subscribes to a raw plugin nor repeats normalization. In
+Stage 7 the orchestrator composes one such listener per operational plugin. The
 orchestrator remains the only component deciding which normalized events become
 phone SSE events.
 
@@ -605,7 +611,7 @@ selection.
 | ☑ | 3A | Correct touched session architecture boundaries | Architecture tests; behavior parity |
 | ☑ | 3B | Relocate the database API layer | Rename-only diff; schema/tests unchanged |
 | ☑ | 3C | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
-| ☐ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
+| ☑ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
 | ☐ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
 | ☐ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
 | ☐ | 7 | Multi-plugin routing, lifecycle, and event streams | Mixed-id routing, independent failure, startup/shutdown |
@@ -754,12 +760,14 @@ until Stage 4.
   `PluginEventListener`.
 - Persist known-session projection updates, proven child ancestry, recursive
   descendants, and cascade behavior.
-- Make `SessionRepository.getChildSessions`, `QuestionRepository`, and
-  `PermissionRepository` resolve durable root/child bindings and pass only
-  backend handles to the owning plugin.
+- Make `SessionRepository.getChildSessions` read durable children from the
+  catalog. Make `QuestionRepository` and `PermissionRepository` resolve
+  durable root/child bindings and pass only backend handles to the owning
+  plugin.
 - Translate every session-bearing event field from backend to Sesori identity.
-- Normalize each plugin stream before merge and remove backend-global lifecycle
-  events from bridge-global semantics.
+- Normalize the selected plugin stream before delivery and remove backend-
+  global lifecycle events from bridge-global semantics. Multi-plugin listener
+  construction and fan-in remain Stage 7 work.
 - Change child reads to the catalog while root/project lists remain on the old
   path for one more stage.
 
@@ -767,7 +775,63 @@ Acceptance: no backend handle reaches a shared event, child, question, or
 permission payload; unknown roots are ignored; cross-plugin parent links fail; out-of-
 order descendants drain when ancestry arrives; backend deletion preserves
 history; the pending-child bound retains the largest expected event burst;
-blocked plugin A normalization does not block plugin B.
+selected-plugin event order is preserved.
+
+PR-level implementation plan:
+
+1. Add a repository-layer `SessionEventMapper` that exhaustively extracts and
+   rewrites every session-bearing `BridgeSseEvent` field from backend handles to
+   Sesori ids. Add a Layer-2 `SessionChildTracker` with a 1,024-entry internal
+   bound, global insertion-order eviction, and parent-keyed drains; it stores no
+   durable unresolved sentinel and has no repository, service, DAO, or plugin
+   dependency.
+2. Replace `SessionEventEnrichmentService` with a Layer-3
+   `SessionEventService`. It receives a source-plugin event, updates only known
+   projections through `SessionRepository`, accepts a new child only under a
+   same-plugin durable parent, queues unresolved descendants in
+   `SessionChildTracker`, recursively drains them after ancestry commits, asks
+   the repository for one batched binding map, delegates the pure rewrite to
+   `SessionEventMapper`, and captures title-changing events through the existing
+   `SessionMutationDispatcher`. Unknown roots, untranslatable payloads, and
+   backend deletion events produce no normalized client event; failures are
+   reported and isolated per input event.
+3. Add one Layer-4 `PluginEventListener` for the selected plugin. It receives
+   the already-selected raw event stream plus an explicit plugin id from the
+   descriptor/runner selection path, owns one raw subscription, serially
+   normalizes events, and exposes a broadcast normalized stream. The Layer-5
+   `Orchestrator` extracts the raw stream from `BridgePluginApi`, constructs the
+   listener, composes its output with committed bridge-owned deletions, and
+   exposes that same normalized stream to `DebugServer`. `BridgeRuntime.create`
+   receives the selected descriptor id from `BridgeRuntimeRunner`, verifies it
+   matches the started API identity, and passes it into `Orchestrator`; the
+   listener never depends on the API. The orchestrator retains local reconnect
+   decisions for plugin-connected input, while `BridgeEventMapper` stops
+   emitting plugin connected/heartbeat/disposed events as bridge-global wire
+   lifecycle events. Multi-plugin listener construction, stream fan-in, and
+   cross-plugin progress verification remain Stage 7 work.
+4. Add dumb DAO writes for exact known-session projection updates and durable
+   child insertion. Keep ancestry, random-id allocation, tombstone handling,
+   and unknown-root decisions above the DAO. Use the existing session-table
+   self-reference and delete cascade; no schema or shared-wire change is
+   required.
+5. Activate secure random Sesori ids in `SessionRepository` for newly created,
+   newly listed, and newly event-discovered sessions. Allocate and collision-
+   check inside the publication transaction, reuse a binding that won a
+   create/event/list race, and preserve every existing id. Remove the temporary
+   identity-preserving rowless-child capability and require durable bindings for
+   messages, statuses, aborts, questions, and permissions.
+6. Switch child lists to `SessionDao.getChildCatalogSessions`. Update question
+   and permission reads, replies, and rejections to translate request and
+   response session references in batches, dropping plugin results whose
+   required references are unknown instead of exposing backend handles.
+7. Add focused DAO/repository/service/listener/mapper tests for stable existing
+   ids, random new ids, create/list/event races, exhaustive event variants,
+   known and unknown roots, same-plugin ancestry, out-of-order grandchildren,
+   1,024-entry retention plus overflow eviction, backend deletion history,
+   catalog-only child reads, question/permission translation, lifecycle
+   suppression, and selected-stream ordering. Add the deferred file-backed
+   AOT `event_projection_benchmark` with warmup, percentile, RSS, database-size,
+   and fixture metadata matching the Stage 1A report shape.
 
 ### Stage 5 - Explicit Import and Automatic Hydration
 

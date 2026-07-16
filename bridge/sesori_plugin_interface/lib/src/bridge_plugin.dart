@@ -30,14 +30,6 @@ sealed class BridgePluginApi {
   /// then broadcast to every attached listener.
   Stream<BridgeSseEvent> get events;
 
-  /// Whether child sessions can exist without bridge bindings while retaining
-  /// identity-preserving ids that are safe to route directly to this plugin.
-  ///
-  /// This capability is temporary while durable child binding and event
-  /// translation are unavailable. Plugins that do not expose rowless children
-  /// must return false.
-  bool get supportsIdentityPreservingRowlessChildSessions;
-
   /// Get sessions for a project directory.
   Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit});
 

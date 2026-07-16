@@ -250,6 +250,54 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     );
   }
 
+  Future<void> updateObservedSessionProjection({
+    required String sessionId,
+    required String directory,
+    required String? catalogTitle,
+    required bool updateCatalogTitle,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
+    await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(
+        directory: Value(directory),
+        catalogTitle: updateCatalogTitle ? Value(catalogTitle) : const Value.absent(),
+        updatedAt: Value(updatedAt),
+        projectionUpdatedAt: Value(projectionUpdatedAt),
+      ),
+    );
+  }
+
+  Future<void> insertObservedChild({
+    required String sessionId,
+    required String backendSessionId,
+    required String projectId,
+    required String parentSessionId,
+    required String directory,
+    required String? catalogTitle,
+    required int createdAt,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+    required String pluginId,
+  }) async {
+    await into(sessionTable).insert(
+      SessionTableCompanion(
+        sessionId: Value(sessionId),
+        backendSessionId: Value(backendSessionId),
+        projectId: Value(projectId),
+        parentSessionId: Value(parentSessionId),
+        directory: Value(directory),
+        isDedicated: const Value(false),
+        archivedAt: const Value(null),
+        createdAt: Value(createdAt),
+        updatedAt: Value(updatedAt),
+        projectionUpdatedAt: Value(projectionUpdatedAt),
+        pluginId: Value(pluginId),
+        catalogTitle: Value(catalogTitle),
+      ),
+    );
+  }
+
   Future<List<SessionDto>> getRootCatalogSessions({
     required String projectId,
     required int offset,

@@ -1189,9 +1189,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String get id => "fake";
 
   @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
-
-  @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
 
   @override

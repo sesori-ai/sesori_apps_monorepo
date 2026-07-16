@@ -44,9 +44,6 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   @override
   final String id;
 
-  @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
-
   /// Human-facing agent name used for synthesized agents/providers.
   final String agentDisplayName;
 

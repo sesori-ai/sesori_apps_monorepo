@@ -5,9 +5,12 @@ import "../../plugin_to_shared_mapping.dart";
 
 extension PluginPendingQuestionMapping on PluginPendingQuestion {
   /// Maps to the shared [PendingQuestion] wire model for the mobile client.
-  PendingQuestion toSharedPendingQuestion() => PendingQuestion(
+  PendingQuestion toSharedPendingQuestion({
+    required String sessionId,
+    required String? displaySessionId,
+  }) => PendingQuestion(
     id: id,
-    sessionID: sessionID,
+    sessionID: sessionId,
     displaySessionId: displaySessionId,
     questions: questions.map((qi) => qi.toSharedQuestionInfo()).toList(),
   );

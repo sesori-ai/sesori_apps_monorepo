@@ -38,8 +38,14 @@ class SessionCreationService {
     final firstText = _extractFirstText(parts: request.parts);
     final metadata = await _generateMetadata(firstText: firstText);
     final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
+    final worktreeState = await _resolveWorktreeState(
+      projectId: request.projectId,
+      dedicatedWorktree: request.dedicatedWorktree,
+      worktreeResult: worktreeResult,
+    );
     final created = await _sessionRepository.createSession(
       pluginId: request.pluginId,
+      projectId: request.projectId,
       directory: _resolveDirectory(projectDirectory: projectDirectory, worktreeResult: worktreeResult),
       parentSessionId: null,
       parts: _buildPromptParts(
@@ -50,25 +56,13 @@ class SessionCreationService {
       variant: request.variant,
       agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
-    );
-    final worktreeState = await _resolveWorktreeState(
-      projectId: request.projectId,
-      dedicatedWorktree: request.dedicatedWorktree,
-      worktreeResult: worktreeResult,
-    );
-    await _sessionRepository.insertStoredSession(
-      sessionId: created.id,
-      backendSessionId: created.id,
-      pluginId: request.pluginId,
-      projectId: request.projectId,
       isDedicated: request.dedicatedWorktree,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
       worktreePath: worktreeState.worktreePath,
       branchName: worktreeState.branchName,
       baseBranch: worktreeState.baseBranch,
       baseCommit: worktreeState.baseCommit,
-      agent: request.agent,
-      agentModel: agentModel != null
+      lastAgent: request.agent,
+      lastAgentModel: agentModel != null
           ? AgentModel(
               providerID: agentModel.providerID,
               modelID: agentModel.modelID,

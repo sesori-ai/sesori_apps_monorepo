@@ -39,6 +39,44 @@ void main() {
       );
     }
 
+    Future<void> recordSession({
+      required String stableId,
+      required String backendId,
+      required String projectId,
+      required String? parentStableId,
+    }) async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      if (parentStableId == null) {
+        await db.sessionDao.insertSession(
+          sessionId: stableId,
+          backendSessionId: backendId,
+          projectId: projectId,
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+          pluginId: "codex",
+        );
+      } else {
+        await db.sessionDao.insertObservedChild(
+          sessionId: stableId,
+          backendSessionId: backendId,
+          projectId: projectId,
+          parentSessionId: parentStableId,
+          directory: projectId,
+          catalogTitle: null,
+          createdAt: 1,
+          updatedAt: 1,
+          projectionUpdatedAt: 1,
+          pluginId: "codex",
+        );
+      }
+    }
+
     test("getProjectQuestions surfaces a question raised in a worktree session under its parent", () async {
       const parent = "/tmp/proj/alpha";
       const worktree = "/tmp/proj/alpha/.worktrees/session-001";
@@ -114,7 +152,12 @@ void main() {
 
     test("getProjectQuestions surfaces a question from a session only the plugin's live scoping knows", () async {
       const parent = "/tmp/proj/alpha";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      await recordSession(
+        stableId: "stable-s1",
+        backendId: "s1",
+        projectId: parent,
+        parentStableId: null,
+      );
 
       // A freshly-created session may exist only in the backend's memory (not
       // yet flushed to disk), so it is absent from listAllSessions — only the
@@ -138,8 +181,8 @@ void main() {
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
-      expect(questions.map((q) => q.id).toSet(), {"q-s1", "q-fresh"});
-      expect(questions, hasLength(2));
+      expect(questions.map((q) => q.id), ["q-s1"]);
+      expect(questions.single.sessionID, "stable-s1");
     });
 
     test("getProjectQuestions asks a stored-row session missing from listAllSessions", () async {
@@ -170,7 +213,18 @@ void main() {
 
     test("getProjectQuestions keeps distinct questions that reuse an id across sessions", () async {
       const parent = "/tmp/proj/alpha";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      await recordSession(
+        stableId: "stable-s1",
+        backendId: "s1",
+        projectId: parent,
+        parentStableId: null,
+      );
+      await recordSession(
+        stableId: "stable-s2",
+        backendId: "s2",
+        projectId: parent,
+        parentStableId: null,
+      );
 
       // Question ids are only guaranteed unique within a session, so the merge
       // must key by session id + question id rather than question id alone.
@@ -193,7 +247,7 @@ void main() {
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
-      expect(questions.map((q) => q.sessionID).toSet(), {"s1", "s2"});
+      expect(questions.map((q) => q.sessionID).toSet(), {"stable-s1", "stable-s2"});
       expect(questions, hasLength(2));
     });
 
@@ -248,7 +302,10 @@ void main() {
         projectsDao: db.projectsDao,
       );
 
-      expect(await repository.getPendingQuestions(sessionId: "gone"), isEmpty);
+      await expectLater(
+        repository.getPendingQuestions(sessionId: "gone"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
       expect(plugin.queriedSessionIds, isNot(contains("gone")));
 
       await expectLater(
@@ -262,6 +319,18 @@ void main() {
     });
 
     test("getPendingQuestions filters tombstoned child and displayed sessions", () async {
+      await recordSession(
+        stableId: "stable-root",
+        backendId: "root",
+        projectId: "/repo",
+        parentStableId: null,
+      );
+      await recordSession(
+        stableId: "stable-child",
+        backendId: "live-child",
+        projectId: "/repo",
+        parentStableId: "stable-root",
+      );
       for (final sessionId in ["gone-child", "gone-root"]) {
         await db.sessionDao.insertSessionTombstone(
           backendSessionId: sessionId,
@@ -301,9 +370,11 @@ void main() {
         projectsDao: db.projectsDao,
       );
 
-      final questions = await repository.getPendingQuestions(sessionId: "root");
+      final questions = await repository.getPendingQuestions(sessionId: "stable-root");
 
       expect(questions.map((question) => question.id), ["visible"]);
+      expect(questions.single.sessionID, "stable-child");
+      expect(questions.single.displaySessionId, "stable-root");
     });
 
     test("question mutations reject a tombstoned displayed root", () async {
