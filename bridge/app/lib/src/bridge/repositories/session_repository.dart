@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:math";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
@@ -46,6 +47,8 @@ import "models/session_operation.dart";
 import "models/stored_session.dart";
 import "session_unseen_calculator.dart";
 
+typedef SessionBindingsCommitted = ({String pluginId, List<String> backendSessionIds});
+
 class SessionRepository {
   static const DerivedSessionBuilder _derivedSessionBuilder = DerivedSessionBuilder();
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
@@ -57,8 +60,11 @@ class SessionRepository {
   final SessionUnseenCalculator _unseenCalculator;
   final Set<String> _tombstonedBackendSessionIds = <String>{};
   final Set<String> _deletedSessionIds = <String>{};
+  final StreamController<SessionBindingsCommitted> _bindingCommitsController =
+      StreamController<SessionBindingsCommitted>.broadcast(sync: true);
   Future<void>? _tombstoneLoad;
   bool _tombstonesLoaded = false;
+  int _lastProjectionTimestamp = 0;
 
   SessionRepository({
     required BridgePluginApi plugin,
@@ -72,12 +78,14 @@ class SessionRepository {
        _pullRequestDao = pullRequestDao,
        _unseenCalculator = unseenCalculator;
 
+  Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
+
   Future<List<Session>> getSessionsForProject({
     required String projectId,
     required int? start,
     required int? limit,
   }) async {
-    final projectionUpdatedAt = DateTime.now().millisecondsSinceEpoch;
+    final projectionUpdatedAt = captureProjectionTimestamp();
     final pluginSessions = await _pluginSessionsForProject(
       projectId: projectId,
       start: start,
@@ -93,12 +101,17 @@ class SessionRepository {
         pluginId: _plugin.id,
       );
       final observedRoots = <ObservedRootSession>[];
-      final allocatedSessionIds = <String>{};
+      final allocatedSessionIds = await _allocateSessionIds(
+        count: pluginSessions
+            .where((session) => !tombstoned.contains(session.id) && existingByBackendId[session.id] == null)
+            .length,
+      );
+      var allocatedIndex = 0;
       for (final session in pluginSessions) {
         if (tombstoned.contains(session.id)) continue;
         final existingBinding = existingByBackendId[session.id];
         observedRoots.add((
-          sessionId: existingBinding?.sessionId ?? await _allocateSessionId(reservedSessionIds: allocatedSessionIds),
+          sessionId: existingBinding?.sessionId ?? allocatedSessionIds[allocatedIndex++],
           backendSessionId: session.id,
           projectId: projectId,
           directory: session.directory,
@@ -114,6 +127,9 @@ class SessionRepository {
         sessions: observedRoots,
       );
     });
+    _publishBindingsCommitted(
+      backendSessionIds: committedByBackendId.keys.toList(growable: false),
+    );
     return _mapCatalogSessions(
       rows: [
         for (final session in pluginSessions) ?committedByBackendId[session.id],
@@ -247,7 +263,7 @@ class SessionRepository {
         null => null,
       },
     );
-    final projectionUpdatedAt = DateTime.now().millisecondsSinceEpoch;
+    final projectionUpdatedAt = captureProjectionTimestamp();
     final createdAt = created.time?.created ?? projectionUpdatedAt;
     final updatedAt = created.time?.updated ?? createdAt;
     late String sessionId;
@@ -288,6 +304,7 @@ class SessionRepository {
         projectionUpdatedAt: projectionUpdatedAt,
       );
     });
+    _publishBindingsCommitted(backendSessionIds: [created.id]);
     return created.toSharedSessionWithId(sessionId: sessionId, pluginId: pluginId);
   }
 
@@ -491,7 +508,17 @@ class SessionRepository {
   /// doesn't show. A native plugin owns its own attribution and passes
   /// through 1:1.
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async {
-    final summaries = _plugin.getActiveSessionsSummary();
+    await _ensureTombstonesLoaded();
+    final summaries = [
+      for (final summary in _plugin.getActiveSessionsSummary())
+        if (summary.activeSessions.any((active) => !_tombstonedBackendSessionIds.contains(active.id)))
+          summary.copyWith(
+            activeSessions: [
+              for (final active in summary.activeSessions)
+                if (!_tombstonedBackendSessionIds.contains(active.id)) active,
+            ],
+          ),
+    ];
     final backendSessionIds = {
       for (final summary in summaries)
         for (final active in summary.activeSessions) ...{
@@ -795,7 +822,7 @@ class SessionRepository {
         backendSessionId: observed.id,
       );
       if (binding == null) return null;
-      await _sessionDao.updateObservedSessionProjection(
+      final updated = await _sessionDao.updateObservedSessionProjection(
         sessionId: binding.sessionId,
         directory: observed.directory,
         catalogTitle: observed.title,
@@ -803,6 +830,7 @@ class SessionRepository {
         updatedAt: observed.time?.updated ?? binding.updatedAt,
         projectionUpdatedAt: projectionUpdatedAt,
       );
+      if (!updated) return null;
       return (await _sessionDao.getSession(sessionId: binding.sessionId))?.toStoredSession();
     });
   }
@@ -829,7 +857,7 @@ class SessionRepository {
       );
       if (existing != null) {
         if (existing.parentSessionId != durableParent.sessionId) return null;
-        await _sessionDao.updateObservedSessionProjection(
+        final updated = await _sessionDao.updateObservedSessionProjection(
           sessionId: existing.sessionId,
           directory: observed.directory,
           catalogTitle: observed.title,
@@ -837,6 +865,7 @@ class SessionRepository {
           updatedAt: observed.time?.updated ?? existing.updatedAt,
           projectionUpdatedAt: projectionUpdatedAt,
         );
+        if (!updated) return null;
         return (await _sessionDao.getSession(sessionId: existing.sessionId))?.toStoredSession();
       }
       final sessionId = await _allocateSessionId();
@@ -848,6 +877,7 @@ class SessionRepository {
         parentSessionId: durableParent.sessionId,
         directory: observed.directory,
         catalogTitle: observed.title,
+        archivedAt: observed.time?.archived,
         createdAt: createdAt,
         updatedAt: observed.time?.updated ?? createdAt,
         projectionUpdatedAt: projectionUpdatedAt,
@@ -989,16 +1019,54 @@ class SessionRepository {
 
   static final Random _secureRandom = Random.secure();
 
+  int captureProjectionTimestamp() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final timestamp = max(now, _lastProjectionTimestamp + 1);
+    _lastProjectionTimestamp = timestamp;
+    return timestamp;
+  }
+
+  Future<void> dispose() => _bindingCommitsController.close();
+
+  void _publishBindingsCommitted({required List<String> backendSessionIds}) {
+    if (backendSessionIds.isEmpty || _bindingCommitsController.isClosed) return;
+    _bindingCommitsController.add((
+      pluginId: _plugin.id,
+      backendSessionIds: List<String>.unmodifiable(backendSessionIds),
+    ));
+  }
+
+  Future<List<String>> _allocateSessionIds({required int count}) async {
+    final allocated = <String>[];
+    final reserved = <String>{};
+    while (allocated.length < count) {
+      final candidates = <String>{};
+      while (candidates.length < count - allocated.length) {
+        final candidate = _generateSessionId();
+        if (reserved.add(candidate)) candidates.add(candidate);
+      }
+      final occupied = await _sessionDao.getSessionsByIds(
+        sessionIds: candidates.toList(growable: false),
+      );
+      allocated.addAll(candidates.where((candidate) => !occupied.containsKey(candidate)));
+    }
+    return allocated;
+  }
+
   Future<String> _allocateSessionId({Set<String>? reservedSessionIds}) async {
     while (true) {
-      final buffer = StringBuffer("ses_");
-      for (var index = 0; index < 16; index++) {
-        buffer.write(_secureRandom.nextInt(256).toRadixString(16).padLeft(2, "0"));
-      }
-      final candidate = buffer.toString();
+      final candidate = _generateSessionId();
       if (reservedSessionIds != null && !reservedSessionIds.add(candidate)) continue;
       if (await _sessionDao.getSession(sessionId: candidate) == null) return candidate;
       reservedSessionIds?.remove(candidate);
     }
+  }
+
+  static String _generateSessionId() {
+    final buffer = StringBuffer("ses_");
+    for (var index = 0; index < 16; index++) {
+      buffer.write(_secureRandom.nextInt(256).toRadixString(16).padLeft(2, "0"));
+    }
+    return buffer.toString();
   }
 }

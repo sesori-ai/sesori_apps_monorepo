@@ -69,6 +69,7 @@ void main() {
           parentSessionId: parentStableId,
           directory: projectId,
           catalogTitle: null,
+          archivedAt: null,
           createdAt: 1,
           updatedAt: 1,
           projectionUpdatedAt: 1,

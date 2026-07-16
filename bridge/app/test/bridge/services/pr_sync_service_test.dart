@@ -483,6 +483,15 @@ class _FakePullRequestRepository implements PullRequestRepository {
 
 class _FakeSessionRepository implements SessionRepository {
   @override
+  Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
+
+  @override
+  int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
   bool get sessionListIsAuthoritative => true;
 
   @override
@@ -728,6 +737,5 @@ StoredSession _storedSession({
     archivedAt: null,
     baseBranch: null,
     baseCommit: null,
-    lastUserInteractionAt: null,
   );
 }

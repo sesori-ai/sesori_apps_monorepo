@@ -16,7 +16,6 @@ extension StoredSessionMapper on SessionDto {
       archivedAt: archivedAt,
       baseBranch: baseBranch,
       baseCommit: baseCommit,
-      lastUserInteractionAt: lastUserMessageAt,
     );
   }
 }

@@ -250,7 +250,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     );
   }
 
-  Future<void> updateObservedSessionProjection({
+  Future<bool> updateObservedSessionProjection({
     required String sessionId,
     required String directory,
     required String? catalogTitle,
@@ -258,14 +258,21 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required int updatedAt,
     required int projectionUpdatedAt,
   }) async {
-    await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
-      SessionTableCompanion(
-        directory: Value(directory),
-        catalogTitle: updateCatalogTitle ? Value(catalogTitle) : const Value.absent(),
-        updatedAt: Value(updatedAt),
-        projectionUpdatedAt: Value(projectionUpdatedAt),
-      ),
-    );
+    final updated =
+        await (update(sessionTable)..where(
+              (table) =>
+                  table.sessionId.equals(sessionId) &
+                  table.projectionUpdatedAt.isSmallerOrEqualValue(projectionUpdatedAt),
+            ))
+            .write(
+              SessionTableCompanion(
+                directory: Value(directory),
+                catalogTitle: updateCatalogTitle ? Value(catalogTitle) : const Value.absent(),
+                updatedAt: Value(updatedAt),
+                projectionUpdatedAt: Value(projectionUpdatedAt),
+              ),
+            );
+    return updated > 0;
   }
 
   Future<void> insertObservedChild({
@@ -275,6 +282,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String parentSessionId,
     required String directory,
     required String? catalogTitle,
+    required int? archivedAt,
     required int createdAt,
     required int updatedAt,
     required int projectionUpdatedAt,
@@ -288,7 +296,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         parentSessionId: Value(parentSessionId),
         directory: Value(directory),
         isDedicated: const Value(false),
-        archivedAt: const Value(null),
+        archivedAt: Value(archivedAt),
         createdAt: Value(createdAt),
         updatedAt: Value(updatedAt),
         projectionUpdatedAt: Value(projectionUpdatedAt),

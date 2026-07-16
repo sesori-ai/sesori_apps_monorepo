@@ -1258,49 +1258,6 @@ void main() {
       ],
     );
 
-    blocTest<ProjectListCubit, ProjectListState>(
-      "ordered activity received after REST immediately replaces the active prefix",
-      build: () {
-        mockSseEventTracker.userInteractionOrdered = true;
-        when(() => mockProjectRepository.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
-        );
-        return buildCubit();
-      },
-      act: (_) async {
-        await Future<void>.delayed(Duration.zero);
-        mockSseEventTracker.emitProjectActivity({"C": 1, "A": 1});
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      expect: () => [
-        isA<ProjectListLoaded>().having(
-          (state) => state.projects.map((project) => project.id).toList(),
-          "project order",
-          ["C", "A", "B"],
-        ),
-      ],
-    );
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "ordered activity received before REST is applied when entities arrive",
-      build: () {
-        mockSseEventTracker.userInteractionOrdered = true;
-        mockSseEventTracker.emitProjectActivity({"B": 1, "A": 1});
-        when(() => mockProjectRepository.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
-        );
-        return buildCubit();
-      },
-      expect: () => [
-        isA<ProjectListLoaded>().having(
-          (state) => state.projects.map((project) => project.id).toList(),
-          "project order",
-          ["B", "A", "C"],
-        ),
-      ],
-    );
-
     // -------------------------------------------------------------------------
     // Test 11: activity update ignored when not loaded
     // -------------------------------------------------------------------------
@@ -1366,7 +1323,7 @@ void main() {
     // =========================================================================
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "projectTimestampUpdates: updates matching project timestamp without reordering",
+      "projectTimestampUpdates: updates matching project timestamp and re-sorts",
       build: () {
         when(
           () => mockProjectRepository.listProjects(),
@@ -1393,7 +1350,7 @@ void main() {
         isA<ProjectListLoaded>().having(
           (s) => s.projects.map((p) => p.id).toList(),
           "projects order",
-          ["A", "B", "C"],
+          ["B", "A", "C"],
         ),
       ],
       verify: (_) {
@@ -1486,10 +1443,10 @@ void main() {
             .having(
               (state) => state.projects.map((project) => project.id).toList(),
               "project order",
-              ["A", "B"],
+              ["B", "A"],
             )
             .having(
-              (state) => state.projects.last.time?.updated,
+              (state) => state.projects.first.time?.updated,
               "live timestamp",
               4000,
             ),
@@ -1565,7 +1522,7 @@ void main() {
     );
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "projectTimestampUpdates: preserves effective name then id ordering",
+      "projectTimestampUpdates: sorts by updated desc then effective name then id",
       build: () {
         when(
           () => mockProjectRepository.listProjects(),
@@ -1613,7 +1570,7 @@ void main() {
     );
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "REST project list is sorted by effective name then id regardless of timestamp",
+      "REST project list is sorted by updated desc then effective name then id",
       build: () {
         when(
           () => mockProjectRepository.listProjects(),
@@ -1621,23 +1578,18 @@ void main() {
           (_) async => ApiResponse.success(
             const Projects(
               data: [
-                Project(
-                  id: "null",
-                  name: null,
-                  path: "charlie",
-                  time: ProjectTime(created: 1000, updated: 9000),
-                ),
+                Project(id: "null", name: "First", path: "/null", time: null),
                 Project(
                   id: "B",
                   name: "bravo",
                   path: "/B",
-                  time: ProjectTime(created: 1000, updated: 4000),
+                  time: ProjectTime(created: 1000, updated: 2000),
                 ),
                 Project(
                   id: "a",
                   name: "alpha",
                   path: "/a",
-                  time: ProjectTime(created: 1000, updated: 1000),
+                  time: ProjectTime(created: 1000, updated: 3000),
                 ),
                 Project(
                   id: "A",
@@ -1656,42 +1608,6 @@ void main() {
           (s) => s.projects.map((p) => p.id).toList(),
           "projects order",
           ["A", "a", "B", "null"],
-        ),
-      ],
-    );
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "REST project list sorts unnamed projects by their displayed basename",
-      build: () {
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            const Projects(
-              data: [
-                Project(
-                  id: "zeta",
-                  name: null,
-                  path: "/Users/a/zeta",
-                  time: ProjectTime(created: 1000, updated: 1000),
-                ),
-                Project(
-                  id: "alpha",
-                  name: null,
-                  path: "/Users/b/alpha",
-                  time: ProjectTime(created: 1000, updated: 1000),
-                ),
-              ],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      expect: () => [
-        isA<ProjectListLoaded>().having(
-          (state) => state.projects.map((project) => project.id).toList(),
-          "project order",
-          ["alpha", "zeta"],
         ),
       ],
     );
@@ -1743,30 +1659,6 @@ void main() {
 
           async.elapse(const Duration(seconds: 25));
           expect(fetchCount, baseline + 1, reason: "one refresh despite 5 events");
-          cubit.close();
-        });
-      });
-
-      test("order-only activity changes do not refetch projects", () {
-        fakeAsync((FakeAsync async) {
-          var fetchCount = 0;
-          when(() => mockProjectRepository.listProjects()).thenAnswer((_) async {
-            fetchCount++;
-            return ApiResponse.success(Projects(data: [projectA, projectB]));
-          });
-          mockSseEventTracker.userInteractionOrdered = true;
-          mockRouteSource.emitRoute(AppRouteDef.projects);
-          final cubit = buildCubit();
-          async.elapse(Duration.zero);
-
-          mockSseEventTracker.emitProjectActivity({"A": 1, "B": 1});
-          async.elapse(refreshThrottleDuration);
-          final baseline = fetchCount;
-
-          mockSseEventTracker.emitProjectActivity({"B": 1, "A": 1});
-          async.elapse(refreshThrottleDuration);
-
-          expect(fetchCount, baseline);
           cubit.close();
         });
       });

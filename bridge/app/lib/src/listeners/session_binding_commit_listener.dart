@@ -1,19 +1,18 @@
 import "dart:async";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-
+import "../bridge/repositories/session_repository.dart";
 import "../bridge/services/session_event_dispatcher.dart";
 
-class PluginEventListener {
+class SessionBindingCommitListener {
   final String _pluginId;
-  final Stream<BridgeSseEvent> _source;
+  final Stream<SessionBindingsCommitted> _source;
   final SessionEventDispatcher _dispatcher;
-  StreamSubscription<BridgeSseEvent>? _subscription;
+  StreamSubscription<SessionBindingsCommitted>? _subscription;
   bool _disposed = false;
 
-  PluginEventListener({
+  SessionBindingCommitListener({
     required String pluginId,
-    required Stream<BridgeSseEvent> source,
+    required Stream<SessionBindingsCommitted> source,
     required SessionEventDispatcher dispatcher,
   }) : _pluginId = pluginId,
        _source = source,
@@ -21,13 +20,12 @@ class PluginEventListener {
 
   void start() {
     if (_subscription != null || _disposed) return;
-    _subscription = _source.listen(
-      (event) {
-        final source = _dispatcher.capturePluginEvent(pluginId: _pluginId, event: event);
-        unawaited(_dispatcher.dispatchPluginEvent(source: source));
-      },
-      onError: _dispatcher.addSourceError,
-    );
+    _subscription = _source
+        .where((commit) => commit.pluginId == _pluginId)
+        .listen(
+          (commit) => unawaited(_dispatcher.dispatchBindingsCommitted(commit: commit)),
+          onError: _dispatcher.addSourceError,
+        );
   }
 
   Future<void> dispose() async {

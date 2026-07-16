@@ -309,6 +309,7 @@ class BridgeRuntime {
 
     await step(_sessionUnseenService.dispose);
     await step(_sessionViewTracker.dispose);
+    await step(_sessionRepository.dispose);
     await step(_database.close);
 
     if (firstError != null) {

@@ -7,7 +7,6 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -24,7 +23,6 @@ void main() {
     late FakeSessionRepository sessionRepository;
     late AppDatabase db;
     late _TrackingSessionMutationDispatcher sessionTitleService;
-    late SessionUnseenService unseenService;
     late GetSessionsHandler handler;
 
     setUp(() {
@@ -40,12 +38,10 @@ void main() {
         persistenceDatabase: db,
       );
       sessionTitleService = _TrackingSessionMutationDispatcher();
-      unseenService = buildTestSessionUnseenService(db, plugin);
       handler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionMutationDispatcher: sessionTitleService,
-        sessionUnseenService: unseenService,
       );
     });
 
@@ -91,7 +87,6 @@ void main() {
         sessionRepository: realRepository,
         prSyncService: prSyncService,
         sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: realRepository),
-        sessionUnseenService: unseenService,
       );
 
       final response = await realHandler.handleInternal(
@@ -195,15 +190,12 @@ void main() {
       expect(sessionTitleService.appliedSessionIds, isEmpty);
     });
 
-    test("emits an unseen change for rows deleted by a complete-list refresh", () async {
-      // A stale row exists in the DB for a session the backend no longer has.
-      // Recorded by the ACTIVE plugin — reconciliation is plugin-scoped, so
-      // only the active plugin's rows are eligible for deletion.
+    test("retains durable roots and children missing from a complete plugin refresh", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       await db.sessionDao.insertSession(
         pluginId: "fake",
-        sessionId: "gone",
-        backendSessionId: "gone",
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
         projectId: "project-1",
         isDedicated: false,
         createdAt: 1,
@@ -214,20 +206,20 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
-      // The authoritative (unpaginated) fetch returns only s1.
-      plugin.sessionsResult = const [
-        PluginSession(
-          id: "s1",
-          projectID: "project-1",
-          directory: "/tmp/project-1",
-          parentID: null,
-          title: null,
-          time: PluginSessionTime(created: 10, updated: 10, archived: null),
-        ),
-      ];
-
-      final emitted = <UnseenChange>[];
-      final sub = unseenService.unseenChanges.listen(emitted.add);
+      await db.sessionDao.insertObservedChild(
+        sessionId: "stable-child",
+        backendSessionId: "backend-child",
+        projectId: "project-1",
+        parentSessionId: "stable-root",
+        directory: "/tmp/project-1/child",
+        catalogTitle: "child",
+        archivedAt: null,
+        createdAt: 2,
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+        pluginId: "fake",
+      );
+      plugin.sessionsResult = const [];
 
       await handler.handle(
         makeRequest("POST", "/sessions"),
@@ -236,12 +228,9 @@ void main() {
         queryParams: {},
         fragment: null,
       );
-      // Allow the fire-and-forget notify to run.
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      await sub.cancel();
 
-      expect(emitted.map((e) => e.sessionId), contains("gone"));
-      expect(emitted.where((e) => e.sessionId == "gone").single.unseen, isFalse);
+      expect(await db.sessionDao.getSession(sessionId: "stable-root"), isNotNull);
+      expect(await db.sessionDao.getSession(sessionId: "stable-child"), isNotNull);
     });
 
     test("does not reconcile vanished rows when the session list is not authoritative", () async {
@@ -343,7 +332,6 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionMutationDispatcher: titleService,
-        sessionUnseenService: unseenService,
       );
 
       final response = await localHandler.handle(
@@ -866,7 +854,6 @@ void main() {
         sessionRepository: realRepository,
         prSyncService: prSyncService,
         sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: realRepository),
-        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
@@ -1084,7 +1071,6 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: slowPrSyncService,
         sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
-        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         prRefreshTimeout: const Duration(milliseconds: 50),
       );
 
@@ -1133,7 +1119,6 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: fastPrSyncService,
         sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
-        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
 
       final result = await enrichedHandler.handle(

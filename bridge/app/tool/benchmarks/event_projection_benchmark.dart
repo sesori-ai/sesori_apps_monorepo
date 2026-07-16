@@ -6,10 +6,11 @@ import "package:args/args.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/trackers/session_child_tracker.dart";
+import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
@@ -70,6 +71,7 @@ class _EventProjectionBenchmark {
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-event-projection-");
     final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
     AppDatabase? database;
+    SessionRepository? repository;
     SessionMutationDispatcher? mutationDispatcher;
     SSEManager? sseManager;
 
@@ -78,7 +80,7 @@ class _EventProjectionBenchmark {
       final sqliteVersion = await _sqliteVersion(database: database);
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
-      final repository = SessionRepository(
+      repository = SessionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
@@ -91,8 +93,8 @@ class _EventProjectionBenchmark {
         sessionRepository: repository,
         sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
-        childTracker: SessionChildTracker(
-          maxPendingEntries: SessionChildTracker.defaultMaxPendingEntries,
+        eventTracker: SessionEventTracker(
+          maxPendingEntries: SessionEventTracker.defaultMaxPendingEntries,
         ),
         failureReporter: failureReporter,
       );
@@ -114,6 +116,8 @@ class _EventProjectionBenchmark {
       sseManager = null;
       await mutationDispatcher.dispose();
       mutationDispatcher = null;
+      await repository.dispose();
+      repository = null;
       await database.close();
       database = null;
       final databaseBytes = databaseFile.lengthSync();
@@ -150,6 +154,7 @@ class _EventProjectionBenchmark {
     } finally {
       sseManager?.stop();
       if (mutationDispatcher != null) await mutationDispatcher.dispose();
+      if (repository != null) await repository.dispose();
       if (database != null) await database.close();
       try {
         await temporaryDirectory.delete(recursive: true);
@@ -166,9 +171,13 @@ class _EventProjectionBenchmark {
     required BridgeEventMapper bridgeEventMapper,
     required SSEManager sseManager,
   }) async {
+    sseManager.subscribePath(1, "/global/event", _BenchmarkRelayClient());
+    sseManager.unsubscribe(1);
+    if (sseManager.pendingReplayCount != 1) {
+      throw StateError("benchmark relay replay queue was not created");
+    }
     for (var index = 0; index < _configuration.warmupCount; index++) {
       await _projectAndEnqueue(
-        database: database,
         service: service,
         bridgeEventMapper: bridgeEventMapper,
         sseManager: sseManager,
@@ -181,7 +190,6 @@ class _EventProjectionBenchmark {
     for (var index = 0; index < _configuration.sampleCount; index++) {
       final stopwatch = Stopwatch()..start();
       await _projectAndEnqueue(
-        database: database,
         service: service,
         bridgeEventMapper: bridgeEventMapper,
         sseManager: sseManager,
@@ -191,6 +199,13 @@ class _EventProjectionBenchmark {
       stopwatch.stop();
       samples.add(stopwatch.elapsedMicroseconds);
     }
+    final finalIndex = _configuration.sampleCount - 1;
+    final finalTitle = "sample-$finalIndex";
+    final finalUpdatedAt = _defaultTimestamp + _configuration.warmupCount + finalIndex;
+    final row = await database.sessionDao.getSession(sessionId: _sessionId);
+    if (row?.catalogTitle != finalTitle || row?.updatedAt != finalUpdatedAt) {
+      throw StateError("catalog projection did not commit the final measured update");
+    }
     samples.sort();
 
     return {
@@ -199,8 +214,9 @@ class _EventProjectionBenchmark {
         "pluginCount": 1,
         "knownRootCount": 1,
         "eventType": "session.updated",
-        "pendingChildBound": SessionChildTracker.defaultMaxPendingEntries,
+        "pendingEventBound": SessionEventTracker.defaultMaxPendingEntries,
         "relaySubscriberCount": 0,
+        "relayReplayQueueCount": 1,
         "measuredPath": "normalize-project-map-enqueue",
       },
       "warmupCount": _configuration.warmupCount,
@@ -227,7 +243,6 @@ class _EventProjectionBenchmark {
   }
 
   Future<void> _projectAndEnqueue({
-    required AppDatabase database,
     required SessionEventService service,
     required BridgeEventMapper bridgeEventMapper,
     required SSEManager sseManager,
@@ -235,7 +250,7 @@ class _EventProjectionBenchmark {
     required int updatedAt,
   }) async {
     final output = await service.normalize(
-      source: (
+      source: service.captureSource(
         pluginId: _pluginId,
         event: BridgeSseSessionUpdated(
           info: Session(
@@ -263,11 +278,6 @@ class _EventProjectionBenchmark {
     final mapped = bridgeEventMapper.map(output.single);
     if (mapped == null) throw StateError("projected session update did not map to a shared event");
     sseManager.enqueueEvent(mapped);
-
-    final row = await database.sessionDao.getSession(sessionId: _sessionId);
-    if (row?.catalogTitle != title || row?.updatedAt != updatedAt) {
-      throw StateError("catalog projection did not commit the measured update");
-    }
   }
 
   Future<void> _seed({required AppDatabase database}) async {
@@ -376,6 +386,11 @@ class _BenchmarkPlugin implements NativeProjectsPluginApi {
   @override
   String get id => _pluginId;
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _BenchmarkRelayClient implements RelayClient {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -6,29 +6,37 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/mappers/session_event_mapper.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
-import "../repositories/trackers/session_child_tracker.dart";
+import "../repositories/trackers/session_event_tracker.dart";
 import "session_mutation_dispatcher.dart";
 
-typedef SourcedBridgeEvent = ({String pluginId, BridgeSseEvent event});
+typedef SourcedBridgeEvent = ({String pluginId, int projectionUpdatedAt, BridgeSseEvent event});
 
 class SessionEventService {
   final SessionRepository _sessionRepository;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionEventMapper _eventMapper;
-  final SessionChildTracker _childTracker;
+  final SessionEventTracker _eventTracker;
   final FailureReporter _failureReporter;
 
   SessionEventService({
     required SessionRepository sessionRepository,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required SessionEventMapper eventMapper,
-    required SessionChildTracker childTracker,
+    required SessionEventTracker eventTracker,
     required FailureReporter failureReporter,
   }) : _sessionRepository = sessionRepository,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _eventMapper = eventMapper,
-       _childTracker = childTracker,
+       _eventTracker = eventTracker,
        _failureReporter = failureReporter;
+
+  SourcedBridgeEvent captureSource({required String pluginId, required BridgeSseEvent event}) {
+    return (
+      pluginId: pluginId,
+      projectionUpdatedAt: _sessionRepository.captureProjectionTimestamp(),
+      event: event,
+    );
+  }
 
   Future<List<BridgeSseEvent>> normalize({required SourcedBridgeEvent source}) async {
     try {
@@ -65,18 +73,40 @@ class SessionEventService {
     if (binding == null) return const [];
     final normalized = await _translate(source: source);
     final output = <BridgeSseEvent>[?normalized];
-    final pendingChildren = _childTracker.takeChildren(
-      pluginId: source.pluginId,
-      backendParentId: observed.id,
-    );
-    for (final pending in pendingChildren) {
+    output.addAll(await _drainChildren(pluginId: source.pluginId, backendParentId: observed.id));
+    return output;
+  }
+
+  Future<List<BridgeSseEvent>> handleBindingsCommitted({required SessionBindingsCommitted commit}) async {
+    final output = <BridgeSseEvent>[];
+    for (final backendSessionId in commit.backendSessionIds) {
+      final pendingRoot = _eventTracker.takeRoot(
+        pluginId: commit.pluginId,
+        backendSessionId: backendSessionId,
+      );
+      if (pendingRoot != null) {
+        final binding = await _sessionRepository.getStoredSessionByBackendId(
+          pluginId: commit.pluginId,
+          backendSessionId: backendSessionId,
+        );
+        final catalog = binding == null ? null : await _sessionRepository.getCatalogSession(sessionId: binding.id);
+        if (catalog != null) output.add(BridgeSseSessionCreated(info: catalog.toJson()));
+      }
       output.addAll(
-        await normalize(
-          source: (pluginId: pending.pluginId, event: pending.event),
+        await _drainChildren(
+          pluginId: commit.pluginId,
+          backendParentId: backendSessionId,
         ),
       );
     }
     return output;
+  }
+
+  Future<bool> canPublish({required BridgeSseEvent event}) async {
+    if (event is! BridgeSseSessionCreated) return true;
+    final session = _eventMapper.sessionInfo(event: event);
+    if (session == null || await _sessionRepository.getStoredSession(sessionId: session.id) == null) return false;
+    return !await _sessionRepository.isSessionTombstoned(sessionId: session.id);
   }
 
   Future<StoredSession?> _projectSession({
@@ -104,36 +134,78 @@ class SessionEventService {
           BridgeSseSessionUpdated(:final titleChanged) => titleChanged || observed.title != null,
           _ => observed.title != null,
         },
-        projectionUpdatedAt: DateTime.now().millisecondsSinceEpoch,
+        projectionUpdatedAt: source.projectionUpdatedAt,
       );
     }
-    if (backendParentId == null) return null;
+    if (backendParentId == null) {
+      if (source.event is BridgeSseSessionCreated) {
+        _warnIfEvicted(
+          evicted: _eventTracker.addRoot(
+            event: PendingSessionEvent(
+              pluginId: source.pluginId,
+              event: source.event,
+              session: observed,
+              projectionUpdatedAt: source.projectionUpdatedAt,
+            ),
+          ),
+        );
+      }
+      return null;
+    }
 
     final parent = await _sessionRepository.getStoredSessionByBackendId(
       pluginId: source.pluginId,
       backendSessionId: backendParentId,
     );
     if (parent == null) {
-      final evicted = _childTracker.add(
-        event: PendingChildEvent(
-          pluginId: source.pluginId,
-          event: source.event,
-          session: observed,
+      _warnIfEvicted(
+        evicted: _eventTracker.addChild(
+          event: PendingSessionEvent(
+            pluginId: source.pluginId,
+            event: source.event,
+            session: observed,
+            projectionUpdatedAt: source.projectionUpdatedAt,
+          ),
         ),
       );
-      if (evicted != null) {
-        Log.w(
-          "Dropping pending child ${evicted.pluginId}/${evicted.session.id}: "
-          "the ${_childTracker.maxPendingEntries}-event ancestry buffer is full",
-        );
-      }
       return null;
     }
     return _sessionRepository.insertObservedChild(
       pluginId: source.pluginId,
       observed: observed,
       parent: parent,
-      projectionUpdatedAt: DateTime.now().millisecondsSinceEpoch,
+      projectionUpdatedAt: source.projectionUpdatedAt,
+    );
+  }
+
+  Future<List<BridgeSseEvent>> _drainChildren({
+    required String pluginId,
+    required String backendParentId,
+  }) async {
+    final output = <BridgeSseEvent>[];
+    final pendingChildren = _eventTracker.takeChildren(
+      pluginId: pluginId,
+      backendParentId: backendParentId,
+    );
+    for (final pending in pendingChildren) {
+      output.addAll(
+        await normalize(
+          source: (
+            pluginId: pending.pluginId,
+            projectionUpdatedAt: pending.projectionUpdatedAt,
+            event: pending.event,
+          ),
+        ),
+      );
+    }
+    return output;
+  }
+
+  void _warnIfEvicted({required PendingSessionEvent? evicted}) {
+    if (evicted == null) return;
+    Log.w(
+      "Dropping pending session event ${evicted.pluginId}/${evicted.session.id}: "
+      "the ${_eventTracker.maxPendingEntries}-event ancestry buffer is full",
     );
   }
 

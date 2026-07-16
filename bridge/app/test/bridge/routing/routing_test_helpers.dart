@@ -700,6 +700,7 @@ Future<void> recordSessionBinding({
     parentSessionId: parentSessionId,
     directory: projectId,
     catalogTitle: null,
+    archivedAt: null,
     createdAt: 1,
     updatedAt: 1,
     projectionUpdatedAt: 1,
@@ -708,6 +709,15 @@ Future<void> recordSessionBinding({
 }
 
 class _NoopSessionRepository implements SessionRepository {
+  @override
+  Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
+
+  @override
+  int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
+
+  @override
+  Future<void> dispose() async {}
+
   @override
   bool get sessionListIsAuthoritative => true;
 
@@ -920,6 +930,15 @@ class _NoopSessionRepository implements SessionRepository {
 /// and [FakeSessionDao], so handler tests can configure plugin/DAO behaviour
 /// without needing real implementations.
 class FakeSessionRepository implements SessionRepository {
+  @override
+  Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
+
+  @override
+  int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
+
+  @override
+  Future<void> dispose() async {}
+
   final FakeBridgePlugin _plugin;
   final FakeSessionDao _sessionDao;
   final FakePullRequestRepository _pullRequestRepository;

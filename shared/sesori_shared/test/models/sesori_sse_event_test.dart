@@ -330,26 +330,12 @@ void main() {
 
       expect(event, isA<SesoriProjectsSummary>());
       final cast = event as SesoriProjectsSummary;
-      expect(cast.userInteractionOrdered, isFalse);
       expect(cast.projects, hasLength(1));
       expect(cast.projects.first.id, '/foo');
       expect(cast.projects.first.activeSessions.length, 3);
       expect(cast.projects.first.activeSessions[0].id, 's1');
       expect(cast.projects.first.activeSessions[1].id, 's2');
       expect(cast.projects.first.activeSessions[2].id, 's3');
-    });
-
-    test('round-trips bridge-authored ordering semantics', () {
-      const event = SesoriSseEvent.projectsSummary(
-        projects: [],
-        userInteractionOrdered: true,
-      );
-
-      final json = event.toJson();
-      expect(json['userInteractionOrdered'], isTrue);
-
-      final parsed = SesoriSseEvent.fromJson(json) as SesoriProjectsSummary;
-      expect(parsed.userInteractionOrdered, isTrue);
     });
 
     test('round-trips correctly', () {

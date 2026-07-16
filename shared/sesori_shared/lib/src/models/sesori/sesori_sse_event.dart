@@ -255,14 +255,9 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // Project & VCS
   // ---------------------------------------------------------------------------
 
-  /// Complete active-work snapshot. When [userInteractionOrdered] is true,
-  /// [projects] and each project's `activeSessions` are authoritative ordered
-  /// prefixes that consumers preserve ahead of their inactive entities.
   @FreezedUnionValue("projects.summary")
   const factory SesoriSseEvent.projectsSummary({
     required List<ProjectActivitySummary> projects,
-    // COMPATIBILITY 2026-07-16 (v1.5.0): Older bridges did not define summary array order. Remove the fallback when those bridge versions are unsupported.
-    @Default(false) bool userInteractionOrdered,
   }) = SesoriProjectsSummary;
 
   @FreezedUnionValue("project.updated")

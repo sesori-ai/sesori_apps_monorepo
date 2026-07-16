@@ -2,7 +2,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/trackers/session_child_tracker.dart";
+import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -18,7 +18,7 @@ void main() {
     late _EventPlugin plugin;
     late SessionRepository repository;
     late SessionMutationDispatcher mutationDispatcher;
-    late SessionChildTracker childTracker;
+    late SessionEventTracker eventTracker;
     late SessionEventService service;
 
     setUp(() {
@@ -32,12 +32,12 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
-      childTracker = SessionChildTracker(maxPendingEntries: 1024);
+      eventTracker = SessionEventTracker(maxPendingEntries: 1024);
       service = SessionEventService(
         sessionRepository: repository,
         sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
-        childTracker: childTracker,
+        eventTracker: eventTracker,
         failureReporter: FakeFailureReporter(),
       );
     });
@@ -51,6 +51,7 @@ void main() {
       final unknown = await service.normalize(
         source: (
           pluginId: plugin.id,
+          projectionUpdatedAt: 1,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
               sessionId: "unknown-root",
@@ -81,6 +82,7 @@ void main() {
       final deleted = await service.normalize(
         source: (
           pluginId: plugin.id,
+          projectionUpdatedAt: 2,
           event: BridgeSseSessionDeleted(
             info: _sessionInfo(
               sessionId: "backend-root",
@@ -114,6 +116,7 @@ void main() {
       final grandchildOutput = await service.normalize(
         source: (
           pluginId: plugin.id,
+          projectionUpdatedAt: 3,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
               sessionId: "backend-grandchild",
@@ -125,11 +128,12 @@ void main() {
         ),
       );
       expect(grandchildOutput, isEmpty);
-      expect(childTracker.length, 1);
+      expect(eventTracker.length, 1);
 
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          projectionUpdatedAt: 4,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
               sessionId: "backend-child",
@@ -150,7 +154,7 @@ void main() {
       expect(grandchild.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
       expect(grandchild.id, isNot("backend-grandchild"));
       expect(grandchild.parentID, child.id);
-      expect(childTracker.length, 0);
+      expect(eventTracker.length, 0);
 
       final childRow = await database.sessionDao.getSession(sessionId: child.id);
       final grandchildRow = await database.sessionDao.getSession(sessionId: grandchild.id);
@@ -158,6 +162,40 @@ void main() {
       expect(childRow?.directory, "/repo/child");
       expect(grandchildRow?.projectId, "project-stable-root");
       expect(grandchildRow?.directory, "/repo/child/grandchild");
+    });
+
+    test("persists the archive state of a child when it is first observed", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+
+      final output = await service.normalize(
+        source: (
+          pluginId: plugin.id,
+          projectionUpdatedAt: 5,
+          event: BridgeSseSessionCreated(
+            info: Session(
+              id: "backend-child",
+              pluginId: plugin.id,
+              projectID: "backend-project",
+              directory: "/repo/child",
+              parentID: "backend-root",
+              title: "archived child",
+              time: const SessionTime(created: 10, updated: 20, archived: 30),
+              pullRequest: null,
+              promptDefaults: null,
+            ).toJson(),
+          ),
+        ),
+      );
+
+      final child = Session.fromJson((output.single as BridgeSseSessionCreated).info);
+      expect(child.time?.archived, 30);
+      expect((await database.sessionDao.getSession(sessionId: child.id))?.archivedAt, 30);
+      expect((await repository.getChildSessions(sessionId: "stable-root")).single.time?.archived, 30);
     });
 
     test("does not attach a child to a parent owned by another plugin", () async {
@@ -171,6 +209,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          projectionUpdatedAt: 6,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
               sessionId: "backend-child",
@@ -183,7 +222,7 @@ void main() {
       );
 
       expect(output, isEmpty);
-      expect(childTracker.length, 1);
+      expect(eventTracker.length, 1);
       expect(
         await database.sessionDao.getSessionByBinding(
           pluginId: plugin.id,
@@ -204,6 +243,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          projectionUpdatedAt: 7,
           event: const BridgeSsePermissionAsked(
             requestID: "permission",
             sessionID: "backend-root",
@@ -215,6 +255,129 @@ void main() {
       );
 
       expect(output, isEmpty);
+    });
+
+    test("releases a pending root and descendants after its durable binding commits", () async {
+      final rootEvent = BridgeSseSessionCreated(
+        info: _sessionInfo(
+          sessionId: "backend-root",
+          parentId: null,
+          projectId: "backend-project",
+          directory: "/repo",
+        ),
+      );
+      final childEvent = BridgeSseSessionCreated(
+        info: _sessionInfo(
+          sessionId: "backend-child",
+          parentId: "backend-root",
+          projectId: "backend-project",
+          directory: "/repo/child",
+        ),
+      );
+
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, projectionUpdatedAt: 10, event: rootEvent),
+        ),
+        isEmpty,
+      );
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, projectionUpdatedAt: 11, event: childEvent),
+        ),
+        isEmpty,
+      );
+      expect(eventTracker.length, 2);
+
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final output = await service.handleBindingsCommitted(
+        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+      );
+
+      expect(output, hasLength(2));
+      final root = Session.fromJson((output[0] as BridgeSseSessionCreated).info);
+      final child = Session.fromJson((output[1] as BridgeSseSessionCreated).info);
+      expect(root.id, "stable-root");
+      expect(child.parentID, "stable-root");
+      expect(eventTracker.length, 0);
+    });
+
+    test("rejects a queued event older than the current catalog projection", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      await database.sessionDao.updateObservedSessionProjection(
+        sessionId: "stable-root",
+        directory: "/newer",
+        catalogTitle: "newer title",
+        updateCatalogTitle: true,
+        updatedAt: 200,
+        projectionUpdatedAt: 200,
+      );
+
+      final output = await service.normalize(
+        source: (
+          pluginId: plugin.id,
+          projectionUpdatedAt: 100,
+          event: BridgeSseSessionUpdated(
+            info: Session(
+              id: "backend-root",
+              pluginId: plugin.id,
+              projectID: "backend-project",
+              directory: "/older",
+              parentID: null,
+              title: "older title",
+              time: const SessionTime(created: 1, updated: 100, archived: null),
+              pullRequest: null,
+              promptDefaults: null,
+            ).toJson(),
+            titleChanged: false,
+          ),
+        ),
+      );
+
+      expect(output, isEmpty);
+      final row = await database.sessionDao.getSession(sessionId: "stable-root");
+      expect(row?.directory, "/newer");
+      expect(row?.catalogTitle, "newer title");
+      expect(row?.projectionUpdatedAt, 200);
+    });
+
+    test("does not publish a created event after its durable row is removed", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      await database.sessionDao.deleteSession(sessionId: "stable-root");
+
+      expect(
+        await service.canPublish(
+          event: BridgeSseSessionCreated(
+            info: Session(
+              id: "stable-root",
+              pluginId: plugin.id,
+              projectID: "project-stable-root",
+              directory: "/repo",
+              parentID: null,
+              title: "stale",
+              time: null,
+              pullRequest: null,
+              promptDefaults: null,
+            ).toJson(),
+          ),
+        ),
+        isFalse,
+      );
     });
   });
 }

@@ -37,6 +37,23 @@ void main() {
       return unseenRepository().isUnseen(sessionId: sessionId);
     }
 
+    Future<void> persistRoot({required String sessionId, int createdAt = 500}) async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
+        sessions: [
+          (
+            sessionId: sessionId,
+            backendSessionId: "backend-$sessionId",
+            projectId: "p1",
+            directory: "/projects/p1",
+            createdAt: createdAt,
+            archivedAt: null,
+          ),
+        ],
+      );
+    }
+
     setUp(() {
       db = createTestDatabase();
       clock = 1000;
@@ -55,17 +72,27 @@ void main() {
       await db.close();
     });
 
-    test("new root session is unseen; child session is ignored", () async {
+    test("persisted root session is unseen; child session is ignored", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
+        sessions: [
+          (
+            sessionId: "root",
+            backendSessionId: "backend-root",
+            projectId: "p1",
+            directory: "/projects/p1",
+            createdAt: 500,
+            archivedAt: null,
+          ),
+        ],
+      );
       await service.recordSessionCreated(
         sessionId: "root",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       await service.recordSessionCreated(
         sessionId: "child",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: "root",
       );
 
@@ -73,126 +100,18 @@ void main() {
       expect(await unseen("child"), isFalse); // never persisted
     });
 
-    test("native project placeholder stores the session directory for an opaque id", () async {
+    test("missing root creation does not invent a durable backend binding", () async {
       const projectId = "0190f4c6-opaque-project-id";
-      const directory = "/projects/native-repository";
 
       await service.recordSessionCreated(
         sessionId: "native-session",
-        projectId: projectId,
-        sessionDirectory: directory,
         parentId: null,
       );
 
       final project = await db.projectsDao.getProject(projectId: projectId);
       final session = await db.sessionDao.getSession(sessionId: "native-session");
-      expect(project?.path, directory);
-      expect(session?.projectId, projectId);
-      expect(session?.pluginId, "opencode");
-    });
-
-    test("native session creation prefers the declared project root over a session subdirectory", () async {
-      const projectId = "opaque-project-id";
-      const plugin = _FakePlugin(
-        projects: [
-          PluginProject(id: projectId, directory: "/projects/repository"),
-        ],
-      );
-      final rootAwareService = SessionUnseenService(
-        unseenRepository: SessionUnseenRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          projectsDao: db.projectsDao,
-          db: db,
-          calculator: const SessionUnseenCalculator(),
-        ),
-        projectRepository: ProjectRepository(
-          plugin: plugin,
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
-        viewTracker: viewTracker,
-        now: () => clock,
-      );
-      addTearDown(rootAwareService.dispose);
-
-      await rootAwareService.recordSessionCreated(
-        sessionId: "native-session",
-        projectId: projectId,
-        sessionDirectory: "/projects/repository/packages/foo",
-        parentId: null,
-      );
-
-      expect((await db.projectsDao.getProject(projectId: projectId))?.path, "/projects/repository");
-    });
-
-    test("native session creation persists with the session directory when project discovery fails", () async {
-      const projectId = "opaque-project-id";
-      const plugin = _FakePlugin(throwOnGetProjects: true);
-      final fallbackService = SessionUnseenService(
-        unseenRepository: SessionUnseenRepository(
-          sessionDao: db.sessionDao,
-          projectsDao: db.projectsDao,
-          db: db,
-          calculator: const SessionUnseenCalculator(),
-          plugin: plugin,
-        ),
-        projectRepository: projectRepository(),
-        viewTracker: viewTracker,
-        now: () => clock,
-      );
-      addTearDown(fallbackService.dispose);
-
-      await fallbackService.recordSessionCreated(
-        sessionId: "native-root",
-        projectId: projectId,
-        sessionDirectory: "/projects/repository/packages/foo",
-        parentId: null,
-      );
-
-      expect((await db.projectsDao.getProject(projectId: projectId))?.path, "/projects/repository/packages/foo");
-      expect((await db.sessionDao.getSession(sessionId: "native-root"))?.projectId, projectId);
-    });
-
-    test("derived project placeholder keeps owner attribution for a worktree session", () async {
-      final plugin = _FakeDerivedPlugin();
-      final derivedViewTracker = SessionViewTracker();
-      final derivedService = SessionUnseenService(
-        unseenRepository: SessionUnseenRepository(
-          plugin: plugin,
-          sessionDao: db.sessionDao,
-          projectsDao: db.projectsDao,
-          db: db,
-          calculator: const SessionUnseenCalculator(),
-        ),
-        projectRepository: ProjectRepository(
-          plugin: plugin,
-          projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
-          unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
-        ),
-        viewTracker: derivedViewTracker,
-        now: () => clock,
-      );
-      addTearDown(derivedService.dispose);
-      addTearDown(derivedViewTracker.dispose);
-
-      const projectId = "/projects/owner";
-      await derivedService.recordSessionCreated(
-        sessionId: "derived-worktree-session",
-        projectId: projectId,
-        sessionDirectory: "/tmp/owner-worktree",
-        parentId: null,
-      );
-
-      final project = await db.projectsDao.getProject(projectId: projectId);
-      final session = await db.sessionDao.getSession(sessionId: "derived-worktree-session");
-      expect(project?.path, projectId);
-      expect(session?.projectId, projectId);
-      expect(session?.pluginId, "codex");
+      expect(project, isNull);
+      expect(session, isNull);
     });
 
     test("activity on an unviewed pre-existing session bolds it", () async {
@@ -231,10 +150,9 @@ void main() {
     });
 
     test("activity while viewing does not bold (seen advances)", () async {
+      await persistRoot(sessionId: "s1");
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       viewTracker.setViewing(connID: 1, sessionId: "s1");
@@ -304,10 +222,9 @@ void main() {
     });
 
     test("monotonic clock keeps same-ms user+assistant activity ordered (stays unseen)", () async {
+      await persistRoot(sessionId: "s1");
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       // Both events fall in the same wall-clock millisecond. A user message then
@@ -320,10 +237,9 @@ void main() {
     });
 
     test("serializes ordered activity for one session (no out-of-order clear)", () async {
+      await persistRoot(sessionId: "s1");
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       clock = 2000;
@@ -367,10 +283,9 @@ void main() {
     });
 
     test("recordSessionDeleted removes the row so it stops contributing to the project", () async {
+      await persistRoot(sessionId: "s1");
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       expect(await unseen("s1"), isTrue);
@@ -382,10 +297,9 @@ void main() {
 
     test("recordSessionDeleted emits against the STORED project id, not the event's", () async {
       // Row persisted under the canonical project p1.
+      await persistRoot(sessionId: "s1");
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
 
@@ -421,16 +335,14 @@ void main() {
 
     test("reconcileVanishedSessions deletes stale rows and emits their clears", () async {
       // Two persisted sessions; the backend now only knows about s1.
+      await persistRoot(sessionId: "s1");
+      await persistRoot(sessionId: "gone");
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       await service.recordSessionCreated(
         sessionId: "gone",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       expect(await unseen("gone"), isTrue);
@@ -456,10 +368,9 @@ void main() {
     });
 
     test("reconcile keeps a session created live during the fetch, even with a skewed backend clock", () async {
+      await persistRoot(sessionId: "s1");
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       // A live session.created lands DURING an in-flight /sessions fetch
@@ -468,10 +379,9 @@ void main() {
       // predates the fetch start — the row-creation guard must use the local
       // clock, not the backend time, or this fresh row would be deleted.
       clock = 9000;
+      await persistRoot(sessionId: "fresh", createdAt: clock);
       await service.recordSessionCreated(
         sessionId: "fresh",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
         occurredAt: 7000,
       );
@@ -486,20 +396,18 @@ void main() {
     });
 
     test("reconcileVanishedSessions keeps rows created after the fetch started", () async {
+      await persistRoot(sessionId: "s1");
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       // A session created AFTER the (stale) snapshot was taken: its row's
       // created_at is past fetchStartedAt, so it must survive the reconcile
       // even though it is absent from keepSessionIds.
       clock = 9000;
+      await persistRoot(sessionId: "concurrent", createdAt: clock);
       await service.recordSessionCreated(
         sessionId: "concurrent",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
 
@@ -533,8 +441,6 @@ void main() {
 
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       expect(await unseen("s1"), isTrue);
@@ -586,8 +492,6 @@ void main() {
     });
 
     test("a re-emitted user message does not clear unseen state (OpenCode re-sends the user record)", () async {
-      final events = <UnseenChange>[];
-      final subscription = service.unseenChanges.listen(events.add);
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         pluginId: "opencode",
@@ -623,8 +527,6 @@ void main() {
       clock = 5000;
       await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 5000);
       expect(await unseen("s1"), isFalse);
-      expect(events.map((event) => event.activeOrderMayHaveChanged), [true, false, true]);
-      await subscription.cancel();
     });
 
     test("re-emission guard holds when the bridge clock is BEHIND the server clock", () async {
@@ -698,10 +600,9 @@ void main() {
       // session's actual creation) — the stamp comes from the session's own
       // creation time, not the processing time.
       clock = 9000;
+      await persistRoot(sessionId: "s1");
       await service.recordSessionCreated(
         sessionId: "s1",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
         occurredAt: 2000,
       );
@@ -880,10 +781,9 @@ void main() {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);
 
+      await persistRoot(sessionId: "root");
       await service.recordSessionCreated(
         sessionId: "root",
-        projectId: "p1",
-        sessionDirectory: "/projects/p1",
         parentId: null,
       );
       await Future<void>.delayed(Duration.zero);
@@ -901,27 +801,13 @@ void main() {
 }
 
 class _FakePlugin implements NativeProjectsPluginApi {
-  final List<PluginProject> projects;
-  final bool throwOnGetProjects;
-
-  const _FakePlugin({this.projects = const [], this.throwOnGetProjects = false});
+  const _FakePlugin();
 
   @override
   String get id => "opencode";
 
   @override
-  Future<List<PluginProject>> getProjects() async {
-    if (throwOnGetProjects) throw StateError("project discovery failed");
-    return projects;
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
-  @override
-  String get id => "codex";
+  Future<List<PluginProject>> getProjects() async => const [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

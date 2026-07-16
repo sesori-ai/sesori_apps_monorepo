@@ -338,11 +338,18 @@ plugin A event to block plugin B.
 
 ```text
 plugin.events
-  -> PluginEventListener attaches pluginId
+  -> PluginEventListener attaches pluginId and receipt order
+SessionRepository.bindingCommits
+  -> SessionBindingCommitListener
+SessionMutationDispatcher.deletedSessions
+  -> SessionDeletionListener
+all three listeners
+  -> SessionEventDispatcher serializes and validates shared output
   -> SessionEventService
-  -> SessionChildTracker records/drains unresolved ancestry
+  -> SessionEventTracker records/drains unresolved roots and ancestry
   -> SessionRepository / SessionMutationDispatcher perform exact writes
   -> SessionEventMapper rewrites every session reference to Sesori ids
+  -> SessionEventDispatcher
   -> Orchestrator
   -> BridgeEventMapper -> phones
 ```
@@ -350,7 +357,10 @@ plugin.events
 Rules:
 
 - A known root event may update catalog title/time/summary and activity fields.
-- An unknown root event is dropped and does not discover a project.
+- An unknown root event does not discover a project. An unknown
+  `session.created` is retained only in the bounded in-memory tracker until an
+  exact same-plugin create/list binding commit arrives; all other unknown-root
+  events are dropped.
 - A child is inserted only when its direct parent binding belongs to the same
   plugin. It inherits project/plugin attribution and stores its own reported
   directory.
@@ -372,7 +382,7 @@ Rules:
 `SessionEventService` replaces the narrower
 `SessionEventEnrichmentService`. It is a thin Layer 3 orchestrator constructed
 with already-built `SessionRepository`, `SessionMutationDispatcher`,
-`SessionEventMapper`, `SessionChildTracker`, and `FailureReporter` instances. It
+`SessionEventMapper`, `SessionEventTracker`, and `FailureReporter` instances. It
 imports no DAO and delegates every projection/child write to
 `SessionRepository` or `SessionMutationDispatcher`.
 
@@ -382,23 +392,24 @@ to resolve them in one batch, and gives the mapper the resulting
 backend-to-Sesori id map. The mapper owns only the exhaustive event-shape
 rewrite and performs no I/O.
 
-`SessionChildTracker` is constructed with only its maximum pending-entry count.
-It owns the in-memory pending map, insertion order, eviction invariant, and
-recursive drain bookkeeping. It has no service, repository, DAO, or plugin
-dependency and returns typed entries for `SessionEventService` to persist.
+`SessionEventTracker` is constructed with only its maximum pending-entry count.
+It owns the in-memory pending root/child maps, shared insertion order, eviction
+invariant, and recursive drain bookkeeping. It has no service, repository, DAO,
+or plugin dependency and returns typed entries for `SessionEventService` to
+persist or release after a matching binding commit.
 
 Each `PluginEventListener` is constructed with one already-selected raw
 `Stream<BridgeSseEvent>`, its explicit descriptor-selected plugin id, and the
-shared `SessionEventService`. It owns exactly one raw event subscription,
-attaches that plugin id, delegates normalization, and exposes its normalized
-output stream. It does not depend on `BridgePluginApi` or construct the service
-or any of its collaborators. In Stage 4 the Layer-5 `Orchestrator` constructs
-the one selected listener, composes its output with bridge-owned committed
-deletions, and exposes that normalized broadcast stream to `DebugServer`, so the
-debug surface neither subscribes to a raw plugin nor repeats normalization. In
-Stage 7 the orchestrator composes one such listener per operational plugin. The
-orchestrator remains the only component deciding which normalized events become
-phone SSE events.
+shared `SessionEventDispatcher`. It owns exactly one raw event subscription and
+captures receipt order synchronously before dispatch. Separate one-trigger
+listeners own binding commits and bridge-owned deletions. The dispatcher is the
+single serialized choke point: it delegates projection/translation to
+`SessionEventService`, validates durable created events immediately before
+publication, and exposes one normalized broadcast stream to both `Orchestrator`
+and `DebugServer`. No listener depends on a peer or on `BridgePluginApi`. In
+Stage 7 the orchestrator constructs one plugin listener per operational plugin;
+the orchestrator remains the only component deciding which validated normalized
+events become phone SSE events.
 
 ## 6. Import
 
@@ -756,8 +767,8 @@ until Stage 4.
   bindings only after exhaustive event translation is active. Existing ids stay
   unchanged.
 - Add the internal source-plugin envelope, `SessionEventMapper`,
-  `SessionChildTracker`, `SessionEventService`, and per-plugin
-  `PluginEventListener`.
+  `SessionEventTracker`, `SessionEventService`, `SessionEventDispatcher`, and
+  one-trigger plugin/binding/deletion listeners.
 - Persist known-session projection updates, proven child ancestry, recursive
   descendants, and cascade behavior.
 - Make `SessionRepository.getChildSessions` read durable children from the
@@ -772,39 +783,41 @@ until Stage 4.
   path for one more stage.
 
 Acceptance: no backend handle reaches a shared event, child, question, or
-permission payload; unknown roots are ignored; cross-plugin parent links fail; out-of-
-order descendants drain when ancestry arrives; backend deletion preserves
-history; the pending-child bound retains the largest expected event burst;
-selected-plugin event order is preserved.
+permission payload; unknown roots do not discover projects; bridge-created roots
+and out-of-order descendants drain when matching bindings arrive; cross-plugin
+parent links fail; backend deletion preserves history; the pending-event bound
+retains the largest expected event burst; selected-plugin event order is
+preserved.
 
 PR-level implementation plan:
 
 1. Add a repository-layer `SessionEventMapper` that exhaustively extracts and
    rewrites every session-bearing `BridgeSseEvent` field from backend handles to
-   Sesori ids. Add a Layer-2 `SessionChildTracker` with a 1,024-entry internal
-   bound, global insertion-order eviction, and parent-keyed drains; it stores no
-   durable unresolved sentinel and has no repository, service, DAO, or plugin
-   dependency.
+   Sesori ids. Add a Layer-2 `SessionEventTracker` with a 1,024-entry internal
+   bound, global insertion-order eviction, exact root-binding release, and
+   parent-keyed child drains; it stores no durable unresolved sentinel and has
+   no repository, service, DAO, or plugin dependency.
 2. Replace `SessionEventEnrichmentService` with a Layer-3
    `SessionEventService`. It receives a source-plugin event, updates only known
    projections through `SessionRepository`, accepts a new child only under a
-   same-plugin durable parent, queues unresolved descendants in
-   `SessionChildTracker`, recursively drains them after ancestry commits, asks
+   same-plugin durable parent, queues unresolved created roots and descendants
+   in `SessionEventTracker`, recursively drains them after binding/ancestry
+   commits, asks
    the repository for one batched binding map, delegates the pure rewrite to
    `SessionEventMapper`, and captures title-changing events through the existing
-   `SessionMutationDispatcher`. Unknown roots, untranslatable payloads, and
-   backend deletion events produce no normalized client event; failures are
-   reported and isolated per input event.
-3. Add one Layer-4 `PluginEventListener` for the selected plugin. It receives
-   the already-selected raw event stream plus an explicit plugin id from the
-   descriptor/runner selection path, owns one raw subscription, serially
-   normalizes events, and exposes a broadcast normalized stream. The Layer-5
-   `Orchestrator` extracts the raw stream from `BridgePluginApi`, constructs the
-   listener, composes its output with committed bridge-owned deletions, and
-   exposes that same normalized stream to `DebugServer`. `BridgeRuntime.create`
+   `SessionMutationDispatcher`. Unknown non-created roots, untranslatable
+   payloads, and backend deletion events produce no plugin-derived client event;
+   failures are reported and isolated per input event.
+3. Add one Layer-4 listener per trigger: selected raw plugin events, committed
+   root bindings, and committed bridge-owned deletions. Each owns one
+   subscription and submits typed input to one Layer-3 `SessionEventDispatcher`,
+   which serializes all three sources, delegates to `SessionEventService`,
+   validates durable created events, and exposes a broadcast normalized stream.
+   The Layer-5 `Orchestrator` constructs the listeners/dispatcher and exposes
+   that same normalized stream to `DebugServer`. `BridgeRuntime.create`
    receives the selected descriptor id from `BridgeRuntimeRunner`, verifies it
    matches the started API identity, and passes it into `Orchestrator`; the
-   listener never depends on the API. The orchestrator retains local reconnect
+   plugin listener never depends on the API. The orchestrator retains local reconnect
    decisions for plugin-connected input, while `BridgeEventMapper` stops
    emitting plugin connected/heartbeat/disposed events as bridge-global wire
    lifecycle events. Multi-plugin listener construction, stream fan-in, and

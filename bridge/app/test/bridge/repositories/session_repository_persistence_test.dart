@@ -29,7 +29,10 @@ void main() {
       );
     });
 
-    tearDown(() => db.close());
+    tearDown(() async {
+      await repository.dispose();
+      await db.close();
+    });
 
     test("getSessionsForProject publishes every binding before returning", () async {
       plugin.sessions = List<PluginSession>.generate(
@@ -42,13 +45,20 @@ void main() {
         ),
       );
 
+      final commitFuture = repository.bindingCommits.first;
       final sessions = await repository.getSessionsForProject(
         projectId: "project-X",
         start: null,
         limit: null,
       );
+      final commit = await commitFuture;
       final rows = await db.select(db.sessionTable).get();
 
+      expect(commit.pluginId, plugin.id);
+      expect(
+        commit.backendSessionIds,
+        unorderedEquals(["backend-0", "backend-1", "backend-2", "backend-3", "backend-4"]),
+      );
       expect(sessions.map((session) => session.id), everyElement(startsWith("ses_")));
       expect(rows, hasLength(5));
       for (final row in rows) {

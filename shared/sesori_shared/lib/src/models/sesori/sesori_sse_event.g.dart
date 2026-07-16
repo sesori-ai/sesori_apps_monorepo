@@ -377,7 +377,6 @@ SesoriProjectsSummary _$SesoriProjectsSummaryFromJson(Map json) =>
             ),
           )
           .toList(),
-      userInteractionOrdered: json['userInteractionOrdered'] as bool? ?? false,
       $type: json['type'] as String?,
     );
 
@@ -385,7 +384,6 @@ Map<String, dynamic> _$SesoriProjectsSummaryToJson(
   SesoriProjectsSummary instance,
 ) => <String, dynamic>{
   'projects': instance.projects.map((e) => e.toJson()).toList(),
-  'userInteractionOrdered': instance.userInteractionOrdered,
   'type': instance.$type,
 };
 

@@ -11,7 +11,6 @@ class StoredSession {
   final int? archivedAt;
   final String? baseBranch;
   final String? baseCommit;
-  final int? lastUserInteractionAt;
 
   const StoredSession({
     required this.id,
@@ -26,6 +25,5 @@ class StoredSession {
     required this.archivedAt,
     required this.baseBranch,
     required this.baseCommit,
-    required this.lastUserInteractionAt,
   });
 }
