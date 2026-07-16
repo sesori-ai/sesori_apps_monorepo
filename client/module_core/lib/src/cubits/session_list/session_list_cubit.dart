@@ -184,9 +184,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     if (isClosed) return;
     final current = state;
     if (current is! SessionListLoaded) return;
-    final loaded = current;
-    final projectActivity = activityByProjectId[_projectId] ?? <String, SessionActivityInfo>{};
-    emit(loaded.copyWith(activeSessionIds: projectActivity));
+    _emitFiltered();
   }
 
   void _onUnseenUpdated() {
@@ -575,6 +573,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     final visible = _sessionListService.visibleSessions(
       sessions: _allSessions,
       showArchived: _showArchived,
+      activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
     );
 
     if (isClosed) return;

@@ -13,6 +13,7 @@ import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
+import "../../services/models/session_activity_info.dart";
 import "../../services/project_list_service.dart";
 import "../../services/registered_bridges_service.dart";
 import "../../services/session_unseen_tracker.dart";
@@ -61,6 +62,9 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     // 1. Immediate activity badge updates (no API call).
     _subscriptions.add(
       _sseEventTracker.projectActivity.listen(_onActivityUpdated),
+    );
+    _subscriptions.add(
+      _sseEventTracker.sessionActivity.listen(_onSessionActivityUpdated),
     );
 
     // 1a. Immediate project timestamp updates from SSE events (no API call).
@@ -164,6 +168,22 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
+  void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
+    if (isClosed) return;
+    if (state case final ProjectListLoaded loaded) {
+      final ordered = _projectListService.orderProjects(
+        projects: loaded.projects,
+        activityByProjectId: activityByProjectId,
+      );
+      emit(
+        loaded.copyWith(
+          projects: ordered,
+          unseenByProjectId: _unseenByProjectId(ordered),
+        ),
+      );
+    }
+  }
+
   void _onProjectTimestampUpdated(Map<String, int> timestampByProjectId) {
     try {
       if (isClosed) return;
@@ -174,10 +194,15 @@ class ProjectListCubit extends Cubit<ProjectListState> {
         );
         if (!merged.changed) return;
 
+        final ordered = _projectListService.orderProjects(
+          projects: merged.projects,
+          activityByProjectId: _sseEventTracker.currentSessionActivity,
+        );
+
         emit(
           loaded.copyWith(
-            projects: merged.projects,
-            unseenByProjectId: _unseenByProjectId(merged.projects),
+            projects: ordered,
+            unseenByProjectId: _unseenByProjectId(ordered),
           ),
         );
       }
@@ -465,9 +490,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       return false;
     }
     if (state case final ProjectListLoaded loaded) {
-      final remaining = _projectListService.removeProject(
-        projects: loaded.projects,
-        projectId: projectId,
+      final remaining = _projectListService.orderProjects(
+        projects: _projectListService.removeProject(
+          projects: loaded.projects,
+          projectId: projectId,
+        ),
+        activityByProjectId: _sseEventTracker.currentSessionActivity,
       );
       emit(
         loaded.copyWith(
@@ -589,12 +617,16 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
     switch (projectResponse) {
       case SuccessResponse(data: Projects(data: final projects)):
-        final sortedProjects = _projectListService
+        final mergedProjects = _projectListService
             .mergeTimestampUpdates(
               projects: projects,
               timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
             )
             .projects;
+        final sortedProjects = _projectListService.orderProjects(
+          projects: mergedProjects,
+          activityByProjectId: _sseEventTracker.currentSessionActivity,
+        );
         // The REST aggregate is authoritative at fetch time — seed the tracker
         // so a stale live `true` can't keep a project bold after its last
         // unseen session was archived/deleted while an echo was missed.
