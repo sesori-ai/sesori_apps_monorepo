@@ -339,7 +339,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     if (previousVariant != null && availableVariants.any((v) => v.id == previousVariant)) {
       variant = previousVariant;
     } else {
-      variant = agentModel?.variant ?? (availableVariants.isNotEmpty ? availableVariants.first.id : null);
+      variant = agentModel?.variant;
     }
 
     _emitAgentModelUpdate(

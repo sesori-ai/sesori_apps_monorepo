@@ -7,169 +7,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("CursorModelProbe", () {
-    final session = AcpNewSessionResult.fromJson({
-      "sessionId": "s1",
-      "configOptions": [
-        {"id": "verbosity", "category": "other"},
-        {
-          "id": "mode-picker",
-          "category": "mode",
-          "currentValue": "agent",
-          "options": [
-            {"value": "agent", "name": "Agent"},
-            {"value": "plan", "name": "Plan"},
-          ],
-        },
-        {
-          "id": "model-picker",
-          "category": "model",
-          "currentValue": "gpt-5.4",
-          "options": [
-            {"value": "gpt-5.4", "name": "GPT-5.4"},
-            {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
-          ],
-        },
-      ],
-    });
-
-    test("finds a config by category, not by id", () {
-      final model = CursorModelProbe.findConfig(session, "model");
-      expect(model, isNotNull);
-      expect(model!["id"], "model-picker");
-      expect(CursorModelProbe.currentValue(model), "gpt-5.4");
-      expect(CursorModelProbe.options(model), hasLength(2));
-
-      final mode = CursorModelProbe.findConfig(session, "mode");
-      expect(mode!["id"], "mode-picker");
-      expect(CursorModelProbe.currentValue(mode), "agent");
-    });
-
-    test("findModelConfig + hasModel back-compat helpers", () {
-      final config = CursorModelProbe.findModelConfig(session)!;
-      expect(CursorModelProbe.models(config), hasLength(2));
-      expect(CursorModelProbe.hasModel(CursorModelProbe.models(config), "sonnet-4.6"), isTrue);
-      expect(CursorModelProbe.hasModel(CursorModelProbe.models(config), "nope"), isFalse);
-    });
-
-    test("returns null when the category is absent", () {
-      final none = AcpNewSessionResult.fromJson({"sessionId": "s", "configOptions": <Object?>[]});
-      expect(CursorModelProbe.findModelConfig(none), isNull);
-      expect(CursorModelProbe.findConfig(none, "mode"), isNull);
-    });
-
-    test("findThoughtLevelConfig prefers multi-level reasoning over effort", () {
-      final thoughtSession = AcpNewSessionResult.fromJson({
-        "sessionId": "s",
-        "configOptions": [
-          {
-            "id": "thinking",
-            "category": "thought_level",
-            "currentValue": "true",
-            "options": [
-              {"value": "true", "name": "On"},
-              {"value": "false", "name": "Off"},
-            ],
-          },
-          {
-            "id": "effort",
-            "category": "thought_level",
-            "currentValue": "medium",
-            "options": [
-              {"value": "low", "name": "Low"},
-              {"value": "medium", "name": "Medium"},
-              {"value": "high", "name": "High"},
-            ],
-          },
-          {
-            "id": "reasoning",
-            "category": "thought_level",
-            "currentValue": "medium",
-            "options": [
-              {"value": "low", "name": "Low"},
-              {"value": "medium", "name": "Medium"},
-              {"value": "high", "name": "High"},
-            ],
-          },
-        ],
-      });
-      final config = CursorModelProbe.findThoughtLevelConfig(thoughtSession)!;
-      expect(config["id"], "reasoning");
-    });
-
-    test("findThoughtLevelConfig ignores binary thought toggles", () {
-      final thoughtSession = AcpNewSessionResult.fromJson({
-        "sessionId": "s",
-        "configOptions": [
-          {
-            "id": "reasoning",
-            "category": "thought_level",
-            "currentValue": "on",
-            "options": [
-              {"value": "on", "name": "On"},
-              {"value": "off", "name": "Off"},
-            ],
-          },
-          {
-            "id": "effort",
-            "category": "thought_level",
-            "currentValue": "true",
-            "options": [
-              {"value": "true", "name": "On"},
-              {"value": "false", "name": "Off"},
-            ],
-          },
-        ],
-      });
-
-      expect(CursorModelProbe.findThoughtLevelConfig(thoughtSession), isNull);
-    });
-
-    test("resolveModeId matches by value or display name", () {
-      final modes = [
-        {"value": "agent", "name": "Agent"},
-        {"value": "plan", "name": "Plan"},
-      ];
-      expect(CursorModelProbe.resolveModeId(modes, "plan"), "plan");
-      expect(CursorModelProbe.resolveModeId(modes, "Plan"), "plan");
-      expect(CursorModelProbe.resolveModeId(modes, "nope"), isNull);
-    });
-
-    test("options flattens grouped select options", () {
-      final grouped = AcpNewSessionResult.fromJson({
-        "sessionId": "s",
-        "configOptions": [
-          {
-            "id": "model-picker",
-            "category": "model",
-            "currentValue": "gpt-5.4",
-            "options": [
-              {
-                "group": "openai",
-                "name": "OpenAI",
-                "options": [
-                  {"value": "gpt-5.4", "name": "GPT-5.4"},
-                ],
-              },
-              {
-                "group": "anthropic",
-                "name": "Anthropic",
-                "options": [
-                  {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
-                  {"value": "opus-4.8", "name": "Opus 4.8"},
-                ],
-              },
-            ],
-          },
-        ],
-      });
-      final config = CursorModelProbe.findModelConfig(grouped)!;
-      final options = CursorModelProbe.options(config);
-      expect(options.map((o) => o["value"]), ["gpt-5.4", "sonnet-4.6", "opus-4.8"]);
-      expect(CursorModelProbe.hasOption(options, "opus-4.8"), isTrue);
-    });
-  });
-
   group("CursorPlugin", () {
     late FakeAcpProcess fake;
     late CursorPlugin plugin;
@@ -246,6 +83,18 @@ void main() {
       ],
     };
 
+    void capture(
+      Map<String, dynamic> result, {
+      String? sessionId,
+      bool fromNewSession = false,
+    }) {
+      plugin.captureSessionConfig(
+        AcpNewSessionResult.fromJson(result),
+        sessionId: sessionId,
+        fromNewSession: fromNewSession,
+      );
+    }
+
     setUp(() {
       fake = FakeAcpProcess();
       handledFrameIds = {};
@@ -287,8 +136,7 @@ void main() {
     // test that only reads back a directly-captured catalog, service a
     // no-capability agent (no session list) so the warm-up probe is an instant
     // no-op, then return the providers. Use only for the FIRST fetch on a
-    // plugin — afterward the probe-completed latch skips warm-up, so there is no
-    // initialize frame to answer.
+    // plugin; afterward that scope's exhausted outcome skips another probe.
     Future<PluginProvidersResult> providersAfterWarmup() async {
       final future = plugin.getProviders(projectId: "/repo");
       await respond("initialize", const {
@@ -311,7 +159,7 @@ void main() {
     });
 
     test("captureSessionConfig populates providers, effort variants, and mode agents", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
 
       final providers = await plugin.getProviders(projectId: "/repo");
       expect(providers.providers, hasLength(1));
@@ -360,7 +208,7 @@ void main() {
     };
 
     test("a session/new capture seeds the new-session default model", () async {
-      plugin.captureSessionConfig(modelCatalog("sonnet-4.6"), sessionId: "new-1", fromNewSession: true);
+      capture(modelCatalog("sonnet-4.6"), sessionId: "new-1", fromNewSession: true);
       expect(
         (await providersAfterWarmup()).providers.single.defaultModelID,
         "sonnet-4.6",
@@ -369,12 +217,12 @@ void main() {
     });
 
     test("a session/load (or probe) does not overwrite the new-session default", () async {
-      plugin.captureSessionConfig(modelCatalog("gpt-5.4"), sessionId: "new-1", fromNewSession: true);
-      // First fetch warms the catalog (probe-completed latch is then set).
+      capture(modelCatalog("gpt-5.4"), sessionId: "new-1", fromNewSession: true);
+      // First fetch records an exhausted outcome for this scope.
       expect((await providersAfterWarmup()).providers.single.defaultModelID, "gpt-5.4");
 
-      plugin.captureSessionConfig(modelCatalog("sonnet-4.6"), sessionId: "old");
-      plugin.captureSessionConfig(modelCatalog("sonnet-4.6"));
+      capture(modelCatalog("sonnet-4.6"), sessionId: "old");
+      capture(modelCatalog("sonnet-4.6"));
 
       // Latched: this fetch reads back without re-warming.
       expect(
@@ -385,7 +233,7 @@ void main() {
     });
 
     test("applyTurnSelection drives model + mode + effort from agent and variant", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
 
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -435,7 +283,7 @@ void main() {
     });
 
     test("applyTurnSelection resolves mode from display name agent", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -469,7 +317,7 @@ void main() {
     });
 
     test("applyTurnSelection re-applies the same effort after a model switch", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -517,7 +365,7 @@ void main() {
     });
 
     test("applyTurnSelection uses per-model thought_level config ids", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -603,7 +451,7 @@ void main() {
     });
 
     test("applyTurnSelection does not reuse another model's thought config id", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -635,7 +483,7 @@ void main() {
     });
 
     test("applyTurnSelection restores the selected model's default effort", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -697,7 +545,7 @@ void main() {
     });
 
     test("applyTurnSelection never pushes an unknown model", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -727,7 +575,7 @@ void main() {
     });
 
     test("applyTurnSelection does not push unknown effort", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -758,7 +606,7 @@ void main() {
     });
 
     test("a default (null) model is re-applied when another model is active", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -806,7 +654,7 @@ void main() {
     });
 
     test("a session's null-model turn re-applies its own model, not the global default", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -868,7 +716,7 @@ void main() {
     });
 
     test("a rejected model switch stamps the model actually in effect", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -899,7 +747,7 @@ void main() {
     });
 
     test("a rejected switch does not inherit another session's model", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -943,7 +791,7 @@ void main() {
     });
 
     test("onConnectionReset re-applies model+mode+effort after an agent respawn", () async {
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -986,7 +834,7 @@ void main() {
     });
 
     test("getProviders tolerates a malformed model option and derives a safe default", () async {
-      plugin.captureSessionConfig({
+      capture({
         "sessionId": "s1",
         "configOptions": [
           {
@@ -1024,14 +872,14 @@ void main() {
     });
 
     test("a models-only capture surfaces effort variants once thought_level is captured", () async {
-      plugin.captureSessionConfig(modelCatalog("gpt-5.4", includeMode: false), fromNewSession: true);
-      plugin.captureSessionConfig(catalogResult(), fromNewSession: false);
+      capture(modelCatalog("gpt-5.4", includeMode: false), fromNewSession: true);
+      capture(catalogResult(), fromNewSession: false);
       final full = await plugin.getProviders(projectId: "/repo");
       expect(full.providers.single.models.first.variants, ["medium", "low", "high"]);
     });
 
     test("a grouped model catalog surfaces every nested model", () async {
-      plugin.captureSessionConfig({
+      capture({
         "sessionId": "s1",
         "configOptions": [
           {
@@ -1077,8 +925,8 @@ void main() {
   // turn so the composer's effort pill shows for a fresh session. Cursor only
   // reveals a model's effort for a model active in a session, so the bridge
   // `session/load`s recent sessions until a reasoning one is found. These drive
-  // the real getProviders -> _ensureCatalog -> probe path end to end, so the
-  // probe spawns its own process — a fresh fake per spawn (not the shared one).
+  // the real getProviders -> catalog service path end to end, so the isolated
+  // catalog client spawns its own process — a fresh fake per spawn.
   group("CursorPlugin catalog warm-up", () {
     final fakes = <FakeAcpProcess>[];
     late CursorPlugin plugin;
@@ -1103,11 +951,14 @@ void main() {
       }
     });
 
-    List<Map<String, dynamic>> allWritten() =>
-        [for (final fake in fakes) ...fake.written];
+    List<Map<String, dynamic>> allWritten() => [for (final fake in fakes) ...fake.written];
 
-    Map<String, dynamic> listSession(String id, {required int updatedAt}) =>
-        {"sessionId": id, "cwd": cwd, "title": id, "updatedAt": updatedAt};
+    Map<String, dynamic> listSession(String id, {required int updatedAt}) => {
+      "sessionId": id,
+      "cwd": cwd,
+      "title": id,
+      "updatedAt": updatedAt,
+    };
 
     // A `session/load` result carrying Cursor's model + mode config, and — only
     // for a reasoning model — a multi-level effort `thought_level`.
@@ -1154,6 +1005,8 @@ void main() {
     void Function() autoAnswer({
       required List<Map<String, dynamic>> listSessions,
       required Map<String, Map<String, dynamic>> loadResults,
+      Map<String?, List<Map<String, dynamic>>>? listSessionsByScope,
+      bool rejectUnfiltered = false,
       List<String>? loadOrder,
     }) {
       final answered = <(FakeAcpProcess, Object?)>{};
@@ -1176,7 +1029,19 @@ void main() {
                     "authMethods": <Object?>[],
                   };
                 case "session/list":
-                  result = {"sessions": listSessions};
+                  final params = (frame["params"] as Map?)?.cast<String, dynamic>();
+                  final listScope = params?["cwd"] as String?;
+                  if (rejectUnfiltered && listScope == null) {
+                    fake.emit({
+                      "jsonrpc": "2.0",
+                      "id": id,
+                      "error": {"code": -32602, "message": "cwd is required"},
+                    });
+                    continue;
+                  }
+                  result = {
+                    "sessions": listSessionsByScope?[listScope] ?? listSessions,
+                  };
                 case "session/load":
                   final sid = (frame["params"] as Map).cast<String, dynamic>()["sessionId"] as String;
                   loadOrder?.add(sid);
@@ -1255,8 +1120,8 @@ void main() {
       );
       expect(loadOrder, ["s-new", "s-old"], reason: "both sessions walked (under the bound), neither reasoning");
 
-      // A second fetch must not re-walk: the exhaustion latch holds, so no new
-      // probe process is spawned.
+      // A second fetch must not re-walk: the scope's exhausted outcome prevents
+      // another probe process from being spawned.
       final fakesAfterFirst = fakes.length;
       final again = await plugin.getProviders(projectId: cwd);
       stop();
@@ -1264,7 +1129,44 @@ void main() {
       expect(
         fakes.length,
         fakesAfterFirst,
-        reason: "the latch stops a re-walk, so no additional probe process spawns",
+        reason: "the exhausted outcome stops a re-walk and another process spawn",
+      );
+    });
+
+    test("launch-scope exhaustion cannot suppress another project scope", () async {
+      const projectScope = "/other-project";
+      final stop = autoAnswer(
+        listSessions: const [],
+        listSessionsByScope: {
+          cwd: const [],
+          projectScope: [
+            {
+              "sessionId": "project-session",
+              "cwd": projectScope,
+              "title": "Project session",
+              "updatedAt": 1000,
+            },
+          ],
+        },
+        rejectUnfiltered: true,
+        loadResults: {
+          "project-session": loadResult(
+            currentModel: "sonnet-4.6",
+            reasoning: true,
+          ),
+        },
+      );
+
+      await plugin.warmCatalog();
+      final providers = await plugin.getProviders(projectId: projectScope);
+      stop();
+
+      expect(providers.providers.single.models, isNotEmpty);
+      expect(
+        allWritten()
+            .where((frame) => frame["method"] == "session/list")
+            .map((frame) => (frame["params"] as Map)["cwd"]),
+        contains(projectScope),
       );
     });
   });
