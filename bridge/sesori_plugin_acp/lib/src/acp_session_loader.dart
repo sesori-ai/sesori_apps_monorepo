@@ -15,7 +15,7 @@ class AcpReplayCollector {
     required this.agentId,
     this.modelId,
     this.providerId,
-    this.haltClassifier,
+    required this.haltClassifier,
   });
 
   final String sessionId;
