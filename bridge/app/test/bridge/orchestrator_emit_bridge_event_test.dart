@@ -649,6 +649,12 @@ void main() {
         activeSessions: <PluginActiveSession>[PluginActiveSession(id: "session-1")],
       ),
     ];
+    await _insertRootSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "session-1",
+      backendSessionId: "session-1",
+    );
     final fakePrSyncService = _FakePrSyncService();
     final sessionRepository = SessionRepository(
       plugin: plugin,
@@ -813,6 +819,14 @@ void main() {
 
     final statuses = controlClient.sentMessages.whereType<ControlStatus>().toList();
     expect(statuses.last.activeSessionCount, 2);
+
+    // Deletion must rebuild the summary even when the plugin's activity
+    // tracker continues to report the tombstoned backend session.
+    await sessionTitleService.deleteSession(sessionId: "session-1");
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    final deletionStatuses = controlClient.sentMessages.whereType<ControlStatus>().toList();
+    expect(deletionStatuses.last.activeSessionCount, 1);
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));

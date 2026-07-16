@@ -455,7 +455,17 @@ class SessionRepository {
   /// doesn't show. A native plugin owns its own attribution and passes
   /// through 1:1.
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async {
-    final summaries = _plugin.getActiveSessionsSummary();
+    await _ensureTombstonesLoaded();
+    final summaries = [
+      for (final summary in _plugin.getActiveSessionsSummary())
+        if (summary.activeSessions.any((active) => !_tombstonedBackendSessionIds.contains(active.id)))
+          summary.copyWith(
+            activeSessions: [
+              for (final active in summary.activeSessions)
+                if (!_tombstonedBackendSessionIds.contains(active.id)) active,
+            ],
+          ),
+    ];
     switch (_plugin) {
       case NativeProjectsPluginApi():
         return [

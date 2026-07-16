@@ -12,7 +12,18 @@ permission:
   webfetch: allow
   bash:
     "*": deny
-    "git *": allow
+    "git blame *": allow
+    "git branch": allow
+    "git branch --show-current": allow
+    "git diff *": allow
+    "git log *": allow
+    "git ls-files --others --exclude-standard": allow
+    "git merge-base *": allow
+    "git rev-parse *": allow
+    "git show *": allow
+    "git status": allow
+    "git status --short": allow
+    "git status --short --branch": allow
 ---
 
 # Aristotle — Implementation Reviewer

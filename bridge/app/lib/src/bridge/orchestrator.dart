@@ -782,38 +782,19 @@ class OrchestratorSession {
         await _autoApprovePendingPermissions();
       }
 
-      // A project update means "activity changed" — rebuild the full summary
-      // (repository data: the bridge's session→project attribution), which the
-      // pure mapper cannot fetch itself.
-      final sesoriEvent = event is BridgeSseProjectUpdated ? await _buildProjectsSummary() : _mapper.map(event);
+      final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
+      final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event);
       if (sesoriEvent != null) {
-        Log.v(
-          "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
-        );
-        _completionListener.handleSseEvent(sesoriEvent);
-        if (sesoriEvent is SesoriProjectsSummary) {
-          _statusNotifier?.handleProjectsSummary(summary: sesoriEvent);
-        }
-        // A newly announced root must be queryable as soon as a phone receives
-        // the event; unlike other activity, its binding is mandatory first.
-        if (sesoriEvent is SesoriSessionCreated) {
-          await _routeUnseenActivity(sesoriEvent);
-        }
-        _sseManager.enqueueEvent(sesoriEvent);
-        if (sesoriEvent is! SesoriSessionCreated) {
-          try {
-            await _routeUnseenActivity(sesoriEvent);
-          } catch (e, st) {
-            Log.w("failed to route unseen activity for ${sesoriEvent.runtimeType}", e, st);
-          }
-        }
-        try {
-          await _projectActivityService.handleEvent(sesoriEvent);
-        } catch (e, st) {
-          Log.w("failed to route project activity for ${sesoriEvent.runtimeType}", e, st);
-        }
-      } else {
+        await _deliverSseEvent(event: sesoriEvent);
+      } else if (!refreshProjectsSummary) {
         Log.v("[sse] mapping returned null — event dropped");
+      }
+
+      // Both trigger types mean activity changed. Rebuild from repository data
+      // after delivering session.deleted so clients observe deletion first.
+      if (refreshProjectsSummary) {
+        final summary = await _buildProjectsSummary();
+        if (summary != null) await _deliverSseEvent(event: summary);
       }
     } catch (e, st) {
       Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
@@ -829,6 +810,34 @@ class OrchestratorSession {
             )
             .catchError((_) {}),
       );
+    }
+  }
+
+  Future<void> _deliverSseEvent({required SesoriSseEvent event}) async {
+    Log.v(
+      "[sse] mapped to: ${event.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
+    );
+    _completionListener.handleSseEvent(event);
+    if (event is SesoriProjectsSummary) {
+      _statusNotifier?.handleProjectsSummary(summary: event);
+    }
+    // A newly announced root must be queryable as soon as a phone receives
+    // the event; unlike other activity, its binding is mandatory first.
+    if (event is SesoriSessionCreated) {
+      await _routeUnseenActivity(event);
+    }
+    _sseManager.enqueueEvent(event);
+    if (event is! SesoriSessionCreated) {
+      try {
+        await _routeUnseenActivity(event);
+      } catch (e, st) {
+        Log.w("failed to route unseen activity for ${event.runtimeType}", e, st);
+      }
+    }
+    try {
+      await _projectActivityService.handleEvent(event);
+    } catch (e, st) {
+      Log.w("failed to route project activity for ${event.runtimeType}", e, st);
     }
   }
 
