@@ -359,6 +359,10 @@
   "projectHidden": "Project hidden",
   "projectHideFailed": "Failed to hide project",
   "hideProject": "Hide Project",
+  "hide": "Hide",
+  "@hide": {
+    "description": "Label on the swipe-revealed hide button of a project row. Kept short — the button is a compact pill."
+  },
   "projectFolderMissing": "Unavailable",
   "@projectFolderMissing": {
     "description": "Status shown on a project row whose folder no longer exists on disk. The row is greyed out and cannot be opened."

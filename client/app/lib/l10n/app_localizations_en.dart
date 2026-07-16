@@ -622,6 +622,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hideProject => 'Hide Project';
 
   @override
+  String get hide => 'Hide';
+
+  @override
   String get projectFolderMissing => 'Unavailable';
 
   @override

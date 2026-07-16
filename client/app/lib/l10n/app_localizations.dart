@@ -1225,6 +1225,12 @@ abstract class AppLocalizations {
   /// **'Hide Project'**
   String get hideProject;
 
+  /// Label on the swipe-revealed hide button of a project row. Kept short — the button is a compact pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get hide;
+
   /// Status shown on a project row whose folder no longer exists on disk. The row is greyed out and cannot be opened.
   ///
   /// In en, this message translates to:

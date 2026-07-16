@@ -5,6 +5,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/constants.dart";
@@ -51,6 +52,11 @@ String _toPosix(String path) => path.replaceAll(r"\", "/");
 /// a mouse — opens the row's actions — rename, hide — in a [PregoAnchorMenu]
 /// anchored to the row, so the project being acted on stays visible beside the
 /// menu instead of being covered by a bottom sheet.
+///
+/// The same actions are also behind a swipe ([PregoSwipeActions]): a partial
+/// swipe toward the start edge settles the row open on a rename button and a
+/// hide pill, and a full swipe commits the hide directly. The swipe is the
+/// quick path; the menu stays the discoverable and assistive one.
 ///
 /// The menu is forced flat on every platform ([PregoAnchorMenu.flat]), like the
 /// onboarding support menu: the glass popup morphs out of its trigger's bounds,
@@ -148,62 +154,109 @@ class ProjectTile extends StatelessWidget {
     // darker than the rest so the reason is still legible.
     final dimmed = missing ? prego.colors.textDisabled : null;
 
-    // Right-click is the mouse counterpart of long-press. The row also has to
-    // announce itself as a button and as one thing: that came free from
-    // ListTile, whereas an InkWell contributes only the actions, not the role,
-    // and leaves the row's three lines as three separate nodes to swipe past.
-    return GestureDetector(
-      onSecondaryTap: openMenu,
-      child: MergeSemantics(
-        child: Semantics(
-          button: true,
-          child: InkWell(
-            onTap: () => _open(context: context, displayName: displayName, missing: missing),
-            onLongPress: openMenu,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: PregoSpacing.xl,
-                vertical: PregoSpacing.lg,
-              ),
-              decoration: BoxDecoration(
-                // A zero-width side is a single physical pixel and costs the
-                // row no height, so the divider doesn't push the list off its
-                // pitch.
-                border: Border(bottom: BorderSide(color: prego.colors.borderTertiary, width: 0)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: PregoSpacing.xs,
-                      children: [
-                        _titleRow(prego: prego, displayName: displayName, dimmed: dimmed),
-                        Text(
-                          projectShortPath(project),
-                          style: prego.textTheme.textSm.regular.copyWith(
-                            color: dimmed ?? prego.colors.textSecondary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+    // The hairline sits outside the swipe stack so the divider holds still
+    // while the row's content slides. A zero-width side is a single physical
+    // pixel and costs the row no height, so the divider doesn't push the list
+    // off its pitch.
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: prego.colors.borderTertiary, width: 0)),
+      ),
+      child: PregoSwipeActions(
+        actionsBuilder: (context, close) => [
+          _renameAction(context: context, close: close),
+        ],
+        primaryActionBuilder: (context, close) => _hideAction(context: context, close: close),
+        onFullSwipe: () => unawaited(_hide(context: context)),
+        // Right-click is the mouse counterpart of long-press. The row also has
+        // to announce itself as a button and as one thing: that came free from
+        // ListTile, whereas an InkWell contributes only the actions, not the
+        // role, and leaves the row's three lines as three separate nodes to
+        // swipe past.
+        child: GestureDetector(
+          onSecondaryTap: openMenu,
+          child: MergeSemantics(
+            child: Semantics(
+              button: true,
+              child: InkWell(
+                onTap: () => _open(context: context, displayName: displayName, missing: missing),
+                onLongPress: openMenu,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: PregoSpacing.xl,
+                    vertical: PregoSpacing.lg,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: PregoSpacing.xs,
+                          children: [
+                            _titleRow(prego: prego, displayName: displayName, dimmed: dimmed),
+                            Text(
+                              projectShortPath(project),
+                              style: prego.textTheme.textSm.regular.copyWith(
+                                color: dimmed ?? prego.colors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            _StatusRow(project: project, activeSessions: activeSessions, unseen: unseen),
+                          ],
                         ),
-                        _StatusRow(project: project, activeSessions: activeSessions, unseen: unseen),
-                      ],
-                    ),
+                      ),
+                      ExcludeSemantics(
+                        child: Icon(
+                          TablerLight.chevron_right,
+                          size: _chevronSize,
+                          color: dimmed ?? prego.colors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  ExcludeSemantics(
-                    child: Icon(
-                      TablerLight.chevron_right,
-                      size: _chevronSize,
-                      color: dimmed ?? prego.colors.textSecondary,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// The swipe strip's rename button. Icon-only, so the label rides in the
+  /// semantics instead.
+  Widget _renameAction({required BuildContext context, required VoidCallback close}) {
+    return Semantics(
+      label: context.loc.rename,
+      child: PregoButtonsSolid.iconOnly(
+        leadingIcon: TablerRegular.pencil,
+        hierarchy: PregoButtonsSolidHierarchy.secondary,
+        size: PregoButtonsSolidSize.md,
+        onPressed: () {
+          close();
+          _rename(context: context);
+        },
+      ),
+    );
+  }
+
+  /// The swipe strip's hide pill — the primary action, which is also what a
+  /// full swipe commits. Sized by its own content at rest; when
+  /// [PregoSwipeActions] widens its box during an overdrag, the button's
+  /// centered content rides the stretch. Not `fullWidth`: that needs a
+  /// bounded parent, and at rest the strip's width is open-ended.
+  Widget _hideAction({required BuildContext context, required VoidCallback close}) {
+    return PregoButtonsSolid(
+      label: context.loc.hide,
+      leadingIcon: TablerRegular.eye_off,
+      hierarchy: PregoButtonsSolidHierarchy.primary,
+      type: PregoButtonsSolidType.warning,
+      size: PregoButtonsSolidSize.md,
+      onPressed: () {
+        close();
+        unawaited(_hide(context: context));
+      },
     );
   }
 

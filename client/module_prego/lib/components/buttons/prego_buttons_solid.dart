@@ -266,6 +266,11 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(PregoRadius.full),
               child: Stack(
+                // A box wider than the content — a tight constraint from a
+                // parent that sizes the button, like a swipe row stretching
+                // its primary action — centres the content rather than
+                // parking it at the default top-start.
+                alignment: Alignment.center,
                 children: [
                   child,
                   if (showSkeuomorphicOverlay)
