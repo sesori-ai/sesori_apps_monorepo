@@ -24,7 +24,6 @@ class MockSessionDetailLoadService extends Mock implements SessionDetailLoadServ
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
 class AdaptiveSessionRouterTestHarness {
-  late final MockProjectService projectService;
   late final MockProjectRepository projectRepository;
   late final MockBridgeRepository bridgeRepository;
   late final MockRegisteredBridgesService registeredBridgesService;
@@ -56,7 +55,6 @@ class AdaptiveSessionRouterTestHarness {
   }) async {
     await GetIt.instance.reset();
 
-    projectService = MockProjectService();
     projectRepository = MockProjectRepository();
     bridgeRepository = MockBridgeRepository();
     registeredBridgesService = MockRegisteredBridgesService();
@@ -91,7 +89,7 @@ class AdaptiveSessionRouterTestHarness {
     when(() => registeredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
 
     when(
-      () => projectService.listSessions(
+      () => projectRepository.listSessions(
         projectId: any(named: "projectId"),
         waitForPrData: any(named: "waitForPrData"),
       ),
@@ -100,7 +98,7 @@ class AdaptiveSessionRouterTestHarness {
       return ApiResponse.success(SessionListResponse(items: sessionsByProject[projectId] ?? const []));
     });
     when(
-      () => projectService.getBaseBranch(projectId: any(named: "projectId")),
+      () => projectRepository.getBaseBranch(projectId: any(named: "projectId")),
     ).thenAnswer((invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;
       return ApiResponse.success(BaseBranchResponse(baseBranch: baseBranchByProject[projectId]));
@@ -175,9 +173,8 @@ class AdaptiveSessionRouterTestHarness {
     when(() => authSession.currentState).thenAnswer((_) => authStateController.value);
 
     final getIt = GetIt.instance;
-    getIt.registerSingleton<ProjectService>(projectService);
+    getIt.registerSingleton<ProjectRepository>(projectRepository);
     registerListServices(
-      projectService: projectService,
       projectRepository: projectRepository,
     );
     getIt.registerSingleton<BridgeRepository>(bridgeRepository);

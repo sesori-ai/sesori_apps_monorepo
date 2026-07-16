@@ -143,7 +143,7 @@ void _stubSuggestionsPerPrefix(
 
 void main() {
   late MockProjectListCubit mockCubit;
-  late MockProjectService mockProjectService;
+  late MockProjectRepository mockProjectRepository;
   late MockConnectionService mockConnectionService;
   late BehaviorSubject<ConnectionStatus> connectionStatusController;
 
@@ -155,7 +155,7 @@ void main() {
 
   setUp(() {
     mockCubit = MockProjectListCubit();
-    mockProjectService = MockProjectService();
+    mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(
@@ -172,13 +172,12 @@ void main() {
     );
 
     final getIt = GetIt.instance;
-    if (getIt.isRegistered<ProjectService>()) {
-      getIt.unregister<ProjectService>();
+    if (getIt.isRegistered<ProjectRepository>()) {
+      getIt.unregister<ProjectRepository>();
     }
-    getIt.registerSingleton<ProjectService>(mockProjectService);
+    getIt.registerSingleton<ProjectRepository>(mockProjectRepository);
     registerListServices(
-      projectService: mockProjectService,
-      projectRepository: MockProjectRepository(),
+      projectRepository: mockProjectRepository,
     );
     if (getIt.isRegistered<ConnectionService>()) {
       getIt.unregister<ConnectionService>();
@@ -189,8 +188,8 @@ void main() {
   tearDown(() async {
     await connectionStatusController.close();
     final getIt = GetIt.instance;
-    if (getIt.isRegistered<ProjectService>()) {
-      getIt.unregister<ProjectService>();
+    if (getIt.isRegistered<ProjectRepository>()) {
+      getIt.unregister<ProjectRepository>();
     }
     if (getIt.isRegistered<ConnectionService>()) {
       getIt.unregister<ConnectionService>();

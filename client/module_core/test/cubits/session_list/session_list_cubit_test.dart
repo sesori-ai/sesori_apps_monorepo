@@ -25,7 +25,6 @@ void main() {
     late MockSessionService mockSessionService;
     late MockProjectRepository mockProjectRepository;
     late SessionListService sessionListService;
-    late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
     late MockSseEventTracker mockSseEventTracker;
     late FakeSessionUnseenTracker fakeSessionUnseenTracker;
@@ -40,7 +39,6 @@ void main() {
       mockSessionService = MockSessionService();
       mockProjectRepository = MockProjectRepository();
       sessionListService = SessionListService(repository: mockProjectRepository);
-      mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
       fakeSessionUnseenTracker = FakeSessionUnseenTracker();
@@ -49,23 +47,11 @@ void main() {
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         const ConnectionStatus.disconnected(),
       );
-      when(
-        () => mockProjectRepository.listSessions(
-          projectId: any(named: "projectId"),
-          waitForPrData: any(named: "waitForPrData"),
-        ),
-      ).thenAnswer(
-        (invocation) => mockProjectService.listSessions(
-          projectId: invocation.namedArguments[#projectId]! as String,
-          waitForPrData: invocation.namedArguments[#waitForPrData]! as bool,
-        ),
-      );
-
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(
-        () => mockProjectService.getBaseBranch(projectId: any(named: "projectId")),
+        () => mockProjectRepository.getBaseBranch(projectId: any(named: "projectId")),
       ).thenAnswer((_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: null)));
       when(
         () => mockFailureReporter.recordFailure(
@@ -88,7 +74,7 @@ void main() {
     SessionListCubit buildCubit() => SessionListCubit(
       sessionService: mockSessionService,
       sessionListService: sessionListService,
-      projectService: mockProjectService,
+      projectRepository: mockProjectRepository,
       connectionService: mockConnectionService,
       sseEventTracker: mockSseEventTracker,
       sessionUnseenTracker: fakeSessionUnseenTracker,
@@ -106,7 +92,7 @@ void main() {
       build: () {
         mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -127,7 +113,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -139,7 +125,7 @@ void main() {
       "REST session list is sorted by title then id regardless of timestamp",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -183,7 +169,7 @@ void main() {
       build: () {
         mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -199,7 +185,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -225,7 +211,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -245,7 +231,7 @@ void main() {
           testSession(id: "s2", title: "Second"),
         ];
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -269,7 +255,7 @@ void main() {
       "loadSessions: emits SessionListLoaded with empty list when server returns none",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -293,7 +279,7 @@ void main() {
       "loadSessions: emits SessionListFailed when API returns an error",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -311,7 +297,7 @@ void main() {
       "archiveSession: optimistically hides session and returns true on API success",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -356,7 +342,7 @@ void main() {
       "archiveSession: rolls back session and returns false on API failure",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -402,7 +388,7 @@ void main() {
       "archiveSession: stores cleanup rejection and rolls back on 409",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -449,7 +435,7 @@ void main() {
       "deleteSession: optimistically removes session and returns true on API success",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -488,7 +474,7 @@ void main() {
       "deleteSession: stores cleanup rejection and restores session on 409",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -542,7 +528,7 @@ void main() {
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -571,7 +557,7 @@ void main() {
       "refreshSessions: emits loaded without loading state and returns true",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -588,7 +574,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Return different data on refresh to prove new data is used.
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -621,7 +607,7 @@ void main() {
       "refreshSessions: keeps current state and returns false on API failure",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -634,7 +620,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Switch mock to error for the refresh call.
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -659,7 +645,7 @@ void main() {
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -676,7 +662,7 @@ void main() {
         // Return session with a different title so the refresh emits a
         // distinct state (bloc deduplicates identical states).
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -721,7 +707,7 @@ void main() {
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -768,7 +754,7 @@ void main() {
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -808,7 +794,7 @@ void main() {
       "undoLastArchiveAction: unarchives after archive, restoring the session",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -864,7 +850,7 @@ void main() {
           archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
         );
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -915,7 +901,7 @@ void main() {
       "undoLastArchiveAction after rapid successive archives: undo reverts the latest action",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -998,7 +984,7 @@ void main() {
       "clearLastActionUndo between rapid archives prevents undo of the latest",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1087,7 +1073,7 @@ void main() {
           promptDefaults: null,
         );
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1131,7 +1117,7 @@ void main() {
       "SSE session.updated for same project updates existing session",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1169,7 +1155,7 @@ void main() {
       "SSE session.updated timestamp does not reorder sessions",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1222,7 +1208,7 @@ void main() {
       "SSE session.deleted for same project removes from list",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1261,7 +1247,7 @@ void main() {
       "SSE session.created for child session is ignored",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1305,7 +1291,7 @@ void main() {
       "connection reconnect triggers silent refresh",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1323,7 +1309,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1358,7 +1344,7 @@ void main() {
       "connection reconnect triggers loadSessions when state is SessionListFailed",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1371,7 +1357,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Switch mock to succeed so the reconnect-triggered load works.
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1403,7 +1389,7 @@ void main() {
       "rapid ConnectionConnected events coalesce into single refresh",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1416,18 +1402,18 @@ void main() {
         // Wait for initial load to complete.
         await Future<void>.delayed(Duration.zero);
         // Reset interaction count after initial load.
-        reset(mockProjectService);
+        reset(mockProjectRepository);
 
         // Use a Completer so the first refresh stays in-flight while the
         // second ConnectionConnected arrives — this is what exercises the guard.
         final completer = Completer<ApiResponse<SessionListResponse>>();
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => completer.future);
-        when(() => mockProjectService.getBaseBranch(projectId: projectId)).thenAnswer(
+        when(() => mockProjectRepository.getBaseBranch(projectId: projectId)).thenAnswer(
           (_) async => ApiResponse.success(const BaseBranchResponse(baseBranch: "main")),
         );
 
@@ -1454,7 +1440,7 @@ void main() {
       verify: (_) {
         // Should have been called only once despite two ConnectionConnected events.
         verify(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1466,7 +1452,7 @@ void main() {
       "ConnectionConnected while state is loading does not trigger refresh",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1494,7 +1480,7 @@ void main() {
         // Only 1 call from the constructor's loadSessions().
         // The ConnectionConnected should NOT trigger a second fetch.
         verify(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1506,7 +1492,7 @@ void main() {
       "SSE session.created for a different project is ignored",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1545,7 +1531,7 @@ void main() {
       "SSE session.updated for a different project is ignored",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1582,7 +1568,7 @@ void main() {
       "SSE session.deleted for a different project is ignored",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1647,7 +1633,7 @@ void main() {
           ),
         ];
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: "global",
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1657,7 +1643,7 @@ void main() {
         return SessionListCubit(
           sessionService: mockSessionService,
           sessionListService: sessionListService,
-          projectService: mockProjectService,
+          projectRepository: mockProjectRepository,
           connectionService: mockConnectionService,
           sseEventTracker: mockSseEventTracker,
           sessionUnseenTracker: fakeSessionUnseenTracker,
@@ -1683,7 +1669,7 @@ void main() {
       "state includes activeSessionIds from SseEventTracker",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1726,7 +1712,7 @@ void main() {
       "activeSessionIds updates when activity changes",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1791,7 +1777,7 @@ void main() {
       "activeSessionIds excludes sessions from other projects",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1835,7 +1821,7 @@ void main() {
       "renameSession: calls service with correct args, refreshes sessions, and returns true on success",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1855,7 +1841,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         // Switch mock to return renamed session on refresh.
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1890,7 +1876,7 @@ void main() {
       "renameSession: returns false and leaves state unchanged when service returns error",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1924,7 +1910,7 @@ void main() {
       "activeSessionIds is empty when no activity for this project",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1960,7 +1946,7 @@ void main() {
       "activeSessionIds propagates awaitingInput true from SessionActivityInfo",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -1999,7 +1985,7 @@ void main() {
       "stale signal triggers refresh with isRefreshing indicator",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -2022,7 +2008,7 @@ void main() {
       "stale signal is ignored when state is not SessionListLoaded",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -2049,7 +2035,7 @@ void main() {
       "stale + ConnectionConnected refresh coalesced into single API call",
       build: () {
         when(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -2076,7 +2062,7 @@ void main() {
       verify: (cubit) {
         // Verify listSessions was called at least once (initial load + refresh)
         verify(
-          () => mockProjectService.listSessions(
+          () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
@@ -2087,7 +2073,7 @@ void main() {
     test("fetch seeds the tracker with the REST unseen flags", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
       when(
-        () => mockProjectService.listSessions(
+        () => mockProjectRepository.listSessions(
           projectId: projectId,
           waitForPrData: any(named: "waitForPrData"),
         ),
@@ -2116,7 +2102,7 @@ void main() {
     test("live tracker updates re-emit the merged unseen map", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
       when(
-        () => mockProjectService.listSessions(
+        () => mockProjectRepository.listSessions(
           projectId: projectId,
           waitForPrData: any(named: "waitForPrData"),
         ),
@@ -2140,7 +2126,7 @@ void main() {
     test("markSessionSeen applies the change to the tracker optimistically", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
       when(
-        () => mockProjectService.listSessions(
+        () => mockProjectRepository.listSessions(
           projectId: projectId,
           waitForPrData: any(named: "waitForPrData"),
         ),
@@ -2167,7 +2153,7 @@ void main() {
     test("markSessionSeen failure refetches the authoritative list", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
       when(
-        () => mockProjectService.listSessions(
+        () => mockProjectRepository.listSessions(
           projectId: projectId,
           waitForPrData: any(named: "waitForPrData"),
         ),
@@ -2181,7 +2167,7 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await Future<void>.delayed(Duration.zero);
-      clearInteractions(mockProjectService);
+      clearInteractions(mockProjectRepository);
 
       await cubit.markSessionSeen(sessionId: "s1", read: true);
       await Future<void>.delayed(Duration.zero);
@@ -2189,7 +2175,7 @@ void main() {
       // No local rollback bookkeeping: the failed request triggers a silent
       // refetch, whose seed restores the authoritative unseen flags.
       verify(
-        () => mockProjectService.listSessions(
+        () => mockProjectRepository.listSessions(
           projectId: projectId,
           waitForPrData: any(named: "waitForPrData"),
         ),

@@ -24,7 +24,6 @@ void main() {
 
   late BehaviorSubject<ConnectionStatus> statusController;
   late MockConnectionService mockConnectionService;
-  late MockProjectService mockProjectService;
   late MockProjectRepository mockProjectRepository;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late StubConnectionOverlayCubit overlayCubit;
@@ -34,7 +33,6 @@ void main() {
   setUp(() {
     statusController = BehaviorSubject<ConnectionStatus>.seeded(connected);
     mockConnectionService = MockConnectionService();
-    mockProjectService = MockProjectService();
     mockProjectRepository = MockProjectRepository();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     overlayCubit = StubConnectionOverlayCubit();
@@ -44,9 +42,8 @@ void main() {
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
 
-    getIt.registerLazySingleton<ProjectService>(() => mockProjectService);
+    getIt.registerLazySingleton<ProjectRepository>(() => mockProjectRepository);
     registerListServices(
-      projectService: mockProjectService,
       projectRepository: mockProjectRepository,
     );
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);

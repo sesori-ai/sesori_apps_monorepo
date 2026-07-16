@@ -32,11 +32,11 @@ export "package:sesori_shared/sesori_shared.dart" show AuthProvider;
 
 // API
 export "src/api/client/relay_http_client.dart";
+export "src/api/filesystem_api.dart";
 export "src/api/notification_api.dart";
 export "src/api/notification_preferences_api.dart";
 export "src/api/project_api.dart";
 export "src/capabilities/notifications/register_token_request.dart";
-export "src/capabilities/project/project_service.dart";
 export "src/capabilities/relay/relay_client.dart";
 export "src/capabilities/relay/relay_config.dart";
 export "src/capabilities/relay/room_key_storage.dart";

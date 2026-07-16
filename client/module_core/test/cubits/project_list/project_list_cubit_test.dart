@@ -46,7 +46,6 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("ProjectListCubit", () {
-    late MockProjectService mockProjectService;
     late MockProjectRepository mockProjectRepository;
     late ProjectListService projectListService;
     late MockConnectionService mockConnectionService;
@@ -59,7 +58,6 @@ void main() {
     late Completer<ApiResponse<Projects>> projectFetchCompleter;
 
     setUp(() {
-      mockProjectService = MockProjectService();
       mockProjectRepository = MockProjectRepository();
       projectListService = ProjectListService(repository: mockProjectRepository);
       mockConnectionService = MockConnectionService();
@@ -98,7 +96,7 @@ void main() {
     /// null (auto-refresh inactive). All mock stubs MUST be configured before
     /// calling this because the constructor immediately starts initial loading.
     ProjectListCubit buildCubit() => ProjectListCubit(
-      mockProjectService,
+      mockProjectRepository,
       mockConnectionService,
       mockSseEventTracker,
       mockRouteSource,
@@ -756,7 +754,7 @@ void main() {
             (_) async => ApiResponse.success(Projects(data: [testProject(id: "only")])),
           );
           when(
-            () => mockProjectService.hideProject(projectId: any(named: "projectId")),
+            () => mockProjectRepository.hideProject(projectId: any(named: "projectId")),
           ).thenAnswer((_) async => ApiResponse.success(null));
           when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
             (_) async => [testBridgeSummary(name: "Macbook-Pro.local")],
@@ -789,13 +787,13 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "hideProject: removes project from state and calls service.hideProject",
+      "hideProject: removes project from state and calls repository.hideProject",
       build: () {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
         );
         when(
-          () => mockProjectService.hideProject(projectId: any(named: "projectId")),
+          () => mockProjectRepository.hideProject(projectId: any(named: "projectId")),
         ).thenAnswer((_) async => ApiResponse.success(null));
         return buildCubit();
       },
@@ -823,7 +821,7 @@ void main() {
             ),
       ],
       verify: (_) {
-        verify(() => mockProjectService.hideProject(projectId: "B")).called(1);
+        verify(() => mockProjectRepository.hideProject(projectId: "B")).called(1);
       },
     );
 
@@ -834,7 +832,7 @@ void main() {
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
         );
         when(
-          () => mockProjectService.hideProject(projectId: any(named: "projectId")),
+          () => mockProjectRepository.hideProject(projectId: any(named: "projectId")),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
       },
@@ -853,13 +851,13 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "createProject: calls service, refreshes project list, and returns true on success",
+      "createProject: calls repository, refreshes project list, and returns true on success",
       build: () {
         when(
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
-          () => mockProjectService.createProject(path: any(named: "path")),
+          () => mockProjectRepository.createProject(path: any(named: "path")),
         ).thenAnswer((_) async => ApiResponse.success(projectB));
         return buildCubit();
       },
@@ -881,7 +879,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockProjectService.createProject(path: "/dev/new"),
+          () => mockProjectRepository.createProject(path: "/dev/new"),
         ).called(1);
       },
     );
@@ -897,7 +895,7 @@ void main() {
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
-          () => mockProjectService.createProject(path: any(named: "path")),
+          () => mockProjectRepository.createProject(path: any(named: "path")),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
       },
@@ -920,7 +918,7 @@ void main() {
         when(
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
-        when(() => mockProjectService.createProject(path: any(named: "path"))).thenAnswer(
+        when(() => mockProjectRepository.createProject(path: any(named: "path"))).thenAnswer(
           (_) async => ApiResponse.error(
             ApiError.nonSuccessCode(errorCode: 403, rawErrorString: "permission denied: /dev/new"),
           ),
@@ -947,7 +945,7 @@ void main() {
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
-          () => mockProjectService.discoverProject(path: any(named: "path")),
+          () => mockProjectRepository.discoverProject(path: any(named: "path")),
         ).thenAnswer((_) async => ApiResponse.success(projectB));
         return buildCubit();
       },
@@ -974,7 +972,7 @@ void main() {
             ),
       ],
       verify: (_) {
-        verify(() => mockProjectService.discoverProject(path: "/dev/B")).called(1);
+        verify(() => mockProjectRepository.discoverProject(path: "/dev/B")).called(1);
       },
     );
 
@@ -990,7 +988,7 @@ void main() {
         data: [FilesystemSuggestion(path: "/dev/a", name: "a", isGitRepo: false)],
       );
       when(
-        () => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix")),
+        () => mockProjectRepository.getFilesystemSuggestions(prefix: any(named: "prefix")),
       ).thenAnswer((_) async => ApiResponse.success(suggestions));
 
       final cubit = buildCubit();
@@ -1005,7 +1003,7 @@ void main() {
       when(
         () => mockProjectRepository.listProjects(),
       ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
-      when(() => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
+      when(() => mockProjectRepository.getFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
         (_) async => ApiResponse.error(
           ApiError.nonSuccessCode(errorCode: 403, rawErrorString: "permission denied: /dev"),
         ),
@@ -1023,7 +1021,7 @@ void main() {
         () => mockProjectRepository.listProjects(),
       ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
       when(
-        () => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix")),
+        () => mockProjectRepository.getFilesystemSuggestions(prefix: any(named: "prefix")),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       final cubit = buildCubit();
@@ -1038,13 +1036,13 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "renameProject: calls service, refreshes project list, and returns true on success",
+      "renameProject: calls repository, refreshes project list, and returns true on success",
       build: () {
         when(
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
-          () => mockProjectService.renameProject(
+          () => mockProjectRepository.renameProject(
             projectId: any(named: "projectId"),
             name: any(named: "name"),
           ),
@@ -1069,7 +1067,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockProjectService.renameProject(projectId: "A", name: "New Name"),
+          () => mockProjectRepository.renameProject(projectId: "A", name: "New Name"),
         ).called(1);
       },
     );
@@ -1085,7 +1083,7 @@ void main() {
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
-          () => mockProjectService.renameProject(
+          () => mockProjectRepository.renameProject(
             projectId: any(named: "projectId"),
             name: any(named: "name"),
           ),

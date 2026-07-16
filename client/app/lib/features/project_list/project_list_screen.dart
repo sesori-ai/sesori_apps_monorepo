@@ -40,7 +40,7 @@ class ProjectListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ProjectListCubit(
-        getIt<ProjectService>(),
+        getIt<ProjectRepository>(),
         getIt<ConnectionService>(),
         getIt<SseEventTracker>(),
         getIt<RouteSource>(),
