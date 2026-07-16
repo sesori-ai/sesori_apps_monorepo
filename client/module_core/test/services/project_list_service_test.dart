@@ -34,13 +34,33 @@ void main() {
       ["running-a", "running-z", "waiting-a", "inactive-b"],
     );
   });
+
+  test("nameless running projects sort by their displayed directory basename", () {
+    final service = ProjectListService(
+      repository: _MockProjectRepository(),
+      activityCalculator: const SessionActivityCalculator(),
+    );
+
+    final result = service.orderProjects(
+      projects: [
+        _project(id: "zulu", name: null, path: "/a/Zulu", updatedAt: 2),
+        _project(id: "alpha", name: null, path: r"C:\z\Alpha", updatedAt: 1),
+      ],
+      activityByProjectId: const {
+        "zulu": {"z": SessionActivityInfo(mainAgentRunning: true)},
+        "alpha": {"a": SessionActivityInfo(mainAgentRunning: true)},
+      },
+    );
+
+    expect(result.map((project) => project.id), ["alpha", "zulu"]);
+  });
 }
 
-Project _project({required String id, required String name, required int updatedAt}) {
+Project _project({required String id, required String? name, required int updatedAt, String? path}) {
   return Project(
     id: id,
     name: name,
-    path: "/projects/$id",
+    path: path ?? "/projects/$id",
     time: ProjectTime(created: 1, updated: updatedAt),
   );
 }

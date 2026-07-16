@@ -89,10 +89,19 @@ class ProjectListService {
   }
 
   int _compareProjectsByNameAndId({required Project a, required Project b}) {
-    final nameCompare = _effectiveName(a).toLowerCase().compareTo(_effectiveName(b).toLowerCase());
+    final nameCompare = _displayName(a).toLowerCase().compareTo(_displayName(b).toLowerCase());
     if (nameCompare != 0) return nameCompare;
 
     return a.id.compareTo(b.id);
+  }
+
+  String _displayName(Project project) {
+    final name = project.name;
+    if (name != null) return name;
+
+    final path = project.path.isEmpty ? project.id : project.path;
+    final segments = path.replaceAll(r"\", "/").split("/").where((segment) => segment.isNotEmpty);
+    return segments.isEmpty ? path : segments.last;
   }
 
   String _effectiveName(Project project) => project.name ?? project.path;
