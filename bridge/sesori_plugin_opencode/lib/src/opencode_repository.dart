@@ -101,6 +101,30 @@ class OpenCodeRepository {
     );
   }
 
+  Future<PluginProject> renameProject({required String directory, required String name}) async {
+    final project = await _api.getProject(directory: directory);
+    if (project.id == _globalProjectId) {
+      return _pluginModelMapper.mapProject(
+        worktree: directory,
+        directory: directory,
+        name: name,
+        activity: null,
+      );
+    }
+
+    final updated = await _api.updateProject(
+      projectId: project.id,
+      directory: directory,
+      body: {"name": name},
+    );
+    return _pluginModelMapper.mapProject(
+      worktree: updated.worktree,
+      directory: directory,
+      name: updated.name,
+      activity: null,
+    );
+  }
+
   Future<PluginSession> createSession({
     required String directory,
     required String? parentSessionId,

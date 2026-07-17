@@ -180,6 +180,7 @@ void main() {
     });
 
     test("opens a non-Git folder without changing it when requested", () async {
+      gitCliApi.insideWorkTreeError = const ProcessException("git", []);
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
@@ -450,6 +451,7 @@ void main() {
 class _ConfigurableGitCliApi extends FakeGitCliApi {
   bool initialized = false;
   bool insideWorkTree = false;
+  Object? insideWorkTreeError;
   bool committed = false;
   bool initSucceeds = true;
   bool stageSucceeds = true;
@@ -462,7 +464,10 @@ class _ConfigurableGitCliApi extends FakeGitCliApi {
   Future<bool> isGitInitialized({required String projectPath}) async => initialized;
 
   @override
-  Future<bool> isInsideGitWorkTree({required String projectPath}) async => insideWorkTree;
+  Future<bool> isInsideGitWorkTree({required String projectPath}) async {
+    if (insideWorkTreeError case final error?) throw error;
+    return insideWorkTree;
+  }
 
   @override
   Future<bool> initRepository({required String path}) async {

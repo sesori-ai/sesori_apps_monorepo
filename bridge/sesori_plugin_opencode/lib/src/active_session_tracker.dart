@@ -13,6 +13,10 @@ class ActiveSessionTracker {
 
   final Set<String> _projectWorktrees = {};
 
+  // Empty virtual folders cannot be rediscovered from OpenCode until their
+  // first session exists, so targeted opens survive backend refreshes.
+  final Set<String> _explicitProjectWorktrees = {};
+
   /// Directories the backend resolves to a project rooted elsewhere, keyed by
   /// normalized directory → canonical worktree. A moved folder re-opened at a
   /// new location keeps its original worktree as the backend's project root,
@@ -40,7 +44,8 @@ class ActiveSessionTracker {
 
     _projectWorktrees
       ..clear()
-      ..addAll(projects.map((p) => p.project.id));
+      ..addAll(projects.map((p) => p.project.id))
+      ..addAll(_explicitProjectWorktrees);
 
     // Each sandbox is a directory the backend has resolved to the project —
     // for a moved folder, its live location. Seeding the aliases up front
@@ -303,7 +308,8 @@ class ActiveSessionTracker {
   bool updateProjectWorktrees({required Set<String> worktrees}) {
     _projectWorktrees
       ..clear()
-      ..addAll(worktrees);
+      ..addAll(worktrees)
+      ..addAll(_explicitProjectWorktrees);
     return _resummarizeAfterWorktreeKnowledgeChange();
   }
 
@@ -311,7 +317,10 @@ class ActiveSessionTracker {
   /// additive because a targeted lookup must not discard the other worktrees
   /// learned during cold start.
   bool registerProjectWorktree({required String worktree}) {
-    if (worktree.isEmpty || !_projectWorktrees.add(worktree)) return false;
+    if (worktree.isEmpty) return false;
+    final explicitAdded = _explicitProjectWorktrees.add(worktree);
+    final knownAdded = _projectWorktrees.add(worktree);
+    if (!explicitAdded && !knownAdded) return false;
     return _resummarizeAfterWorktreeKnowledgeChange();
   }
 

@@ -40,6 +40,29 @@ void main() {
     });
   });
 
+  group("OpenCodeRepository.renameProject", () {
+    test("renames a virtual folder without updating the shared global project", () async {
+      final api = _FakeApi(
+        currentProject: _backendProject(
+          id: "global",
+          worktree: "/",
+          name: "Global",
+        ),
+      );
+      final repository = OpenCodeRepository(api);
+
+      final project = await repository.renameProject(
+        directory: "/projects/plain-folder",
+        name: "Plain Project",
+      );
+
+      expect(api.updateProjectCalls, 0);
+      expect(project.id, "/projects/plain-folder");
+      expect(project.directory, "/projects/plain-folder");
+      expect(project.name, "Plain Project");
+    });
+  });
+
   group("OpenCodeRepository.getSessions", () {
     test("excludes child sessions (non-null parentID)", () async {
       final api = _FakeApi(
@@ -1216,6 +1239,7 @@ class _FakeApi implements OpenCodeApi {
   String? lastSummarizeDirectory;
   SummarizeBody? lastSummarizeBody;
   String? lastGetProjectDirectory;
+  int updateProjectCalls = 0;
 
   _FakeApi({
     List<Session>? sessions,
@@ -1400,7 +1424,10 @@ class _FakeApi implements OpenCodeApi {
     required String projectId,
     required String directory,
     required Map<String, dynamic> body,
-  }) async => throw UnimplementedError();
+  }) async {
+    updateProjectCalls += 1;
+    throw UnimplementedError();
+  }
 
   @override
   Future<Session> forkSession({

@@ -312,8 +312,8 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
           _permissionDenied = false;
       }
     });
-    if (resolvedInitialPath != null) {
-      widget.onPathChanged?.call(resolvedInitialPath!);
+    if (resolvedInitialPath case final path?) {
+      widget.onPathChanged?.call(path);
     }
   }
 

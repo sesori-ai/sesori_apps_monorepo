@@ -2359,6 +2359,29 @@ void main() {
         expect(summary, hasLength(1));
         expect(summary.single.id, "/repo");
       });
+
+      test("preserves an explicitly opened folder across project refreshes", () async {
+        final tracker = await _coldStartedTracker(projects: []);
+        tracker.registerProjectWorktree(worktree: "/plain-folder");
+
+        tracker.updateProjectWorktrees(worktrees: {"/real-repo"});
+        tracker.handleEvent(_sessionCreated("s1", "/plain-folder"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        expect(tracker.buildSummary().single.id, "/plain-folder");
+      });
+
+      test("preserves an explicitly opened folder across reconnect hydration", () async {
+        final tracker = await _coldStartedTracker(projects: []);
+        tracker.registerProjectWorktree(worktree: "/plain-folder");
+
+        tracker.reset();
+        await tracker.coldStart();
+        tracker.handleEvent(_sessionCreated("s1", "/plain-folder"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        expect(tracker.buildSummary().single.id, "/plain-folder");
+      });
     });
   });
 

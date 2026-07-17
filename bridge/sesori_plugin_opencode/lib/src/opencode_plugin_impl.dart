@@ -540,24 +540,12 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }
 
   @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) async {
-    // projectId is the live directory used to resolve the OpenCode project UUID.
-    // Must resolve the real OpenCode project UUID before calling PATCH
-    final project = await _call(
-      () => _service.repository.api.getProject(directory: projectId),
-    );
-    final updated = await _call(
-      () => _service.repository.api.updateProject(
-        projectId: project.id,
+  Future<PluginProject> renameProject({required String projectId, required String name}) {
+    return _call(
+      () => _service.repository.renameProject(
         directory: projectId,
-        body: {"name": name},
+        name: name,
       ),
-    );
-    return _pluginModelMapper.mapProject(
-      worktree: updated.worktree,
-      directory: projectId,
-      name: updated.name,
-      activity: null,
     );
   }
 

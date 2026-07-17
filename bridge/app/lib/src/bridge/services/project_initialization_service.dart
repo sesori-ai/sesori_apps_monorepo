@@ -95,6 +95,10 @@ class ProjectInitializationService {
     required String path,
     required OpenProjectGitAction gitAction,
   }) async {
+    if (gitAction == OpenProjectGitAction.openWithoutGit) {
+      return ExistingProjectPreparationOutcome.ready;
+    }
+
     final isGitInitialized = await _worktreeRepository.isGitInitialized(projectPath: path);
     final isInsideGitWorkTree = isGitInitialized || await _worktreeRepository.isInsideGitWorkTree(projectPath: path);
     switch (gitAction) {
@@ -115,7 +119,7 @@ class ProjectInitializationService {
           }
         }
       case OpenProjectGitAction.openWithoutGit:
-        break;
+        return ExistingProjectPreparationOutcome.ready;
     }
     return ExistingProjectPreparationOutcome.ready;
   }
