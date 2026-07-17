@@ -48,6 +48,7 @@ import "../../control/control_channel_loss_listener.dart";
 import "../../control/control_provision_notifier.dart";
 import "../../control/control_status_notifier.dart";
 import "../../foundation/control_channel_client.dart";
+import "../../listeners/catalog_import_console_listener.dart";
 import "../../repositories/bridge_settings.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
@@ -69,6 +70,7 @@ import "../../server/repositories/startup_mutex_repository.dart";
 import "../../server/repositories/terminal_prompt_repository.dart";
 import "../../server/services/bridge_instance_service.dart";
 import "../../server/services/bridge_restart_service.dart";
+import "../../services/catalog_import_service.dart";
 import "../../services/control_channel_token_service.dart";
 import "../../services/control_prompt_service.dart";
 import "../../services/control_unregister_service.dart";
@@ -684,6 +686,19 @@ class BridgeRuntimeRunner {
       // which covers the ordinary post-session stop during shutdown.
       pluginManager.bindActiveSession(cancel: runtime.session.cancel);
 
+      if (!options.isSupervised) {
+        final catalogImportConsoleListener = CatalogImportConsoleListener(
+          progress: runtime.catalogImportService.progress,
+        );
+        catalogImportConsoleListener.start();
+        shutdownCoordinator.add(disposable: catalogImportConsoleListener.dispose);
+      }
+      startCatalogImports(
+        service: runtime.catalogImportService,
+        pluginId: pluginId,
+        headlessPluginIds: options.importPluginIds,
+      );
+
       await startDebugServerIfRequested(
         debugPort: options.debugPort,
         runtime: runtime,
@@ -767,13 +782,29 @@ class BridgeRuntimeRunner {
           case SupervisedExitCode.restart:
           case SupervisedExitCode.authRequired:
           case SupervisedExitCode.bridgeContention:
-            Log.w("Shutdown error during a supervised sentinel exit; preserving the sentinel exit code", error, stackTrace);
+            Log.w(
+              "Shutdown error during a supervised sentinel exit; preserving the sentinel exit code",
+              error,
+              stackTrace,
+            );
           case SupervisedExitCode.logout:
           case SupervisedExitCode.controlChannelLost:
           case null:
             rethrow;
         }
       }
+    }
+  }
+
+  @visibleForTesting
+  static void startCatalogImports({
+    required CatalogImportService service,
+    required String pluginId,
+    required List<String> headlessPluginIds,
+  }) {
+    service.start(pluginId: pluginId, trigger: CatalogImportTrigger.automatic);
+    for (final headlessPluginId in headlessPluginIds) {
+      service.start(pluginId: headlessPluginId, trigger: CatalogImportTrigger.headless);
     }
   }
 
@@ -1068,13 +1099,16 @@ class BridgeRuntimeRunner {
     // token lifts the bridge to the authenticated 5000/hour limit. Resolve the
     // first non-empty value so a blank GITHUB_TOKEN does not shadow a valid
     // GH_TOKEN.
-    final githubToken = [
-      io.Platform.environment['GITHUB_TOKEN'],
-      io.Platform.environment['GH_TOKEN'],
-    ].map((token) => token?.trim()).firstWhere(
-      (token) => token != null && token.isNotEmpty,
-      orElse: () => null,
-    );
+    final githubToken =
+        [
+              io.Platform.environment['GITHUB_TOKEN'],
+              io.Platform.environment['GH_TOKEN'],
+            ]
+            .map((token) => token?.trim())
+            .firstWhere(
+              (token) => token != null && token.isNotEmpty,
+              orElse: () => null,
+            );
 
     final logRepository = UpdateLogRepository(
       api: UpdateLogApi(installRoot: installRoot, clock: clock),

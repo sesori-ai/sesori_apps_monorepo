@@ -390,6 +390,9 @@ class _ReauthHarness {
       ),
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: FakeMetadataService(),
         worktreeService: WorktreeService(
@@ -474,7 +477,7 @@ class _ReauthHarness {
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     final runFuture = session.run();
     unawaited(runFuture.catchError((_) {}));
 

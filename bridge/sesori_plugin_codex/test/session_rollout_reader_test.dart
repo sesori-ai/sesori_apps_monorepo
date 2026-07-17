@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 
@@ -137,6 +138,48 @@ void main() {
       expect(records[0].threadName, equals("Newer"));
       expect(records[1].threadName, equals("Older"));
       expect(records[0].cwd, equals("/repo/app"));
+    });
+
+    test("listSessionsInIsolate keeps the main isolate responsive", () async {
+      const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-$sessionId.jsonl",
+        sessionId: sessionId,
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "x" * (8 * 1024 * 1024)},
+              ],
+            },
+          }),
+        ],
+      );
+
+      var complete = false;
+      var heartbeatCount = 0;
+      void scheduleHeartbeat() {
+        Timer.run(() {
+          if (complete) return;
+          heartbeatCount += 1;
+          scheduleHeartbeat();
+        });
+      }
+
+      scheduleHeartbeat();
+      late final List<CodexSessionRecord> records;
+      try {
+        records = await reader.listSessionsInIsolate();
+      } finally {
+        complete = true;
+      }
+
+      expect(records.map((record) => record.id), [sessionId]);
+      expect(heartbeatCount, greaterThan(1));
     });
 
     test("readMessages maps user/assistant text turns into PluginMessages", () {
@@ -320,7 +363,9 @@ void main() {
 
       // Each session carries its own rollout cwd (never the launch CWD), so the
       // bridge groups it under the right project.
-      final byId = {for (final session in await plugin.listAllSessions(knownDirectories: const {})) session.id: session};
+      final byId = {
+        for (final session in await plugin.listAllSessions(knownDirectories: const {})) session.id: session,
+      };
       expect(byId["019a0000-1111-2222-3333-aaaaaaaaaaaa"]?.directory, "/work/sample-app");
       expect(byId["019a0000-1111-2222-3333-bbbbbbbbbbbb"]?.directory, "/other/project");
       expect(byId["019a0000-1111-2222-3333-bbbbbbbbbbbb"]?.projectID, "/other/project");

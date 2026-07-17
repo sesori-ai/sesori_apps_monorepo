@@ -88,6 +88,9 @@ void main() {
         client: _ThrowingConnectRelayClient(),
         plugin: plugin,
         pluginId: plugin.id,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
         sessionCreationService: SessionCreationService(
           metadataService: FakeMetadataService(),
           worktreeService: WorktreeService(
@@ -206,7 +209,7 @@ void main() {
         statusNotifier: null,
       );
 
-      final session = orchestrator.create();
+      final session = orchestrator.create().session;
 
       await expectLater(session.run(), throwsA(isA<Exception>()));
 
@@ -375,6 +378,9 @@ class _TestHarness {
       client: relayClient,
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: metadataService,
         worktreeService: worktreeService,
@@ -453,7 +459,7 @@ class _TestHarness {
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     final runFuture = session.run();
 
     await relayServer.nextClient();

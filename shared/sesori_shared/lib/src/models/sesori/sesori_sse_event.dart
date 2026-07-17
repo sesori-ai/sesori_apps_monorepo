@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "catalog_import_progress.dart";
 import "message.dart";
 import "message_part.dart";
 import "project_activity_summary.dart";
@@ -43,6 +44,11 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
 
   @FreezedUnionValue("global.disposed")
   const factory SesoriSseEvent.globalDisposed() = SesoriGlobalDisposed;
+
+  @FreezedUnionValue("catalog.import.progress")
+  const factory SesoriSseEvent.catalogImportProgress({
+    required CatalogImportProgress progress,
+  }) = SesoriCatalogImportProgress;
 
   // ---------------------------------------------------------------------------
   // Session — all implement SesoriSessionEvent

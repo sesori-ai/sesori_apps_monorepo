@@ -115,6 +115,7 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriServerHeartbeat() ||
             SesoriServerInstanceDisposed() ||
             SesoriGlobalDisposed() ||
+            SesoriCatalogImportProgress() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||

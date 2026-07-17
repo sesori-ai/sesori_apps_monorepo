@@ -41,6 +41,7 @@ typedef SessionProjectPathRow = ({
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   static const _ownerIdentity = "local";
+  static const _writeBatchSize = 500;
 
   SessionDao(super.attachedDatabase);
 
@@ -190,6 +191,18 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
   }
 
+  /// Upserts the supplied rows without applying merge or import policy.
+  Future<void> upsertSessionRows({required List<SessionDto> rows}) async {
+    if (rows.isEmpty) return;
+    for (var start = 0; start < rows.length; start += _writeBatchSize) {
+      final candidateEnd = start + _writeBatchSize;
+      final end = candidateEnd < rows.length ? candidateEnd : rows.length;
+      await batch((batch) {
+        batch.insertAllOnConflictUpdate(sessionTable, rows.sublist(start, end));
+      });
+    }
+  }
+
   Future<SessionDto?> getSessionByBinding({
     required String pluginId,
     required String backendSessionId,
@@ -211,6 +224,17 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
             ))
             .get();
     return {for (final row in rows) row.backendSessionId: row};
+  }
+
+  Future<Map<String, SessionDto>> getSessionsForPlugin({required String pluginId}) async {
+    final rows = await (select(sessionTable)..where((table) => table.pluginId.equals(pluginId))).get();
+    return {for (final row in rows) row.backendSessionId: row};
+  }
+
+  Future<Set<String>> getAllSessionIds() async {
+    final query = selectOnly(sessionTable)..addColumns([sessionTable.sessionId]);
+    final rows = await query.get();
+    return {for (final row in rows) row.read(sessionTable.sessionId)!};
   }
 
   Future<Map<String, SessionDto>> upsertObservedRootSessions({

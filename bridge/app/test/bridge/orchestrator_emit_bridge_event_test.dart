@@ -53,6 +53,7 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/services/catalog_import_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
@@ -184,6 +185,9 @@ void main() {
       client: relayClient,
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -245,7 +249,8 @@ void main() {
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final composition = orchestrator.create();
+    final session = composition.session;
     final runFuture = session.run();
 
     final bridgeSocket = await relayServer.nextClient();
@@ -295,6 +300,17 @@ void main() {
     );
     bridgeSocket.add(_withConnID(connID: connID, payload: subscribeFrame));
     await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    final catalogImportProgress = _waitForEventType(
+      messages: messages,
+      roomKey: roomKey,
+      expectedType: "catalog.import.progress",
+    );
+    composition.catalogImportService.start(
+      pluginId: plugin.id,
+      trigger: CatalogImportTrigger.explicit,
+    );
+    expect(await catalogImportProgress, isTrue);
 
     final persistenceStarted = Completer<void>();
     final releasePersistence = Completer<void>();
@@ -475,6 +491,7 @@ void main() {
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
+    await composition.catalogImportService.dispose();
     await plugin.close();
     await database.close();
     await relayServer.close();
@@ -542,6 +559,9 @@ void main() {
       client: relayClient,
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -623,7 +643,7 @@ void main() {
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     final runFuture = session.run();
 
     final bridgeSocket = await relayServer.nextClient();
@@ -750,6 +770,9 @@ void main() {
       client: relayClient,
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -824,7 +847,7 @@ void main() {
       statusNotifier: statusNotifier,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     final runFuture = session.run();
 
     await relayServer.nextClient();
@@ -965,6 +988,9 @@ void main() {
       client: relayClient,
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -1046,7 +1072,7 @@ void main() {
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     final runFuture = session.run();
     await plugin.waitForSubscription();
     await relayServer.nextClient();
@@ -1193,6 +1219,9 @@ void main() {
       client: relayClient,
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -1274,7 +1303,7 @@ void main() {
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     final runFuture = session.run();
     await relayServer.nextClient();
 
@@ -1357,6 +1386,9 @@ void main() {
       client: relayClient,
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -1438,7 +1470,7 @@ void main() {
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     final runFuture = session.run();
     await plugin.waitForSubscription();
     await relayServer.nextClient();
@@ -1546,6 +1578,9 @@ void main() {
       client: relayClient,
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
@@ -1627,7 +1662,7 @@ void main() {
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     final runFuture = session.run();
     await plugin.waitForSubscription();
     await relayServer.nextClient();

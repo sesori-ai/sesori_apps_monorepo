@@ -27,6 +27,14 @@ void main() {
     expect(options.debugPort, 8080);
   });
 
+  test("import plugin values retain order and duplicates", () {
+    final options = _parseOptions(
+      args: const ["--import-plugin", "opencode", "--import-plugin", "opencode"],
+    );
+
+    expect(options.importPluginIds, const ["opencode", "opencode"]);
+  });
+
   group("supervised mode (--control-url)", () {
     test("is standalone when --control-url is absent", () {
       final options = _parseOptions(args: const []);
@@ -75,6 +83,7 @@ BridgeCliOptions _parseOptions({required List<String> args}) {
   final parser = ArgParser()
     ..addOption("relay", defaultsTo: "wss://relay.sesori.com")
     ..addOption("auth-backend", defaultsTo: "")
+    ..addMultiOption("import-plugin")
     ..addOption("debug-port", defaultsTo: "")
     ..addOption(
       "log-level",

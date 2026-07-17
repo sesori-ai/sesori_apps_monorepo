@@ -313,6 +313,9 @@ class _RegistrationHarness {
       ),
       plugin: plugin,
       pluginId: plugin.id,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
       sessionCreationService: SessionCreationService(
         metadataService: FakeMetadataService(),
         worktreeService: WorktreeService(
@@ -423,7 +426,7 @@ class _RegistrationHarness {
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     // Surface run() failures through [runFuture] without triggering an
     // unhandled async error when a test only awaits it via expectLater later.
     final runFuture = session.run();
