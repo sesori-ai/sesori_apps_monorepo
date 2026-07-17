@@ -407,6 +407,86 @@ void main() {
     toolBAgents.complete(ApiResponse.success(const Agents(agents: [])));
   });
 
+  testWidgets("disables plugin selection only while reconnect discovery is in flight", (tester) async {
+    const toolA = PluginMetadata(
+      id: "tool-a",
+      displayName: "Tool A",
+      isDefault: true,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+    );
+    const toolB = PluginMetadata(
+      id: "tool-b",
+      displayName: "Tool B",
+      isDefault: false,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+    );
+    final reconnectDiscovery = Completer<ApiResponse<PluginListResponse>>();
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) {
+      discoveryCalls++;
+      if (discoveryCalls == 1) {
+        return Future.value(ApiResponse.success(const PluginListResponse(plugins: [toolA, toolB])));
+      }
+      return reconnectDiscovery.future;
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    connectionStatus
+      ..add(const ConnectionStatus.disconnected())
+      ..add(
+        const ConnectionStatus.connected(
+          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          health: HealthResponse(
+            healthy: true,
+            version: "test",
+            filesystemAccessDegraded: null,
+          ),
+        ),
+      );
+    await tester.pump();
+    await tester.pump();
+
+    expect(discoveryCalls, 2);
+    expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isFalse);
+    expect(
+      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-b"))).onTap,
+      isNull,
+    );
+    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("new_session_plugin_tool-a")),
+        matching: find.byIcon(Icons.radio_button_checked),
+      ),
+      findsOneWidget,
+    );
+    verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
+
+    reconnectDiscovery.complete(ApiResponse.success(const PluginListResponse(plugins: [toolA, toolB])));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isTrue);
+    expect(
+      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-b"))).onTap,
+      isNotNull,
+    );
+    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("new_session_plugin_tool-b")),
+        matching: find.byIcon(Icons.radio_button_checked),
+      ),
+      findsOneWidget,
+    );
+    verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
+  });
+
   testWidgets("discovery failure shows localized error with no chooser or creation path", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),

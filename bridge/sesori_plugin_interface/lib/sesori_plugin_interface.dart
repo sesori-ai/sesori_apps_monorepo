@@ -14,6 +14,7 @@ export "src/lifecycle/plugin_config.dart";
 export "src/lifecycle/plugin_diagnostics.dart";
 export "src/lifecycle/plugin_option.dart";
 export "src/lifecycle/plugin_start_exception.dart";
+export "src/lifecycle/plugin_state_storage.dart";
 export "src/lifecycle/plugin_status.dart";
 export "src/lifecycle/plugin_status_controller.dart";
 export "src/lifecycle/runtime_provision_progress.dart";

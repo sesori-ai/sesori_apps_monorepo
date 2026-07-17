@@ -2,9 +2,8 @@ import "package:codex_plugin/codex_plugin.dart" show CodexPluginDescriptor;
 import "package:cursor_plugin/cursor_plugin.dart" show CursorPluginDescriptor;
 import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
 import "package:sesori_bridge/src/bridge/runtime/plugin_registry.dart";
-import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgePlugin, BridgePluginDescriptor, PluginConfig, PluginHost, PluginOption;
+    show BridgePlugin, BridgePluginDescriptor, PluginConfig, PluginHost, PluginOption, PluginStateStorage;
 import "package:test/test.dart";
 
 void main() {
@@ -12,7 +11,7 @@ void main() {
     test("registers the real OpenCode, Codex, and Cursor descriptors", () {
       expect(knownPlugins, hasLength(3));
 
-      final openCode = knownPlugins.firstWhere((plugin) => plugin.id == openCodePluginId);
+      final openCode = knownPlugins.firstWhere((plugin) => plugin.id == "opencode");
       expect(openCode, isA<OpenCodePluginDescriptor>());
       expect(identical(openCode.options, OpenCodePluginDescriptor.cliOptions), isTrue);
 
@@ -22,10 +21,11 @@ void main() {
 
       final cursor = knownPlugins.firstWhere((plugin) => plugin.id == "cursor");
       expect(cursor, isA<CursorPluginDescriptor>());
+      expect(cursor.stateStorage, PluginStateStorage.isolated);
 
       // OpenCode stays the default so existing installs see zero change; Codex
       // and Cursor are opt-in via --plugin or enabledPlugins.
-      expect(defaultPluginId, openCodePluginId);
+      expect(defaultPluginId, "opencode");
     });
   });
 

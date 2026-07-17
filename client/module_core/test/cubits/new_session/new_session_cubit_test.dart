@@ -242,6 +242,87 @@ void main() {
       },
     );
 
+    test("send-owned command clear survives an error and retry", () async {
+      final firstCreate = Completer<ApiResponse<Session>>();
+      var createCalls = 0;
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) {
+        createCalls++;
+        if (createCalls == 1) return firstCreate.future;
+        return Future.value(ApiResponse.success(testSession(id: "s-command-retry")));
+      });
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+      final command = testCommandInfo();
+      cubit.stageCommand(command);
+      final modelBeforeSend = cubit.state.agentModelData?.agentModel;
+
+      final pendingCreate = cubit.createSession(
+        text: "",
+        command: command.name,
+        dedicatedWorktree: true,
+      );
+      expect(cubit.state, isA<NewSessionSending>());
+
+      cubit.clearStagedCommand();
+      cubit.stageCommand(command);
+      cubit.selectModel(providerID: "other-provider", modelID: "other-model");
+
+      expect(cubit.state.agentModelData?.stagedCommand, isNull);
+      expect(cubit.state.agentModelData?.agentModel, modelBeforeSend);
+
+      firstCreate.complete(ApiResponse.error(ApiError.generic()));
+      await pendingCreate;
+
+      expect(cubit.state, isA<NewSessionError>());
+      expect(cubit.state.agentModelData?.stagedCommand, isNull);
+
+      await cubit.createSession(
+        text: "retry",
+        command: cubit.state.agentModelData?.stagedCommand?.name,
+        dedicatedWorktree: true,
+      );
+
+      verify(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: command.name,
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).called(1);
+      verify(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: "retry",
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: null,
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).called(1);
+    });
+
     blocTest<NewSessionCubit, NewSessionState>(
       "selectVariant updates state and createSession forwards variant",
       skip: 1,
