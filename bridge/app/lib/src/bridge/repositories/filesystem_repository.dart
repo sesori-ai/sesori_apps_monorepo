@@ -117,6 +117,15 @@ class FilesystemRepository {
     return _guard(path: path, () => _filesystemApi.directoryExists(path));
   }
 
+  /// The host directory shown when the client has not selected a prefix yet.
+  String get defaultBrowsePath {
+    final home = _filesystemApi.environmentValue("HOME");
+    if (home != null && home.isNotEmpty) return home;
+    final userProfile = _filesystemApi.environmentValue("USERPROFILE");
+    if (userProfile != null && userProfile.isNotEmpty) return userProfile;
+    return _filesystemApi.currentDirectoryPath();
+  }
+
   bool isKnownBinaryFile({required String relativePath}) {
     final extension = p.extension(relativePath).toLowerCase();
     return extension.isNotEmpty && _binaryExtensions.contains(extension.substring(1));
@@ -261,13 +270,21 @@ class FilesystemRepository {
   ///
   /// Throws [FilesystemPermissionDeniedException] on an OS permission denial.
   void ensureGitignoreEntry({required String projectPath, required String entry}) {
-    final gitignorePath = "$projectPath/.gitignore";
+    final gitignorePath = p.join(projectPath, ".gitignore");
     _guard(path: gitignorePath, () {
       final content = _filesystemApi.readFileIfExists(gitignorePath) ?? "";
       if (!content.contains(entry)) {
         _filesystemApi.appendToFile(gitignorePath, "$entry\n");
       }
     });
+  }
+
+  Set<String> listDirectoryEntryNames({required String path}) {
+    return _guard(path: path, () => _filesystemApi.listEntryNames(path).toSet());
+  }
+
+  void deleteDirectoryRecursively({required String path}) {
+    _guard(path: path, () => _filesystemApi.deleteDirectoryRecursively(path));
   }
 
   /// Runs [action], translating any [FileSystemException] permission denial

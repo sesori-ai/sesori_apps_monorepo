@@ -72,6 +72,7 @@ Widget _buildApp() {
 
 void main() {
   late MockSessionService sessionService;
+  late MockProjectRepository projectRepository;
   late MockVoiceTranscriptionService voiceTranscriptionService;
 
   // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
@@ -80,6 +81,7 @@ void main() {
   setUp(() async {
     await GetIt.instance.reset();
     sessionService = MockSessionService();
+    projectRepository = MockProjectRepository();
     voiceTranscriptionService = MockVoiceTranscriptionService();
 
     when(
@@ -113,12 +115,26 @@ void main() {
     ).thenAnswer(
       (_) async => ApiResponse.success(const CommandListResponse(items: [])),
     );
+    when(
+      () => projectRepository.getProject(projectId: any(named: "projectId")),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const Project(
+          id: "project-1",
+          name: "Project One",
+          path: "/project-one",
+          time: null,
+          supportsDedicatedWorktrees: true,
+        ),
+      ),
+    );
 
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
 
     GetIt.instance.registerSingleton<SessionService>(sessionService);
+    GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
   });
@@ -145,6 +161,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+  });
+
+  testWidgets("hides the dedicated worktree toggle when the project does not support it", (tester) async {
+    when(
+      () => projectRepository.getProject(projectId: any(named: "projectId")),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const Project(
+          id: "project-1",
+          name: "Plain folder",
+          path: "/plain-folder",
+          time: null,
+          supportsDedicatedWorktrees: false,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.text(loc.newSessionDedicatedWorktree), findsNothing);
   });
 
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {

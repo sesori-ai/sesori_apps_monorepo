@@ -862,7 +862,10 @@ void main() {
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
-          () => mockProjectRepository.createProject(path: any(named: "path")),
+          () => mockProjectRepository.createProject(
+            parentPath: any(named: "parentPath"),
+            name: any(named: "name"),
+          ),
         ).thenAnswer((_) async => ApiResponse.success(projectB));
         return buildCubit();
       },
@@ -871,7 +874,7 @@ void main() {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
         );
-        final result = await cubit.createProject(path: "/dev/new");
+        final result = await cubit.createProject(parentPath: "/dev", name: "new");
         expect(result, AddProjectOutcome.success);
       },
       skip: 1,
@@ -884,7 +887,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockProjectRepository.createProject(path: "/dev/new"),
+          () => mockProjectRepository.createProject(parentPath: "/dev", name: "new"),
         ).called(1);
       },
     );
@@ -900,13 +903,16 @@ void main() {
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
-          () => mockProjectRepository.createProject(path: any(named: "path")),
+          () => mockProjectRepository.createProject(
+            parentPath: any(named: "parentPath"),
+            name: any(named: "name"),
+          ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        final result = await cubit.createProject(path: "/dev/new");
+        final result = await cubit.createProject(parentPath: "/dev", name: "new");
         expect(result, AddProjectOutcome.otherError);
       },
       skip: 1,
@@ -923,7 +929,12 @@ void main() {
         when(
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
-        when(() => mockProjectRepository.createProject(path: any(named: "path"))).thenAnswer(
+        when(
+          () => mockProjectRepository.createProject(
+            parentPath: any(named: "parentPath"),
+            name: any(named: "name"),
+          ),
+        ).thenAnswer(
           (_) async => ApiResponse.error(
             ApiError.nonSuccessCode(errorCode: 403, rawErrorString: "permission denied: /dev/new"),
           ),
@@ -932,7 +943,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        final result = await cubit.createProject(path: "/dev/new");
+        final result = await cubit.createProject(parentPath: "/dev", name: "new");
         expect(result, AddProjectOutcome.permissionDenied);
       },
       skip: 1,
@@ -950,7 +961,10 @@ void main() {
           () => mockProjectRepository.listProjects(),
         ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
         when(
-          () => mockProjectRepository.discoverProject(path: any(named: "path")),
+          () => mockProjectRepository.discoverProject(
+            path: any(named: "path"),
+            gitAction: OpenProjectGitAction.promptIfNeeded,
+          ),
         ).thenAnswer((_) async => ApiResponse.success(projectB));
         return buildCubit();
       },
@@ -959,8 +973,11 @@ void main() {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
         );
-        final result = await cubit.discoverProject(path: "/dev/B");
-        expect(result, AddProjectOutcome.success);
+        final result = await cubit.discoverProject(
+          path: "/dev/B",
+          gitAction: OpenProjectGitAction.promptIfNeeded,
+        );
+        expect(result, OpenProjectOutcome.success);
       },
       skip: 1,
       expect: () => [
@@ -977,8 +994,103 @@ void main() {
             ),
       ],
       verify: (_) {
-        verify(() => mockProjectRepository.discoverProject(path: "/dev/B")).called(1);
+        verify(
+          () => mockProjectRepository.discoverProject(
+            path: "/dev/B",
+            gitAction: OpenProjectGitAction.promptIfNeeded,
+          ),
+        ).called(1);
       },
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "discoverProject: requests a Git choice when the bridge returns 428",
+      build: () {
+        when(
+          () => mockProjectRepository.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+        when(
+          () => mockProjectRepository.discoverProject(
+            path: "/dev/plain",
+            gitAction: OpenProjectGitAction.promptIfNeeded,
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.error(
+            ApiError.nonSuccessCode(errorCode: 428, rawErrorString: "Git setup choice required"),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final result = await cubit.discoverProject(
+          path: "/dev/plain",
+          gitAction: OpenProjectGitAction.promptIfNeeded,
+        );
+        expect(result, OpenProjectOutcome.gitChoiceRequired);
+      },
+      skip: 1,
+      expect: () => <ProjectListState>[],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "discoverProject: reports incomplete Git setup after opening the folder",
+      build: () {
+        when(
+          () => mockProjectRepository.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+        when(
+          () => mockProjectRepository.discoverProject(
+            path: "/dev/plain",
+            gitAction: OpenProjectGitAction.initializeGit,
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            projectB.copyWith(supportsDedicatedWorktrees: false),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final result = await cubit.discoverProject(
+          path: "/dev/plain",
+          gitAction: OpenProjectGitAction.initializeGit,
+        );
+        expect(result, OpenProjectOutcome.gitSetupIncomplete);
+      },
+      skip: 1,
+      expect: () => <ProjectListState>[],
+    );
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "discoverProject: keeps permission denial distinct",
+      build: () {
+        when(
+          () => mockProjectRepository.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+        when(
+          () => mockProjectRepository.discoverProject(
+            path: "/dev/protected",
+            gitAction: OpenProjectGitAction.openWithoutGit,
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.error(
+            ApiError.nonSuccessCode(errorCode: 403, rawErrorString: "permission denied"),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final result = await cubit.discoverProject(
+          path: "/dev/protected",
+          gitAction: OpenProjectGitAction.openWithoutGit,
+        );
+        expect(result, OpenProjectOutcome.permissionDenied);
+      },
+      skip: 1,
+      expect: () => <ProjectListState>[],
     );
 
     // -------------------------------------------------------------------------

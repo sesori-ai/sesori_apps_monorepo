@@ -345,6 +345,7 @@ class Orchestrator {
         ),
         OpenProjectHandler(
           filesystemRepository: _filesystemRepository,
+          projectInitializationService: _projectInitializationService,
           projectActivityService: _projectActivityService,
         ),
         HideProjectHandler(projectRepository: _projectRepository),

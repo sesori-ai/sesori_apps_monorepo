@@ -83,6 +83,24 @@ class OpenCodeRepository {
     return agents.map(_pluginModelMapper.mapAgent).toList();
   }
 
+  /// Resolves an opened directory to the project identity exposed to the
+  /// bridge. OpenCode uses one `global` project rooted at `/` for every
+  /// non-Git directory; exposing that identity would collapse unrelated
+  /// folders into one project. Those folders use their directory as the
+  /// virtual identity, matching the virtual projects synthesized from global
+  /// sessions in [getProjects].
+  Future<PluginProject> getProject({required String directory}) async {
+    final project = await _api.getProject(directory: directory);
+    final isGlobalProject = project.id == _globalProjectId;
+    final worktree = isGlobalProject ? directory : project.worktree;
+    return _pluginModelMapper.mapProject(
+      worktree: worktree,
+      directory: directory,
+      name: isGlobalProject ? null : project.name,
+      activity: null,
+    );
+  }
+
   Future<PluginSession> createSession({
     required String directory,
     required String? parentSessionId,

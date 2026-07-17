@@ -3,6 +3,43 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("OpenCodeRepository.getProject", () {
+    test("maps OpenCode's global project to a folder-specific virtual project", () async {
+      final api = _FakeApi(
+        currentProject: _backendProject(
+          id: "global",
+          worktree: "/",
+          name: "Global",
+        ),
+      );
+      final repository = OpenCodeRepository(api);
+
+      final project = await repository.getProject(directory: "/projects/plain-folder");
+
+      expect(api.lastGetProjectDirectory, "/projects/plain-folder");
+      expect(project.id, "/projects/plain-folder");
+      expect(project.directory, "/projects/plain-folder");
+      expect(project.name, "plain-folder");
+    });
+
+    test("keeps a Git project's canonical worktree identity", () async {
+      final api = _FakeApi(
+        currentProject: _backendProject(
+          id: "project-1",
+          worktree: "/projects/original",
+          name: "Repository",
+        ),
+      );
+      final repository = OpenCodeRepository(api);
+
+      final project = await repository.getProject(directory: "/projects/moved");
+
+      expect(project.id, "/projects/original");
+      expect(project.directory, "/projects/moved");
+      expect(project.name, "Repository");
+    });
+  });
+
   group("OpenCodeRepository.getSessions", () {
     test("excludes child sessions (non-null parentID)", () async {
       final api = _FakeApi(
@@ -1165,6 +1202,7 @@ class _FakeApi implements OpenCodeApi {
   final List<Project> _projects;
   final List<Command> _commands;
   final Session? _createdSession;
+  final Project? _currentProject;
   String? lastCreateDirectory;
   String? lastCreateParentSessionId;
   String? lastPromptSessionId;
@@ -1177,6 +1215,7 @@ class _FakeApi implements OpenCodeApi {
   String? lastSummarizeSessionId;
   String? lastSummarizeDirectory;
   SummarizeBody? lastSummarizeBody;
+  String? lastGetProjectDirectory;
 
   _FakeApi({
     List<Session>? sessions,
@@ -1184,11 +1223,13 @@ class _FakeApi implements OpenCodeApi {
     List<Project>? projects,
     List<Command>? commands,
     Session? createdSession,
+    Project? currentProject,
   }) : _sessions = sessions ?? [],
        _globalSessions = globalSessions ?? [],
        _projects = projects ?? [],
        _commands = commands ?? [],
-       _createdSession = createdSession;
+       _createdSession = createdSession,
+       _currentProject = currentProject;
 
   @override
   Future<bool> healthCheck() async => true;
@@ -1320,7 +1361,10 @@ class _FakeApi implements OpenCodeApi {
   }) async {}
 
   @override
-  Future<Project> getProject({required String directory}) async => throw UnimplementedError();
+  Future<Project> getProject({required String directory}) async {
+    lastGetProjectDirectory = directory;
+    return _currentProject ?? (throw UnimplementedError());
+  }
 
   @override
   Future<List<Session>> getChildren({
@@ -1363,4 +1407,17 @@ class _FakeApi implements OpenCodeApi {
     required String sessionId,
     required String directory,
   }) async => throw UnimplementedError();
+}
+
+Project _backendProject({required String id, required String worktree, required String? name}) {
+  return Project(
+    time: const ProjectTime(created: 0, updated: 0, initialized: null),
+    sandboxes: const [],
+    id: id,
+    worktree: worktree,
+    vcs: null,
+    name: name,
+    icon: null,
+    commands: null,
+  );
 }

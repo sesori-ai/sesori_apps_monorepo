@@ -55,35 +55,90 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     super.dispose();
   }
 
-  Future<void> _onOpen() async {
+  Future<void> _onOpen({OpenProjectGitAction gitAction = OpenProjectGitAction.promptIfNeeded}) async {
     if (_browsingPath.isEmpty) return;
     setState(() => _actionLoading = true);
 
-    final outcome = await widget.cubit.discoverProject(path: _browsingPath);
+    final outcome = await widget.cubit.discoverProject(
+      path: _browsingPath,
+      gitAction: gitAction,
+    );
 
     if (!mounted) return;
     setState(() => _actionLoading = false);
 
     final loc = context.loc;
     switch (outcome) {
-      case AddProjectOutcome.success:
+      case OpenProjectOutcome.success:
         _dismissDialog();
         _showSnackBar(loc.projectDiscovered);
-      case AddProjectOutcome.permissionDenied:
+      case OpenProjectOutcome.gitChoiceRequired:
+        final choice = await _showGitChoiceDialog();
+        if (!mounted || choice == null) return;
+        await _onOpen(gitAction: choice);
+      case OpenProjectOutcome.gitSetupIncomplete:
+        await _showGitSetupIncompleteDialog();
+        if (!mounted) return;
+        _dismissDialog();
+      case OpenProjectOutcome.permissionDenied:
         _showSnackBar(loc.addProjectPermissionDenied);
-      case AddProjectOutcome.otherError:
+      case OpenProjectOutcome.otherError:
         _showSnackBar(loc.projectDiscoverFailed);
     }
+  }
+
+  Future<OpenProjectGitAction?> _showGitChoiceDialog() {
+    final loc = context.loc;
+    return showDialog<OpenProjectGitAction>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(loc.addProjectEnableGitTitle),
+        content: Text(loc.addProjectEnableGitBody),
+        actions: [
+          TextButton(
+            onPressed: () => dialogContext.pop(OpenProjectGitAction.openWithoutGit),
+            child: Text(loc.addProjectContinueWithoutGit),
+          ),
+          FilledButton(
+            onPressed: () => dialogContext.pop(OpenProjectGitAction.initializeGit),
+            child: Text(loc.addProjectEnableGit),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showGitSetupIncompleteDialog() {
+    final loc = context.loc;
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Text(loc.addProjectGitSetupIncompleteTitle),
+          content: Text(loc.addProjectGitSetupIncompleteBody),
+          actions: [
+            FilledButton(
+              onPressed: () => dialogContext.pop(),
+              child: Text(loc.addProjectGitSetupIncompleteAcknowledge),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _onCreate() async {
     final name = _nameController.text.trim();
     if (name.isEmpty || _browsingPath.isEmpty) return;
 
-    final fullPath = "$_browsingPath/$name";
     setState(() => _actionLoading = true);
 
-    final outcome = await widget.cubit.createProject(path: fullPath);
+    final outcome = await widget.cubit.createProject(
+      parentPath: _browsingPath,
+      name: name,
+    );
 
     if (!mounted) return;
     setState(() => _actionLoading = false);
@@ -261,8 +316,8 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
 
   void _navigateUp() {
     if (_currentPath.isEmpty) return;
-    final lastSlash = _currentPath.lastIndexOf("/");
-    final parent = lastSlash > 0 ? _currentPath.substring(0, lastSlash) : "/";
+    final parent = widget.cubit.parentHostPath(path: _currentPath);
+    if (parent == null) return;
     setState(() => _currentPath = parent);
     widget.onPathChanged?.call(parent);
     _fetchEntries();

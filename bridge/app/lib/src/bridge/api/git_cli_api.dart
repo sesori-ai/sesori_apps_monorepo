@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../foundation/process_runner.dart";
@@ -29,7 +30,7 @@ class GitCliApi {
        _gitPathExists = gitPathExists;
 
   Future<bool> isGitInitialized({required String projectPath}) async {
-    return _gitPathExists(gitPath: "$projectPath/.git");
+    return _gitPathExists(gitPath: p.join(projectPath, ".git"));
   }
 
   /// Initializes a new git repository at [path]. Returns `true` on success.
@@ -46,7 +47,18 @@ class GitCliApi {
 
   /// Creates a commit with [message] in [projectPath]. Returns `true` on success.
   Future<bool> commitAll({required String projectPath, required String message}) async {
-    final result = await runGit(projectPath: projectPath, arguments: ["commit", "-m", message]);
+    final result = await runGit(
+      projectPath: projectPath,
+      arguments: [
+        "-c",
+        "user.name=Sesori",
+        "-c",
+        "user.email=sesori@localhost",
+        "commit",
+        "-m",
+        message,
+      ],
+    );
     return result.exitCode == 0;
   }
 

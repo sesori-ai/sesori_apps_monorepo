@@ -653,6 +653,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectDiscovered => 'Project discovered';
 
   @override
+  String get addProjectEnableGitTitle => 'Enable Git tracking?';
+
+  @override
+  String get addProjectEnableGitBody =>
+      'Git tracking keeps change history and lets Sesori run sessions in parallel with dedicated worktrees. Sesori will initialize Git, add .worktrees/ to .gitignore, stage all files not ignored by Git, and create an initial commit.';
+
+  @override
+  String get addProjectContinueWithoutGit => 'Continue Without Git';
+
+  @override
+  String get addProjectEnableGit => 'Enable Git';
+
+  @override
+  String get addProjectGitSetupIncompleteTitle => 'Project opened, Git setup incomplete';
+
+  @override
+  String get addProjectGitSetupIncompleteBody =>
+      'The folder is open and ready for sessions, but Sesori could not finish Git setup. Git files may have been created. Dedicated worktrees stay unavailable until the repository has an initial commit.';
+
+  @override
+  String get addProjectGitSetupIncompleteAcknowledge => 'I understand';
+
+  @override
   String get projectCreateFailed => 'Failed to create project';
 
   @override

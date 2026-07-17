@@ -28,6 +28,7 @@ class NewSessionScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NewSessionCubit(
         sessionService: getIt<SessionService>(),
+        projectRepository: getIt<ProjectRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
         projectId: projectId,
       ),
@@ -186,17 +187,18 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SwitchListTile(
-                            title: Text(loc.newSessionDedicatedWorktree),
-                            subtitle: Text(
-                              loc.newSessionDedicatedWorktreeDescription,
-                              style: prego.textTheme.textXs.regular.copyWith(
-                                color: prego.colors.textSecondary,
+                          if (state.agentModelData?.supportsDedicatedWorktrees ?? false)
+                            SwitchListTile(
+                              title: Text(loc.newSessionDedicatedWorktree),
+                              subtitle: Text(
+                                loc.newSessionDedicatedWorktreeDescription,
+                                style: prego.textTheme.textXs.regular.copyWith(
+                                  color: prego.colors.textSecondary,
+                                ),
                               ),
+                              value: _dedicatedWorktree,
+                              onChanged: (value) => setState(() => _dedicatedWorktree = value),
                             ),
-                            value: _dedicatedWorktree,
-                            onChanged: (value) => setState(() => _dedicatedWorktree = value),
-                          ),
                         ],
                       ),
                     ),

@@ -19,7 +19,13 @@ void main() {
 
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(projects));
     when(() => api.createProject(path: "/project-1")).thenAnswer((_) async => ApiResponse.success(project));
-    when(() => api.discoverProject(path: "/project-1")).thenAnswer((_) async => ApiResponse.success(project));
+    when(
+      () => api.discoverProject(
+        path: "/project-1",
+        gitAction: OpenProjectGitAction.initializeGit,
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(project));
+    when(() => api.getProject(projectId: "project-1")).thenAnswer((_) async => ApiResponse.success(project));
     when(() => api.hideProject(projectId: "project-1")).thenAnswer((_) async => ApiResponse.success(null));
     when(
       () => filesystemApi.getSuggestions(prefix: "/projects"),
@@ -32,8 +38,18 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.success(project));
 
     expect(await repository.listProjects(), ApiResponse<Projects>.success(projects));
-    expect(await repository.createProject(path: "/project-1"), ApiResponse<Project>.success(project));
-    expect(await repository.discoverProject(path: "/project-1"), ApiResponse<Project>.success(project));
+    expect(
+      await repository.createProject(parentPath: "/", name: "project-1"),
+      ApiResponse<Project>.success(project),
+    );
+    expect(
+      await repository.discoverProject(
+        path: "/project-1",
+        gitAction: OpenProjectGitAction.initializeGit,
+      ),
+      ApiResponse<Project>.success(project),
+    );
+    expect(await repository.getProject(projectId: "project-1"), ApiResponse<Project>.success(project));
     expect(await repository.hideProject(projectId: "project-1"), ApiResponse<void>.success(null));
     expect(
       await repository.getFilesystemSuggestions(prefix: "/projects"),
@@ -50,11 +66,45 @@ void main() {
 
     verify(api.listProjects).called(1);
     verify(() => api.createProject(path: "/project-1")).called(1);
-    verify(() => api.discoverProject(path: "/project-1")).called(1);
+    verify(
+      () => api.discoverProject(
+        path: "/project-1",
+        gitAction: OpenProjectGitAction.initializeGit,
+      ),
+    ).called(1);
+    verify(() => api.getProject(projectId: "project-1")).called(1);
     verify(() => api.hideProject(projectId: "project-1")).called(1);
     verify(() => filesystemApi.getSuggestions(prefix: "/projects")).called(1);
     verify(() => api.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
     verify(() => api.renameProject(projectId: "project-1", name: "Renamed")).called(1);
+  });
+
+  group("host paths", () {
+    test("creates a child with Windows host separators", () async {
+      final api = MockProjectApi();
+      final repository = ProjectRepository(api: api, filesystemApi: MockFilesystemApi());
+      const project = Project(id: "project-1", name: "Project 1", path: r"C:\projects\project-1", time: null);
+      when(
+        () => api.createProject(path: r"C:\projects\project-1"),
+      ).thenAnswer((_) async => ApiResponse.success(project));
+
+      final response = await repository.createProject(
+        parentPath: r"C:\projects",
+        name: "project-1",
+      );
+
+      expect(response, ApiResponse<Project>.success(project));
+      verify(() => api.createProject(path: r"C:\projects\project-1")).called(1);
+    });
+
+    test("resolves POSIX and Windows parents without crossing roots", () {
+      final repository = ProjectRepository(api: MockProjectApi(), filesystemApi: MockFilesystemApi());
+
+      expect(repository.parentHostPath(path: "/home/dev/projects"), "/home/dev");
+      expect(repository.parentHostPath(path: "/"), isNull);
+      expect(repository.parentHostPath(path: r"C:\Users\dev\projects"), r"C:\Users\dev");
+      expect(repository.parentHostPath(path: r"C:\"), isNull);
+    });
   });
 
   group("getGitContext", () {

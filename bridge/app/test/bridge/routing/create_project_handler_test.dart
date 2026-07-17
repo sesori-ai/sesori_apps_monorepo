@@ -98,6 +98,14 @@ void main() {
 
       expect(Directory(path).existsSync(), isTrue);
       expect(Directory("$path/.git").existsSync(), isTrue);
+      final head = await Process.run("git", ["rev-parse", "HEAD"], workingDirectory: path);
+      final author = await Process.run(
+        "git",
+        ["log", "-1", "--format=%an|%ae"],
+        workingDirectory: path,
+      );
+      expect(head.exitCode, 0);
+      expect(author.stdout.toString().trim(), "Sesori|sesori@localhost");
       expect(plugin.lastGetCurrentProjectProjectId, equals(path));
       expect(result.id, equals("p-1"));
       expect(result.name, equals("New Project"));
@@ -215,6 +223,53 @@ void main() {
       );
     });
   });
+
+  group("ProjectInitializationService cleanup", () {
+    late Directory tempDir;
+    late FilesystemRepository filesystemRepository;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync("project-initialization-cleanup-test-");
+      filesystemRepository = FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+    });
+
+    tearDown(() {
+      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    });
+
+    test("removes a failed new folder when only Sesori-created files exist", () async {
+      final path = "${tempDir.path}/new-project";
+      final service = ProjectInitializationService(
+        worktreeRepository: _FailingInitializationWorktreeRepository(addUnknownFile: false),
+        filesystemRepository: filesystemRepository,
+      );
+
+      await expectLater(
+        service.initializeProject(path: path),
+        throwsA(isA<ProjectGitSetupException>()),
+      );
+
+      expect(Directory(path).existsSync(), isFalse);
+    });
+
+    test("keeps a failed new folder when unknown content appeared", () async {
+      final path = "${tempDir.path}/new-project";
+      final service = ProjectInitializationService(
+        worktreeRepository: _FailingInitializationWorktreeRepository(addUnknownFile: true),
+        filesystemRepository: filesystemRepository,
+      );
+
+      await expectLater(
+        service.initializeProject(path: path),
+        throwsA(isA<ProjectGitSetupException>()),
+      );
+
+      expect(File("$path/user-file.txt").existsSync(), isTrue);
+    });
+  });
 }
 
 class _FakeBridgePluginForCreateProject extends FakeBridgePlugin {
@@ -227,4 +282,24 @@ class _FakeBridgePluginForCreateProject extends FakeBridgePlugin {
     }
     return super.getProject(projectId);
   }
+}
+
+class _FailingInitializationWorktreeRepository implements WorktreeRepository {
+  final bool addUnknownFile;
+
+  _FailingInitializationWorktreeRepository({required this.addUnknownFile});
+
+  @override
+  Future<bool> initRepository({required String path}) async => true;
+
+  @override
+  Future<bool> stageAll({required String projectPath}) async {
+    if (addUnknownFile) {
+      File("$projectPath/user-file.txt").writeAsStringSync("user content");
+    }
+    return false;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

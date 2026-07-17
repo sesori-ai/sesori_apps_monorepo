@@ -26,6 +26,16 @@ void main() {
       expect(project.path, isEmpty);
     });
 
+    test("fromJson without a worktree capability preserves the legacy visible behavior", () {
+      final project = Project.fromJson({
+        "id": "/projects/a",
+        "name": "A",
+        "time": null,
+      });
+
+      expect(project.supportsDedicatedWorktrees, isTrue);
+    });
+
     test("ProjectTime ignores the removed initialized field", () {
       final time = ProjectTime.fromJson({
         "created": 1,
@@ -53,6 +63,31 @@ void main() {
         () => ProjectPathRequest.fromJson({}),
         throwsA(isA<TypeError>()),
       );
+    });
+  });
+
+  group("OpenProjectRequest", () {
+    test("JSON roundtrip carries the selected Git action", () {
+      const original = OpenProjectRequest(
+        path: "/Users/dev/existing",
+        gitAction: OpenProjectGitAction.initializeGit,
+      );
+
+      final json = original.toJson();
+
+      expect(OpenProjectRequest.fromJson(json), original);
+      expect(
+        json,
+        {"path": "/Users/dev/existing", "gitAction": "initialize_git"},
+      );
+    });
+
+    test("missing Git action from an older app opens without changing Git", () {
+      final request = OpenProjectRequest.fromJson({
+        "path": "/Users/dev/existing",
+      });
+
+      expect(request.gitAction, OpenProjectGitAction.openWithoutGit);
     });
   });
 

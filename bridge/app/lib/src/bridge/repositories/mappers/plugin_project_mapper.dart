@@ -15,6 +15,7 @@ extension PluginProjectMapper on PluginProject {
     required String path,
     required bool hasUnseenChanges,
     required bool directoryMissing,
+    required bool supportsDedicatedWorktrees,
     required ProjectTime? time,
   }) {
     return Project(
@@ -24,6 +25,7 @@ extension PluginProjectMapper on PluginProject {
       time: time,
       hasUnseenChanges: hasUnseenChanges,
       directoryMissing: directoryMissing,
+      supportsDedicatedWorktrees: supportsDedicatedWorktrees,
     );
   }
 }

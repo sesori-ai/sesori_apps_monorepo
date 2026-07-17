@@ -509,26 +509,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
 
   @override
   Future<PluginProject> getProject(String projectId) async {
-    final project = await _call(
-      () => _service.repository.api.getProject(
-        directory: projectId,
-      ),
-    );
-    // A moved folder re-opened at a new location resolves to a project whose
-    // root worktree is still the original path. Teach the tracker the alias
-    // so sessions running under the live location group under the canonical
-    // project — activity summaries and event projectIDs both key off it.
-    final changed = _service.tracker.registerWorktreeAlias(
-      directory: projectId,
-      worktree: project.worktree,
-    );
-    if (changed) _emitProjectsSummary();
-    return _pluginModelMapper.mapProject(
-      worktree: project.worktree,
-      directory: projectId,
-      name: project.name,
-      activity: null,
-    );
+    return _call(() => _service.getProject(directory: projectId));
   }
 
   @override

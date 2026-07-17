@@ -86,6 +86,21 @@ class OpenCodeService {
     return projects.map((project) => project.project).toList();
   }
 
+  Future<PluginProject> getProject({required String directory}) async {
+    final project = await repository.getProject(directory: directory);
+    var summaryChanged = tracker.registerProjectWorktree(worktree: project.id);
+    summaryChanged =
+        tracker.registerWorktreeAlias(
+          directory: directory,
+          worktree: project.id,
+        ) ||
+        summaryChanged;
+    if (summaryChanged && !_summaryInvalidations.isClosed) {
+      _summaryInvalidations.add(null);
+    }
+    return project;
+  }
+
   Future<PluginProvidersResult> getProviders({required String projectId}) {
     return repository.getProviders(
       directory: projectId,

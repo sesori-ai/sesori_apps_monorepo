@@ -304,6 +304,14 @@ class ActiveSessionTracker {
     return _resummarizeAfterWorktreeKnowledgeChange();
   }
 
+  /// Adds one project discovered through an explicit directory open. This is
+  /// additive because a targeted lookup must not discard the other worktrees
+  /// learned during cold start.
+  bool registerProjectWorktree({required String worktree}) {
+    if (worktree.isEmpty || !_projectWorktrees.add(worktree)) return false;
+    return _resummarizeAfterWorktreeKnowledgeChange();
+  }
+
   /// Records that the backend resolves [directory] to the project rooted at
   /// [worktree] — a moved folder re-opened at a new location keeps its
   /// original worktree as the backend's project root. With the alias in

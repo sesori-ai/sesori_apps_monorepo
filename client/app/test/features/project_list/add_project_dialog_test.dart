@@ -142,6 +142,10 @@ void _stubSuggestionsPerPrefix(
 }
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(OpenProjectGitAction.promptIfNeeded);
+  });
+
   late MockProjectListCubit mockCubit;
   late MockProjectRepository mockProjectRepository;
   late MockConnectionService mockConnectionService;
@@ -400,6 +404,9 @@ void main() {
           "/home/user": _homeDirEntries,
         },
       );
+      when(
+        () => mockCubit.parentHostPath(path: "/home/user/projects"),
+      ).thenReturn("/home/user");
 
       await tester.pumpWidget(
         _buildApp(
@@ -437,7 +444,12 @@ void main() {
           "/home/user/my-repo": const [],
         },
       );
-      when(() => mockCubit.discoverProject(path: any(named: "path"))).thenAnswer((_) async => AddProjectOutcome.success);
+      when(
+        () => mockCubit.discoverProject(
+          path: any(named: "path"),
+          gitAction: OpenProjectGitAction.promptIfNeeded,
+        ),
+      ).thenAnswer((_) async => OpenProjectOutcome.success);
 
       await tester.pumpWidget(
         _buildApp(
@@ -464,7 +476,173 @@ void main() {
       await tester.tap(find.text("Open as Project"));
       await tester.pumpAndSettle();
 
-      verify(() => mockCubit.discoverProject(path: "/home/user/my-repo")).called(1);
+      verify(
+        () => mockCubit.discoverProject(
+          path: "/home/user/my-repo",
+          gitAction: OpenProjectGitAction.promptIfNeeded,
+        ),
+      ).called(1);
+    });
+
+    testWidgets("non-Git folder prompt can enable Git before opening", (tester) async {
+      _stubSuggestionsPerPrefix(
+        mockCubit,
+        byPrefix: {
+          "": _homeDirEntries,
+          "/home/user/work": const [],
+        },
+      );
+      when(
+        () => mockCubit.discoverProject(
+          path: "/home/user/work",
+          gitAction: OpenProjectGitAction.promptIfNeeded,
+        ),
+      ).thenAnswer((_) async => OpenProjectOutcome.gitChoiceRequired);
+      when(
+        () => mockCubit.discoverProject(
+          path: "/home/user/work",
+          gitAction: OpenProjectGitAction.initializeGit,
+        ),
+      ).thenAnswer((_) async => OpenProjectOutcome.success);
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("work"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Open as Project"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Enable Git tracking?"), findsOneWidget);
+      expect(find.text("Continue Without Git"), findsOneWidget);
+      expect(find.text("Enable Git"), findsOneWidget);
+
+      await tester.tap(find.text("Enable Git"));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => mockCubit.discoverProject(
+          path: "/home/user/work",
+          gitAction: OpenProjectGitAction.initializeGit,
+        ),
+      ).called(1);
+    });
+
+    testWidgets("non-Git folder prompt can continue without Git", (tester) async {
+      _stubSuggestionsPerPrefix(
+        mockCubit,
+        byPrefix: {
+          "": _homeDirEntries,
+          "/home/user/work": const [],
+        },
+      );
+      when(
+        () => mockCubit.discoverProject(
+          path: "/home/user/work",
+          gitAction: OpenProjectGitAction.promptIfNeeded,
+        ),
+      ).thenAnswer((_) async => OpenProjectOutcome.gitChoiceRequired);
+      when(
+        () => mockCubit.discoverProject(
+          path: "/home/user/work",
+          gitAction: OpenProjectGitAction.openWithoutGit,
+        ),
+      ).thenAnswer((_) async => OpenProjectOutcome.success);
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("work"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Open as Project"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Continue Without Git"));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => mockCubit.discoverProject(
+          path: "/home/user/work",
+          gitAction: OpenProjectGitAction.openWithoutGit,
+        ),
+      ).called(1);
+    });
+
+    testWidgets("incomplete Git setup requires acknowledgment after opening", (tester) async {
+      _stubSuggestionsPerPrefix(
+        mockCubit,
+        byPrefix: {
+          "": _homeDirEntries,
+          "/home/user/work": const [],
+        },
+      );
+      when(
+        () => mockCubit.discoverProject(
+          path: "/home/user/work",
+          gitAction: OpenProjectGitAction.promptIfNeeded,
+        ),
+      ).thenAnswer((_) async => OpenProjectOutcome.gitChoiceRequired);
+      when(
+        () => mockCubit.discoverProject(
+          path: "/home/user/work",
+          gitAction: OpenProjectGitAction.initializeGit,
+        ),
+      ).thenAnswer((_) async => OpenProjectOutcome.gitSetupIncomplete);
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("work"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Open as Project"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Enable Git"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Project opened, Git setup incomplete"), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text("Project opened, Git setup incomplete"), findsOneWidget);
+
+      await tester.tap(find.text("I understand"));
+      await tester.pumpAndSettle();
+      expect(find.text("Project opened, Git setup incomplete"), findsNothing);
+      expect(find.text("Open as Project"), findsNothing);
     });
 
     testWidgets("Create constructs path from browsed dir + typed name", (tester) async {
@@ -475,7 +653,12 @@ void main() {
           "/home/user/projects": _projectsDirEntries,
         },
       );
-      when(() => mockCubit.createProject(path: any(named: "path"))).thenAnswer((_) async => AddProjectOutcome.success);
+      when(
+        () => mockCubit.createProject(
+          parentPath: any(named: "parentPath"),
+          name: any(named: "name"),
+        ),
+      ).thenAnswer((_) async => AddProjectOutcome.success);
 
       await tester.pumpWidget(
         _buildApp(
@@ -506,7 +689,60 @@ void main() {
       await tester.tap(find.text("Create"));
       await tester.pumpAndSettle();
 
-      verify(() => mockCubit.createProject(path: "/home/user/projects/new-app")).called(1);
+      verify(
+        () => mockCubit.createProject(
+          parentPath: "/home/user/projects",
+          name: "new-app",
+        ),
+      ).called(1);
+    });
+
+    testWidgets("Create passes the Windows host parent and project name as intent", (tester) async {
+      const projectsPath = r"C:\Users\dev\projects";
+      _stubSuggestionsPerPrefix(
+        mockCubit,
+        byPrefix: {
+          "": const [
+            FilesystemSuggestion(path: projectsPath, name: "projects", isGitRepo: false),
+          ],
+          projectsPath: const [],
+        },
+      );
+      when(
+        () => mockCubit.createProject(
+          parentPath: any(named: "parentPath"),
+          name: any(named: "name"),
+        ),
+      ).thenAnswer((_) async => AddProjectOutcome.success);
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("projects"));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), "new-app");
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Create"));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => mockCubit.createProject(
+          parentPath: projectsPath,
+          name: "new-app",
+        ),
+      ).called(1);
     });
 
     testWidgets("empty directory shows empty state message", (tester) async {

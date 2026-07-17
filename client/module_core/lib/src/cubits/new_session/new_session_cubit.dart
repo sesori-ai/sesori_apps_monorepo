@@ -6,21 +6,25 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
+import "../../repositories/project_repository.dart";
 import "../../services/new_session_selection_tracker.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
+  final ProjectRepository _projectRepository;
   final NewSessionSelectionTracker _selectionTracker;
   final String _projectId;
   static const _defaultModelSelector = DefaultModelSelector();
 
   NewSessionCubit({
     required SessionService sessionService,
+    required ProjectRepository projectRepository,
     required NewSessionSelectionTracker selectionTracker,
     required String projectId,
   }) : _sessionService = sessionService,
+       _projectRepository = projectRepository,
        _selectionTracker = selectionTracker,
        _projectId = projectId,
        super(
@@ -43,11 +47,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         ApiResponse<Agents> agentsResponse,
         ApiResponse<ProviderListResponse> providersResponse,
         ApiResponse<CommandListResponse> commandsResponse,
-      ) = await wait3(
+        ApiResponse<Project> projectResponse,
+      ) = await wait4(
         // COMPATIBILITY 2026-07-13 (v1.5.0): Project-only composer routes lack plugin identity and historically target OpenCode. Pass selected plugin identity once the composer owns it.
         _sessionService.listAgents(projectId: _projectId, pluginId: legacyMissingPluginId),
         _sessionService.listProviders(projectId: _projectId, pluginId: legacyMissingPluginId),
         _sessionService.listCommands(projectId: _projectId, pluginId: legacyMissingPluginId),
+        _projectRepository.getProject(projectId: _projectId),
       );
 
       if (isClosed) return;
@@ -55,6 +61,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       _logComposerDataError(resource: "agents", response: agentsResponse);
       _logComposerDataError(resource: "providers", response: providersResponse);
       _logComposerDataError(resource: "commands", response: commandsResponse);
+      _logComposerDataError(resource: "project", response: projectResponse);
 
       final agents = switch (agentsResponse) {
         SuccessResponse(:final data) => data.agents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
@@ -68,6 +75,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       final commands = switch (commandsResponse) {
         SuccessResponse(:final data) => data.items,
         ErrorResponse() => <CommandInfo>[],
+      };
+      final supportsDedicatedWorktrees = switch (projectResponse) {
+        SuccessResponse(:final data) => data.supportsDedicatedWorktrees,
+        ErrorResponse() => false,
       };
 
       final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
@@ -116,6 +127,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availableCommands: commands,
         selectedAgent: selectedAgent,
         selectedAgentModel: selectedAgentModel,
+        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       );
     } catch (e, stackTrace) {
       loge("New session: failed to load composer data for project $_projectId", e, stackTrace);
@@ -140,6 +152,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required List<CommandInfo>? availableCommands,
     required String? selectedAgent,
     required AgentModel? selectedAgentModel,
+    required bool? supportsDedicatedWorktrees,
   }) {
     if (isClosed) return;
     final current = state;
@@ -159,6 +172,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             availableVariants: derivedVariants,
+            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
           ),
         );
       case NewSessionSending():
@@ -170,6 +184,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             availableVariants: derivedVariants,
+            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
           ),
         );
       case NewSessionError():
@@ -181,6 +196,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             availableVariants: derivedVariants,
+            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
           ),
         );
       case NewSessionCreated():
@@ -215,9 +231,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
 
     final savedAgent = saved.agent;
-    final selectedAgent = (savedAgent != null && agents.any((a) => a.name == savedAgent))
-        ? savedAgent
-        : defaultAgent;
+    final selectedAgent = (savedAgent != null && agents.any((a) => a.name == savedAgent)) ? savedAgent : defaultAgent;
 
     final savedModel = saved.agentModel;
     AgentModel? selectedAgentModel = defaultAgentModel;
@@ -266,6 +280,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableAgents: null, // no change
       availableCommands: null, // no change
       availableProviders: null, // no change
+      supportsDedicatedWorktrees: null, // no change
     );
     _persistSelection();
   }
@@ -354,6 +369,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableAgents: null, // no change
       availableCommands: null, // no change
       availableProviders: null, // no change
+      supportsDedicatedWorktrees: null, // no change
     );
     _persistSelection();
   }
@@ -402,6 +418,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         selectedAgentModel: config?.agentModel,
         stagedCommand: config?.stagedCommand,
         availableVariants: config?.availableVariants ?? const [],
+        supportsDedicatedWorktrees: config?.supportsDedicatedWorktrees ?? false,
       ),
     );
 
@@ -415,7 +432,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       modelID: config?.agentModel?.modelID,
       variant: variantId == null ? null : SessionVariant(id: variantId),
       command: normalizedCommand,
-      dedicatedWorktree: dedicatedWorktree,
+      dedicatedWorktree: dedicatedWorktree && (config?.supportsDedicatedWorktrees ?? false),
     );
 
     // A created session means the composer is done, so the next new session for
@@ -454,6 +471,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgentModel: current?.agentModel,
             stagedCommand: current?.stagedCommand,
             availableVariants: current?.availableVariants ?? const [],
+            supportsDedicatedWorktrees: current?.supportsDedicatedWorktrees ?? false,
           ),
         );
     }
