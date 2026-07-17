@@ -179,6 +179,24 @@ void main() {
       expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
+    test("requires a choice when Git is unavailable", () async {
+      gitCliApi.insideWorkTreeError = const ProcessException("git", []);
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: OpenProjectRequest(
+            path: tempDir.path,
+            gitAction: OpenProjectGitAction.promptIfNeeded,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((response) => response.status, "status", 428)),
+      );
+    });
+
     test("opens a non-Git folder without changing it when requested", () async {
       gitCliApi.insideWorkTreeError = const ProcessException("git", []);
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);

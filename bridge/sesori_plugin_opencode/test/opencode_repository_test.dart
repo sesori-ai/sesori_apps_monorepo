@@ -1423,7 +1423,7 @@ class _FakeApi implements OpenCodeApi {
   Future<Project> updateProject({
     required String projectId,
     required String directory,
-    required Map<String, dynamic> body,
+    required UpdateProjectBody body,
   }) async {
     updateProjectCalls += 1;
     throw UnimplementedError();

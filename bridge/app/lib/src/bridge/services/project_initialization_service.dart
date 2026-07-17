@@ -1,3 +1,5 @@
+import "dart:io" show ProcessException;
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show OpenProjectGitAction;
 
@@ -99,8 +101,16 @@ class ProjectInitializationService {
       return ExistingProjectPreparationOutcome.ready;
     }
 
-    final isGitInitialized = await _worktreeRepository.isGitInitialized(projectPath: path);
-    final isInsideGitWorkTree = isGitInitialized || await _worktreeRepository.isInsideGitWorkTree(projectPath: path);
+    bool isGitInitialized;
+    bool isInsideGitWorkTree;
+    try {
+      isGitInitialized = await _worktreeRepository.isGitInitialized(projectPath: path);
+      isInsideGitWorkTree = isGitInitialized || await _worktreeRepository.isInsideGitWorkTree(projectPath: path);
+    } on ProcessException catch (error, stackTrace) {
+      Log.w("ProjectInitializationService: Git is unavailable for $path", error, stackTrace);
+      isGitInitialized = false;
+      isInsideGitWorkTree = false;
+    }
     switch (gitAction) {
       case OpenProjectGitAction.promptIfNeeded:
         if (!isInsideGitWorkTree) {

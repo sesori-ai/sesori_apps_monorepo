@@ -25,6 +25,7 @@ import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/summarize_body.dart";
+import "models/update_project_body.dart";
 import "opencode_api.dart";
 import "plugin_model_mapper.dart";
 import "provider_mapper.dart";
@@ -115,7 +116,7 @@ class OpenCodeRepository {
     final updated = await _api.updateProject(
       projectId: project.id,
       directory: directory,
-      body: {"name": name},
+      body: UpdateProjectBody(name: name),
     );
     return _pluginModelMapper.mapProject(
       worktree: updated.worktree,
