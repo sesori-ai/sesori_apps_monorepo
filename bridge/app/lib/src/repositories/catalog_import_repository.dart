@@ -12,6 +12,7 @@ import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
 import "models/catalog_import_control.dart";
+import "project_catalog_identity_calculator.dart";
 
 class CatalogImportRepository {
   CatalogImportRepository({
@@ -19,10 +20,12 @@ class CatalogImportRepository {
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required CatalogHydrationsDao catalogHydrationsDao,
+    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
   }) : _operationalPlugins = operationalPlugins,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
-       _catalogHydrationsDao = catalogHydrationsDao;
+       _catalogHydrationsDao = catalogHydrationsDao,
+       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator;
 
   static const int projectionVersion = 1;
   static const int _responsivenessBatchSize = 512;
@@ -32,6 +35,7 @@ class CatalogImportRepository {
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final CatalogHydrationsDao _catalogHydrationsDao;
+  final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
 
   Set<String> get operationalPluginIds => Set<String>.unmodifiable(_operationalPlugins.keys);
 
@@ -257,11 +261,6 @@ class CatalogImportRepository {
       final projectsById = <String, ProjectDto>{
         for (final project in currentProjects) project.projectId: project,
       };
-      final projectsByPath = <String, ProjectDto>{};
-      for (final project in currentProjects) {
-        projectsByPath.putIfAbsent(_normalizeRequiredPath(project.path), () => project);
-      }
-
       final publicationProjects = <String, _ObservedProject>{};
       if (plugin is BridgeDerivedProjectsPluginApi) {
         final launchDirectory = derivedLaunchDirectory!;
@@ -293,7 +292,11 @@ class CatalogImportRepository {
       final projectRows = <ProjectDto>[];
       final importedProjectIdByPath = <String, String>{};
       for (final observation in publicationProjects.values) {
-        final existing = projectsByPath[observation.path] ?? projectsById[observation.preferredId];
+        final existing = _projectCatalogIdentityCalculator.calculate(
+          existingProjects: currentProjects,
+          preferredProjectId: observation.preferredId,
+          observedPath: observation.path,
+        );
         final row = _mergeProjectRow(
           observation: observation,
           existing: existing,
@@ -301,7 +304,12 @@ class CatalogImportRepository {
         );
         projectRows.add(row);
         projectsById[row.projectId] = row;
-        projectsByPath[observation.path] = row;
+        final currentIndex = currentProjects.indexWhere((project) => project.projectId == row.projectId);
+        if (currentIndex < 0) {
+          currentProjects.add(row);
+        } else {
+          currentProjects[currentIndex] = row;
+        }
         importedProjectIdByPath[observation.path] = row.projectId;
       }
 

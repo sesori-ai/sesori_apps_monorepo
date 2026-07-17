@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 AgentRepository singlePluginAgentRepository({
@@ -67,6 +68,7 @@ ProjectRepository singlePluginProjectRepository({
     unseenCalculator: unseenCalculator,
     filesystemApi: filesystemApi,
     gitCliApi: gitCliApi,
+    projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
     aggregateSourceDeadline: const Duration(seconds: 5),
   );
 }
@@ -109,6 +111,7 @@ SessionRepository singlePluginSessionRepository({
     projectsDao: projectsDao,
     pullRequestDao: pullRequestDao,
     unseenCalculator: unseenCalculator,
+    projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
     aggregateSourceDeadline: const Duration(seconds: 5),
   );
 }
@@ -138,5 +141,6 @@ CatalogImportRepository singlePluginCatalogImportRepository({
     projectsDao: projectsDao,
     sessionDao: sessionDao,
     catalogHydrationsDao: catalogHydrationsDao,
+    projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
   );
 }

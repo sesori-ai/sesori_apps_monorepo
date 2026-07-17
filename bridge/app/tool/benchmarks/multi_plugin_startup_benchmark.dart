@@ -69,13 +69,9 @@ Future<void> main(List<String> args) async {
 }
 
 Future<_StartupSample> _runFixture({required int selectedCount}) async {
-  final runtimeDirectory = Directory(
-    p.join(Directory.systemTemp.path, "sesori-multi-plugin-startup-benchmark-$selectedCount"),
+  final runtimeDirectory = await Directory.systemTemp.createTemp(
+    "sesori-multi-plugin-startup-benchmark-$selectedCount-",
   );
-  if (runtimeDirectory.existsSync()) {
-    await runtimeDirectory.delete(recursive: true);
-  }
-  await runtimeDirectory.create(recursive: true);
 
   final stopwatch = Stopwatch()..start();
   final probe = _StartupProbe(stopwatch: stopwatch);

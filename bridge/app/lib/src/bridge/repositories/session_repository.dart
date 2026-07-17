@@ -32,6 +32,7 @@ import "../../api/database/daos/pull_request_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/tables/pull_requests_table.dart";
 import "../../api/database/tables/session_table.dart" show SessionDto;
+import "../../repositories/project_catalog_identity_calculator.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";
@@ -57,6 +58,7 @@ class SessionRepository {
   final ProjectsDao _projectsDao;
   final PullRequestDao _pullRequestDao;
   final SessionUnseenCalculator _unseenCalculator;
+  final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
   final Duration _aggregateSourceDeadline;
   final Map<String, Set<String>> _tombstonedBackendSessionIds = <String, Set<String>>{};
   final Set<String> _deletedSessionIds = <String>{};
@@ -73,6 +75,7 @@ class SessionRepository {
     required ProjectsDao projectsDao,
     required PullRequestDao pullRequestDao,
     required SessionUnseenCalculator unseenCalculator,
+    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
     required Duration aggregateSourceDeadline,
   }) : _operationalPlugins = operationalPlugins,
        _enabledPluginIds = enabledPluginIds,
@@ -80,6 +83,7 @@ class SessionRepository {
        _projectsDao = projectsDao,
        _pullRequestDao = pullRequestDao,
        _unseenCalculator = unseenCalculator,
+       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
        _aggregateSourceDeadline = aggregateSourceDeadline;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
@@ -520,11 +524,17 @@ class SessionRepository {
 
       try {
         final project = await plugin.getProject(summary.id);
-        if (!hydratedProjectIds.add(project.id)) continue;
+        final existing = _projectCatalogIdentityCalculator.calculate(
+          existingProjects: await _projectsDao.getAllProjects(),
+          preferredProjectId: project.id,
+          observedPath: project.directory,
+        );
+        final projectId = existing?.projectId ?? project.id;
+        if (!hydratedProjectIds.add(projectId)) continue;
         await _observeNativeRootSessions(
           pluginId: pluginId,
           plugin: plugin,
-          projectId: project.id,
+          projectId: projectId,
           projectDirectory: project.directory,
         );
       } on Object catch (error, stackTrace) {

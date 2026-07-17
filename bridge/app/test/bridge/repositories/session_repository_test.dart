@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -363,6 +364,7 @@ void main() {
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 1),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["stored-native", "stored-derived"]);
@@ -1238,6 +1240,61 @@ void main() {
       );
     });
 
+    test("active native-root hydration reuses the normalized-path catalog row", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const directory = "/projects/shared";
+      const nativeProjectId = "native-project-id";
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: directory,
+            activeSessions: [PluginActiveSession(id: "backend-root", awaitingInput: true)],
+          ),
+        ]
+        ..projectsByDirectory = const {
+          directory: PluginProject(id: nativeProjectId, directory: "$directory/."),
+        }
+        ..sessionsByWorktree = const {
+          "$directory/.": [
+            PluginSession(
+              id: "backend-root",
+              projectID: nativeProjectId,
+              directory: "$directory/.",
+              parentID: null,
+              title: "Active root",
+              time: PluginSessionTime(created: 1, updated: 2, archived: null),
+            ),
+          ],
+        };
+      await db.projectsDao.recordOpenedProject(
+        projectId: directory,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final summaries = await repository.getProjectActivitySummaries();
+
+      expect(summaries.single.id, directory);
+      expect(
+        (await db.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "backend-root",
+        ))?.projectId,
+        directory,
+      );
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
+    });
+
     test("getProjectActivitySummaries isolates a failed active-root hydration", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1926,6 +1983,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastAbortSessionId;
   List<PluginProjectActivitySummary> activitySummaries = const [];
   Set<String> failingProjectIds = const {};
+  Map<String, PluginProject> projectsByDirectory = const {};
 
   @override
   String get id => "fake";
@@ -1959,7 +2017,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<PluginProject> getProject(String projectId) async {
     lastGetProjectDirectory = projectId;
     if (failingProjectIds.contains(projectId)) throw StateError("project unavailable");
-    return PluginProject(id: projectId, directory: projectId);
+    return projectsByDirectory[projectId] ?? PluginProject(id: projectId, directory: projectId);
   }
 
   @override

@@ -145,6 +145,85 @@ void main() {
       );
     });
 
+    test("native import gives an exact project id precedence during a move", () async {
+      final oldPath = "${directory.path}/old";
+      final movedPath = "${directory.path}/moved";
+      await database.projectsDao.upsertProjectRows(
+        rows: [
+          _projectRow(id: "backend-project", path: oldPath),
+          _projectRow(id: "path-owner", path: movedPath),
+        ],
+      );
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "backend-project", directory: movedPath)],
+        rootsByProject: {
+          movedPath: [_pluginSession(id: "moved-root", directory: movedPath)],
+        },
+        childrenByParent: const {},
+      );
+
+      await _repository(database: database, plugin: plugin)
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      expect((await database.projectsDao.getProject(projectId: "backend-project"))?.path, movedPath);
+      expect(
+        (await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "moved-root",
+        ))?.projectId,
+        "backend-project",
+      );
+    });
+
+    test("native import reuses a derived project in the same directory without duplicates", () async {
+      final sharedPath = "${directory.path}/shared";
+      final derived = _DerivedImportPlugin(launchDirectory: sharedPath, sessions: const []);
+      await _repository(database: database, plugin: derived)
+          .importCatalog(
+            pluginId: derived.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+      final native = _NativeImportPlugin(
+        projects: [PluginProject(id: "native-project", directory: "$sharedPath/.")],
+        rootsByProject: {
+          sharedPath: [_pluginSession(id: "native-root", directory: sharedPath)],
+        },
+        childrenByParent: const {},
+      );
+
+      await _repository(database: database, plugin: native)
+          .importCatalog(
+            pluginId: native.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      final projects = await database.projectsDao.getAllProjects();
+      expect(projects, hasLength(1));
+      expect(projects.single.projectId, sharedPath);
+      expect(
+        (await database.sessionDao.getSessionByBinding(
+          pluginId: native.id,
+          backendSessionId: "native-root",
+        ))?.projectId,
+        sharedPath,
+      );
+    });
+
     test("derived import sends complete normalized hints and retains owning-project attribution", () async {
       final projectOne = "${directory.path}/one";
       final projectTwo = "${directory.path}/two";

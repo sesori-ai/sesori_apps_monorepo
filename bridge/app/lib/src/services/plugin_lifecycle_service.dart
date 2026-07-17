@@ -156,6 +156,9 @@ class PluginLifecycleService {
   }
 
   void _applyStatus({required String id, required BridgePluginApi api, required PluginStatus status}) {
+    if (status case PluginFailed(:final reason, :final cause)) {
+      Log.w('Plugin "$id" failed after startup: $reason', cause);
+    }
     final state = switch (status) {
       PluginStarting() || PluginReady() => PluginLifecycleState.ready,
       PluginDegraded() || PluginRestarting() || PluginStopping() => PluginLifecycleState.degraded,
