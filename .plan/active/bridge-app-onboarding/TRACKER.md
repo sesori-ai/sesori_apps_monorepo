@@ -11,8 +11,8 @@
 ## Current Pointer
 
 - **Stage:** S01 — App Registration Checkpoint
-- **Wave:** W01
-- **Next action:** Use `sesori-plan-worker` with slug `bridge-app-onboarding` to pin the current auth-server `master` baseline for S01/W01 and implement S01-W01-P01.
+- **Wave:** W02
+- **Next action:** After S01-W01-P01 merges and deploys, reconcile its Git/PR facts, pin the current monorepo `main` baseline for S01/W02, and implement S01-W02-P01.
 
 ## Plan Review
 
@@ -34,7 +34,7 @@ pair after drift assessment and before branch creation.
 
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | S01-W01-P01 | S01 | W01 | — | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Add auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. |
+| [x] | S01-W01-P01 | S01 | W01 | — | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Deliver the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake on `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint`. |
 | [ ] | S01-W02-P01 | S01 | W02 | — | `plan/bridge-app-onboarding/s01-w02-p01-interactive-app-onboarding` | Add standalone bridge checkpoint, async terminal ownership, retry/cancellation, and bounded QR output. |
 
 ## Manual Checkpoints
