@@ -132,6 +132,20 @@ void main() {
       expect(titleWeight(tester, "My Session"), FontWeight.w500);
     });
 
+    testWidgets("still tells assistive technology about the unopened activity", (tester) async {
+      final semantics = tester.ensureSemantics();
+
+      await pumpTile(tester, tile(session: testSession(title: "My Session"), unseen: true));
+      // The resting sparkle is visual-only, so the row's merged semantics must
+      // carry the unread meaning title weight alone does not announce.
+      expect(find.bySemanticsLabel(RegExp("New activity")), findsOneWidget);
+
+      await pumpTile(tester, tile(session: testSession(title: "My Session")));
+      expect(find.bySemanticsLabel(RegExp("New activity")), findsNothing);
+
+      semantics.dispose();
+    });
+
     testWidgets("cedes the sparkle to a live turn but keeps the weight", (tester) async {
       await pumpTile(tester, tile(session: testSession(title: "My Session"), isActive: true, unseen: true));
 

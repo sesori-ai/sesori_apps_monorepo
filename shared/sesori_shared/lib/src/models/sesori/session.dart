@@ -47,9 +47,10 @@ sealed class Session with _$Session {
     @Default(<PullRequestInfo>[]) List<PullRequestInfo> pullRequestHistory,
     required SessionPromptDefaults? promptDefaults,
     // The git branch the session's workspace is checked out on, when the
-    // bridge knows one (it records the branch for sessions it creates in a
-    // worktree). Null means no branch is known: plain-checkout sessions, and
-    // payloads from bridges that predate branch reporting.
+    // bridge knows one. Worktree sessions carry the branch recorded at
+    // creation; plain checkouts carry whatever git currently reports (or last
+    // reported). Null means no branch is known — typically a payload from a
+    // bridge that predates branch reporting, or a checkout git cannot name.
     required String? branchName,
     @Default(false) bool hasWorktree,
     // Whether this session has unseen activity (new changes the user has not

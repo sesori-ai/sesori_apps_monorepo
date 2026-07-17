@@ -185,7 +185,15 @@ class SessionTile extends StatelessWidget {
         child: PregoAiLoader(size: _stateIconSize, phase: PregoAiLoader.phaseFor(session.id)),
       );
     }
-    if (unseen) return const PregoAiLoader(size: _stateIconSize, animate: false);
+    if (unseen) {
+      // Same contract as the project list: the resting sparkle is decorative,
+      // so the spoken "New activity" label carries the unread meaning that
+      // title weight alone does not announce.
+      return Semantics(
+        label: context.loc.sessionListNewActivity,
+        child: const PregoAiLoader(size: _stateIconSize, animate: false),
+      );
+    }
     return null;
   }
 

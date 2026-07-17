@@ -694,15 +694,17 @@ class SessionRepository {
 
     final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
 
-    // Resolved here as well as in the list path: a live session event carries
-    // no branch of its own, so without this the row would lose the branch the
-    // list had just shown for it. Resolved before PRs are queried: the PR join
-    // reads the stored branch_name in SQL, so it must see the branch this
-    // response is about to show.
+    // Ask git only for sessions that still have no branch: the list path and
+    // catalog reads already resolve+store before handing a Session here, and
+    // GetSessionsHandler calls this again for PR/archive merge — re-spawning
+    // git for those would only repeat the same answer. Plugin-mapped sessions
+    // arrive with a null branch, so they still get resolved. Resolved before
+    // PRs are queried: the PR join reads the stored branch_name in SQL, so it
+    // must see the branch this response is about to show.
     final branchesByDirectory = await _resolveBranches(
       directories: {
         for (final session in sessions)
-          if (dbSessions[session.id]?.worktreePath == null) session.directory,
+          if (session.branchName == null && dbSessions[session.id]?.worktreePath == null) session.directory,
       },
       rows: dbSessions.values,
     );
@@ -722,11 +724,13 @@ class SessionRepository {
       pullRequestsBySessionId: pullRequestsBySessionId,
       branchNamesBySessionId: {
         for (final session in sessions)
-          session.id: _branchFor(
-            row: dbSessions[session.id],
-            directory: session.directory,
-            branchesByDirectory: branchesByDirectory,
-          ),
+          session.id:
+              session.branchName ??
+              _branchFor(
+                row: dbSessions[session.id],
+                directory: session.directory,
+                branchesByDirectory: branchesByDirectory,
+              ),
       },
       unseenCalculator: _unseenCalculator,
       // Only a bridge-derived plugin cedes project attribution to the stored

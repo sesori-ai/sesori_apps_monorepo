@@ -1051,6 +1051,12 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle
+  ///
+  /// In en, this message translates to:
+  /// **'New activity'**
+  String get sessionListNewActivity;
+
   /// Label shown next to the red dot for sessions that are active but in a retry/error state
   ///
   /// In en, this message translates to:

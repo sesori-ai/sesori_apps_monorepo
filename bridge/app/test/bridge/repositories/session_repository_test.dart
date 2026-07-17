@@ -1979,6 +1979,68 @@ void main() {
       expect(gitCliApi.asked, equals(["/repo"]));
     });
 
+    test("enrichSessions skips git when the session already names its branch", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final gitCliApi = _StubGitCliApi(branches: {"/repo": "main"});
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: gitCliApi,
+        directory: "/repo",
+        sessionIds: ["s1"],
+      );
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+      expect(gitCliApi.asked, equals(["/repo"]));
+      gitCliApi.asked.clear();
+
+      // GetSessionsHandler always re-enriches the listed sessions for PR/archive
+      // merge; that must not spawn git again for a branch the list just named.
+      final enriched = await repository.enrichSessions(sessions: sessions);
+
+      expect(enriched.single.branchName, equals("main"));
+      expect(gitCliApi.asked, isEmpty);
+    });
+
+    test("enrichSessions still asks git when a plugin session carries no branch", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final gitCliApi = _StubGitCliApi(branches: {"/repo": "main"});
+      final repository = await repositoryListing(
+        db: db,
+        gitCliApi: gitCliApi,
+        directory: "/repo",
+        sessionIds: const [],
+      );
+      await db.sessionDao.insertSession(
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: plugin.id,
+      );
+
+      final enriched = await repository.enrichPluginSession(
+        pluginSession: const PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session s1",
+          time: null,
+        ),
+      );
+
+      expect(enriched.branchName, equals("main"));
+      expect(gitCliApi.asked, equals(["/repo"]));
+    });
+
     test("leaves the branch unknown when git names none for the directory", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
