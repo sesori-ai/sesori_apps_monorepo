@@ -84,6 +84,7 @@ void main() {
         backendSessionId: "backend-mismatch",
         pluginId: "other",
         projectId: "/repo",
+        parentSessionId: null,
         directory: "/repo/.worktrees/mismatch",
         worktreePath: "/repo/.worktrees/mismatch",
         branchName: "mismatch",
@@ -479,7 +480,12 @@ void main() {
     });
 
     test("unarchive uses the existing root binding and returns its stable id", () async {
-      await db.sessionDao.setArchived(sessionId: "root-session", archivedAt: 2, updatedAt: 2);
+      await db.sessionDao.setArchived(
+        sessionId: "root-session",
+        archivedAt: 2,
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
 
       final update = await service.updateArchiveStatus(
         sessionId: "root-session",
@@ -512,6 +518,7 @@ Future<CleanupResult> _cleanup({
     backendSessionId: "backend-$sessionId",
     pluginId: "fake",
     projectId: "/repo",
+    parentSessionId: null,
     directory: worktreePath,
     worktreePath: worktreePath,
     branchName: branchName,
@@ -667,9 +674,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "fake";
-
-  @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();

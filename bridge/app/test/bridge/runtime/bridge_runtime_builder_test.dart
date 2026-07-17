@@ -51,6 +51,7 @@ void main() {
         yolo: false,
       ),
       plugin: plugin,
+      pluginId: plugin.id,
       relayClient: RelayClient(
         relayURL: "ws://127.0.0.1:9999",
         accessTokenProvider: FakeAccessTokenProvider(),

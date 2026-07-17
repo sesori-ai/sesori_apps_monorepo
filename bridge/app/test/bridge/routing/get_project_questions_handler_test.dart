@@ -19,6 +19,14 @@ void main() {
       db = createTestDatabase();
       addTearDown(db.close);
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/project"]);
+      await recordSessionBinding(
+        database: db,
+        sessionId: "stable-s-1",
+        backendSessionId: "s-1",
+        pluginId: plugin.id,
+        projectId: "/tmp/project",
+        parentSessionId: null,
+      );
       handler = GetProjectQuestionsHandler(
         questionRepository: QuestionRepository(
           plugin: plugin,
@@ -81,7 +89,7 @@ void main() {
 
       final item = response.data.first;
       expect(item.id, equals("q-1"));
-      expect(item.sessionID, equals("s-1"));
+      expect(item.sessionID, equals("stable-s-1"));
 
       final question = item.questions.first;
       expect(question.question, equals("Pick a tool"));

@@ -115,11 +115,13 @@ void main() {
         sessionId: "stable-root-id",
         archivedAt: 150,
         updatedAt: 150,
+        projectionUpdatedAt: 150,
       );
       await dao.setTitle(
         sessionId: "stable-root-id",
         title: "Bridge title",
         updatedAt: 200,
+        projectionUpdatedAt: 200,
       );
 
       final rows = await dao.upsertObservedRootSessions(

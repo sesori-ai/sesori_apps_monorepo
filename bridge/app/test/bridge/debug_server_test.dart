@@ -42,6 +42,7 @@ _DebugServerHarness _createDebugServerHarness({
       yolo: false,
     ),
     plugin: plugin,
+    pluginId: plugin.id,
     relayClient: RelayClient(
       relayURL: "ws://127.0.0.1:9999",
       accessTokenProvider: FakeAccessTokenProvider(),
@@ -98,13 +99,13 @@ void main() {
       final second = await _SseTestClient.connect(debugServer.boundPort!);
       addTearDown(second.close);
 
-      plugin.add(const BridgeSseServerConnected());
+      plugin.add(const BridgeSseVcsBranchUpdated());
 
       final firstEvent = await first.nextEvent();
       final secondEvent = await second.nextEvent();
 
-      expect(firstEvent, contains("server.connected"));
-      expect(secondEvent, contains("server.connected"));
+      expect(firstEvent, contains("vcs.branch.updated"));
+      expect(secondEvent, contains("vcs.branch.updated"));
     });
 
     test(
@@ -117,16 +118,16 @@ void main() {
 
         await second.close();
 
-        plugin.add(const BridgeSseServerConnected());
+        plugin.add(const BridgeSseVcsBranchUpdated());
         final firstEvent = await first.nextEvent();
-        expect(firstEvent, contains("server.connected"));
+        expect(firstEvent, contains("vcs.branch.updated"));
       },
     );
 
     test("async-mapped session events preserve order for SSE clients", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
-        pluginId: "opencode",
+        pluginId: plugin.id,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "p1",
@@ -185,7 +186,7 @@ void main() {
       );
     });
 
-    test("plugin subscription is released when last client disconnects", () async {
+    test("debug client disconnect does not tear down the shared plugin listener", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
       final trackingHarness = _createDebugServerHarness(
@@ -211,7 +212,7 @@ void main() {
 
       await first.close();
       await trackingServer.stop();
-      expect(trackingPlugin.unsubscribeCount, equals(1));
+      expect(trackingPlugin.unsubscribeCount, equals(0));
     });
 
     test("a failed projects summary is reported and later events still flow", () async {
@@ -232,9 +233,9 @@ void main() {
       final client = await _SseTestClient.connect(failingServer.boundPort!);
       addTearDown(client.close);
       failingPlugin.add(const BridgeSseProjectUpdated());
-      failingPlugin.add(const BridgeSseServerConnected());
+      failingPlugin.add(const BridgeSseVcsBranchUpdated());
 
-      expect(await client.nextEvent(), contains("server.connected"));
+      expect(await client.nextEvent(), contains("vcs.branch.updated"));
       final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
       while (!failureReporter.recordedIdentifiers.contains("bridge.debug_server.projects_summary")) {
         if (DateTime.now().isAfter(timeoutAt)) {
@@ -332,7 +333,10 @@ void main() {
       final items = decoded["items"] as List<dynamic>;
       expect(items.length, equals(1));
       final session = items[0] as Map<String, dynamic>;
-      expect(session["id"], equals("s1"));
+      final sessionId = session["id"] as String;
+      expect(sessionId, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+      final binding = await db.sessionDao.getSession(sessionId: sessionId);
+      expect(binding?.backendSessionId, "s1");
     });
 
     test("POST /session/messages returns messages", () async {
@@ -627,9 +631,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String get id => "fake";
 
   @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
-
-  @override
   Stream<BridgeSseEvent> get events => _controller.stream;
 
   @override
@@ -787,9 +788,6 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "tracking";
-
-  @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events {

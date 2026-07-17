@@ -12,6 +12,9 @@ import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../control/control_status_notifier.dart";
+import "../listeners/plugin_event_listener.dart";
+import "../listeners/session_binding_commit_listener.dart";
+import "../listeners/session_deletion_listener.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
@@ -24,12 +27,14 @@ import "repositories/agent_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
+import "repositories/mappers/session_event_mapper.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
 import "repositories/session_diff_repository.dart";
 import "repositories/session_repository.dart";
+import "repositories/trackers/session_event_tracker.dart";
 import "routing/abort_session_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
@@ -65,13 +70,15 @@ import "routing/restart_bridge_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
+import "services/permission_auto_approval_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_diff_service.dart";
-import "services/session_event_enrichment_service.dart";
+import "services/session_event_dispatcher.dart";
+import "services/session_event_service.dart";
 import "services/session_lifecycle_service.dart";
 import "services/session_mutation_dispatcher.dart";
 import "services/session_prompt_service.dart";
@@ -87,6 +94,7 @@ class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePluginApi _plugin;
+  final String _pluginId;
   final SessionCreationService _sessionCreationService;
   final PushDispatcher _pushDispatcher;
   final CompletionPushListener _completionListener;
@@ -110,7 +118,6 @@ class Orchestrator {
   final PermissionRepository _permissionRepository;
   final QuestionRepository _questionRepository;
   final WorktreeService _worktreeService;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
@@ -119,6 +126,7 @@ class Orchestrator {
     required this.config,
     required RelayClient client,
     required BridgePluginApi plugin,
+    required String pluginId,
     required SessionCreationService sessionCreationService,
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
@@ -142,7 +150,6 @@ class Orchestrator {
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required WorktreeService worktreeService,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
@@ -150,6 +157,7 @@ class Orchestrator {
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _plugin = plugin,
+       _pluginId = pluginId,
        _sessionCreationService = sessionCreationService,
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
@@ -173,7 +181,6 @@ class Orchestrator {
        _permissionRepository = permissionRepository,
        _questionRepository = questionRepository,
        _worktreeService = worktreeService,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _restartService = restartService,
        _statusNotifier = statusNotifier;
@@ -217,6 +224,41 @@ class Orchestrator {
       ),
       filesystemRepository: _filesystemRepository,
     );
+    final sessionEventService = SessionEventService(
+      sessionRepository: _sessionRepository,
+      sessionMutationDispatcher: _sessionMutationDispatcher,
+      eventMapper: const SessionEventMapper(),
+      eventTracker: SessionEventTracker(
+        maxPendingEntries: SessionEventTracker.defaultMaxPendingEntries,
+      ),
+      failureReporter: _failureReporter,
+    );
+    final sessionEventDispatcher = SessionEventDispatcher(
+      sessionEventService: sessionEventService,
+    );
+    final permissionAutoApprovalService = PermissionAutoApprovalService(
+      sessionRepository: _sessionRepository,
+      permissionRepository: _permissionRepository,
+    );
+    final pluginEventListener = PluginEventListener(
+      pluginId: _pluginId,
+      source: _plugin.events,
+      dispatcher: sessionEventDispatcher,
+    );
+    final sessionBindingCommitListener = SessionBindingCommitListener(
+      pluginId: _pluginId,
+      source: _sessionRepository.bindingCommits,
+      dispatcher: sessionEventDispatcher,
+    );
+    final sessionDeletionListener = SessionDeletionListener(
+      source: _sessionMutationDispatcher.deletedSessions,
+      dispatcher: sessionEventDispatcher,
+    );
+    final normalizedPluginEvents = sessionEventDispatcher.events.doOnListen(() {
+      pluginEventListener.start();
+      sessionBindingCommitListener.start();
+      sessionDeletionListener.start();
+    });
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: _healthRepository),
@@ -232,7 +274,6 @@ class Orchestrator {
           sessionRepository: _sessionRepository,
           prSyncService: _prSyncService,
           sessionMutationDispatcher: _sessionMutationDispatcher,
-          sessionUnseenService: _sessionUnseenService,
         ),
         CreateSessionHandler(sessionCreationService: _sessionCreationService),
         RenameSessionHandler(sessionMutationDispatcher: _sessionMutationDispatcher),
@@ -279,6 +320,11 @@ class Orchestrator {
       config: config,
       client: _client,
       plugin: _plugin,
+      pluginEvents: normalizedPluginEvents,
+      pluginEventListener: pluginEventListener,
+      sessionBindingCommitListener: sessionBindingCommitListener,
+      sessionDeletionListener: sessionDeletionListener,
+      sessionEventDispatcher: sessionEventDispatcher,
       pushDispatcher: _pushDispatcher,
       completionListener: _completionListener,
       maintenanceListener: _maintenanceListener,
@@ -298,9 +344,8 @@ class Orchestrator {
       sessionUnseenService: _sessionUnseenService,
       sessionViewTracker: _sessionViewTracker,
       projectActivityService: _projectActivityService,
-      permissionRepository: _permissionRepository,
+      permissionAutoApprovalService: permissionAutoApprovalService,
       sessionAbortService: sessionAbortService,
-      sessionEventEnrichmentService: _sessionEventEnrichmentService,
       sessionMutationDispatcher: _sessionMutationDispatcher,
       restartService: _restartService,
       statusNotifier: _statusNotifier,
@@ -323,6 +368,11 @@ class OrchestratorSession {
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePluginApi _plugin;
+  final Stream<BridgeSseEvent> _pluginEvents;
+  final PluginEventListener _pluginEventListener;
+  final SessionBindingCommitListener _sessionBindingCommitListener;
+  final SessionDeletionListener _sessionDeletionListener;
+  final SessionEventDispatcher _sessionEventDispatcher;
   final List<int> _roomKey;
   final SSEManager _sseManager;
   final RequestRouter _router;
@@ -339,8 +389,7 @@ class OrchestratorSession {
   final SessionUnseenService _sessionUnseenService;
   final SessionViewTracker _sessionViewTracker;
   final SessionRepository _sessionRepository;
-  final PermissionRepository _permissionRepository;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final PermissionAutoApprovalService _permissionAutoApprovalService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionAbortService _sessionAbortService;
   final SessionPromptService _sessionPromptService;
@@ -349,7 +398,6 @@ class OrchestratorSession {
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
   final CompositeSubscription _subscriptions = CompositeSubscription();
-  final Set<({String requestId, String sessionId})> _autoApprovedPermissions = {};
   final Random _backoffJitter = Random();
 
   bool _cancelled = false;
@@ -376,6 +424,11 @@ class OrchestratorSession {
     required this.config,
     required RelayClient client,
     required BridgePluginApi plugin,
+    required Stream<BridgeSseEvent> pluginEvents,
+    required PluginEventListener pluginEventListener,
+    required SessionBindingCommitListener sessionBindingCommitListener,
+    required SessionDeletionListener sessionDeletionListener,
+    required SessionEventDispatcher sessionEventDispatcher,
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
@@ -395,14 +448,18 @@ class OrchestratorSession {
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
     required ProjectActivityService projectActivityService,
-    required PermissionRepository permissionRepository,
+    required PermissionAutoApprovalService permissionAutoApprovalService,
     required SessionAbortService sessionAbortService,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _plugin = plugin,
+       _pluginEvents = pluginEvents,
+       _pluginEventListener = pluginEventListener,
+       _sessionBindingCommitListener = sessionBindingCommitListener,
+       _sessionDeletionListener = sessionDeletionListener,
+       _sessionEventDispatcher = sessionEventDispatcher,
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
@@ -421,19 +478,19 @@ class OrchestratorSession {
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
        _sessionRepository = sessionRepository,
-       _permissionRepository = permissionRepository,
+       _permissionAutoApprovalService = permissionAutoApprovalService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
        _restartService = restartService,
-       _statusNotifier = statusNotifier,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       _statusNotifier = statusNotifier;
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
   /// Includes both API responses and SSE events. Subscribe to this stream to
   /// track bandwidth (e.g. with [BandwidthTracker]).
   Stream<int> get bytesSent => _bytesSentController.stream;
+  Stream<BridgeSseEvent> get pluginEvents => _pluginEvents;
   RequestRouter get router => _router;
 
   Future<void> run() async {
@@ -473,7 +530,7 @@ class OrchestratorSession {
       await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
         Log.w("ProjectActivityService: startup reconciliation failed", e, st);
       });
-      await _autoApprovePendingPermissions();
+      if (config.yolo) await _permissionAutoApprovalService.approvePending();
       final startupSummary = await _buildProjectsSummary();
       if (startupSummary != null) {
         _completionListener.handleSseEvent(startupSummary);
@@ -482,15 +539,7 @@ class OrchestratorSession {
         }
       }
       Log.d("subscribing to plugin event stream...");
-      MergeStream<BridgeSseEvent>([
-            _plugin.events,
-            _sessionMutationDispatcher.deletedSessions.map(
-              (session) => BridgeSseSessionDeleted(info: session.toJson()),
-            ),
-          ])
-          .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
-          .where((event) => event != null)
-          .cast<BridgeSseEvent>()
+      _pluginEvents
           .asyncMap<void>(_processPluginEvent)
           .listen(
             (_) {},
@@ -645,6 +694,11 @@ class OrchestratorSession {
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
       await _promptDefaultsSubscriptions.cancel();
       await _sessionPromptService.dispose();
+      await _pluginEventListener.dispose();
+      await _sessionBindingCommitListener.dispose();
+      await _sessionDeletionListener.dispose();
+      await _sessionEventDispatcher.dispose();
+      _permissionAutoApprovalService.dispose();
       await _sessionMutationDispatcher.dispose();
       await _projectActivityService.dispose();
       Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
@@ -687,6 +741,7 @@ class OrchestratorSession {
       Log.v("[shutdown] cancel() again (already shutting down)");
     }
     _cancelled = true;
+    _permissionAutoApprovalService.dispose();
     if (!_shutdownCompleter.isCompleted) {
       _shutdownCompleter.complete();
     }
@@ -753,15 +808,16 @@ class OrchestratorSession {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
 
       if (event is BridgeSsePermissionReplied) {
-        final wasAutoApproved = _autoApprovedPermissions.remove(
-          (requestId: event.requestID, sessionId: event.sessionID),
+        final wasAutoApproved = _permissionAutoApprovalService.consumeReply(
+          requestId: event.requestID,
+          sessionId: event.sessionID,
         );
         if (wasAutoApproved) return;
       }
 
       if (config.yolo && event is BridgeSsePermissionAsked) {
         if (_cancelled) return;
-        await _autoApprovePermission(
+        await _permissionAutoApprovalService.approve(
           requestId: event.requestID,
           sessionId: event.sessionID,
         );
@@ -775,11 +831,11 @@ class OrchestratorSession {
         await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
           Log.w("ProjectActivityService: server-connected reconciliation failed", e, st);
         });
-        await _autoApprovePendingPermissions();
+        if (config.yolo) await _permissionAutoApprovalService.approvePending();
       }
 
       if (config.yolo && event is BridgeSseProjectUpdated) {
-        await _autoApprovePendingPermissions();
+        await _permissionAutoApprovalService.approvePending();
       }
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
@@ -841,73 +897,6 @@ class OrchestratorSession {
     }
   }
 
-  Future<void> _autoApprovePendingPermissions() async {
-    if (!config.yolo || _cancelled) return;
-
-    List<ProjectActivitySummary> summaries;
-    try {
-      summaries = await _sessionRepository.getProjectActivitySummaries();
-    } on Object catch (error, stackTrace) {
-      Log.w("[permissions] failed to discover pending permissions for auto-approval", error, stackTrace);
-      return;
-    }
-
-    final rootSessionIds = {
-      for (final summary in summaries)
-        for (final session in summary.activeSessions)
-          if (session.awaitingInput) session.id,
-    };
-    for (final rootSessionId in rootSessionIds) {
-      if (_cancelled) return;
-
-      List<PendingPermission> permissions;
-      try {
-        permissions = await _permissionRepository.getPendingPermissions(sessionId: rootSessionId);
-      } on Object catch (error, stackTrace) {
-        Log.w(
-          "[permissions] failed to list pending permissions for session $rootSessionId",
-          error,
-          stackTrace,
-        );
-        continue;
-      }
-
-      for (final permission in permissions) {
-        if (_cancelled) return;
-
-        try {
-          await _autoApprovePermission(
-            requestId: permission.id,
-            sessionId: permission.sessionID,
-          );
-        } on Object catch (error, stackTrace) {
-          Log.w(
-            "[permissions] failed to auto-approve pending request ${permission.id}",
-            error,
-            stackTrace,
-          );
-        }
-      }
-    }
-  }
-
-  Future<void> _autoApprovePermission({required String requestId, required String sessionId}) async {
-    final key = (requestId: requestId, sessionId: sessionId);
-    if (!_autoApprovedPermissions.add(key)) return;
-
-    Log.i("[permissions] auto-approving request $requestId");
-    try {
-      await _permissionRepository.replyToPermission(
-        requestId: requestId,
-        sessionId: sessionId,
-        reply: PermissionReply.once,
-      );
-    } on Object {
-      _autoApprovedPermissions.remove(key);
-      rethrow;
-    }
-  }
-
   /// Builds the projects-summary SSE event: fetches the activity summary with
   /// the bridge's session→project attribution applied (so a derived plugin's
   /// worktree session badges land on the stored parent project) and wraps it
@@ -957,8 +946,6 @@ class OrchestratorSession {
       case SesoriSessionCreated(:final info):
         await _sessionUnseenService.recordSessionCreated(
           sessionId: info.id,
-          projectId: info.projectID,
-          sessionDirectory: info.directory,
           parentId: info.parentID,
           occurredAt: info.time?.created,
         );
@@ -972,8 +959,7 @@ class OrchestratorSession {
           occurredAt: info.time?.created,
         );
       // For child/subagent requests, `displaySessionId` is the root session the
-      // UI surfaces the request under; the child has no persisted row, so route
-      // to the displayed root so it becomes unseen for pending input.
+      // UI surfaces the request under and the owner of its unseen state.
       case SesoriQuestionAsked(:final sessionID, :final displaySessionId):
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,

@@ -14,9 +14,25 @@ void main() {
     late AppDatabase db;
     late GetSessionPermissionsHandler handler;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
+      await recordSessionBinding(
+        database: db,
+        sessionId: "root",
+        backendSessionId: "backend-root",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        parentSessionId: null,
+      );
+      await recordSessionBinding(
+        database: db,
+        sessionId: "child",
+        backendSessionId: "backend-child",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        parentSessionId: "root",
+      );
       handler = GetSessionPermissionsHandler(
         permissionRepository: PermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
       );
@@ -52,8 +68,8 @@ void main() {
       plugin.pendingPermissionsResult = [
         const PluginPendingPermission(
           id: "p-1",
-          sessionID: "child",
-          displaySessionId: "root",
+          sessionID: "backend-child",
+          displaySessionId: "backend-root",
           tool: "bash",
           description: "Run ls",
         ),
@@ -91,15 +107,17 @@ void main() {
         permissionRepository: repository,
       );
 
-      final response = await derivedHandler.handle(
-        makeRequest("POST", "/session/permissions"),
-        body: const SessionIdRequest(sessionId: "gone"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
+      await expectLater(
+        derivedHandler.handle(
+          makeRequest("POST", "/session/permissions"),
+          body: const SessionIdRequest(sessionId: "gone"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
 
-      expect(response.data, isEmpty);
       expect(derivedPlugin.pendingPermissionCalls, isZero);
       await expectLater(
         repository.replyToPermission(
@@ -136,6 +154,22 @@ void main() {
             description: "visible",
           ),
         ];
+      await recordSessionBinding(
+        database: db,
+        sessionId: "stable-root",
+        backendSessionId: "root",
+        pluginId: derivedPlugin.id,
+        projectId: "/repo",
+        parentSessionId: null,
+      );
+      await recordSessionBinding(
+        database: db,
+        sessionId: "stable-child",
+        backendSessionId: "live-child",
+        pluginId: derivedPlugin.id,
+        projectId: "/repo",
+        parentSessionId: "stable-root",
+      );
       for (final sessionId in ["gone-child", "gone-root"]) {
         await db.sessionDao.insertSessionTombstone(
           backendSessionId: sessionId,
@@ -152,13 +186,15 @@ void main() {
 
       final response = await derivedHandler.handle(
         makeRequest("POST", "/session/permissions"),
-        body: const SessionIdRequest(sessionId: "root"),
+        body: const SessionIdRequest(sessionId: "stable-root"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       expect(response.data.map((permission) => permission.id), ["visible"]);
+      expect(response.data.single.sessionID, "stable-child");
+      expect(response.data.single.displaySessionId, "stable-root");
     });
 
     test("permission replies reject a tombstoned displayed root", () async {
@@ -181,11 +217,19 @@ void main() {
         plugin: derivedPlugin,
         sessionDao: db.sessionDao,
       );
+      await recordSessionBinding(
+        database: db,
+        sessionId: "stable-child",
+        backendSessionId: "live-child",
+        pluginId: derivedPlugin.id,
+        projectId: "/repo",
+        parentSessionId: null,
+      );
 
       await expectLater(
         repository.replyToPermission(
           requestId: "permission-stale",
-          sessionId: "live-child",
+          sessionId: "stable-child",
           reply: PermissionReply.once,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
@@ -213,11 +257,19 @@ void main() {
         plugin: derivedPlugin,
         sessionDao: db.sessionDao,
       );
+      await recordSessionBinding(
+        database: db,
+        sessionId: "stable-root",
+        backendSessionId: "live-root",
+        pluginId: derivedPlugin.id,
+        projectId: "/repo",
+        parentSessionId: null,
+      );
 
       await expectLater(
         repository.replyToPermission(
           requestId: "permission-stale-child",
-          sessionId: "live-root",
+          sessionId: "stable-root",
           reply: PermissionReply.once,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),

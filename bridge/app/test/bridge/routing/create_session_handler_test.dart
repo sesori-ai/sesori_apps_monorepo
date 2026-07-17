@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/api/database/tables/session_table.dart" show SessionDto;
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
@@ -37,6 +38,24 @@ IMPORTANT: Do NOT create new worktrees, branches, or working directories for thi
 
 ---
 ''';
+}
+
+void _expectRandomSesoriId({required String sessionId, required String backendSessionId}) {
+  expect(sessionId, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+  expect(sessionId, isNot(backendSessionId));
+}
+
+Future<SessionDto> _expectStoredBinding({
+  required AppDatabase database,
+  required String sessionId,
+  required String backendSessionId,
+  required String pluginId,
+}) async {
+  final row = await database.sessionDao.getSession(sessionId: sessionId);
+  expect(row, isNotNull);
+  expect(row!.backendSessionId, backendSessionId);
+  expect(row.pluginId, pluginId);
+  return row;
 }
 
 void main() {
@@ -141,7 +160,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("s1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(worktreeService.prepareCallCount, equals(1));
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParts, isNotNull);
@@ -161,9 +180,13 @@ void main() {
       );
       expect(plugin.lastCreateSessionParts![1], equals(const PluginPromptPart.text(text: "Start")));
 
-      final dbSession = await db.sessionDao.getSession(sessionId: "s1");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.projectId, equals("/repo"));
+      final dbSession = await _expectStoredBinding(
+        database: db,
+        sessionId: result.id,
+        backendSessionId: "s1",
+        pluginId: plugin.id,
+      );
+      expect(dbSession.projectId, equals("/repo"));
       expect(dbSession.isDedicated, isTrue);
       expect(dbSession.worktreePath, equals("/repo/.worktrees/session-001"));
       expect(dbSession.branchName, equals("session-001"));
@@ -199,10 +222,14 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("defaults-1"));
-      final dbSession = await db.sessionDao.getSession(sessionId: "defaults-1");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.lastAgent, equals("architect"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "defaults-1");
+      final dbSession = await _expectStoredBinding(
+        database: db,
+        sessionId: result.id,
+        backendSessionId: "defaults-1",
+        pluginId: plugin.id,
+      );
+      expect(dbSession.lastAgent, equals("architect"));
       expect(dbSession.lastAgentModel?.providerID, equals("anthropic"));
       expect(dbSession.lastAgentModel?.modelID, equals("claude-sonnet"));
       expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
@@ -240,16 +267,20 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("simple-1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "simple-1");
       expect(worktreeService.prepareCallCount, equals(0));
       expect(worktreeService.resolveBaseBranchAndCommitCallCount, equals(1));
       expect(worktreeService.lastResolveBaseBranchProjectId, equals("/repo"));
       expect(plugin.lastCreateSessionDirectory, equals("/repo"));
       expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
 
-      final dbSession = await db.sessionDao.getSession(sessionId: "simple-1");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.projectId, equals("/repo"));
+      final dbSession = await _expectStoredBinding(
+        database: db,
+        sessionId: result.id,
+        backendSessionId: "simple-1",
+        pluginId: plugin.id,
+      );
+      expect(dbSession.projectId, equals("/repo"));
       expect(dbSession.isDedicated, isFalse);
       expect(dbSession.worktreePath, isNull);
       expect(dbSession.branchName, isNull);
@@ -292,14 +323,19 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("moved-1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "moved-1");
       // The backend gets the live directory as the session cwd...
       expect(plugin.lastCreateSessionDirectory, equals("/moved/repo"));
       // ...while the base-branch lookup and the stored session→project
       // attribution stay keyed on the stable identifier.
       expect(worktreeService.lastResolveBaseBranchProjectId, equals("/repo"));
-      final dbSession = await db.sessionDao.getSession(sessionId: "moved-1");
-      expect(dbSession!.projectId, equals("/repo"));
+      final dbSession = await _expectStoredBinding(
+        database: db,
+        sessionId: result.id,
+        backendSessionId: "moved-1",
+        pluginId: plugin.id,
+      );
+      expect(dbSession.projectId, equals("/repo"));
       // The response is re-keyed to the stable id too — the plugin can only
       // echo the directory it created the session in.
       expect(result.projectID, equals("/repo"));
@@ -338,14 +374,18 @@ void main() {
           fragment: null,
         );
 
-        expect(result.id, equals("fallback-1"));
+        _expectRandomSesoriId(sessionId: result.id, backendSessionId: "fallback-1");
         expect(worktreeService.prepareCallCount, equals(1));
         expect(plugin.lastCreateSessionDirectory, equals("/repo"));
         expect(plugin.lastCreateSessionParts, equals(const [PluginPromptPart.text(text: "Start")]));
 
-        final dbSession = await db.sessionDao.getSession(sessionId: "fallback-1");
-        expect(dbSession, isNotNull);
-        expect(dbSession!.projectId, equals("/repo"));
+        final dbSession = await _expectStoredBinding(
+          database: db,
+          sessionId: result.id,
+          backendSessionId: "fallback-1",
+          pluginId: plugin.id,
+        );
+        expect(dbSession.projectId, equals("/repo"));
         expect(dbSession.isDedicated, isTrue);
         expect(dbSession.worktreePath, isNull);
         expect(dbSession.branchName, isNull);
@@ -388,13 +428,17 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("empty-1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "empty-1");
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-empty"));
       expect(plugin.lastCreateSessionParts, isEmpty);
 
-      final dbSession = await db.sessionDao.getSession(sessionId: "empty-1");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.isDedicated, isTrue);
+      final dbSession = await _expectStoredBinding(
+        database: db,
+        sessionId: result.id,
+        backendSessionId: "empty-1",
+        pluginId: plugin.id,
+      );
+      expect(dbSession.isDedicated, isTrue);
       expect(dbSession.worktreePath, equals("/repo/.worktrees/session-empty"));
       expect(dbSession.branchName, equals("session-empty"));
       expect(dbSession.baseBranch, equals("main"));
@@ -468,7 +512,7 @@ void main() {
         id: "s1",
         projectID: "p1",
         directory: "/repo",
-        parentID: "parent-1",
+        parentID: null,
         title: "Created",
         time: PluginSessionTime(created: 11, updated: 22, archived: 33),
       );
@@ -490,14 +534,14 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("s1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(result.pluginId, equals("opencode"));
       // The created session belongs to the requested project by construction,
       // so the response is re-keyed to the request's stable projectId — the
       // plugin can only echo the directory it created the session in.
       expect(result.projectID, equals("/repo"));
       expect(result.directory, equals("/repo"));
-      expect(result.parentID, equals("parent-1"));
+      expect(result.parentID, isNull);
       expect(result.title, equals("Created"));
       expect(result.time?.created, equals(11));
       expect(result.time?.updated, equals(22));
@@ -692,7 +736,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("s1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(metadataService.lastGenerateMessage, equals("Fix the login bug"));
       expect(worktreeService.lastPreparePreferredBranchName, equals("fix-login-bug"));
       expect(plugin.lastRenameSessionTitle, equals("Fix Login Bug"));
@@ -732,7 +776,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("s1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(worktreeService.lastPreparePreferredBranchName, isNull);
       expect(plugin.lastRenameSessionId, isNull);
     });
@@ -765,7 +809,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("s1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(metadataService.lastGenerateMessage, isNull);
     });
 
@@ -797,7 +841,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("s1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(metadataService.lastGenerateMessage, isNull);
     });
 
@@ -828,7 +872,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("cmd-session-1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "cmd-session-1");
       expect(plugin.lastCreateSessionAgent, isNull);
       expect(plugin.lastCreateSessionModel, isNull);
       expect(plugin.lastCreateSessionParts, isEmpty);
@@ -925,7 +969,10 @@ void main() {
       expect(orderedPlugin.hadStoredRowWhenCommandSent, isTrue);
       expect(orderedPlugin.lastSendCommandAgent, equals("coder"));
       expect(orderedPlugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5")));
-      final dbSession = await db.sessionDao.getSession(sessionId: "ordered-session-1");
+      final dbSession = await db.sessionDao.getSessionByBinding(
+        pluginId: orderedPlugin.id,
+        backendSessionId: "ordered-session-1",
+      );
       expect(dbSession, isNotNull);
       expect(dbSession!.lastAgent, equals("coder"));
       expect(dbSession.lastAgentModel?.providerID, equals("openai"));
@@ -943,7 +990,7 @@ void main() {
         time: null,
       );
 
-      await handler.handle(
+      final result = await handler.handle(
         makeRequest("POST", "/session/create"),
         body: const CreateSessionRequest(
           projectId: "/repo",
@@ -964,9 +1011,13 @@ void main() {
       expect(plugin.lastCreateSessionModel, isNull);
       expect(plugin.lastSendCommandAgent, equals("reviewer"));
       expect(plugin.lastSendCommandModel, equals((providerID: "openai", modelID: "gpt-5")));
-      final dbSession = await db.sessionDao.getSession(sessionId: "cmd-defaults-1");
-      expect(dbSession, isNotNull);
-      expect(dbSession!.lastAgent, equals("reviewer"));
+      final dbSession = await _expectStoredBinding(
+        database: db,
+        sessionId: result.id,
+        backendSessionId: "cmd-defaults-1",
+        pluginId: plugin.id,
+      );
+      expect(dbSession.lastAgent, equals("reviewer"));
       expect(dbSession.lastAgentModel?.providerID, equals("openai"));
       expect(dbSession.lastAgentModel?.modelID, equals("gpt-5"));
       expect(dbSession.lastAgentModel?.variant, equals("xhigh"));
@@ -1109,7 +1160,7 @@ void main() {
         fragment: null,
       );
 
-      expect(result.id, equals("s1"));
+      _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       await throwingPlugin.close();
     });
   });
@@ -1231,7 +1282,10 @@ class _OrderCheckingCommandPlugin extends _OpenCodeFakeBridgePlugin {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    final session = await _database.sessionDao.getSession(sessionId: sessionId);
+    final session = await _database.sessionDao.getSessionByBinding(
+      pluginId: id,
+      backendSessionId: sessionId,
+    );
     hadStoredRowWhenCommandSent = session != null;
     await super.sendCommand(
       sessionId: sessionId,

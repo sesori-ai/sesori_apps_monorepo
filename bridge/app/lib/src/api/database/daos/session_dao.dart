@@ -12,6 +12,7 @@ part "session_dao.g.dart";
 /// applied in the repository layer, not here.
 typedef SessionUnseenRow = ({
   String sessionId,
+  String? parentSessionId,
   int? archivedAt,
   int? activityAt,
   int? seenAt,
@@ -45,12 +46,17 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   /// Sets the bridge-owned title copy for [sessionId] (null removes the copy).
   /// No-op for rowless sessions.
-  Future<void> setTitle({required String sessionId, required String? title, required int updatedAt}) async {
+  Future<void> setTitle({
+    required String sessionId,
+    required String? title,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         title: Value(title),
         updatedAt: Value(updatedAt),
-        projectionUpdatedAt: Value(updatedAt),
+        projectionUpdatedAt: Value(projectionUpdatedAt),
       ),
     );
   }
@@ -250,6 +256,62 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     );
   }
 
+  Future<bool> updateObservedSessionProjection({
+    required String sessionId,
+    required String directory,
+    required String? catalogTitle,
+    required bool updateCatalogTitle,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
+    final updated =
+        await (update(sessionTable)..where(
+              (table) =>
+                  table.sessionId.equals(sessionId) &
+                  table.projectionUpdatedAt.isSmallerOrEqualValue(projectionUpdatedAt),
+            ))
+            .write(
+              SessionTableCompanion(
+                directory: Value(directory),
+                catalogTitle: updateCatalogTitle ? Value(catalogTitle) : const Value.absent(),
+                updatedAt: Value(updatedAt),
+                projectionUpdatedAt: Value(projectionUpdatedAt),
+              ),
+            );
+    return updated > 0;
+  }
+
+  Future<void> insertObservedChild({
+    required String sessionId,
+    required String backendSessionId,
+    required String projectId,
+    required String parentSessionId,
+    required String directory,
+    required String? catalogTitle,
+    required int? archivedAt,
+    required int createdAt,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+    required String pluginId,
+  }) async {
+    await into(sessionTable).insert(
+      SessionTableCompanion(
+        sessionId: Value(sessionId),
+        backendSessionId: Value(backendSessionId),
+        projectId: Value(projectId),
+        parentSessionId: Value(parentSessionId),
+        directory: Value(directory),
+        isDedicated: const Value(false),
+        archivedAt: Value(archivedAt),
+        createdAt: Value(createdAt),
+        updatedAt: Value(updatedAt),
+        projectionUpdatedAt: Value(projectionUpdatedAt),
+        pluginId: Value(pluginId),
+        catalogTitle: Value(catalogTitle),
+      ),
+    );
+  }
+
   Future<List<SessionDto>> getRootCatalogSessions({
     required String projectId,
     required int offset,
@@ -295,22 +357,31 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         .get();
   }
 
-  Future<void> setArchived({required String sessionId, required int archivedAt, required int updatedAt}) async {
+  Future<void> setArchived({
+    required String sessionId,
+    required int archivedAt,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         archivedAt: Value(archivedAt),
         updatedAt: Value(updatedAt),
-        projectionUpdatedAt: Value(updatedAt),
+        projectionUpdatedAt: Value(projectionUpdatedAt),
       ),
     );
   }
 
-  Future<void> clearArchived({required String sessionId, required int updatedAt}) async {
+  Future<void> clearArchived({
+    required String sessionId,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         archivedAt: const Value(null),
         updatedAt: Value(updatedAt),
-        projectionUpdatedAt: Value(updatedAt),
+        projectionUpdatedAt: Value(projectionUpdatedAt),
       ),
     );
   }
@@ -422,6 +493,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   static SessionUnseenRow _toUnseenRow(SessionDto r) => (
     sessionId: r.sessionId,
+    parentSessionId: r.parentSessionId,
     archivedAt: r.archivedAt,
     activityAt: r.lastActivityAt,
     seenAt: r.lastSeenAt,

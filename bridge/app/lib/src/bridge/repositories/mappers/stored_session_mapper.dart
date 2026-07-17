@@ -8,6 +8,7 @@ extension StoredSessionMapper on SessionDto {
       backendSessionId: backendSessionId,
       pluginId: pluginId,
       projectId: projectId,
+      parentSessionId: parentSessionId,
       directory: directory,
       worktreePath: worktreePath,
       branchName: branchName,

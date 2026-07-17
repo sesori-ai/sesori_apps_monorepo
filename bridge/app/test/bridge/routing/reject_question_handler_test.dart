@@ -11,13 +11,24 @@ void main() {
     late FakeBridgePlugin plugin;
     late RejectQuestionHandler handler;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       final db = createTestDatabase();
       addTearDown(db.close);
+      await recordSessionBinding(
+        database: db,
+        sessionId: "ses-1",
+        backendSessionId: "backend-ses-1",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        parentSessionId: null,
+      );
       handler = RejectQuestionHandler(
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao),
+        questionRepository: QuestionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+        ),
       );
     });
 
@@ -37,7 +48,7 @@ void main() {
       );
 
       expect(plugin.lastRejectQuestionId, equals("q1"));
-      expect(plugin.lastRejectSessionId, equals("ses-1"));
+      expect(plugin.lastRejectSessionId, equals("backend-ses-1"));
     });
 
     test("allows null sessionId for backwards compatibility", () async {

@@ -15,9 +15,17 @@ void main() {
     late PermissionRepository permissionRepository;
     late ReplyToPermissionHandler handler;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
+      await recordSessionBinding(
+        database: db,
+        sessionId: "ses-456",
+        backendSessionId: "backend-ses-456",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        parentSessionId: null,
+      );
       permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
       handler = ReplyToPermissionHandler(permissionRepository: permissionRepository);
     });
@@ -49,7 +57,7 @@ void main() {
       );
 
       expect(plugin.lastReplyToPermissionRequestId, equals("perm-123"));
-      expect(plugin.lastReplyToPermissionSessionId, equals("ses-456"));
+      expect(plugin.lastReplyToPermissionSessionId, equals("backend-ses-456"));
       expect(plugin.lastReplyToPermissionReply, equals(PluginPermissionReply.once));
     });
 

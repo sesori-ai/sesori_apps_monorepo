@@ -774,9 +774,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String get id => throw UnimplementedError();
 
   @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
-
-  @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();
 
   @override

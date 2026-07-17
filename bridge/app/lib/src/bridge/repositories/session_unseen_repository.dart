@@ -18,11 +18,9 @@ typedef UnseenRow = ({
 /// timestamps (`last_activity_at`, `last_seen_at`, `last_user_message_at`),
 /// including removing rows for sessions that no longer exist.
 ///
-/// Writes are intentionally UPDATE-only for the activity/seen mutators: a child
-/// (subagent) session is never persisted in `sessions_table` (the plugin lists
-/// roots only), so an update for such a session affects zero rows — exactly the
-/// "ignore children" behaviour we want. New ROOT sessions get a row via
-/// [ensureRootSessionActivity].
+/// Writes are intentionally UPDATE-only for the activity/seen mutators. New
+/// root sessions get a row via [ensureRootSessionActivity]; project-level
+/// aggregation decides that durable child rows do not contribute independently.
 class SessionUnseenRepository {
   final SessionDao _sessionDao;
   final ProjectsDao _projectsDao;
@@ -46,8 +44,7 @@ class SessionUnseenRepository {
        _plugin = plugin;
 
   /// Returns the unseen timestamps + project id for [sessionId], or null when
-  /// the session has no persisted row (e.g. a child session, or one not yet
-  /// learned via a list fetch).
+  /// the session has no persisted row.
   Future<UnseenRow?> getUnseenRow({required String sessionId}) async {
     final dto = await _sessionDao.getSession(sessionId: sessionId);
     if (dto == null) return null;
