@@ -785,6 +785,7 @@ class BridgeRuntimeRunner {
             if (pluginLifecycleService.compositionView.operationalPlugins.containsKey(pluginId)) pluginId,
         ],
         headlessPluginIds: options.importPluginIds,
+        operationalPluginIds: pluginLifecycleService.compositionView.operationalPlugins.keys.toSet(),
       );
 
       debugServer = await startDebugServerIfRequested(
@@ -883,11 +884,13 @@ class BridgeRuntimeRunner {
     required CatalogImportService service,
     required List<String> pluginIds,
     required List<String> headlessPluginIds,
+    required Set<String> operationalPluginIds,
   }) {
     for (final pluginId in pluginIds) {
       service.start(pluginId: pluginId, trigger: CatalogImportTrigger.automatic);
     }
     for (final headlessPluginId in headlessPluginIds) {
+      if (!operationalPluginIds.contains(headlessPluginId)) continue;
       service.start(pluginId: headlessPluginId, trigger: CatalogImportTrigger.headless);
     }
   }
