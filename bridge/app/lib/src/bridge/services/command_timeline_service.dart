@@ -378,7 +378,7 @@ class CommandTimelineService {
       partId: _commandMapper.resultPartId(
         messageId: snapshot.canonicalMessageId,
         backendPartId: candidate.backendPartId,
-        isText: candidate.field == "text" || snapshot.backendPartTypes[candidate.backendPartId] == MessagePartType.text,
+        isText: _isTextResultPart(candidate: candidate, snapshot: snapshot),
       ),
       field: candidate.field,
       delta: candidate.delta,
@@ -389,8 +389,7 @@ class CommandTimelineService {
     required CommandResultPartDeltaTimelineCandidate candidate,
     required CommandInvocationSnapshot snapshot,
   }) {
-    final isText =
-        candidate.field == "text" || snapshot.backendPartTypes[candidate.backendPartId] == MessagePartType.text;
+    final isText = _isTextResultPart(candidate: candidate, snapshot: snapshot);
     if (!isText) return _deltaMutation(candidate: candidate, snapshot: snapshot);
 
     final parts = _textResultParts(snapshot);
@@ -399,6 +398,14 @@ class CommandTimelineService {
       text: "${existing?.text ?? ""}${candidate.delta}",
     );
     return CommandTimelinePartUpdated(part: _displayPart(snapshot));
+  }
+
+  bool _isTextResultPart({
+    required CommandResultPartDeltaTimelineCandidate candidate,
+    required CommandInvocationSnapshot snapshot,
+  }) {
+    final partType = snapshot.backendPartTypes[candidate.backendPartId];
+    return partType == MessagePartType.text || (partType == null && candidate.field == "text");
   }
 
   CommandTimelineMutation _liveRemovalMutation({

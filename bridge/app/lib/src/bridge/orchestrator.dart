@@ -1028,6 +1028,7 @@ class OrchestratorSession {
       case SesoriSessionDeleted(:final info):
         await _sessionUnseenService.recordSessionDeleted(sessionId: info.id, projectId: info.projectID);
       case SesoriMessageUpdated(:final info):
+        if (info is MessageUser && info.command?.origin == CommandOrigin.automatic) return;
         await _sessionUnseenService.recordActivity(
           sessionId: info.sessionID,
           isUserMessage: info is MessageUser,

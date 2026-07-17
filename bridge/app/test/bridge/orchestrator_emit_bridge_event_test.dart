@@ -432,6 +432,29 @@ void main() {
       isTrue,
       reason: "YOLO permission replies must not clear unseen activity",
     );
+
+    final automaticCommandDelivered = _waitForEventType(
+      messages: messages,
+      roomKey: roomKey,
+      expectedType: "message.updated",
+    );
+    const automaticCommand = PluginMessage.command(
+      id: "automatic-command",
+      sessionID: "root-session",
+      name: "compact",
+      arguments: null,
+      origin: PluginCommandOrigin.automatic,
+      invocationId: null,
+      time: PluginMessageTime(created: 2000, completed: null),
+    );
+    plugin.add(BridgeSseMessageUpdated(info: automaticCommand.toJson()));
+
+    expect(await automaticCommandDelivered, isTrue);
+    expect(
+      await unseenRepository.isUnseen(sessionId: "root-session"),
+      isTrue,
+      reason: "automatic command cards must not clear unseen activity",
+    );
     await sentBytesSubscription.cancel();
 
     await projectActivityService.openProject(path: "project-activity");

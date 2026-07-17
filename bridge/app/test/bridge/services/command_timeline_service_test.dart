@@ -471,6 +471,37 @@ void main() {
     expect(_updatedDisplayText(removed), "two");
   });
 
+  test("known reasoning part text deltas stay outside display text", () async {
+    await timeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(invocationId: null),
+    );
+    await timeline.canonicalizePluginCandidate(
+      candidate: CommandResultPartTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+        backendPartId: "reasoning",
+        part: _reasoningPart(messageId: "backend-command"),
+      ),
+    );
+
+    final result = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandResultPartDeltaTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+        backendPartId: "reasoning",
+        field: "text",
+        delta: "thinking",
+      ),
+    );
+
+    final delta = result.mutations.single as CommandTimelinePartDelta;
+    expect(delta.partId, endsWith(":result:reasoning"));
+    expect(delta.field, "text");
+    expect(delta.delta, "thinking");
+  });
+
   test("removal clears text streamed only through deltas", () async {
     await timeline.canonicalizePluginCandidate(
       candidate: _commandCandidate(invocationId: null),
@@ -732,6 +763,24 @@ MessagePart _textPart({
     messageID: messageId,
     type: MessagePartType.text,
     text: text,
+    tool: null,
+    state: null,
+    prompt: null,
+    description: null,
+    agent: null,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+  );
+}
+
+MessagePart _reasoningPart({required String messageId}) {
+  return MessagePart(
+    id: "reasoning",
+    sessionID: "session",
+    messageID: messageId,
+    type: MessagePartType.reasoning,
+    text: "",
     tool: null,
     state: null,
     prompt: null,
