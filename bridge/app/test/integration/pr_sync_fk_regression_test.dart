@@ -305,7 +305,10 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() => throw UnimplementedError();
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) => throw UnimplementedError();
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) => throw UnimplementedError();
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async => <PluginCommand>[];
@@ -320,14 +323,15 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }) => throw UnimplementedError();
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async {}
+  }) async => const PluginCommandDispatch(backendMessageId: null);
 
   @override
   Future<void> abortSession({required String sessionId}) => throw UnimplementedError();

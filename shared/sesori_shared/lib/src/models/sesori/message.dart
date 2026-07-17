@@ -4,6 +4,25 @@ part "message.freezed.dart";
 
 part "message.g.dart";
 
+@JsonEnum()
+enum CommandOrigin {
+  manual,
+  automatic,
+  unknown,
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class CommandMessageInfo with _$CommandMessageInfo {
+  const factory CommandMessageInfo({
+    required String name,
+    required String? arguments,
+    @JsonKey(unknownEnumValue: CommandOrigin.unknown) required CommandOrigin origin,
+    required String displayPartID,
+  }) = _CommandMessageInfo;
+
+  factory CommandMessageInfo.fromJson(Map<String, dynamic> json) => _$CommandMessageInfoFromJson(json);
+}
+
 /// Sealed class representing a message in a session.
 ///
 /// Three variants:
@@ -25,11 +44,14 @@ part "message.g.dart";
 sealed class Message with _$Message {
   const Message._();
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, compatibility default preserves older constructors
   const factory Message.user({
     required String id,
     required String sessionID,
     required String? agent,
     required MessageTime? time,
+    // COMPATIBILITY 2026-07-16 (v1.5.0): Older peers omit command because command messages were added after v1.5.0. Remove default and require command metadata once pre-v1.5.0 peers are unsupported.
+    @Default(null) CommandMessageInfo? command,
   }) = MessageUser;
 
   const factory Message.assistant({

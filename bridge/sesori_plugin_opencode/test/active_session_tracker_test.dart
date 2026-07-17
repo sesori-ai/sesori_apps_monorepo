@@ -2665,7 +2665,7 @@ class _FakeApi implements OpenCodeApi {
     required String sessionId,
     required SendCommandBody body,
     required String? directory,
-  }) async {}
+  }) async => throw UnimplementedError();
 
   @override
   Future<void> abortSession({required String sessionId, required String? directory}) async {}

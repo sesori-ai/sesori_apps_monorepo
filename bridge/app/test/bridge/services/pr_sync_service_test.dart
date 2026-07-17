@@ -505,14 +505,14 @@ class _FakeSessionRepository implements SessionRepository {
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
-
-  @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const [];
 
   final Map<String, List<StoredSession>> sessionsByProject;
 
   _FakeSessionRepository({required this.sessionsByProject});
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
   Future<Session> createSession({
@@ -621,16 +621,6 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required SessionVariant? variant,
-    required String? agent,
-    required PromptModel? model,
-  }) async {}
 
   @override
   Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async =>

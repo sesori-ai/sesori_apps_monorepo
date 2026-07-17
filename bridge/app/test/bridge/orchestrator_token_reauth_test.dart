@@ -30,6 +30,7 @@ import "package:sesori_bridge/src/bridge/services/project_initialization_service
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -342,6 +343,11 @@ class _ReauthHarness {
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final sessionViewTracker = SessionViewTracker();
     final sessionUnseenService = SessionUnseenService(
       unseenRepository: SessionUnseenRepository(
@@ -375,8 +381,26 @@ class _ReauthHarness {
     // bridge-id provider, mirroring production — so the auth message reflects the
     // id the revoked path re-registers.
     final registrationService = createFakeBridgeRegistrationService(repository: registrationRepository);
+    final enrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionTitleService,
+      failureReporter: FakeFailureReporter(),
+    );
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: enrichmentService,
+    );
 
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -404,6 +428,7 @@ class _ReauthHarness {
           ),
         ),
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
@@ -468,11 +493,6 @@ class _ReauthHarness {
           ),
           plugin: plugin,
         ),
-      ),
-      sessionEventEnrichmentService: SessionEventEnrichmentService(
-        sessionRepository: sessionRepository,
-        sessionMutationDispatcher: sessionTitleService,
-        failureReporter: FakeFailureReporter(),
       ),
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),

@@ -6,10 +6,12 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "daos/catalog_hydrations_dao.dart";
+import "daos/command_invocation_dao.dart";
 import "daos/projects_dao.dart";
 import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
+import "tables/accepted_command_invocations_table.dart";
 import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/projects_table.dart";
@@ -22,14 +24,21 @@ part "database.g.dart";
 ///
 /// New tables and DAOs should be registered here as the persistence layer grows.
 @DriftDatabase(
-  tables: [ProjectsTable, SessionTable, DeletedSessionsTable, PullRequestsTable, CatalogHydrationsTable],
-  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
+  tables: [
+    ProjectsTable,
+    SessionTable,
+    DeletedSessionsTable,
+    PullRequestsTable,
+    CatalogHydrationsTable,
+    AcceptedCommandInvocationsTable,
+  ],
+  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao, CommandInvocationDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -245,6 +254,10 @@ class AppDatabase extends _$AppDatabase {
         if (violations.isNotEmpty) {
           throw StateError("Migration v10->v11 left foreign key violations: ${violations.map((row) => row.data)}");
         }
+      },
+      from11To12: (m, schema) async {
+        await m.createTable(schema.acceptedCommandInvocationsTable);
+        await m.createIndex(schema.idxAcceptedCommandsPluginSession);
       },
     ),
     beforeOpen: (details) async {

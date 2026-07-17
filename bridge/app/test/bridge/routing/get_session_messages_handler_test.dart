@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/routing/get_session_messages_handler.dart";
+import "package:sesori_bridge/src/bridge/services/command_timeline_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -9,17 +10,15 @@ import "routing_test_helpers.dart";
 
 void main() {
   group("GetSessionMessagesHandler", () {
-    late FakeBridgePlugin plugin;
+    late _FakeCommandTimelineService timelineService;
     late GetSessionMessagesHandler handler;
 
     setUp(() {
-      plugin = FakeBridgePlugin();
+      timelineService = _FakeCommandTimelineService();
       handler = GetSessionMessagesHandler(
-        sessionRepository: FakeSessionRepository(plugin: plugin),
+        commandTimelineService: timelineService,
       );
     });
-
-    tearDown(() => plugin.close());
 
     test("canHandle POST /session/messages", () {
       expect(handler.canHandle(makeRequest("POST", "/session/messages")), isTrue);
@@ -54,7 +53,7 @@ void main() {
         queryParams: {},
         fragment: null,
       );
-      expect(plugin.lastGetMessagesSessionId, equals("session-xyz"));
+      expect(timelineService.lastSessionId, equals("session-xyz"));
     });
 
     test("returns typed response", () async {
@@ -80,9 +79,9 @@ void main() {
     });
 
     test("returns serialised message list", () async {
-      plugin.messagesResult = [
-        const PluginMessageWithParts(
-          info: PluginMessage.user(
+      timelineService.messages = [
+        const MessageWithParts(
+          info: Message.user(
             id: "m1",
             sessionID: "s1",
             agent: null,
@@ -90,8 +89,8 @@ void main() {
           ),
           parts: [],
         ),
-        const PluginMessageWithParts(
-          info: PluginMessage.assistant(
+        const MessageWithParts(
+          info: Message.assistant(
             id: "m2",
             sessionID: "s1",
             agent: null,
@@ -115,7 +114,7 @@ void main() {
     });
 
     test("handleInternal returns 502 for upstream incompatibility", () async {
-      plugin.throwOnGetMessagesError = PluginApiException("GET /session/s1/message", 502);
+      timelineService.error = PluginApiException("GET /session/s1/message", 502);
 
       final response = await handler.handleInternal(
         makeRequest(
@@ -132,4 +131,21 @@ void main() {
       expect(response.body, contains("PluginApiException"));
     });
   });
+}
+
+class _FakeCommandTimelineService implements CommandTimelineService {
+  String? lastSessionId;
+  Object? error;
+  List<MessageWithParts> messages = const [];
+
+  @override
+  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+    lastSessionId = sessionId;
+    final failure = error;
+    if (failure != null) throw failure;
+    return messages;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

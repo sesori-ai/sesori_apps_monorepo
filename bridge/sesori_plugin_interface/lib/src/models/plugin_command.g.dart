@@ -39,3 +39,32 @@ const _$PluginCommandSourceEnumMap = {
   PluginCommandSource.skill: 'skill',
   PluginCommandSource.unknown: 'unknown',
 };
+
+_PluginCommandInvocationContext _$PluginCommandInvocationContextFromJson(
+  Map json,
+) => _PluginCommandInvocationContext(
+  invocationId: json['invocationId'] as String,
+  name: json['name'] as String,
+  arguments: json['arguments'] as String?,
+  acceptedAt: (json['acceptedAt'] as num).toInt(),
+  backendMessageId: json['backendMessageId'] as String?,
+);
+
+Map<String, dynamic> _$PluginCommandInvocationContextToJson(
+  _PluginCommandInvocationContext instance,
+) => <String, dynamic>{
+  'invocationId': instance.invocationId,
+  'name': instance.name,
+  'arguments': ?instance.arguments,
+  'acceptedAt': instance.acceptedAt,
+  'backendMessageId': ?instance.backendMessageId,
+};
+
+_PluginCommandDispatch _$PluginCommandDispatchFromJson(Map json) =>
+    _PluginCommandDispatch(
+      backendMessageId: json['backendMessageId'] as String?,
+    );
+
+Map<String, dynamic> _$PluginCommandDispatchToJson(
+  _PluginCommandDispatch instance,
+) => <String, dynamic>{'backendMessageId': ?instance.backendMessageId};

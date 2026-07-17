@@ -28,6 +28,7 @@ import "package:sesori_bridge/src/bridge/services/project_initialization_service
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -288,6 +289,11 @@ class _RegistrationHarness {
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final pushSubsystem = _createPushSubsystem();
     final projectRepository = ProjectRepository(
@@ -298,8 +304,26 @@ class _RegistrationHarness {
       unseenCalculator: const SessionUnseenCalculator(),
       filesystemApi: FakeFilesystemApi(),
     );
+    final enrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionMutationDispatcher,
+      failureReporter: FakeFailureReporter(),
+    );
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: enrichmentService,
+    );
 
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -335,6 +359,7 @@ class _RegistrationHarness {
           ),
         ),
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionMutationDispatcher,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
@@ -417,11 +442,6 @@ class _RegistrationHarness {
           ),
           plugin: plugin,
         ),
-      ),
-      sessionEventEnrichmentService: SessionEventEnrichmentService(
-        sessionRepository: sessionRepository,
-        sessionMutationDispatcher: sessionMutationDispatcher,
-        failureReporter: FakeFailureReporter(),
       ),
       sessionMutationDispatcher: sessionMutationDispatcher,
       restartService: buildTestRestartService(),

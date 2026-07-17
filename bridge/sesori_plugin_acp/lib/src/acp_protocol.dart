@@ -27,6 +27,24 @@ abstract final class AcpMethods {
   static const String sessionSetConfigOption = "session/set_config_option";
 }
 
+/// A JSON-RPC error returned by an ACP agent.
+class AcpRpcException implements Exception {
+  AcpRpcException({
+    required this.method,
+    required this.code,
+    required this.message,
+    this.data,
+  });
+
+  final String method;
+  final int code;
+  final String message;
+  final Object? data;
+
+  @override
+  String toString() => "AcpRpcException($method, code=$code, $message)";
+}
+
 /// An auth method advertised by the agent in the `initialize` result.
 class AcpAuthMethod {
   const AcpAuthMethod({required this.id, this.name, this.description});
@@ -48,7 +66,6 @@ class AcpAgentCapabilities {
     required this.loadSession,
     required this.listSessions,
     required this.resumeSession,
-    required this.raw,
   });
 
   /// Whether `session/load` (history replay) is supported.
@@ -62,9 +79,6 @@ class AcpAgentCapabilities {
   /// strictly richer.
   final bool resumeSession;
 
-  /// Full raw capabilities object for harness-specific probing.
-  final Map<String, dynamic> raw;
-
   factory AcpAgentCapabilities.fromJson(Map<String, dynamic> json) {
     final rawSession = json["sessionCapabilities"];
     final session = rawSession is Map ? rawSession.cast<String, dynamic>() : null;
@@ -77,7 +91,6 @@ class AcpAgentCapabilities {
       loadSession: json["loadSession"] == true,
       listSessions: list != null && list != false,
       resumeSession: resume != null && resume != false,
-      raw: json,
     );
   }
 }
@@ -88,13 +101,11 @@ class AcpInitializeResult {
     required this.protocolVersion,
     required this.agentCapabilities,
     required this.authMethods,
-    required this.raw,
   });
 
   final int protocolVersion;
   final AcpAgentCapabilities agentCapabilities;
   final List<AcpAuthMethod> authMethods;
-  final Map<String, dynamic> raw;
 
   /// True when the agent requires authentication before sessions can start.
   bool get requiresAuth => authMethods.isNotEmpty;
@@ -111,9 +122,25 @@ class AcpInitializeResult {
           .whereType<Map<dynamic, dynamic>>()
           .map((m) => AcpAuthMethod.fromJson(m.cast<String, dynamic>()))
           .toList(growable: false),
-      raw: json,
     );
   }
+}
+
+/// Typed values needed to initialize one ACP connection.
+class AcpInitializeRequest {
+  const AcpInitializeRequest({
+    required this.clientName,
+    required this.clientVersion,
+    required this.clientTitle,
+    required this.capabilityMeta,
+  });
+
+  final String clientName;
+  final String clientVersion;
+  final String? clientTitle;
+
+  /// Harness-specific capability extension values sent under `_meta`.
+  final Map<String, dynamic>? capabilityMeta;
 }
 
 /// Converts an ACP `updatedAt` value to epoch milliseconds: the spec sends an
@@ -138,11 +165,13 @@ class AcpTimestampMsConverter implements JsonConverter<int?, Object?> {
 sealed class AcpSessionInfo with _$AcpSessionInfo {
   const factory AcpSessionInfo({
     @Default("") String sessionId,
+
     /// The session's working directory. Required by the spec, but kept
     /// nullable — a missing value falls back to the directory the caller
     /// scanned.
     required String? cwd,
     required String? title,
+
     /// Last-activity time in epoch milliseconds (see [AcpTimestampMsConverter]).
     @AcpTimestampMsConverter() @JsonKey(name: "updatedAt") required int? updatedAtMs,
   }) = _AcpSessionInfo;
@@ -175,6 +204,7 @@ List<AcpSessionInfo> _sessionInfosFromJson(Object? raw) {
 sealed class AcpSessionListResult with _$AcpSessionListResult {
   const factory AcpSessionListResult({
     @JsonKey(fromJson: _sessionInfosFromJson) @Default(<AcpSessionInfo>[]) List<AcpSessionInfo> sessions,
+
     /// Opaque continuation token — a non-empty value means more pages exist.
     required String? nextCursor,
   }) = _AcpSessionListResult;
@@ -182,33 +212,122 @@ sealed class AcpSessionListResult with _$AcpSessionListResult {
   factory AcpSessionListResult.fromJson(Map<String, dynamic> json) => _$AcpSessionListResultFromJson(json);
 }
 
-/// Result of `session/new`.
+/// One selectable value in an ACP session config option. Group entries use
+/// [options], while leaf entries use [value].
+class AcpConfigOptionValue {
+  AcpConfigOptionValue({
+    required this.value,
+    required this.name,
+    required this.description,
+    required List<AcpConfigOptionValue> options,
+  }) : options = List.unmodifiable(options);
+
+  final String? value;
+  final String? name;
+  final String? description;
+  final List<AcpConfigOptionValue> options;
+
+  factory AcpConfigOptionValue.fromJson(Map<String, dynamic> json) {
+    final rawOptions = json["options"];
+    return AcpConfigOptionValue(
+      value: json["value"] is String ? json["value"] as String : null,
+      name: json["name"] is String ? json["name"] as String : null,
+      description: json["description"] is String ? json["description"] as String : null,
+      options: rawOptions is List
+          ? rawOptions
+                .whereType<Map<dynamic, dynamic>>()
+                .map((option) => AcpConfigOptionValue.fromJson(option.cast<String, dynamic>()))
+                .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+/// A typed ACP session config option, including Cursor's model/mode/thought
+/// extensions.
+class AcpConfigOption {
+  AcpConfigOption({
+    required this.id,
+    required this.category,
+    required this.currentValue,
+    required this.value,
+    required List<AcpConfigOptionValue> options,
+  }) : options = List.unmodifiable(options);
+
+  final String? id;
+  final String? category;
+  final String? currentValue;
+  final String? value;
+  final List<AcpConfigOptionValue> options;
+
+  factory AcpConfigOption.fromJson(Map<String, dynamic> json) {
+    final rawOptions = json["options"];
+    return AcpConfigOption(
+      id: json["id"] is String ? json["id"] as String : null,
+      category: json["category"] is String ? json["category"] as String : null,
+      currentValue: json["currentValue"] is String ? json["currentValue"] as String : null,
+      value: json["value"] is String ? json["value"] as String : null,
+      options: rawOptions is List
+          ? rawOptions
+                .whereType<Map<dynamic, dynamic>>()
+                .map((option) => AcpConfigOptionValue.fromJson(option.cast<String, dynamic>()))
+                .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+/// Result of `session/new`, `session/load`, `session/resume`, and
+/// `session/set_config_option`.
 class AcpNewSessionResult {
   const AcpNewSessionResult({
     required this.sessionId,
-    required this.modes,
     required this.configOptions,
-    required this.raw,
   });
 
   final String sessionId;
 
-  /// Optional session modes (plan/ask/agent) — raw, harness-specific.
-  final List<Map<String, dynamic>> modes;
-
-  /// Optional config options (e.g. Cursor's model selector) — raw.
-  final List<Map<String, dynamic>> configOptions;
-
-  final Map<String, dynamic> raw;
+  /// Optional config options (e.g. Cursor's model selector).
+  final List<AcpConfigOption> configOptions;
 
   factory AcpNewSessionResult.fromJson(Map<String, dynamic> json) {
     return AcpNewSessionResult(
       sessionId: (json["sessionId"] ?? "") as String,
-      modes: _mapList(json["modes"]),
-      configOptions: _mapList(json["configOptions"]),
-      raw: json,
+      configOptions: _configOptionsFromJson(json["configOptions"]),
     );
   }
+}
+
+/// A typed ACP prompt content block. Serialization stays inside [AcpApi].
+sealed class AcpContentBlock {
+  const AcpContentBlock();
+}
+
+class AcpTextContentBlock extends AcpContentBlock {
+  const AcpTextContentBlock({required this.text});
+
+  final String text;
+}
+
+class AcpResourceLinkContentBlock extends AcpContentBlock {
+  const AcpResourceLinkContentBlock({required this.uri, required this.name});
+
+  final String uri;
+  final String name;
+}
+
+enum AcpInlineContentType { image, audio }
+
+class AcpInlineContentBlock extends AcpContentBlock {
+  const AcpInlineContentBlock({
+    required this.type,
+    required this.mimeType,
+    required this.data,
+  });
+
+  final AcpInlineContentType type;
+  final String mimeType;
+  final String data;
 }
 
 /// Why a `session/prompt` turn ended.
@@ -242,44 +361,10 @@ class AcpPromptResult {
       AcpPromptResult(stopReason: AcpStopReason.parse(json["stopReason"]));
 }
 
-/// Builds the `clientCapabilities` object sent at `initialize`.
-///
-/// [meta] carries non-standard capability hints under `_meta` (e.g. Cursor's
-/// `parameterizedModelPicker`).
-Map<String, dynamic> buildClientCapabilities({Map<String, dynamic>? meta}) {
-  return <String, dynamic>{
-    "fs": {"readTextFile": false, "writeTextFile": false},
-    "terminal": false,
-    "_meta": ?meta,
-  };
-}
-
-/// Builds `initialize` params.
-Map<String, dynamic> buildInitializeParams({
-  required String clientName,
-  required String clientVersion,
-  String? clientTitle,
-  Map<String, dynamic>? capabilityMeta,
-}) {
-  return <String, dynamic>{
-    "protocolVersion": acpProtocolVersion,
-    "clientCapabilities": buildClientCapabilities(meta: capabilityMeta),
-    "clientInfo": {
-      "name": clientName,
-      "title": clientTitle,
-      "version": clientVersion,
-    },
-  };
-}
-
-/// Builds a single text [ContentBlock] for a prompt.
-Map<String, dynamic> textContentBlock(String text) =>
-    <String, dynamic>{"type": "text", "text": text};
-
-List<Map<String, dynamic>> _mapList(Object? raw) {
+List<AcpConfigOption> _configOptionsFromJson(Object? raw) {
   if (raw is! List) return const [];
   return raw
       .whereType<Map<dynamic, dynamic>>()
-      .map((m) => m.cast<String, dynamic>())
+      .map((option) => AcpConfigOption.fromJson(option.cast<String, dynamic>()))
       .toList(growable: false);
 }

@@ -10,6 +10,13 @@ enum PluginCommandSource {
   unknown,
 }
 
+@JsonEnum()
+enum PluginCommandOrigin {
+  manual,
+  automatic,
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginCommand with _$PluginCommand {
   const factory PluginCommand({
@@ -25,4 +32,27 @@ sealed class PluginCommand with _$PluginCommand {
   }) = _PluginCommand;
 
   factory PluginCommand.fromJson(Map<String, dynamic> json) => _$PluginCommandFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class PluginCommandInvocationContext with _$PluginCommandInvocationContext {
+  const factory PluginCommandInvocationContext({
+    required String invocationId,
+    required String name,
+    required String? arguments,
+    required int acceptedAt,
+    required String? backendMessageId,
+  }) = _PluginCommandInvocationContext;
+
+  factory PluginCommandInvocationContext.fromJson(Map<String, dynamic> json) =>
+      _$PluginCommandInvocationContextFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class PluginCommandDispatch with _$PluginCommandDispatch {
+  const factory PluginCommandDispatch({
+    required String? backendMessageId,
+  }) = _PluginCommandDispatch;
+
+  factory PluginCommandDispatch.fromJson(Map<String, dynamic> json) => _$PluginCommandDispatchFromJson(json);
 }

@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:io";
+import "dart:math";
 
 import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
@@ -12,6 +13,8 @@ import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_registration_service.dart";
 import "../../auth/token_refresher.dart";
 import "../../control/control_status_notifier.dart";
+import "../../listeners/command_dispatch_outcome_listener.dart";
+import "../../listeners/plugin_command_timeline_listener.dart";
 import "../../push/completion_notifier.dart";
 import "../../push/completion_push_listener.dart";
 import "../../push/maintenance_push_listener.dart";
@@ -30,11 +33,14 @@ import "../bandwidth_tracker.dart";
 import "../debug_server.dart";
 import "../foundation/filesystem_permission_validator.dart";
 import "../foundation/process_runner.dart";
+import "../foundation/uuid_v4_builder.dart";
 import "../metadata_service.dart";
 import "../models/bridge_config.dart";
 import "../orchestrator.dart";
 import "../relay_client.dart";
 import "../repositories/agent_repository.dart";
+import "../repositories/command_invocation_repository.dart";
+import "../repositories/command_invocation_tracker.dart";
 import "../repositories/filesystem_repository.dart";
 import "../repositories/health_repository.dart";
 import "../repositories/permission_repository.dart";
@@ -47,12 +53,15 @@ import "../repositories/session_repository.dart";
 import "../repositories/session_unseen_calculator.dart";
 import "../repositories/session_unseen_repository.dart";
 import "../repositories/worktree_repository.dart";
+import "../services/command_dispatcher.dart";
+import "../services/command_timeline_service.dart";
 import "../services/pr_sync_service.dart";
 import "../services/project_activity_service.dart";
 import "../services/project_initialization_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_event_enrichment_service.dart";
 import "../services/session_mutation_dispatcher.dart";
+import "../services/session_prompt_service.dart";
 import "../services/session_unseen_service.dart";
 import "../services/session_view_tracker.dart";
 import "../services/worktree_service.dart";
@@ -60,9 +69,7 @@ import "bridge_shutdown_coordinator.dart";
 
 class BridgeRuntime {
   final AppDatabase _database;
-  final BridgePluginApi _plugin;
   final FailureReporter _failureReporter;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final BridgeRestartService _restartService;
   // Owned here (composition root) because they are global/singleton and must
   // outlive any single OrchestratorSession (e.g. across a restart/reconnect).
@@ -71,26 +78,31 @@ class BridgeRuntime {
   // Shared with the DebugServer so it mirrors the orchestrator's
   // projects-summary pipeline on the same instance.
   final SessionRepository _sessionRepository;
+  final CommandDispatcher _commandDispatcher;
+  final PluginCommandTimelineListener _pluginCommandTimelineListener;
+  final CommandDispatchOutcomeListener _commandDispatchOutcomeListener;
   final OrchestratorSession session;
 
   BridgeRuntime({
     required AppDatabase database,
-    required BridgePluginApi plugin,
     required FailureReporter failureReporter,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required BridgeRestartService restartService,
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
     required SessionRepository sessionRepository,
+    required CommandDispatcher commandDispatcher,
+    required PluginCommandTimelineListener pluginCommandTimelineListener,
+    required CommandDispatchOutcomeListener commandDispatchOutcomeListener,
     required this.session,
   }) : _database = database,
-       _plugin = plugin,
        _failureReporter = failureReporter,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService,
        _restartService = restartService,
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
-       _sessionRepository = sessionRepository;
+       _sessionRepository = sessionRepository,
+       _commandDispatcher = commandDispatcher,
+       _pluginCommandTimelineListener = pluginCommandTimelineListener,
+       _commandDispatchOutcomeListener = commandDispatchOutcomeListener;
 
   static BridgeRuntime create({
     required BridgeConfig config,
@@ -115,12 +127,31 @@ class BridgeRuntime {
       projectsDao: database.projectsDao,
     );
     const unseenCalculator = SessionUnseenCalculator();
+    final commandInvocationRepository = CommandInvocationRepository(
+      dao: database.commandInvocationDao,
+    );
+    final commandInvocationTracker = CommandInvocationTracker();
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: unseenCalculator,
+    );
+    final commandTimelineService = CommandTimelineService(
+      sessionRepository: sessionRepository,
+      invocationRepository: commandInvocationRepository,
+      tracker: commandInvocationTracker,
+    );
+    final commandDispatcher = CommandDispatcher(
+      sessionRepository: sessionRepository,
+      invocationRepository: commandInvocationRepository,
+      uuidBuilder: UuidV4Builder(random: Random.secure()),
+      clock: const Clock(),
+    );
+    final sessionPromptService = SessionPromptService(
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
     );
     final gitCliApi = GitCliApi(
       processRunner: processRunner,
@@ -152,6 +183,15 @@ class BridgeRuntime {
       sessionRepository: sessionRepository,
       sessionMutationDispatcher: sessionMutationDispatcher,
       failureReporter: failureReporter,
+    );
+    final pluginCommandTimelineListener = PluginCommandTimelineListener(
+      sessionRepository: sessionRepository,
+      enrichmentService: sessionEventEnrichmentService,
+      timelineService: commandTimelineService,
+    );
+    final commandDispatchOutcomeListener = CommandDispatchOutcomeListener(
+      dispatcher: commandDispatcher,
+      timelineService: commandTimelineService,
     );
     final pushTracker = PushSessionStateTracker(now: DateTime.now);
     final pushRateLimiter = PushRateLimiter(now: DateTime.now);
@@ -216,23 +256,29 @@ class BridgeRuntime {
       ),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
     );
 
     return BridgeRuntime(
       database: database,
-      plugin: plugin,
       failureReporter: failureReporter,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: restartService,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
       sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      pluginCommandTimelineListener: pluginCommandTimelineListener,
+      commandDispatchOutcomeListener: commandDispatchOutcomeListener,
       session: Orchestrator(
         config: config,
         client: relayClient,
         plugin: plugin,
         sessionCreationService: sessionCreationService,
+        sessionPromptService: sessionPromptService,
+        commandTimelineService: commandTimelineService,
+        pluginCommandTimelineListener: pluginCommandTimelineListener,
+        commandDispatchOutcomeListener: commandDispatchOutcomeListener,
         pushDispatcher: pushDispatcher,
         completionListener: CompletionPushListener(
           tracker: pushTracker,
@@ -277,7 +323,6 @@ class BridgeRuntime {
           projectsDao: database.projectsDao,
         ),
         worktreeService: worktreeService,
-        sessionEventEnrichmentService: sessionEventEnrichmentService,
         sessionMutationDispatcher: sessionMutationDispatcher,
         restartService: restartService,
         statusNotifier: statusNotifier,
@@ -291,12 +336,12 @@ class BridgeRuntime {
 
   DebugServer createDebugServer({required int port}) {
     return DebugServer(
-      plugin: _plugin,
       router: session.router,
       port: port,
       failureReporter: _failureReporter,
-      sessionEventEnrichmentService: _sessionEventEnrichmentService,
       sessionRepository: _sessionRepository,
+      pluginCommandTimelineListener: _pluginCommandTimelineListener,
+      commandDispatchOutcomeListener: _commandDispatchOutcomeListener,
       restartService: _restartService,
       restartHandoff: session.handleRestartHandoff,
     );
@@ -321,6 +366,9 @@ class BridgeRuntime {
 
     await step(_sessionUnseenService.dispose);
     await step(_sessionViewTracker.dispose);
+    await step(_pluginCommandTimelineListener.dispose);
+    await step(_commandDispatchOutcomeListener.dispose);
+    await step(_commandDispatcher.dispose);
     await step(_database.close);
 
     if (firstError != null) {

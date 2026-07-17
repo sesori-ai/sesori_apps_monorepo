@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "plugin_command.dart";
+
 part "plugin_message.freezed.dart";
 
 part "plugin_message.g.dart";
@@ -103,13 +105,15 @@ sealed class PluginToolState with _$PluginToolState {
 
 /// Sealed class representing a plugin-level message.
 ///
-/// Three variants:
+/// Four variants:
 /// - [PluginMessageUser]: a message sent by the user
+/// - [PluginMessageCommand]: a command invocation whose attached
+///   [PluginMessageWithParts.parts] contain its result content
 /// - [PluginMessageAssistant]: a regular assistant response
 /// - [PluginMessageError]: an assistant message that failed with an error
 ///
 /// The JSON serialization uses `"role"` as the union key.
-@Freezed(unionKey: "role")
+@Freezed(unionKey: "role", fromJson: true, toJson: true)
 sealed class PluginMessage with _$PluginMessage {
   const factory PluginMessage.user({
     required String id,
@@ -117,6 +121,16 @@ sealed class PluginMessage with _$PluginMessage {
     required String? agent,
     required PluginMessageTime? time,
   }) = PluginMessageUser;
+
+  const factory PluginMessage.command({
+    required String id,
+    required String sessionID,
+    required String name,
+    required String? arguments,
+    @JsonKey(unknownEnumValue: PluginCommandOrigin.unknown) required PluginCommandOrigin origin,
+    required String? invocationId,
+    required PluginMessageTime? time,
+  }) = PluginMessageCommand;
 
   const factory PluginMessage.assistant({
     required String id,
@@ -137,14 +151,18 @@ sealed class PluginMessage with _$PluginMessage {
     required String errorMessage,
     required PluginMessageTime? time,
   }) = PluginMessageError;
+
+  factory PluginMessage.fromJson(Map<String, dynamic> json) => _$PluginMessageFromJson(json);
 }
 
 /// Lifecycle timestamps for a [PluginMessage], in milliseconds since the
 /// Unix epoch. Mirrors [PluginSessionTime].
-@freezed
+@Freezed(fromJson: true, toJson: true)
 sealed class PluginMessageTime with _$PluginMessageTime {
   const factory PluginMessageTime({
     required int created,
     required int? completed,
   }) = _PluginMessageTime;
+
+  factory PluginMessageTime.fromJson(Map<String, dynamic> json) => _$PluginMessageTimeFromJson(json);
 }

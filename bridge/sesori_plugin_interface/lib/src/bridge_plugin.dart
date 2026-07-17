@@ -89,13 +89,21 @@ sealed class BridgePluginApi {
 
   /// Get all messages for a session.
   ///
+  /// [acceptedCommands] contains commands previously accepted through
+  /// [sendCommand]. Each `invocationId` is an opaque caller-generated
+  /// correlation token; implementations must preserve it when correlating
+  /// backend command messages and must not interpret its contents.
+  ///
   /// An empty list means a **genuinely empty thread** (including a backend
   /// that cannot serve history at all). Implementations MUST throw — e.g. a
   /// [PluginOperationException] — when history retrieval *fails* (transport,
   /// auth, replay errors), never swallow the failure into an empty list: the
   /// phone renders an error-with-retry state for a failed load, which must
   /// stay distinguishable from "no messages yet".
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId);
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  });
 
   Future<void> sendPrompt({
     required String sessionId,
@@ -107,8 +115,14 @@ sealed class BridgePluginApi {
 
   /// Sends a slash command to a session.
   ///
-  /// The returned future MUST complete once the backend has **accepted** the
-  /// command for execution — not when the command's run finishes. Callers
+  /// [invocationId] is an opaque caller-generated correlation token. The
+  /// implementation must not interpret it and must preserve it when exposing
+  /// the corresponding [PluginMessage.command].
+  ///
+  /// The returned receipt MUST complete once the backend has **accepted** the
+  /// command for execution — not when the command's run finishes. Its
+  /// [PluginCommandDispatch.backendMessageId] identifies the accepted backend
+  /// message when the backend provides one, and is otherwise `null`. Callers
   /// (bridge request handlers serving phones) await this future while holding
   /// a client request open, so an implementation must never block for the
   /// duration of the command's agent run. If the backend only exposes a
@@ -117,8 +131,9 @@ sealed class BridgePluginApi {
   ///
   /// Dispatch failures (unknown command, missing session, backend down) MUST
   /// be thrown so callers can report the send as failed.
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,

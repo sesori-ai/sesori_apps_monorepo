@@ -1,9 +1,13 @@
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
+import "package:sesori_mobile/features/session_detail/widgets/command_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_reveal.dart";
 import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
+import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -63,15 +67,45 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
       home: Scaffold(
         body: SessionDetailMessageList(
           projectId: null,
-          messages: _messages,
-          streamingText: _streamingText,
-          children: const <Session>[],
-          childStatuses: const <String, SessionStatus>{},
-          retryErrorMessage: _retryErrorMessage,
+          state: _loadedState(
+            messages: _messages,
+            streamingText: _streamingText,
+            retryErrorMessage: _retryErrorMessage,
+          ),
         ),
       ),
     );
   }
+}
+
+SessionDetailLoaded _loadedState({
+  required List<MessageWithParts> messages,
+  required Map<String, String> streamingText,
+  required String? retryErrorMessage,
+}) {
+  return SessionDetailState.loaded(
+        messages: messages,
+        streamingText: streamingText,
+        sessionStatus: const SessionStatus.idle(),
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        sessionTitle: null,
+        agent: null,
+        assistantAgentModel: null,
+        children: const [],
+        childStatuses: const {},
+        isRootSession: true,
+        queuedMessages: const [],
+        availableAgents: const [],
+        availableProviders: const [],
+        availableCommands: const [],
+        selectedAgent: "coder",
+        selectedAgentModel: null,
+        stagedCommand: null,
+        isRefreshing: false,
+        retryErrorMessage: retryErrorMessage,
+      )
+      as SessionDetailLoaded;
 }
 
 MessageWithParts _message({
@@ -113,6 +147,36 @@ MessageWithParts _message({
         retryError: null,
       ),
     ],
+  );
+}
+
+MessageWithParts _commandMessage({
+  required String messageId,
+  required String name,
+  required String? arguments,
+  required CommandOrigin origin,
+  required String result,
+}) {
+  final displayPartId = "$messageId-result";
+  final base = _message(
+    messageId: messageId,
+    role: "user",
+    text: result,
+    partId: displayPartId,
+  );
+  return base.copyWith(
+    info: Message.user(
+      id: messageId,
+      sessionID: "session-1",
+      agent: null,
+      time: null,
+      command: CommandMessageInfo(
+        name: name,
+        arguments: arguments,
+        origin: origin,
+        displayPartID: displayPartId,
+      ),
+    ),
   );
 }
 
@@ -170,6 +234,114 @@ Future<void> _detachViewport(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets("manual command renders one dedicated card with arguments and result preview", (tester) async {
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          _commandMessage(
+            messageId: "command-1",
+            name: "review",
+            arguments: "lib/main.dart",
+            origin: CommandOrigin.manual,
+            result: "Reviewed the requested file.",
+          ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CommandMessageCard), findsOneWidget);
+    expect(find.byType(UserMessageCard), findsNothing);
+    expect(find.byType(AssistantMessageCard), findsNothing);
+    expect(find.text("/review lib/main.dart"), findsOneWidget);
+    expect(find.text("Manual"), findsOneWidget);
+    expect(find.byKey(CommandMessageCard.resultPreviewKey), findsOneWidget);
+    expect(find.text("Reviewed the requested file."), findsOneWidget);
+    expect(
+      tester.widget<CommandMessageCard>(find.byType(CommandMessageCard)).resultText,
+      "Reviewed the requested file.",
+    );
+  });
+
+  testWidgets("automatic command renders without a result preview", (tester) async {
+    final message = _commandMessage(
+      messageId: "command-automatic",
+      name: "compact",
+      arguments: null,
+      origin: CommandOrigin.automatic,
+      result: "",
+    ).copyWith(parts: const []);
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [message],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CommandMessageCard), findsOneWidget);
+    expect(find.text("/compact"), findsOneWidget);
+    expect(find.text("Automatic"), findsOneWidget);
+    expect(find.byKey(CommandMessageCard.resultPreviewKey), findsNothing);
+    expect(tester.widget<CommandMessageCard>(find.byType(CommandMessageCard)).resultText, isNull);
+  });
+
+  testWidgets("streamed command result updates the same card", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    final message = _commandMessage(
+      messageId: "command-streaming",
+      name: "summarize",
+      arguments: null,
+      origin: CommandOrigin.manual,
+      result: "",
+    );
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [message],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CommandMessageCard), findsOneWidget);
+    expect(find.byKey(CommandMessageCard.resultPreviewKey), findsNothing);
+
+    harnessKey.currentState!.updateStreamingText(
+      partId: (message.info as MessageUser).command!.displayPartID,
+      text: "Streaming command summary",
+    );
+    await tester.pump();
+
+    expect(find.byType(CommandMessageCard), findsOneWidget);
+    expect(find.byType(AssistantMessageCard), findsNothing);
+    expect(find.byKey(CommandMessageCard.resultPreviewKey), findsOneWidget);
+    expect(find.text("Streaming command summary"), findsOneWidget);
+    final card = tester.widget<CommandMessageCard>(find.byType(CommandMessageCard));
+    expect(card.resultText, "Streaming command summary");
+  });
+
+  testWidgets("legacy user message without command metadata keeps the ordinary bubble", (tester) async {
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          _message(
+            messageId: "legacy-user",
+            role: "user",
+            text: "Ordinary user prompt",
+          ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(UserMessageCard), findsOneWidget);
+    expect(find.byType(CommandMessageCard), findsNothing);
+    expect(find.text("Ordinary user prompt"), findsOneWidget);
+  });
+
   testWidgets("detached viewport stays stable when a new newest message arrives", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));

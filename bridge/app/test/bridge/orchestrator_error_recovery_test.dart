@@ -32,6 +32,7 @@ import "package:sesori_bridge/src/bridge/services/project_initialization_service
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -69,6 +70,11 @@ void main() {
         pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final commandDispatcher = TestCommandStack(database).dispatcher(
+        plugin: plugin,
+        sessionRepository: sessionRepository,
+      );
+      addTearDown(commandDispatcher.dispose);
       final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
       final projectRepository = ProjectRepository(
         gitCliApi: FakeGitCliApi(),
@@ -78,7 +84,25 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
       );
+      final enrichmentService = SessionEventEnrichmentService(
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionTitleService,
+        failureReporter: FakeFailureReporter(),
+      );
+      final commandTimeline = createTestCommandTimelineComposition(
+        database: database,
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+        enrichmentService: enrichmentService,
+      );
       final orchestrator = Orchestrator(
+        sessionPromptService: SessionPromptService(
+          sessionRepository: sessionRepository,
+          commandDispatcher: commandDispatcher,
+        ),
+        commandTimelineService: commandTimeline.timelineService,
+        pluginCommandTimelineListener: commandTimeline.pluginListener,
+        commandDispatchOutcomeListener: commandTimeline.outcomeListener,
         config: const BridgeConfig(
           relayURL: "ws://127.0.0.1:9999",
           pluginEndpoint: "http://127.0.0.1:4096",
@@ -110,6 +134,7 @@ void main() {
             ),
           ),
           sessionRepository: sessionRepository,
+          commandDispatcher: commandDispatcher,
           sessionMutationDispatcher: sessionTitleService,
         ),
         pushDispatcher: pushSubsystem.dispatcher,
@@ -200,11 +225,6 @@ void main() {
             ),
             plugin: plugin,
           ),
-        ),
-        sessionEventEnrichmentService: SessionEventEnrichmentService(
-          sessionRepository: sessionRepository,
-          sessionMutationDispatcher: sessionTitleService,
-          failureReporter: FakeFailureReporter(),
         ),
         sessionMutationDispatcher: sessionTitleService,
         restartService: buildTestRestartService(),
@@ -327,6 +347,11 @@ class _TestHarness {
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final prSyncService = PrSyncService(
       prSource: _NoopPrSource(),
       pullRequestRepository: pullRequestRepository,
@@ -375,7 +400,20 @@ class _TestHarness {
             projectRepository: projectRepository,
             now: () => DateTime.now().millisecondsSinceEpoch,
           );
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: sessionEventEnrichmentService,
+    );
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -389,6 +427,7 @@ class _TestHarness {
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
@@ -458,7 +497,6 @@ class _TestHarness {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -649,8 +687,9 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
-    String sessionId,
-  ) async => [];
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async => [];
 
   @override
   Future<void> sendPrompt({
@@ -714,14 +753,15 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
   Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async {}
+  }) async => const PluginCommandDispatch(backendMessageId: null);
 
   @override
   Future<PluginProvidersResult> getProviders({

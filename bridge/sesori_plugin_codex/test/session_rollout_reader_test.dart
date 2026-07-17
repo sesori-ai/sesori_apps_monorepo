@@ -172,7 +172,7 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
+      final messages = reader.readMessagesForTest(
         path,
         "019a0000-1111-2222-3333-aaaaaaaaaaaa",
       );
@@ -190,7 +190,7 @@ void main() {
       File(path).writeAsBytesSync([0xFF]);
 
       expect(
-        () => reader.readMessages(path, sessionId),
+        () => reader.readMessagesForTest(path, sessionId),
         throwsA(
           isA<PluginOperationException>()
               .having(
@@ -253,7 +253,7 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
+      final messages = reader.readMessagesForTest(
         path,
         "019a0000-1111-2222-3333-bbbbbbbbbbbb",
       );
@@ -264,6 +264,7 @@ void main() {
 
       final exec = messages[0].parts.single;
       expect(exec.type, equals(PluginMessagePartType.tool));
+      expect(exec.text, isNull);
       expect(exec.tool, equals("shell"));
       expect(exec.state?.status, equals(PluginToolStatus.completed));
       expect(exec.state?.title, equals("ls -la"));
@@ -320,7 +321,9 @@ void main() {
 
       // Each session carries its own rollout cwd (never the launch CWD), so the
       // bridge groups it under the right project.
-      final byId = {for (final session in await plugin.listAllSessions(knownDirectories: const {})) session.id: session};
+      final byId = {
+        for (final session in await plugin.listAllSessions(knownDirectories: const {})) session.id: session,
+      };
       expect(byId["019a0000-1111-2222-3333-aaaaaaaaaaaa"]?.directory, "/work/sample-app");
       expect(byId["019a0000-1111-2222-3333-bbbbbbbbbbbb"]?.directory, "/other/project");
       expect(byId["019a0000-1111-2222-3333-bbbbbbbbbbbb"]?.projectID, "/other/project");
@@ -400,11 +403,139 @@ void main() {
 
       final messages = await plugin.getSessionMessages(
         "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        acceptedCommands: const [],
       );
       expect(messages, hasLength(2));
       expect(messages[0].parts.first.text, equals("ping"));
       expect(messages[1].parts.first.text, equals("pong"));
       await plugin.dispose();
+    });
+
+    test("accepted slash echo maps to a command and folds its result", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-ffffffffffff.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ffffffffffff",
+        cwd: "/work/sample-app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "id": "command-user",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": "/plan auth"},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "id": "command-result",
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "the plan"},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "id": "command-result-2",
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "next steps"},
+              ],
+            },
+          }),
+        ],
+      );
+      final records =
+          SessionRolloutReader(
+            environment: {"CODEX_HOME": codexHome.path},
+          ).readMessageRecords(
+            path,
+            "019a0000-1111-2222-3333-ffffffffffff",
+          );
+
+      final messages =
+          CodexMessageRepository(
+            rolloutReader: SessionRolloutReader(
+              environment: {"CODEX_HOME": codexHome.path},
+            ),
+            configReader: CodexConfigReader(
+              environment: {"CODEX_HOME": codexHome.path},
+            ),
+          ).mapHistory(
+            sessionId: "019a0000-1111-2222-3333-ffffffffffff",
+            records: records,
+            config: const CodexConfigDefaults.empty(),
+            acceptedCommands: const [
+              PluginCommandInvocationContext(
+                invocationId: "opaque-codex-invocation",
+                name: "plan",
+                arguments: "auth",
+                acceptedAt: 100,
+                backendMessageId: null,
+              ),
+            ],
+            knownCommandNames: const {"plan"},
+          );
+
+      expect(messages, hasLength(1));
+      expect(
+        messages.single.info,
+        isA<PluginMessageCommand>()
+            .having((message) => message.id, "id", "command-user")
+            .having((message) => message.invocationId, "invocationId", "opaque-codex-invocation"),
+      );
+      expect(messages.single.parts.single.id, "command-user-result");
+      expect(messages.single.parts.single.messageID, "command-user");
+      expect(messages.single.parts.single.text, "the plan\n\nnext steps");
+    });
+
+    test("recognized external slash maps to a manual command", () {
+      final repository = CodexMessageRepository(
+        rolloutReader: SessionRolloutReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+        configReader: CodexConfigReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+      );
+      final messages = repository.mapHistory(
+        sessionId: "external-thread",
+        records: const [
+          CodexRolloutMessageRecord(
+            id: "external-user",
+            role: CodexRolloutMessageRole.user,
+            timestamp: null,
+            modelId: null,
+            providerId: null,
+            texts: ["/review auth"],
+            tool: null,
+          ),
+          CodexRolloutMessageRecord(
+            id: "external-result",
+            role: CodexRolloutMessageRole.assistant,
+            timestamp: null,
+            modelId: "gpt-5.5",
+            providerId: "openai",
+            texts: ["reviewed"],
+            tool: null,
+          ),
+        ],
+        config: const CodexConfigDefaults.empty(),
+        acceptedCommands: const [],
+        knownCommandNames: const {"review"},
+      );
+
+      final command = messages.single.info as PluginMessageCommand;
+      expect(command.origin, PluginCommandOrigin.manual);
+      expect(command.invocationId, isNull);
+      expect(command.name, "review");
+      expect(command.arguments, "auth");
+      expect(messages.single.parts.single.text, "reviewed");
     });
 
     test("readMeta extracts the model from turn_context", () {
@@ -469,7 +600,7 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
+      final messages = reader.readMessagesForTest(
         path,
         "019a0000-1111-2222-3333-dddddddddddd",
       );
@@ -504,7 +635,7 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
+      final messages = reader.readMessagesForTest(
         path,
         "019a0000-1111-2222-3333-eeeeeeeeeeee",
         config: const CodexConfigDefaults(
@@ -517,6 +648,25 @@ void main() {
       expect(assistant.providerID, equals("openai"));
     });
   });
+}
+
+extension on SessionRolloutReader {
+  List<PluginMessageWithParts> readMessagesForTest(
+    String path,
+    String sessionId, {
+    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+  }) {
+    return CodexMessageRepository(
+      rolloutReader: this,
+      configReader: CodexConfigReader(environment: const {}),
+    ).mapHistory(
+      sessionId: sessionId,
+      records: readMessageRecords(path, sessionId),
+      config: config,
+      acceptedCommands: const [],
+      knownCommandNames: const {},
+    );
+  }
 }
 
 String _writeRollout(

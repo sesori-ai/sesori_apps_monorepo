@@ -198,7 +198,11 @@ void main() {
       // it without a redundant resume round-trip.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-fresh"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-fresh"},
+          },
+        ),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -222,12 +226,379 @@ void main() {
       expect(fake.sentMethods, isNot(contains("thread/resume")));
     });
 
+    test("sendCommand returns an honest null message id and sends slash text", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "model": "gpt-5.4-mini",
+            "modelProvider": "openai",
+            "thread": {"id": "t-command"},
+          },
+        ),
+        const _Response(result: {"turnId": "turn-command"}),
+      ]);
+      fake.onRequest = (method) {
+        if (method == "turn/start") {
+          fake.pushNotification("turn/started", {
+            "threadId": "t-command",
+            "turn": {"id": "turn-command"},
+          });
+        }
+      };
+
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      final dispatch = await plugin.sendCommand(
+        sessionId: "t-command",
+        invocationId: "opaque-codex-invocation",
+        command: "plan",
+        arguments: "auth flow",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(dispatch.backendMessageId, isNull);
+      expect(fake.sentMethods, equals(["initialize", "thread/resume", "turn/start"]));
+      final input = fake.sentParamsFor("turn/start")["input"] as List;
+      expect(input.single["text"], "/plan auth flow");
+      await Future<void>.delayed(Duration.zero);
+      final commandEvents = events.whereType<BridgeSseMessageUpdated>().toList();
+      expect(commandEvents, hasLength(1));
+      final command = commandEvents.single.info;
+      expect(command["role"], "command");
+      expect(command["id"], "turn-command");
+      expect(command["invocationId"], "opaque-codex-invocation");
+      await subscription.cancel();
+    });
+
+    test("live command suppresses slash echo and reparents text, reasoning, and tools", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "model": "gpt-5.5",
+            "modelProvider": "openai",
+            "thread": {"id": "t-live-command"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "turn-live-command"},
+          },
+        ),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      await plugin.sendCommand(
+        sessionId: "t-live-command",
+        invocationId: "invocation-live",
+        command: "plan",
+        arguments: "auth",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "t-live-command",
+        "turn": {"id": "turn-live-command"},
+      });
+      for (final phase in ["item/started", "item/completed"]) {
+        fake.pushNotification(phase, {
+          "threadId": "t-live-command",
+          "turnId": "turn-live-command",
+          "item": {
+            "type": "userMessage",
+            "id": "slash-user",
+            "content": [
+              {"type": "text", "text": "/plan auth"},
+            ],
+          },
+        });
+      }
+      fake.pushNotification("item/started", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "item": {"type": "agentMessage", "id": "agent-result", "text": ""},
+      });
+      fake.pushNotification("item/agentMessage/delta", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "itemId": "agent-result",
+        "delta": "the plan",
+      });
+      fake.pushNotification("item/completed", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "item": {"type": "agentMessage", "id": "agent-result", "text": "the plan"},
+      });
+      fake.pushNotification("item/started", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "item": {
+          "type": "reasoning",
+          "id": "reasoning-result",
+          "summary": ["checking"],
+        },
+      });
+      fake.pushNotification("item/reasoning/summaryTextDelta", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "itemId": "reasoning-result",
+        "delta": " more",
+      });
+      fake.pushNotification("item/completed", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "item": {
+          "type": "commandExecution",
+          "id": "tool-result",
+          "command": "dart test",
+          "status": "completed",
+          "aggregatedOutput": "ok",
+        },
+      });
+      fake.pushNotification("item/part/removed", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "itemId": "tool-result",
+        "partId": "tool-result-tool",
+      });
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-live-command",
+        "turn": {"id": "turn-live-command"},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final messages = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+      expect(messages, hasLength(1));
+      final command = messages.single;
+      expect(command["role"], "command");
+      expect(command["invocationId"], "invocation-live");
+      expect(command["name"], "plan");
+      expect(command["arguments"], "auth");
+
+      final deltas = events.whereType<BridgeSseMessagePartDelta>().toList();
+      expect(
+        deltas,
+        contains(
+          isA<BridgeSseMessagePartDelta>()
+              .having((event) => event.messageID, "messageID", "turn-live-command")
+              .having((event) => event.partID, "partID", "turn-live-command-result")
+              .having((event) => event.delta, "delta", "the plan"),
+        ),
+      );
+      expect(
+        deltas,
+        contains(
+          isA<BridgeSseMessagePartDelta>()
+              .having((event) => event.messageID, "messageID", "turn-live-command")
+              .having((event) => event.partID, "partID", "reasoning-result-reasoning"),
+        ),
+      );
+      final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(
+        parts.lastWhere((part) => part.id == "turn-live-command-result").text,
+        "the plan",
+      );
+      expect(
+        parts.lastWhere((part) => part.id == "tool-result-tool"),
+        isA<PluginMessagePart>()
+            .having((part) => part.messageID, "messageID", "turn-live-command")
+            .having((part) => part.tool, "tool", "shell"),
+      );
+      expect(
+        events.whereType<BridgeSseMessagePartRemoved>(),
+        contains(
+          isA<BridgeSseMessagePartRemoved>()
+              .having((event) => event.messageID, "messageID", "turn-live-command")
+              .having((event) => event.partID, "partID", "tool-result-tool"),
+        ),
+      );
+
+      final history =
+          CodexMessageRepository(
+            rolloutReader: SessionRolloutReader(
+              environment: {"CODEX_HOME": codexHome.path},
+            ),
+            configReader: CodexConfigReader(
+              environment: {"CODEX_HOME": codexHome.path},
+            ),
+          ).mapHistory(
+            sessionId: "t-live-command",
+            records: const [
+              CodexRolloutMessageRecord(
+                id: "persisted-user",
+                role: CodexRolloutMessageRole.user,
+                timestamp: null,
+                modelId: null,
+                providerId: null,
+                texts: ["/plan auth"],
+                tool: null,
+              ),
+              CodexRolloutMessageRecord(
+                id: "persisted-agent",
+                role: CodexRolloutMessageRole.assistant,
+                timestamp: null,
+                modelId: "gpt-5.5",
+                providerId: "openai",
+                texts: ["the plan"],
+                tool: null,
+              ),
+              CodexRolloutMessageRecord(
+                id: "persisted-tool",
+                role: CodexRolloutMessageRole.assistant,
+                timestamp: null,
+                modelId: "gpt-5.5",
+                providerId: "openai",
+                texts: [],
+                tool: CodexRolloutToolRecord(
+                  name: "shell",
+                  title: "dart test",
+                  status: CodexRolloutToolStatus.completed,
+                  output: "ok",
+                ),
+              ),
+            ],
+            config: const CodexConfigDefaults.empty(),
+            acceptedCommands: const [
+              PluginCommandInvocationContext(
+                invocationId: "invocation-live",
+                name: "plan",
+                arguments: "auth",
+                acceptedAt: 1,
+                backendMessageId: null,
+              ),
+            ],
+            knownCommandNames: const {"plan"},
+          );
+      final historicalCommand = history.single.info as PluginMessageCommand;
+      expect(historicalCommand.name, command["name"]);
+      expect(historicalCommand.arguments, command["arguments"]);
+      expect(historicalCommand.invocationId, command["invocationId"]);
+      expect(
+        history.single.parts.map((part) => part.type).toList(),
+        [PluginMessagePartType.text, PluginMessagePartType.tool],
+      );
+      expect(history.single.parts.first.text, "the plan");
+      await subscription.cancel();
+    });
+
+    test("a rejected command is canceled before later notifications", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-rejected"},
+          },
+        ),
+        const _Response(
+          error: {"code": -32602, "message": "command rejected"},
+        ),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      await expectLater(
+        plugin.sendCommand(
+          sessionId: "t-rejected",
+          invocationId: "rejected-invocation",
+          command: "plan",
+          arguments: "",
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(isA<CodexRpcException>()),
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "t-rejected",
+        "turn": {"id": "later-turn"},
+      });
+      fake.pushNotification("item/completed", {
+        "threadId": "t-rejected",
+        "turnId": "later-turn",
+        "item": {
+          "type": "userMessage",
+          "id": "ordinary-slash-user",
+          "content": [
+            {"type": "text", "text": "/plan"},
+          ],
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final messages = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+      expect(messages.where((message) => message["role"] == "command"), isEmpty);
+      expect(messages.where((message) => message["role"] == "user"), hasLength(1));
+      await subscription.cancel();
+    });
+
+    test("ordinary prompt keeps separate user and assistant messages", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-prompt"},
+          },
+        ),
+        const _Response(result: {"turnId": "turn-prompt"}),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      await plugin.sendPrompt(
+        sessionId: "t-prompt",
+        parts: const [PluginPromptPart.text(text: "ordinary prompt")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "t-prompt",
+        "turn": {"id": "turn-prompt"},
+      });
+      fake.pushNotification("item/completed", {
+        "threadId": "t-prompt",
+        "turnId": "turn-prompt",
+        "item": {
+          "type": "userMessage",
+          "id": "prompt-user",
+          "content": [
+            {"type": "text", "text": "ordinary prompt"},
+          ],
+        },
+      });
+      fake.pushNotification("item/completed", {
+        "threadId": "t-prompt",
+        "turnId": "turn-prompt",
+        "item": {"type": "agentMessage", "id": "prompt-agent", "text": "ordinary answer"},
+      });
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-prompt",
+        "turn": {"id": "turn-prompt"},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final messages = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+      expect(messages.map((message) => message["role"]), ["user", "assistant"]);
+      final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(parts.map((part) => part.messageID), ["prompt-user", "prompt-agent"]);
+      await subscription.cancel();
+    });
+
     test("turn/start 'thread not found' triggers a resume and one retry", () async {
       // A thread the plugin believes is loaded but the app-server has dropped:
       // the first turn/start fails, then resume + retry must recover it.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-dropped"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-dropped"},
+          },
+        ),
         const _Response(error: {"code": -32600, "message": "thread not found"}),
         const _Response(
           result: {
@@ -268,7 +639,11 @@ void main() {
       // unknown to this run, so the prompt resumes it before the turn.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-1"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-1"},
+          },
+        ),
         const _Response(result: {"turnId": "u-active"}),
         const _Response(result: null),
       ]);
@@ -358,13 +733,11 @@ void main() {
       await kaPlugin.healthCheck(); // connect → starts keepalive
       await Future<void>.delayed(const Duration(milliseconds: 90));
 
-      final firedWhileConnected =
-          kaFake.sentMethods.where((m) => m == "model/list").length;
+      final firedWhileConnected = kaFake.sentMethods.where((m) => m == "model/list").length;
       expect(firedWhileConnected, greaterThanOrEqualTo(2));
 
       await kaPlugin.dispose();
-      final afterDispose =
-          kaFake.sentMethods.where((m) => m == "model/list").length;
+      final afterDispose = kaFake.sentMethods.where((m) => m == "model/list").length;
       await Future<void>.delayed(const Duration(milliseconds: 60));
       // No further keepalives once disposed.
       expect(
@@ -517,7 +890,11 @@ void main() {
     test("sendPrompt without a variant sends no effort (codex uses its default)", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-default"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-default"},
+          },
+        ),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -535,7 +912,11 @@ void main() {
     test("createSession applies the variant on the first turn", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-new"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-new"},
+          },
+        ),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -594,8 +975,7 @@ class _FakeAppServer {
   /// `thread/name/updated` while `turn/start` is still in flight).
   void Function(String method)? onRequest;
 
-  List<String> get sentMethods =>
-      _sent.map((f) => f.method).toList(growable: false);
+  List<String> get sentMethods => _sent.map((f) => f.method).toList(growable: false);
 
   Map<String, dynamic> sentParamsFor(String method) {
     final frame = _sent.firstWhere((f) => f.method == method);
@@ -686,8 +1066,7 @@ class _SinkAdapter implements WebSocketSink {
   void add(Object? data) => _controller.add(data);
 
   @override
-  void addError(Object error, [StackTrace? stackTrace]) =>
-      _controller.addError(error, stackTrace);
+  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
 
   @override
   Future<void> addStream(Stream<Object?> stream) async {

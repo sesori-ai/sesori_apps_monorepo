@@ -5,31 +5,136 @@ import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-/// An [AcpPlugin] whose [applyTurnSelection] blocks on a test-controlled gate,
-/// so a test can land an abort while a turn is mid-selection.
+class _GatedTurnConfigurationDispatcher extends AcpTurnConfigurationDispatcher {
+  Completer<void>? selectionGate;
+
+  @override
+  Future<void> apply({
+    required AcpSessionRepository repository,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required bool failOnError,
+  }) async {
+    final gate = selectionGate;
+    if (gate != null) await gate.future;
+  }
+}
+
+/// An [AcpPlugin] whose turn configuration blocks on a test-controlled gate,
+/// so a test can land an abort while a turn is mid-configuration.
 class _GatedSelectionPlugin extends AcpPlugin {
-  _GatedSelectionPlugin({
+  factory _GatedSelectionPlugin({
+    required String id,
+    required String agentDisplayName,
+    required AcpLaunchSpec launchSpec,
+    required String launchDirectory,
+    required AcpEventMapper eventMapper,
+    required AcpProcessFactory processFactory,
+  }) {
+    final dispatcher = _GatedTurnConfigurationDispatcher();
+    final clientBuilder = AcpStdioClientBuilder(
+      launchSpec: launchSpec,
+      processFactory: processFactory,
+    );
+    final liveClient = clientBuilder.build(logTag: id);
+    final api = AcpApi(client: liveClient);
+    final sessionRepository = AcpSessionRepository(api: api);
+    final commandTracker = AcpCommandTracker();
+    final commandTurnTracker = AcpCommandTurnTracker();
+    final directoryTracker = AcpSessionDirectoryTracker(
+      launchDirectory: launchDirectory,
+    );
+    final residencyTracker = AcpSessionResidencyTracker();
+    final queueTracker = AcpTurnQueueTracker(pluginId: id);
+    final eventDispatcher = AcpTurnEventDispatcher(
+      eventMapper: eventMapper,
+      commandTracker: commandTracker,
+      commandTurnTracker: commandTurnTracker,
+      residencyTracker: residencyTracker,
+    );
+    final connectionService = AcpConnectionService(
+      client: liveClient,
+      repository: sessionRepository,
+      configuration: const AcpConnectionConfiguration(
+        initializeRequest: AcpInitializeRequest(
+          clientName: "sesori-bridge",
+          clientVersion: "0.0.0",
+          clientTitle: null,
+          capabilityMeta: null,
+        ),
+        authMethodId: null,
+      ),
+    );
+    final notificationListener = AcpNotificationListener(
+      notificationRepository: AcpNotificationRepository(
+        apiNotifications: api.notifications,
+      ),
+      eventDispatcher: eventDispatcher,
+    );
+    final approvalRegistry = AcpApprovalRegistry.forClient(
+      client: liveClient,
+      emit: eventDispatcher.emit,
+      activeSessionResolver: queueTracker.resolveActiveSession,
+    );
+    final approvalListener = AcpApprovalListener(
+      registry: approvalRegistry,
+      requests: liveClient.serverRequests,
+    );
+    final turnService = AcpTurnService(
+      pluginId: id,
+      connectionService: connectionService,
+      directoryTracker: directoryTracker,
+      residencyTracker: residencyTracker,
+      queueTracker: queueTracker,
+      commandTurnTracker: commandTurnTracker,
+      eventDispatcher: eventDispatcher,
+      turnConfigurationDispatcher: dispatcher,
+      commandFastFailWindow: const Duration(milliseconds: 100),
+    );
+    return _GatedSelectionPlugin._(
+      id: id,
+      agentDisplayName: agentDisplayName,
+      launchSpec: launchSpec,
+      launchDirectory: launchDirectory,
+      eventMapper: eventMapper,
+      clientBuilder: clientBuilder,
+      commandTracker: commandTracker,
+      connectionService: connectionService,
+      notificationListener: notificationListener,
+      approvalListener: approvalListener,
+      approvalRegistry: approvalRegistry,
+      directoryTracker: directoryTracker,
+      turnService: turnService,
+      dispatcher: dispatcher,
+    );
+  }
+
+  _GatedSelectionPlugin._({
     required super.id,
     required super.agentDisplayName,
     required super.launchSpec,
     required super.launchDirectory,
     required super.eventMapper,
-    required AcpProcessFactory super.processFactory,
-  });
+    required super.clientBuilder,
+    required super.commandTracker,
+    required super.connectionService,
+    required super.notificationListener,
+    required super.approvalListener,
+    required super.approvalRegistry,
+    required super.directoryTracker,
+    required super.turnService,
+    required _GatedTurnConfigurationDispatcher dispatcher,
+  }) : _dispatcher = dispatcher,
+       super.configured(
+         turnConfigurationDispatcher: dispatcher,
+       );
 
-  Completer<void>? selectionGate;
+  final _GatedTurnConfigurationDispatcher _dispatcher;
 
-  @override
-  Future<void> applyTurnSelection({
-    required AcpStdioClient client,
-    required String sessionId,
-    required ({String providerID, String modelID})? model,
-    required PluginSessionVariant? variant,
-    required String? agent,
-  }) async {
-    final gate = selectionGate;
-    if (gate != null) await gate.future;
-  }
+  Completer<void>? get selectionGate => _dispatcher.selectionGate;
+  set selectionGate(Completer<void>? value) => _dispatcher.selectionGate = value;
 }
 
 /// Turn-lifecycle robustness:
@@ -87,8 +192,7 @@ void main() {
       throw StateError("agent never wrote $count '$method' frame(s)");
     }
 
-    Future<Map<String, dynamic>> waitForFrame(String method) =>
-        waitForFrameCount(method, 1);
+    Future<Map<String, dynamic>> waitForFrame(String method) => waitForFrameCount(method, 1);
 
     void respondTo(Map<String, dynamic> frame, Map<String, dynamic> result) {
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
@@ -177,25 +281,194 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
-    test("command arguments are not emitted as a user message", () async {
+    test("accepted command owns all live assistant output in one envelope", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
 
-      await plugin.sendCommand(
+      final dispatchFuture = plugin.sendCommand(
         sessionId: sessionId,
+        invocationId: "opaque-invocation-1",
         command: "review",
-        arguments: "[SYSTEM CONTEXT — IMPORTANT] internal\n\nuser arguments",
+        arguments: "user arguments",
         variant: null,
         agent: null,
         model: null,
       );
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "/review user arguments"},
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_thought_chunk",
+            "messageId": "m1",
+            "content": {"type": "text", "text": "thinking"},
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m1",
+            "content": {"type": "text", "text": "first"},
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "tool-1",
+            "kind": "read",
+            "status": "completed",
+            "rawOutput": {"stdout": "done"},
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "m2",
+            "content": {"type": "text", "text": " second"},
+          },
+        },
+      });
+
+      final dispatch = await dispatchFuture;
+      expect(dispatch.backendMessageId, isNull);
       await pump();
 
-      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+      final envelopes = emitted.whereType<BridgeSseMessageUpdated>().toList();
+      expect(envelopes, hasLength(1));
+      expect(envelopes.single.info["role"], "command");
+      expect(envelopes.single.info["invocationId"], "opaque-invocation-1");
+      expect(envelopes.single.info["id"], "s1-command-opaque-invocation-1");
 
-      final prompt = await waitForFrame("session/prompt");
+      final parts = emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(parts.map((part) => part.type), [
+        PluginMessagePartType.reasoning,
+        PluginMessagePartType.text,
+        PluginMessagePartType.tool,
+      ]);
+      expect(parts.every((part) => part.messageID == "s1-command-opaque-invocation-1"), isTrue);
+      expect(parts[1].id, "s1-command-opaque-invocation-1-result");
+      expect(parts[2].id, "s1-tool-tool-1-call");
+
+      final deltas = emitted.whereType<BridgeSseMessagePartDelta>().toList();
+      expect(deltas.every((event) => event.messageID == "s1-command-opaque-invocation-1"), isTrue);
+      expect(
+        deltas
+            .where((event) => event.partID == "s1-command-opaque-invocation-1-result")
+            .map((event) => event.delta)
+            .join(),
+        "first second",
+      );
+
       respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("queued command rejects when aborted before dispatch", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      final command = plugin.sendCommand(
+        sessionId: sessionId,
+        invocationId: "queued-invocation",
+        command: "review",
+        arguments: "queued",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final rejection = expectLater(command, throwsA(isA<StateError>()));
+
+      await plugin.abortSession(sessionId: sessionId);
+      await rejection;
+      respondTo(firstPrompt, {"stopReason": "cancelled"});
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+
+      expect(frames("session/prompt"), hasLength(1));
+      expect(emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["role"] == "command"), isEmpty);
+    });
+
+    test("fast session/prompt rejection rejects command acceptance", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final command = plugin.sendCommand(
+        sessionId: sessionId,
+        invocationId: "rejected-invocation",
+        command: "review",
+        arguments: "bad",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "error": {"code": -32602, "message": "Invalid command"},
+      });
+
+      await expectLater(command, throwsA(isA<AcpRpcException>()));
+      expect(emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["role"] == "command"), isEmpty);
+    });
+
+    test("resume failure rejects a command before session/prompt", () async {
+      await connect(loadSession: true);
+      plugin.primeSessionDirectory(sessionId: "old-1", directory: cwd);
+      emitted.clear();
+
+      final command = plugin.sendCommand(
+        sessionId: "old-1",
+        invocationId: "resume-failure-invocation",
+        command: "review",
+        arguments: "bad resume",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final load = await waitForFrame("session/load");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": load["id"],
+        "error": {"code": -32602, "message": "Invalid session"},
+      });
+
+      await expectLater(command, throwsA(isA<AcpRpcException>()));
+      expect(frames("session/prompt"), isEmpty);
+      expect(emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["role"] == "command"), isEmpty);
     });
 
     test("a second prompt on one session dispatches only after the first turn completes", () async {
@@ -604,8 +877,7 @@ void main() {
 
       Future<Map<String, dynamic>> promptFrameFor(String sessionId) async {
         for (var i = 0; i < 80; i++) {
-          final match = frames("session/prompt")
-              .where((f) => (f["params"] as Map)["sessionId"] == sessionId);
+          final match = frames("session/prompt").where((f) => (f["params"] as Map)["sessionId"] == sessionId);
           if (match.isNotEmpty) return match.last;
           await pump();
         }

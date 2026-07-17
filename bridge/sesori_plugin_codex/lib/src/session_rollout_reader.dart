@@ -2,18 +2,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show
-        PluginMessage,
-        PluginMessagePart,
-        PluginMessagePartType,
-        PluginMessageTime,
-        PluginMessageWithParts,
-        PluginOperationException,
-        PluginToolState,
-        PluginToolStatus;
-
-import "codex_config_reader.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginOperationException;
 
 /// One line of `~/.codex/session_index.jsonl`.
 ///
@@ -112,8 +101,7 @@ class CodexSessionRecord {
 ///   1. `$CODEX_HOME` if set.
 ///   2. `$HOME/.codex` (or `$USERPROFILE\.codex` on Windows).
 class SessionRolloutReader {
-  SessionRolloutReader({Map<String, String>? environment})
-    : _environment = environment ?? Platform.environment;
+  SessionRolloutReader({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
 
   final Map<String, String> _environment;
 
@@ -241,8 +229,7 @@ class SessionRolloutReader {
         final map = decoded.cast<String, dynamic>();
         final type = map["type"];
         if (type == "session_meta") {
-          final payload =
-              (map["payload"] as Map?)?.cast<String, dynamic>() ?? {};
+          final payload = (map["payload"] as Map?)?.cast<String, dynamic>() ?? {};
           final metaId = payload["id"];
           if (metaId is! String || metaId.isEmpty) continue;
           id = metaId;
@@ -320,20 +307,17 @@ class SessionRolloutReader {
     return out;
   }
 
-  /// Reads `response_item` records out of a rollout and maps each one to a
-  /// [PluginMessageWithParts].
+  /// Reads typed `response_item` records out of a rollout.
   ///
   /// Assistant messages are stamped with the session's model metadata so the
-  /// mobile UI can render the model in the session subtitle: the provider
+  /// The repository stamps assistant messages with model metadata: the provider
   /// comes from the `session_meta` header, the model id from the most recent
   /// `turn_context` seen *before* the message (the model can change
-  /// mid-session). [config] supplies the global fallback for either field when
-  /// the rollout itself doesn't carry it.
-  List<PluginMessageWithParts> readMessages(
+  /// mid-session).
+  List<CodexRolloutMessageRecord> readMessageRecords(
     String rolloutPath,
-    String sessionId, {
-    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
-  }) {
+    String sessionId,
+  ) {
     final file = File(rolloutPath);
     if (!file.existsSync()) return const [];
 
@@ -370,20 +354,10 @@ class SessionRolloutReader {
       }
     }
 
-    final out = <PluginMessageWithParts>[];
+    final out = <CodexRolloutMessageRecord>[];
     var messageCounter = 0;
     String? sessionProvider;
     String? currentModel;
-
-    PluginMessage assistantInfo(String id, PluginMessageTime? time) =>
-        PluginMessage.assistant(
-          id: id,
-          sessionID: sessionId,
-          agent: "codex",
-          modelID: currentModel ?? config.model,
-          providerID: sessionProvider ?? config.modelProvider ?? "openai",
-          time: time,
-        );
 
     for (final line in lines) {
       if (line.trim().isEmpty) continue;
@@ -409,7 +383,7 @@ class SessionRolloutReader {
         // Codex stamps each rollout record with a top-level ISO `timestamp`;
         // surface it so the mobile UI can render the per-message time. Absent
         // or unparseable timestamps degrade to null (no time shown).
-        final messageTime = _messageTimeFrom(map["timestamp"]);
+        final messageTime = _tryParseDate(map["timestamp"]);
         final payloadType = payload["type"] as String?;
 
         // Tool / command / file-edit activity — the substance of a coding
@@ -422,13 +396,14 @@ class SessionRolloutReader {
           final output = callId == null ? null : toolOutputs[callId];
           messageCounter += 1;
           out.add(
-            _toolMessage(
-              messageId: "m-$messageCounter",
-              sessionId: sessionId,
-              info: assistantInfo("m-$messageCounter", messageTime),
+            _toolRecord(
+              messageId: payload["id"] as String? ?? callId ?? "m-$messageCounter",
+              timestamp: messageTime,
+              modelId: currentModel,
+              providerId: sessionProvider,
               tool: _normalizeToolName(name),
               title: _toolCallTitle(args),
-              status: output != null ? PluginToolStatus.completed : PluginToolStatus.running,
+              status: output != null ? CodexRolloutToolStatus.completed : CodexRolloutToolStatus.running,
               output: output,
             ),
           );
@@ -441,13 +416,14 @@ class SessionRolloutReader {
           final action = (payload["action"] as Map?)?.cast<String, dynamic>();
           messageCounter += 1;
           out.add(
-            _toolMessage(
-              messageId: "m-$messageCounter",
-              sessionId: sessionId,
-              info: assistantInfo("m-$messageCounter", messageTime),
+            _toolRecord(
+              messageId: payload["id"] as String? ?? "m-$messageCounter",
+              timestamp: messageTime,
+              modelId: currentModel,
+              providerId: sessionProvider,
               tool: "web_search",
               title: action?["query"] as String?,
-              status: PluginToolStatus.completed,
+              status: CodexRolloutToolStatus.completed,
               output: null,
             ),
           );
@@ -472,34 +448,18 @@ class SessionRolloutReader {
         if (texts.isEmpty) continue;
 
         messageCounter += 1;
-        final messageId = "m-$messageCounter";
-        final info = role == "user"
-            ? PluginMessage.user(
-                id: messageId,
-                sessionID: sessionId,
-                agent: null,
-                time: messageTime,
-              )
-            : assistantInfo(messageId, messageTime);
-        final parts = <PluginMessagePart>[
-          for (var i = 0; i < texts.length; i++)
-            PluginMessagePart(
-              id: "$messageId-p$i",
-              sessionID: sessionId,
-              messageID: messageId,
-              type: PluginMessagePartType.text,
-              text: texts[i],
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-            ),
-        ];
-        out.add(PluginMessageWithParts(info: info, parts: parts));
+        final messageId = payload["id"] as String? ?? "m-$messageCounter";
+        out.add(
+          CodexRolloutMessageRecord(
+            id: messageId,
+            role: role == "user" ? CodexRolloutMessageRole.user : CodexRolloutMessageRole.assistant,
+            timestamp: messageTime,
+            modelId: currentModel,
+            providerId: sessionProvider,
+            texts: texts,
+            tool: null,
+          ),
+        );
       } catch (_) {
         // Bad line — skip and continue.
         continue;
@@ -512,43 +472,32 @@ class SessionRolloutReader {
   /// truncated to keep message payloads bounded (mirrors the opencode plugin).
   static const int _maxToolOutputLength = 8000;
 
-  /// Builds a one-tool-part assistant message for a rollout tool record.
-  PluginMessageWithParts _toolMessage({
+  CodexRolloutMessageRecord _toolRecord({
     required String messageId,
-    required String sessionId,
-    required PluginMessage info,
+    required DateTime? timestamp,
+    required String? modelId,
+    required String? providerId,
     required String tool,
-    required PluginToolStatus status,
+    required CodexRolloutToolStatus status,
     String? title,
     String? output,
   }) {
     final clipped = output != null && output.length > _maxToolOutputLength
         ? output.substring(0, _maxToolOutputLength)
         : output;
-    return PluginMessageWithParts(
-      info: info,
-      parts: [
-        PluginMessagePart(
-          id: "$messageId-tool",
-          sessionID: sessionId,
-          messageID: messageId,
-          type: PluginMessagePartType.tool,
-          text: "",
-          tool: tool,
-          state: PluginToolState(
-            status: status,
-            title: title,
-            output: clipped,
-            error: null,
-          ),
-          prompt: null,
-          description: null,
-          agent: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
-        ),
-      ],
+    return CodexRolloutMessageRecord(
+      id: messageId,
+      role: CodexRolloutMessageRole.assistant,
+      timestamp: timestamp,
+      modelId: modelId,
+      providerId: providerId,
+      texts: const [],
+      tool: CodexRolloutToolRecord(
+        name: tool,
+        title: title,
+        status: status,
+        output: clipped,
+      ),
     );
   }
 
@@ -559,10 +508,7 @@ class SessionRolloutReader {
     if (n.contains("patch") || n.contains("edit") || n.contains("write")) {
       return "edit";
     }
-    if (n.contains("exec") ||
-        n.contains("shell") ||
-        n.contains("bash") ||
-        n.contains("command")) {
+    if (n.contains("exec") || n.contains("shell") || n.contains("bash") || n.contains("command")) {
       return "shell";
     }
     return name;
@@ -584,9 +530,7 @@ class SessionRolloutReader {
     } catch (_) {
       // Fall through to the raw arguments.
     }
-    return argumentsJson.length > 120
-        ? argumentsJson.substring(0, 120)
-        : argumentsJson;
+    return argumentsJson.length > 120 ? argumentsJson.substring(0, 120) : argumentsJson;
   }
 
   /// Deletes the rollout file for [sessionId] and drops its entry from
@@ -645,14 +589,40 @@ DateTime? _tryParseDate(Object? raw) {
   return DateTime.tryParse(raw);
 }
 
-/// Builds a [PluginMessageTime] from a codex rollout record's top-level
-/// `timestamp`. The record carries only a single instant, so it maps to
-/// `created`; `completed` stays null. Unparseable/absent timestamps yield null.
-PluginMessageTime? _messageTimeFrom(Object? raw) {
-  final parsed = _tryParseDate(raw);
-  if (parsed == null) return null;
-  return PluginMessageTime(
-    created: parsed.millisecondsSinceEpoch,
-    completed: null,
-  );
+enum CodexRolloutMessageRole { user, assistant }
+
+enum CodexRolloutToolStatus { running, completed }
+
+class CodexRolloutMessageRecord {
+  const CodexRolloutMessageRecord({
+    required this.id,
+    required this.role,
+    required this.timestamp,
+    required this.modelId,
+    required this.providerId,
+    required this.texts,
+    required this.tool,
+  });
+
+  final String id;
+  final CodexRolloutMessageRole role;
+  final DateTime? timestamp;
+  final String? modelId;
+  final String? providerId;
+  final List<String> texts;
+  final CodexRolloutToolRecord? tool;
+}
+
+class CodexRolloutToolRecord {
+  const CodexRolloutToolRecord({
+    required this.name,
+    required this.title,
+    required this.status,
+    required this.output,
+  });
+
+  final String name;
+  final String? title;
+  final CodexRolloutToolStatus status;
+  final String? output;
 }

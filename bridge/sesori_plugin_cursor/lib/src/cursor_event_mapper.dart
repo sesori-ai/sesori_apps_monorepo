@@ -7,10 +7,10 @@ class CursorEventMapper extends AcpEventMapper {
   CursorEventMapper({required super.launchDirectory, required super.pluginId}) : super(agentId: pluginId);
 
   @override
-  List<BridgeSseEvent> mapExtension(AcpNotification notification) {
+  List<BridgeSseEvent> mapExtension(AcpExtensionNotificationRecord notification) {
     switch (notification.method) {
       case "cursor/update_todos":
-        final sessionId = notification.params["sessionId"] as String?;
+        final sessionId = notification.sessionId;
         if (sessionId == null || sessionId.isEmpty) return const [];
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
     }

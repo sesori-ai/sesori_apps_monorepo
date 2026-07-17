@@ -48,8 +48,7 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   }
 }
 
-class $ProjectsTableTable extends ProjectsTable
-    with TableInfo<$ProjectsTableTable, ProjectDto> {
+class $ProjectsTableTable extends ProjectsTable with TableInfo<$ProjectsTableTable, ProjectDto> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -133,8 +132,7 @@ class $ProjectsTableTable extends ProjectsTable
     requiredDuringInsert: false,
     clientDefault: () => DateTime.now().millisecondsSinceEpoch,
   );
-  static const VerificationMeta _projectionUpdatedAtMeta =
-      const VerificationMeta('projectionUpdatedAt');
+  static const VerificationMeta _projectionUpdatedAtMeta = const VerificationMeta('projectionUpdatedAt');
   @override
   late final GeneratedColumn<int> projectionUpdatedAt = GeneratedColumn<int>(
     'projection_updated_at',
@@ -328,8 +326,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       if (displayName != null) 'display_name': displayName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
-      if (projectionUpdatedAt != null)
-        'projection_updated_at': projectionUpdatedAt,
+      if (projectionUpdatedAt != null) 'projection_updated_at': projectionUpdatedAt,
     });
   }
 
@@ -489,8 +486,7 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   }
 }
 
-class $SessionTableTable extends SessionTable
-    with TableInfo<$SessionTableTable, SessionDto> {
+class $SessionTableTable extends SessionTable with TableInfo<$SessionTableTable, SessionDto> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -637,8 +633,7 @@ class $SessionTableTable extends SessionTable
     requiredDuringInsert: false,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<AgentModel?, String>
-  lastAgentModel = GeneratedColumn<String>(
+  late final GeneratedColumnWithTypeConverter<AgentModel?, String> lastAgentModel = GeneratedColumn<String>(
     'last_agent_model',
     aliasedName,
     true,
@@ -667,8 +662,7 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _projectionUpdatedAtMeta =
-      const VerificationMeta('projectionUpdatedAt');
+  static const VerificationMeta _projectionUpdatedAtMeta = const VerificationMeta('projectionUpdatedAt');
   @override
   late final GeneratedColumn<int> projectionUpdatedAt = GeneratedColumn<int>(
     'projection_updated_at',
@@ -1056,10 +1050,10 @@ class $SessionTableTable extends SessionTable
     return $SessionTableTable(attachedDatabase, alias);
   }
 
-  static TypeConverter<AgentModel, String> $converterlastAgentModel =
-      const AgentModelConverter();
-  static TypeConverter<AgentModel?, String?> $converterlastAgentModeln =
-      NullAwareTypeConverter.wrap($converterlastAgentModel);
+  static TypeConverter<AgentModel, String> $converterlastAgentModel = const AgentModelConverter();
+  static TypeConverter<AgentModel?, String?> $converterlastAgentModeln = NullAwareTypeConverter.wrap(
+    $converterlastAgentModel,
+  );
   @override
   bool get withoutRowId => true;
 }
@@ -1183,8 +1177,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (lastAgentModel != null) 'last_agent_model': lastAgentModel,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
-      if (projectionUpdatedAt != null)
-        'projection_updated_at': projectionUpdatedAt,
+      if (projectionUpdatedAt != null) 'projection_updated_at': projectionUpdatedAt,
       if (lastActivityAt != null) 'last_activity_at': lastActivityAt,
       if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (lastUserMessageAt != null) 'last_user_message_at': lastUserMessageAt,
@@ -1350,8 +1343,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   }
 }
 
-mixin $DeletedSessionsTableTableToColumns
-    implements Insertable<DeletedSessionDto> {
+mixin $DeletedSessionsTableTableToColumns implements Insertable<DeletedSessionDto> {
   /// Current owner of this durable local entity. Local mode has one owner;
   /// carrying it in the key keeps future identity scoping possible.
   String get ownerIdentity;
@@ -1644,8 +1636,7 @@ mixin $PullRequestsTableTableToColumns implements Insertable<PullRequestDto> {
   }
 }
 
-class $PullRequestsTableTable extends PullRequestsTable
-    with TableInfo<$PullRequestsTableTable, PullRequestDto> {
+class $PullRequestsTableTable extends PullRequestsTable with TableInfo<$PullRequestsTableTable, PullRequestDto> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -1705,17 +1696,15 @@ class $PullRequestsTableTable extends PullRequestsTable
     requiredDuringInsert: true,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<PrState, String> state =
-      GeneratedColumn<String>(
-        'state',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<PrState>($PullRequestsTableTable.$converterstate);
+  late final GeneratedColumnWithTypeConverter<PrState, String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<PrState>($PullRequestsTableTable.$converterstate);
   @override
-  late final GeneratedColumnWithTypeConverter<PrMergeableStatus, String>
-  mergeableStatus =
+  late final GeneratedColumnWithTypeConverter<PrMergeableStatus, String> mergeableStatus =
       GeneratedColumn<String>(
         'mergeable_status',
         aliasedName,
@@ -1726,8 +1715,7 @@ class $PullRequestsTableTable extends PullRequestsTable
         $PullRequestsTableTable.$convertermergeableStatus,
       );
   @override
-  late final GeneratedColumnWithTypeConverter<PrReviewDecision, String>
-  reviewDecision =
+  late final GeneratedColumnWithTypeConverter<PrReviewDecision, String> reviewDecision =
       GeneratedColumn<String>(
         'review_decision',
         aliasedName,
@@ -1738,8 +1726,7 @@ class $PullRequestsTableTable extends PullRequestsTable
         $PullRequestsTableTable.$converterreviewDecision,
       );
   @override
-  late final GeneratedColumnWithTypeConverter<PrCheckStatus, String>
-  checkStatus = GeneratedColumn<String>(
+  late final GeneratedColumnWithTypeConverter<PrCheckStatus, String> checkStatus = GeneratedColumn<String>(
     'check_status',
     aliasedName,
     false,
@@ -1888,13 +1875,12 @@ class $PullRequestsTableTable extends PullRequestsTable
           data['${effectivePrefix}state'],
         )!,
       ),
-      mergeableStatus: $PullRequestsTableTable.$convertermergeableStatus
-          .fromSql(
-            attachedDatabase.typeMapping.read(
-              DriftSqlType.string,
-              data['${effectivePrefix}mergeable_status'],
-            )!,
-          ),
+      mergeableStatus: $PullRequestsTableTable.$convertermergeableStatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}mergeable_status'],
+        )!,
+      ),
       reviewDecision: $PullRequestsTableTable.$converterreviewDecision.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -1923,20 +1909,19 @@ class $PullRequestsTableTable extends PullRequestsTable
     return $PullRequestsTableTable(attachedDatabase, alias);
   }
 
-  static JsonTypeConverter2<PrState, String, String> $converterstate =
-      const EnumNameConverter<PrState>(PrState.values);
-  static JsonTypeConverter2<PrMergeableStatus, String, String>
-  $convertermergeableStatus = const EnumNameConverter<PrMergeableStatus>(
-    PrMergeableStatus.values,
-  );
-  static JsonTypeConverter2<PrReviewDecision, String, String>
-  $converterreviewDecision = const EnumNameConverter<PrReviewDecision>(
-    PrReviewDecision.values,
-  );
-  static JsonTypeConverter2<PrCheckStatus, String, String>
-  $convertercheckStatus = const EnumNameConverter<PrCheckStatus>(
-    PrCheckStatus.values,
-  );
+  static JsonTypeConverter2<PrState, String, String> $converterstate = const EnumNameConverter<PrState>(PrState.values);
+  static JsonTypeConverter2<PrMergeableStatus, String, String> $convertermergeableStatus =
+      const EnumNameConverter<PrMergeableStatus>(
+        PrMergeableStatus.values,
+      );
+  static JsonTypeConverter2<PrReviewDecision, String, String> $converterreviewDecision =
+      const EnumNameConverter<PrReviewDecision>(
+        PrReviewDecision.values,
+      );
+  static JsonTypeConverter2<PrCheckStatus, String, String> $convertercheckStatus =
+      const EnumNameConverter<PrCheckStatus>(
+        PrCheckStatus.values,
+      );
   @override
   bool get withoutRowId => true;
 }
@@ -2115,8 +2100,7 @@ class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
   }
 }
 
-mixin $CatalogHydrationsTableTableToColumns
-    implements Insertable<CatalogHydrationDto> {
+mixin $CatalogHydrationsTableTableToColumns implements Insertable<CatalogHydrationDto> {
   String get pluginId;
   int get projectionVersion;
   int get completedAt;
@@ -2250,8 +2234,7 @@ class $CatalogHydrationsTableTable extends CatalogHydrationsTable
   bool get withoutRowId => true;
 }
 
-class CatalogHydrationsTableCompanion
-    extends UpdateCompanion<CatalogHydrationDto> {
+class CatalogHydrationsTableCompanion extends UpdateCompanion<CatalogHydrationDto> {
   final Value<String> pluginId;
   final Value<int> projectionVersion;
   final Value<int> completedAt;
@@ -2317,17 +2300,503 @@ class CatalogHydrationsTableCompanion
   }
 }
 
+mixin $AcceptedCommandInvocationsTableTableToColumns implements Insertable<AcceptedCommandInvocationDto> {
+  String get invocationId;
+  String get sessionId;
+  String get pluginId;
+  String get name;
+  String? get arguments;
+  int get acceptedAt;
+  String? get backendMessageId;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['invocation_id'] = Variable<String>(invocationId);
+    map['session_id'] = Variable<String>(sessionId);
+    map['plugin_id'] = Variable<String>(pluginId);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || arguments != null) {
+      map['arguments'] = Variable<String>(arguments);
+    }
+    map['accepted_at'] = Variable<int>(acceptedAt);
+    if (!nullToAbsent || backendMessageId != null) {
+      map['backend_message_id'] = Variable<String>(backendMessageId);
+    }
+    return map;
+  }
+}
+
+class $AcceptedCommandInvocationsTableTable extends AcceptedCommandInvocationsTable
+    with TableInfo<$AcceptedCommandInvocationsTableTable, AcceptedCommandInvocationDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AcceptedCommandInvocationsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _invocationIdMeta = const VerificationMeta(
+    'invocationId',
+  );
+  @override
+  late final GeneratedColumn<String> invocationId = GeneratedColumn<String>(
+    'invocation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _pluginIdMeta = const VerificationMeta(
+    'pluginId',
+  );
+  @override
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _argumentsMeta = const VerificationMeta(
+    'arguments',
+  );
+  @override
+  late final GeneratedColumn<String> arguments = GeneratedColumn<String>(
+    'arguments',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _acceptedAtMeta = const VerificationMeta(
+    'acceptedAt',
+  );
+  @override
+  late final GeneratedColumn<int> acceptedAt = GeneratedColumn<int>(
+    'accepted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _backendMessageIdMeta = const VerificationMeta(
+    'backendMessageId',
+  );
+  @override
+  late final GeneratedColumn<String> backendMessageId = GeneratedColumn<String>(
+    'backend_message_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    invocationId,
+    sessionId,
+    pluginId,
+    name,
+    arguments,
+    acceptedAt,
+    backendMessageId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'accepted_command_invocations_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AcceptedCommandInvocationDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('invocation_id')) {
+      context.handle(
+        _invocationIdMeta,
+        invocationId.isAcceptableOrUnknown(
+          data['invocation_id']!,
+          _invocationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_invocationIdMeta);
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('plugin_id')) {
+      context.handle(
+        _pluginIdMeta,
+        pluginId.isAcceptableOrUnknown(data['plugin_id']!, _pluginIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pluginIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('arguments')) {
+      context.handle(
+        _argumentsMeta,
+        arguments.isAcceptableOrUnknown(data['arguments']!, _argumentsMeta),
+      );
+    }
+    if (data.containsKey('accepted_at')) {
+      context.handle(
+        _acceptedAtMeta,
+        acceptedAt.isAcceptableOrUnknown(data['accepted_at']!, _acceptedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_acceptedAtMeta);
+    }
+    if (data.containsKey('backend_message_id')) {
+      context.handle(
+        _backendMessageIdMeta,
+        backendMessageId.isAcceptableOrUnknown(
+          data['backend_message_id']!,
+          _backendMessageIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {invocationId};
+  @override
+  AcceptedCommandInvocationDto map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AcceptedCommandInvocationDto(
+      invocationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}invocation_id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      pluginId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plugin_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      arguments: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}arguments'],
+      ),
+      acceptedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}accepted_at'],
+      )!,
+      backendMessageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}backend_message_id'],
+      ),
+    );
+  }
+
+  @override
+  $AcceptedCommandInvocationsTableTable createAlias(String alias) {
+    return $AcceptedCommandInvocationsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class AcceptedCommandInvocationDto extends DataClass with $AcceptedCommandInvocationsTableTableToColumns {
+  @override
+  final String invocationId;
+  @override
+  final String sessionId;
+  @override
+  final String pluginId;
+  @override
+  final String name;
+  @override
+  final String? arguments;
+  @override
+  final int acceptedAt;
+  @override
+  final String? backendMessageId;
+  const AcceptedCommandInvocationDto({
+    required this.invocationId,
+    required this.sessionId,
+    required this.pluginId,
+    required this.name,
+    this.arguments,
+    required this.acceptedAt,
+    this.backendMessageId,
+  });
+  AcceptedCommandInvocationsTableCompanion toCompanion(bool nullToAbsent) {
+    return AcceptedCommandInvocationsTableCompanion(
+      invocationId: Value(invocationId),
+      sessionId: Value(sessionId),
+      pluginId: Value(pluginId),
+      name: Value(name),
+      arguments: arguments == null && nullToAbsent ? const Value.absent() : Value(arguments),
+      acceptedAt: Value(acceptedAt),
+      backendMessageId: backendMessageId == null && nullToAbsent ? const Value.absent() : Value(backendMessageId),
+    );
+  }
+
+  factory AcceptedCommandInvocationDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AcceptedCommandInvocationDto(
+      invocationId: serializer.fromJson<String>(json['invocationId']),
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      pluginId: serializer.fromJson<String>(json['pluginId']),
+      name: serializer.fromJson<String>(json['name']),
+      arguments: serializer.fromJson<String?>(json['arguments']),
+      acceptedAt: serializer.fromJson<int>(json['acceptedAt']),
+      backendMessageId: serializer.fromJson<String?>(json['backendMessageId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'invocationId': serializer.toJson<String>(invocationId),
+      'sessionId': serializer.toJson<String>(sessionId),
+      'pluginId': serializer.toJson<String>(pluginId),
+      'name': serializer.toJson<String>(name),
+      'arguments': serializer.toJson<String?>(arguments),
+      'acceptedAt': serializer.toJson<int>(acceptedAt),
+      'backendMessageId': serializer.toJson<String?>(backendMessageId),
+    };
+  }
+
+  AcceptedCommandInvocationDto copyWith({
+    String? invocationId,
+    String? sessionId,
+    String? pluginId,
+    String? name,
+    Value<String?> arguments = const Value.absent(),
+    int? acceptedAt,
+    Value<String?> backendMessageId = const Value.absent(),
+  }) => AcceptedCommandInvocationDto(
+    invocationId: invocationId ?? this.invocationId,
+    sessionId: sessionId ?? this.sessionId,
+    pluginId: pluginId ?? this.pluginId,
+    name: name ?? this.name,
+    arguments: arguments.present ? arguments.value : this.arguments,
+    acceptedAt: acceptedAt ?? this.acceptedAt,
+    backendMessageId: backendMessageId.present ? backendMessageId.value : this.backendMessageId,
+  );
+  AcceptedCommandInvocationDto copyWithCompanion(
+    AcceptedCommandInvocationsTableCompanion data,
+  ) {
+    return AcceptedCommandInvocationDto(
+      invocationId: data.invocationId.present ? data.invocationId.value : this.invocationId,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
+      name: data.name.present ? data.name.value : this.name,
+      arguments: data.arguments.present ? data.arguments.value : this.arguments,
+      acceptedAt: data.acceptedAt.present ? data.acceptedAt.value : this.acceptedAt,
+      backendMessageId: data.backendMessageId.present ? data.backendMessageId.value : this.backendMessageId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AcceptedCommandInvocationDto(')
+          ..write('invocationId: $invocationId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('pluginId: $pluginId, ')
+          ..write('name: $name, ')
+          ..write('arguments: $arguments, ')
+          ..write('acceptedAt: $acceptedAt, ')
+          ..write('backendMessageId: $backendMessageId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    invocationId,
+    sessionId,
+    pluginId,
+    name,
+    arguments,
+    acceptedAt,
+    backendMessageId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AcceptedCommandInvocationDto &&
+          other.invocationId == this.invocationId &&
+          other.sessionId == this.sessionId &&
+          other.pluginId == this.pluginId &&
+          other.name == this.name &&
+          other.arguments == this.arguments &&
+          other.acceptedAt == this.acceptedAt &&
+          other.backendMessageId == this.backendMessageId);
+}
+
+class AcceptedCommandInvocationsTableCompanion extends UpdateCompanion<AcceptedCommandInvocationDto> {
+  final Value<String> invocationId;
+  final Value<String> sessionId;
+  final Value<String> pluginId;
+  final Value<String> name;
+  final Value<String?> arguments;
+  final Value<int> acceptedAt;
+  final Value<String?> backendMessageId;
+  const AcceptedCommandInvocationsTableCompanion({
+    this.invocationId = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.pluginId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.arguments = const Value.absent(),
+    this.acceptedAt = const Value.absent(),
+    this.backendMessageId = const Value.absent(),
+  });
+  AcceptedCommandInvocationsTableCompanion.insert({
+    required String invocationId,
+    required String sessionId,
+    required String pluginId,
+    required String name,
+    this.arguments = const Value.absent(),
+    required int acceptedAt,
+    this.backendMessageId = const Value.absent(),
+  }) : invocationId = Value(invocationId),
+       sessionId = Value(sessionId),
+       pluginId = Value(pluginId),
+       name = Value(name),
+       acceptedAt = Value(acceptedAt);
+  static Insertable<AcceptedCommandInvocationDto> custom({
+    Expression<String>? invocationId,
+    Expression<String>? sessionId,
+    Expression<String>? pluginId,
+    Expression<String>? name,
+    Expression<String>? arguments,
+    Expression<int>? acceptedAt,
+    Expression<String>? backendMessageId,
+  }) {
+    return RawValuesInsertable({
+      if (invocationId != null) 'invocation_id': invocationId,
+      if (sessionId != null) 'session_id': sessionId,
+      if (pluginId != null) 'plugin_id': pluginId,
+      if (name != null) 'name': name,
+      if (arguments != null) 'arguments': arguments,
+      if (acceptedAt != null) 'accepted_at': acceptedAt,
+      if (backendMessageId != null) 'backend_message_id': backendMessageId,
+    });
+  }
+
+  AcceptedCommandInvocationsTableCompanion copyWith({
+    Value<String>? invocationId,
+    Value<String>? sessionId,
+    Value<String>? pluginId,
+    Value<String>? name,
+    Value<String?>? arguments,
+    Value<int>? acceptedAt,
+    Value<String?>? backendMessageId,
+  }) {
+    return AcceptedCommandInvocationsTableCompanion(
+      invocationId: invocationId ?? this.invocationId,
+      sessionId: sessionId ?? this.sessionId,
+      pluginId: pluginId ?? this.pluginId,
+      name: name ?? this.name,
+      arguments: arguments ?? this.arguments,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+      backendMessageId: backendMessageId ?? this.backendMessageId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (invocationId.present) {
+      map['invocation_id'] = Variable<String>(invocationId.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (arguments.present) {
+      map['arguments'] = Variable<String>(arguments.value);
+    }
+    if (acceptedAt.present) {
+      map['accepted_at'] = Variable<int>(acceptedAt.value);
+    }
+    if (backendMessageId.present) {
+      map['backend_message_id'] = Variable<String>(backendMessageId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AcceptedCommandInvocationsTableCompanion(')
+          ..write('invocationId: $invocationId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('pluginId: $pluginId, ')
+          ..write('name: $name, ')
+          ..write('arguments: $arguments, ')
+          ..write('acceptedAt: $acceptedAt, ')
+          ..write('backendMessageId: $backendMessageId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ProjectsTableTable projectsTable = $ProjectsTableTable(this);
   late final $SessionTableTable sessionTable = $SessionTableTable(this);
-  late final $DeletedSessionsTableTable deletedSessionsTable =
-      $DeletedSessionsTableTable(this);
-  late final $PullRequestsTableTable pullRequestsTable =
-      $PullRequestsTableTable(this);
-  late final $CatalogHydrationsTableTable catalogHydrationsTable =
-      $CatalogHydrationsTableTable(this);
+  late final $DeletedSessionsTableTable deletedSessionsTable = $DeletedSessionsTableTable(this);
+  late final $PullRequestsTableTable pullRequestsTable = $PullRequestsTableTable(this);
+  late final $CatalogHydrationsTableTable catalogHydrationsTable = $CatalogHydrationsTableTable(this);
+  late final $AcceptedCommandInvocationsTableTable acceptedCommandInvocationsTable =
+      $AcceptedCommandInvocationsTableTable(this);
   late final Index idxProjectsPath = Index(
     'idx_projects_path',
     'CREATE INDEX idx_projects_path ON projects_table (path)',
@@ -2352,6 +2821,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_sessions_archive',
     'CREATE INDEX idx_sessions_archive ON sessions_table (updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
   );
+  late final Index idxAcceptedCommandsPluginSession = Index(
+    'idx_accepted_commands_plugin_session',
+    'CREATE INDEX idx_accepted_commands_plugin_session ON accepted_command_invocations_table (plugin_id, session_id, accepted_at, invocation_id)',
+  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   late final PullRequestDao pullRequestDao = PullRequestDao(
@@ -2360,9 +2833,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final CatalogHydrationsDao catalogHydrationsDao = CatalogHydrationsDao(
     this as AppDatabase,
   );
+  late final CommandInvocationDao commandInvocationDao = CommandInvocationDao(
+    this as AppDatabase,
+  );
   @override
-  Iterable<TableInfo<Table, Object?>> get allTables =>
-      allSchemaEntities.whereType<TableInfo<Table, Object?>>();
+  Iterable<TableInfo<Table, Object?>> get allTables => allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     projectsTable,
@@ -2370,12 +2845,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     deletedSessionsTable,
     pullRequestsTable,
     catalogHydrationsTable,
+    acceptedCommandInvocationsTable,
     idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
     idxSessionsArchive,
+    idxAcceptedCommandsPluginSession,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2399,6 +2876,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate(
+          'accepted_command_invocations_table',
+          kind: UpdateKind.delete,
+        ),
+      ],
     ),
   ]);
 }
@@ -2426,27 +2915,25 @@ typedef $$ProjectsTableTableUpdateCompanionBuilder =
       Value<int> projectionUpdatedAt,
     });
 
-final class $$ProjectsTableTableReferences
-    extends BaseReferences<_$AppDatabase, $ProjectsTableTable, ProjectDto> {
+final class $$ProjectsTableTableReferences extends BaseReferences<_$AppDatabase, $ProjectsTableTable, ProjectDto> {
   $$ProjectsTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static MultiTypedResultKey<$SessionTableTable, List<SessionDto>>
-  _sessionTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.sessionTable,
-    aliasName: 'projects_table__project_id__sessions_table__project_id',
-  );
+  static MultiTypedResultKey<$SessionTableTable, List<SessionDto>> _sessionTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionTable,
+        aliasName: 'projects_table__project_id__sessions_table__project_id',
+      );
 
   $$SessionTableTableProcessedTableManager get sessionTableRefs {
-    final manager = $$SessionTableTableTableManager($_db, $_db.sessionTable)
-        .filter(
-          (f) => f.projectId.projectId.sqlEquals(
-            $_itemColumn<String>('project_id')!,
-          ),
-        );
+    final manager = $$SessionTableTableTableManager($_db, $_db.sessionTable).filter(
+      (f) => f.projectId.projectId.sqlEquals(
+        $_itemColumn<String>('project_id')!,
+      ),
+    );
 
     final cache = $_typedResult.readTableOrNull(_sessionTableRefsTable($_db));
     return ProcessedTableManager(
@@ -2454,13 +2941,12 @@ final class $$ProjectsTableTableReferences
     );
   }
 
-  static MultiTypedResultKey<$PullRequestsTableTable, List<PullRequestDto>>
-  _pullRequestsTableRefsTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.pullRequestsTable,
-        aliasName:
-            'projects_table__project_id__pull_requests_table__project_id',
-      );
+  static MultiTypedResultKey<$PullRequestsTableTable, List<PullRequestDto>> _pullRequestsTableRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.pullRequestsTable,
+    aliasName: 'projects_table__project_id__pull_requests_table__project_id',
+  );
 
   $$PullRequestsTableTableProcessedTableManager get pullRequestsTableRefs {
     final manager =
@@ -2482,8 +2968,7 @@ final class $$ProjectsTableTableReferences
   }
 }
 
-class $$ProjectsTableTableFilterComposer
-    extends Composer<_$AppDatabase, $ProjectsTableTable> {
+class $$ProjectsTableTableFilterComposer extends Composer<_$AppDatabase, $ProjectsTableTable> {
   $$ProjectsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -2549,8 +3034,7 @@ class $$ProjectsTableTableFilterComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -2574,16 +3058,14 @@ class $$ProjectsTableTableFilterComposer
             $table: $db.pullRequestsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
   }
 }
 
-class $$ProjectsTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $ProjectsTableTable> {
+class $$ProjectsTableTableOrderingComposer extends Composer<_$AppDatabase, $ProjectsTableTable> {
   $$ProjectsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -2632,8 +3114,7 @@ class $$ProjectsTableTableOrderingComposer
   );
 }
 
-class $$ProjectsTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $ProjectsTableTable> {
+class $$ProjectsTableTableAnnotationComposer extends Composer<_$AppDatabase, $ProjectsTableTable> {
   $$ProjectsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -2641,14 +3122,11 @@ class $$ProjectsTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get projectId =>
-      $composableBuilder(column: $table.projectId, builder: (column) => column);
+  GeneratedColumn<String> get projectId => $composableBuilder(column: $table.projectId, builder: (column) => column);
 
-  GeneratedColumn<String> get path =>
-      $composableBuilder(column: $table.path, builder: (column) => column);
+  GeneratedColumn<String> get path => $composableBuilder(column: $table.path, builder: (column) => column);
 
-  GeneratedColumn<bool> get hidden =>
-      $composableBuilder(column: $table.hidden, builder: (column) => column);
+  GeneratedColumn<bool> get hidden => $composableBuilder(column: $table.hidden, builder: (column) => column);
 
   GeneratedColumn<String> get baseBranch => $composableBuilder(
     column: $table.baseBranch,
@@ -2660,11 +3138,9 @@ class $$ProjectsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<int> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<int> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   GeneratedColumn<int> get projectionUpdatedAt => $composableBuilder(
     column: $table.projectionUpdatedAt,
@@ -2689,8 +3165,7 @@ class $$ProjectsTableTableAnnotationComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -2699,26 +3174,24 @@ class $$ProjectsTableTableAnnotationComposer
   Expression<T> pullRequestsTableRefs<T extends Object>(
     Expression<T> Function($$PullRequestsTableTableAnnotationComposer a) f,
   ) {
-    final $$PullRequestsTableTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.projectId,
-          referencedTable: $db.pullRequestsTable,
-          getReferencedColumn: (t) => t.projectId,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$PullRequestsTableTableAnnotationComposer(
-                $db: $db,
-                $table: $db.pullRequestsTable,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
+    final $$PullRequestsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.pullRequestsTable,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PullRequestsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.pullRequestsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
     return f(composer);
   }
 }
@@ -2746,12 +3219,9 @@ class $$ProjectsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$ProjectsTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ProjectsTableTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ProjectsTableTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () => $$ProjectsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$ProjectsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () => $$ProjectsTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> projectId = const Value.absent(),
@@ -2800,63 +3270,48 @@ class $$ProjectsTableTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback:
-              ({sessionTableRefs = false, pullRequestsTableRefs = false}) {
-                return PrefetchHooks(
-                  db: db,
-                  explicitlyWatchedTables: [
-                    if (sessionTableRefs) db.sessionTable,
-                    if (pullRequestsTableRefs) db.pullRequestsTable,
-                  ],
-                  addJoins: null,
-                  getPrefetchedDataCallback: (items) async {
-                    return [
-                      if (sessionTableRefs)
-                        await $_getPrefetchedData<
-                          ProjectDto,
-                          $ProjectsTableTable,
-                          SessionDto
-                        >(
-                          currentTable: table,
-                          referencedTable: $$ProjectsTableTableReferences
-                              ._sessionTableRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$ProjectsTableTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).sessionTableRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.projectId == item.projectId,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (pullRequestsTableRefs)
-                        await $_getPrefetchedData<
-                          ProjectDto,
-                          $ProjectsTableTable,
-                          PullRequestDto
-                        >(
-                          currentTable: table,
-                          referencedTable: $$ProjectsTableTableReferences
-                              ._pullRequestsTableRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$ProjectsTableTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).pullRequestsTableRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.projectId == item.projectId,
-                              ),
-                          typedResults: items,
-                        ),
-                    ];
-                  },
-                );
+          prefetchHooksCallback: ({sessionTableRefs = false, pullRequestsTableRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (sessionTableRefs) db.sessionTable,
+                if (pullRequestsTableRefs) db.pullRequestsTable,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (sessionTableRefs)
+                    await $_getPrefetchedData<ProjectDto, $ProjectsTableTable, SessionDto>(
+                      currentTable: table,
+                      referencedTable: $$ProjectsTableTableReferences._sessionTableRefsTable(db),
+                      managerFromTypedResult: (p0) => $$ProjectsTableTableReferences(
+                        db,
+                        table,
+                        p0,
+                      ).sessionTableRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) => referencedItems.where(
+                        (e) => e.projectId == item.projectId,
+                      ),
+                      typedResults: items,
+                    ),
+                  if (pullRequestsTableRefs)
+                    await $_getPrefetchedData<ProjectDto, $ProjectsTableTable, PullRequestDto>(
+                      currentTable: table,
+                      referencedTable: $$ProjectsTableTableReferences._pullRequestsTableRefsTable(db),
+                      managerFromTypedResult: (p0) => $$ProjectsTableTableReferences(
+                        db,
+                        table,
+                        p0,
+                      ).pullRequestsTableRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) => referencedItems.where(
+                        (e) => e.projectId == item.projectId,
+                      ),
+                      typedResults: items,
+                    ),
+                ];
               },
+            );
+          },
         ),
       );
 }
@@ -2929,13 +3384,11 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String?> catalogTitle,
     });
 
-final class $$SessionTableTableReferences
-    extends BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto> {
+final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto> {
   $$SessionTableTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) => db
-      .projectsTable
-      .createAlias('sessions_table__project_id__projects_table__project_id');
+  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) =>
+      db.projectsTable.createAlias('sessions_table__project_id__projects_table__project_id');
 
   $$ProjectsTableTableProcessedTableManager get projectId {
     final $_column = $_itemColumn<String>('project_id')!;
@@ -2951,10 +3404,9 @@ final class $$SessionTableTableReferences
     );
   }
 
-  static $SessionTableTable _parentSessionIdTable(_$AppDatabase db) =>
-      db.sessionTable.createAlias(
-        'sessions_table__parent_session_id__sessions_table__session_id',
-      );
+  static $SessionTableTable _parentSessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
+    'sessions_table__parent_session_id__sessions_table__session_id',
+  );
 
   $$SessionTableTableProcessedTableManager? get parentSessionId {
     final $_column = $_itemColumn<String>('parent_session_id');
@@ -2969,10 +3421,36 @@ final class $$SessionTableTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<$AcceptedCommandInvocationsTableTable, List<AcceptedCommandInvocationDto>>
+  _acceptedCommandInvocationsTableRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.acceptedCommandInvocationsTable,
+    aliasName: 'sessions_table__session_id__accepted_command_invocations_table__session_id',
+  );
+
+  $$AcceptedCommandInvocationsTableTableProcessedTableManager get acceptedCommandInvocationsTableRefs {
+    final manager =
+        $$AcceptedCommandInvocationsTableTableTableManager(
+          $_db,
+          $_db.acceptedCommandInvocationsTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _acceptedCommandInvocationsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
-class $$SessionTableTableFilterComposer
-    extends Composer<_$AppDatabase, $SessionTableTable> {
+class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $SessionTableTable> {
   $$SessionTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -3030,8 +3508,7 @@ class $$SessionTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<AgentModel?, AgentModel, String>
-  get lastAgentModel => $composableBuilder(
+  ColumnWithTypeConverterFilters<AgentModel?, AgentModel, String> get lastAgentModel => $composableBuilder(
     column: $table.lastAgentModel,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
@@ -3097,8 +3574,7 @@ class $$SessionTableTableFilterComposer
             $table: $db.projectsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -3120,16 +3596,41 @@ class $$SessionTableTableFilterComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
+
+  Expression<bool> acceptedCommandInvocationsTableRefs(
+    Expression<bool> Function(
+      $$AcceptedCommandInvocationsTableTableFilterComposer f,
+    )
+    f,
+  ) {
+    final $$AcceptedCommandInvocationsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.acceptedCommandInvocationsTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AcceptedCommandInvocationsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.acceptedCommandInvocationsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
-class $$SessionTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $SessionTableTable> {
+class $$SessionTableTableOrderingComposer extends Composer<_$AppDatabase, $SessionTableTable> {
   $$SessionTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -3253,8 +3754,7 @@ class $$SessionTableTableOrderingComposer
             $table: $db.projectsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -3276,16 +3776,14 @@ class $$SessionTableTableOrderingComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$SessionTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $SessionTableTable> {
+class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $SessionTableTable> {
   $$SessionTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -3293,16 +3791,14 @@ class $$SessionTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get sessionId =>
-      $composableBuilder(column: $table.sessionId, builder: (column) => column);
+  GeneratedColumn<String> get sessionId => $composableBuilder(column: $table.sessionId, builder: (column) => column);
 
   GeneratedColumn<String> get backendSessionId => $composableBuilder(
     column: $table.backendSessionId,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get directory =>
-      $composableBuilder(column: $table.directory, builder: (column) => column);
+  GeneratedColumn<String> get directory => $composableBuilder(column: $table.directory, builder: (column) => column);
 
   GeneratedColumn<String> get worktreePath => $composableBuilder(
     column: $table.worktreePath,
@@ -3334,20 +3830,16 @@ class $$SessionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get lastAgent =>
-      $composableBuilder(column: $table.lastAgent, builder: (column) => column);
+  GeneratedColumn<String> get lastAgent => $composableBuilder(column: $table.lastAgent, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<AgentModel?, String> get lastAgentModel =>
-      $composableBuilder(
-        column: $table.lastAgentModel,
-        builder: (column) => column,
-      );
+  GeneratedColumnWithTypeConverter<AgentModel?, String> get lastAgentModel => $composableBuilder(
+    column: $table.lastAgentModel,
+    builder: (column) => column,
+  );
 
-  GeneratedColumn<int> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<int> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<int> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   GeneratedColumn<int> get projectionUpdatedAt => $composableBuilder(
     column: $table.projectionUpdatedAt,
@@ -3369,11 +3861,9 @@ class $$SessionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get pluginId =>
-      $composableBuilder(column: $table.pluginId, builder: (column) => column);
+  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
-  GeneratedColumn<String> get title =>
-      $composableBuilder(column: $table.title, builder: (column) => column);
+  GeneratedColumn<String> get title => $composableBuilder(column: $table.title, builder: (column) => column);
 
   GeneratedColumn<String> get catalogTitle => $composableBuilder(
     column: $table.catalogTitle,
@@ -3396,8 +3886,7 @@ class $$SessionTableTableAnnotationComposer
             $table: $db.projectsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -3419,11 +3908,37 @@ class $$SessionTableTableAnnotationComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
+  }
+
+  Expression<T> acceptedCommandInvocationsTableRefs<T extends Object>(
+    Expression<T> Function(
+      $$AcceptedCommandInvocationsTableTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$AcceptedCommandInvocationsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.acceptedCommandInvocationsTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AcceptedCommandInvocationsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.acceptedCommandInvocationsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -3440,19 +3955,20 @@ class $$SessionTableTableTableManager
           $$SessionTableTableUpdateCompanionBuilder,
           (SessionDto, $$SessionTableTableReferences),
           SessionDto,
-          PrefetchHooks Function({bool projectId, bool parentSessionId})
+          PrefetchHooks Function({
+            bool projectId,
+            bool parentSessionId,
+            bool acceptedCommandInvocationsTableRefs,
+          })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
     : super(
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$SessionTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$SessionTableTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$SessionTableTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () => $$SessionTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$SessionTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () => $$SessionTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
@@ -3558,10 +4074,16 @@ class $$SessionTableTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({projectId = false, parentSessionId = false}) {
+              ({
+                projectId = false,
+                parentSessionId = false,
+                acceptedCommandInvocationsTableRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
-                  explicitlyWatchedTables: [],
+                  explicitlyWatchedTables: [
+                    if (acceptedCommandInvocationsTableRefs) db.acceptedCommandInvocationsTable,
+                  ],
                   addJoins:
                       <
                         T extends TableManagerState<
@@ -3583,13 +4105,8 @@ class $$SessionTableTableTableManager
                               state.withJoin(
                                     currentTable: table,
                                     currentColumn: table.projectId,
-                                    referencedTable:
-                                        $$SessionTableTableReferences
-                                            ._projectIdTable(db),
-                                    referencedColumn:
-                                        $$SessionTableTableReferences
-                                            ._projectIdTable(db)
-                                            .projectId,
+                                    referencedTable: $$SessionTableTableReferences._projectIdTable(db),
+                                    referencedColumn: $$SessionTableTableReferences._projectIdTable(db).projectId,
                                   )
                                   as T;
                         }
@@ -3598,13 +4115,8 @@ class $$SessionTableTableTableManager
                               state.withJoin(
                                     currentTable: table,
                                     currentColumn: table.parentSessionId,
-                                    referencedTable:
-                                        $$SessionTableTableReferences
-                                            ._parentSessionIdTable(db),
-                                    referencedColumn:
-                                        $$SessionTableTableReferences
-                                            ._parentSessionIdTable(db)
-                                            .sessionId,
+                                    referencedTable: $$SessionTableTableReferences._parentSessionIdTable(db),
+                                    referencedColumn: $$SessionTableTableReferences._parentSessionIdTable(db).sessionId,
                                   )
                                   as T;
                         }
@@ -3612,7 +4124,22 @@ class $$SessionTableTableTableManager
                         return state;
                       },
                   getPrefetchedDataCallback: (items) async {
-                    return [];
+                    return [
+                      if (acceptedCommandInvocationsTableRefs)
+                        await $_getPrefetchedData<SessionDto, $SessionTableTable, AcceptedCommandInvocationDto>(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences._acceptedCommandInvocationsTableRefsTable(db),
+                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).acceptedCommandInvocationsTableRefs,
+                          referencedItemsForCurrentItem: (item, referencedItems) => referencedItems.where(
+                            (e) => e.sessionId == item.sessionId,
+                          ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
                 );
               },
@@ -3632,7 +4159,11 @@ typedef $$SessionTableTableProcessedTableManager =
       $$SessionTableTableUpdateCompanionBuilder,
       (SessionDto, $$SessionTableTableReferences),
       SessionDto,
-      PrefetchHooks Function({bool projectId, bool parentSessionId})
+      PrefetchHooks Function({
+        bool projectId,
+        bool parentSessionId,
+        bool acceptedCommandInvocationsTableRefs,
+      })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
     DeletedSessionsTableCompanion Function({
@@ -3649,8 +4180,7 @@ typedef $$DeletedSessionsTableTableUpdateCompanionBuilder =
       Value<int> deletedAt,
     });
 
-class $$DeletedSessionsTableTableFilterComposer
-    extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
+class $$DeletedSessionsTableTableFilterComposer extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
   $$DeletedSessionsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -3679,8 +4209,7 @@ class $$DeletedSessionsTableTableFilterComposer
   );
 }
 
-class $$DeletedSessionsTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
+class $$DeletedSessionsTableTableOrderingComposer extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
   $$DeletedSessionsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -3709,8 +4238,7 @@ class $$DeletedSessionsTableTableOrderingComposer
   );
 }
 
-class $$DeletedSessionsTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
+class $$DeletedSessionsTableTableAnnotationComposer extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
   $$DeletedSessionsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -3728,11 +4256,9 @@ class $$DeletedSessionsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get pluginId =>
-      $composableBuilder(column: $table.pluginId, builder: (column) => column);
+  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
-  GeneratedColumn<int> get deletedAt =>
-      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+  GeneratedColumn<int> get deletedAt => $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 }
 
 class $$DeletedSessionsTableTableTableManager
@@ -3748,11 +4274,7 @@ class $$DeletedSessionsTableTableTableManager
           $$DeletedSessionsTableTableUpdateCompanionBuilder,
           (
             DeletedSessionDto,
-            BaseReferences<
-              _$AppDatabase,
-              $DeletedSessionsTableTable,
-              DeletedSessionDto
-            >,
+            BaseReferences<_$AppDatabase, $DeletedSessionsTableTable, DeletedSessionDto>,
           ),
           DeletedSessionDto,
           PrefetchHooks Function()
@@ -3764,18 +4286,15 @@ class $$DeletedSessionsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$DeletedSessionsTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$DeletedSessionsTableTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
-          createComputedFieldComposer: () =>
-              $$DeletedSessionsTableTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+          createFilteringComposer: () => $$DeletedSessionsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$DeletedSessionsTableTableOrderingComposer(
+            $db: db,
+            $table: table,
+          ),
+          createComputedFieldComposer: () => $$DeletedSessionsTableTableAnnotationComposer(
+            $db: db,
+            $table: table,
+          ),
           updateCompanionCallback:
               ({
                 Value<String> ownerIdentity = const Value.absent(),
@@ -3800,9 +4319,7 @@ class $$DeletedSessionsTableTableTableManager
                 pluginId: pluginId,
                 deletedAt: deletedAt,
               ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
+          withReferenceMapper: (p0) => p0.map((e) => (e.readTable(table), BaseReferences(db, table, e))).toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -3820,11 +4337,7 @@ typedef $$DeletedSessionsTableTableProcessedTableManager =
       $$DeletedSessionsTableTableUpdateCompanionBuilder,
       (
         DeletedSessionDto,
-        BaseReferences<
-          _$AppDatabase,
-          $DeletedSessionsTableTable,
-          DeletedSessionDto
-        >,
+        BaseReferences<_$AppDatabase, $DeletedSessionsTableTable, DeletedSessionDto>,
       ),
       DeletedSessionDto,
       PrefetchHooks Function()
@@ -3859,18 +4372,16 @@ typedef $$PullRequestsTableTableUpdateCompanionBuilder =
     });
 
 final class $$PullRequestsTableTableReferences
-    extends
-        BaseReferences<_$AppDatabase, $PullRequestsTableTable, PullRequestDto> {
+    extends BaseReferences<_$AppDatabase, $PullRequestsTableTable, PullRequestDto> {
   $$PullRequestsTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) =>
-      db.projectsTable.createAlias(
-        'pull_requests_table__project_id__projects_table__project_id',
-      );
+  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) => db.projectsTable.createAlias(
+    'pull_requests_table__project_id__projects_table__project_id',
+  );
 
   $$ProjectsTableTableProcessedTableManager get projectId {
     final $_column = $_itemColumn<String>('project_id')!;
@@ -3887,8 +4398,7 @@ final class $$PullRequestsTableTableReferences
   }
 }
 
-class $$PullRequestsTableTableFilterComposer
-    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
+class $$PullRequestsTableTableFilterComposer extends Composer<_$AppDatabase, $PullRequestsTableTable> {
   $$PullRequestsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -3916,26 +4426,23 @@ class $$PullRequestsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<PrState, PrState, String> get state =>
-      $composableBuilder(
-        column: $table.state,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
-
-  ColumnWithTypeConverterFilters<PrMergeableStatus, PrMergeableStatus, String>
-  get mergeableStatus => $composableBuilder(
-    column: $table.mergeableStatus,
+  ColumnWithTypeConverterFilters<PrState, PrState, String> get state => $composableBuilder(
+    column: $table.state,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<PrReviewDecision, PrReviewDecision, String>
-  get reviewDecision => $composableBuilder(
+  ColumnWithTypeConverterFilters<PrMergeableStatus, PrMergeableStatus, String> get mergeableStatus =>
+      $composableBuilder(
+        column: $table.mergeableStatus,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<PrReviewDecision, PrReviewDecision, String> get reviewDecision => $composableBuilder(
     column: $table.reviewDecision,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<PrCheckStatus, PrCheckStatus, String>
-  get checkStatus => $composableBuilder(
+  ColumnWithTypeConverterFilters<PrCheckStatus, PrCheckStatus, String> get checkStatus => $composableBuilder(
     column: $table.checkStatus,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
@@ -3966,16 +4473,14 @@ class $$PullRequestsTableTableFilterComposer
             $table: $db.projectsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$PullRequestsTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
+class $$PullRequestsTableTableOrderingComposer extends Composer<_$AppDatabase, $PullRequestsTableTable> {
   $$PullRequestsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -4049,16 +4554,14 @@ class $$PullRequestsTableTableOrderingComposer
             $table: $db.projectsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$PullRequestsTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
+class $$PullRequestsTableTableAnnotationComposer extends Composer<_$AppDatabase, $PullRequestsTableTable> {
   $$PullRequestsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -4066,48 +4569,41 @@ class $$PullRequestsTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get prNumber =>
-      $composableBuilder(column: $table.prNumber, builder: (column) => column);
+  GeneratedColumn<int> get prNumber => $composableBuilder(column: $table.prNumber, builder: (column) => column);
 
   GeneratedColumn<String> get branchName => $composableBuilder(
     column: $table.branchName,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get url =>
-      $composableBuilder(column: $table.url, builder: (column) => column);
+  GeneratedColumn<String> get url => $composableBuilder(column: $table.url, builder: (column) => column);
 
-  GeneratedColumn<String> get title =>
-      $composableBuilder(column: $table.title, builder: (column) => column);
+  GeneratedColumn<String> get title => $composableBuilder(column: $table.title, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<PrState, String> get state =>
       $composableBuilder(column: $table.state, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<PrMergeableStatus, String>
-  get mergeableStatus => $composableBuilder(
+  GeneratedColumnWithTypeConverter<PrMergeableStatus, String> get mergeableStatus => $composableBuilder(
     column: $table.mergeableStatus,
     builder: (column) => column,
   );
 
-  GeneratedColumnWithTypeConverter<PrReviewDecision, String>
-  get reviewDecision => $composableBuilder(
+  GeneratedColumnWithTypeConverter<PrReviewDecision, String> get reviewDecision => $composableBuilder(
     column: $table.reviewDecision,
     builder: (column) => column,
   );
 
-  GeneratedColumnWithTypeConverter<PrCheckStatus, String> get checkStatus =>
-      $composableBuilder(
-        column: $table.checkStatus,
-        builder: (column) => column,
-      );
+  GeneratedColumnWithTypeConverter<PrCheckStatus, String> get checkStatus => $composableBuilder(
+    column: $table.checkStatus,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get lastCheckedAt => $composableBuilder(
     column: $table.lastCheckedAt,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<int> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
   $$ProjectsTableTableAnnotationComposer get projectId {
     final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
@@ -4125,8 +4621,7 @@ class $$PullRequestsTableTableAnnotationComposer
             $table: $db.projectsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -4155,15 +4650,12 @@ class $$PullRequestsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$PullRequestsTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$PullRequestsTableTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$PullRequestsTableTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+          createFilteringComposer: () => $$PullRequestsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$PullRequestsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () => $$PullRequestsTableTableAnnotationComposer(
+            $db: db,
+            $table: table,
+          ),
           updateCompanionCallback:
               ({
                 Value<String> projectId = const Value.absent(),
@@ -4249,13 +4741,8 @@ class $$PullRequestsTableTableTableManager
                           state.withJoin(
                                 currentTable: table,
                                 currentColumn: table.projectId,
-                                referencedTable:
-                                    $$PullRequestsTableTableReferences
-                                        ._projectIdTable(db),
-                                referencedColumn:
-                                    $$PullRequestsTableTableReferences
-                                        ._projectIdTable(db)
-                                        .projectId,
+                                referencedTable: $$PullRequestsTableTableReferences._projectIdTable(db),
+                                referencedColumn: $$PullRequestsTableTableReferences._projectIdTable(db).projectId,
                               )
                               as T;
                     }
@@ -4298,8 +4785,7 @@ typedef $$CatalogHydrationsTableTableUpdateCompanionBuilder =
       Value<int> completedAt,
     });
 
-class $$CatalogHydrationsTableTableFilterComposer
-    extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
+class $$CatalogHydrationsTableTableFilterComposer extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
   $$CatalogHydrationsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -4323,8 +4809,7 @@ class $$CatalogHydrationsTableTableFilterComposer
   );
 }
 
-class $$CatalogHydrationsTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
+class $$CatalogHydrationsTableTableOrderingComposer extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
   $$CatalogHydrationsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -4348,8 +4833,7 @@ class $$CatalogHydrationsTableTableOrderingComposer
   );
 }
 
-class $$CatalogHydrationsTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
+class $$CatalogHydrationsTableTableAnnotationComposer extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
   $$CatalogHydrationsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -4357,8 +4841,7 @@ class $$CatalogHydrationsTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get pluginId =>
-      $composableBuilder(column: $table.pluginId, builder: (column) => column);
+  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
   GeneratedColumn<int> get projectionVersion => $composableBuilder(
     column: $table.projectionVersion,
@@ -4384,11 +4867,7 @@ class $$CatalogHydrationsTableTableTableManager
           $$CatalogHydrationsTableTableUpdateCompanionBuilder,
           (
             CatalogHydrationDto,
-            BaseReferences<
-              _$AppDatabase,
-              $CatalogHydrationsTableTable,
-              CatalogHydrationDto
-            >,
+            BaseReferences<_$AppDatabase, $CatalogHydrationsTableTable, CatalogHydrationDto>,
           ),
           CatalogHydrationDto,
           PrefetchHooks Function()
@@ -4400,21 +4879,18 @@ class $$CatalogHydrationsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$CatalogHydrationsTableTableFilterComposer(
-                $db: db,
-                $table: table,
-              ),
-          createOrderingComposer: () =>
-              $$CatalogHydrationsTableTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
-          createComputedFieldComposer: () =>
-              $$CatalogHydrationsTableTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+          createFilteringComposer: () => $$CatalogHydrationsTableTableFilterComposer(
+            $db: db,
+            $table: table,
+          ),
+          createOrderingComposer: () => $$CatalogHydrationsTableTableOrderingComposer(
+            $db: db,
+            $table: table,
+          ),
+          createComputedFieldComposer: () => $$CatalogHydrationsTableTableAnnotationComposer(
+            $db: db,
+            $table: table,
+          ),
           updateCompanionCallback:
               ({
                 Value<String> pluginId = const Value.absent(),
@@ -4435,9 +4911,7 @@ class $$CatalogHydrationsTableTableTableManager
                 projectionVersion: projectionVersion,
                 completedAt: completedAt,
               ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
+          withReferenceMapper: (p0) => p0.map((e) => (e.readTable(table), BaseReferences(db, table, e))).toList(),
           prefetchHooksCallback: null,
         ),
       );
@@ -4455,30 +4929,401 @@ typedef $$CatalogHydrationsTableTableProcessedTableManager =
       $$CatalogHydrationsTableTableUpdateCompanionBuilder,
       (
         CatalogHydrationDto,
-        BaseReferences<
-          _$AppDatabase,
-          $CatalogHydrationsTableTable,
-          CatalogHydrationDto
-        >,
+        BaseReferences<_$AppDatabase, $CatalogHydrationsTableTable, CatalogHydrationDto>,
       ),
       CatalogHydrationDto,
       PrefetchHooks Function()
+    >;
+typedef $$AcceptedCommandInvocationsTableTableCreateCompanionBuilder =
+    AcceptedCommandInvocationsTableCompanion Function({
+      required String invocationId,
+      required String sessionId,
+      required String pluginId,
+      required String name,
+      Value<String?> arguments,
+      required int acceptedAt,
+      Value<String?> backendMessageId,
+    });
+typedef $$AcceptedCommandInvocationsTableTableUpdateCompanionBuilder =
+    AcceptedCommandInvocationsTableCompanion Function({
+      Value<String> invocationId,
+      Value<String> sessionId,
+      Value<String> pluginId,
+      Value<String> name,
+      Value<String?> arguments,
+      Value<int> acceptedAt,
+      Value<String?> backendMessageId,
+    });
+
+final class $$AcceptedCommandInvocationsTableTableReferences
+    extends BaseReferences<_$AppDatabase, $AcceptedCommandInvocationsTableTable, AcceptedCommandInvocationDto> {
+  $$AcceptedCommandInvocationsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(
+    _$AppDatabase db,
+  ) => db.sessionTable.createAlias(
+    'accepted_command_invocations_table__session_id__sessions_table__session_id',
+  );
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$AcceptedCommandInvocationsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AcceptedCommandInvocationsTableTable> {
+  $$AcceptedCommandInvocationsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get invocationId => $composableBuilder(
+    column: $table.invocationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get arguments => $composableBuilder(
+    column: $table.arguments,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get backendMessageId => $composableBuilder(
+    column: $table.backendMessageId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AcceptedCommandInvocationsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AcceptedCommandInvocationsTableTable> {
+  $$AcceptedCommandInvocationsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get invocationId => $composableBuilder(
+    column: $table.invocationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get arguments => $composableBuilder(
+    column: $table.arguments,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get backendMessageId => $composableBuilder(
+    column: $table.backendMessageId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AcceptedCommandInvocationsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AcceptedCommandInvocationsTableTable> {
+  $$AcceptedCommandInvocationsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get invocationId => $composableBuilder(
+    column: $table.invocationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
+
+  GeneratedColumn<String> get name => $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get arguments => $composableBuilder(column: $table.arguments, builder: (column) => column);
+
+  GeneratedColumn<int> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get backendMessageId => $composableBuilder(
+    column: $table.backendMessageId,
+    builder: (column) => column,
+  );
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AcceptedCommandInvocationsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AcceptedCommandInvocationsTableTable,
+          AcceptedCommandInvocationDto,
+          $$AcceptedCommandInvocationsTableTableFilterComposer,
+          $$AcceptedCommandInvocationsTableTableOrderingComposer,
+          $$AcceptedCommandInvocationsTableTableAnnotationComposer,
+          $$AcceptedCommandInvocationsTableTableCreateCompanionBuilder,
+          $$AcceptedCommandInvocationsTableTableUpdateCompanionBuilder,
+          (
+            AcceptedCommandInvocationDto,
+            $$AcceptedCommandInvocationsTableTableReferences,
+          ),
+          AcceptedCommandInvocationDto,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$AcceptedCommandInvocationsTableTableTableManager(
+    _$AppDatabase db,
+    $AcceptedCommandInvocationsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () => $$AcceptedCommandInvocationsTableTableFilterComposer(
+            $db: db,
+            $table: table,
+          ),
+          createOrderingComposer: () => $$AcceptedCommandInvocationsTableTableOrderingComposer(
+            $db: db,
+            $table: table,
+          ),
+          createComputedFieldComposer: () => $$AcceptedCommandInvocationsTableTableAnnotationComposer(
+            $db: db,
+            $table: table,
+          ),
+          updateCompanionCallback:
+              ({
+                Value<String> invocationId = const Value.absent(),
+                Value<String> sessionId = const Value.absent(),
+                Value<String> pluginId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> arguments = const Value.absent(),
+                Value<int> acceptedAt = const Value.absent(),
+                Value<String?> backendMessageId = const Value.absent(),
+              }) => AcceptedCommandInvocationsTableCompanion(
+                invocationId: invocationId,
+                sessionId: sessionId,
+                pluginId: pluginId,
+                name: name,
+                arguments: arguments,
+                acceptedAt: acceptedAt,
+                backendMessageId: backendMessageId,
+              ),
+          createCompanionCallback:
+              ({
+                required String invocationId,
+                required String sessionId,
+                required String pluginId,
+                required String name,
+                Value<String?> arguments = const Value.absent(),
+                required int acceptedAt,
+                Value<String?> backendMessageId = const Value.absent(),
+              }) => AcceptedCommandInvocationsTableCompanion.insert(
+                invocationId: invocationId,
+                sessionId: sessionId,
+                pluginId: pluginId,
+                name: name,
+                arguments: arguments,
+                acceptedAt: acceptedAt,
+                backendMessageId: backendMessageId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$AcceptedCommandInvocationsTableTableReferences(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.sessionId,
+                                referencedTable: $$AcceptedCommandInvocationsTableTableReferences._sessionIdTable(db),
+                                referencedColumn: $$AcceptedCommandInvocationsTableTableReferences
+                                    ._sessionIdTable(db)
+                                    .sessionId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AcceptedCommandInvocationsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AcceptedCommandInvocationsTableTable,
+      AcceptedCommandInvocationDto,
+      $$AcceptedCommandInvocationsTableTableFilterComposer,
+      $$AcceptedCommandInvocationsTableTableOrderingComposer,
+      $$AcceptedCommandInvocationsTableTableAnnotationComposer,
+      $$AcceptedCommandInvocationsTableTableCreateCompanionBuilder,
+      $$AcceptedCommandInvocationsTableTableUpdateCompanionBuilder,
+      (
+        AcceptedCommandInvocationDto,
+        $$AcceptedCommandInvocationsTableTableReferences,
+      ),
+      AcceptedCommandInvocationDto,
+      PrefetchHooks Function({bool sessionId})
     >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
-  $$ProjectsTableTableTableManager get projectsTable =>
-      $$ProjectsTableTableTableManager(_db, _db.projectsTable);
-  $$SessionTableTableTableManager get sessionTable =>
-      $$SessionTableTableTableManager(_db, _db.sessionTable);
+  $$ProjectsTableTableTableManager get projectsTable => $$ProjectsTableTableTableManager(_db, _db.projectsTable);
+  $$SessionTableTableTableManager get sessionTable => $$SessionTableTableTableManager(_db, _db.sessionTable);
   $$DeletedSessionsTableTableTableManager get deletedSessionsTable =>
       $$DeletedSessionsTableTableTableManager(_db, _db.deletedSessionsTable);
   $$PullRequestsTableTableTableManager get pullRequestsTable =>
       $$PullRequestsTableTableTableManager(_db, _db.pullRequestsTable);
-  $$CatalogHydrationsTableTableTableManager get catalogHydrationsTable =>
-      $$CatalogHydrationsTableTableTableManager(
+  $$CatalogHydrationsTableTableTableManager get catalogHydrationsTable => $$CatalogHydrationsTableTableTableManager(
+    _db,
+    _db.catalogHydrationsTable,
+  );
+  $$AcceptedCommandInvocationsTableTableTableManager get acceptedCommandInvocationsTable =>
+      $$AcceptedCommandInvocationsTableTableTableManager(
         _db,
-        _db.catalogHydrationsTable,
+        _db.acceptedCommandInvocationsTable,
       );
 }

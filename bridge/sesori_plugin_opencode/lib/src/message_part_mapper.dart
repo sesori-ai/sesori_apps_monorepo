@@ -60,12 +60,11 @@ class MessagePartMapper {
     FilePart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.file),
     SnapshotPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.snapshot),
     PatchPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.patch),
-    CompactionPart(:final auto) => _part(
+    CompactionPart() => _part(
       raw.id,
       raw.sessionID,
       raw.messageID,
-      auto ? PluginMessagePartType.compaction : PluginMessagePartType.text,
-      text: auto ? null : "/compact",
+      PluginMessagePartType.compaction,
     ),
     StepStartPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.stepStart),
     StepFinishPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.stepFinish),

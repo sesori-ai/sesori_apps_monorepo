@@ -51,7 +51,7 @@ void main() {
       });
       expect(result.sessionId, "s-1");
       expect(result.configOptions, hasLength(1));
-      expect(result.configOptions.single["category"], "model");
+      expect(result.configOptions.single.category, "model");
     });
   });
 

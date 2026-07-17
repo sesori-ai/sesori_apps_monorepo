@@ -3,7 +3,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         PluginAgent,
         PluginCommand,
+        PluginCommandInvocationContext,
+        PluginCommandOrigin,
         PluginCommandSource,
+        PluginMessageError,
+        PluginMessagePartType,
+        PluginMessageTime,
         PluginMessageWithParts,
         PluginPermissionReply,
         PluginProject,
@@ -14,18 +19,24 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart" show StringExtensions, wait2;
 
+import "assistant_message_mapper.dart";
 import "message_part_mapper.dart";
+import "models/openapi/assistant_message.g.dart";
 import "models/openapi/command.g.dart";
+import "models/openapi/compaction_part.g.dart";
 import "models/openapi/global_session.g.dart";
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
 import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
+import "models/openapi/session_messages_response_item.g.dart";
+import "models/openapi/user_message.g.dart";
 import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/summarize_body.dart";
 import "opencode_api.dart";
+import "opencode_command_mapper.dart";
 import "plugin_model_mapper.dart";
 import "provider_mapper.dart";
 
@@ -65,8 +76,12 @@ const String _globalProjectId = "global";
 ///    display those sessions.
 class OpenCodeRepository {
   final OpenCodeApi _api;
+  static const AssistantMessageMapper _assistantMessageMapper = AssistantMessageMapper();
+  static const MessagePartMapper _messagePartMapper = MessagePartMapper();
+  static const OpenCodeCommandMapper _commandMapper = OpenCodeCommandMapper();
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
-    messagePartMapper: MessagePartMapper(),
+    messagePartMapper: _messagePartMapper,
+    assistantMessageMapper: _assistantMessageMapper,
   );
 
   OpenCodeRepository(this._api);
@@ -160,6 +175,7 @@ class OpenCodeRepository {
   Future<void> sendCommand({
     required String sessionId,
     required String? directory,
+    required String messageId,
     required String command,
     required String arguments,
     required String? agent,
@@ -170,6 +186,7 @@ class OpenCodeRepository {
       sessionId: sessionId,
       directory: directory?.normalize(),
       body: SendCommandBody(
+        messageID: messageId,
         command: command,
         arguments: arguments,
         agent: agent,
@@ -554,13 +571,248 @@ class OpenCodeRepository {
   Future<List<PluginMessageWithParts>> getMessages({
     required String sessionId,
     required String? directory,
+    required List<PluginCommandInvocationContext> acceptedCommands,
   }) async {
     final messages = await _api.getMessages(
       sessionId: sessionId,
       directory: directory,
     );
-    return messages.map(_pluginModelMapper.mapMessageWithParts).toList();
+    return _mapCommandHistory(
+      messages: messages,
+      acceptedCommands: acceptedCommands,
+    );
   }
+
+  List<PluginMessageWithParts> _mapCommandHistory({
+    required List<SessionMessagesResponseItem> messages,
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) {
+    final compactionTriggers = _findCompactionTriggers(messages);
+    final contextsByTrigger = _matchCommandContexts(
+      messages: messages,
+      compactionTriggers: compactionTriggers,
+      acceptedCommands: acceptedCommands,
+    );
+    final commandsByTrigger = _buildHistoryCommands(
+      messages: messages,
+      compactionTriggers: compactionTriggers,
+      contextsByTrigger: contextsByTrigger,
+      acceptedCommands: acceptedCommands,
+    );
+    final suppressedGuidance = _findSuppressedGuidance(
+      messages: messages,
+      compactionTriggers: compactionTriggers,
+      contextsByTrigger: contextsByTrigger,
+    );
+
+    final output = <PluginMessageWithParts>[];
+    final outputIndexByCommand = <String, int>{};
+    for (final raw in messages) {
+      final info = raw.info;
+      final messageId = _messageId(info);
+      if (messageId != null && suppressedGuidance.contains(messageId)) continue;
+
+      final command = messageId == null ? null : commandsByTrigger[messageId];
+      if (command != null) {
+        outputIndexByCommand[messageId!] = output.length;
+        output.add(
+          PluginMessageWithParts(
+            info: _commandMapper.mapCommand(
+              id: command.triggerMessageId,
+              sessionId: command.sessionId,
+              name: command.name,
+              arguments: command.arguments,
+              origin: command.origin,
+              invocationId: command.invocationId,
+              time: command.time,
+            ),
+            parts: const [],
+          ),
+        );
+        continue;
+      }
+
+      if (info case final AssistantMessage assistant) {
+        final parentCommand = commandsByTrigger[assistant.parentID];
+        final isResult =
+            parentCommand != null &&
+            (!parentCommand.isCompaction ||
+                assistant.error != null ||
+                (assistant.summary == true && assistant.mode == "compaction"));
+        final outputIndex = outputIndexByCommand[assistant.parentID];
+        if (isResult && outputIndex != null) {
+          final existing = output[outputIndex];
+          final resultParts = raw.parts
+              .map(_messagePartMapper.mapPart)
+              .where((part) => part.type.isVisible)
+              .map(
+                (part) => _commandMapper.reparentPart(
+                  part: part,
+                  commandMessageId: assistant.parentID,
+                ),
+              )
+              .toList();
+          if (_assistantMessageMapper.map(assistant) case final PluginMessageError error) {
+            resultParts.add(
+              _commandMapper.mapErrorResult(
+                error: error,
+                commandMessageId: assistant.parentID,
+              ),
+            );
+          }
+          output[outputIndex] = existing.copyWith(
+            parts: [...existing.parts, ...resultParts],
+          );
+          continue;
+        }
+      }
+
+      output.add(_pluginModelMapper.mapMessageWithParts(raw));
+    }
+    return output;
+  }
+
+  Map<String, _CompactionTrigger> _findCompactionTriggers(
+    List<SessionMessagesResponseItem> messages,
+  ) {
+    final triggers = <String, _CompactionTrigger>{};
+    for (var index = 0; index < messages.length; index++) {
+      final raw = messages[index];
+      if (raw.info case final UserMessage user) {
+        for (final part in raw.parts) {
+          if (part case CompactionPart(:final auto)) {
+            triggers[user.id] = _CompactionTrigger(
+              index: index,
+              message: user,
+              automatic: auto,
+            );
+            break;
+          }
+        }
+      }
+    }
+    return triggers;
+  }
+
+  Map<String, PluginCommandInvocationContext> _matchCommandContexts({
+    required List<SessionMessagesResponseItem> messages,
+    required Map<String, _CompactionTrigger> compactionTriggers,
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) {
+    final contextsByTrigger = <String, PluginCommandInvocationContext>{};
+    final triggerIds = messages.map((message) => _messageId(message.info)).whereType<String>().toSet();
+    for (final context in acceptedCommands) {
+      final backendId = context.backendMessageId;
+      if (backendId != null && triggerIds.contains(backendId)) {
+        contextsByTrigger.putIfAbsent(backendId, () => context);
+      }
+    }
+
+    // Summarize has no caller-selected message ID. Pair manual compactions by
+    // their persisted trigger and local acceptance timestamps, newest first.
+    final unmatchedContexts =
+        acceptedCommands.where((context) => context.backendMessageId == null && _isCompact(context.name)).toList()
+          ..sort((a, b) => b.acceptedAt.compareTo(a.acceptedAt));
+    final unmatchedManualTriggers = compactionTriggers.values.where((trigger) => !trigger.automatic).toList()
+      ..sort((a, b) => b.message.time.created.compareTo(a.message.time.created));
+    for (final context in unmatchedContexts) {
+      for (final trigger in unmatchedManualTriggers) {
+        if (contextsByTrigger.containsKey(trigger.message.id)) continue;
+        if (trigger.message.time.created > context.acceptedAt) continue;
+        contextsByTrigger[trigger.message.id] = context;
+        break;
+      }
+    }
+    return contextsByTrigger;
+  }
+
+  Map<String, _HistoryCommand> _buildHistoryCommands({
+    required List<SessionMessagesResponseItem> messages,
+    required Map<String, _CompactionTrigger> compactionTriggers,
+    required Map<String, PluginCommandInvocationContext> contextsByTrigger,
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) {
+    final commandsByTrigger = <String, _HistoryCommand>{};
+    for (final entry in compactionTriggers.entries) {
+      final trigger = entry.value;
+      final context = contextsByTrigger[entry.key];
+      commandsByTrigger[entry.key] = _HistoryCommand(
+        triggerMessageId: entry.key,
+        sessionId: trigger.message.sessionID,
+        name: "compact",
+        arguments: context?.arguments,
+        origin: trigger.automatic ? PluginCommandOrigin.automatic : PluginCommandOrigin.manual,
+        invocationId: context?.invocationId,
+        time: PluginMessageTime(
+          created: trigger.message.time.created.toInt(),
+          completed: null,
+        ),
+        isCompaction: true,
+      );
+    }
+
+    for (final context in acceptedCommands) {
+      final triggerId = context.backendMessageId;
+      if (triggerId == null || commandsByTrigger.containsKey(triggerId)) continue;
+      SessionMessagesResponseItem? raw;
+      for (final candidate in messages) {
+        if (_messageId(candidate.info) == triggerId) {
+          raw = candidate;
+          break;
+        }
+      }
+      if (raw?.info case final UserMessage user) {
+        commandsByTrigger[triggerId] = _HistoryCommand(
+          triggerMessageId: triggerId,
+          sessionId: user.sessionID,
+          name: context.name,
+          arguments: context.arguments,
+          origin: PluginCommandOrigin.manual,
+          invocationId: context.invocationId,
+          time: PluginMessageTime(
+            created: user.time.created.toInt(),
+            completed: null,
+          ),
+          isCompaction: false,
+        );
+      }
+    }
+    return commandsByTrigger;
+  }
+
+  Set<String> _findSuppressedGuidance({
+    required List<SessionMessagesResponseItem> messages,
+    required Map<String, _CompactionTrigger> compactionTriggers,
+    required Map<String, PluginCommandInvocationContext> contextsByTrigger,
+  }) {
+    final suppressed = <String>{};
+    for (final entry in compactionTriggers.entries) {
+      final arguments = contextsByTrigger[entry.key]?.arguments;
+      final previousIndex = entry.value.index - 1;
+      if (arguments == null || arguments.isEmpty || previousIndex < 0) continue;
+      final previous = messages[previousIndex];
+      if (previous.info is! UserMessage || compactionTriggers.containsKey(_messageId(previous.info))) {
+        continue;
+      }
+      final text = previous.parts
+          .map(_messagePartMapper.mapPart)
+          .where((part) => part.type == PluginMessagePartType.text)
+          .map((part) => part.text ?? "")
+          .join();
+      if (text == arguments.trim()) {
+        final previousId = _messageId(previous.info);
+        if (previousId != null) suppressed.add(previousId);
+      }
+    }
+    return suppressed;
+  }
+
+  static bool _isCompact(String name) => name == "compact" || name == "/compact";
+
+  static String? _messageId(Object message) => switch (message) {
+    UserMessage(:final id) || AssistantMessage(:final id) => id,
+    _ => null,
+  };
 
   PluginCommand _mapCommand(Command command) {
     return PluginCommand(
@@ -580,6 +832,40 @@ class OpenCodeRepository {
       subtask: command.subtask,
     );
   }
+}
+
+class _CompactionTrigger {
+  const _CompactionTrigger({
+    required this.index,
+    required this.message,
+    required this.automatic,
+  });
+
+  final int index;
+  final UserMessage message;
+  final bool automatic;
+}
+
+class _HistoryCommand {
+  const _HistoryCommand({
+    required this.triggerMessageId,
+    required this.sessionId,
+    required this.name,
+    required this.arguments,
+    required this.origin,
+    required this.invocationId,
+    required this.time,
+    required this.isCompaction,
+  });
+
+  final String triggerMessageId;
+  final String sessionId;
+  final String name;
+  final String? arguments;
+  final PluginCommandOrigin origin;
+  final String? invocationId;
+  final PluginMessageTime time;
+  final bool isCompaction;
 }
 
 bool _isDirectoryUnderWorktree(String directory, String worktree) {

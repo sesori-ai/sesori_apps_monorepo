@@ -4,6 +4,8 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/accepted_command_invocation.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/command_timeline.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -973,17 +975,6 @@ void main() {
         );
         expect(plugin.lastSendPromptVariant, equals(variant?.id));
         expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
-
-        await repository.sendCommand(
-          sessionId: "stable-s1",
-          command: "review",
-          arguments: "Prompt",
-          variant: variant,
-          agent: null,
-          model: null,
-        );
-        expect(plugin.lastSendCommandVariant, equals(variant?.id));
-        expect(plugin.lastSendCommandSessionId, equals("backend-s1"));
       }
     });
 
@@ -1086,7 +1077,11 @@ void main() {
         "unknown-backend": PluginSessionStatus.idle(),
       };
 
-      final messages = await repository.getSessionMessages(sessionId: "stable-s1");
+      final history = await repository.getCommandHistory(
+        sessionId: "stable-s1",
+        acceptedInvocations: const [],
+      );
+      final messages = history.entries.whereType<StandardCommandHistoryEntry>().map((entry) => entry.message).toList();
       final statuses = await repository.getSessionStatuses();
 
       expect(plugin.lastGetMessagesSessionId, equals("backend-s1"));
@@ -1116,7 +1111,11 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
-      final messages = await repository.getSessionMessages(sessionId: "child-1");
+      final history = await repository.getCommandHistory(
+        sessionId: "child-1",
+        acceptedInvocations: const [],
+      );
+      final messages = history.entries.whereType<StandardCommandHistoryEntry>().map((entry) => entry.message).toList();
       final statuses = await repository.getSessionStatuses();
       await repository.abortSession(sessionId: "child-1");
 
@@ -1124,6 +1123,50 @@ void main() {
       expect(messages.single.info.sessionID, "child-1");
       expect(statuses.statuses, {"child-1": const SessionStatus.busy()});
       expect(plugin.lastAbortSessionId, "child-1");
+    });
+
+    test("history reload supplies accepted context and restores an un-echoed command card", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await repository.insertStoredSession(
+        sessionId: "stable-command-session",
+        backendSessionId: "backend-command-session",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      final invocation = AcceptedCommandInvocation(
+        invocationId: "durable-invocation",
+        sessionId: "stable-command-session",
+        pluginId: plugin.id,
+        name: "review",
+        arguments: null,
+        acceptedAt: 20,
+        backendMessageId: "backend-command",
+      );
+
+      final history = await repository.getCommandHistory(
+        sessionId: "stable-command-session",
+        acceptedInvocations: [invocation],
+      );
+
+      expect(plugin.lastGetMessagesSessionId, "backend-command-session");
+      expect(plugin.lastAcceptedCommands?.single.invocationId, "durable-invocation");
+      expect(history.entries, isEmpty);
     });
 
     test("plugins without rowless child routing reject an unknown session", () async {
@@ -1138,7 +1181,7 @@ void main() {
       );
 
       await expectLater(
-        repository.getSessionMessages(sessionId: "unknown"),
+        repository.getCommandHistory(sessionId: "unknown", acceptedInvocations: const []),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       await expectLater(
@@ -1310,18 +1353,8 @@ void main() {
       expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
 
       // ...a plain session primes with the owning project directory...
-      await repository.getSessionMessages(sessionId: "p1");
+      await repository.getCommandHistory(sessionId: "p1", acceptedInvocations: const []);
       expect(plugin.primedDirectories.last, (sessionId: "p1", directory: parent));
-
-      await repository.sendCommand(
-        sessionId: "w1",
-        command: "review",
-        arguments: "",
-        variant: null,
-        agent: null,
-        model: null,
-      );
-      expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
 
       // A rowless session is rejected before plugin access.
       final primesBefore = plugin.primedDirectories.length;
@@ -1511,14 +1544,6 @@ void main() {
       expect(plugin.lastRenameSessionId, isNull);
 
       final guardedOperations = <Future<void> Function()>[
-        () => repository.sendCommand(
-          sessionId: "gone",
-          command: "test",
-          arguments: "",
-          variant: null,
-          agent: null,
-          model: null,
-        ),
         () => repository.sendPrompt(
           sessionId: "gone",
           parts: const [],
@@ -1526,7 +1551,7 @@ void main() {
           agent: null,
           model: null,
         ),
-        () async => repository.getSessionMessages(sessionId: "gone"),
+        () async => repository.getCommandHistory(sessionId: "gone", acceptedInvocations: const []),
         () => repository.notifySessionArchived(sessionId: "gone"),
         () => repository.abortSession(sessionId: "gone"),
         () async => repository.getChildSessions(sessionId: "gone"),
@@ -1734,6 +1759,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastSendCommandVariant;
   String? lastSendCommandSessionId;
   String? lastGetMessagesSessionId;
+  List<PluginCommandInvocationContext>? lastAcceptedCommands;
   String? lastGetSessionsWorktree;
   String? lastGetCommandsProjectId;
   String? lastGetProjectDirectory;
@@ -1815,8 +1841,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
@@ -1825,11 +1852,16 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }) async {
     lastSendCommandSessionId = sessionId;
     lastSendCommandVariant = variant?.id;
+    return const PluginCommandDispatch(backendMessageId: null);
   }
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async {
     lastGetMessagesSessionId = sessionId;
+    lastAcceptedCommands = acceptedCommands;
     return messagesResult;
   }
 
@@ -1963,17 +1995,21 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   }
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async {}
+  }) async => const PluginCommandDispatch(backendMessageId: null);
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => const [];
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async => const [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

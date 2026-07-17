@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
+import "package:sesori_bridge/src/bridge/services/command_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -45,6 +46,7 @@ void main() {
     late FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
     late SessionRepository sessionRepository;
+    late CommandDispatcher commandDispatcher;
     late CreateSessionHandler handler;
     late AppDatabase db;
 
@@ -54,6 +56,7 @@ void main() {
       plugin = _OpenCodeFakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
+      final commandStack = TestCommandStack(db);
       sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -61,11 +64,16 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      commandDispatcher = commandStack.dispatcher(
+        plugin: plugin,
+        sessionRepository: sessionRepository,
+      );
       handler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
+          commandDispatcher: commandDispatcher,
           sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
         ),
       );
@@ -73,6 +81,7 @@ void main() {
 
     tearDown(() async {
       await plugin.close();
+      await commandDispatcher.dispose();
       await db.close();
     });
 
@@ -416,6 +425,7 @@ void main() {
 
     test("plugin failure is propagated and no session row is inserted", () async {
       final failingPlugin = _ThrowingCreateSessionPlugin();
+      final commandStack = TestCommandStack(db);
       final localRepository = SessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
@@ -423,11 +433,17 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final localCommandDispatcher = commandStack.dispatcher(
+        plugin: failingPlugin,
+        sessionRepository: localRepository,
+      );
+      addTearDown(localCommandDispatcher.dispose);
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: localRepository,
+          commandDispatcher: localCommandDispatcher,
           sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: localRepository),
         ),
       );
@@ -834,12 +850,13 @@ void main() {
       expect(plugin.lastCreateSessionParts, isEmpty);
       expect(plugin.lastCreateSessionVariant, equals("low"));
       expect(plugin.lastSendCommandSessionId, equals("cmd-session-1"));
+      expect(plugin.lastSendCommandInvocationId, isNotNull);
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("Review this code"));
       expect(plugin.lastSendCommandVariant, equals("low"));
     });
 
-    test("dedicated worktree command carries worktree guardrail in command arguments", () async {
+    test("dedicated worktree command arguments contain only user text", () async {
       plugin.createSessionResult = const PluginSession(
         id: "cmd-dedicated-1",
         projectID: "p1",
@@ -874,9 +891,7 @@ void main() {
 
       expect(plugin.lastCreateSessionParts, isEmpty);
       expect(plugin.lastSendCommandSessionId, equals("cmd-dedicated-1"));
-      expect(plugin.lastSendCommandArguments, contains("session-001"));
-      expect(plugin.lastSendCommandArguments, contains("/repo/.worktrees/session-001"));
-      expect(plugin.lastSendCommandArguments, contains("Review this code"));
+      expect(plugin.lastSendCommandArguments, "Review this code");
     });
 
     test("persists stored session before sending command", () async {
@@ -889,6 +904,7 @@ void main() {
           title: "Ordered Session",
           time: null,
         );
+      final commandStack = TestCommandStack(db);
       final orderedRepository = SessionRepository(
         plugin: orderedPlugin,
         sessionDao: db.sessionDao,
@@ -896,11 +912,17 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final localCommandDispatcher = commandStack.dispatcher(
+        plugin: orderedPlugin,
+        sessionRepository: orderedRepository,
+      );
+      addTearDown(localCommandDispatcher.dispose);
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: orderedRepository,
+          commandDispatcher: localCommandDispatcher,
           sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: orderedRepository),
         ),
       );
@@ -1076,6 +1098,7 @@ void main() {
         title: "Session",
         time: null,
       );
+      final commandStack = TestCommandStack(db);
       final throwingRepository = SessionRepository(
         plugin: throwingPlugin,
         sessionDao: db.sessionDao,
@@ -1083,11 +1106,17 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final localCommandDispatcher = commandStack.dispatcher(
+        plugin: throwingPlugin,
+        sessionRepository: throwingRepository,
+      );
+      addTearDown(localCommandDispatcher.dispose);
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: throwingRepository,
+          commandDispatcher: localCommandDispatcher,
           sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: throwingRepository),
         ),
       );
@@ -1223,8 +1252,9 @@ class _OrderCheckingCommandPlugin extends _OpenCodeFakeBridgePlugin {
   _OrderCheckingCommandPlugin({required AppDatabase database}) : _database = database;
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
@@ -1233,8 +1263,9 @@ class _OrderCheckingCommandPlugin extends _OpenCodeFakeBridgePlugin {
   }) async {
     final session = await _database.sessionDao.getSession(sessionId: sessionId);
     hadStoredRowWhenCommandSent = session != null;
-    await super.sendCommand(
+    return super.sendCommand(
       sessionId: sessionId,
+      invocationId: invocationId,
       command: command,
       arguments: arguments,
       variant: variant,

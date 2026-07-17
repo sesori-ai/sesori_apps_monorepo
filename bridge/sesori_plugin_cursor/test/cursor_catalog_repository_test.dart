@@ -1,19 +1,20 @@
 import "package:acp_plugin/acp_plugin.dart";
-import "package:cursor_plugin/src/api/cursor_catalog_probe_api.dart";
+import "package:cursor_plugin/src/api/cursor_catalog_api.dart";
 import "package:cursor_plugin/src/repositories/cursor_catalog_repository.dart";
 import "package:test/test.dart";
 
 void main() {
   group("CursorCatalogRepository", () {
-    late _FakeCursorCatalogProbeApi api;
+    late _FakeCursorCatalogApi api;
     late CursorCatalogRepository repository;
 
-    setUp(() {
-      api = _FakeCursorCatalogProbeApi();
+    setUp(() async {
+      api = _FakeCursorCatalogApi();
       repository = CursorCatalogRepository(
         api: api,
         launchScope: "/launch",
       );
+      await repository.open(timeout: const Duration(seconds: 1));
     });
 
     test("aggregates scopes, deduplicates candidates, and maps their cwd", () async {
@@ -213,7 +214,7 @@ AcpNewSessionResult _catalogResult({
   });
 }
 
-class _FakeCursorCatalogProbeApi implements CursorCatalogProbeApi {
+class _FakeCursorCatalogApi implements CursorCatalogApi {
   final Map<String?, List<AcpSessionInfo>> sessionsByScope = {};
   final Map<String?, Object> errorsByScope = {};
   final List<String?> listedScopes = [];
@@ -231,24 +232,26 @@ class _FakeCursorCatalogProbeApi implements CursorCatalogProbeApi {
   }
 
   @override
-  Future<List<AcpSessionInfo>> listSessions({
-    required String? cwd,
+  Future<AcpSessionListResult> listSessions({
+    required String? directory,
+    required String? cursor,
     required Duration timeout,
   }) async {
-    listedScopes.add(cwd);
-    final error = errorsByScope[cwd];
+    listedScopes.add(directory);
+    final error = errorsByScope[directory];
     if (error != null) throw error;
-    return sessionsByScope[cwd] ?? const [];
+    return AcpSessionListResult(
+      sessions: sessionsByScope[directory] ?? const [],
+      nextCursor: null,
+    );
   }
 
   @override
   Future<AcpNewSessionResult> loadSession({
     required String sessionId,
-    required String cwd,
+    required String directory,
     required Duration timeout,
-  }) async {
-    throw UnimplementedError();
-  }
+  }) => throw UnimplementedError();
 
   @override
   Future<void> reset() async {}

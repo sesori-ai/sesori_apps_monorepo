@@ -36,7 +36,7 @@ void main() {
         ],
       );
       final tracker = FakeActiveSessionTracker()..updateProjectWorktreesReturns = true;
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
       final invalidations = <void>[];
       final subscription = service.summaryInvalidations.listen(invalidations.add);
       addTearDown(subscription.cancel);
@@ -61,7 +61,7 @@ void main() {
           PluginCommand(name: "review-work", model: "openai", provider: null, source: PluginCommandSource.skill),
         ],
       );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       final commands = await service.getCommands(projectId: "/repo");
 
@@ -73,7 +73,11 @@ void main() {
     });
 
     test("appends a compact command carrying display metadata", () async {
-      final service = OpenCodeService(FakeOpenCodeRepository(), FakeActiveSessionTracker());
+      final service = OpenCodeService(
+        FakeOpenCodeRepository(),
+        FakeActiveSessionTracker(),
+        OpenCodeCommandTracker(),
+      );
 
       final commands = await service.getCommands(projectId: "/repo");
 
@@ -84,27 +88,33 @@ void main() {
       expect(compact.source, equals(PluginCommandSource.command));
     });
 
-    test("does not duplicate compact when the project already defines one", () async {
+    test("replaces an upstream compact collision with the reserved synthetic command", () async {
       final repository = FakeOpenCodeRepository(
         commands: const [
-          PluginCommand(name: "compact", provider: null, source: PluginCommandSource.command),
+          PluginCommand(
+            name: "compact",
+            description: "upstream semantics",
+            provider: null,
+            source: PluginCommandSource.skill,
+          ),
+          PluginCommand(name: "/compact", provider: null),
+          PluginCommand(name: "review", provider: null),
         ],
       );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       final commands = await service.getCommands(projectId: "/repo");
 
-      expect(
-        commands.where((command) => command.name == OpenCodeService.compactionCommandName),
-        hasLength(1),
-      );
+      expect(commands.map((command) => command.name), ["review", "compact"]);
+      expect(commands.last.description, isNot("upstream semantics"));
+      expect(commands.last.source, PluginCommandSource.command);
     });
   });
 
   group("OpenCodeService.getAgents", () {
     test("passes the projectId through as the directory", () async {
       final repository = FakeOpenCodeRepository();
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       await service.getAgents(projectId: "/repo");
 
@@ -113,7 +123,7 @@ void main() {
 
     test("falls back to the current working directory when projectId is null", () async {
       final repository = FakeOpenCodeRepository();
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       await service.getAgents(projectId: null);
 
@@ -211,7 +221,7 @@ void main() {
 
     test("returns all sessions when no start/limit", () async {
       final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       final result = await service.getSessions(worktree: "/repo");
 
@@ -224,7 +234,7 @@ void main() {
 
     test("applies start correctly", () async {
       final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       final result = await service.getSessions(worktree: "/repo", start: 2);
 
@@ -233,7 +243,7 @@ void main() {
 
     test("applies limit correctly", () async {
       final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       final result = await service.getSessions(worktree: "/repo", limit: 2);
 
@@ -242,7 +252,7 @@ void main() {
 
     test("applies both start and limit", () async {
       final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       final result = await service.getSessions(
         worktree: "/repo",
@@ -255,7 +265,7 @@ void main() {
 
     test("start beyond list length returns empty", () async {
       final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       final result = await service.getSessions(worktree: "/repo", start: 10);
 
@@ -264,7 +274,7 @@ void main() {
 
     test("limit of 0 returns all", () async {
       final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       final result = await service.getSessions(worktree: "/repo", limit: 0);
 
@@ -276,7 +286,7 @@ void main() {
 
     test("start of 0 returns all", () async {
       final repository = FakeOpenCodeRepository(sessions: sessions);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       final result = await service.getSessions(worktree: "/repo", start: 0);
 
@@ -296,9 +306,13 @@ void main() {
           _msg("assistant", "m3"),
         ],
       );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
-      final result = await service.getMessages(sessionId: "ses-1", directory: null);
+      final result = await service.getMessages(
+        sessionId: "ses-1",
+        directory: null,
+        acceptedCommands: const [],
+      );
 
       expect(result.map(_messageId).toList(), equals(["m1", "m2", "m3"]));
       expect(repository.api.lastRequestedSessionId, equals("ses-1"));
@@ -306,9 +320,13 @@ void main() {
 
     test("passes directory to api when provided", () async {
       final repository = FakeOpenCodeRepository(messages: [_msg("user", "m1")]);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
-      await service.getMessages(sessionId: "ses-1", directory: "/repo");
+      await service.getMessages(
+        sessionId: "ses-1",
+        directory: "/repo",
+        acceptedCommands: const [],
+      );
 
       expect(repository.api.lastRequestedSessionId, equals("ses-1"));
       expect(repository.api.lastRequestedDirectory, equals("/repo"));
@@ -316,9 +334,13 @@ void main() {
 
     test("empty list returns empty", () async {
       final repository = FakeOpenCodeRepository(messages: const []);
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
-      final result = await service.getMessages(sessionId: "ses-1", directory: null);
+      final result = await service.getMessages(
+        sessionId: "ses-1",
+        directory: null,
+        acceptedCommands: const [],
+      );
 
       expect(result, isEmpty);
     });
@@ -327,10 +349,14 @@ void main() {
       final repository = FakeOpenCodeRepository(
         messagesError: const FormatException("invalid message payload"),
       );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       await expectLater(
-        () => service.getMessages(sessionId: "ses-1", directory: null),
+        () => service.getMessages(
+          sessionId: "ses-1",
+          directory: null,
+          acceptedCommands: const [],
+        ),
         throwsA(
           isA<PluginApiException>()
               .having((error) => error.statusCode, "statusCode", equals(502))
@@ -344,10 +370,14 @@ void main() {
       final repository = FakeOpenCodeRepository(
         messagesError: StateError("unexpected bug"),
       );
-      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+      final service = OpenCodeService(repository, FakeActiveSessionTracker(), OpenCodeCommandTracker());
 
       await expectLater(
-        () => service.getMessages(sessionId: "ses-1", directory: null),
+        () => service.getMessages(
+          sessionId: "ses-1",
+          directory: null,
+          acceptedCommands: const [],
+        ),
         throwsA(isA<StateError>().having((error) => error.message, "message", equals("unexpected bug"))),
       );
       expect(repository.api.lastRequestedSessionId, equals("ses-1"));
@@ -362,7 +392,7 @@ void main() {
         },
       );
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final questions = await service.getPendingQuestionsForSession(sessionId: "root");
 
@@ -401,7 +431,7 @@ void main() {
         },
       );
       final tracker = FakeActiveSessionTracker();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final questions = await service.getPendingQuestionsForSession(sessionId: "root");
 
@@ -423,7 +453,7 @@ void main() {
         },
       );
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final questions = await service.getPendingQuestionsForSession(sessionId: "root");
 
@@ -441,7 +471,7 @@ void main() {
         },
       );
       final tracker = FakeActiveSessionTracker();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await expectLater(
         () => service.getPendingQuestionsForSession(sessionId: "out-of-cwd"),
@@ -467,7 +497,7 @@ void main() {
       );
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"})
         ..displayRoots = const {"child": "root"};
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final questions = await service.getPendingQuestionsForSession(sessionId: "root");
 
@@ -487,7 +517,7 @@ void main() {
         },
       );
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final permissions = await service.getPendingPermissionsForSession(sessionId: "root");
 
@@ -507,7 +537,7 @@ void main() {
       );
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"})
         ..displayRoots = const {"child": "root"};
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final permissions = await service.getPendingPermissionsForSession(sessionId: "root");
 
@@ -525,7 +555,7 @@ void main() {
         },
       );
       final tracker = FakeActiveSessionTracker();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await expectLater(
         () => service.getPendingPermissionsForSession(sessionId: "out-of-cwd"),
@@ -551,7 +581,7 @@ void main() {
           time: null,
         ),
       );
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
       const parts = [PluginPromptPart.text(text: "Start")];
 
       final session = await service.createSession(
@@ -590,7 +620,7 @@ void main() {
           time: null,
         ),
       );
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final session = await service.createSession(
         directory: "/repo",
@@ -617,7 +647,7 @@ void main() {
           time: null,
         ),
       )..sendPromptError = StateError("prompt failed");
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await expectLater(
         () => service.createSession(
@@ -641,7 +671,7 @@ void main() {
     test("resolves session directory from tracker before delegating", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
       const parts = [PluginPromptPart.text(text: "Continue")];
 
       await service.sendPrompt(
@@ -663,10 +693,11 @@ void main() {
     test("resolves session directory from tracker before delegating", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
-      await service.sendCommand(
+      final backendMessageId = await service.sendCommand(
         sessionId: "ses-1",
+        invocationId: "inv-review",
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
@@ -675,6 +706,8 @@ void main() {
       );
 
       expect(repository.lastCommandSessionId, equals("ses-1"));
+      expect(backendMessageId, matches(RegExp(r"^msg_sesori_[0-9a-f]{32}$")));
+      expect(repository.lastCommandMessageId, backendMessageId);
       expect(repository.lastCommandDirectory, equals("/repo"));
       expect(repository.lastCommandName, equals("/review-work"));
       expect(repository.lastCommandArguments, equals("recent changes"));
@@ -686,10 +719,11 @@ void main() {
     test("routes the artificial compact command to the summarize endpoint", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await service.sendCommand(
         sessionId: "ses-1",
+        invocationId: "inv-compact",
         command: OpenCodeService.compactionCommandName,
         arguments: "",
         agent: null,
@@ -710,10 +744,11 @@ void main() {
     test("persists compact arguments before summarizing", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await service.sendCommand(
         sessionId: "ses-1",
+        invocationId: "inv-compact-guidance",
         command: OpenCodeService.compactionCommandName,
         arguments: "  Keep auth decisions  ",
         agent: "build",
@@ -732,11 +767,12 @@ void main() {
     test("throws and skips summarize when compact is invoked without a model", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await expectLater(
         service.sendCommand(
           sessionId: "ses-1",
+          invocationId: "inv-compact-no-model",
           command: OpenCodeService.compactionCommandName,
           arguments: "",
           agent: null,
@@ -753,19 +789,23 @@ void main() {
 
       late FakeOpenCodeRepository repository;
       late OpenCodeService service;
+      late OpenCodeCommandTracker commandTracker;
 
       setUp(() {
         repository = FakeOpenCodeRepository();
+        commandTracker = OpenCodeCommandTracker();
         service = OpenCodeService(
           repository,
           FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"}),
+          commandTracker,
           commandDispatchFastFailWindow: fastFailWindow,
         );
       });
 
-      Future<void> sendCommand() {
+      Future<String?> sendCommand() {
         return service.sendCommand(
           sessionId: "ses-1",
+          invocationId: "inv-fast-fail",
           command: "/review-work",
           arguments: "",
           agent: null,
@@ -780,6 +820,9 @@ void main() {
         completer.completeError(StateError("unknown command"));
 
         await expectLater(sendCommand(), throwsA(isA<StateError>()));
+        final messageId = repository.lastCommandMessageId;
+        expect(messageId, isNotNull);
+        expect(commandTracker.commandForTrigger(messageId!), isNull);
       });
 
       test("propagates a TimeoutException raised by the send chain within the window", () async {
@@ -800,9 +843,11 @@ void main() {
         repository.sendCommandCompleter = completer;
 
         final stopwatch = Stopwatch()..start();
-        await sendCommand();
+        final backendMessageId = await sendCommand();
         stopwatch.stop();
 
+        expect(backendMessageId, repository.lastCommandMessageId);
+        expect(backendMessageId, matches(RegExp(r"^msg_sesori_[0-9a-f]{32}$")));
         expect(repository.lastCommandName, equals("/review-work"));
         expect(
           stopwatch.elapsed,
@@ -822,6 +867,9 @@ void main() {
         completer.completeError(StateError("run failed mid-flight"));
         // Flush microtasks — an unhandled async error would fail the test zone.
         await Future<void>.delayed(Duration.zero);
+        final messageId = repository.lastCommandMessageId;
+        expect(messageId, isNotNull);
+        expect(commandTracker.commandForTrigger(messageId!), isNotNull);
       });
     });
   });
@@ -847,7 +895,7 @@ void main() {
       );
       tracker = ActiveSessionTracker(repository);
       await tracker.coldStart();
-      service = OpenCodeService(repository, tracker);
+      service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
     });
 
     test("status change with count delta returns changed=true", () {
@@ -1061,7 +1109,7 @@ void main() {
       );
       final tracker = ActiveSessionTracker(repository);
       await tracker.coldStart();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
       final emissions = <void>[];
       service.summaryInvalidations.listen((_) => emissions.add(null));
       return (service, repository, emissions);
@@ -1351,7 +1399,7 @@ void main() {
   group("OpenCodeService tracker delegation", () {
     test("coldStart delegates to tracker", () async {
       final tracker = FakeActiveSessionTracker();
-      final service = OpenCodeService(FakeOpenCodeRepository(), tracker);
+      final service = OpenCodeService(FakeOpenCodeRepository(), tracker, OpenCodeCommandTracker());
 
       await service.coldStart();
 
@@ -1370,7 +1418,7 @@ void main() {
           "/repo-b": [_question(id: "q-b", sessionId: "s-b")],
         },
       );
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await service.coldStart();
 
@@ -1383,7 +1431,7 @@ void main() {
 
     test("reset delegates to tracker", () {
       final tracker = FakeActiveSessionTracker();
-      final service = OpenCodeService(FakeOpenCodeRepository(), tracker);
+      final service = OpenCodeService(FakeOpenCodeRepository(), tracker, OpenCodeCommandTracker());
 
       service.reset();
 
@@ -1403,7 +1451,7 @@ void main() {
           ),
         ],
       );
-      final service = OpenCodeService(FakeOpenCodeRepository(), tracker);
+      final service = OpenCodeService(FakeOpenCodeRepository(), tracker, OpenCodeCommandTracker());
 
       final result = service.buildSummary();
 
@@ -1419,7 +1467,7 @@ void main() {
         sessionDirectories: const {"ses-1": "/repo"},
         clearPendingQuestionChanged: true,
       );
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final result = await service.replyToQuestion(
         questionId: "q1",
@@ -1489,7 +1537,7 @@ void main() {
       );
       tracker.handleEvent(const SseEventData.sessionStatus(sessionID: "ses-1", status: SessionStatusBusy()), null);
       tracker.handleEvent(_questionAsked("q1", "ses-1"), null);
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
@@ -1513,7 +1561,7 @@ void main() {
         sessionDirectories: const {"ses-1": "/repo"},
         clearPendingQuestionChanged: true,
       );
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final result = await service.replyToQuestion(questionId: "q1", sessionId: "ses-1", answers: const []);
 
@@ -1525,7 +1573,7 @@ void main() {
       final error = OpenCodeApiException("POST /question/q1/reply", 500);
       final repository = FakeOpenCodeRepository(replyToQuestionError: error);
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await expectLater(
         service.replyToQuestion(questionId: "q1", sessionId: "ses-1", answers: const []),
@@ -1538,7 +1586,7 @@ void main() {
       final error = TimeoutException("timed out");
       final repository = FakeOpenCodeRepository(replyToQuestionError: error);
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await expectLater(
         service.replyToQuestion(questionId: "q1", sessionId: "ses-1", answers: const []),
@@ -1556,7 +1604,7 @@ void main() {
         clearPendingQuestionFound: true,
         clearPendingQuestionChanged: true,
       );
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final result = await service.rejectQuestion(questionId: "q1", sessionId: "ses-1");
 
@@ -1578,7 +1626,7 @@ void main() {
         clearPendingQuestionChanged: true,
         clearPendingQuestionResolvedSessionId: "ses-1",
       );
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final result = await service.rejectQuestion(questionId: "q1", sessionId: null);
 
@@ -1600,7 +1648,7 @@ void main() {
         clearPendingQuestionFound: true,
         clearPendingQuestionChanged: true,
       );
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final result = await service.rejectQuestion(questionId: "q1", sessionId: null);
 
@@ -1619,7 +1667,7 @@ void main() {
         sessionDirectories: const {"ses-1": "/repo"},
         clearPendingPermissionChanged: true,
       );
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       final result = await service.replyToPermission(
         requestId: "perm-1",
@@ -1638,7 +1686,7 @@ void main() {
       final error = OpenCodeApiException("POST /permission/perm-1/reply", 400);
       final repository = FakeOpenCodeRepository(replyToPermissionError: error);
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await expectLater(
         service.replyToPermission(requestId: "perm-1", sessionId: "ses-1", reply: PluginPermissionReply.once),
@@ -1650,7 +1698,7 @@ void main() {
     test("replyToQuestion throws 502 when session directory cannot be resolved", () async {
       final repository = FakeOpenCodeRepository();
       final tracker = FakeActiveSessionTracker();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await expectLater(
         service.replyToQuestion(questionId: "q1", sessionId: "unknown-session", answers: const []),
@@ -1666,7 +1714,7 @@ void main() {
     test("replyToPermission throws 502 when session directory cannot be resolved", () async {
       final repository = FakeOpenCodeRepository();
       final tracker = FakeActiveSessionTracker();
-      final service = OpenCodeService(repository, tracker);
+      final service = OpenCodeService(repository, tracker, OpenCodeCommandTracker());
 
       await expectLater(
         service.replyToPermission(requestId: "perm-1", sessionId: "unknown-session", reply: PluginPermissionReply.once),
@@ -1718,6 +1766,7 @@ SessionMessagesResponseItem _msg(String role, String id) {
 String? _messageId(PluginMessageWithParts message) {
   return switch (message.info) {
     PluginMessageUser(:final id) => id,
+    PluginMessageCommand(:final id) => id,
     PluginMessageAssistant(:final id) => id,
     PluginMessageError(:final id) => id,
   };
@@ -1814,7 +1863,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
     required String sessionId,
     required SendCommandBody body,
     required String? directory,
-  }) async {}
+  }) async => throw UnimplementedError();
 
   @override
   Future<void> summarize({
@@ -1921,6 +1970,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   Object? sendPromptError;
   String? lastCommandSessionId;
   String? lastCommandDirectory;
+  String? lastCommandMessageId;
   String? lastCommandName;
   String? lastCommandArguments;
   String? lastCommandAgent;
@@ -2042,6 +2092,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   Future<List<PluginMessageWithParts>> getMessages({
     required String sessionId,
     required String? directory,
+    required List<PluginCommandInvocationContext> acceptedCommands,
   }) async {
     final messages = await api.getMessages(
       sessionId: sessionId,
@@ -2089,6 +2140,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   Future<void> sendCommand({
     required String sessionId,
     required String? directory,
+    required String messageId,
     required String command,
     required String arguments,
     required String? agent,
@@ -2097,6 +2149,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   }) async {
     lastCommandSessionId = sessionId;
     lastCommandDirectory = directory;
+    lastCommandMessageId = messageId;
     lastCommandName = command;
     lastCommandArguments = arguments;
     lastCommandAgent = agent;

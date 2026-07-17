@@ -71,7 +71,13 @@ void main() {
         );
         expect(await plugin.getSessions("/repo/example"), isEmpty);
         expect(await plugin.getCommands(projectId: "/repo/example"), isEmpty);
-        expect(await plugin.getSessionMessages("s-1"), isEmpty);
+        expect(
+          await plugin.getSessionMessages(
+            "s-1",
+            acceptedCommands: const [],
+          ),
+          isEmpty,
+        );
         expect(await plugin.getSessionStatuses(), isEmpty);
         expect(plugin.getActiveSessionsSummary(), isEmpty);
         // With no config or rollout history, codex still surfaces its single
@@ -95,14 +101,15 @@ void main() {
     test("getAgents/getProviders synthesise from config + the project's own latest rollout", () async {
       final tempHome = Directory.systemTemp.createTempSync("codex-home-syn-");
       try {
-        File(p.join(tempHome.path, "config.toml"))
-            .writeAsStringSync('model = "gpt-5.5"\nmodel_provider = "openai"\n');
+        File(p.join(tempHome.path, "config.toml")).writeAsStringSync('model = "gpt-5.5"\nmodel_provider = "openai"\n');
         // A rollout whose turn_context model differs from the global config
         // default — the per-session model must win.
-        final rollout = File(p.join(
-          tempHome.path,
-          "sessions/2026/05/27/rollout-2026-05-27T10-00-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
-        ))..createSync(recursive: true);
+        final rollout = File(
+          p.join(
+            tempHome.path,
+            "sessions/2026/05/27/rollout-2026-05-27T10-00-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
+          ),
+        )..createSync(recursive: true);
         rollout.writeAsStringSync(
           "${jsonEncode({
             "type": "session_meta",
@@ -120,10 +127,12 @@ void main() {
         );
         // A NEWER rollout in a different derived project — it must not leak
         // into /repo/example's defaults.
-        final otherRollout = File(p.join(
-          tempHome.path,
-          "sessions/2026/05/28/rollout-2026-05-28T10-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
-        ))..createSync(recursive: true);
+        final otherRollout = File(
+          p.join(
+            tempHome.path,
+            "sessions/2026/05/28/rollout-2026-05-28T10-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
+          ),
+        )..createSync(recursive: true);
         otherRollout.writeAsStringSync(
           "${jsonEncode({
             "type": "session_meta",
@@ -166,8 +175,7 @@ void main() {
         expect(agent.model?.modelID, equals("gpt-5.4-codex"));
         expect(agent.model?.providerID, equals("openai"));
 
-        final providers =
-            (await plugin.getProviders(projectId: "/repo/example")).providers;
+        final providers = (await plugin.getProviders(projectId: "/repo/example")).providers;
         expect(providers.single.id, equals("openai"));
         expect(providers.single.defaultModelID, equals("gpt-5.4-codex"));
 
@@ -393,8 +401,7 @@ class _SinkAdapter implements WebSocketSink {
   void add(Object? data) => _controller.add(data);
 
   @override
-  void addError(Object error, [StackTrace? stackTrace]) =>
-      _controller.addError(error, stackTrace);
+  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
 
   @override
   Future<void> addStream(Stream<Object?> stream) async {

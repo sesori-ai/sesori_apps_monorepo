@@ -279,6 +279,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailThought => 'Thought';
 
   @override
+  String get sessionDetailCommand => 'Command';
+
+  @override
+  String get sessionDetailCommandOriginManual => 'Manual';
+
+  @override
+  String get sessionDetailCommandOriginAutomatic => 'Automatic';
+
+  @override
+  String get sessionDetailCommandOriginUnknown => 'Unknown';
+
+  @override
+  String get sessionDetailCommandResult => 'Result';
+
+  @override
+  String get sessionDetailCommandResultInProgress => 'Waiting for result...';
+
+  @override
+  String get sessionDetailCommandResultEmpty => 'No result available.';
+
+  @override
   String get sessionDetailToolUnknown => 'Tool';
 
   @override

@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/services/command_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -15,11 +16,13 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late SessionRepository sessionRepository;
+    late CommandDispatcher commandDispatcher;
     late SessionPromptService service;
 
     setUp(() async {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
+      final commandStack = TestCommandStack(db);
       sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -27,8 +30,13 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      commandDispatcher = commandStack.dispatcher(
+        plugin: plugin,
+        sessionRepository: sessionRepository,
+      );
       service = SessionPromptService(
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
       );
       await sessionRepository.insertStoredSession(
         sessionId: "s1",
@@ -48,6 +56,7 @@ void main() {
 
     tearDown(() async {
       await service.dispose();
+      await commandDispatcher.dispose();
       await plugin.close();
       await db.close();
     });
@@ -63,12 +72,36 @@ void main() {
       );
     }
 
-    test("sends the command and records normalized arguments", () async {
-      await sendCommand();
+    test("normalizes the command name and records its arguments", () async {
+      await sendCommand(command: "  review  ");
 
       expect(plugin.lastSendCommandSessionId, equals("backend-s1"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("extra args"));
+      final stored = await db.commandInvocationDao.getInvocationsForSession(
+        pluginId: "fake",
+        sessionId: "s1",
+      );
+      expect(stored.single.name, "review");
+      expect(stored.single.arguments, "extra args");
+    });
+
+    test("records blank command arguments as absent", () async {
+      await service.sendPrompt(
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "   ")],
+        variant: null,
+        agent: null,
+        model: null,
+        command: "review",
+      );
+
+      expect(plugin.lastSendCommandArguments, isEmpty);
+      final stored = await db.commandInvocationDao.getInvocationsForSession(
+        pluginId: "fake",
+        sessionId: "s1",
+      );
+      expect(stored.single.arguments, isNull);
     });
 
     test("propagates a command dispatch failure", () async {

@@ -3,6 +3,10 @@ import "dart:async";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
+import "package:cursor_plugin/src/api/cursor_catalog_api.dart";
+import "package:cursor_plugin/src/repositories/cursor_catalog_repository.dart";
+import "package:cursor_plugin/src/services/cursor_catalog_service.dart";
+import "package:cursor_plugin/src/trackers/cursor_catalog_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -10,6 +14,9 @@ void main() {
   group("CursorPlugin", () {
     late FakeAcpProcess fake;
     late CursorPlugin plugin;
+    late CursorCatalogService turnCatalogService;
+    late CursorEventMapper turnEventMapper;
+    late CursorTurnConfigurationDispatcher turnConfigurationDispatcher;
     late Set<Object?> handledFrameIds;
 
     Map<String, dynamic> catalogResult() => {
@@ -88,8 +95,14 @@ void main() {
       String? sessionId,
       bool fromNewSession = false,
     }) {
+      final parsed = AcpNewSessionResult.fromJson(result);
       plugin.captureSessionConfig(
-        AcpNewSessionResult.fromJson(result),
+        parsed,
+        sessionId: sessionId,
+        fromNewSession: fromNewSession,
+      );
+      turnConfigurationDispatcher.captureSessionConfig(
+        parsed,
         sessionId: sessionId,
         fromNewSession: fromNewSession,
       );
@@ -102,10 +115,38 @@ void main() {
         launchDirectory: "/repo",
         processFactory: (_) async => fake,
       );
+      final turnCatalogTracker = CursorCatalogTracker();
+      final turnCatalogClient = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(
+          command: "cursor-agent",
+          args: ["acp"],
+        ),
+        processFactory: (_) async => fake,
+      );
+      turnCatalogService = CursorCatalogService(
+        repository: CursorCatalogRepository(
+          api: CursorCatalogApi(client: turnCatalogClient),
+          launchScope: "/repo",
+        ),
+        tracker: turnCatalogTracker,
+        totalTimeout: const Duration(seconds: 12),
+        maxCandidates: 8,
+      );
+      turnEventMapper = CursorEventMapper(
+        launchDirectory: "/repo",
+        pluginId: CursorPlugin.pluginId,
+      );
+      turnConfigurationDispatcher = CursorTurnConfigurationDispatcher(
+        catalogService: turnCatalogService,
+        catalogTracker: turnCatalogTracker,
+        eventMapper: turnEventMapper,
+        providerId: "cursor",
+      );
     });
 
     tearDown(() async {
       await plugin.dispose();
+      await turnCatalogService.dispose();
       await fake.close();
     });
 
@@ -130,6 +171,21 @@ void main() {
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
       await pump();
     }
+
+    Future<void> applyTurnConfiguration({
+      required AcpStdioClient client,
+      required String sessionId,
+      required ({String providerID, String modelID})? model,
+      required PluginSessionVariant? variant,
+      required String? agent,
+    }) => turnConfigurationDispatcher.apply(
+      repository: AcpSessionRepository(api: AcpApi(client: client)),
+      sessionId: sessionId,
+      model: model,
+      variant: variant,
+      agent: agent,
+      failOnError: false,
+    );
 
     // getProviders now warms the catalog before returning (so a fresh session's
     // effort pill is populated up front). That needs the ACP handshake. For a
@@ -232,7 +288,7 @@ void main() {
       );
     });
 
-    test("applyTurnSelection drives model + mode + effort from agent and variant", () async {
+    test("turn dispatcher drives model + mode + effort from agent and variant", () async {
       capture(catalogResult(), fromNewSession: true);
 
       final client = AcpStdioClient(
@@ -241,7 +297,7 @@ void main() {
       );
       await client.connect();
 
-      final applying = plugin.applyTurnSelection(
+      final applying = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -268,7 +324,7 @@ void main() {
       expect(sets[2]["configId"], "effort");
       expect(sets[2]["value"], "high");
 
-      final again = plugin.applyTurnSelection(
+      final again = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -282,7 +338,7 @@ void main() {
       await client.dispose();
     });
 
-    test("applyTurnSelection resolves mode from display name agent", () async {
+    test("turn dispatcher resolves mode from display name agent", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -290,7 +346,7 @@ void main() {
       );
       await client.connect();
 
-      final applying = plugin.applyTurnSelection(
+      final applying = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
@@ -316,7 +372,7 @@ void main() {
       await client.dispose();
     });
 
-    test("applyTurnSelection re-applies the same effort after a model switch", () async {
+    test("turn dispatcher re-applies the same effort after a model switch", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -324,7 +380,7 @@ void main() {
       );
       await client.connect();
 
-      final first = plugin.applyTurnSelection(
+      final first = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
@@ -339,7 +395,7 @@ void main() {
       await respond("session/set_config_option", const {}); // effort high
       await first;
 
-      final second = plugin.applyTurnSelection(
+      final second = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -364,7 +420,7 @@ void main() {
       await client.dispose();
     });
 
-    test("applyTurnSelection uses per-model thought_level config ids", () async {
+    test("turn dispatcher uses per-model thought_level config ids", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -372,7 +428,7 @@ void main() {
       );
       await client.connect();
 
-      final first = plugin.applyTurnSelection(
+      final first = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
@@ -406,7 +462,7 @@ void main() {
       await respond("session/set_config_option", const {}); // effort/reasoning high
       await first;
 
-      final second = plugin.applyTurnSelection(
+      final second = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -450,7 +506,7 @@ void main() {
       await client.dispose();
     });
 
-    test("applyTurnSelection does not reuse another model's thought config id", () async {
+    test("turn dispatcher does not reuse another model's thought config id", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -458,7 +514,7 @@ void main() {
       );
       await client.connect();
 
-      final applying = plugin.applyTurnSelection(
+      final applying = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -482,7 +538,7 @@ void main() {
       await client.dispose();
     });
 
-    test("applyTurnSelection restores the selected model's default effort", () async {
+    test("turn dispatcher restores the selected model's default effort", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -490,7 +546,7 @@ void main() {
       );
       await client.connect();
 
-      final selectingHigh = plugin.applyTurnSelection(
+      final selectingHigh = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -523,7 +579,7 @@ void main() {
       await respond("session/set_config_option", const {}); // effort=high
       await selectingHigh;
 
-      final restoringDefault = plugin.applyTurnSelection(
+      final restoringDefault = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -544,7 +600,7 @@ void main() {
       await client.dispose();
     });
 
-    test("applyTurnSelection never pushes an unknown model", () async {
+    test("turn dispatcher never pushes an unknown model", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -552,7 +608,7 @@ void main() {
       );
       await client.connect();
 
-      final applying = plugin.applyTurnSelection(
+      final applying = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "not-a-real-model"),
@@ -597,7 +653,7 @@ void main() {
         processFactory: (_) async => fake,
       );
 
-      await plugin.applyTurnSelection(
+      await applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: null,
@@ -605,12 +661,15 @@ void main() {
         agent: null,
       );
 
-      expect(plugin.eventMapper.modelForSession("s1"), "cursor-internal-model");
+      expect(
+        turnEventMapper.modelForSession("s1"),
+        "cursor-internal-model",
+      );
       expect(fake.written.where((frame) => frame["method"] == "session/set_config_option"), isEmpty);
       await client.dispose();
     });
 
-    test("applyTurnSelection does not push unknown effort", () async {
+    test("turn dispatcher does not push unknown effort", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -618,7 +677,7 @@ void main() {
       );
       await client.connect();
 
-      final applying = plugin.applyTurnSelection(
+      final applying = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
@@ -649,7 +708,7 @@ void main() {
       );
       await client.connect();
 
-      final selecting = plugin.applyTurnSelection(
+      final selecting = applyTurnConfiguration(
         client: client,
         sessionId: "sA",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -664,7 +723,7 @@ void main() {
       await respond("session/set_config_option", const {}); // effort
       await selecting;
 
-      final defaulting = plugin.applyTurnSelection(
+      final defaulting = applyTurnConfiguration(
         client: client,
         sessionId: "sB",
         model: null,
@@ -697,7 +756,7 @@ void main() {
       );
       await client.connect();
 
-      final a = plugin.applyTurnSelection(
+      final a = applyTurnConfiguration(
         client: client,
         sessionId: "sA",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -712,7 +771,7 @@ void main() {
       await respond("session/set_config_option", const {});
       await a;
 
-      final b = plugin.applyTurnSelection(
+      final b = applyTurnConfiguration(
         client: client,
         sessionId: "sB",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
@@ -726,7 +785,7 @@ void main() {
       await respond("session/set_config_option", const {}); // effort re-applied
       await b;
 
-      final aAgain = plugin.applyTurnSelection(
+      final aAgain = applyTurnConfiguration(
         client: client,
         sessionId: "sA",
         model: null,
@@ -759,7 +818,7 @@ void main() {
       );
       await client.connect();
 
-      final applying = plugin.applyTurnSelection(
+      final applying = applyTurnConfiguration(
         client: client,
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -777,7 +836,7 @@ void main() {
       await respond("session/set_config_option", const {}); // effort
       await applying;
 
-      expect(plugin.eventMapper.modelForSession("s1"), "gpt-5.4");
+      expect(turnEventMapper.modelForSession("s1"), "gpt-5.4");
 
       await client.dispose();
     });
@@ -790,7 +849,7 @@ void main() {
       );
       await client.connect();
 
-      final a = plugin.applyTurnSelection(
+      final a = applyTurnConfiguration(
         client: client,
         sessionId: "sA",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -805,7 +864,7 @@ void main() {
       await respond("session/set_config_option", const {});
       await a;
 
-      final b = plugin.applyTurnSelection(
+      final b = applyTurnConfiguration(
         client: client,
         sessionId: "sB",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
@@ -821,12 +880,12 @@ void main() {
       await pump();
       await b;
 
-      expect(plugin.eventMapper.modelForSession("sB"), "gpt-5.4");
+      expect(turnEventMapper.modelForSession("sB"), "gpt-5.4");
 
       await client.dispose();
     });
 
-    test("onConnectionReset re-applies model+mode+effort after an agent respawn", () async {
+    test("dispatcher reset re-applies model+mode+effort after an agent respawn", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -835,7 +894,7 @@ void main() {
       await client.connect();
 
       Future<void> applyOnce() async {
-        final applying = plugin.applyTurnSelection(
+        final applying = applyTurnConfiguration(
           client: client,
           sessionId: "s1",
           model: (providerID: "cursor", modelID: "sonnet-4.6"),
@@ -857,7 +916,7 @@ void main() {
         hasLength(3),
       );
 
-      plugin.onConnectionReset();
+      turnConfigurationDispatcher.reset();
 
       await applyOnce();
       expect(

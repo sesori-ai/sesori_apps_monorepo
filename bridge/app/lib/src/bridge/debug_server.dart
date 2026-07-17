@@ -6,18 +6,22 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../listeners/command_dispatch_outcome_listener.dart";
+import "../listeners/plugin_command_timeline_listener.dart";
 import "../server/services/bridge_restart_service.dart";
 import "repositories/session_repository.dart";
 import "routing/request_router.dart";
-import "services/session_event_enrichment_service.dart";
 import "sse/bridge_event_mapper.dart";
+import "sse/command_timeline_sse_mapper.dart";
 
 class DebugServer {
-  final BridgePluginApi _plugin;
+  static const CommandTimelineSseMapper _commandTimelineSseMapper = CommandTimelineSseMapper();
+
   final RequestRouter _router;
   final BridgeEventMapper _mapper;
   final SessionRepository _sessionRepository;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final PluginCommandTimelineListener _pluginCommandTimelineListener;
+  final CommandDispatchOutcomeListener _commandDispatchOutcomeListener;
   final FailureReporter _failureReporter;
   final BridgeRestartService _restartService;
   final Future<void> Function() _restartHandoff;
@@ -26,29 +30,28 @@ class DebugServer {
   final CompositeSubscription _compositeSubscription = CompositeSubscription();
 
   HttpServer? _server;
-  StreamSubscription<void>? _pluginEventsSub;
+  StreamSubscription<void>? _pluginTimelineSub;
+  StreamSubscription<void>? _dispatchTimelineSub;
 
   int _nextRequestId = 1;
 
   DebugServer({
-    required BridgePluginApi plugin,
     required RequestRouter router,
     required this.port,
     required FailureReporter failureReporter,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionRepository sessionRepository,
+    required PluginCommandTimelineListener pluginCommandTimelineListener,
+    required CommandDispatchOutcomeListener commandDispatchOutcomeListener,
     required BridgeRestartService restartService,
     required Future<void> Function() restartHandoff,
-  }) : _plugin = plugin,
-       _router = router,
+  }) : _router = router,
        _failureReporter = failureReporter,
        _sessionRepository = sessionRepository,
+       _pluginCommandTimelineListener = pluginCommandTimelineListener,
+       _commandDispatchOutcomeListener = commandDispatchOutcomeListener,
        _restartService = restartService,
        _restartHandoff = restartHandoff,
-       _mapper = BridgeEventMapper(
-         failureReporter: failureReporter,
-       ),
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       _mapper = BridgeEventMapper(failureReporter: failureReporter);
 
   int? get boundPort => _server?.port;
   RequestRouter get router => _router;
@@ -58,6 +61,8 @@ class DebugServer {
       return;
     }
 
+    await _pluginCommandTimelineListener.start();
+    await _commandDispatchOutcomeListener.start();
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
     _server = server;
 
@@ -67,8 +72,10 @@ class DebugServer {
 
   Future<void> stop() async {
     await _compositeSubscription.cancel();
-    await _pluginEventsSub?.cancel();
-    _pluginEventsSub = null;
+    await _pluginTimelineSub?.cancel();
+    _pluginTimelineSub = null;
+    await _dispatchTimelineSub?.cancel();
+    _dispatchTimelineSub = null;
     final clients = List<HttpResponse>.from(_sseClients);
     _sseClients.clear();
     for (final client in clients) {
@@ -171,18 +178,9 @@ class DebugServer {
 
       _sseClients.add(response);
 
-      _pluginEventsSub ??= _plugin.events
-          .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
-          .where((event) => event != null)
-          .cast<BridgeSseEvent>()
-          // Mirrors the orchestrator: a project update rebuilds the full
-          // summary from repository data; everything else maps 1:1.
-          .asyncMap<SesoriSseEvent?>(
-            (event) async => event is BridgeSseProjectUpdated
-                ? _buildProjectsSummary()
-                : _mapper.map(event),
-          )
-          .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
+      _pluginTimelineSub ??= _pluginCommandTimelineListener.outputs
+          .asyncMap<List<SesoriSseEvent>>(_mapPluginTimelineOutput)
+          .asyncMap(_fanOutEvents)
           .listen(
             (_) {},
             onError: (Object e, StackTrace st) {
@@ -197,6 +195,15 @@ class DebugServer {
                   information: const [],
                 ),
               );
+            },
+          );
+      _dispatchTimelineSub ??= _commandDispatchOutcomeListener.mutations
+          .map<List<SesoriSseEvent>>(_commandTimelineSseMapper.mapAll)
+          .asyncMap(_fanOutEvents)
+          .listen(
+            (_) {},
+            onError: (Object error, StackTrace stackTrace) {
+              Log.w("debug accepted command SSE stream error", error, stackTrace);
             },
           );
 
@@ -276,12 +283,31 @@ class DebugServer {
     await _fanOutEvent(jsonEncode(mapped.toJson()));
   }
 
+  Future<List<SesoriSseEvent>> _mapPluginTimelineOutput(PluginCommandTimelineOutput output) async {
+    return switch (output) {
+      PluginCommandTimelineCanonical(:final mutations) => _commandTimelineSseMapper.mapAll(mutations),
+      PluginCommandTimelinePassthrough(:final event) => switch (event) {
+        BridgeSseProjectUpdated() => [await _buildProjectsSummary()].nonNulls.toList(growable: false),
+        _ => [_mapper.map(event)].nonNulls.toList(growable: false),
+      },
+    };
+  }
+
+  Future<void> _fanOutEvents(List<SesoriSseEvent> events) async {
+    for (final event in events) {
+      await _fanOutMappedEvent(mapped: event);
+    }
+  }
+
   void _removeSseClient(HttpResponse client) {
     _sseClients.remove(client);
     if (_sseClients.isEmpty) {
-      final sub = _pluginEventsSub;
-      _pluginEventsSub = null;
+      final sub = _pluginTimelineSub;
+      _pluginTimelineSub = null;
       if (sub != null) unawaited(sub.cancel());
+      final dispatchSub = _dispatchTimelineSub;
+      _dispatchTimelineSub = null;
+      if (dispatchSub != null) unawaited(dispatchSub.cancel());
     }
   }
 }

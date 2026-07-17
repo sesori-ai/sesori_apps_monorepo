@@ -5,6 +5,7 @@ import "../metadata_service.dart";
 import "../models/session_metadata.dart" as bridge_metadata;
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
+import "command_dispatcher.dart";
 import "session_mutation_dispatcher.dart";
 import "worktree_service.dart";
 
@@ -12,16 +13,19 @@ class SessionCreationService {
   final MetadataService _metadataService;
   final WorktreeService _worktreeService;
   final SessionRepository _sessionRepository;
+  final CommandDispatcher _commandDispatcher;
   final SessionMutationDispatcher _sessionMutationDispatcher;
 
   SessionCreationService({
     required MetadataService metadataService,
     required WorktreeService worktreeService,
     required SessionRepository sessionRepository,
+    required CommandDispatcher commandDispatcher,
     required SessionMutationDispatcher sessionMutationDispatcher,
   }) : _metadataService = metadataService,
        _worktreeService = worktreeService,
        _sessionRepository = sessionRepository,
+       _commandDispatcher = commandDispatcher,
        _sessionMutationDispatcher = sessionMutationDispatcher;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
@@ -48,8 +52,8 @@ class SessionCreationService {
         command: normalizedCommand,
       ),
       variant: request.variant,
-      agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
-      model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
+      agent: normalizedCommand == null ? request.agent : null,
+      model: normalizedCommand == null ? request.model : null,
     );
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,
@@ -77,17 +81,23 @@ class SessionCreationService {
           : null,
     );
     await _sessionMutationDispatcher.applyPendingTitle(sessionId: created.id);
-    await _maybeSendCommand(
-      session: created,
-      command: normalizedCommand,
-      arguments: _buildCommandArguments(
-        userArguments: firstText ?? '',
+    try {
+      await _maybeSendCommand(
+        session: created,
+        command: normalizedCommand,
+        arguments: firstText ?? "",
+        variant: request.variant,
+        agent: request.agent,
+        model: request.model,
+      );
+    } catch (error, stackTrace) {
+      await _rollbackRejectedInitialCommand(
+        sessionId: created.id,
+        projectId: request.projectId,
         worktreeResult: worktreeResult,
-      ),
-      variant: request.variant,
-      agent: request.agent,
-      model: request.model,
-    );
+      );
+      Error.throwWithStackTrace(error, stackTrace);
+    }
     final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
     // The plugin only knows the directory the session was created in, so for
     // a moved project it echoes the live path (or its own internal id) as the
@@ -203,33 +213,52 @@ class SessionCreationService {
     if (command == null) {
       return;
     }
-    await _sessionRepository.sendCommand(
+    await _commandDispatcher.dispatch(
       sessionId: session.id,
-      command: command,
-      arguments: arguments,
+      name: command,
+      arguments: arguments.trim().isEmpty ? null : arguments,
       variant: variant,
       agent: agent,
       model: model,
     );
   }
 
-  String _buildCommandArguments({
-    required String userArguments,
+  Future<void> _rollbackRejectedInitialCommand({
+    required String sessionId,
+    required String projectId,
     required WorktreeResult? worktreeResult,
-  }) {
-    if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
-      final systemContext = _buildWorktreeSystemPrompt(
-        branchName: branchName,
-        worktreePath: path,
-        baseBranch: baseBranch,
-      ).trimRight();
-      final trimmedArguments = userArguments.trim();
-      if (trimmedArguments.isEmpty) {
-        return systemContext;
-      }
-      return "$systemContext\n\n$trimmedArguments";
+  }) async {
+    try {
+      await _sessionRepository.rollbackJustCreatedSession(sessionId: sessionId);
+    } catch (error, stackTrace) {
+      Log.w("Failed to roll back rejected initial-command session $sessionId", error, stackTrace);
     }
-    return userArguments;
+    if (worktreeResult case WorktreeSuccess(:final path, :final branchName)) {
+      try {
+        final removed = await _worktreeService.removeWorktree(
+          projectId: projectId,
+          worktreePath: path,
+          force: true,
+        );
+        if (!removed) {
+          Log.w("Failed to force-remove rejected initial-command worktree $path");
+        }
+      } catch (error, stackTrace) {
+        Log.w("Failed to force-remove rejected initial-command worktree $path", error, stackTrace);
+      }
+      try {
+        final deleted = await _worktreeService.deleteBranch(
+          projectId: projectId,
+          branchName: branchName,
+          force: true,
+        );
+        if (!deleted) {
+          Log.w("Failed to force-delete rejected initial-command branch $branchName");
+        }
+      } catch (error, stackTrace) {
+        Log.w("Failed to force-delete rejected initial-command branch $branchName", error, stackTrace);
+      }
+    }
   }
 
   Future<({String? worktreePath, String? branchName, String? baseBranch, String? baseCommit})> _resolveWorktreeState({

@@ -99,6 +99,23 @@ class _FakeApi implements NativeProjectsPluginApi {
   }
 
   @override
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async => const [];
+
+  @override
+  Future<PluginCommandDispatch> sendCommand({
+    required String sessionId,
+    required String invocationId,
+    required String command,
+    required String arguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async => const PluginCommandDispatch(backendMessageId: null);
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

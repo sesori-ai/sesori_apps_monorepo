@@ -75,11 +75,7 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                   : PregoTopBarInsetBuilder(
                       builder: (context, topInset, _) => SessionDetailMessageList(
                         projectId: widget.projectId,
-                        messages: state.messages,
-                        streamingText: state.streamingText,
-                        children: state.children,
-                        childStatuses: state.childStatuses,
-                        retryErrorMessage: state.retryErrorMessage,
+                        state: state,
                         // Pad the oldest-message edge clear of the bar it scrolls
                         // behind, and the newest-message edge clear of the floating
                         // bottom controls overlaid below (background-tasks bar,

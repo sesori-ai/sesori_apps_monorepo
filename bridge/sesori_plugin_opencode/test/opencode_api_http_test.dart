@@ -216,6 +216,7 @@ void main() {
       await api.sendCommand(
         sessionId: "ses-123",
         body: const SendCommandBody(
+          messageID: "msg_sesori_0123456789abcdef0123456789abcdef",
           command: "/review-work",
           arguments: "recent changes",
           agent: "reviewer",
@@ -235,6 +236,7 @@ void main() {
       expect(
         jsonDecode(capturedBody),
         equals({
+          "messageID": "msg_sesori_0123456789abcdef0123456789abcdef",
           "command": "/review-work",
           "arguments": "recent changes",
           "agent": "reviewer",
@@ -318,6 +320,7 @@ void main() {
 
     test("SendCommandBody includes variant when provided", () {
       const body = SendCommandBody(
+        messageID: null,
         command: "/review-work",
         arguments: "recent changes",
         agent: null,

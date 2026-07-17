@@ -6,6 +6,32 @@ part of 'message.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_CommandMessageInfo _$CommandMessageInfoFromJson(Map json) =>
+    _CommandMessageInfo(
+      name: json['name'] as String,
+      arguments: json['arguments'] as String?,
+      origin: $enumDecode(
+        _$CommandOriginEnumMap,
+        json['origin'],
+        unknownValue: CommandOrigin.unknown,
+      ),
+      displayPartID: json['displayPartID'] as String,
+    );
+
+Map<String, dynamic> _$CommandMessageInfoToJson(_CommandMessageInfo instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'arguments': ?instance.arguments,
+      'origin': _$CommandOriginEnumMap[instance.origin]!,
+      'displayPartID': instance.displayPartID,
+    };
+
+const _$CommandOriginEnumMap = {
+  CommandOrigin.manual: 'manual',
+  CommandOrigin.automatic: 'automatic',
+  CommandOrigin.unknown: 'unknown',
+};
+
 MessageUser _$MessageUserFromJson(Map json) => MessageUser(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
@@ -13,6 +39,11 @@ MessageUser _$MessageUserFromJson(Map json) => MessageUser(
   time: json['time'] == null
       ? null
       : MessageTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
+  command: json['command'] == null
+      ? null
+      : CommandMessageInfo.fromJson(
+          Map<String, dynamic>.from(json['command'] as Map),
+        ),
   $type: json['role'] as String?,
 );
 
@@ -22,6 +53,7 @@ Map<String, dynamic> _$MessageUserToJson(MessageUser instance) =>
       'sessionID': instance.sessionID,
       'agent': ?instance.agent,
       'time': ?instance.time?.toJson(),
+      'command': ?instance.command?.toJson(),
       'role': instance.$type,
     };
 

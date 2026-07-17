@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/bridge/services/command_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -17,11 +18,13 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late SessionRepository sessionRepository;
+    late CommandDispatcher commandDispatcher;
     late SendPromptHandler handler;
 
     setUp(() async {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
+      final commandStack = TestCommandStack(db);
       sessionRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -29,9 +32,14 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      commandDispatcher = commandStack.dispatcher(
+        plugin: plugin,
+        sessionRepository: sessionRepository,
+      );
       handler = SendPromptHandler(
         sessionPromptService: SessionPromptService(
           sessionRepository: sessionRepository,
+          commandDispatcher: commandDispatcher,
         ),
       );
       for (final sessionId in ["s1", "s42", "s7", "s8", "s10", "s-update-fails", "s9"]) {
@@ -48,6 +56,7 @@ void main() {
 
     tearDown(() async {
       await plugin.close();
+      await commandDispatcher.dispose();
       await db.close();
     });
 
@@ -255,6 +264,7 @@ void main() {
 
       expect(plugin.lastSendPromptSessionId, isNull);
       expect(plugin.lastSendCommandSessionId, equals("backend-s7"));
+      expect(plugin.lastSendCommandInvocationId, isNotNull);
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("review this"));
       expect(plugin.lastSendCommandVariant, equals("xhigh"));
@@ -283,6 +293,11 @@ void main() {
       expect(plugin.lastSendCommandSessionId, equals("backend-s8"));
       expect(plugin.lastSendCommand, equals("attach"));
       expect(plugin.lastSendCommandArguments, equals(""));
+      final acceptedCommands = await db.commandInvocationDao.getInvocationsForSession(
+        pluginId: plugin.id,
+        sessionId: "s8",
+      );
+      expect(acceptedCommands.single.arguments, isNull);
     });
 
     test("passes agent and model when command is present", () async {
@@ -360,6 +375,7 @@ void main() {
         ),
       );
       final failingPlugin = _ThrowingSendPromptPlugin();
+      final commandStack = TestCommandStack(db);
       final localRepository = SessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
@@ -367,9 +383,17 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
+      final localCommandDispatcher = commandStack.dispatcher(
+        plugin: failingPlugin,
+        sessionRepository: localRepository,
       );
+      final localHandler = SendPromptHandler(
+        sessionPromptService: SessionPromptService(
+          sessionRepository: localRepository,
+          commandDispatcher: localCommandDispatcher,
+        ),
+      );
+      addTearDown(localCommandDispatcher.dispose);
 
       await expectLater(
         () => localHandler.handle(
@@ -412,6 +436,7 @@ void main() {
         ),
       );
       final failingPlugin = _ThrowingSendCommandPlugin();
+      final commandStack = TestCommandStack(db);
       final localRepository = SessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
@@ -419,9 +444,17 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final localHandler = SendPromptHandler(
-        sessionPromptService: SessionPromptService(sessionRepository: localRepository),
+      final localCommandDispatcher = commandStack.dispatcher(
+        plugin: failingPlugin,
+        sessionRepository: localRepository,
       );
+      final localHandler = SendPromptHandler(
+        sessionPromptService: SessionPromptService(
+          sessionRepository: localRepository,
+          commandDispatcher: localCommandDispatcher,
+        ),
+      );
+      addTearDown(localCommandDispatcher.dispose);
 
       await expectLater(
         () => localHandler.handle(
@@ -458,7 +491,10 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final promptService = SessionPromptService(sessionRepository: throwingRepository);
+      final promptService = SessionPromptService(
+        sessionRepository: throwingRepository,
+        commandDispatcher: commandDispatcher,
+      );
       final changes = <SessionPromptDefaultsChange>[];
       final subscription = promptService.promptDefaultsChanges.listen(changes.add);
       addTearDown(subscription.cancel);
@@ -633,8 +669,9 @@ class _ThrowingSendPromptPlugin extends FakeBridgePlugin {
 
 class _ThrowingSendCommandPlugin extends FakeBridgePlugin {
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,

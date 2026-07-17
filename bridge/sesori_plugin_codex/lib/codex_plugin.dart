@@ -4,6 +4,7 @@
 // contract, mirroring the OpenCode plugin topology: a request-surface api
 // (CodexPlugin) plus a runtime-lifecycle descriptor the bridge registers in
 // bin/bridge.dart.
+export "src/api/codex_app_server_api.dart";
 export "src/approval_registry.dart";
 export "src/codex_app_server_client.dart";
 export "src/codex_config_reader.dart";
@@ -11,10 +12,20 @@ export "src/codex_event_mapper.dart";
 export "src/codex_metadata_repository.dart";
 export "src/codex_plugin_impl.dart";
 export "src/codex_skill_reader.dart";
+export "src/listeners/codex_keepalive_listener.dart";
+export "src/repositories/codex_app_server_repository.dart";
+export "src/repositories/codex_message_repository.dart";
+export "src/repositories/models/codex_app_server_repository_models.dart";
 // Runtime lifecycle: the descriptor is the public entry point the bridge
 // registers in bin/bridge.dart.
 export "src/runtime/codex_bridge_plugin.dart";
 export "src/runtime/codex_managed_api.dart";
 export "src/runtime/codex_plugin_descriptor.dart";
 export "src/runtime/codex_runtime_manifest.dart";
+export "src/services/codex_command_event_service.dart";
+export "src/services/codex_history_service.dart";
+export "src/services/codex_turn_service.dart";
 export "src/session_rollout_reader.dart";
+export "src/trackers/codex_command_invocation_tracker.dart";
+export "src/trackers/codex_context_tracker.dart";
+export "src/trackers/codex_thread_residency_tracker.dart";

@@ -56,9 +56,7 @@ void main() {
     // which zero-duration pumps never outlast.
     Future<Map<String, dynamic>> waitForFrame(String method) async {
       for (var i = 0; i < 400; i++) {
-        final matches = fake()
-            .written
-            .where((f) => f["method"] == method && !answered.contains((fake(), f["id"])));
+        final matches = fake().written.where((f) => f["method"] == method && !answered.contains((fake(), f["id"])));
         if (matches.isNotEmpty) return matches.last;
         await Future<void>.delayed(const Duration(milliseconds: 5));
       }
@@ -104,10 +102,7 @@ void main() {
       var running = true;
       unawaited(() async {
         while (running) {
-          final frames = fake()
-              .written
-              .where((f) => f["method"] == "session/list")
-              .toList(growable: false);
+          final frames = fake().written.where((f) => f["method"] == "session/list").toList(growable: false);
           for (final frame in frames) {
             if (!answered.add(frame["id"])) continue;
             final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
@@ -222,8 +217,7 @@ void main() {
       var running = true;
       unawaited(() async {
         while (running) {
-          for (final frame
-              in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
+          for (final frame in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
             if (!answered.add(frame["id"])) continue;
             final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
             if (params["cwd"] == null) {
@@ -258,8 +252,7 @@ void main() {
       var running = true;
       unawaited(() async {
         while (running) {
-          for (final frame
-              in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
+          for (final frame in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
             if (!answered.add(frame["id"])) continue;
             final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
             if (params["cwd"] == null) {
@@ -313,8 +306,7 @@ void main() {
       unawaited(() async {
         final answered = <Object?>{};
         while (answered.length < 3) {
-          for (final frame
-              in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
+          for (final frame in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
             if (!answered.add(frame["id"])) continue;
             final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
             if (params["cwd"] == null) {
@@ -737,7 +729,10 @@ void main() {
       failingPlugin.primeSessionDirectory(sessionId: "s-x", directory: cwd);
 
       try {
-        await failingPlugin.getSessionMessages("s-x");
+        await failingPlugin.getSessionMessages(
+          "s-x",
+          acceptedCommands: const [],
+        );
         fail("Expected history replay to fail");
       } on PluginOperationException catch (_, stackTrace) {
         expect(
@@ -751,7 +746,10 @@ void main() {
     test("an agent without loadSession serves an empty thread, not a failure", () async {
       plugin.primeSessionDirectory(sessionId: "s-x", directory: cwd);
 
-      final loading = plugin.getSessionMessages("s-x");
+      final loading = plugin.getSessionMessages(
+        "s-x",
+        acceptedCommands: const [],
+      );
       await respond("initialize", {
         "protocolVersion": 1,
         "agentCapabilities": <String, dynamic>{},
@@ -811,7 +809,7 @@ void main() {
         custom: false,
       );
       for (final session in [inLaunch, inOpened]) {
-        plugin.registry!.addPendingQuestion(
+        plugin.registry.addPendingQuestion(
           bridgeRequestId: "q-${session.id}",
           acpId: "acp-${session.id}",
           sessionId: session.id,
@@ -836,19 +834,111 @@ Future<AcpProcessHandle> _throwReplayProcess(AcpLaunchSpec _) async {
 /// can register pending questions directly (the base registry only creates
 /// questions through harness extension handlers).
 class _RegistryCapturingAcpPlugin extends AcpPlugin {
-  _RegistryCapturingAcpPlugin({
+  factory _RegistryCapturingAcpPlugin({
+    required String id,
+    required String agentDisplayName,
+    required AcpLaunchSpec launchSpec,
+    required String launchDirectory,
+    required AcpEventMapper eventMapper,
+    AcpProcessFactory? processFactory,
+  }) {
+    final clientBuilder = AcpStdioClientBuilder(
+      launchSpec: launchSpec,
+      processFactory: processFactory,
+    );
+    final liveClient = clientBuilder.build(logTag: id);
+    final api = AcpApi(client: liveClient);
+    final sessionRepository = AcpSessionRepository(api: api);
+    final commandTracker = AcpCommandTracker();
+    final commandTurnTracker = AcpCommandTurnTracker();
+    final directoryTracker = AcpSessionDirectoryTracker(
+      launchDirectory: launchDirectory,
+    );
+    final residencyTracker = AcpSessionResidencyTracker();
+    final queueTracker = AcpTurnQueueTracker(pluginId: id);
+    final eventDispatcher = AcpTurnEventDispatcher(
+      eventMapper: eventMapper,
+      commandTracker: commandTracker,
+      commandTurnTracker: commandTurnTracker,
+      residencyTracker: residencyTracker,
+    );
+    final connectionService = AcpConnectionService(
+      client: liveClient,
+      repository: sessionRepository,
+      configuration: const AcpConnectionConfiguration(
+        initializeRequest: AcpInitializeRequest(
+          clientName: "sesori-bridge",
+          clientVersion: "0.0.0",
+          clientTitle: null,
+          capabilityMeta: null,
+        ),
+        authMethodId: null,
+      ),
+    );
+    final notificationListener = AcpNotificationListener(
+      notificationRepository: AcpNotificationRepository(
+        apiNotifications: api.notifications,
+      ),
+      eventDispatcher: eventDispatcher,
+    );
+    final approvalRegistry = AcpApprovalRegistry.forClient(
+      client: liveClient,
+      emit: eventDispatcher.emit,
+      activeSessionResolver: queueTracker.resolveActiveSession,
+    );
+    final approvalListener = AcpApprovalListener(
+      registry: approvalRegistry,
+      requests: liveClient.serverRequests,
+    );
+    const turnConfigurationDispatcher = AcpTurnConfigurationDispatcher();
+    final turnService = AcpTurnService(
+      pluginId: id,
+      connectionService: connectionService,
+      directoryTracker: directoryTracker,
+      residencyTracker: residencyTracker,
+      queueTracker: queueTracker,
+      commandTurnTracker: commandTurnTracker,
+      eventDispatcher: eventDispatcher,
+      turnConfigurationDispatcher: turnConfigurationDispatcher,
+      commandFastFailWindow: const Duration(milliseconds: 100),
+    );
+    return _RegistryCapturingAcpPlugin._(
+      id: id,
+      agentDisplayName: agentDisplayName,
+      launchSpec: launchSpec,
+      launchDirectory: launchDirectory,
+      eventMapper: eventMapper,
+      clientBuilder: clientBuilder,
+      commandTracker: commandTracker,
+      connectionService: connectionService,
+      notificationListener: notificationListener,
+      approvalListener: approvalListener,
+      approvalRegistry: approvalRegistry,
+      directoryTracker: directoryTracker,
+      turnService: turnService,
+      turnConfigurationDispatcher: turnConfigurationDispatcher,
+    );
+  }
+
+  _RegistryCapturingAcpPlugin._({
     required super.id,
     required super.agentDisplayName,
     required super.launchSpec,
     required super.launchDirectory,
     required super.eventMapper,
-    super.processFactory,
-  });
+    required super.clientBuilder,
+    required super.commandTracker,
+    required super.connectionService,
+    required super.notificationListener,
+    required super.approvalListener,
+    required super.approvalRegistry,
+    required super.directoryTracker,
+    required super.turnService,
+    required super.turnConfigurationDispatcher,
+  }) : _registry = approvalRegistry,
+       super.configured();
 
-  AcpApprovalRegistry? registry;
+  final AcpApprovalRegistry _registry;
 
-  @override
-  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
-    return registry = super.buildApprovalRegistry(client);
-  }
+  AcpApprovalRegistry get registry => _registry;
 }

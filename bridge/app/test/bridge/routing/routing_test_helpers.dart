@@ -9,7 +9,6 @@ import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/metadata_service.dart";
 import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_status_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/prompt_part_mapper.dart";
@@ -81,6 +80,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginSession> sessionsResult = [];
   List<PluginCommand> commandsResult = [];
   List<PluginMessageWithParts> messagesResult = [];
+  PluginCommandDispatch commandDispatchResult = const PluginCommandDispatch(backendMessageId: null);
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
   PluginSession? createSessionResult;
   PluginSession? renameSessionResult;
@@ -125,6 +125,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastSendPromptAgent;
   ({String providerID, String modelID})? lastSendPromptModel;
   String? lastSendCommandSessionId;
+  String? lastSendCommandInvocationId;
   String? lastSendCommand;
   String? lastSendCommandArguments;
   String? lastSendCommandVariant;
@@ -296,8 +297,9 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
-    String sessionId,
-  ) async {
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async {
     lastGetMessagesSessionId = sessionId;
     if (throwOnGetMessagesError case final error?) {
       throw error;
@@ -321,8 +323,9 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
@@ -330,6 +333,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     required ({String providerID, String modelID})? model,
   }) async {
     lastSendCommandSessionId = sessionId;
+    lastSendCommandInvocationId = invocationId;
     lastSendCommand = command;
     lastSendCommandArguments = arguments;
     lastSendCommandVariant = variant?.id;
@@ -338,6 +342,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     if (sendCommandCompleter case final completer?) {
       await completer.future;
     }
+    return commandDispatchResult;
   }
 
   @override
@@ -686,9 +691,6 @@ class _NoopSessionRepository implements SessionRepository {
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const <MessageWithParts>[];
-
-  @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const <ProjectActivitySummary>[];
 
   @override
@@ -809,16 +811,6 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> notifySessionArchived({required String sessionId}) async {}
 
   @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required SessionVariant? variant,
-    required String? agent,
-    required PromptModel? model,
-  }) async {}
-
-  @override
   Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async =>
       const CommandListResponse(items: []);
 
@@ -846,6 +838,9 @@ class _NoopSessionRepository implements SessionRepository {
 
   @override
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -877,10 +872,7 @@ class FakeSessionRepository implements SessionRepository {
        _persistenceDatabase = persistenceDatabase;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
-    final pluginMessages = await _plugin.getSessionMessages(sessionId);
-    return pluginMessages.toSharedMessageWithParts(sessionId: sessionId);
-  }
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   /// Recorded setSessionTitleIfStored calls (sessionId → title).
   final List<({String sessionId, String? title})> recordedTitles = [];
@@ -1203,28 +1195,6 @@ class FakeSessionRepository implements SessionRepository {
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required SessionVariant? variant,
-    required String? agent,
-    required PromptModel? model,
-  }) async {
-    await _plugin.sendCommand(
-      sessionId: sessionId,
-      command: command,
-      arguments: arguments,
-      variant: _toPluginVariant(variant),
-      agent: agent,
-      model: switch (model) {
-        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
-        null => null,
-      },
-    );
-  }
 
   @override
   Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async {

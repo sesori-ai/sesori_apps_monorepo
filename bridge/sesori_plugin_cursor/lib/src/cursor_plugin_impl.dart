@@ -4,11 +4,11 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "api/cursor_catalog_probe_api.dart";
+import "api/cursor_catalog_api.dart";
 import "cursor_approval_registry.dart";
 import "cursor_binary.dart";
 import "cursor_event_mapper.dart";
-import "models/cursor_catalog_models.dart";
+import "dispatchers/cursor_turn_configuration_dispatcher.dart";
 import "repositories/cursor_catalog_repository.dart";
 import "services/cursor_catalog_service.dart";
 import "trackers/cursor_catalog_tracker.dart";
@@ -33,15 +33,14 @@ class CursorPlugin extends AcpPlugin {
       cwd: cwd,
       apiEndpoint: apiEndpoint,
     );
-    final catalogApi = CursorCatalogProbeApi(
-      client: AcpStdioClient(
-        launchSpec: launchSpec,
-        processFactory: processFactory,
-        logTag: "$pluginId-catalog",
-      ),
+    final clientBuilder = AcpStdioClientBuilder(
+      launchSpec: launchSpec,
+      processFactory: processFactory,
     );
     final catalogRepository = CursorCatalogRepository(
-      api: catalogApi,
+      api: CursorCatalogApi(
+        client: clientBuilder.build(logTag: "$pluginId-catalog"),
+      ),
       launchScope: cwd,
     );
     final catalogTracker = CursorCatalogTracker();
@@ -51,13 +50,81 @@ class CursorPlugin extends AcpPlugin {
       totalTimeout: const Duration(seconds: 12),
       maxCandidates: 8,
     );
+    final mapper = CursorEventMapper(launchDirectory: cwd, pluginId: pluginId);
+    final turnConfigurationDispatcher = CursorTurnConfigurationDispatcher(
+      catalogService: catalogService,
+      catalogTracker: catalogTracker,
+      eventMapper: mapper,
+      providerId: _providerId,
+    );
+    final liveClient = clientBuilder.build(logTag: pluginId);
+    final api = AcpApi(client: liveClient);
+    final sessionRepository = AcpSessionRepository(api: api);
+    final commandTracker = AcpCommandTracker();
+    final commandTurnTracker = AcpCommandTurnTracker();
+    final directoryTracker = AcpSessionDirectoryTracker(launchDirectory: cwd);
+    final residencyTracker = AcpSessionResidencyTracker();
+    final queueTracker = AcpTurnQueueTracker(pluginId: pluginId);
+    final eventDispatcher = AcpTurnEventDispatcher(
+      eventMapper: mapper,
+      commandTracker: commandTracker,
+      commandTurnTracker: commandTurnTracker,
+      residencyTracker: residencyTracker,
+    );
+    final connectionService = AcpConnectionService(
+      client: liveClient,
+      repository: sessionRepository,
+      configuration: const AcpConnectionConfiguration(
+        initializeRequest: AcpInitializeRequest(
+          clientName: "sesori-bridge",
+          clientVersion: "0.0.0",
+          clientTitle: null,
+          capabilityMeta: {"parameterizedModelPicker": true},
+        ),
+        authMethodId: "cursor_login",
+      ),
+    );
+    final notificationListener = AcpNotificationListener(
+      notificationRepository: AcpNotificationRepository(
+        apiNotifications: api.notifications,
+      ),
+      eventDispatcher: eventDispatcher,
+    );
+    final approvalRegistry = CursorApprovalRegistry(
+      client: liveClient,
+      emit: eventDispatcher.emit,
+      activeSessionResolver: queueTracker.resolveActiveSession,
+    );
+    final approvalListener = AcpApprovalListener(
+      registry: approvalRegistry,
+      requests: liveClient.serverRequests,
+    );
+    final turnService = AcpTurnService(
+      pluginId: pluginId,
+      connectionService: connectionService,
+      directoryTracker: directoryTracker,
+      residencyTracker: residencyTracker,
+      queueTracker: queueTracker,
+      commandTurnTracker: commandTurnTracker,
+      eventDispatcher: eventDispatcher,
+      turnConfigurationDispatcher: turnConfigurationDispatcher,
+      commandFastFailWindow: const Duration(milliseconds: 100),
+    );
     return CursorPlugin._(
       launchSpec: launchSpec,
       launchDirectory: cwd,
-      mapper: CursorEventMapper(launchDirectory: cwd, pluginId: pluginId),
-      processFactory: processFactory,
+      mapper: mapper,
+      clientBuilder: clientBuilder,
+      commandTracker: commandTracker,
+      connectionService: connectionService,
+      notificationListener: notificationListener,
+      approvalListener: approvalListener,
+      approvalRegistry: approvalRegistry,
+      directoryTracker: directoryTracker,
+      turnService: turnService,
       catalogService: catalogService,
       catalogTracker: catalogTracker,
+      turnConfigurationDispatcher: turnConfigurationDispatcher,
     );
   }
 
@@ -67,182 +134,26 @@ class CursorPlugin extends AcpPlugin {
     required CursorEventMapper mapper,
     required CursorCatalogService catalogService,
     required CursorCatalogTracker catalogTracker,
-    super.processFactory,
+    required CursorTurnConfigurationDispatcher turnConfigurationDispatcher,
+    required super.clientBuilder,
+    required super.commandTracker,
+    required super.connectionService,
+    required super.notificationListener,
+    required super.approvalListener,
+    required super.approvalRegistry,
+    required super.directoryTracker,
+    required super.turnService,
   }) : _catalogService = catalogService,
        _catalogTracker = catalogTracker,
-       super(id: pluginId, agentDisplayName: "Cursor", eventMapper: mapper);
+       super.configured(
+         id: pluginId,
+         agentDisplayName: "Cursor",
+         eventMapper: mapper,
+         turnConfigurationDispatcher: turnConfigurationDispatcher,
+       );
 
   final CursorCatalogService _catalogService;
   final CursorCatalogTracker _catalogTracker;
-
-  String? _appliedModelId;
-  String? _appliedModeId;
-  String? _appliedThoughtLevelId;
-
-  @override
-  String? get authMethodId => "cursor_login";
-
-  @override
-  Map<String, dynamic>? get initializeCapabilityMeta => const {"parameterizedModelPicker": true};
-
-  @override
-  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
-    return CursorApprovalRegistry(
-      client: client,
-      emit: emitEvent,
-      activeSessionResolver: () => activeTurnSessionId,
-    );
-  }
-
-  @override
-  void captureSessionConfig(
-    AcpNewSessionResult result, {
-    String? sessionId,
-    bool fromNewSession = false,
-  }) {
-    final capture = _catalogService.captureSessionConfig(
-      result: result,
-      fromNewSession: fromNewSession,
-      thoughtLevelModelId: null,
-      captureThoughtLevelDefault: fromNewSession,
-    );
-    _applyCaptureToEventMapper(capture: capture, sessionId: sessionId);
-  }
-
-  void _applyCaptureToEventMapper({
-    required CursorCatalogCaptureResult capture,
-    required String? sessionId,
-  }) {
-    eventMapper.currentProviderId = _providerId;
-    eventMapper.currentModelId = _catalogTracker.currentModelId;
-    final loadedModelId = capture.loadedModelId;
-    if (sessionId != null && loadedModelId != null) {
-      eventMapper.setSessionModel(
-        sessionId,
-        loadedModelId,
-        providerId: _providerId,
-      );
-    }
-  }
-
-  @override
-  Future<void> applyTurnSelection({
-    required AcpStdioClient client,
-    required String sessionId,
-    required ({String providerID, String modelID})? model,
-    required PluginSessionVariant? variant,
-    required String? agent,
-  }) async {
-    final requestedModel = model?.modelID;
-    final useDefault = requestedModel == null || requestedModel.isEmpty;
-    final targetModel = useDefault ? eventMapper.modelForSession(sessionId) : requestedModel;
-    final modelConfigId = _catalogTracker.modelConfigId;
-    if (targetModel != null &&
-        targetModel.isNotEmpty &&
-        modelConfigId != null &&
-        _catalogTracker.hasModel(modelId: targetModel)) {
-      var applied = true;
-      if (targetModel != _appliedModelId) {
-        applied = await _setConfig(
-          client: client,
-          sessionId: sessionId,
-          configId: modelConfigId,
-          value: targetModel,
-        );
-        if (applied) {
-          _appliedModelId = targetModel;
-          _appliedThoughtLevelId = null;
-        }
-      }
-      if (applied) {
-        eventMapper.setSessionModel(
-          sessionId,
-          targetModel,
-          providerId: _providerId,
-        );
-      }
-    }
-
-    final requestedMode = _catalogTracker.resolveModeId(agent: agent) ?? _catalogTracker.defaultModeId;
-    final modeConfigId = _catalogTracker.modeConfigId;
-    if (requestedMode != null &&
-        modeConfigId != null &&
-        _catalogTracker.hasModeOption(modeId: requestedMode) &&
-        requestedMode != _appliedModeId) {
-      if (await _setConfig(
-        client: client,
-        sessionId: sessionId,
-        configId: modeConfigId,
-        value: requestedMode,
-      )) {
-        _appliedModeId = requestedMode;
-      }
-    }
-
-    final thoughtLevelModelId = eventMapper.modelForSession(sessionId) ?? _catalogTracker.currentModelId ?? "";
-    final thoughtLevel = _catalogTracker.thoughtLevelForModel(
-      modelId: thoughtLevelModelId,
-    );
-    final requestedThoughtLevel = variant != null && variant.id.isNotEmpty ? variant.id : thoughtLevel?.defaultValue;
-    if (requestedThoughtLevel != null &&
-        thoughtLevel != null &&
-        requestedThoughtLevel != _appliedThoughtLevelId &&
-        thoughtLevel.variants.contains(requestedThoughtLevel)) {
-      if (await _setConfig(
-        client: client,
-        sessionId: sessionId,
-        configId: thoughtLevel.configId,
-        value: requestedThoughtLevel,
-      )) {
-        _appliedThoughtLevelId = requestedThoughtLevel;
-      }
-    }
-  }
-
-  Future<bool> _setConfig({
-    required AcpStdioClient client,
-    required String sessionId,
-    required String configId,
-    required String value,
-  }) async {
-    try {
-      final raw = await client.request(
-        method: AcpMethods.sessionSetConfigOption,
-        params: {
-          "sessionId": sessionId,
-          "configId": configId,
-          "value": value,
-        },
-      );
-      if (raw is Map) {
-        final result = AcpNewSessionResult.fromJson(
-          raw.cast<String, dynamic>(),
-        );
-        final capture = _catalogService.captureSessionConfig(
-          result: result,
-          fromNewSession: false,
-          thoughtLevelModelId: configId == _catalogTracker.modelConfigId ? value : null,
-          captureThoughtLevelDefault: configId == _catalogTracker.modelConfigId,
-        );
-        _applyCaptureToEventMapper(capture: capture, sessionId: sessionId);
-      }
-      return true;
-    } catch (error, stack) {
-      Log.w(
-        "[cursor] set_config_option($configId=$value) rejected",
-        error,
-        stack,
-      );
-      return false;
-    }
-  }
-
-  @override
-  void onConnectionReset() {
-    _appliedModelId = null;
-    _appliedModeId = null;
-    _appliedThoughtLevelId = null;
-  }
 
   Future<void> _ensureCatalog({required String projectId}) {
     return _catalogService.ensureCatalog(

@@ -185,7 +185,7 @@ void main() {
       );
     });
 
-    test("plugin subscription is released when last client disconnects", () async {
+    test("shared plugin subscription outlives debug SSE clients", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
       final trackingHarness = _createDebugServerHarness(
@@ -211,7 +211,7 @@ void main() {
 
       await first.close();
       await trackingServer.stop();
-      expect(trackingPlugin.unsubscribeCount, equals(1));
+      expect(trackingPlugin.unsubscribeCount, equals(0));
     });
 
     test("a failed projects summary is reported and later events still flow", () async {
@@ -696,8 +696,9 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
-    String sessionId,
-  ) async {
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async {
     messageSessionIds.add(sessionId);
     return messagesResult;
   }
@@ -763,14 +764,15 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async {}
+  }) async => const PluginCommandDispatch(backendMessageId: null);
 
   @override
   Future<void> dispose() async {}
@@ -868,8 +870,9 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
-    String sessionId,
-  ) async => [];
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async => [];
 
   @override
   Future<void> sendPrompt({
@@ -925,14 +928,15 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
   Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async {}
+  }) async => const PluginCommandDispatch(backendMessageId: null);
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>

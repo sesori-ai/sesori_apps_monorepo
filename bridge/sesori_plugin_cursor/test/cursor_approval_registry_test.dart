@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
@@ -10,6 +12,7 @@ void main() {
     late AcpStdioClient client;
     late List<BridgeSseEvent> emitted;
     late CursorApprovalRegistry registry;
+    late StreamSubscription<AcpServerRequest> subscription;
     // The session whose turn is "in flight"; the registry falls back to it for
     // requests that carry no sessionId of their own (e.g. cursor/create_plan).
     String? activeSession;
@@ -28,10 +31,11 @@ void main() {
         emit: emitted.add,
         activeSessionResolver: () => activeSession,
       );
-      registry.attach(client.serverRequests);
+      subscription = client.serverRequests.listen(registry.handleRequest);
     });
 
     tearDown(() async {
+      await subscription.cancel();
       await registry.dispose();
       await client.dispose();
       await fake.close();
@@ -74,7 +78,9 @@ void main() {
 
       expect(registry.pendingForSession("s1"), hasLength(1));
 
-      registry.replyQuestion(asked.id, [["Yes"]]);
+      registry.replyQuestion(asked.id, [
+        ["Yes"],
+      ]);
       final reply = fake.written.last;
       expect(reply["id"], 1);
       final questions = (reply["result"] as Map)["questions"] as List;
@@ -93,7 +99,9 @@ void main() {
       final asked = emitted.single as BridgeSseQuestionAsked;
       expect(asked.questions.single.header, "Plan A");
 
-      registry.replyQuestion(asked.id, [["Accept"]]);
+      registry.replyQuestion(asked.id, [
+        ["Accept"],
+      ]);
       final reply = fake.written.last;
       expect((reply["result"] as Map)["accepted"], true);
     });
@@ -233,8 +241,7 @@ void main() {
       await pump();
       final pending = registry.pendingForSession("s1").single;
       final labels = pending.questions.single.options.map((o) => o.label).toList();
-      expect(labels, ["Option", "Option (2)"],
-          reason: "duplicate labels are made unique so label->id stays 1:1");
+      expect(labels, ["Option", "Option (2)"], reason: "duplicate labels are made unique so label->id stays 1:1");
     });
 
     test("questions with no usable text are dropped", () async {

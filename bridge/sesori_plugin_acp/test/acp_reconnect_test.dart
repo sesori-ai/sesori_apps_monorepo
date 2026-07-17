@@ -56,7 +56,7 @@ void main() {
       throw StateError("agent never wrote an 'initialize' frame");
     }
 
-    test("resetConnectionAfterExit drops the cached client so the next request reconnects", () async {
+    test("resetConnectionAfterExit drops the cached connection so the next request reconnects", () async {
       // onConnected must fire on every successful (re)connect so the lifecycle
       // wrapper can re-arm its exit watch on the new client.
       var connects = 0;
@@ -83,7 +83,11 @@ void main() {
       await respondInitialize(fakes.last);
       expect(await reconnecting, isTrue);
       expect(fakes, hasLength(2), reason: "a fresh agent process was spawned");
-      expect(identical(plugin.client, first), isFalse);
+      expect(
+        identical(plugin.client, first),
+        isTrue,
+        reason: "the composed transport is reused while it spawns a fresh process",
+      );
       await pump();
       expect(connects, 2, reason: "onConnected fires again on reconnect");
     });

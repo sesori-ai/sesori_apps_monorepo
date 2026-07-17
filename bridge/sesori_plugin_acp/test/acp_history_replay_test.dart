@@ -4,11 +4,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 /// `getSessionMessages` replays a stored thread via a short-lived `session/load`
-/// client. cursor-agent rejects that load for some stored sessions with
-/// method-not-found / invalid-params (a session created by a prior agent
-/// process, or whose worktree was moved/removed). That is not a transport
-/// failure, so the read path must degrade to a usable (possibly empty) thread —
-/// mirroring the resume path — instead of 502ing the whole session-detail view.
+/// client. Only a conclusive lack of method/capability is an empty history;
+/// invalid parameters and other operation failures remain observable.
 void main() {
   group("AcpPlugin history replay", () {
     late FakeAcpProcess fake;
@@ -60,8 +57,11 @@ void main() {
       await pump();
     }
 
-    test("session/load rejected with -32602 degrades to a usable thread, not a 502", () async {
-      final loading = plugin.getSessionMessages(sessionId);
+    test("session/load rejected with -32602 surfaces as an operation failure", () async {
+      final loading = plugin.getSessionMessages(
+        sessionId,
+        acceptedCommands: const [],
+      );
       await completeReplayHandshake();
 
       final loadFrame = await waitForFrame("session/load");
@@ -72,12 +72,14 @@ void main() {
         "error": {"code": -32602, "message": "Invalid params"},
       });
 
-      // The session stays openable: an empty (but usable) thread, not a throw.
-      expect(await loading, isEmpty);
+      await expectLater(loading, throwsA(isA<PluginOperationException>()));
     });
 
     test("session/load rejected with -32601 also degrades to a usable thread", () async {
-      final loading = plugin.getSessionMessages(sessionId);
+      final loading = plugin.getSessionMessages(
+        sessionId,
+        acceptedCommands: const [],
+      );
       await completeReplayHandshake();
 
       final loadFrame = await waitForFrame("session/load");
@@ -90,8 +92,11 @@ void main() {
       expect(await loading, isEmpty);
     });
 
-    test("partial history replayed before a -32602 rejection is preserved", () async {
-      final loading = plugin.getSessionMessages(sessionId);
+    test("partial replay before a -32602 rejection does not hide the failure", () async {
+      final loading = plugin.getSessionMessages(
+        sessionId,
+        acceptedCommands: const [],
+      );
       await completeReplayHandshake();
 
       final loadFrame = await waitForFrame("session/load");
@@ -114,20 +119,16 @@ void main() {
         "error": {"code": -32602, "message": "Invalid params"},
       });
 
-      final messages = await loading;
-      expect(messages, isNotEmpty, reason: "history collected before the rejection must survive");
-      final text = messages
-          .expand((m) => m.parts)
-          .where((p) => p.type == PluginMessagePartType.text)
-          .map((p) => p.text)
-          .join();
-      expect(text, contains("partial reply"));
+      await expectLater(loading, throwsA(isA<PluginOperationException>()));
     });
 
     test("a command snapshot replayed before a -32602 rejection still triggers a refresh", () async {
       final emitted = <BridgeSseEvent>[];
       plugin.events.listen(emitted.add);
-      final loading = plugin.getSessionMessages(sessionId);
+      final loading = plugin.getSessionMessages(
+        sessionId,
+        acceptedCommands: const [],
+      );
       await completeReplayHandshake();
 
       final loadFrame = await waitForFrame("session/load");
@@ -153,14 +154,17 @@ void main() {
         "id": loadFrame["id"],
         "error": {"code": -32602, "message": "Invalid params"},
       });
-      await loading;
+      await expectLater(loading, throwsA(isA<PluginOperationException>()));
       await pump();
 
       expect(emitted.whereType<BridgeSseSessionsUpdated>(), isNotEmpty);
     });
 
     test("a genuine RPC error (not -32601/-32602) still surfaces as a typed failure", () async {
-      final loading = plugin.getSessionMessages(sessionId);
+      final loading = plugin.getSessionMessages(
+        sessionId,
+        acceptedCommands: const [],
+      );
       await completeReplayHandshake();
 
       final loadFrame = await waitForFrame("session/load");
@@ -179,7 +183,10 @@ void main() {
     // failures to surface typed, never as an empty thread.
 
     test("a -32602 rejection of `initialize` surfaces as a typed failure, not an empty thread", () async {
-      final loading = plugin.getSessionMessages(sessionId);
+      final loading = plugin.getSessionMessages(
+        sessionId,
+        acceptedCommands: const [],
+      );
 
       final initFrame = await waitForFrame("initialize");
       fake.emit({
@@ -192,7 +199,10 @@ void main() {
     });
 
     test("a -32601 rejection of `authenticate` surfaces as a typed failure, not an empty thread", () async {
-      final loading = plugin.getSessionMessages(sessionId);
+      final loading = plugin.getSessionMessages(
+        sessionId,
+        acceptedCommands: const [],
+      );
 
       final initFrame = await waitForFrame("initialize");
       // The agent advertises an auth method, so the replay client must

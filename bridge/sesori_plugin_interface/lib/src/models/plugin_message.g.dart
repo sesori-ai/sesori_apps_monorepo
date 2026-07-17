@@ -62,6 +62,18 @@ const _$PluginToolStatusEnumMap = {
   PluginToolStatus.unknown: 'unknown',
 };
 
+PluginMessageUser _$PluginMessageUserFromJson(Map json) => PluginMessageUser(
+  id: json['id'] as String,
+  sessionID: json['sessionID'] as String,
+  agent: json['agent'] as String?,
+  time: json['time'] == null
+      ? null
+      : PluginMessageTime.fromJson(
+          Map<String, dynamic>.from(json['time'] as Map),
+        ),
+  $type: json['role'] as String?,
+);
+
 Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) =>
     <String, dynamic>{
       'id': instance.id,
@@ -70,6 +82,60 @@ Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) =>
       'time': ?instance.time?.toJson(),
       'role': instance.$type,
     };
+
+PluginMessageCommand _$PluginMessageCommandFromJson(Map json) =>
+    PluginMessageCommand(
+      id: json['id'] as String,
+      sessionID: json['sessionID'] as String,
+      name: json['name'] as String,
+      arguments: json['arguments'] as String?,
+      origin: $enumDecode(
+        _$PluginCommandOriginEnumMap,
+        json['origin'],
+        unknownValue: PluginCommandOrigin.unknown,
+      ),
+      invocationId: json['invocationId'] as String?,
+      time: json['time'] == null
+          ? null
+          : PluginMessageTime.fromJson(
+              Map<String, dynamic>.from(json['time'] as Map),
+            ),
+      $type: json['role'] as String?,
+    );
+
+Map<String, dynamic> _$PluginMessageCommandToJson(
+  PluginMessageCommand instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'name': instance.name,
+  'arguments': ?instance.arguments,
+  'origin': _$PluginCommandOriginEnumMap[instance.origin]!,
+  'invocationId': ?instance.invocationId,
+  'time': ?instance.time?.toJson(),
+  'role': instance.$type,
+};
+
+const _$PluginCommandOriginEnumMap = {
+  PluginCommandOrigin.manual: 'manual',
+  PluginCommandOrigin.automatic: 'automatic',
+  PluginCommandOrigin.unknown: 'unknown',
+};
+
+PluginMessageAssistant _$PluginMessageAssistantFromJson(Map json) =>
+    PluginMessageAssistant(
+      id: json['id'] as String,
+      sessionID: json['sessionID'] as String,
+      agent: json['agent'] as String?,
+      modelID: json['modelID'] as String?,
+      providerID: json['providerID'] as String?,
+      time: json['time'] == null
+          ? null
+          : PluginMessageTime.fromJson(
+              Map<String, dynamic>.from(json['time'] as Map),
+            ),
+      $type: json['role'] as String?,
+    );
 
 Map<String, dynamic> _$PluginMessageAssistantToJson(
   PluginMessageAssistant instance,
@@ -83,6 +149,22 @@ Map<String, dynamic> _$PluginMessageAssistantToJson(
   'role': instance.$type,
 };
 
+PluginMessageError _$PluginMessageErrorFromJson(Map json) => PluginMessageError(
+  id: json['id'] as String,
+  sessionID: json['sessionID'] as String,
+  agent: json['agent'] as String?,
+  modelID: json['modelID'] as String?,
+  providerID: json['providerID'] as String?,
+  errorName: json['errorName'] as String,
+  errorMessage: json['errorMessage'] as String,
+  time: json['time'] == null
+      ? null
+      : PluginMessageTime.fromJson(
+          Map<String, dynamic>.from(json['time'] as Map),
+        ),
+  $type: json['role'] as String?,
+);
+
 Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) =>
     <String, dynamic>{
       'id': instance.id,
@@ -95,6 +177,11 @@ Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) =>
       'time': ?instance.time?.toJson(),
       'role': instance.$type,
     };
+
+_PluginMessageTime _$PluginMessageTimeFromJson(Map json) => _PluginMessageTime(
+  created: (json['created'] as num).toInt(),
+  completed: (json['completed'] as num?)?.toInt(),
+);
 
 Map<String, dynamic> _$PluginMessageTimeToJson(_PluginMessageTime instance) =>
     <String, dynamic>{

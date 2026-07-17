@@ -3,9 +3,20 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgeDerivedProjectsPluginApi,
         BridgePluginApi,
+        BridgeSseEvent,
+        BridgeSseMessagePartDelta,
+        BridgeSseMessagePartRemoved,
+        BridgeSseMessagePartUpdated,
+        BridgeSseMessageUpdated,
         Log,
         NativeProjectsPluginApi,
         PluginActiveSession,
+        PluginCommandInvocationContext,
+        PluginCommandOrigin,
+        PluginMessage,
+        PluginMessageCommand,
+        PluginMessagePart,
+        PluginMessageTime,
         PluginOperationException,
         PluginSession,
         PluginSessionVariant;
@@ -13,7 +24,8 @@ import "package:sesori_shared/sesori_shared.dart"
     show
         AgentModel,
         CommandListResponse,
-        MessageWithParts,
+        CommandOrigin,
+        MessageTime,
         PrState,
         ProjectActivitySummary,
         PromptModel,
@@ -28,8 +40,10 @@ import "../../api/database/daos/pull_request_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/tables/pull_requests_table.dart";
 import "../../api/database/tables/session_table.dart" show SessionDto;
+import "../plugin_to_shared_mapping.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
+import "mappers/plugin_command_event_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";
 import "mappers/plugin_session_mapper.dart";
@@ -38,6 +52,9 @@ import "mappers/prompt_part_mapper.dart";
 import "mappers/pull_request_mapper.dart";
 import "mappers/session_catalog_mapper.dart";
 import "mappers/stored_session_mapper.dart";
+import "models/accepted_command_invocation.dart";
+import "models/command_dispatch_receipt.dart";
+import "models/command_timeline.dart";
 import "models/project_not_found_exception.dart";
 import "models/session_operation.dart";
 import "models/stored_session.dart";
@@ -68,6 +85,10 @@ class SessionRepository {
        _projectsDao = projectsDao,
        _pullRequestDao = pullRequestDao,
        _unseenCalculator = unseenCalculator;
+
+  String get pluginId => _plugin.id;
+
+  Stream<BridgeSseEvent> get pluginEvents => _plugin.events;
 
   Future<List<Session>> getSessionsForProject({
     required String projectId,
@@ -280,32 +301,6 @@ class SessionRepository {
     );
   }
 
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required SessionVariant? variant,
-    required String? agent,
-    required PromptModel? model,
-  }) async {
-    final binding = await _requireActiveBinding(
-      sessionId: sessionId,
-      operation: SessionOperation.sendCommand,
-    );
-    await _primeDerivedSessionDirectory(binding: binding);
-    return _plugin.sendCommand(
-      sessionId: binding.backendSessionId,
-      command: command,
-      arguments: arguments,
-      variant: _toPluginVariant(variant),
-      agent: agent,
-      model: switch (model) {
-        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
-        null => null,
-      },
-    );
-  }
-
   Future<void> sendPrompt({
     required String sessionId,
     required List<PromptPart> parts,
@@ -330,18 +325,172 @@ class SessionRepository {
     );
   }
 
-  /// All messages of [sessionId], mapped to the shared model. The stored
-  /// directory is primed first: after a bridge restart, the history replay can
-  /// be the FIRST plugin call for a stored worktree session, and a
-  /// directory-scoped backend would otherwise replay in its launch directory.
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+  Future<CommandDispatchReceipt> dispatchCommand({
+    required String sessionId,
+    required String invocationId,
+    required String name,
+    required String? arguments,
+    required SessionVariant? variant,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    final binding = await _requireActiveBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.sendCommand,
+    );
+    await _primeDerivedSessionDirectory(binding: binding);
+    final receipt = await _plugin.sendCommand(
+      sessionId: binding.backendSessionId,
+      invocationId: invocationId,
+      command: name,
+      arguments: arguments ?? "",
+      variant: _toPluginVariant(variant),
+      agent: agent,
+      model: switch (model) {
+        PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+        null => null,
+      },
+    );
+    return CommandDispatchReceipt(
+      pluginId: binding.pluginId,
+      sessionId: binding.sessionId,
+      backendMessageId: receipt.backendMessageId,
+    );
+  }
+
+  /// Retrieves backend history as repository-neutral ordered entries. Timeline
+  /// identity and merge policy remain in Layer 3.
+  Future<CommandHistory> getCommandHistory({
+    required String sessionId,
+    required List<AcceptedCommandInvocation> acceptedInvocations,
+  }) async {
     final binding = await _resolveSessionTargetAllowingRowlessChild(
       sessionId: sessionId,
       operation: SessionOperation.getSessionMessages,
     );
     if (binding != null) await _primeDerivedSessionDirectory(binding: binding);
-    final pluginMessages = await _plugin.getSessionMessages(binding?.backendSessionId ?? sessionId);
-    return pluginMessages.toSharedMessageWithParts(sessionId: binding?.sessionId ?? sessionId);
+    final stableSessionId = binding?.sessionId ?? sessionId;
+    final pluginMessages = await _plugin.getSessionMessages(
+      binding?.backendSessionId ?? sessionId,
+      acceptedCommands: [
+        for (final invocation in acceptedInvocations)
+          PluginCommandInvocationContext(
+            invocationId: invocation.invocationId,
+            name: invocation.name,
+            arguments: invocation.arguments,
+            acceptedAt: invocation.acceptedAt,
+            backendMessageId: invocation.backendMessageId,
+          ),
+      ],
+    );
+    return CommandHistory(
+      sessionId: stableSessionId,
+      entries: [
+        for (var index = 0; index < pluginMessages.length; index++)
+          switch (pluginMessages[index].info) {
+            final PluginMessageCommand command => CandidateCommandHistoryEntry(
+              sourceOrder: index,
+              sortTime: command.time?.created,
+              candidate: _mapCommandMessage(
+                command: command,
+                parts: pluginMessages[index].parts,
+                sessionId: stableSessionId,
+              ),
+            ),
+            _ => StandardCommandHistoryEntry(
+              sourceOrder: index,
+              sortTime: pluginMessages[index].info.toSharedMessage(sessionId: stableSessionId).time?.created,
+              message: pluginMessages[index].toSharedMessageWithParts(sessionId: stableSessionId),
+            ),
+          },
+      ],
+    );
+  }
+
+  Future<CommandTimelineCandidate?> mapPluginCommandCandidate({required BridgeSseEvent event}) async {
+    switch (event) {
+      case BridgeSseMessageUpdated(:final info):
+        if (info["role"] != "command") return null;
+        final parsed = PluginMessage.fromJson(info);
+        if (parsed is! PluginMessageCommand) return null;
+        return const PluginCommandEventMapper().map(
+          command: parsed,
+          pluginId: _plugin.id,
+          sessionId: await resolveStableSessionId(backendSessionId: parsed.sessionID),
+        );
+      case BridgeSseMessagePartUpdated(:final part):
+        final sessionId = await resolveStableSessionId(backendSessionId: part.sessionID);
+        return CommandResultPartTimelineCandidate(
+          pluginId: _plugin.id,
+          sessionId: sessionId,
+          backendMessageId: part.messageID,
+          backendPartId: part.id,
+          part: part.type.isVisible ? part.toShared(sessionId: sessionId) : null,
+        );
+      case BridgeSseMessagePartDelta(
+        :final sessionID,
+        :final messageID,
+        :final partID,
+        :final field,
+        :final delta,
+      ):
+        return CommandResultPartDeltaTimelineCandidate(
+          pluginId: _plugin.id,
+          sessionId: await resolveStableSessionId(backendSessionId: sessionID),
+          backendMessageId: messageID,
+          backendPartId: partID,
+          field: field,
+          delta: delta,
+        );
+      case BridgeSseMessagePartRemoved(:final sessionID, :final messageID, :final partID):
+        return CommandResultPartRemovedTimelineCandidate(
+          pluginId: _plugin.id,
+          sessionId: await resolveStableSessionId(backendSessionId: sessionID),
+          backendMessageId: messageID,
+          backendPartId: partID,
+        );
+      default:
+        return null;
+    }
+  }
+
+  Future<String> resolveStableSessionId({required String backendSessionId}) async {
+    final bindings = await _sessionDao.getSessionsByBackendIds(
+      pluginId: _plugin.id,
+      backendSessionIds: [backendSessionId],
+    );
+    return bindings[backendSessionId]?.sessionId ?? backendSessionId;
+  }
+
+  CommandMessageTimelineCandidate _mapCommandMessage({
+    required PluginMessageCommand command,
+    required Iterable<PluginMessagePart> parts,
+    required String sessionId,
+  }) {
+    return const PluginCommandEventMapper().mapValues(
+      pluginId: _plugin.id,
+      sessionId: sessionId,
+      backendMessageId: command.id,
+      invocationId: command.invocationId,
+      name: command.name,
+      arguments: command.arguments,
+      origin: switch (command.origin) {
+        PluginCommandOrigin.manual => CommandOrigin.manual,
+        PluginCommandOrigin.automatic => CommandOrigin.automatic,
+        PluginCommandOrigin.unknown => CommandOrigin.unknown,
+      },
+      time: switch (command.time) {
+        PluginMessageTime(:final created, :final completed) => MessageTime(
+          created: created,
+          completed: completed,
+        ),
+        null => null,
+      },
+      resultParts: [
+        for (final part in parts)
+          if (part.type.isVisible) part.toShared(sessionId: sessionId),
+      ],
+    );
   }
 
   /// Persists the bridge-owned title override. Null removes the override so
@@ -808,6 +957,35 @@ class SessionRepository {
         }
       }
     });
+  }
+
+  /// Rolls back only the freshly-created binding and backend session. Unlike a
+  /// user deletion, this writes no tombstone and emits no deletion event.
+  Future<void> rollbackJustCreatedSession({required String sessionId}) async {
+    final binding = await _sessionDao.getSession(sessionId: sessionId);
+    if (binding == null) return;
+    ensurePluginAvailable(pluginId: binding.pluginId, operation: SessionOperation.createSession);
+
+    Object? firstError;
+    StackTrace? firstStackTrace;
+    try {
+      await _plugin.deleteSession(binding.backendSessionId);
+    } on PluginOperationException catch (error, stackTrace) {
+      if (!error.isNotFound) {
+        firstError = error;
+        firstStackTrace = stackTrace;
+      }
+    } catch (error, stackTrace) {
+      firstError = error;
+      firstStackTrace = stackTrace;
+    }
+    try {
+      await _sessionDao.deleteSession(sessionId: binding.sessionId);
+    } catch (error, stackTrace) {
+      firstError ??= error;
+      firstStackTrace ??= stackTrace;
+    }
+    if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
   }
 
   Future<void> updatePromptDefaults({

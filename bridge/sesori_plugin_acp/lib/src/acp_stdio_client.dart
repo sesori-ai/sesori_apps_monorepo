@@ -5,24 +5,7 @@ import "dart:io" as io;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "acp_process_factory.dart";
-
-/// A JSON-RPC error returned by an ACP agent.
-class AcpRpcException implements Exception {
-  AcpRpcException({
-    required this.method,
-    required this.code,
-    required this.message,
-    this.data,
-  });
-
-  final String method;
-  final int code;
-  final String message;
-  final Object? data;
-
-  @override
-  String toString() => "AcpRpcException($method, code=$code, $message)";
-}
+import "acp_protocol.dart";
 
 /// A server-originated notification (no `id`), e.g. `session/update`.
 class AcpNotification {
@@ -81,10 +64,8 @@ class AcpStdioClient {
   int _connectionGeneration = 0;
 
   final Map<Object, Completer<dynamic>> _pending = {};
-  final StreamController<AcpNotification> _notifications =
-      StreamController.broadcast();
-  final StreamController<AcpServerRequest> _serverRequests =
-      StreamController.broadcast();
+  final StreamController<AcpNotification> _notifications = StreamController.broadcast();
+  final StreamController<AcpServerRequest> _serverRequests = StreamController.broadcast();
   Completer<int> _exited = Completer<int>();
 
   /// Server-originated notifications (broadcast).
@@ -126,9 +107,7 @@ class AcpStdioClient {
         Log.w("[$_logTag] failed to reap process spawned during teardown", error, stack);
       }
       throw StateError(
-        _disposed
-            ? "AcpStdioClient disposed during connect"
-            : "AcpStdioClient reset during connect",
+        _disposed ? "AcpStdioClient disposed during connect" : "AcpStdioClient reset during connect",
       );
     }
     final exited = Completer<int>();
@@ -161,8 +140,7 @@ class AcpStdioClient {
         .transform(const LineSplitter())
         .listen(
           (line) => Log.d("[$_logTag][stderr] $line"),
-          onError: (Object error, StackTrace stack) =>
-              Log.w("[$_logTag] stderr stream error: $error", error, stack),
+          onError: (Object error, StackTrace stack) => Log.w("[$_logTag] stderr stream error: $error", error, stack),
           cancelOnError: false,
         );
 

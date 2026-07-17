@@ -33,10 +33,10 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final io.HttpClient _httpClient;
   // One shared error-normalization mapper drives both the live SSE path
-  // ([_mapper]) and the REST load path ([_pluginModelMapper]) so an errored
+  // ([_commandEventService]) and the REST load path ([_pluginModelMapper]) so an errored
   // assistant message is collapsed to a `MessageError` identically on both.
   static const AssistantMessageMapper _assistantMessageMapper = AssistantMessageMapper();
-  final SseEventMapper _mapper = SseEventMapper(assistantMessageMapper: _assistantMessageMapper);
+  final OpenCodeCommandEventService _commandEventService;
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
     messagePartMapper: MessagePartMapper(),
     assistantMessageMapper: _assistantMessageMapper,
@@ -71,8 +71,19 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     );
     final repository = OpenCodeRepository(api);
     final tracker = ActiveSessionTracker(repository);
+    final commandTracker = OpenCodeCommandTracker();
+    final commandEventService = OpenCodeCommandEventService(
+      tracker: commandTracker,
+      commandMapper: const OpenCodeCommandMapper(),
+      eventMapper: SseEventMapper(
+        assistantMessageMapper: _assistantMessageMapper,
+      ),
+      messagePartMapper: const MessagePartMapper(),
+      assistantMessageMapper: _assistantMessageMapper,
+    );
     return OpenCodePlugin._(
-      service: OpenCodeService(repository, tracker),
+      service: OpenCodeService(repository, tracker, commandTracker),
+      commandEventService: commandEventService,
       httpClient: httpClient,
       serverUrl: serverUrl,
       password: password,
@@ -84,6 +95,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
 
   OpenCodePlugin._({
     required OpenCodeService service,
+    required OpenCodeCommandEventService commandEventService,
     required io.HttpClient httpClient,
     required String serverUrl,
     required String? password,
@@ -91,6 +103,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     void Function()? onConnected,
     void Function()? onDisconnected,
   }) : _service = service,
+       _commandEventService = commandEventService,
        _httpClient = httpClient,
        _parser = SseEventParser(),
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
@@ -329,12 +342,16 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async {
     final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     final messages = await _call(
       () => _service.getMessages(
         sessionId: sessionId,
         directory: directory,
+        acceptedCommands: acceptedCommands,
       ),
     );
     return messages;
@@ -360,17 +377,19 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
-  }) {
-    return _call(
+  }) async {
+    final backendMessageId = await _call(
       () => _service.sendCommand(
         sessionId: sessionId,
+        invocationId: invocationId,
         command: command,
         arguments: arguments,
         agent: agent,
@@ -378,6 +397,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         model: model,
       ),
     );
+    return PluginCommandDispatch(backendMessageId: backendMessageId);
   }
 
   @override
@@ -600,13 +620,12 @@ class OpenCodePlugin implements OpenCodeManagedApi {
           }
 
           final canonicalEvent = _canonicalizeEvent(event);
-          final bridgeEvent = _mapper.map(
-            canonicalEvent,
-            displaySessionId: _displaySessionIdForEvent(canonicalEvent),
-          );
-          if (bridgeEvent != null) {
-            _eventBuffer.add(bridgeEvent);
-          }
+          _commandEventService
+              .map(
+                canonicalEvent,
+                displaySessionId: _displaySessionIdForEvent(canonicalEvent),
+              )
+              .forEach(_eventBuffer.add);
           return;
         case SseParseOutcome.ignoredKnownEvent:
           return;

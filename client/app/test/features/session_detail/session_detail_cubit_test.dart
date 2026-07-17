@@ -127,8 +127,18 @@ void main() {
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
-        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
-        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(1);
+        verify(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: "plugin-1",
+          ),
+        ).called(1);
+        verify(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: "plugin-1",
+          ),
+        ).called(1);
         verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(1);
         verify(() => mockConnectionService.sessionEvents(sessionId)).called(1);
@@ -189,8 +199,18 @@ void main() {
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
-        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(2);
-        verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"), pluginId: "plugin-1")).called(2);
+        verify(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: "plugin-1",
+          ),
+        ).called(2);
+        verify(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: "plugin-1",
+          ),
+        ).called(2);
         verify(() => mockSessionService.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(2);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(2);
       },
@@ -717,6 +737,80 @@ void main() {
         isA<SessionDetailLoaded>()
             .having((state) => state.messages.length, "messagesLength", 1)
             .having((state) => state.messages.first.info.id, "messageId", "msg-new"),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "SSE command metadata and result deltas stay on one normalized timeline message",
+      build: () {
+        when(
+          () => mockSessionService.getMessages(sessionId: sessionId),
+        ).thenAnswer((_) async => ApiResponse.success(const MessageWithPartsResponse(messages: <MessageWithParts>[])));
+
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        sessionEvents.add(
+          const SesoriMessageUpdated(
+            info: Message.user(
+              id: "command-message",
+              sessionID: sessionId,
+              agent: null,
+              time: null,
+              command: CommandMessageInfo(
+                name: "compact",
+                arguments: null,
+                origin: CommandOrigin.automatic,
+                displayPartID: "command-result",
+              ),
+            ),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        sessionEvents.add(
+          const SesoriMessagePartDelta(
+            sessionID: sessionId,
+            messageID: "command-message",
+            partID: "command-result",
+            field: "text",
+            delta: "Streaming compact summary",
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>().having((state) => state.messages, "messages", isEmpty),
+        isA<SessionDetailLoaded>()
+            .having((state) => state.messages.length, "messagesLength", 1)
+            .having(
+              (state) => (state.messages.single.info as MessageUser).command,
+              "command",
+              const CommandMessageInfo(
+                name: "compact",
+                arguments: null,
+                origin: CommandOrigin.automatic,
+                displayPartID: "command-result",
+              ),
+            ),
+        isA<SessionDetailLoaded>()
+            .having((state) => state.messages.length, "messagesLength", 1)
+            .having(
+              (state) => state.streamingText["command-result"],
+              "commandResult",
+              "Streaming compact summary",
+            ),
       ],
     );
 

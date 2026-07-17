@@ -90,5 +90,48 @@ void main() {
 
       expect(message.toSharedMessage(sessionId: "stable-session").time, isNull);
     });
+
+    test("maps command metadata, fallback text, and result text onto one user message", () {
+      const message = PluginMessageWithParts(
+        info: PluginMessage.command(
+          id: "command-1",
+          sessionID: "backend-session",
+          name: "review",
+          arguments: "carefully",
+          origin: PluginCommandOrigin.manual,
+          invocationId: null,
+          time: PluginMessageTime(created: 10, completed: 20),
+        ),
+        parts: [
+          PluginMessagePart(
+            id: "result-1",
+            sessionID: "backend-session",
+            messageID: "command-1",
+            type: PluginMessagePartType.text,
+            text: "Review complete",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ],
+      );
+
+      final mapped = message.toSharedMessageWithParts(sessionId: "stable-session");
+
+      expect(mapped.info, isA<MessageUser>());
+      final command = (mapped.info as MessageUser).command!;
+      expect(command.name, "review");
+      expect(command.arguments, "carefully");
+      expect(command.origin, CommandOrigin.manual);
+      expect(command.displayPartID, mapped.parts.last.id);
+      expect(mapped.parts.first.id, "command-backend:command-1:fallback");
+      expect(mapped.parts.map((part) => part.text), ["/review carefully", "Review complete"]);
+      expect(mapped.parts.every((part) => part.messageID == mapped.info.id), isTrue);
+    });
   });
 }

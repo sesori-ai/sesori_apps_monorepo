@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
+import "command_dispatcher.dart";
 
 class SessionPromptDefaultsChange {
   final String sessionId;
@@ -17,12 +18,15 @@ class SessionPromptDefaultsChange {
 
 class SessionPromptService {
   final SessionRepository _sessionRepository;
+  final CommandDispatcher _commandDispatcher;
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
 
   SessionPromptService({
     required SessionRepository sessionRepository,
-  }) : _sessionRepository = sessionRepository;
+    required CommandDispatcher commandDispatcher,
+  }) : _sessionRepository = sessionRepository,
+       _commandDispatcher = commandDispatcher;
 
   Stream<SessionPromptDefaultsChange> get promptDefaultsChanges => _promptDefaultsChangesController.stream;
 
@@ -34,8 +38,8 @@ class SessionPromptService {
     required PromptModel? model,
     required String? command,
   }) async {
-    final normalizedCommand = command?.trim();
-    if (normalizedCommand == null || normalizedCommand.isEmpty) {
+    final normalizedCommand = command?.normalize();
+    if (normalizedCommand == null) {
       await _sessionRepository.sendPrompt(
         sessionId: sessionId,
         parts: parts,
@@ -57,10 +61,11 @@ class SessionPromptService {
     // backend has accepted the command — not when its run finishes — so
     // awaiting it here never holds the phone's relay request open for the
     // duration of the command's agent run.
-    await _sessionRepository.sendCommand(
+    final rawArguments = textPart?.text;
+    await _commandDispatcher.dispatch(
       sessionId: sessionId,
-      command: normalizedCommand,
-      arguments: textPart?.text ?? '',
+      name: normalizedCommand,
+      arguments: rawArguments == null || rawArguments.trim().isEmpty ? null : rawArguments,
       variant: variant,
       agent: agent,
       model: model,

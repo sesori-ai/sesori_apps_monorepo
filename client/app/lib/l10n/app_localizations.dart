@@ -601,6 +601,48 @@ abstract class AppLocalizations {
   /// **'Thought'**
   String get sessionDetailThought;
 
+  /// No description provided for @sessionDetailCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get sessionDetailCommand;
+
+  /// No description provided for @sessionDetailCommandOriginManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get sessionDetailCommandOriginManual;
+
+  /// No description provided for @sessionDetailCommandOriginAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get sessionDetailCommandOriginAutomatic;
+
+  /// No description provided for @sessionDetailCommandOriginUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get sessionDetailCommandOriginUnknown;
+
+  /// No description provided for @sessionDetailCommandResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get sessionDetailCommandResult;
+
+  /// No description provided for @sessionDetailCommandResultInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for result...'**
+  String get sessionDetailCommandResultInProgress;
+
+  /// No description provided for @sessionDetailCommandResultEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No result available.'**
+  String get sessionDetailCommandResultEmpty;
+
   /// No description provided for @sessionDetailToolUnknown.
   ///
   /// In en, this message translates to:

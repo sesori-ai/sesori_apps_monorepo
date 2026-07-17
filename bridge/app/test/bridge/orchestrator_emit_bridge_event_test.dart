@@ -22,6 +22,7 @@ import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/command_timeline.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
@@ -40,6 +41,7 @@ import "package:sesori_bridge/src/bridge/services/project_initialization_service
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -63,7 +65,7 @@ import "../helpers/fake_git_cli_api.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
-import "routing/get_session_diffs_handler_test_helpers.dart";
+import "routing/get_session_diffs_handler_test_helpers.dart" hide Invocation;
 
 void main() {
   test("orchestrator routes activity and silently auto-approves yolo permissions", () async {
@@ -89,6 +91,11 @@ void main() {
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final projectRepository = ProjectRepository(
       gitCliApi: FakeGitCliApi(),
       plugin: plugin,
@@ -146,7 +153,20 @@ void main() {
       parentId: null,
     );
     expect(await unseenRepository.isUnseen(sessionId: "root-session"), isTrue);
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: sessionEventEnrichmentService,
+    );
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -160,6 +180,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
@@ -212,7 +233,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -477,6 +497,11 @@ void main() {
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(),
@@ -509,7 +534,20 @@ void main() {
       ),
     );
 
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: sessionEventEnrichmentService,
+    );
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -523,6 +561,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushDispatcher,
@@ -595,7 +634,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -667,6 +705,11 @@ void main() {
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final projectRepository = ProjectRepository(
       gitCliApi: FakeGitCliApi(),
       plugin: plugin,
@@ -710,7 +753,20 @@ void main() {
     );
     statusNotifier.start();
 
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: sessionEventEnrichmentService,
+    );
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -724,6 +780,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
@@ -789,7 +846,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: statusNotifier,
@@ -865,6 +921,11 @@ void main() {
       base: baseSessionRepository,
       delaySessionIds: {"s1": enrichGate.future},
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final projectRepository = ProjectRepository(
       gitCliApi: FakeGitCliApi(),
       plugin: plugin,
@@ -930,7 +991,20 @@ void main() {
       failureReporter: FakeFailureReporter(),
     );
 
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: sessionEventEnrichmentService,
+    );
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -944,6 +1018,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushDispatcher,
@@ -1016,7 +1091,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -1136,6 +1210,11 @@ void main() {
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final projectRepository = ProjectRepository(
       gitCliApi: FakeGitCliApi(),
       plugin: plugin,
@@ -1168,7 +1247,20 @@ void main() {
       failureReporter: FakeFailureReporter(),
     );
 
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: sessionEventEnrichmentService,
+    );
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -1182,6 +1274,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushDispatcher,
@@ -1254,7 +1347,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -1305,6 +1397,11 @@ void main() {
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final projectRepository = ProjectRepository(
       gitCliApi: FakeGitCliApi(),
       plugin: plugin,
@@ -1337,7 +1434,20 @@ void main() {
       failureReporter: FakeFailureReporter(),
     );
 
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: sessionEventEnrichmentService,
+    );
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -1351,6 +1461,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
@@ -1423,7 +1534,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -1499,6 +1609,11 @@ void main() {
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
+    final commandDispatcher = TestCommandStack(database).dispatcher(
+      plugin: plugin,
+      sessionRepository: sessionRepository,
+    );
+    addTearDown(commandDispatcher.dispose);
     final projectRepository = ProjectRepository(
       gitCliApi: FakeGitCliApi(),
       plugin: plugin,
@@ -1531,7 +1646,20 @@ void main() {
       failureReporter: FakeFailureReporter(),
     );
 
+    final commandTimeline = createTestCommandTimelineComposition(
+      database: database,
+      sessionRepository: sessionRepository,
+      commandDispatcher: commandDispatcher,
+      enrichmentService: sessionEventEnrichmentService,
+    );
     final orchestrator = Orchestrator(
+      sessionPromptService: SessionPromptService(
+        sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
+      ),
+      commandTimelineService: commandTimeline.timelineService,
+      pluginCommandTimelineListener: commandTimeline.pluginListener,
+      commandDispatchOutcomeListener: commandTimeline.outcomeListener,
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         pluginEndpoint: "http://127.0.0.1:4096",
@@ -1545,6 +1673,7 @@ void main() {
         metadataService: _FakeMetadataService(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: sessionTitleService,
       ),
       pushDispatcher: pushSubsystem.dispatcher,
@@ -1617,7 +1746,6 @@ void main() {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -2024,7 +2152,10 @@ class _SummaryPlugin implements NativeProjectsPluginApi {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => <String, PluginSessionStatus>{};
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async {
     return <PluginMessageWithParts>[];
   }
 
@@ -2041,14 +2172,15 @@ class _SummaryPlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async {}
+  }) async => const PluginCommandDispatch(backendMessageId: null);
 
   @override
   Future<void> abortSession({required String sessionId}) async {}
@@ -2215,7 +2347,10 @@ class _NoopPlugin implements NativeProjectsPluginApi {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => <String, PluginSessionStatus>{};
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async {
     return <PluginMessageWithParts>[];
   }
 
@@ -2232,14 +2367,15 @@ class _NoopPlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async {}
+  }) async => const PluginCommandDispatch(backendMessageId: null);
 
   @override
   Future<void> abortSession({required String sessionId}) async {}
@@ -2523,9 +2659,6 @@ class _NoopSessionRepository implements SessionRepository {
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const [];
-
-  @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const [];
 
   @override
@@ -2645,16 +2778,6 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> notifySessionArchived({required String sessionId}) async {}
 
   @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required SessionVariant? variant,
-    required String? agent,
-    required PromptModel? model,
-  }) async {}
-
-  @override
   Future<CommandListResponse> getCommands({required String? projectId, required String pluginId}) async =>
       const CommandListResponse(items: []);
 
@@ -2682,6 +2805,9 @@ class _NoopSessionRepository implements SessionRepository {
 
   @override
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _DelayingSessionRepository implements SessionRepository {
@@ -2697,10 +2823,6 @@ class _DelayingSessionRepository implements SessionRepository {
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) => _base.isSessionTombstoned(sessionId: sessionId);
-
-  @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) =>
-      _base.getSessionMessages(sessionId: sessionId);
 
   @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async {
@@ -2720,6 +2842,17 @@ class _DelayingSessionRepository implements SessionRepository {
        _delaySessionIds = delaySessionIds;
 
   @override
+  String get pluginId => _base.pluginId;
+
+  @override
+  Stream<BridgeSseEvent> get pluginEvents => _base.pluginEvents;
+
+  @override
+  Future<CommandTimelineCandidate?> mapPluginCommandCandidate({required BridgeSseEvent event}) {
+    return _base.mapPluginCommandCandidate(event: event);
+  }
+
+  @override
   Future<Session> enrichSession({required Session session}) async {
     final delay = _delaySessionIds[session.id];
     if (delay != null) {
@@ -2727,6 +2860,9 @@ class _DelayingSessionRepository implements SessionRepository {
     }
     return _base.enrichSession(session: session);
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
   Future<Session> createSession({
@@ -2743,25 +2879,6 @@ class _DelayingSessionRepository implements SessionRepository {
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts,
-      variant: variant,
-      agent: agent,
-      model: model,
-    );
-  }
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required SessionVariant? variant,
-    required String? agent,
-    required PromptModel? model,
-  }) async {
-    return _base.sendCommand(
-      sessionId: sessionId,
-      command: command,
-      arguments: arguments,
       variant: variant,
       agent: agent,
       model: model,

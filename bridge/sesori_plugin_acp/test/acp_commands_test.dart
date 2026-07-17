@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -8,26 +10,30 @@ import "package:test/test.dart";
 /// them). Before any update arrives, the list is empty.
 void main() {
   group("AcpCommandTracker", () {
-    AcpNotification update(Map<String, dynamic> body) => AcpNotification(
-      method: "session/update",
-      params: {"sessionId": "s1", "update": body},
+    AcpNotificationRecord update(Map<String, dynamic> body) => mapAcpNotificationForTest(
+      AcpNotification(
+        method: "session/update",
+        params: {"sessionId": "s1", "update": body},
+      ),
     );
 
     test("parses advertised commands fail-soft; last update wins", () {
       final tracker = AcpCommandTracker()
-        ..consume(update({
-          "sessionUpdate": "available_commands_update",
-          "availableCommands": [
-            {
-              "name": "create_plan",
-              "description": "Plan before coding",
-              "input": {"hint": "what to plan"},
-            },
-            {"name": "compress", "description": "Compact the thread"},
-            {"description": "malformed: no name"},
-            "not-a-map",
-          ],
-        }));
+        ..consume(
+          update({
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {
+                "name": "create_plan",
+                "description": "Plan before coding",
+                "input": {"hint": "what to plan"},
+              },
+              {"name": "compress", "description": "Compact the thread"},
+              {"description": "malformed: no name"},
+              "not-a-map",
+            ],
+          }),
+        );
 
       final commands = tracker.commands;
       expect(commands, hasLength(2));
@@ -38,16 +44,22 @@ void main() {
       expect(commands[1].name, "compress");
       expect(commands[1].hints, isEmpty);
 
-      tracker.consume(update({
-        "sessionUpdate": "available_commands_update",
-        "availableCommands": const <Object?>[],
-      }));
+      tracker.consume(
+        update({
+          "sessionUpdate": "available_commands_update",
+          "availableCommands": const <Object?>[],
+        }),
+      );
       expect(tracker.commands, isEmpty);
     });
 
     test("ignores unrelated notifications", () {
       final tracker = AcpCommandTracker()
-        ..consume(const AcpNotification(method: "cursor/update_todos", params: {}))
+        ..consume(
+          mapAcpNotificationForTest(
+            const AcpNotification(method: "cursor/update_todos", params: {}),
+          ),
+        )
         ..consume(update({"sessionUpdate": "plan", "entries": <Object?>[]}));
       expect(tracker.commands, isEmpty);
     });
@@ -212,10 +224,17 @@ void main() {
         model: null,
       );
       final sessionNew = await waitForFrame(live, "session/new");
-      live.emit({"jsonrpc": "2.0", "id": sessionNew["id"], "result": {"sessionId": "s1"}});
+      live.emit({
+        "jsonrpc": "2.0",
+        "id": sessionNew["id"],
+        "result": {"sessionId": "s1"},
+      });
       await creating;
 
-      final messages = plugin.getSessionMessages("s1");
+      final messages = plugin.getSessionMessages(
+        "s1",
+        acceptedCommands: const [],
+      );
       final replayInit = await waitForFrame(replay, "initialize");
       replay.emit({
         "jsonrpc": "2.0",
@@ -266,5 +285,236 @@ void main() {
       await live.close();
       await replay.close();
     }
+  });
+
+  test("accepted command echo folds assistant result and preserves invocation", () {
+    const userId = "s1-h0-user";
+    const resultId = "s1-h1-assistant";
+    final mapped = const AcpMessageRepository().mapHistory(
+      sessionId: "s1",
+      agentId: "ACP",
+      modelId: null,
+      providerId: null,
+      records: const [
+        AcpReplayMessage(
+          id: userId,
+          role: AcpReplayRole.user,
+          text: "/create_plan auth",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+        AcpReplayMessage(
+          id: resultId,
+          role: AcpReplayRole.assistant,
+          text: "the plan",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+      ],
+      acceptedCommands: const [
+        PluginCommandInvocationContext(
+          invocationId: "opaque-acp-invocation",
+          name: "create_plan",
+          arguments: "auth",
+          acceptedAt: 100,
+          backendMessageId: null,
+        ),
+      ],
+      knownCommandNames: const {"create_plan"},
+    );
+
+    expect(mapped, hasLength(1));
+    expect(
+      mapped.single.info,
+      isA<PluginMessageCommand>()
+          .having(
+            (message) => message.id,
+            "id",
+            "s1-command-opaque-acp-invocation",
+          )
+          .having((message) => message.invocationId, "invocationId", "opaque-acp-invocation")
+          .having((message) => message.origin, "origin", PluginCommandOrigin.manual),
+    );
+    expect(mapped.single.parts.single.id, "s1-command-opaque-acp-invocation-result");
+    expect(mapped.single.parts.single.messageID, "s1-command-opaque-acp-invocation");
+    expect(mapped.single.parts.single.text, "the plan");
+  });
+
+  test("recognized external slash history has manual origin", () {
+    final mapped = const AcpMessageRepository().mapHistory(
+      sessionId: "s1",
+      agentId: "ACP",
+      modelId: null,
+      providerId: null,
+      records: const [
+        AcpReplayMessage(
+          id: "external-command",
+          role: AcpReplayRole.user,
+          text: "/create_plan auth",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+      ],
+      acceptedCommands: const [],
+      knownCommandNames: const {"create_plan"},
+    );
+
+    expect(
+      mapped.single.info,
+      isA<PluginMessageCommand>()
+          .having((message) => message.origin, "origin", PluginCommandOrigin.manual)
+          .having((message) => message.invocationId, "invocationId", isNull),
+    );
+  });
+
+  test("accepted live command and history replay have equivalent shape", () async {
+    final commandTurnTracker = AcpCommandTurnTracker();
+    final mapper = AcpEventMapper(
+      launchDirectory: "/repo",
+      agentId: "ACP",
+      pluginId: "acp",
+    );
+    final dispatcher = AcpTurnEventDispatcher(
+      eventMapper: mapper,
+      commandTracker: AcpCommandTracker(),
+      commandTurnTracker: commandTurnTracker,
+      residencyTracker: AcpSessionResidencyTracker(),
+    );
+    final liveEvents = <BridgeSseEvent>[];
+    final subscription = dispatcher.events.listen(liveEvents.add);
+    final registration = commandTurnTracker.register(
+      sessionId: "s1",
+      invocationId: "equivalent-invocation",
+      name: "review",
+      arguments: "args",
+    );
+    dispatcher.beginTurn(sessionId: "s1");
+    dispatcher.stageCommandEnvelope(turnId: registration.turnId);
+    dispatcher.flushCommand(registration.turnId);
+
+    AcpNotificationRecord notification(Map<String, dynamic> update) => mapAcpNotificationForTest(
+      AcpNotification(
+        method: AcpMethods.sessionUpdate,
+        params: {"sessionId": "s1", "update": update},
+      ),
+    );
+
+    final updates = [
+      {
+        "sessionUpdate": "agent_thought_chunk",
+        "messageId": "m1",
+        "content": {"type": "text", "text": "thinking"},
+      },
+      {
+        "sessionUpdate": "agent_message_chunk",
+        "messageId": "m1",
+        "content": {"type": "text", "text": "first"},
+      },
+      {
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tool-1",
+        "kind": "read",
+        "status": "completed",
+        "rawOutput": {"stdout": "done"},
+      },
+      {
+        "sessionUpdate": "agent_message_chunk",
+        "messageId": "m2",
+        "content": {"type": "text", "text": " second"},
+      },
+    ];
+    for (final update in updates) {
+      dispatcher.consume(notification(update));
+    }
+    await Future<void>.delayed(Duration.zero);
+    commandTurnTracker.complete(registration.turnId);
+    await subscription.cancel();
+    await dispatcher.dispose();
+
+    Map<String, dynamic>? liveInfo;
+    final liveParts = <String, PluginMessagePart>{};
+    for (final event in liveEvents) {
+      switch (event) {
+        case BridgeSseMessageUpdated(:final info):
+          liveInfo = info;
+        case BridgeSseMessagePartUpdated(:final part):
+          liveParts[part.id] = part;
+        case BridgeSseMessagePartDelta(:final partID, :final delta):
+          final part = liveParts[partID]!;
+          liveParts[partID] = part.copyWith(text: "${part.text ?? ""}$delta");
+        case BridgeSseMessagePartRemoved(:final partID):
+          liveParts.remove(partID);
+        default:
+          break;
+      }
+    }
+
+    final history = const AcpMessageRepository().mapHistory(
+      sessionId: "s1",
+      agentId: "ACP",
+      modelId: null,
+      providerId: null,
+      records: const [
+        AcpReplayMessage(
+          id: "s1-muser-user",
+          role: AcpReplayRole.user,
+          text: "/review args",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+        AcpReplayMessage(
+          id: "s1-mm1-assistant",
+          role: AcpReplayRole.assistant,
+          text: "first",
+          reasoning: "thinking",
+          tools: [
+            AcpReplayTool(
+              id: "tool-1",
+              name: "read",
+              title: null,
+              status: PluginToolStatus.completed,
+              output: "done",
+            ),
+          ],
+          errorName: null,
+          errorMessage: null,
+        ),
+        AcpReplayMessage(
+          id: "s1-mm2-assistant",
+          role: AcpReplayRole.assistant,
+          text: " second",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+      ],
+      acceptedCommands: const [
+        PluginCommandInvocationContext(
+          invocationId: "equivalent-invocation",
+          name: "review",
+          arguments: "args",
+          acceptedAt: 1,
+          backendMessageId: null,
+        ),
+      ],
+      knownCommandNames: const {"review"},
+    );
+
+    expect(
+      {
+        "info": liveInfo,
+        "parts": liveParts.values.map((part) => part.toJson()).toList(),
+      },
+      history.single.toJson(),
+    );
   });
 }

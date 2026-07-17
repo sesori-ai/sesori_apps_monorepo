@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:io" as io;
+import "dart:math";
 
 import "package:json_annotation/json_annotation.dart" show CheckedFromJsonException;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
@@ -8,6 +9,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAgent,
         PluginApiException,
         PluginCommand,
+        PluginCommandInvocationContext,
         PluginCommandSource,
         PluginMessageWithParts,
         PluginPermissionReply,
@@ -39,7 +41,9 @@ class OpenCodeService {
 
   final OpenCodeRepository repository;
   final ActiveSessionTracker tracker;
+  final OpenCodeCommandTracker commandTracker;
   final Duration _commandDispatchFastFailWindow;
+  static final Random _secureRandom = Random.secure();
 
   /// Signals that service-owned tracker bookkeeping changed the activity
   /// summary and the consumer (the plugin) should re-emit it. Broadcast so the
@@ -61,7 +65,8 @@ class OpenCodeService {
   /// the phone's "accepted" feedback snappy.
   OpenCodeService(
     this.repository,
-    this.tracker, {
+    this.tracker,
+    this.commandTracker, {
     Duration commandDispatchFastFailWindow = const Duration(seconds: 1),
   }) : _commandDispatchFastFailWindow = commandDispatchFastFailWindow;
 
@@ -94,12 +99,13 @@ class OpenCodeService {
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
     final commands = await repository.getCommands(projectId: projectId);
-    // Synthesize the compaction command unless the project already defines one
-    // with the same name (e.g. a user-authored `compact` config command).
-    if (commands.any((command) => command.name == compactionCommandName)) {
-      return commands;
-    }
-    return [...commands, _compactionCommand];
+    // `compact` is reserved because its dispatch path is /summarize, not the
+    // ordinary /command endpoint. Never expose an upstream collision with
+    // semantics that differ from the synthetic catalog entry.
+    return [
+      ...commands.where((command) => !_isCompactionCommand(command.name)),
+      _compactionCommand,
+    ];
   }
 
   /// Returns the agents available for [projectId] (a worktree directory).
@@ -223,9 +229,14 @@ class OpenCodeService {
   Future<List<PluginMessageWithParts>> getMessages({
     required String sessionId,
     required String? directory,
+    required List<PluginCommandInvocationContext> acceptedCommands,
   }) async {
     try {
-      return await repository.getMessages(sessionId: sessionId, directory: directory);
+      return await repository.getMessages(
+        sessionId: sessionId,
+        directory: directory,
+        acceptedCommands: acceptedCommands,
+      );
     } on OpenCodeApiException {
       rethrow;
     } on PluginApiException {
@@ -294,8 +305,9 @@ class OpenCodeService {
     );
   }
 
-  Future<void> sendCommand({
+  Future<String?> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required String? agent,
@@ -306,24 +318,46 @@ class OpenCodeService {
     // The artificial "compact" command (see [compactionCommandName]) has no
     // OpenCode command counterpart — route it to the summarize endpoint, which
     // performs manual compaction. Everything else is a real slash command.
-    final sendFuture = command == compactionCommandName
-        ? _compact(
-            sessionId: sessionId,
-            directory: directory,
-            arguments: arguments,
-            agent: agent,
-            variant: variant,
-            model: _requireCompactionModel(model: model, sessionId: sessionId),
-          )
-        : repository.sendCommand(
-            sessionId: sessionId,
-            directory: directory,
-            command: command,
-            arguments: arguments,
-            agent: agent,
-            variant: variant,
-            model: model,
-          );
+    final String? backendMessageId;
+    final Future<void> sendFuture;
+    if (_isCompactionCommand(command)) {
+      final compactionModel = _requireCompactionModel(model: model, sessionId: sessionId);
+      backendMessageId = null;
+      commandTracker.registerDispatch(
+        sessionId: sessionId,
+        invocationId: invocationId,
+        name: command,
+        arguments: arguments,
+        backendMessageId: null,
+      );
+      sendFuture = _compact(
+        sessionId: sessionId,
+        directory: directory,
+        arguments: arguments,
+        agent: agent,
+        variant: variant,
+        model: compactionModel,
+      );
+    } else {
+      backendMessageId = _newCommandMessageId();
+      commandTracker.registerDispatch(
+        sessionId: sessionId,
+        invocationId: invocationId,
+        name: command,
+        arguments: arguments,
+        backendMessageId: backendMessageId,
+      );
+      sendFuture = repository.sendCommand(
+        sessionId: sessionId,
+        directory: directory,
+        messageId: backendMessageId,
+        command: command,
+        arguments: arguments,
+        agent: agent,
+        variant: variant,
+        model: model,
+      );
+    }
     // OpenCode's POST /session/:id/command and /summarize endpoints are both
     // synchronous — they respond only after the agent run completes, and no
     // async variant exists upstream (see OpenCodeApi.sendCommand/summarize).
@@ -337,21 +371,41 @@ class OpenCodeService {
     // `onTimeout` (rather than catching [TimeoutException]) fires only when
     // the window itself elapses, so a genuine TimeoutException raised by the
     // send chain within the window still propagates as a dispatch failure.
-    await sendFuture.timeout(
-      _commandDispatchFastFailWindow,
-      onTimeout: () {
-        unawaited(
-          sendFuture.catchError((Object e, StackTrace s) {
-            Log.w(
-              "command '$command' for session $sessionId "
-              "failed after dispatch: $e",
-              e,
-              s,
-            );
-          }),
-        );
-      },
-    );
+    try {
+      await sendFuture.timeout(
+        _commandDispatchFastFailWindow,
+        onTimeout: () {
+          unawaited(
+            sendFuture.catchError((Object error, StackTrace stackTrace) {
+              Log.w(
+                "command '$command' for session $sessionId failed after dispatch",
+                error,
+                stackTrace,
+              );
+            }),
+          );
+        },
+      );
+      return backendMessageId;
+    } catch (_) {
+      commandTracker.cancelDispatch(
+        sessionId: sessionId,
+        invocationId: invocationId,
+      );
+      rethrow;
+    }
+  }
+
+  static String _newCommandMessageId() {
+    final hex = List.generate(
+      16,
+      (_) => _secureRandom.nextInt(256).toRadixString(16).padLeft(2, "0"),
+    ).join();
+    return "msg_sesori_$hex";
+  }
+
+  static bool _isCompactionCommand(String command) {
+    return command == compactionCommandName || command == "/$compactionCommandName";
   }
 
   Future<void> _compact({

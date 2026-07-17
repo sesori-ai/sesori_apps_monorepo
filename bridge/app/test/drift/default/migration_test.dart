@@ -1112,7 +1112,9 @@ void main() {
               (await newDb.select(newDb.projectsTable).get()).single;
           expect(project.projectionUpdatedAt, 200);
           expect(project.displayName, 'One');
-          final projectColumns = await newDb.customSelect("PRAGMA table_info('projects_table')").get();
+          final projectColumns = await newDb
+              .customSelect("PRAGMA table_info('projects_table')")
+              .get();
           expect(
             projectColumns.map((row) => row.read<String>('name')),
             isNot(contains('worktree_counter')),
@@ -1244,6 +1246,84 @@ void main() {
       );
     },
   );
+
+  test(
+    'migration v11 -> v12 creates durable accepted command storage',
+    () async {
+      final connection = await verifier.startAt(11);
+      final db = AppDatabase(connection);
+      addTearDown(db.close);
+
+      await verifier.migrateAndValidate(db, 12);
+
+      expect(
+        await db.select(db.acceptedCommandInvocationsTable).get(),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'v12 preserves nullable arguments, enforces invocation identity, and cascades with the session',
+    () async {
+      final connection = await verifier.startAt(11);
+      final db = AppDatabase(connection);
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(db, 12);
+
+      await db
+          .into(db.projectsTable)
+          .insert(
+            ProjectsTableCompanion.insert(
+              projectId: 'p1',
+              path: '/p1',
+              projectionUpdatedAt: 1,
+            ),
+          );
+      await db
+          .into(db.sessionTable)
+          .insert(
+            SessionTableCompanion.insert(
+              sessionId: 's1',
+              backendSessionId: 'backend-s1',
+              projectId: 'p1',
+              directory: '/p1',
+              isDedicated: false,
+              createdAt: 1,
+              updatedAt: 1,
+              projectionUpdatedAt: 1,
+              pluginId: 'plugin',
+            ),
+          );
+      final invocation = AcceptedCommandInvocationsTableCompanion.insert(
+        invocationId: 'invocation-1',
+        sessionId: 's1',
+        pluginId: 'plugin',
+        name: 'review',
+        arguments: const Value(null),
+        acceptedAt: 2,
+        backendMessageId: const Value('backend-message-1'),
+      );
+      await db.into(db.acceptedCommandInvocationsTable).insert(invocation);
+
+      final row =
+          (await db.select(db.acceptedCommandInvocationsTable).get()).single;
+      expect(row.arguments, isNull);
+      expect(row.backendMessageId, 'backend-message-1');
+      await expectLater(
+        db.into(db.acceptedCommandInvocationsTable).insert(invocation),
+        throwsA(isA<SqliteException>()),
+      );
+
+      await (db.delete(
+        db.sessionTable,
+      )..where((table) => table.sessionId.equals('s1'))).go();
+      expect(
+        await db.select(db.acceptedCommandInvocationsTable).get(),
+        isEmpty,
+      );
+    },
+  );
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
@@ -1254,7 +1334,7 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    11,
+    12,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

@@ -1,14 +1,14 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/session_repository.dart";
+import "../services/command_timeline_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/messages` — returns all messages for a session.
 class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, MessageWithPartsResponse> {
-  final SessionRepository _sessionRepository;
+  final CommandTimelineService _commandTimelineService;
 
-  GetSessionMessagesHandler({required SessionRepository sessionRepository})
-    : _sessionRepository = sessionRepository,
+  GetSessionMessagesHandler({required CommandTimelineService commandTimelineService})
+    : _commandTimelineService = commandTimelineService,
       super(
         HttpMethod.post,
         "/session/messages",
@@ -29,7 +29,7 @@ class GetSessionMessagesHandler extends BodyRequestHandler<SessionIdRequest, Mes
     }
 
     return MessageWithPartsResponse(
-      messages: await _sessionRepository.getSessionMessages(sessionId: sessionId),
+      messages: await _commandTimelineService.getSessionMessages(sessionId: sessionId),
     );
   }
 }

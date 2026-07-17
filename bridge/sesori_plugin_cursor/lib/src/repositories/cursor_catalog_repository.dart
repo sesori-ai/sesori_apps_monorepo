@@ -4,19 +4,21 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../api/cursor_catalog_probe_api.dart";
+import "../api/cursor_catalog_api.dart";
 import "../models/cursor_catalog_models.dart";
 import "mappers/cursor_catalog_mapper.dart";
 
 /// Layer-2 aggregation and mapping for Cursor catalog discovery.
 class CursorCatalogRepository {
   CursorCatalogRepository({
-    required CursorCatalogProbeApi api,
+    required CursorCatalogApi api,
     required String launchScope,
   }) : _api = api,
        _launchScope = normalizeProjectDirectory(directory: launchScope);
 
-  final CursorCatalogProbeApi _api;
+  static const int _maxPages = 50;
+
+  final CursorCatalogApi _api;
   final String _launchScope;
 
   Future<bool> open({required Duration timeout}) async {
@@ -43,8 +45,8 @@ class CursorCatalogRepository {
 
     for (final scanScope in scopes) {
       try {
-        final sessions = await _api.listSessions(
-          cwd: scanScope,
+        final sessions = await _listSessions(
+          directory: scanScope,
           timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
         );
         for (final session in sessions) {
@@ -113,7 +115,7 @@ class CursorCatalogRepository {
   }) async {
     final result = await _api.loadSession(
       sessionId: candidate.sessionId,
-      cwd: candidate.cwd,
+      directory: candidate.cwd,
       timeout: timeout,
     );
     return mapSessionResult(result: result);
@@ -126,6 +128,27 @@ class CursorCatalogRepository {
   Future<void> reset() => _api.reset();
 
   Future<void> dispose() => _api.dispose();
+
+  Future<List<AcpSessionInfo>> _listSessions({
+    required String? directory,
+    required Duration timeout,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    final sessions = <AcpSessionInfo>[];
+    String? cursor;
+    for (var page = 0; page < _maxPages; page++) {
+      final result = await _api.listSessions(
+        directory: directory,
+        cursor: cursor,
+        timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
+      );
+      sessions.addAll(result.sessions);
+      final nextCursor = result.nextCursor;
+      if (nextCursor == null || nextCursor.isEmpty) return sessions;
+      cursor = nextCursor;
+    }
+    throw StateError("Cursor session/list exceeded $_maxPages pages");
+  }
 
   Duration _remaining({required Duration timeout, required Stopwatch stopwatch}) {
     final remaining = timeout - stopwatch.elapsed;

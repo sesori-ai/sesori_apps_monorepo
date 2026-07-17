@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "acp_protocol.dart";
@@ -73,8 +71,7 @@ class AcpApprovalRegistry {
     return AcpApprovalRegistry(
       emit: emit,
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
-      respondError: (id, code, message) =>
-          client.respondToServerRequestWithError(id: id, code: code, message: message),
+      respondError: (id, code, message) => client.respondToServerRequestWithError(id: id, code: code, message: message),
       idGenerator: idGenerator,
       activeSessionResolver: activeSessionResolver,
     );
@@ -91,7 +88,6 @@ class AcpApprovalRegistry {
   /// the only signal tying the request to the conversation that triggered it.
   final String? Function()? _activeSessionResolver;
 
-  StreamSubscription<AcpServerRequest>? _subscription;
   int _seq = 0;
   final Map<String, _PendingApproval> _pending = {};
 
@@ -104,8 +100,7 @@ class AcpApprovalRegistry {
   void respond(Object acpId, Object? result) => _respond(acpId, result);
 
   /// Respond to a server request with a JSON-RPC error.
-  void respondError(Object acpId, int code, String message) =>
-      _respondError(acpId, code, message);
+  void respondError(Object acpId, int code, String message) => _respondError(acpId, code, message);
 
   /// Generates the next stable bridge request id (`br-N`).
   String generateBridgeId() {
@@ -148,23 +143,7 @@ class AcpApprovalRegistry {
   /// `cursor/ask_question`). Return true if handled. Base handles none.
   bool handleExtensionRequest(AcpServerRequest request) => false;
 
-  // --- Lifecycle ---
-
-  StreamSubscription<AcpServerRequest> attach(Stream<AcpServerRequest> stream) {
-    final subscription = stream.listen(_handle);
-    _subscription = subscription;
-    return subscription;
-  }
-
-  Future<void> dispose() async {
-    // Isolated so a failed cancel cannot skip the pending-approval cleanup
-    // below, which unblocks callers awaiting a permission/question reply.
-    try {
-      await _subscription?.cancel();
-    } on Object catch (e, st) {
-      Log.w("[acp] failed to cancel approval subscription", e, st);
-    }
-    _subscription = null;
+  Future<void> reset() async {
     final remaining = List<_PendingApproval>.from(_pending.values);
     _pending.clear();
     // Emit the resolution SSEs (not just answer the agent) so a phone showing a
@@ -174,6 +153,8 @@ class AcpApprovalRegistry {
       _resolveCancelled(entry, questionErrorMessage: "bridge dispose");
     }
   }
+
+  Future<void> dispose() => reset();
 
   // --- Queries ---
 
@@ -199,14 +180,12 @@ class AcpApprovalRegistry {
         .toList(growable: false);
   }
 
-  String? sessionIdFor(String bridgeRequestId) =>
-      _pending[bridgeRequestId]?.sessionId;
+  String? sessionIdFor(String bridgeRequestId) => _pending[bridgeRequestId]?.sessionId;
 
   /// Whether [sessionId] is blocked awaiting user input — a pending permission
   /// ask or question. Both kinds count, mirroring the OpenCode tracker's
   /// "awaiting input" notion (see `_rootHasPendingInput`).
-  bool hasPendingInput(String sessionId) =>
-      _pending.values.any((e) => e.sessionId == sessionId);
+  bool hasPendingInput(String sessionId) => _pending.values.any((e) => e.sessionId == sessionId);
 
   /// Resolves every pending approval for [sessionId] as cancelled — used when
   /// a turn is aborted. ACP still requires the client to answer an in-flight
@@ -286,8 +265,7 @@ class AcpApprovalRegistry {
   bool replyQuestion(String bridgeRequestId, List<List<String>> answers) {
     final entry = _pending.remove(bridgeRequestId);
     if (entry == null || entry.kind != _PendingKind.question) return false;
-    final payload = entry.replyBuilder?.call(answers) ??
-        {"answers": answers.map((row) => row.toList()).toList()};
+    final payload = entry.replyBuilder?.call(answers) ?? {"answers": answers.map((row) => row.toList()).toList()};
     _respond(entry.acpId, payload);
     _emit(
       BridgeSseQuestionReplied(
@@ -315,7 +293,7 @@ class AcpApprovalRegistry {
 
   // --- Internals ---
 
-  void _handle(AcpServerRequest request) {
+  void handleRequest(AcpServerRequest request) {
     if (request.method == AcpMethods.sessionRequestPermission) {
       _handlePermission(request);
       return;
@@ -406,10 +384,7 @@ class AcpApprovalRegistry {
   List<Map<String, dynamic>> _optionsFrom(Map<String, dynamic> params) {
     final raw = params["options"];
     if (raw is! List) return const [];
-    return raw
-        .whereType<Map<dynamic, dynamic>>()
-        .map((m) => m.cast<String, dynamic>())
-        .toList(growable: false);
+    return raw.whereType<Map<dynamic, dynamic>>().map((m) => m.cast<String, dynamic>()).toList(growable: false);
   }
 
   String? _selectOptionId(

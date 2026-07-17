@@ -175,4 +175,284 @@ as bool?,
 
 }
 
+
+/// @nodoc
+mixin _$PluginCommandInvocationContext {
+
+ String get invocationId; String get name; String? get arguments; int get acceptedAt; String? get backendMessageId;
+/// Create a copy of PluginCommandInvocationContext
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginCommandInvocationContextCopyWith<PluginCommandInvocationContext> get copyWith => _$PluginCommandInvocationContextCopyWithImpl<PluginCommandInvocationContext>(this as PluginCommandInvocationContext, _$identity);
+
+  /// Serializes this PluginCommandInvocationContext to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCommandInvocationContext&&(identical(other.invocationId, invocationId) || other.invocationId == invocationId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.backendMessageId, backendMessageId) || other.backendMessageId == backendMessageId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,invocationId,name,arguments,acceptedAt,backendMessageId);
+
+@override
+String toString() {
+  return 'PluginCommandInvocationContext(invocationId: $invocationId, name: $name, arguments: $arguments, acceptedAt: $acceptedAt, backendMessageId: $backendMessageId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginCommandInvocationContextCopyWith<$Res>  {
+  factory $PluginCommandInvocationContextCopyWith(PluginCommandInvocationContext value, $Res Function(PluginCommandInvocationContext) _then) = _$PluginCommandInvocationContextCopyWithImpl;
+@useResult
+$Res call({
+ String invocationId, String name, String? arguments, int acceptedAt, String? backendMessageId
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginCommandInvocationContextCopyWithImpl<$Res>
+    implements $PluginCommandInvocationContextCopyWith<$Res> {
+  _$PluginCommandInvocationContextCopyWithImpl(this._self, this._then);
+
+  final PluginCommandInvocationContext _self;
+  final $Res Function(PluginCommandInvocationContext) _then;
+
+/// Create a copy of PluginCommandInvocationContext
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? invocationId = null,Object? name = null,Object? arguments = freezed,Object? acceptedAt = null,Object? backendMessageId = freezed,}) {
+  return _then(_self.copyWith(
+invocationId: null == invocationId ? _self.invocationId : invocationId // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,arguments: freezed == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
+as String?,acceptedAt: null == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
+as int,backendMessageId: freezed == backendMessageId ? _self.backendMessageId : backendMessageId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _PluginCommandInvocationContext implements PluginCommandInvocationContext {
+  const _PluginCommandInvocationContext({required this.invocationId, required this.name, required this.arguments, required this.acceptedAt, required this.backendMessageId});
+  factory _PluginCommandInvocationContext.fromJson(Map<String, dynamic> json) => _$PluginCommandInvocationContextFromJson(json);
+
+@override final  String invocationId;
+@override final  String name;
+@override final  String? arguments;
+@override final  int acceptedAt;
+@override final  String? backendMessageId;
+
+/// Create a copy of PluginCommandInvocationContext
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PluginCommandInvocationContextCopyWith<_PluginCommandInvocationContext> get copyWith => __$PluginCommandInvocationContextCopyWithImpl<_PluginCommandInvocationContext>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginCommandInvocationContextToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginCommandInvocationContext&&(identical(other.invocationId, invocationId) || other.invocationId == invocationId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.backendMessageId, backendMessageId) || other.backendMessageId == backendMessageId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,invocationId,name,arguments,acceptedAt,backendMessageId);
+
+@override
+String toString() {
+  return 'PluginCommandInvocationContext(invocationId: $invocationId, name: $name, arguments: $arguments, acceptedAt: $acceptedAt, backendMessageId: $backendMessageId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PluginCommandInvocationContextCopyWith<$Res> implements $PluginCommandInvocationContextCopyWith<$Res> {
+  factory _$PluginCommandInvocationContextCopyWith(_PluginCommandInvocationContext value, $Res Function(_PluginCommandInvocationContext) _then) = __$PluginCommandInvocationContextCopyWithImpl;
+@override @useResult
+$Res call({
+ String invocationId, String name, String? arguments, int acceptedAt, String? backendMessageId
+});
+
+
+
+
+}
+/// @nodoc
+class __$PluginCommandInvocationContextCopyWithImpl<$Res>
+    implements _$PluginCommandInvocationContextCopyWith<$Res> {
+  __$PluginCommandInvocationContextCopyWithImpl(this._self, this._then);
+
+  final _PluginCommandInvocationContext _self;
+  final $Res Function(_PluginCommandInvocationContext) _then;
+
+/// Create a copy of PluginCommandInvocationContext
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? invocationId = null,Object? name = null,Object? arguments = freezed,Object? acceptedAt = null,Object? backendMessageId = freezed,}) {
+  return _then(_PluginCommandInvocationContext(
+invocationId: null == invocationId ? _self.invocationId : invocationId // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,arguments: freezed == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
+as String?,acceptedAt: null == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
+as int,backendMessageId: freezed == backendMessageId ? _self.backendMessageId : backendMessageId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$PluginCommandDispatch {
+
+ String? get backendMessageId;
+/// Create a copy of PluginCommandDispatch
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginCommandDispatchCopyWith<PluginCommandDispatch> get copyWith => _$PluginCommandDispatchCopyWithImpl<PluginCommandDispatch>(this as PluginCommandDispatch, _$identity);
+
+  /// Serializes this PluginCommandDispatch to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCommandDispatch&&(identical(other.backendMessageId, backendMessageId) || other.backendMessageId == backendMessageId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,backendMessageId);
+
+@override
+String toString() {
+  return 'PluginCommandDispatch(backendMessageId: $backendMessageId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginCommandDispatchCopyWith<$Res>  {
+  factory $PluginCommandDispatchCopyWith(PluginCommandDispatch value, $Res Function(PluginCommandDispatch) _then) = _$PluginCommandDispatchCopyWithImpl;
+@useResult
+$Res call({
+ String? backendMessageId
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginCommandDispatchCopyWithImpl<$Res>
+    implements $PluginCommandDispatchCopyWith<$Res> {
+  _$PluginCommandDispatchCopyWithImpl(this._self, this._then);
+
+  final PluginCommandDispatch _self;
+  final $Res Function(PluginCommandDispatch) _then;
+
+/// Create a copy of PluginCommandDispatch
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? backendMessageId = freezed,}) {
+  return _then(_self.copyWith(
+backendMessageId: freezed == backendMessageId ? _self.backendMessageId : backendMessageId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _PluginCommandDispatch implements PluginCommandDispatch {
+  const _PluginCommandDispatch({required this.backendMessageId});
+  factory _PluginCommandDispatch.fromJson(Map<String, dynamic> json) => _$PluginCommandDispatchFromJson(json);
+
+@override final  String? backendMessageId;
+
+/// Create a copy of PluginCommandDispatch
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PluginCommandDispatchCopyWith<_PluginCommandDispatch> get copyWith => __$PluginCommandDispatchCopyWithImpl<_PluginCommandDispatch>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginCommandDispatchToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginCommandDispatch&&(identical(other.backendMessageId, backendMessageId) || other.backendMessageId == backendMessageId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,backendMessageId);
+
+@override
+String toString() {
+  return 'PluginCommandDispatch(backendMessageId: $backendMessageId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PluginCommandDispatchCopyWith<$Res> implements $PluginCommandDispatchCopyWith<$Res> {
+  factory _$PluginCommandDispatchCopyWith(_PluginCommandDispatch value, $Res Function(_PluginCommandDispatch) _then) = __$PluginCommandDispatchCopyWithImpl;
+@override @useResult
+$Res call({
+ String? backendMessageId
+});
+
+
+
+
+}
+/// @nodoc
+class __$PluginCommandDispatchCopyWithImpl<$Res>
+    implements _$PluginCommandDispatchCopyWith<$Res> {
+  __$PluginCommandDispatchCopyWithImpl(this._self, this._then);
+
+  final _PluginCommandDispatch _self;
+  final $Res Function(_PluginCommandDispatch) _then;
+
+/// Create a copy of PluginCommandDispatch
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? backendMessageId = freezed,}) {
+  return _then(_PluginCommandDispatch(
+backendMessageId: freezed == backendMessageId ? _self.backendMessageId : backendMessageId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
 // dart format on

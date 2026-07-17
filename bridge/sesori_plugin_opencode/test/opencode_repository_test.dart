@@ -971,6 +971,179 @@ void main() {
     });
   });
 
+  group("OpenCodeRepository.getMessages command history", () {
+    test("folds manual guidance and typed summary into one retained command", () async {
+      final repository = OpenCodeRepository(
+        _FakeApi(
+          messages: [
+            _historyUser(
+              id: "guidance",
+              created: 900,
+              parts: [_historyTextPart(id: "guidance-part", messageId: "guidance", text: "Keep auth decisions")],
+            ),
+            _historyUser(
+              id: "manual-trigger",
+              created: 1000,
+              parts: [_historyCompactionPart(messageId: "manual-trigger", automatic: false)],
+            ),
+            _historyAssistant(
+              id: "manual-summary",
+              parentId: "manual-trigger",
+              created: 1100,
+              summary: true,
+              mode: "compaction",
+              parts: [_historyTextPart(id: "summary-part", messageId: "manual-summary", text: "summary")],
+            ),
+          ],
+        ),
+      );
+
+      final messages = await repository.getMessages(
+        sessionId: "session",
+        directory: "/repo",
+        acceptedCommands: const [
+          PluginCommandInvocationContext(
+            invocationId: "manual-invocation",
+            name: "compact",
+            arguments: "Keep auth decisions",
+            acceptedAt: 1200,
+            backendMessageId: null,
+          ),
+        ],
+      );
+
+      expect(messages, hasLength(1));
+      expect(
+        messages.single.info,
+        isA<PluginMessageCommand>()
+            .having((message) => message.id, "id", "manual-trigger")
+            .having((message) => message.origin, "origin", PluginCommandOrigin.manual)
+            .having((message) => message.invocationId, "invocationId", "manual-invocation"),
+      );
+      expect(messages.single.parts.single.messageID, "manual-trigger");
+      expect(messages.single.parts.single.text, "summary");
+      expect(messages.map((message) => message.info.id), isNot(contains("guidance")));
+      expect(messages.map((message) => message.info.id), isNot(contains("manual-summary")));
+    });
+
+    test("folds automatic compaction without an accepted invocation", () async {
+      final repository = OpenCodeRepository(
+        _FakeApi(
+          messages: [
+            _historyUser(
+              id: "auto-trigger",
+              created: 2000,
+              parts: [_historyCompactionPart(messageId: "auto-trigger", automatic: true)],
+            ),
+            _historyAssistant(
+              id: "auto-summary",
+              parentId: "auto-trigger",
+              created: 2100,
+              summary: true,
+              mode: "compaction",
+              parts: [_historyTextPart(id: "auto-part", messageId: "auto-summary", text: "auto summary")],
+            ),
+          ],
+        ),
+      );
+
+      final messages = await repository.getMessages(
+        sessionId: "session",
+        directory: "/repo",
+        acceptedCommands: const [],
+      );
+
+      expect(messages, hasLength(1));
+      expect(
+        messages.single.info,
+        isA<PluginMessageCommand>()
+            .having((message) => message.origin, "origin", PluginCommandOrigin.automatic)
+            .having((message) => message.invocationId, "invocationId", isNull),
+      );
+      expect(messages.single.parts.single.messageID, "auto-trigger");
+    });
+
+    test("reload uses the caller-chosen backend ID and exposes a correlated error as result text", () async {
+      const triggerId = "msg_sesori_0123456789abcdef0123456789abcdef";
+      final repository = OpenCodeRepository(
+        _FakeApi(
+          messages: [
+            _historyUser(
+              id: triggerId,
+              created: 3000,
+              parts: [_historyTextPart(id: "command-input", messageId: triggerId, text: "review")],
+            ),
+            _historyAssistant(
+              id: "command-error",
+              parentId: triggerId,
+              created: 3100,
+              errorMessage: "Model unavailable",
+              parts: const [],
+            ),
+          ],
+        ),
+      );
+
+      final messages = await repository.getMessages(
+        sessionId: "session",
+        directory: "/repo",
+        acceptedCommands: const [
+          PluginCommandInvocationContext(
+            invocationId: "ordinary-invocation",
+            name: "review",
+            arguments: null,
+            acceptedAt: 3000,
+            backendMessageId: triggerId,
+          ),
+        ],
+      );
+
+      expect(messages, hasLength(1));
+      expect(
+        messages.single.info,
+        isA<PluginMessageCommand>()
+            .having((message) => message.id, "id", triggerId)
+            .having((message) => message.invocationId, "invocationId", "ordinary-invocation"),
+      );
+      expect(messages.single.parts.single.type, PluginMessagePartType.text);
+      expect(messages.single.parts.single.text, "Model unavailable");
+      expect(messages.single.parts.single.messageID, triggerId);
+    });
+
+    test("leaves non-command history unchanged", () async {
+      final repository = OpenCodeRepository(
+        _FakeApi(
+          messages: [
+            _historyUser(
+              id: "ordinary-user",
+              created: 4000,
+              parts: [_historyTextPart(id: "user-part", messageId: "ordinary-user", text: "hello")],
+            ),
+            _historyAssistant(
+              id: "ordinary-assistant",
+              parentId: "ordinary-user",
+              created: 4100,
+              parts: [_historyTextPart(id: "assistant-part", messageId: "ordinary-assistant", text: "world")],
+            ),
+          ],
+        ),
+      );
+
+      final messages = await repository.getMessages(
+        sessionId: "session",
+        directory: "/repo",
+        acceptedCommands: const [],
+      );
+
+      expect(messages, hasLength(2));
+      expect(messages.first.info, isA<PluginMessageUser>());
+      expect(messages.first.parts.single.text, "hello");
+      expect(messages.last.info, isA<PluginMessageAssistant>());
+      expect(messages.last.parts.single.messageID, "ordinary-assistant");
+      expect(messages.last.parts.single.text, "world");
+    });
+  });
+
   group("OpenCodeRepository.createSession", () {
     test("trims directory before calling api and mapping projectID", () async {
       final api = _FakeApi(
@@ -1052,6 +1225,7 @@ void main() {
       await repository.sendCommand(
         sessionId: "ses-1",
         directory: "/repo",
+        messageId: "msg_sesori_0123456789abcdef0123456789abcdef",
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
@@ -1061,6 +1235,10 @@ void main() {
 
       expect(api.lastCommandSessionId, equals("ses-1"));
       expect(api.lastCommandDirectory, equals("/repo"));
+      expect(
+        api.lastCommandBody?.toJson()["messageID"],
+        equals("msg_sesori_0123456789abcdef0123456789abcdef"),
+      );
       expect(api.lastCommandBody?.toJson()["variant"], equals("xhigh"));
     });
   });
@@ -1139,6 +1317,7 @@ void main() {
 
     test("SendCommandBody emits variant only when provided", () {
       final withVariant = const SendCommandBody(
+        messageID: "msg_sesori_0123456789abcdef0123456789abcdef",
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
@@ -1146,6 +1325,7 @@ void main() {
         model: null,
       ).toJson();
       final withoutVariant = const SendCommandBody(
+        messageID: null,
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
@@ -1159,11 +1339,89 @@ void main() {
   });
 }
 
+SessionMessagesResponseItem _historyUser({
+  required String id,
+  required int created,
+  required List<Map<String, dynamic>> parts,
+}) => SessionMessagesResponseItem.fromJson({
+  "info": {
+    "role": "user",
+    "id": id,
+    "sessionID": "session",
+    "time": {"created": created},
+    "agent": "build",
+    "model": const {"providerID": "openai", "modelID": "gpt"},
+  },
+  "parts": parts,
+});
+
+SessionMessagesResponseItem _historyAssistant({
+  required String id,
+  required String parentId,
+  required int created,
+  required List<Map<String, dynamic>> parts,
+  bool? summary,
+  String mode = "primary",
+  String? errorMessage,
+}) => SessionMessagesResponseItem.fromJson({
+  "info": {
+    "role": "assistant",
+    "id": id,
+    "sessionID": "session",
+    "time": {"created": created},
+    "parentID": parentId,
+    "modelID": "gpt",
+    "providerID": "openai",
+    "mode": mode,
+    "agent": "build",
+    "path": const {"cwd": "/repo", "root": "/repo"},
+    "summary": ?summary,
+    if (errorMessage != null)
+      "error": {
+        "name": "UnknownError",
+        "data": {"message": errorMessage},
+      },
+    "cost": 0,
+    "tokens": const {
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache": {"read": 0, "write": 0},
+    },
+  },
+  "parts": parts,
+});
+
+Map<String, dynamic> _historyTextPart({
+  required String id,
+  required String messageId,
+  required String text,
+}) => {
+  "id": id,
+  "sessionID": "session",
+  "messageID": messageId,
+  "type": "text",
+  "text": text,
+};
+
+Map<String, dynamic> _historyCompactionPart({
+  required String messageId,
+  required bool automatic,
+}) => {
+  "id": "$messageId-compaction",
+  "sessionID": "session",
+  "messageID": messageId,
+  "type": "compaction",
+  "auto": automatic,
+  "overflow": automatic,
+};
+
 class _FakeApi implements OpenCodeApi {
   final List<Session> _sessions;
   final List<GlobalSession> _globalSessions;
   final List<Project> _projects;
   final List<Command> _commands;
+  final List<SessionMessagesResponseItem> _messages;
   final Session? _createdSession;
   String? lastCreateDirectory;
   String? lastCreateParentSessionId;
@@ -1183,11 +1441,13 @@ class _FakeApi implements OpenCodeApi {
     List<GlobalSession>? globalSessions,
     List<Project>? projects,
     List<Command>? commands,
+    List<SessionMessagesResponseItem>? messages,
     Session? createdSession,
   }) : _sessions = sessions ?? [],
        _globalSessions = globalSessions ?? [],
        _projects = projects ?? [],
        _commands = commands ?? [],
+       _messages = messages ?? [],
        _createdSession = createdSession;
 
   @override
@@ -1332,7 +1592,7 @@ class _FakeApi implements OpenCodeApi {
   Future<List<SessionMessagesResponseItem>> getMessages({
     required String sessionId,
     required String? directory,
-  }) async => [];
+  }) async => _messages;
 
   @override
   Future<List<GlobalSession>> listAllSessions({

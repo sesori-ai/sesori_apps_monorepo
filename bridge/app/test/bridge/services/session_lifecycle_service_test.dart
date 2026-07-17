@@ -722,7 +722,10 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => [];
+  Future<List<PluginMessageWithParts>> getSessionMessages(
+    String sessionId, {
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) async => [];
 
   @override
   Future<void> sendPrompt({
@@ -734,14 +737,15 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<void> sendCommand({
+  Future<PluginCommandDispatch> sendCommand({
     required String sessionId,
+    required String invocationId,
     required String command,
     required String arguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async {}
+  }) async => const PluginCommandDispatch(backendMessageId: null);
 
   @override
   Future<void> abortSession({required String sessionId}) async {}

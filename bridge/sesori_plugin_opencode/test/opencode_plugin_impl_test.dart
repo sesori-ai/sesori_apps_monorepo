@@ -200,8 +200,9 @@ void main() {
       await server.waitForSseConnection();
       server.requestLog.clear();
 
-      await plugin.sendCommand(
+      final dispatch = await plugin.sendCommand(
         sessionId: "s-root",
+        invocationId: "inv-review",
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
@@ -209,11 +210,13 @@ void main() {
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
+      expect(dispatch.backendMessageId, matches(RegExp(r"^msg_sesori_[0-9a-f]{32}$")));
       expect(server.requestLog, equals(["POST /session/s-root/command"]));
       expect(server.lastCommandDirectoryHeader, equals("/repo"));
       expect(
         server.lastCommandBody,
         equals({
+          "messageID": dispatch.backendMessageId,
           "command": "/review-work",
           "arguments": "recent changes",
           "agent": "reviewer",
@@ -226,7 +229,10 @@ void main() {
     test("getSessionMessages maps raw messages to plugin messages", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final messages = await plugin.getSessionMessages("ses-1");
+      final messages = await plugin.getSessionMessages(
+        "ses-1",
+        acceptedCommands: const [],
+      );
 
       expect(messages, hasLength(2));
       final user = messages.first;
@@ -244,7 +250,10 @@ void main() {
     test("getSessionMessages filters file and snapshot parts", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final messages = await plugin.getSessionMessages("ses-filter");
+      final messages = await plugin.getSessionMessages(
+        "ses-filter",
+        acceptedCommands: const [],
+      );
 
       expect(messages, hasLength(2));
       final parts = messages.last.parts;
@@ -257,7 +266,10 @@ void main() {
     test("getSessionMessages filters patch and automatic compaction parts", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final messages = await plugin.getSessionMessages("ses-new-parts-filter");
+      final messages = await plugin.getSessionMessages(
+        "ses-new-parts-filter",
+        acceptedCommands: const [],
+      );
 
       expect(messages, hasLength(2));
       final parts = messages.last.parts;
@@ -270,7 +282,10 @@ void main() {
     test("getSessionMessages agent part carries agentName", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final messages = await plugin.getSessionMessages("ses-agent-part");
+      final messages = await plugin.getSessionMessages(
+        "ses-agent-part",
+        acceptedCommands: const [],
+      );
 
       expect(messages, hasLength(2));
       final part = messages.last.parts.single;
@@ -281,7 +296,10 @@ void main() {
     test("getSessionMessages retry part carries attempt and retryError", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final messages = await plugin.getSessionMessages("ses-retry-part");
+      final messages = await plugin.getSessionMessages(
+        "ses-retry-part",
+        acceptedCommands: const [],
+      );
 
       expect(messages, hasLength(2));
       final part = messages.last.parts.single;
@@ -293,7 +311,10 @@ void main() {
     test("getSessionMessages truncates tool output to 500 chars", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final messages = await plugin.getSessionMessages("ses-tool-long");
+      final messages = await plugin.getSessionMessages(
+        "ses-tool-long",
+        acceptedCommands: const [],
+      );
 
       expect(messages, hasLength(2));
       final output = messages.last.parts.single.state?.output;
@@ -305,7 +326,10 @@ void main() {
     test("getSessionMessages keeps short tool output unchanged", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final messages = await plugin.getSessionMessages("ses-tool-short");
+      final messages = await plugin.getSessionMessages(
+        "ses-tool-short",
+        acceptedCommands: const [],
+      );
 
       expect(messages, hasLength(2));
       expect(messages.last.parts.single.state?.output, equals("short"));
@@ -924,6 +948,13 @@ class _FakeOpenCodeServer {
         final rawBody = await utf8.decoder.bind(request).join();
         lastCommandBody = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
         lastCommandDirectoryHeader = request.headers.value("x-opencode-directory");
+        await _sendJson(request.response, true);
+        return;
+      }
+
+      final summarizeMatch = RegExp(r"^/session/([^/]+)/summarize$").firstMatch(path);
+      if (summarizeMatch != null && request.method == "POST") {
+        await utf8.decoder.bind(request).join();
         await _sendJson(request.response, true);
         return;
       }

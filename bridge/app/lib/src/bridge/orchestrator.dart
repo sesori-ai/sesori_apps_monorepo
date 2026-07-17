@@ -12,6 +12,8 @@ import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../control/control_status_notifier.dart";
+import "../listeners/command_dispatch_outcome_listener.dart";
+import "../listeners/plugin_command_timeline_listener.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
@@ -65,13 +67,14 @@ import "routing/restart_bridge_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
+import "services/command_timeline_mutation.dart";
+import "services/command_timeline_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_diff_service.dart";
-import "services/session_event_enrichment_service.dart";
 import "services/session_lifecycle_service.dart";
 import "services/session_mutation_dispatcher.dart";
 import "services/session_prompt_service.dart";
@@ -79,6 +82,7 @@ import "services/session_unseen_service.dart";
 import "services/session_view_tracker.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
+import "sse/command_timeline_sse_mapper.dart";
 import "sse/sse_manager.dart";
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
@@ -110,8 +114,11 @@ class Orchestrator {
   final PermissionRepository _permissionRepository;
   final QuestionRepository _questionRepository;
   final WorktreeService _worktreeService;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
+  final SessionPromptService _sessionPromptService;
+  final CommandTimelineService _commandTimelineService;
+  final PluginCommandTimelineListener _pluginCommandTimelineListener;
+  final CommandDispatchOutcomeListener _commandDispatchOutcomeListener;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
 
@@ -142,8 +149,11 @@ class Orchestrator {
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required WorktreeService worktreeService,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionMutationDispatcher sessionMutationDispatcher,
+    required SessionPromptService sessionPromptService,
+    required CommandTimelineService commandTimelineService,
+    required PluginCommandTimelineListener pluginCommandTimelineListener,
+    required CommandDispatchOutcomeListener commandDispatchOutcomeListener,
     required BridgeRestartService restartService,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
     // Standalone has no control channel, so this is null there.
@@ -173,8 +183,11 @@ class Orchestrator {
        _permissionRepository = permissionRepository,
        _questionRepository = questionRepository,
        _worktreeService = worktreeService,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
+       _sessionPromptService = sessionPromptService,
+       _commandTimelineService = commandTimelineService,
+       _pluginCommandTimelineListener = pluginCommandTimelineListener,
+       _commandDispatchOutcomeListener = commandDispatchOutcomeListener,
        _restartService = restartService,
        _statusNotifier = statusNotifier;
 
@@ -189,20 +202,6 @@ class Orchestrator {
     );
     sseManager.setRoomKey(roomKey);
 
-    final sessionPromptService = SessionPromptService(
-      sessionRepository: _sessionRepository,
-    );
-    final promptDefaultsSubscriptions = CompositeSubscription();
-    sessionPromptService.promptDefaultsChanges
-        .listen((change) {
-          sseManager.enqueueEvent(
-            SesoriSseEvent.sessionPromptDefaultsChanged(
-              sessionID: change.sessionId,
-              promptDefaults: change.promptDefaults,
-            ),
-          );
-        })
-        .addTo(promptDefaultsSubscriptions);
     final sessionLifecycleService = SessionLifecycleService(
       worktreeService: _worktreeService,
       sessionRepository: _sessionRepository,
@@ -227,7 +226,7 @@ class Orchestrator {
         GetSessionStatusesHandler(sessionRepository: _sessionRepository),
         GetChildSessionsHandler(sessionRepository: _sessionRepository),
         GetSessionHandler(_sessionRepository),
-        GetSessionMessagesHandler(sessionRepository: _sessionRepository),
+        GetSessionMessagesHandler(commandTimelineService: _commandTimelineService),
         GetSessionsHandler(
           sessionRepository: _sessionRepository,
           prSyncService: _prSyncService,
@@ -245,7 +244,7 @@ class Orchestrator {
           sessionLifecycleService: sessionLifecycleService,
           sessionMutationDispatcher: _sessionMutationDispatcher,
         ),
-        SendPromptHandler(sessionPromptService: sessionPromptService),
+        SendPromptHandler(sessionPromptService: _sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
         GetProvidersHandler(_providerRepository),
         GetAgentsHandler(_agentRepository),
@@ -289,8 +288,7 @@ class Orchestrator {
       sseManager: sseManager,
       router: router,
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
-      sessionPromptService: sessionPromptService,
-      promptDefaultsSubscriptions: promptDefaultsSubscriptions,
+      sessionPromptService: _sessionPromptService,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
       sessionRepository: _sessionRepository,
@@ -300,8 +298,9 @@ class Orchestrator {
       projectActivityService: _projectActivityService,
       permissionRepository: _permissionRepository,
       sessionAbortService: sessionAbortService,
-      sessionEventEnrichmentService: _sessionEventEnrichmentService,
       sessionMutationDispatcher: _sessionMutationDispatcher,
+      pluginCommandTimelineListener: _pluginCommandTimelineListener,
+      commandDispatchOutcomeListener: _commandDispatchOutcomeListener,
       restartService: _restartService,
       statusNotifier: _statusNotifier,
     );
@@ -320,6 +319,8 @@ class Orchestrator {
 /// Created by [Orchestrator.create]. Call [run] to start the relay loop
 /// and [cancel] to shut down gracefully.
 class OrchestratorSession {
+  static const CommandTimelineSseMapper _commandTimelineSseMapper = CommandTimelineSseMapper();
+
   final BridgeConfig config;
   final RelayClient _client;
   final BridgePluginApi _plugin;
@@ -340,11 +341,12 @@ class OrchestratorSession {
   final SessionViewTracker _sessionViewTracker;
   final SessionRepository _sessionRepository;
   final PermissionRepository _permissionRepository;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionMutationDispatcher _sessionMutationDispatcher;
+  final PluginCommandTimelineListener _pluginCommandTimelineListener;
+  final CommandDispatchOutcomeListener _commandDispatchOutcomeListener;
   final SessionAbortService _sessionAbortService;
   final SessionPromptService _sessionPromptService;
-  final CompositeSubscription _promptDefaultsSubscriptions;
+  final CompositeSubscription _promptDefaultsSubscriptions = CompositeSubscription();
   final ProjectActivityService _projectActivityService;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
@@ -387,7 +389,6 @@ class OrchestratorSession {
     required RequestRouter router,
     required BridgeEventMapper mapper,
     required SessionPromptService sessionPromptService,
-    required CompositeSubscription promptDefaultsSubscriptions,
     required StreamController<int> bytesSentController,
     required FailureReporter failureReporter,
     required SessionRepository sessionRepository,
@@ -397,8 +398,9 @@ class OrchestratorSession {
     required ProjectActivityService projectActivityService,
     required PermissionRepository permissionRepository,
     required SessionAbortService sessionAbortService,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required SessionMutationDispatcher sessionMutationDispatcher,
+    required PluginCommandTimelineListener pluginCommandTimelineListener,
+    required CommandDispatchOutcomeListener commandDispatchOutcomeListener,
     required BridgeRestartService restartService,
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
@@ -414,7 +416,6 @@ class OrchestratorSession {
        _router = router,
        _mapper = mapper,
        _sessionPromptService = sessionPromptService,
-       _promptDefaultsSubscriptions = promptDefaultsSubscriptions,
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
@@ -423,11 +424,23 @@ class OrchestratorSession {
        _sessionRepository = sessionRepository,
        _permissionRepository = permissionRepository,
        _sessionMutationDispatcher = sessionMutationDispatcher,
+       _pluginCommandTimelineListener = pluginCommandTimelineListener,
+       _commandDispatchOutcomeListener = commandDispatchOutcomeListener,
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
        _restartService = restartService,
-       _statusNotifier = statusNotifier,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       _statusNotifier = statusNotifier {
+    _sessionPromptService.promptDefaultsChanges
+        .listen((change) {
+          _sseManager.enqueueEvent(
+            SesoriSseEvent.sessionPromptDefaultsChanged(
+              sessionID: change.sessionId,
+              promptDefaults: change.promptDefaults,
+            ),
+          );
+        })
+        .addTo(_promptDefaultsSubscriptions);
+  }
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
@@ -443,7 +456,6 @@ class OrchestratorSession {
     Log.d("registering bridge with auth server...");
     await _bridgeRegistrationService.ensureRegistered();
     Log.d("bridge registered");
-
     try {
       Log.d("connecting to relay...");
       await _client.connect();
@@ -466,6 +478,15 @@ class OrchestratorSession {
             _completionListener.handleSseEvent(event);
           })
           .addTo(_subscriptions);
+      _commandDispatchOutcomeListener.mutations
+          .asyncMap<void>(_deliverCommandTimelineMutations)
+          .listen(
+            (_) {},
+            onError: (Object error, StackTrace stackTrace) {
+              Log.w("command dispatch timeline stream failed", error, stackTrace);
+            },
+          )
+          .addTo(_subscriptions);
 
       // Reconcile in one batch before publishing the startup baseline. Failure
       // is isolated so project activity cannot prevent the relay session from
@@ -482,16 +503,8 @@ class OrchestratorSession {
         }
       }
       Log.d("subscribing to plugin event stream...");
-      MergeStream<BridgeSseEvent>([
-            _plugin.events,
-            _sessionMutationDispatcher.deletedSessions.map(
-              (session) => BridgeSseSessionDeleted(info: session.toJson()),
-            ),
-          ])
-          .asyncMap<BridgeSseEvent?>(_sessionEventEnrichmentService.enrich)
-          .where((event) => event != null)
-          .cast<BridgeSseEvent>()
-          .asyncMap<void>(_processPluginEvent)
+      _pluginCommandTimelineListener.outputs
+          .asyncMap<void>(_processPluginTimelineOutput)
           .listen(
             (_) {},
             onError: (Object e, StackTrace st) {
@@ -512,6 +525,18 @@ class OrchestratorSession {
             },
           )
           .addTo(_subscriptions);
+      _sessionMutationDispatcher.deletedSessions
+          .map<BridgeSseEvent>((session) => BridgeSseSessionDeleted(info: session.toJson()))
+          .asyncMap<void>(_processPluginEvent)
+          .listen(
+            (_) {},
+            onError: (Object error, StackTrace stackTrace) {
+              Log.w("local session deletion stream failed", error, stackTrace);
+            },
+          )
+          .addTo(_subscriptions);
+      await _commandDispatchOutcomeListener.start();
+      await _pluginCommandTimelineListener.start();
       Log.d("plugin event stream subscribed");
       _prSyncService.prChanges
           .listen((String projectId) {
@@ -810,6 +835,21 @@ class OrchestratorSession {
             )
             .catchError((_) {}),
       );
+    }
+  }
+
+  Future<void> _processPluginTimelineOutput(PluginCommandTimelineOutput output) async {
+    switch (output) {
+      case PluginCommandTimelinePassthrough(:final event):
+        await _processPluginEvent(event);
+      case PluginCommandTimelineCanonical(:final mutations):
+        await _deliverCommandTimelineMutations(mutations);
+    }
+  }
+
+  Future<void> _deliverCommandTimelineMutations(List<CommandTimelineMutation> mutations) async {
+    for (final event in _commandTimelineSseMapper.mapAll(mutations)) {
+      await _deliverSseEvent(event: event);
     }
   }
 

@@ -4,11 +4,12 @@ import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
 import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
-import "package:sesori_dart_core/logging.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "assistant_message_card.dart";
+import "command_message_card.dart";
 import "error_message_card.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
@@ -48,8 +49,7 @@ import "user_message_card.dart";
 ///   own auto-scroll is disabled (`shouldScrollToEndWhenSendingMessage:
 ///   false`; the at-bottom variant is a no-op for reversed lists).
 /// - While **detached** (user dragged / trackpad-scrolled / pan-zoomed
-///   away from the bottom), the full set of rendered inputs
-///   (`messages`, `streamingText`, `children`, `childStatuses`) is
+///   away from the bottom), the rendered [SessionDetailLoaded] state is
 ///   snapshotted AND controller syncing is suspended, so nothing below
 ///   (or above) the user's viewport can grow, shrink, or reorder under
 ///   them. Both freezes lift the moment the user reattaches.
@@ -59,11 +59,7 @@ import "user_message_card.dart";
 /// detached snapshot, and the follow/chat controller lifecycles.
 class SessionDetailMessageList extends StatefulWidget {
   final String? projectId;
-  final List<MessageWithParts> messages;
-  final Map<String, String> streamingText;
-  final List<Session> children;
-  final Map<String, SessionStatus> childStatuses;
-  final String? retryErrorMessage;
+  final SessionDetailLoaded state;
 
   /// Height of the floating composer overlaying the list's bottom edge. Used
   /// both as extra bottom scroll padding — so the newest message rests clear of
@@ -81,11 +77,7 @@ class SessionDetailMessageList extends StatefulWidget {
   const SessionDetailMessageList({
     super.key,
     required this.projectId,
-    required this.messages,
-    required this.streamingText,
-    required this.children,
-    required this.childStatuses,
-    this.retryErrorMessage,
+    required this.state,
     this.bottomInset = 0,
     this.topInset = 0,
   });
@@ -93,17 +85,6 @@ class SessionDetailMessageList extends StatefulWidget {
   @override
   State<SessionDetailMessageList> createState() => _SessionDetailMessageListState();
 }
-
-/// Immutable snapshot of the rendered inputs taken the moment the user
-/// detaches. Rendered in place of live widget props while detached so
-/// the viewport stays pinned to what the user was reading.
-typedef _DetachedSnapshot = ({
-  List<MessageWithParts> messages,
-  Map<String, String> streamingText,
-  List<Session> children,
-  Map<String, SessionStatus> childStatuses,
-  String? retryErrorMessage,
-});
 
 class _SessionDetailMessageListState extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
@@ -168,8 +149,8 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   bool _revealPanActive = false;
 
   /// Snapshot taken at the moment of detach. `null` means "not frozen
-  /// — use live `widget.*` props".
-  _DetachedSnapshot? _snapshot;
+  /// — use live [SessionDetailMessageList.state]".
+  SessionDetailLoaded? _snapshot;
 
   /// Cache for the id → data-source-index map consumed by the row
   /// builder. Keyed on a content signature of `(length, firstId,
@@ -201,8 +182,8 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     );
     _chatController = chat_core.InMemoryChatController(
       messages: _chatEntriesFor(
-        messages: widget.messages,
-        hasRetryError: widget.retryErrorMessage != null,
+        messages: widget.state.messages,
+        hasRetryError: widget.state.retryErrorMessage != null,
       ),
     );
   }
@@ -234,13 +215,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
         _snapshot = null;
         _syncChatController();
       } else {
-        _snapshot ??= (
-          messages: List<MessageWithParts>.unmodifiable(widget.messages),
-          streamingText: Map<String, String>.unmodifiable(widget.streamingText),
-          children: List<Session>.unmodifiable(widget.children),
-          childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
-          retryErrorMessage: widget.retryErrorMessage,
-        );
+        _snapshot ??= widget.state;
       }
     });
   }
@@ -252,8 +227,8 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   /// cheap id comparison below and never touch the animated list.
   void _syncChatController() {
     final target = _chatEntriesFor(
-      messages: widget.messages,
-      hasRetryError: widget.retryErrorMessage != null,
+      messages: widget.state.messages,
+      hasRetryError: widget.state.retryErrorMessage != null,
     );
     final current = _chatController.messages;
     if (_entriesMatch(current: current, target: target)) return;
@@ -315,12 +290,12 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final snap = _snapshot;
-    final messages = snap?.messages ?? widget.messages;
-    final streamingText = snap?.streamingText ?? widget.streamingText;
-    final children = snap?.children ?? widget.children;
-    final childStatuses = snap?.childStatuses ?? widget.childStatuses;
-    final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
+    final state = _snapshot ?? widget.state;
+    final messages = state.messages;
+    final streamingText = state.streamingText;
+    final children = state.children;
+    final childStatuses = state.childStatuses;
+    final retryErrorMessage = state.retryErrorMessage;
 
     final indexById = _indexByIdFor(messages: messages);
 
@@ -401,6 +376,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
                   chat_core.MessageGroupStatus? groupStatus,
                 }) => _buildRow(
                   entry: message,
+                  state: state,
                   messages: messages,
                   indexById: indexById,
                   streamingText: streamingText,
@@ -438,6 +414,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
 
   Widget _buildRow({
     required chat_core.CustomMessage entry,
+    required SessionDetailLoaded state,
     required List<MessageWithParts> messages,
     required Map<String, int> indexById,
     required Map<String, String> streamingText,
@@ -454,6 +431,13 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     if (index == null || index >= messages.length) return const SizedBox.shrink();
     final message = messages[index];
     final card = switch (message.info) {
+      MessageUser(:final command?) => CommandMessageCard(
+        command: command,
+        resultText: state.resolveCommandResultText(
+          command: command,
+          messageId: message.info.id,
+        ),
+      ),
       MessageUser() => UserMessageCard(message: message),
       MessageAssistant() => AssistantMessageCard(
         projectId: widget.projectId,

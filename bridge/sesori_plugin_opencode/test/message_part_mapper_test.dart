@@ -6,7 +6,7 @@ import "package:test/test.dart";
 void main() {
   const mapper = MessagePartMapper();
 
-  test("maps manual compaction to visible command text", () {
+  test("keeps manual compaction hidden for command-level mapping", () {
     final part = mapper.mapPart(
       const CompactionPart(
         id: "part-1",
@@ -18,9 +18,9 @@ void main() {
       ),
     );
 
-    expect(part.type, equals(PluginMessagePartType.text));
-    expect(part.text, equals("/compact"));
-    expect(part.type.isVisible, isTrue);
+    expect(part.type, equals(PluginMessagePartType.compaction));
+    expect(part.text, isNull);
+    expect(part.type.isVisible, isFalse);
   });
 
   test("keeps automatic compaction hidden", () {

@@ -1,4 +1,5 @@
 class SendCommandBody {
+  final String? messageID;
   final String command;
   final String arguments;
   final String? agent;
@@ -6,6 +7,7 @@ class SendCommandBody {
   final ({String providerID, String modelID})? model;
 
   const SendCommandBody({
+    required this.messageID,
     required this.command,
     required this.arguments,
     required this.agent,
@@ -16,6 +18,7 @@ class SendCommandBody {
   Map<String, dynamic> toJson() {
     final selectedModel = model;
     return {
+      "messageID": ?messageID,
       "command": command,
       "arguments": arguments,
       "agent": ?agent,

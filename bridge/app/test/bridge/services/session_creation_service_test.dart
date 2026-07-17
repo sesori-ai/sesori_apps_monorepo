@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/bridge/services/command_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -26,6 +27,7 @@ void main() {
     late _FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
     late SessionMutationDispatcher mutationDispatcher;
+    late CommandDispatcher commandDispatcher;
     late SessionCreationService service;
 
     setUp(() async {
@@ -44,6 +46,7 @@ void main() {
           plugin: plugin,
         ),
       );
+      final commandStack = TestCommandStack(db);
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -51,17 +54,23 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      commandDispatcher = commandStack.dispatcher(
+        plugin: plugin,
+        sessionRepository: repository,
+      );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
       service = SessionCreationService(
         metadataService: metadataService,
         worktreeService: worktreeService,
         sessionRepository: repository,
+        commandDispatcher: commandDispatcher,
         sessionMutationDispatcher: mutationDispatcher,
       );
     });
 
     tearDown(() async {
       await mutationDispatcher.dispose();
+      await commandDispatcher.dispose();
       await db.close();
     });
 
@@ -173,6 +182,47 @@ void main() {
       expect(retained?.backendSessionId, "backend-session");
       expect(retained?.projectId, "/retained");
     });
+
+    test("rejected initial command rolls back session and only its requested worktree", () async {
+      final rejection = StateError("command rejected");
+      plugin.dispatchError = rejection;
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/rejected",
+        branchName: "rejected",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+      final deletedEvents = <Session>[];
+      final subscription = mutationDispatcher.deletedSessions.listen(deletedEvents.add);
+      addTearDown(subscription.cancel);
+
+      await expectLater(
+        service.createSession(
+          request: const CreateSessionRequest(
+            projectId: "/repo",
+            pluginId: "fake",
+            dedicatedWorktree: true,
+            parts: [PromptPart.text(text: "Review this")],
+            variant: null,
+            agent: null,
+            model: null,
+            command: "review",
+          ),
+        ),
+        throwsA(same(rejection)),
+      );
+
+      expect(await db.sessionDao.getSession(sessionId: "backend-session"), isNull);
+      expect(await db.sessionDao.getTombstonedSessionIds(pluginId: "fake"), isEmpty);
+      expect(plugin.deletedSessionIds, ["backend-session"]);
+      expect(worktreeService.removedWorktrees, [
+        (projectId: "/repo", worktreePath: "/repo/.worktrees/rejected", force: true),
+      ]);
+      expect(worktreeService.deletedBranches, [
+        (projectId: "/repo", branchName: "rejected", force: true),
+      ]);
+      expect(deletedEvents, isEmpty);
+    });
   });
 }
 
@@ -202,6 +252,8 @@ class _FakeWorktreeService extends WorktreeService {
   int prepareCalls = 0;
   int resolveCalls = 0;
   WorktreeResult prepareResult = WorktreeFallback(originalPath: "/repo", reason: "fallback");
+  final List<({String projectId, String worktreePath, bool force})> removedWorktrees = [];
+  final List<({String projectId, String branchName, bool force})> deletedBranches = [];
 
   _FakeWorktreeService({required super.worktreeRepository});
 
@@ -222,11 +274,33 @@ class _FakeWorktreeService extends WorktreeService {
     resolveCalls++;
     return null;
   }
+
+  @override
+  Future<bool> removeWorktree({
+    required String projectId,
+    required String worktreePath,
+    required bool force,
+  }) async {
+    removedWorktrees.add((projectId: projectId, worktreePath: worktreePath, force: force));
+    return true;
+  }
+
+  @override
+  Future<bool> deleteBranch({
+    required String projectId,
+    required String branchName,
+    required bool force,
+  }) async {
+    deletedBranches.add((projectId: projectId, branchName: branchName, force: force));
+    return true;
+  }
 }
 
 class _FakePlugin implements NativeProjectsPluginApi {
   int createCalls = 0;
   String? lastCreateDirectory;
+  Object? dispatchError;
+  final List<String> deletedSessionIds = [];
 
   @override
   String get id => "fake";
@@ -253,6 +327,26 @@ class _FakePlugin implements NativeProjectsPluginApi {
       title: null,
       time: null,
     );
+  }
+
+  @override
+  Future<PluginCommandDispatch> sendCommand({
+    required String sessionId,
+    required String invocationId,
+    required String command,
+    required String arguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    final error = dispatchError;
+    if (error != null) throw error;
+    return const PluginCommandDispatch(backendMessageId: null);
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    deletedSessionIds.add(sessionId);
   }
 
   @override

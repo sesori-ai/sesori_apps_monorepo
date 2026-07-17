@@ -11,7 +11,10 @@ import "package:test/test.dart";
 void main() {
   group("CodexEventMapper", () {
     const projectCwd = "/repo/app";
-    final mapper = CodexEventMapper(pluginId: CodexPlugin.pluginId, projectCwd: projectCwd);
+    final mapper = _ContextualMapper(
+      pluginId: CodexPlugin.pluginId,
+      projectCwd: projectCwd,
+    );
 
     /// Replicates `BridgeEventMapper`'s payload construction and runs the
     /// bridge's `SesoriSseEvent.fromJson`. Throwing here is exactly the bug
@@ -118,7 +121,7 @@ void main() {
     test("thread/name/updated uses the plugin-fed directory for its project id", () {
       // A thread/name/updated notification carries no cwd, so the mapper relies
       // on the directory the plugin learned when the thread was started/resumed.
-      final scopedMapper = CodexEventMapper(pluginId: CodexPlugin.pluginId, projectCwd: projectCwd)
+      final scopedMapper = _ContextualMapper(pluginId: CodexPlugin.pluginId, projectCwd: projectCwd)
         ..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
       final events = scopedMapper.map(
@@ -246,7 +249,7 @@ void main() {
     });
 
     test("agentMessage falls back to config model when no per-thread model set", () {
-      final richMapper = CodexEventMapper(
+      final richMapper = _ContextualMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
@@ -282,7 +285,7 @@ void main() {
     });
 
     test("agentMessage uses the per-thread model the plugin recorded", () {
-      final richMapper = CodexEventMapper(
+      final richMapper = _ContextualMapper(
         pluginId: CodexPlugin.pluginId,
         projectCwd: projectCwd,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
@@ -308,9 +311,11 @@ void main() {
           },
         ),
       );
-      final assistant = shared.Message.fromJson(
-        (events[0] as BridgeSseMessageUpdated).info,
-      ) as shared.MessageAssistant;
+      final assistant =
+          shared.Message.fromJson(
+                (events[0] as BridgeSseMessageUpdated).info,
+              )
+              as shared.MessageAssistant;
       expect(assistant.modelID, equals("gpt-5.4-mini"));
       expect(assistant.providerID, equals("openai"));
 
@@ -325,9 +330,11 @@ void main() {
           },
         ),
       );
-      final assistant2 = shared.Message.fromJson(
-        (events2[0] as BridgeSseMessageUpdated).info,
-      ) as shared.MessageAssistant;
+      final assistant2 =
+          shared.Message.fromJson(
+                (events2[0] as BridgeSseMessageUpdated).info,
+              )
+              as shared.MessageAssistant;
       expect(assistant2.modelID, equals("gpt-5.5"));
     });
 
@@ -492,7 +499,10 @@ void main() {
       final events = mapper.map(
         const CodexServerNotification(
           method: "error",
-          params: {"threadId": "t-1", "error": {"message": "boom"}},
+          params: {
+            "threadId": "t-1",
+            "error": {"message": "boom"},
+          },
         ),
       );
       expect(events, hasLength(1));
@@ -564,4 +574,53 @@ void main() {
       expect(() => parseAsSesori(agent[0]), returnsNormally);
     });
   });
+}
+
+class _ContextualMapper {
+  _ContextualMapper({
+    required String pluginId,
+    required String projectCwd,
+    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
+  }) : _tracker = CodexContextTracker(
+         pluginId: pluginId,
+         launchDirectory: projectCwd,
+         defaults: config,
+       ),
+       _repository = CodexAppServerRepository(
+         api: CodexAppServerApi(
+           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+         ),
+       );
+
+  final CodexEventMapper _mapper = const CodexEventMapper();
+  final CodexContextTracker _tracker;
+  final CodexAppServerRepository _repository;
+
+  List<BridgeSseEvent> map(CodexServerNotification notification) {
+    final event = _repository.mapNotification(
+      CodexAppServerApi.parseNotification(notification),
+    );
+    final contextFacts = event.context;
+    if (contextFacts != null) _tracker.recordFacts(contextFacts);
+    return _mapper.map(
+      event,
+      context: _tracker.snapshot(
+        threadId: event.threadId,
+        notificationDirectory: contextFacts?.directory,
+      ),
+    );
+  }
+
+  void setThreadDirectory(String threadId, String? directory) {
+    _tracker.record(
+      threadId: threadId,
+      model: null,
+      provider: null,
+      directory: directory,
+    );
+  }
+
+  void setThreadModel(String threadId, String? model) {
+    _tracker.setModel(threadId: threadId, model: model);
+  }
 }

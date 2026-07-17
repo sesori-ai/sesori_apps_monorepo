@@ -2,9 +2,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
-import "acp_content.dart";
-import "acp_protocol.dart";
-import "acp_stdio_client.dart";
+import "repositories/models/acp_notification_record.dart";
 
 /// A backend "halt notice": the agent ended a turn without doing the requested
 /// work and instead streamed a terminal notice telling the user to change
@@ -88,10 +86,8 @@ class AcpEventMapper {
   }
 
   /// The model/provider to stamp on [sessionId]'s assistant messages.
-  String? modelForSession(String sessionId) =>
-      _sessionModel[sessionId] ?? currentModelId;
-  String? providerForSession(String sessionId) =>
-      _sessionProvider[sessionId] ?? currentProviderId;
+  String? modelForSession(String sessionId) => _sessionModel[sessionId] ?? currentModelId;
+  String? providerForSession(String sessionId) => _sessionProvider[sessionId] ?? currentProviderId;
 
   /// Last-known per-session metadata (title/times), fed by the plugin from
   /// enumeration and creation (like [setSessionProject]). `session_info_update`
@@ -143,8 +139,7 @@ class AcpEventMapper {
   }
 
   /// The project id/directory to stamp on [sessionId]'s session-level events.
-  String projectForSession(String sessionId) =>
-      _sessionProject[sessionId] ?? launchDirectory;
+  String projectForSession(String sessionId) => _sessionProject[sessionId] ?? launchDirectory;
 
   /// Drops every per-session cache entry for [sessionId] — called when the
   /// session is deleted so live-render state (model, project, turn counters,
@@ -212,10 +207,7 @@ class AcpEventMapper {
     required String sessionId,
     required List<PluginPromptPart> parts,
   }) {
-    final textParts = parts
-        .whereType<PluginPromptPartText>()
-        .where((part) => part.text.isNotEmpty)
-        .toList();
+    final textParts = parts.whereType<PluginPromptPartText>().where((part) => part.text.isNotEmpty).toList();
     if (textParts.isEmpty) return const [];
 
     final sequence = (_sentUserSeq[sessionId] ?? 0) + 1;
@@ -238,96 +230,68 @@ class AcpEventMapper {
     ];
   }
 
-  /// Maps a single notification to zero or more bridge events.
-  List<BridgeSseEvent> map(AcpNotification notification) {
-    if (notification.method != AcpMethods.sessionUpdate) {
-      return mapExtension(notification);
-    }
-    final params = notification.params;
-    final sessionId = params["sessionId"] as String?;
-    final update = _asMap(params["update"]);
-    if (sessionId == null || sessionId.isEmpty || update == null) {
-      return const [];
-    }
-
-    switch (update["sessionUpdate"] as String?) {
-      case "agent_message_chunk":
-        return _textChunk(
-          sessionId: sessionId,
-          update: update,
-          role: _ChunkRole.assistant,
-          partSuffix: "text",
-          partType: PluginMessagePartType.text,
-        );
-      case "agent_thought_chunk":
-        return _textChunk(
-          sessionId: sessionId,
-          update: update,
-          role: _ChunkRole.assistant,
-          partSuffix: "reasoning",
-          partType: PluginMessagePartType.reasoning,
-        );
-      case "user_message_chunk":
-        // This plugin emits the accepted prompt itself. A live user chunk is
-        // the agent echoing that same prompt and would render it twice. Replay
-        // is reconstructed separately by AcpReplayCollector.
-        return const [];
-      case "tool_call":
-        return _toolCall(sessionId: sessionId, update: update);
-      case "tool_call_update":
-        return _toolCallUpdate(sessionId: sessionId, update: update);
-      case "plan":
-        return [BridgeSseTodoUpdated(sessionID: sessionId)];
-      case "available_commands_update":
-        // The advertised commands themselves are tracked by AcpCommandTracker
-        // (served via getCommands); this makes the matching client session
-        // re-fetch its snapshot so the new command list becomes visible.
-        return [
-          BridgeSseSessionsUpdated(
-            sessionID: sessionId,
-            projectID: projectForSession(sessionId),
-          ),
-        ];
-      case "session_info_update":
-        // The notification may carry `updatedAt` (ISO 8601 or epoch) — keep
-        // the snapshot's recency fresh even when no title change is emitted.
-        final eventUpdatedMs = _timestampMs(update["updatedAt"]);
-        if (eventUpdatedMs != null) {
-          setSessionSnapshot(
-            sessionId: sessionId,
-            title: null,
-            createdMs: null,
-            updatedMs: eventUpdatedMs,
-          );
-        }
-        // The agent's auto-generated title for the thread. An explicit null or
-        // empty title clears it; absent leaves the cached title unchanged.
-        if (update.containsKey("title")) {
-          final rawTitle = update["title"];
-          _sessionSnapshots.putIfAbsent(sessionId, _SessionSnapshot.new).title =
-              rawTitle is String && rawTitle.isNotEmpty ? rawTitle : null;
-        }
-        // Session lists must receive timestamp-only metadata updates to retain
-        // their activity ordering. With neither a title nor timestamp, this
-        // update carries nothing the client can render.
-        if (!update.containsKey("title") && eventUpdatedMs == null) return const [];
-        return [
-          BridgeSseSessionUpdated(
-            info: _sessionUpdate(sessionId).toJson(),
-            titleChanged: update.containsKey("title"),
-          ),
-        ];
-    }
-
-    // Dropped intentionally: current_mode_update (the mode is surfaced as the
-    // session "variant", driven by the plugin, not a message event), and any
-    // future standard variants the mobile UI has no renderer for.
-    return const [];
+  /// Maps one repository-owned notification record to bridge events.
+  List<BridgeSseEvent> map(AcpNotificationRecord notification) {
+    return switch (notification) {
+      AcpExtensionNotificationRecord() => mapExtension(notification),
+      AcpMessageChunkRecord() => _messageChunk(notification),
+      AcpToolUpdateRecord(:final isInitial) => isInitial ? _toolCall(notification) : _toolCallUpdate(notification),
+      AcpPlanChangedRecord() => _planChanged(notification),
+      AcpAvailableCommandsChangedRecord() => _availableCommandsChanged(
+        notification,
+      ),
+      AcpSessionInfoChangedRecord() => _sessionInfoChanged(notification),
+      AcpIgnoredSessionNotificationRecord() => const [],
+    };
   }
 
   /// Hook for non-`session/update` notifications (harness extensions such as
   /// Cursor's `cursor/update_todos`). Base implementation drops them.
-  List<BridgeSseEvent> mapExtension(AcpNotification notification) => const [];
+  List<BridgeSseEvent> mapExtension(AcpExtensionNotificationRecord notification) => const [];
+
+  List<BridgeSseEvent> _messageChunk(AcpMessageChunkRecord notification) {
+    return switch (notification.role) {
+      AcpMessageChunkRole.user => const [],
+      AcpMessageChunkRole.assistant => _textChunk(
+        sessionId: notification.sessionId,
+        acpMessageId: notification.messageId,
+        text: notification.text,
+        role: _ChunkRole.assistant,
+        partSuffix: "text",
+        partType: PluginMessagePartType.text,
+      ),
+      AcpMessageChunkRole.thought => _textChunk(
+        sessionId: notification.sessionId,
+        acpMessageId: notification.messageId,
+        text: notification.text,
+        role: _ChunkRole.assistant,
+        partSuffix: "reasoning",
+        partType: PluginMessagePartType.reasoning,
+      ),
+    };
+  }
+
+  List<BridgeSseEvent> _planChanged(AcpPlanChangedRecord notification) => [
+    BridgeSseTodoUpdated(sessionID: notification.sessionId),
+  ];
+
+  List<BridgeSseEvent> _availableCommandsChanged(
+    AcpAvailableCommandsChangedRecord notification,
+  ) => [
+    BridgeSseSessionsUpdated(
+      sessionID: notification.sessionId,
+      projectID: projectForSession(notification.sessionId),
+    ),
+  ];
+
+  List<BridgeSseEvent> _sessionInfoChanged(
+    AcpSessionInfoChangedRecord notification,
+  ) => _sessionInfoEvents(
+    sessionId: notification.sessionId,
+    hasTitle: notification.hasTitle,
+    title: notification.title,
+    updatedAtMs: notification.updatedAtMs,
+  );
 
   /// Hook: classify an assistant message's [text] as a backend halt notice
   /// (see [AcpHaltNotice]) — the agent ended the turn without doing the
@@ -349,12 +313,12 @@ class AcpEventMapper {
 
   List<BridgeSseEvent> _textChunk({
     required String sessionId,
-    required Map<String, dynamic> update,
+    required String? acpMessageId,
+    required String? text,
     required _ChunkRole role,
     required String partSuffix,
     required PluginMessagePartType partType,
   }) {
-    final text = acpContentText(update["content"]);
     if (text == null || text.isEmpty) return const [];
 
     // A backend may end a turn without doing the requested work and instead
@@ -376,11 +340,8 @@ class AcpEventMapper {
     // role stays in the id so a pathological cross-role id reuse can't merge a
     // user chunk into an assistant envelope. Absent (Cursor today) → the
     // synthesized per-turn id.
-    final acpMessageId = update["messageId"];
-    final hasAcpMessageId = acpMessageId is String && acpMessageId.isNotEmpty;
-    final fallbackSuffix = role == _ChunkRole.assistant
-        ? "-a${_idlessAssistantSeq[sessionId] ?? 0}"
-        : "";
+    final hasAcpMessageId = acpMessageId != null;
+    final fallbackSuffix = role == _ChunkRole.assistant ? "-a${_idlessAssistantSeq[sessionId] ?? 0}" : "";
     final messageId = hasAcpMessageId
         ? "$sessionId-m$acpMessageId-${role.name}"
         : "$sessionId-t${_turn(sessionId)}-${role.name}$fallbackSuffix";
@@ -454,25 +415,20 @@ class AcpEventMapper {
     ];
   }
 
-  List<BridgeSseEvent> _toolCall({
-    required String sessionId,
-    required Map<String, dynamic> update,
-  }) {
-    final toolCallId = update["toolCallId"] as String?;
+  List<BridgeSseEvent> _toolCall(AcpToolUpdateRecord update) {
+    final sessionId = update.sessionId;
+    final toolCallId = update.toolCallId;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     if (_liveTools[sessionId]?[toolCallId] == null) {
       _closeIdlessAssistantEnvelope(sessionId);
     }
     final messageId = "$sessionId-tool-$toolCallId";
     final state = _LiveTool(
-      // Fail-soft like the tool name and `_toolCallUpdate`'s title: a non-string
-      // title (schema drift / malformed agent data) renders as null rather than
-      // throwing and aborting the notification.
-      tool: acpToolName(update),
-      title: update["title"] is String ? update["title"] as String? : null,
-      status: acpToolStatus(update["status"]),
-      output: acpToolOutputText(update),
-      isFileMutation: _isFileMutation(update),
+      tool: update.toolName,
+      title: update.title,
+      status: update.status,
+      output: update.output,
+      isFileMutation: update.isFileMutation,
       diffEmitted: false,
     );
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
@@ -484,16 +440,14 @@ class AcpEventMapper {
       events: events,
       sessionId: sessionId,
       state: state,
-      mutationAvailable: _hasDiffContent(update),
+      mutationAvailable: update.hasDiff,
     );
     return events;
   }
 
-  List<BridgeSseEvent> _toolCallUpdate({
-    required String sessionId,
-    required Map<String, dynamic> update,
-  }) {
-    final toolCallId = update["toolCallId"] as String?;
+  List<BridgeSseEvent> _toolCallUpdate(AcpToolUpdateRecord update) {
+    final sessionId = update.sessionId;
+    final toolCallId = update.toolCallId;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     final messageId = "$sessionId-tool-$toolCallId";
     // A `tool_call_update` is a PARTIAL update: an agent may send only the
@@ -509,16 +463,12 @@ class AcpEventMapper {
     // title-only update must NOT overwrite the canonical id (e.g. "edit") with
     // the title text (`title` lives separately in PluginToolState.title). This
     // matches the replay collector, which preserves the original tool name.
-    final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
-    final newOutput = acpToolOutputText(update);
     final state = _LiveTool(
-      tool: hasKind ? acpToolName(update) : (prior?.tool ?? acpToolName(update)),
-      title: update.containsKey("title") && update["title"] is String
-          ? update["title"] as String?
-          : prior?.title,
-      status: update.containsKey("status") ? acpToolStatus(update["status"]) : (prior?.status ?? PluginToolStatus.pending),
-      output: newOutput ?? prior?.output,
-      isFileMutation: (prior?.isFileMutation ?? false) || _isFileMutation(update),
+      tool: update.hasKind ? update.toolName : (prior?.tool ?? update.toolName),
+      title: update.hasTitle ? update.title : prior?.title,
+      status: update.hasStatus ? update.status : (prior?.status ?? PluginToolStatus.pending),
+      output: update.output ?? prior?.output,
+      isFileMutation: (prior?.isFileMutation ?? false) || update.isFileMutation,
       diffEmitted: prior?.diffEmitted ?? false,
     );
     final events = <BridgeSseEvent>[
@@ -538,15 +488,14 @@ class AcpEventMapper {
       events: events,
       sessionId: sessionId,
       state: state,
-      mutationAvailable: _hasDiffContent(update),
+      mutationAvailable: update.hasDiff,
     );
     return events;
   }
 
   void _closeIdlessAssistantEnvelope(String sessionId) {
     if (!_openIdlessAssistant.remove(sessionId)) return;
-    _idlessAssistantSeq[sessionId] =
-        (_idlessAssistantSeq[sessionId] ?? 0) + 1;
+    _idlessAssistantSeq[sessionId] = (_idlessAssistantSeq[sessionId] ?? 0) + 1;
   }
 
   BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {
@@ -635,12 +584,30 @@ class AcpEventMapper {
     );
   }
 
-  /// Lenient timestamp: the spec sends ISO 8601 strings, live agents have
-  /// shipped epoch numbers — accept both, anything else is null.
-  static int? _timestampMs(Object? raw) {
-    if (raw is num) return raw.round();
-    if (raw is String) return DateTime.tryParse(raw)?.millisecondsSinceEpoch;
-    return null;
+  List<BridgeSseEvent> _sessionInfoEvents({
+    required String sessionId,
+    required bool hasTitle,
+    required String? title,
+    required int? updatedAtMs,
+  }) {
+    if (updatedAtMs != null) {
+      setSessionSnapshot(
+        sessionId: sessionId,
+        title: null,
+        createdMs: null,
+        updatedMs: updatedAtMs,
+      );
+    }
+    if (hasTitle) {
+      _sessionSnapshots.putIfAbsent(sessionId, _SessionSnapshot.new).title = title;
+    }
+    if (!hasTitle && updatedAtMs == null) return const [];
+    return [
+      BridgeSseSessionUpdated(
+        info: _sessionUpdate(sessionId).toJson(),
+        titleChanged: hasTitle,
+      ),
+    ];
   }
 
   PluginMessagePart _part({
@@ -691,26 +658,6 @@ class AcpEventMapper {
     );
   }
 
-  /// Whether a `tool_call`/`tool_call_update` payload reports a file mutation:
-  /// a mutating `kind`, or a standard tool `content` entry of `type: "diff"`
-  /// (a spec-compliant agent may report an edit only through the diff content
-  /// shape, with a non-mutating or absent kind).
-  bool _isFileMutation(Map<String, dynamic> update) {
-    final kind = update["kind"];
-    if (kind == "edit" || kind == "delete" || kind == "move") return true;
-    return _hasDiffContent(update);
-  }
-
-  bool _hasDiffContent(Map<String, dynamic> update) {
-    final content = update["content"];
-    if (content is List) {
-      for (final entry in content) {
-        if (entry is Map && entry["type"] == "diff") return true;
-      }
-    }
-    return false;
-  }
-
   void _appendCompletedMutationDiff({
     required List<BridgeSseEvent> events,
     required String sessionId,
@@ -732,11 +679,6 @@ class AcpEventMapper {
       PluginToolStatus.completed || PluginToolStatus.error => true,
       PluginToolStatus.pending || PluginToolStatus.running || PluginToolStatus.unknown => false,
     };
-  }
-
-  Map<String, dynamic>? _asMap(Object? value) {
-    if (value is Map) return value.cast<String, dynamic>();
-    return null;
   }
 }
 
