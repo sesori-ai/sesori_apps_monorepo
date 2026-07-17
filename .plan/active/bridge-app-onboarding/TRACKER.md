@@ -16,10 +16,10 @@
 
 ## Plan Review
 
-- **Verdict:** Approved after the suffix correction and PR-review hardening
+- **Verdict:** Approved after the multi-pair marker correction
 - **Reviewer:** `aristotle-plan-review`
-- **Date:** 2026-07-17
-- **Reviewed commit:** `e3dfb3f871f464be05629245d1777f2df637a76a` (follow-up review covered the architecture-bearing hardenings; later edits in that commit were editorial/manual evidence only)
+- **Date:** 2026-07-18
+- **Reviewed commit:** `bf6b40e9c00d9b1c27a898f02fe0d00f5bde9d07` (follow-up review covered the architecture-bearing multi-pair correction; later edits in that commit were review evidence and grammar only)
 
 ## Wave Baselines
 
