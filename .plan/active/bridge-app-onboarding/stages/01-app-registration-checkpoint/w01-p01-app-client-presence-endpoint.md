@@ -163,14 +163,19 @@ than hidden stateful collaborators.
 
 `waitForRegistration({userId, timeoutMs, abortSignal})`:
 
-1. Query `hasAnyForUser`; return true immediately when present.
-2. If already aborted or timeout is non-positive, return false/cancel according
-   to the route contract without storing state.
-3. Create waiter, timeout, and one-shot abort listener; store by user id.
-4. Requery `hasAnyForUser` after storage.
-5. If present, remove and resolve true immediately. If the recheck throws,
+1. Capture one absolute deadline before starting the initial
+   `hasAnyForUser` query. Race all reads/waiting through one completion gate so
+   the advertised timeout includes initial-query time and late query completion
+   cannot send or mutate waiter state.
+2. Return true when the initial query completes present before the deadline.
+3. If already aborted, the deadline has elapsed, or timeout is non-positive,
+   return false/cancel according to the route contract without storing state.
+4. Create waiter using only the remaining deadline budget plus a one-shot abort
+   listener; store by user id.
+5. Requery `hasAnyForUser` after storage.
+6. If present, remove and resolve true immediately. If the recheck throws,
    remove all state before rethrowing.
-6. Timeout removes state and resolves false. Abort removes state and resolves a
+7. The absolute deadline removes state and resolves false. Abort removes state and resolves a
    cancellation result that the route does not serialize to a closed socket.
 
 Use one internal completion method so registration, recheck, timeout, abort,
@@ -187,8 +192,9 @@ and error cannot resolve or clean one waiter twice.
   `appClientStatusReplySchema.safeParse(candidateReply)` before sending, and map
   an impossible internal mismatch to the existing internal-server error path.
   The route never asserts or casts an unvalidated reply.
-- Use a 30,000 ms route constant; do not add environment config solely for this
-  endpoint.
+- Use a 30,000 ms route constant as one absolute service deadline beginning
+  before the initial repository read; do not add environment config solely for
+  this endpoint.
 - After await, verify request/reply remains open. If closed, hijack/return as the
   OAuth route does rather than sending a late payload.
 - Return only `{ registered }` with status 200.
@@ -244,7 +250,9 @@ gains a field. There is no compatibility-only server fallback or source marker.
   invalid user id follows the repository's explicit safe/throw convention chosen
   at the pinned baseline and never queries an inferred id.
 - Immediate service call returns true/false correctly and stores no waiter.
-- Timeout resolves false and clears timer/abort/map state.
+- Timeout resolves false and clears timer/abort/map state; controlled slow
+  initial-read and recheck tests prove their elapsed time consumes the same
+  absolute 30-second budget and late completions emit no second result.
 - Pre-aborted signal stores nothing.
 - Abort during wait resolves cancellation and clears everything.
 - Registration wakes all waiters for its user, not another user's waiters.
@@ -303,6 +311,9 @@ with mocks that cannot prove durable ordering.
 - Notifying before Mongo commit would create a false positive; service order and
   failed-upsert test make this impossible.
 - Query-then-wait can lose a transition; post-storage recheck closes the gap.
+- Starting the timeout after the initial read can exceed the bridge's 35-second
+  client deadline; one absolute deadline and slow-read tests enforce the route
+  contract.
 - Duplicating OAuth's close adapter could drift; extract and regression-test one
   Foundation seam.
 - A generic presence service could absorb deletion/notifications/activation;

@@ -19,7 +19,7 @@
 - **Verdict:** Approved — no architectural violations
 - **Reviewer:** `aristotle-plan-review`
 - **Date:** 2026-07-17
-- **Reviewed commit:** `c75b597ddb965f02031b42a6f6d27feb11827aba` plus the complete uncommitted final architecture corrections in `.plan/active/bridge-app-onboarding/`; external auth baseline `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
+- **Reviewed commit:** `49eca8c0b91204687f3c8949a4947f42eaeca269` plus the complete uncommitted plan-PR feedback edits in `.plan/active/bridge-app-onboarding/`; external auth baseline `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
 
 ## Wave Baselines
 
@@ -59,6 +59,11 @@ creation.
 
 ## Findings and Plan Deltas
 
+- **2026-07-17 — Plan-PR review hardening:** Made the auth wait deadline absolute
+  from before its initial read, required explicit `forceRefresh` at every token
+  caller, replaced lossy stdin broadcast handoff with FIFO pending-line
+  preservation, and restricted QR rendering to polarity-safe ANSI+Unicode with
+  URL-only fallback.
 - **2026-07-17 — Plan delivery:** Opened plan-only PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/490 against selected
   implementation base `main`; tracker state is optimistically post-merge on the

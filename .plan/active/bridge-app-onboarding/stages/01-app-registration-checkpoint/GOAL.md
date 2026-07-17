@@ -44,14 +44,17 @@ open. Supervised and noninteractive bridge paths remain unchanged.
 - Auth-server token upsert commits before presence wake; failed writes never wake.
 - Waiter registration and repository recheck are race-safe; every terminal path
   removes timers/listeners/map state.
+- The server's 30-second wait is one absolute deadline beginning before the
+  initial repository read; reads and waiter time do not each receive a new cap.
 - The bridge uses its configurable auth backend and existing token authority.
 - No startup mutex, plugin runtime, relay, or backend process is held while the
   user waits.
 - Normal server long-poll expiry is not a failure and has no retry delay/log.
 - Transient failures use exactly one cancellable 60-second delay and one warning
   per attempt; permanent failures warn once and fail open.
-- Terminal input has one asynchronous owner; raw single-key mode and mixed
-  synchronous/asynchronous stdin are forbidden.
+- Terminal input has one asynchronous owner with FIFO pending-line preservation
+  across sequential prompts; raw single-key mode, lossy broadcast handoff, and
+  mixed synchronous/asynchronous stdin are forbidden.
 - `TerminalPromptApi` exposes raw terminal facts/I/O only.
   `BridgeStartupOrchestrator` (and the independent logout composition) resolves
   typed `TerminalInteractionMode` and injects it into
@@ -62,10 +65,10 @@ open. Supervised and noninteractive bridge paths remain unchanged.
 - `SesoriAuthApi` is the sole per-provider API owner for Sesori auth HTTP. The
   bridge PR migrates existing auth use-case APIs/top-level HTTP operations into
   it and deletes those old boundaries rather than adding a presence wrapper.
-- `TokenRefresher` carries a required auth-local
-  `AuthRequestCancellationSignal`. Both
-  renamed `TokenService` and `ControlChannelTokenService`, every production caller, and
-  every fake implement it; typed refresh failures require no message parsing.
+- `TokenRefresher` carries required named `forceRefresh` and auth-local
+  `AuthRequestCancellationSignal`. Both the renamed `TokenService` and
+  `ControlChannelTokenService`, every production caller, and every fake implement
+  it; typed refresh failures require no message parsing.
 - Onboarding skip actively aborts app-status and in-flight token-refresh
   requests. No request or correlated control pull survives service completion.
 - Root Layer-5 `BridgeStartupOrchestrator` owns all auth/terminal/token/
@@ -73,8 +76,8 @@ open. Supervised and noninteractive bridge paths remain unchanged.
   receives direct already-built runtime/failure/restart/supervised collaborators
   and constructs no lower layer; existing session `Orchestrator` remains the
   post-plugin control owner.
-- The URL is always present when onboarding is shown; QR is optional by
-  capability/width.
+- The URL is always present when onboarding is shown; QR requires proven ANSI+
+  Unicode, explicit black/white polarity, and sufficient known width.
 - Generated files are regenerated from source and never hand-edited.
 - No persistence migration, app/client UI, browser opening, live heartbeat,
   distributed waiter, analytics, or speculative abstraction is included.

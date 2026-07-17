@@ -20,7 +20,7 @@
 Unit/integration tests prove QR modules, quiet zone, width math, exact URL,
 retry/cancellation, and server wake races. They cannot fully prove:
 
-- how real terminal fonts/colors render half blocks and ASCII cells;
+- how real terminal fonts/colors render explicit black/white ANSI half blocks;
 - camera focus/contrast against a physical display under dark/light themes;
 - common macOS/Linux/Windows terminal width and ANSI behavior;
 - the installed app/store handling of the exact public URL; or
@@ -54,7 +54,7 @@ Record only:
 - bridge full SHA and auth-server full SHA/deployment identifier;
 - bridge OS/architecture and terminal application/version;
 - terminal theme category, dimensions, and renderer path observed
-  (ANSI/Unicode, Unicode, ASCII, or URL-only);
+  (ANSI+Unicode QR or URL-only);
 - app platform/version and approximate timestamps;
 - sanitized screenshots/video with account and local details redacted.
 
@@ -104,10 +104,10 @@ For every available row, scan the QR rather than judging appearance only:
 - [ ] macOS common terminal, light theme, ordinary width.
 - [ ] Linux common terminal, dark or light theme.
 - [ ] Windows Terminal/PowerShell host, dark or light theme.
-- [ ] ANSI+UTF-8 renderer path.
-- [ ] ANSI-disabled or `NO_COLOR` Unicode path.
-- [ ] ASCII fallback with UTF-8 disabled/`TERM=dumb`, where an interactive test
-      terminal can safely provide that environment.
+- [ ] ANSI+UTF-8 renderer path in both dark and light themes.
+- [ ] ANSI-disabled or `NO_COLOR` path omits QR and retains the exact URL.
+- [ ] Unicode-disabled/`TERM=dumb` path omits QR and retains the exact URL where
+      an interactive test terminal can safely provide that environment.
 - [ ] Resize to exactly/comfortably wider than rendered QR and confirm scanning.
 - [ ] Resize too narrow and confirm the QR is omitted completely while the exact
       URL and skip instructions remain usable.

@@ -64,9 +64,10 @@ warnings.
 10. Existing provider, email/password, replacement, and logout prompts retain
     their text, echo, EOF, default-answer, and noninteractive behavior after
     terminal input moves under one asynchronous owner.
-11. QR output includes a four-module quiet zone, never exceeds known terminal
-    width, resets ANSI state, supports bounded ANSI/Unicode and ASCII fallbacks,
-    and degrades to the URL alone when safe rendering cannot be proven.
+11. QR output includes a four-module light quiet zone, never exceeds known
+    terminal width, and renders only through explicit black/white ANSI plus
+    Unicode when both capabilities are proven. Unknown polarity, missing ANSI/
+    Unicode, or unsafe width uses the plain-URL-only fallback.
 12. Auth-server and bridge automated verification passes, and the advisory QR
     scan matrix records representative dark/light and platform evidence without
     adding product analytics or post-release observation targets.
@@ -248,8 +249,8 @@ returned.
 ```text
 bridge GET status?wait=true
   -> requireAuth identifies user
-  -> AppClientPresenceService checks DeviceTokenRepository.hasAnyForUser
-  -> absent: register per-user waiter + timeout/abort cleanup
+  -> AppClientPresenceService starts one absolute 30s deadline, then checks DeviceTokenRepository.hasAnyForUser
+  -> absent before deadline: register per-user waiter for only the remaining budget + abort cleanup
   -> recheck repository after waiter registration
   -> return false on 30s timeout, or hijack/return nothing after disconnect
 
@@ -278,8 +279,8 @@ recheck paths remove listener/timer/map state.
 | `LoginOAuthRepository` | Layer 2, `bridge/app/lib/src/auth/login_oauth_repository.dart` | Map OAuth init/status/ACK calls from the consolidated API for `LoginOAuthService`. |
 | Existing auth repositories | Layer 2, `login_email_repository.dart`, `bridge_registration_repository.dart` | Consume the same `SesoriAuthApi` directly and preserve their domain exception/result mapping; no forwarding API wrappers remain. |
 | `AppClientPresenceRepository` | Layer 2, `bridge/app/lib/src/auth/app_client_presence_repository.dart` | Accept an access token from its caller, delegate app status to `SesoriAuthApi`, normalize registered/absent/unauthorized/unavailable/transient/cancelled outcomes, and own the old-server compatibility seam. It has no token authority, retry, output, or delay policy. |
-| `TokenRefresher` / `TokenService` | Existing service contract and renamed `bridge/app/lib/src/auth/token_service.dart` implementation | Add a required auth-local `AuthRequestCancellationSignal` to token acquisition, typed access-failure kinds, and abortable refresh via `AuthRepository`. Update both production implementors and every caller/fake. During onboarding the newly composed standalone service is the only token caller, so skip owns and terminates its refresh request. |
-| `AppOnboardingFormatter` | Foundation/pure formatter, `bridge/app/lib/src/foundation/app_onboarding_formatter.dart` | Convert URL + QR modules + width/ANSI/Unicode capabilities into bounded text with quiet zone and URL fallback. No I/O or lifecycle. |
+| `TokenRefresher` / `TokenService` | Existing service contract and renamed `bridge/app/lib/src/auth/token_service.dart` implementation | Require both named `forceRefresh` and auth-local `AuthRequestCancellationSignal` on token acquisition, add typed access-failure kinds, and use abortable refresh via `AuthRepository`. Update both production implementors and every caller/fake. During onboarding the newly composed standalone service is the only token caller, so skip owns and terminates its refresh request. |
+| `AppOnboardingFormatter` | Foundation/pure formatter, `bridge/app/lib/src/foundation/app_onboarding_formatter.dart` | Convert URL + QR modules + width/ANSI/Unicode capabilities into bounded explicit black/white ANSI+Unicode text with a light quiet zone, or URL-only when polarity/capability/width safety is not proven. No I/O or lifecycle. |
 | `TerminalInteractionMode` | Foundation, `bridge/app/lib/src/foundation/terminal_interaction_mode.dart` | Typed `interactive` / `unavailable` / `legacyPostUpdate` result computed by composition roots from raw terminal facts and invocation environment. Existing terminal prompt decision/replace contracts move from `server/foundation` to root Foundation with it. |
 | `TerminalPromptApi` / `TerminalPromptRepository` | Root Layer 1/2, `bridge/app/lib/src/api/terminal_prompt_api.dart` and `lib/src/repositories/terminal_prompt_repository.dart` | Move the substantially changed terminal boundaries out of the minimal `server/` subsystem. API owns raw async terminal I/O/facts; repository receives interaction mode and maps provider/credentials/yes-no/onboarding outcomes. |
 | `AppClientOnboardingService` | Layer 3, `bridge/app/lib/src/services/app_client_onboarding_service.dart` | Own access-token acquisition, exactly one forced refresh/retry after 401, checkpoint state, terminal subscription, cancellation, long-poll loop, internal retry timer, output, and exactly-once completion. It depends on root repositories/Foundation plus `TokenRefresher`, not on the `server/` subsystem. |
@@ -336,7 +337,7 @@ AppOnboardingFormatter(
   # immutable rendering facts; no I/O or collaborator lifecycle
 
 TerminalPromptApi(required Stdin, required Stdout)
-  # owns and disposes its lazy input subscription; no environment policy
+  # owns/disposes its lazy input subscription plus FIFO pending-line buffer; no environment policy
 
 TerminalPromptRepository(
   required TerminalPromptApi,
@@ -355,9 +356,10 @@ shared HTTP client's close lifecycle; `SesoriAuthApi` borrows it.
 `AppClientOnboardingService` creates/cancels its one-shot `Timer` internally and
 tests virtual time with `fake_async`; no delay callback or timer peer is added.
 
-`TokenRefresher.getAccessToken` adds required
-`AuthRequestCancellationSignal cancelled`. Existing callers pass
-`AuthRequestCancellationSignal.never`; onboarding passes its owned
+`TokenRefresher.getAccessToken` requires named `bool forceRefresh` and
+`AuthRequestCancellationSignal cancelled`. Existing callers explicitly pass
+`forceRefresh: false` and `AuthRequestCancellationSignal.never`; onboarding
+passes false for ordinary attempts, true for its one forced retry, and its owned
 controller's signal. `TokenService` forwards the signal through `AuthRepository`
 to `SesoriAuthApi.refreshTokens`, whose `AbortableRequest` races cancellation
 and an active 15-second deadline.
@@ -454,14 +456,16 @@ accepted aliases and continue waiting.
 15. Permanent/unsupported protocol outcomes fail open after one warning.
 16. One 401 triggers one forced refresh and immediate retry; a second 401 fails
     open.
-17. Dart terminal input is unified under one asynchronous owner rather than
-    moving onboarding after plugin startup or relying on undefined mixed reads.
+17. Dart terminal input is unified under one asynchronous owner with a FIFO
+    pending-line buffer, preserving type-ahead across sequential prompts rather
+    than moving onboarding after plugin startup or relying on mixed reads.
 18. `SesoriAuthApi` becomes the sole API owner for the external auth provider;
     existing use-case APIs/top-level HTTP are migrated and removed in the bridge
     PR rather than wrapped.
-19. Token acquisition requires an `AuthRequestCancellationSignal`; skip actively terminates
-    refresh/status transport and waits for settlement. Typed refresh failures
-    are never classified by parsing messages.
+19. Token acquisition requires explicit named `forceRefresh` and an
+    `AuthRequestCancellationSignal`; skip actively terminates refresh/status
+    transport and waits for settlement. Typed refresh failures are never
+    classified by parsing messages.
 20. The substantially changed standalone token owner is `TokenService`, not a
     manager, and receives concrete `TokenStorage`; touched token load/save/clear
     callback plumbing is removed.
@@ -473,8 +477,9 @@ accepted aliases and continue waiting.
     collaborators and constructs no lower layer; the existing session
     `Orchestrator` remains session-control owner after plugin start.
 23. The bounded QR contract targets common interactive macOS/Linux/Windows
-    terminals, dark/light themes, ANSI/Unicode and ASCII fallbacks. URL-only is
-    valid for unsafe, unknown, or too-narrow rendering.
+    terminals and renders only with explicit black/white ANSI plus Unicode when
+    polarity, glyphs, and width are safe. URL-only is required for missing ANSI/
+    Unicode, unknown polarity/width, or too-narrow rendering.
 24. No analytics, rollout telemetry, or post-release observation work is part
     of the plan.
 
@@ -571,12 +576,14 @@ waiter, or schema state survives a process.
   aliases, invalid input, EOF, normal-timeout no-delay/no-warning behavior,
   fixed 60-second transient delay, indefinite retry, permanent fail-open, and
   cancellation during request and delay.
-- Terminal tests prove one lazy async stdin subscription, sequential prompts,
-  cancellation handoff to later prompts, EOF, password echo restoration, and
-  unchanged yes/no/provider/credential/logout behavior.
-- Formatter tests prove quiet zone, module orientation, ANSI reset, Unicode and
-  ASCII shapes, width boundaries, unknown-width fallback, URL permanence, and
-  deterministic output for the exact URL.
+- Terminal tests prove one lazy async stdin subscription, FIFO type-ahead across
+  gaps between sequential prompts, cancellation handoff without dropping queued
+  lines, EOF, password echo restoration, and unchanged yes/no/provider/
+  credential/logout behavior.
+- Formatter tests prove a light quiet zone, module orientation, explicit black/
+  white ANSI reset, width boundaries, required URL-only fallback without ANSI or
+  Unicode and for unknown polarity/width, URL permanence, and deterministic
+  output for the exact URL.
 - Startup-orchestrator tests prove sole lower-layer construction, mode gating,
   checkpoint location before plugin startup, no held startup mutex,
   early/shared `TokenService` reuse, existing session-Orchestrator creation only
@@ -630,9 +637,9 @@ separate User/Worker evidence.
 | Warning spam during outage | One reporting owner and one warning per failed request, with no request for the following 60 seconds. |
 | Older/custom auth server lacks endpoint | Exact compatibility fallback for 404/405 warns once and fails open; auth deploys first. |
 | User signs in to a different account | Instructions say same account; only the authenticated bridge user's durable token wakes the waiter. |
-| Async stdin migration changes existing prompts | One terminal owner, serialized prompt tests, echo restoration, and startup-orchestrator/logout regressions; no raw-mode single-key handling. |
+| Async stdin migration changes existing prompts | One terminal owner with a FIFO pending-line buffer, serialized/type-ahead prompt tests, echo restoration, and startup-orchestrator/logout regressions; no raw-mode single-key handling. |
 | App registration and skip complete together | One service completion gate cancels remaining request/subscription/delay and emits only one continuation/result message. |
-| QR scans poorly under a terminal theme/font | Explicit black/white ANSI rendering where supported, quiet zone, bounded Unicode/ASCII fallbacks, width checks, URL always present, and advisory real scans. |
+| QR scans poorly under a terminal theme/font | Render only with explicit black/white ANSI plus validated Unicode, a four-module light quiet zone, and known sufficient width; otherwise omit QR, retain the URL, and use advisory real scans. |
 | QR dependency or generation broadens lock output | Add only pure-Dart `qr`, run normal workspace resolution/codegen, and reject unrelated lock/generated changes. |
 | Holding startup mutex while user waits | Checkpoint runs before `startPluginUnderStartupMutex`; no mutex or runtime process exists during the wait. |
 | Plugin is unavailable | Preserve the quick availability probe before onboarding so users are not asked to install the app for a bridge that cannot start. |
@@ -702,11 +709,13 @@ server-supplied retry hint does not create a second backoff policy in this scope
    pure-Dart QR package and a fixed error-correction choice suitable for terminal
    scanning.
 2. Add four light modules on every side.
-3. Prefer ANSI + Unicode compact half-block output with explicit black/white
-   foreground/background and a final reset.
-4. Fall back to non-ANSI Unicode blocks, then ASCII `##`/spaces according to
-   existing capability validators.
-5. Compute complete rendered width before output. If terminal width is unknown,
+3. Require validated ANSI and Unicode support, then use compact half-block output
+   with explicit black/white foreground/background and a final reset. This is
+   the only QR renderer because non-ANSI Unicode/ASCII cannot prove light/dark
+   polarity across terminal themes.
+4. Compute complete rendered width before output. If terminal width is unknown,
    throws, or is smaller than the selected representation, omit the QR.
+5. If ANSI or Unicode is unavailable, polarity is not provable, or rendering
+   fails, omit the QR rather than emitting an inverted/unsafe fallback.
 6. Print the exact plain URL on its own line in every prompted case, regardless
    of QR success.

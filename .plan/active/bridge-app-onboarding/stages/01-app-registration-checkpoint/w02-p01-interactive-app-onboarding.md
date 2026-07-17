@@ -71,8 +71,8 @@ or make onboarding depend on an unmerged internal stack.
 - Use the configured auth backend and bearer token; support immediate and
   `wait=true` requests.
 - Actively abort in-flight HTTP on skip and on the 35-second client deadline.
-- Extend `TokenRefresher.getAccessToken` with a required auth-local
-  `AuthRequestCancellationSignal`;
+- Make both named `forceRefresh` and auth-local
+  `AuthRequestCancellationSignal` required on `TokenRefresher.getAccessToken`;
   update `TokenService`, `ControlChannelTokenService`, every production caller,
   and every test fake.
 - Route standalone refresh through `AuthRepository` and an abortable
@@ -374,7 +374,7 @@ AppClientOnboardingService({
 })
 
 TokenRefresher.getAccessToken({
-  bool forceRefresh = false,
+  required bool forceRefresh,
   required AuthRequestCancellationSignal cancelled,
 })
 
@@ -441,8 +441,9 @@ a delay callback or constructing a timer collaborator.
 `AuthRepository` receives an explicit 15-second refresh request timeout and
 passes the caller's `AuthRequestCancellationSignal` to `SesoriAuthApi.refreshTokens`.
 `AppClientPresenceRepository` receives the 35-second status timeout and passes
-the same signal to the API. `AuthRequestCancellationSignal.never` is the explicit
-value for existing uncancellable callers; onboarding owns an
+the same signal to the API. `forceRefresh: false` and
+`AuthRequestCancellationSignal.never` are the explicit values for existing
+ordinary uncancellable callers; onboarding owns an
 `AuthRequestCancellationController` and
 passes its signal through token acquisition and app status. No nullable/default
 cancellation or message parsing is allowed.
@@ -618,13 +619,17 @@ stdout handle, or lifecycle.
 - `LogoutCommand` independently resolves `interactive`/`unavailable` from raw
   terminal handles, injects it, and disposes `TerminalPromptApi` in `finally`.
 - `TerminalPromptApi` does not subscribe to stdin in its constructor. The first
-  standalone prompt/read starts one lazy decoded-line subscription and fans
-  completed lines through a process-lifetime internal broadcast source.
-- Sequential prompt methods await the next line from that owner. The onboarding
-  decision method uses a cancellable stream subscription so detection can stop
-  consuming before later prompts.
-- Only one prompt is active by runner sequencing; add guards/tests against
-  overlapping consumers rather than a speculative queue of competing prompts.
+  standalone prompt/read starts one lazy process-lifetime decoded-line
+  subscription. Every completed line enters an internal FIFO pending-line
+  buffer even when no prompt is awaiting, preserving OS-stdin type-ahead and
+  pasted multi-line credentials across sequential prompts.
+- Sequential prompt methods consume one oldest pending line or await one queued
+  arrival from that owner. The onboarding decision read is cancellable; when
+  cancellation wins it removes only its own pending waiter and leaves every
+  already-queued or later line for the replacement/auth prompt.
+- Only one prompt is active by startup sequencing; add guards/tests against
+  overlapping consumers. The FIFO is input preservation, not a scheduler for
+  competing prompts.
 - Password reads set echo off immediately before awaiting and restore the prior
   value in `finally` on value, EOF, error, or disposal.
 - EOF closes the line source and maps to existing clear provider/credential
@@ -633,7 +638,7 @@ stdout handle, or lifecycle.
   registered with `BridgeShutdownCoordinator`.
 - Supervised mode reads its off-argv control secret before any terminal prompt
   subscribes; onboarding is gated out. Preserve `ControlSecretApi` and do not
-  route the bearer secret through a user-prompt broadcast.
+  route the bearer secret through the user-prompt line owner.
 
 ### Formatter contract
 
@@ -642,8 +647,10 @@ stdout handle, or lifecycle.
 - Use the pinned/audited `qr` API with a fixed error-correction level; never
   implement QR encoding manually.
 - Add four light modules on every edge.
-- Prefer ANSI+Unicode compact half blocks with explicit black/white foreground/
-  background and final reset; then non-ANSI Unicode; then ASCII `##`/spaces.
+- Render only when both ANSI and Unicode validators succeed, using compact half
+  blocks with explicit black/white foreground/background and final reset.
+  Non-ANSI Unicode and ASCII space/block renderers are prohibited because theme
+  polarity is unknown and a light quiet zone cannot be guaranteed.
 - Use existing glyph/color validators and a safely-read nullable terminal width.
 - Compute full width including quiet zone before rendering. Unknown/throwing/
   insufficient width returns no QR string, not a truncated code.
@@ -657,7 +664,7 @@ stdout handle, or lifecycle.
    `AuthRequestCancellationController`; pass its signal to every token/status operation.
 2. Immediate check:
    - service obtains
-     `TokenRefresher.getAccessToken(cancelled: controller.signal)` and passes the
+     `TokenRefresher.getAccessToken(forceRefresh: false, cancelled: controller.signal)` and passes the
      value/same signal to the repository;
    - `TokenAccessFailureKind.transient` follows the same one-warning/
      fixed-60-second policy; `unavailable` fails open because interactive auth
@@ -845,8 +852,9 @@ or leave a forwarding top-level reader.
   load/save/clear callback getters.
 - `AuthRequestCancellationSignal.never` never cancels; controller cancel is synchronous,
   idempotent, and completes `whenCancelled` once.
-- Every production `TokenRefresher` caller passes a required signal; existing
-  flows pass `never` and retain behavior. Every fake compiles with the signature.
+- Every production `TokenRefresher` caller passes required `forceRefresh` and
+  cancellation values; ordinary existing flows pass `false`/`never` and retain
+  behavior. Every fake compiles with the signature.
 - `TokenService` refresh success retains storage re-read, persistence,
   publication, and single-flight behavior over `AuthRepository` and direct
   `TokenStorage`.
@@ -894,8 +902,9 @@ or leave a forwarding top-level reader.
 
 #### Terminal and existing auth prompts
 
-- Lazy single subscription and deterministic dispose.
-- Sequential async reads hand off after onboarding subscription cancellation.
+- Lazy single subscription, FIFO pending-line buffering, and deterministic dispose.
+- Sequential async reads preserve lines typed/pasted before the next prompt;
+  onboarding cancellation removes its waiter without dropping queued/later lines.
 - Raw API terminal facts contain no product policy; startup orchestrator/repository
   `TerminalInteractionMode` preserves interactivity and legacy post-update
   behavior.
@@ -910,8 +919,9 @@ or leave a forwarding top-level reader.
 
 - QR module orientation/payload for exact URL and chosen correction level.
 - Four-module quiet zone on all edges.
-- ANSI+Unicode output and final reset; no ANSI when disallowed.
-- Unicode and ASCII fallback dimensions/content.
+- ANSI+Unicode output uses explicit black/white cells and final reset.
+- Missing ANSI, missing Unicode, unknown polarity/width, and insufficient width
+  omit QR and retain exact URL; no non-ANSI Unicode/ASCII QR is emitted.
 - Exact-fit width renders; one-column-too-narrow and unknown/throwing width omit.
 - URL-only output remains exact and scan instructions mention same account.
 - Deterministic snapshots contain no terminal-dependent global reads.
@@ -991,7 +1001,7 @@ the resolution conflict rather than committing broad generated/lock churn.
 
 - A `Future.any` without cancellation could leave stdin/HTTP alive; use owned
   subscriptions and active abort, then assert no late effects.
-- Starting the stdin broadcast in the constructor could steal supervised secret;
+- Starting the stdin subscription in the constructor could steal supervised secret;
   require lazy first-prompt subscription and mode tests.
 - Moving/renaming the legacy token owner could create duplicate refresh
   authorities; compose one `TokenService` instance early and reuse current later
@@ -1001,7 +1011,8 @@ the resolution conflict rather than committing broad generated/lock churn.
   after repositories/services and logout composition are migrated.
 - A cancellable refresh shared with another consumer could cancel unrelated
   work; startup sequencing gives onboarding exclusive `TokenService` use until it
-  settles, and existing later callers pass `AuthRequestCancellationSignal.never`.
+  settles, and existing later callers pass `forceRefresh: false` plus
+  `AuthRequestCancellationSignal.never`.
 - Treating initial network failure as absence could falsely prompt existing
   users; show only minimal retry/skip guidance until a real false response.
 - Treating 404 as absence would hang old servers; map to compatibility-unavailable.
