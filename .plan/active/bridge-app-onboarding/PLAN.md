@@ -379,6 +379,13 @@ remains untouched. When `canCancel` is true,
 detached background-refresh branch, so onboarding completion can prove no
 refresh remains. Existing `never` callers retain background behavior.
 
+`TokenService` preserves the shipped distinction between initial token-file
+corruption and corruption observed only on the post-refresh re-read. Initial
+corruption is unavailable. A post-response `FormatException` retains only
+`lastProvider` from the valid pre-refresh snapshot and writes the newly issued
+tokens to repair the file; a missing/cleared post-refresh file still aborts
+persistence so logout cannot be resurrected.
+
 `runBridgeApp` moves from `bridge_runtime_runner.dart` into root
 `bridge_startup_orchestrator.dart`; `bin/bridge.dart` imports that root entrypoint.
 It creates `BridgeStartupOrchestrator` through its explicit composition factory
@@ -457,8 +464,10 @@ accepted aliases and continue waiting.
 16. One 401 triggers one forced refresh and immediate retry; a second 401 fails
     open.
 17. Dart terminal input is unified under one asynchronous owner with a FIFO
-    pending-line buffer, preserving type-ahead across sequential prompts rather
-    than moving onboarding after plugin startup or relying on mixed reads.
+    pending-line buffer, preserving ordinary type-ahead across sequential
+    prompts rather than moving onboarding after plugin startup or relying on
+    mixed reads. Secret reads discard all lines queued before echo is disabled
+    and require fresh no-echo input.
 18. `SesoriAuthApi` becomes the sole API owner for the external auth provider;
     existing use-case APIs/top-level HTTP are migrated and removed in the bridge
     PR rather than wrapped.
@@ -578,8 +587,8 @@ waiter, or schema state survives a process.
   cancellation during request and delay.
 - Terminal tests prove one lazy async stdin subscription, FIFO type-ahead across
   gaps between sequential prompts, cancellation handoff without dropping queued
-  lines, EOF, password echo restoration, and unchanged yes/no/provider/
-  credential/logout behavior.
+  lines, EOF, pre-echo password-line discard/re-entry, password echo restoration,
+  and unchanged yes/no/provider/credential/logout behavior.
 - Formatter tests prove a light quiet zone, module orientation, explicit black/
   white ANSI reset, width boundaries, required URL-only fallback without ANSI or
   Unicode and for unknown polarity/width, URL permanence, and deterministic
@@ -590,8 +599,9 @@ waiter, or schema state survives a process.
   after plugin start, direct runner injection/execution, and continuation for
   success/skip/fail-open. Runner tests prove it constructs nothing.
 - Token tests prove typed access classification, required non-null cancellation
-  at every caller, both production implementors, and no surviving refresh/
-  control request after abort.
+  at every caller, both production implementors, post-refresh corruption repair
+  without cleared-file resurrection, and no surviving refresh/control request
+  after abort.
 
 ### Manual verification
 
@@ -620,6 +630,8 @@ separate User/Worker evidence.
   token/platform/device details.
 - Raw bearer tokens remain only in HTTP headers and existing token storage; QR
   and URL contain no identity or secret.
+- A password line is accepted only after terminal echo is disabled. Lines queued
+  earlier are discarded and re-requested rather than consumed as credentials.
 - Waiters are keyed by authenticated user id in process memory, removed on every
   completion path, and never persisted.
 - Local E2E, managed trust, relay encryption, plugin boundaries, multi-bridge
@@ -637,7 +649,8 @@ separate User/Worker evidence.
 | Warning spam during outage | One reporting owner and one warning per failed request, with no request for the following 60 seconds. |
 | Older/custom auth server lacks endpoint | Exact compatibility fallback for 404/405 warns once and fails open; auth deploys first. |
 | User signs in to a different account | Instructions say same account; only the authenticated bridge user's durable token wakes the waiter. |
-| Async stdin migration changes existing prompts | One terminal owner with a FIFO pending-line buffer, serialized/type-ahead prompt tests, echo restoration, and startup-orchestrator/logout regressions; no raw-mode single-key handling. |
+| Async stdin migration changes existing prompts | One terminal owner with a FIFO pending-line buffer, serialized/type-ahead prompt tests, pre-echo secret-line discard/re-entry, echo restoration, and startup-orchestrator/logout regressions; no raw-mode single-key handling. |
+| Token file corrupts while refresh is in flight | Preserve the current post-response `FormatException` repair using only the valid pre-refresh provider plus new response tokens; missing/cleared state still blocks resurrection. |
 | App registration and skip complete together | One service completion gate cancels remaining request/subscription/delay and emits only one continuation/result message. |
 | QR scans poorly under a terminal theme/font | Render only with explicit black/white ANSI plus validated Unicode, a four-module light quiet zone, and known sufficient width; otherwise omit QR, retain the URL, and use advisory real scans. |
 | QR dependency or generation broadens lock output | Add only pure-Dart `qr`, run normal workspace resolution/codegen, and reject unrelated lock/generated changes. |

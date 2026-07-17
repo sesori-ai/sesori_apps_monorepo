@@ -19,7 +19,7 @@
 - **Verdict:** Approved — no architectural violations
 - **Reviewer:** `aristotle-plan-review`
 - **Date:** 2026-07-17
-- **Reviewed commit:** `49eca8c0b91204687f3c8949a4947f42eaeca269` plus the complete uncommitted plan-PR feedback edits in `.plan/active/bridge-app-onboarding/`; external auth baseline `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
+- **Reviewed commit:** `cbcd9ba3a750b8281ae0f702be0da5f75de45096` plus the complete uncommitted second-round plan-PR feedback edits in `.plan/active/bridge-app-onboarding/`; external auth baseline `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
 
 ## Wave Baselines
 
@@ -59,6 +59,10 @@ creation.
 
 ## Findings and Plan Deltas
 
+- **2026-07-17 — Second plan-PR review hardening:** Preserved the shipped
+  post-refresh token-file corruption repair while retaining cleared-file logout
+  safety, and made secret reads discard/re-request any line queued before echo
+  is disabled.
 - **2026-07-17 — Plan-PR review hardening:** Made the auth wait deadline absolute
   from before its initial read, required explicit `forceRefresh` at every token
   caller, replaced lossy stdin broadcast handoff with FIFO pending-line

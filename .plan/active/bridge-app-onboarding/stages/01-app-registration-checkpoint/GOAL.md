@@ -55,6 +55,8 @@ open. Supervised and noninteractive bridge paths remain unchanged.
 - Terminal input has one asynchronous owner with FIFO pending-line preservation
   across sequential prompts; raw single-key mode, lossy broadcast handoff, and
   mixed synchronous/asynchronous stdin are forbidden.
+- Secret input never consumes a line queued while echo was enabled; pre-switch
+  lines are discarded and re-requested after echo is disabled.
 - `TerminalPromptApi` exposes raw terminal facts/I/O only.
   `BridgeStartupOrchestrator` (and the independent logout composition) resolves
   typed `TerminalInteractionMode` and injects it into

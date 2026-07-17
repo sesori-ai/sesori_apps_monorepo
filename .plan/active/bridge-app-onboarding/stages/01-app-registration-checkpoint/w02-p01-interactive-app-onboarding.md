@@ -569,9 +569,13 @@ stdout handle, or lifecycle.
   existing background-refresh TTL band is refreshed synchronously instead of
   spawning detached work; `AuthRequestCancellationSignal.never` preserves current
   background behavior for existing callers;
-- `TokenService`, as token-state owner, maps missing/empty/cleared/corrupt local
-  token state and unsafe persistence failure to typed unavailable without moving
-  file decisions into `AuthRepository`;
+- `TokenService`, as token-state owner, maps initial missing/empty/corrupt state,
+  a file cleared during refresh, and unsafe persistence failure to typed
+  unavailable without moving file decisions into `AuthRepository`. Preserve the
+  shipped post-response recovery seam: if only the post-refresh re-read throws
+  `FormatException`, retain `lastProvider` from the valid pre-refresh snapshot
+  and persist the newly issued access/refresh tokens to repair the file. Missing/
+  cleared post-refresh state still prevents resurrection;
 - onboarding's freshly constructed token service has no other consumers before the
   checkpoint. Its cancellable refresh therefore exclusively owns the active
   request; skip cancels it and service completion waits for the abort to settle
@@ -621,8 +625,8 @@ stdout handle, or lifecycle.
 - `TerminalPromptApi` does not subscribe to stdin in its constructor. The first
   standalone prompt/read starts one lazy process-lifetime decoded-line
   subscription. Every completed line enters an internal FIFO pending-line
-  buffer even when no prompt is awaiting, preserving OS-stdin type-ahead and
-  pasted multi-line credentials across sequential prompts.
+  buffer even when no prompt is awaiting, preserving ordinary OS-stdin
+  type-ahead across sequential non-secret prompts.
 - Sequential prompt methods consume one oldest pending line or await one queued
   arrival from that owner. The onboarding decision read is cancellable; when
   cancellation wins it removes only its own pending waiter and leaves every
@@ -630,8 +634,13 @@ stdout handle, or lifecycle.
 - Only one prompt is active by startup sequencing; add guards/tests against
   overlapping consumers. The FIFO is input preservation, not a scheduler for
   competing prompts.
-- Password reads set echo off immediately before awaiting and restore the prior
-  value in `finally` on value, EOF, error, or disposal.
+- Password input is the explicit security exception to FIFO type-ahead. Before a
+  line can be accepted as a password, the API atomically disables echo and
+  discards every line queued before that switch. The repository reports that
+  pre-prompt input was discarded and requests a fresh password while echo stays
+  off; only a line received after the switch is accepted. Restore the prior echo
+  value in `finally` on value, EOF, error, or disposal. Do not claim support for
+  pasted email+password batches without a future safe raw/bracketed-paste design.
 - EOF closes the line source and maps to existing clear provider/credential
   failures or onboarding fail-open.
 - `dispose` cancels the underlying subscription/controller exactly once and is
@@ -862,8 +871,10 @@ or leave a forwarding top-level reader.
   work; an `AuthRequestCancellationSignal.never` near-expiry call preserves shipped
   background-refresh/return-current behavior.
 - Token refresh HTTP 408/429/5xx, socket/client/deadline map to typed transient;
-  local missing/corrupt/revoked/4xx/malformed map unavailable; caller abort maps
-  cancelled, all without parsing messages.
+  initial local missing/corrupt/revoked/4xx/malformed and post-response cleared
+  state map unavailable; caller abort maps cancelled, all without parsing
+  messages. A post-response `FormatException` alone repairs from the valid
+  pre-refresh `lastProvider` plus new response tokens.
 - Cancellation before/during refresh prevents or actively aborts transport,
   leaves no active refresh future/request, does not persist/publish a token, and
   allows a later uncancelled refresh.
@@ -881,7 +892,8 @@ or leave a forwarding top-level reader.
   refresh and immediate repository retry, second unauthorized warns/fails open,
   and a later normal long-poll round starts with a fresh one-refresh allowance.
 - Token-refresher network/timeout errors use the fixed transient timer;
-  explicit missing/revoked/corrupt token-authority failures fail open once.
+  explicit missing/revoked/initially corrupt token-authority failures fail open
+  once; post-response corruption repair remains a successful refresh.
 - Initial registered: no onboarding, warning, or success output.
 - Initial absent: instructions/QR-or-fallback/URL output exactly once in order.
 - Exact URL is both QR payload and plain line.
@@ -903,13 +915,16 @@ or leave a forwarding top-level reader.
 #### Terminal and existing auth prompts
 
 - Lazy single subscription, FIFO pending-line buffering, and deterministic dispose.
-- Sequential async reads preserve lines typed/pasted before the next prompt;
+- Sequential async reads preserve ordinary lines typed before the next prompt;
   onboarding cancellation removes its waiter without dropping queued/later lines.
 - Raw API terminal facts contain no product policy; startup orchestrator/repository
   `TerminalInteractionMode` preserves interactivity and legacy post-update
   behavior.
 - Provider choices 1-4, invalid retry, and EOF guidance unchanged.
 - Email/password values and password echo restoration on success/EOF/error.
+  A line queued before echo-off is never accepted as the password: it is
+  discarded, a clear re-entry message is emitted while echo remains off, and a
+  fresh post-switch line is required.
 - Replacement yes/yes alias/default decline/noninteractive unchanged.
 - Logout prompt/result behavior unchanged.
 - Supervised `ControlSecretApi` still reads the first off-argv line without a
@@ -989,6 +1004,9 @@ the resolution conflict rather than committing broad generated/lock churn.
   registration still use the same refreshed token.
 - Exercise replacement and logout after onboarding has completed to prove later
   prompts receive lines and password/terminal modes are normal.
+- Type/paste a second credential line before the password no-echo phase and
+  confirm it is discarded rather than accepted; enter a fresh password after
+  the re-entry message and confirm echo is restored afterward.
 - Start supervised bridge with control secret to prove no terminal subscription
   steals the secret and no onboarding request occurs.
 - Start noninteractive/legacy post-update to prove no hang/output/request.
@@ -1003,6 +1021,9 @@ the resolution conflict rather than committing broad generated/lock churn.
   subscriptions and active abort, then assert no late effects.
 - Starting the stdin subscription in the constructor could steal supervised secret;
   require lazy first-prompt subscription and mode tests.
+- FIFO type-ahead could accept a password that arrived while echo was enabled;
+  atomically disable echo and discard all pre-switch queued lines before
+  accepting secret input, then regression-test re-entry and restoration.
 - Moving/renaming the legacy token owner could create duplicate refresh
   authorities; compose one `TokenService` instance early and reuse current later
   variables.
