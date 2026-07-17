@@ -34,7 +34,7 @@ pair after drift assessment and before branch creation.
 
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
-| [x] | S01-W01-P01 | S01 | W01 | — | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Deliver the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake on `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint`. |
+| [x] | S01-W01-P01 | S01 | W01 | https://github.com/sesori-ai/sesori_auth_server/pull/44 | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Delivers the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. Format, lint, build, 422 tests (1 skipped), circular-dependency check, and implementation review passed. |
 | [ ] | S01-W02-P01 | S01 | W02 | — | `plan/bridge-app-onboarding/s01-w02-p01-interactive-app-onboarding` | Add standalone bridge checkpoint, async terminal ownership, retry/cancellation, and bounded QR output. |
 
 ## Manual Checkpoints
