@@ -78,8 +78,15 @@ class CatalogImportService {
   }
 
   void cancel({required String pluginId}) {
-    _validatePlugin(pluginId);
-    _controls[pluginId]?.cancellationRequested = true;
+    _validateEnabledPlugin(pluginId);
+    final control = _controls[pluginId];
+    if (control != null) {
+      control.cancellationRequested = true;
+      return;
+    }
+    if (!_repository.operationalPluginIds.contains(pluginId)) {
+      throw CatalogImportPluginUnavailableException(pluginId: pluginId);
+    }
   }
 
   void beginShutdown() {
@@ -157,14 +164,18 @@ class CatalogImportService {
   }
 
   void _validatePlugin(String pluginId) {
+    _validateEnabledPlugin(pluginId);
+    if (!_repository.operationalPluginIds.contains(pluginId)) {
+      throw CatalogImportPluginUnavailableException(pluginId: pluginId);
+    }
+  }
+
+  void _validateEnabledPlugin(String pluginId) {
     if (!_knownPluginIds.contains(pluginId)) {
       throw CatalogImportPluginUnknownException(pluginId: pluginId);
     }
     if (!_enabledPluginIds.contains(pluginId)) {
       throw CatalogImportPluginNotEnabledException(pluginId: pluginId);
-    }
-    if (!_repository.operationalPluginIds.contains(pluginId)) {
-      throw CatalogImportPluginUnavailableException(pluginId: pluginId);
     }
   }
 }

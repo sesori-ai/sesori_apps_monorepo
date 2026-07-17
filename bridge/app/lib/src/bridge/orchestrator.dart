@@ -29,6 +29,7 @@ import "../push/push_notification_content_builder.dart";
 import "../push/push_rate_limiter.dart";
 import "../push/push_session_state_tracker.dart";
 import "../repositories/catalog_import_repository.dart";
+import "../repositories/project_catalog_identity_calculator.dart";
 import "../routing/cancel_catalog_import_handler.dart";
 import "../routing/get_catalog_import_statuses_handler.dart";
 import "../routing/get_plugins_handler.dart";
@@ -178,6 +179,7 @@ class Orchestrator {
     final pluginComposition = _pluginLifecycleService.compositionView;
     const aggregateSourceDeadline = Duration(seconds: 5);
     const unseenCalculator = SessionUnseenCalculator();
+    const projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator();
     final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
     final sessionRepository = SessionRepository(
       operationalPlugins: pluginComposition.operationalPlugins,
@@ -186,6 +188,7 @@ class Orchestrator {
       projectsDao: _database.projectsDao,
       pullRequestDao: _database.pullRequestDao,
       unseenCalculator: unseenCalculator,
+      projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       aggregateSourceDeadline: aggregateSourceDeadline,
     );
     final projectRepository = ProjectRepository(
@@ -196,6 +199,7 @@ class Orchestrator {
       unseenCalculator: unseenCalculator,
       filesystemApi: const FilesystemApi(),
       gitCliApi: gitCliApi,
+      projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       aggregateSourceDeadline: aggregateSourceDeadline,
     );
     final sessionViewTracker = SessionViewTracker();
@@ -335,6 +339,7 @@ class Orchestrator {
         projectsDao: _database.projectsDao,
         sessionDao: _database.sessionDao,
         catalogHydrationsDao: _database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       ),
     );
     final sessionPromptService = SessionPromptService(

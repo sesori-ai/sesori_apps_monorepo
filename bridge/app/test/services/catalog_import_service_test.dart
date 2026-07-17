@@ -21,7 +21,7 @@ void main() {
   }
 
   group("CatalogImportService", () {
-    test("rejects an unselected plugin synchronously before repository access", () {
+    test("rejects unknown and unselected plugins synchronously before repository access", () {
       final repository = _FakeCatalogImportRepository();
       final service = createService(
         repository: repository,
@@ -33,6 +33,7 @@ void main() {
         throwsA(isA<CatalogImportPluginNotEnabledException>()),
       );
       expect(() => service.cancel(pluginId: "other"), throwsA(isA<CatalogImportPluginNotEnabledException>()));
+      expect(() => service.cancel(pluginId: "unknown"), throwsA(isA<CatalogImportPluginUnknownException>()));
       expect(repository.hydrationReads, 0);
       expect(repository.importCalls, 0);
     });
@@ -113,6 +114,34 @@ void main() {
       expect(service.latestStatuses.single, isA<CatalogImportCancelled>());
     });
 
+    test("cancels an active import after its plugin becomes unavailable", () async {
+      final releaseImport = Completer<void>();
+      final operationalPluginIds = <String>{"selected"};
+      final repository = _FakeCatalogImportRepository(
+        releaseImport: releaseImport,
+        operationalPluginIds: operationalPluginIds,
+      );
+      final service = createService(
+        repository: repository,
+        policy: CatalogEmptyHydrationPolicy.complete,
+      );
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
+      await repository.importStarted.future;
+
+      operationalPluginIds.remove("selected");
+      Object? cancellationError;
+      try {
+        service.cancel(pluginId: "selected");
+      } on Object catch (error) {
+        cancellationError = error;
+      }
+      releaseImport.complete();
+      await service.dispose();
+
+      expect(cancellationError, isNull);
+      expect(service.latestStatuses.single, isA<CatalogImportCancelled>());
+    });
+
     test("repository errors become one failed terminal status", () async {
       final repository = _FakeCatalogImportRepository(importError: StateError("enumeration failed"));
       final service = createService(
@@ -171,20 +200,20 @@ class _FakeCatalogImportRepository implements CatalogImportRepository {
     this.hydrationGate,
     this.releaseImport,
     this.importError,
-  });
+    Set<String>? operationalPluginIds,
+  }) : operationalPluginIds = operationalPluginIds ?? <String>{"selected"};
 
   final CatalogHydrationDto? completion;
   final Completer<CatalogHydrationDto?>? hydrationGate;
   final Completer<void>? releaseImport;
   final Object? importError;
+  @override
+  final Set<String> operationalPluginIds;
   final Completer<void> importStarted = Completer<void>();
 
   int hydrationReads = 0;
   int importCalls = 0;
   CatalogImportControl? lastControl;
-
-  @override
-  Set<String> get operationalPluginIds => const {"selected"};
 
   @override
   Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) async {

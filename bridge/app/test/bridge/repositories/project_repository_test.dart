@@ -295,6 +295,32 @@ void main() {
       expect((await repo.getProjects()).single.name, "Backend project name");
     });
 
+    test("opening a native project reuses the normalized-path catalog row", () async {
+      const directory = "/tmp/projects/shared";
+      plugin.projectResult = const PluginProject(
+        id: "native-project-id",
+        directory: directory,
+        name: "Native project",
+      );
+      await db.projectsDao.recordOpenedProject(
+        projectId: directory,
+        path: "$directory/.",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: directory);
+      await repo.persistOpenedProject(
+        target: target,
+        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+      );
+      final opened = await repo.mapOpenedProject(target: target);
+
+      expect(opened.id, directory);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
+    });
+
     test("reopening a native project preserves its user display name", () async {
       plugin.projectResult = const PluginProject(
         id: "p-renamed",

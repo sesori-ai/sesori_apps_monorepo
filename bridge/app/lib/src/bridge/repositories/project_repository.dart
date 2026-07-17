@@ -15,6 +15,7 @@ import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart" show SessionDao, SessionUnseenRow;
 import "../../api/database/tables/projects_table.dart" show ProjectDto;
+import "../../repositories/project_catalog_identity_calculator.dart";
 import "../api/filesystem_api.dart";
 import "../api/git_cli_api.dart";
 import "mappers/git_remote_identity_parser.dart";
@@ -37,6 +38,7 @@ class ProjectRepository {
   final SessionUnseenCalculator _unseenCalculator;
   final FilesystemApi _filesystemApi;
   final GitCliApi _gitCliApi;
+  final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
   final Duration _aggregateSourceDeadline;
 
   ProjectRepository({
@@ -47,6 +49,7 @@ class ProjectRepository {
     required SessionUnseenCalculator unseenCalculator,
     required FilesystemApi filesystemApi,
     required GitCliApi gitCliApi,
+    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
     required Duration aggregateSourceDeadline,
   }) : _operationalPlugins = operationalPlugins,
        _defaultEnabledPluginId = defaultEnabledPluginId,
@@ -55,6 +58,7 @@ class ProjectRepository {
        _unseenCalculator = unseenCalculator,
        _filesystemApi = filesystemApi,
        _gitCliApi = gitCliApi,
+       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
        _aggregateSourceDeadline = aggregateSourceDeadline;
 
   Set<String> get operationalPluginIds => Set<String>.unmodifiable(_operationalPlugins.keys);
@@ -141,13 +145,21 @@ class ProjectRepository {
       case final NativeProjectsPluginApi plugin:
         final openedPath = normalizeProjectDirectory(directory: path);
         final pluginProject = await plugin.getProject(openedPath);
+        final storedProjects = await _projectsDao.getAllProjects();
+        final existing = _projectCatalogIdentityCalculator.calculate(
+          existingProjects: storedProjects,
+          preferredProjectId: pluginProject.id,
+          observedPath: openedPath,
+        );
         return ProjectOpenTarget(
-          project: pluginProject.toSharedProject(
-            path: openedPath,
-            hasUnseenChanges: false,
-            directoryMissing: false,
-            time: null,
-          ),
+          project: pluginProject
+              .toSharedProject(
+                path: openedPath,
+                hasUnseenChanges: false,
+                directoryMissing: false,
+                time: null,
+              )
+              .copyWith(id: existing?.projectId ?? pluginProject.id),
           path: openedPath,
         );
     }
@@ -276,28 +288,30 @@ class ProjectRepository {
     switch (plugin) {
       case final NativeProjectsPluginApi plugin:
         final pluginProjects = await plugin.getProjects();
-        final storedProjects = await _projectsDao.getAllProjects();
-        final storedById = {
-          for (final project in storedProjects) project.projectId: project,
-        };
-        final projectIdByPath = <String, String>{};
-        for (final project in storedProjects) {
-          projectIdByPath.putIfAbsent(
-            normalizeProjectDirectory(directory: project.path),
-            () => project.projectId,
-          );
-        }
+        final storedProjects = (await _projectsDao.getAllProjects()).toList();
         final missingProjects = <String, ({String path, int? createdAt, int? updatedAt})>{};
         final evidence = <ProjectActivityEvidence>[];
         for (final project in pluginProjects) {
-          final normalizedPath = normalizeProjectDirectory(directory: project.directory);
-          final projectId = storedById[project.id]?.projectId ?? projectIdByPath[normalizedPath] ?? project.id;
-          if (!storedById.containsKey(project.id) && !projectIdByPath.containsKey(normalizedPath)) {
-            projectIdByPath[normalizedPath] = projectId;
+          final existing = _projectCatalogIdentityCalculator.calculate(
+            existingProjects: storedProjects,
+            preferredProjectId: project.id,
+            observedPath: project.directory,
+          );
+          final projectId = existing?.projectId ?? project.id;
+          if (existing == null) {
             missingProjects[projectId] = (
               path: project.directory,
               createdAt: project.activity?.createdAt,
               updatedAt: project.activity?.updatedAt,
+            );
+            storedProjects.add(
+              ProjectDto(
+                projectId: projectId,
+                path: project.directory,
+                createdAt: project.activity?.createdAt ?? 0,
+                updatedAt: project.activity?.updatedAt ?? 0,
+                projectionUpdatedAt: 0,
+              ),
             );
           }
           evidence.add(
@@ -337,23 +351,24 @@ class ProjectRepository {
           final key = normalizeProjectDirectory(directory: projectPath);
           grouped.putIfAbsent(key, () => []).add(time);
         }
-        final storedByPath = <String, ProjectDto>{};
-        for (final project in storedProjects) {
-          storedByPath.putIfAbsent(
-            normalizeProjectDirectory(directory: project.path),
-            () => project,
+        final evidence = <ProjectActivityEvidence>[];
+        for (final entry in grouped.entries) {
+          final stored = _projectCatalogIdentityCalculator.calculate(
+            existingProjects: storedProjects,
+            preferredProjectId: entry.key,
+            observedPath: entry.key,
+          );
+          if (stored == null) continue;
+          evidence.add(
+            ProjectActivityEvidence(
+              pluginId: plugin.id,
+              projectId: stored.projectId,
+              pluginActivity: null,
+              sessionActivities: entry.value,
+            ),
           );
         }
-        return [
-          for (final entry in grouped.entries)
-            if (storedByPath[entry.key] case final stored?)
-              ProjectActivityEvidence(
-                pluginId: plugin.id,
-                projectId: stored.projectId,
-                pluginActivity: null,
-                sessionActivities: entry.value,
-              ),
-        ];
+        return evidence;
     }
   }
 

@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 const _defaultWarmupCount = 25;
@@ -137,6 +138,7 @@ class _LiveListBenchmark {
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,
       filesystemApi: filesystemApi,
+      projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
       aggregateSourceDeadline: const Duration(seconds: 5),
     );
     final results = <Map<String, Object?>>[];
@@ -242,6 +244,7 @@ class _LiveListBenchmark {
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
       aggregateSourceDeadline: const Duration(seconds: 5),
     );
   }

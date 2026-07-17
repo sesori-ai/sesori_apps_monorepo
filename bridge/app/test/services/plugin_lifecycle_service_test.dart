@@ -31,23 +31,34 @@ void main() {
     expect(service.metadataSnapshot.last.actionHint, isNot(contains("descriptor-secret")));
   });
 
-  test("registerStart settles after starting API and metadata are published", () async {
+  test("post-start terminal failure is logged locally and omitted from metadata", () async {
     final service = createService();
     final plugin = _FakeLifecyclePlugin(id: "one", status: const PluginStarting());
+    final originalLevel = Log.level;
+    addTearDown(() {
+      Log.level = originalLevel;
+    });
+    Log.level = LogLevel.debug;
+    final logs = <String>[];
 
-    await service.registerStart(
-      id: "one",
-      startFuture: Future.value(plugin),
-      shutdownBudget: shutdownBudget,
+    await IOOverrides.runZoned(
+      () async {
+        await service.registerStart(
+          id: "one",
+          startFuture: Future.value(plugin),
+          shutdownBudget: shutdownBudget,
+        );
+        expect(service.compositionView.operationalPlugins["one"], same(plugin.api));
+        expect(service.metadataSnapshot.first.state, PluginLifecycleState.ready);
+        plugin.publish(PluginFailed(reason: "raw failure secret", cause: StateError("socket closed")));
+        await Future<void>.delayed(Duration.zero);
+      },
+      stderr: () => _CapturingStdout(logs),
     );
-
-    expect(service.compositionView.operationalPlugins["one"], same(plugin.api));
-    expect(service.metadataSnapshot.first.state, PluginLifecycleState.ready);
-    plugin.publish(const PluginFailed(reason: "raw failure secret", cause: null));
-    await Future<void>.delayed(Duration.zero);
     expect(service.compositionView.operationalPlugins, isNot(contains("one")));
     expect(service.metadataSnapshot.first.state, PluginLifecycleState.failed);
     expect(service.metadataSnapshot.first.actionHint, isNot(contains("raw failure secret")));
+    expect(logs.join("\n"), allOf(contains('Plugin "one"'), contains("raw failure secret"), contains("socket closed")));
     await service.dispose();
   });
 
