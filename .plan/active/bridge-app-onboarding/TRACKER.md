@@ -36,7 +36,7 @@ pair after drift assessment and before branch creation.
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
 | [x] | S01-W01-P01 | S01 | W01 | https://github.com/sesori-ai/sesori_auth_server/pull/44 | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Delivers the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. Format, lint, build, 422 tests (1 skipped), circular-dependency check, and implementation review passed. |
-| [ ] | S01-W02-P01 | S01 | W02 | — | existing `bridge-onboarding-plan` worktree branch | Add a bounded one-time-per-account checkpoint with no auth/token/terminal refactor. |
+| [ ] | S01-W02-P01 | S01 | W02 | — | existing `bridge-onboarding-plan` worktree branch | Add a bounded one-time-per-backend/account checkpoint with no auth/token/terminal refactor. |
 
 ## Manual Checkpoints
 
@@ -78,9 +78,9 @@ pair after drift assessment and before branch creation.
 - **2026-07-17 — Reduced behavior selected:** The user selected one immediate
   check plus at most one 30-second server-held wait. The reduced design has no
   skip input, retry loop, token refresh, or asynchronous terminal ownership.
-- **2026-07-17 — One-time account marker:** Once registration is confirmed, W02
-  stores the existing JWT `userId` and skips every future check for that account.
-  A different account checks normally; accepted CLI logout clears the marker.
+- **2026-07-17 — One-time account markers:** Once registration is confirmed, W02
+  stores an opaque flag for that normalized backend/JWT-user pair. Flags coexist
+  across pairs, so A -> B -> A checks each once; accepted CLI logout clears all.
 - **2026-07-17 — Reduced-plan review correction:** Renamed the marker's dumb
   Layer-1 file boundary from `AppOnboardingStateApi` to
   `AppOnboardingStateStorage`; no broader design change was required.
@@ -93,6 +93,10 @@ pair after drift assessment and before branch creation.
   abort, backend-scoped account markers, Unix marker permissions, current audited
   main metadata, and marker-first logout so deletion failure leaves tokens intact.
   Follow-up `aristotle-plan-review` approved the corrected minimal architecture.
+- **2026-07-18 — Multi-pair retention:** Replaced the single-record marker with
+  independent opaque SHA-256-named pair flags so confirming another backend or
+  account cannot forget a previously completed pair. Follow-up
+  `aristotle-plan-review` approved the revised architecture.
 - **2026-07-17 — Plan delivery:** Opened plan-only PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/490 against selected
   implementation base `main`; tracker state is optimistically post-merge on the

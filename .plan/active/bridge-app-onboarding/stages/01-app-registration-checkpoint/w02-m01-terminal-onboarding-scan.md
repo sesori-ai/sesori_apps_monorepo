@@ -24,15 +24,15 @@ does not block the documentation PR or implementation merge.
 - Auth PR #44 is deployed.
 - A W02 bridge build is available.
 - A disposable account can register/remove an app token.
-- The local onboarding marker can be inspected/cleared in the bridge data
-  directory without recording its account id in evidence.
+- The local onboarding marker directory can be inspected/cleared without
+  recording opaque marker names in evidence.
 
 ## Checks
 
 ### Unmarked Account
 
 1. Start the standalone bridge interactively with no registered app token and no
-   local onboarding marker.
+   local onboarding marker for the current pair.
 2. Confirm setup guidance appears only after authentication and plugin
    availability.
 3. Confirm the exact URL is
@@ -44,32 +44,33 @@ does not block the documentation PR or implementation merge.
    to the exact same destination as the plain URL.
 6. Let one wait expire without registering. Confirm startup continues after
    roughly 30 seconds, prints one continuation line, and does not write the
-   marker.
+   pair marker.
 
 ### Registration And Reuse
 
-1. With a same-account app token already registered but the local marker cleared,
-   start the bridge. Confirm the immediate true path is silent, writes the marker,
+1. With a same-account app token already registered but that pair marker cleared,
+   start the bridge. Confirm the immediate true path is silent, writes a marker,
    and performs no long poll.
-2. Clear the disposable token and marker, repeat, and register an app token for
-   the same account during the wait.
-3. Confirm the bridge wakes promptly, prints one success line, writes the marker,
+2. Clear the disposable token and pair marker, repeat, and register an app token
+   for the same account during the wait.
+3. Confirm the bridge wakes promptly, prints one success line, writes a marker,
    and continues startup.
 4. Restart with the same account. Confirm there is no status request, onboarding
    output, or delay.
 
 Different-account and different-backend marker isolation remain automated-only:
-there is no supported manual account-switch flow that preserves the first marker
-without directly manipulating authentication state.
+there is no supported manual switch flow that retains onboarding state without
+either accepted logout (which clears all markers) or directly manipulating
+authentication state.
 
 ### Logout Reset
 
 1. With a confirmed marker present, cancel a logout when prompted to stop a
    running bridge. Confirm the marker remains.
-2. Complete an accepted logout. Confirm tokens and the onboarding marker are
-   both cleared.
-3. Force marker deletion to fail in a controlled test environment. Confirm
-   logout reports failure and tokens remain intact.
+2. Complete an accepted logout. Confirm tokens and all onboarding markers are
+   cleared.
+3. Force marker-directory deletion to fail in a controlled test environment.
+   Confirm logout reports failure and tokens remain intact.
 4. Log in again after a successful logout and confirm onboarding status is
    checked again.
 
@@ -77,7 +78,7 @@ without directly manipulating authentication state.
 
 Record terminal/platform, QR rendered or URL-only, verified scan destination,
 immediate/long-poll behavior, same-account silent restart, and accepted/cancelled
-logout marker behavior. Never record bearer tokens, marker contents, device
+logout marker behavior. Never record bearer tokens, opaque marker names, device
 tokens, or local user paths.
 
 ## Pass Criteria

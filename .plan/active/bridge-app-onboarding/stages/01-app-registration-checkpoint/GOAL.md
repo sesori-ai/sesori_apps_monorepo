@@ -7,14 +7,14 @@ account has a registered Sesori app client. Unmarked accounts are checked once;
 only confirmed-absent accounts receive terminal setup guidance and one bounded
 30-second registration wait. Confirmed accounts are remembered when marker
 persistence succeeds, and matching backend/account markers skip future checks
-until logout clears the marker.
+until logout clears all markers.
 
 ## Waves
 
 - **W01:** Auth server exposes authenticated immediate and `wait=true`
   app-client status with durable post-registration wake.
 - **W02:** Bridge consumes that endpoint with a bounded QR/URL checkpoint and a
-  one-time-per-account local marker.
+  one-time-per-backend/account local marker.
 
 ## Required Behavior
 
@@ -25,10 +25,11 @@ until logout clears the marker.
 - Confirmed absence shows same-account instructions, a safe terminal QR when
   possible, and exact URL `https://sesori.com/app/?openStore=true`.
 - The bridge performs exactly one 30-second long poll and then continues.
-- Confirmed registration writes the normalized auth-backend identity plus the
-  authenticated JWT `userId` marker.
-- A different account or auth backend does not inherit another marker.
-- Accepted CLI logout clears the marker before tokens; marker-clear failure keeps
+- Confirmed registration writes an opaque per-pair marker derived from normalized
+  auth-backend identity plus authenticated JWT `userId`.
+- Different account/backend pairs retain independent markers; A -> B -> A checks
+  each pair only once.
+- Accepted CLI logout clears all markers before tokens; state-clear failure keeps
   tokens and reports failure. Cancelled logout preserves both.
 - All bridge-side failures warn once and fail open.
 - Supervised, noninteractive, and plugin-unavailable starts do not run the

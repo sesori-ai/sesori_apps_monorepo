@@ -10,9 +10,9 @@
 
 ## Goal
 
-Add a one-time-per-account standalone onboarding checkpoint with the smallest
-possible bridge change. If the account has not previously confirmed an app,
-perform one immediate status check and at most one 30-second long poll while
+Add a one-time-per-backend/account standalone onboarding checkpoint with the
+smallest possible bridge change. If the account has not previously confirmed an
+app, perform one immediate status check and at most one 30-second long poll while
 showing a bounded terminal QR and exact URL.
 
 ## Implementation
@@ -26,12 +26,14 @@ showing a bounded terminal QR and exact URL.
    request and cleans its timer in every completion path.
 4. Add `AppClientStatusRepository` with three outcomes: registered, absent, and
    unavailable. Keep the dated/versioned 404/405 compatibility marker here.
-5. Add `AppOnboardingStateStorage` for raw read/write/clear of one marker file
-   under the existing Sesori data directory. Require 0700 parent and 0600 file
-   permissions on Unix. Add `AppOnboardingStateRepository` to map
-   missing/matching/different/invalid normalized-backend-plus-user state plus a
-   distinct read-failure outcome. Read failures warn and still perform the remote
-   status check; they never count as a match.
+5. Add `AppOnboardingStateStorage` for raw exists/write/clear-all operations over
+   a marker directory under the existing Sesori data directory. Require 0700
+   directory and 0600 file permissions on Unix. Add
+   `AppOnboardingStateRepository` to derive an opaque SHA-256 key from a
+   UTF-8 JSON encoding of `[normalizedAuthBackend, userId]` and map
+   present/absent/read-failure outcomes. One empty file is retained per confirmed
+   pair; read failures warn and still perform the remote status check, and never
+   count as present.
 6. Add `AppOnboardingFormatter` for the exact URL and bounded ANSI+Unicode QR.
 7. Add `AppClientOnboardingService`. It receives the existing authenticated
    access token and configured auth backend, derives `userId` via
@@ -43,7 +45,7 @@ showing a bounded terminal QR and exact URL.
    and `TerminalPromptApi.isInteractive`, after plugin availability and before
    plugin startup/mutex/provisioning. Pass the already authenticated token.
 9. Inject `AppOnboardingStateRepository` into `BridgeLogoutRunner`. After logout
-   is accepted, clear the onboarding marker and then tokens. If marker deletion
+   is accepted, clear all onboarding markers and then tokens. If state deletion
    fails, return the existing failed result and leave tokens intact. Cancelled
    logout performs neither operation.
 
@@ -63,6 +65,7 @@ showing a bounded terminal QR and exact URL.
 
 - Same marked account: no status call and no output.
 - Same `userId` on a different configured auth backend: status check runs.
+- A -> B -> A: each pair checks once; confirming B does not replace A's flag.
 - Different/unmarked account: immediate check runs.
 - Immediate true: marker written, silent continuation.
 - Immediate false: guidance, QR-or-URL, exact URL, then exactly one long poll.
@@ -70,7 +73,7 @@ showing a bounded terminal QR and exact URL.
 - Long-poll false: one continuation line, no marker, startup continues.
 - Any failure: at most one warning, no marker, startup continues.
 - Supervised/noninteractive/plugin-unavailable paths never call the endpoint.
-- Accepted logout clears marker before tokens; marker-clear failure is observable
-  and leaves tokens intact; cancelled logout preserves both.
+- Accepted logout clears all markers before tokens; state-clear failure is
+  observable and leaves tokens intact; cancelled logout preserves both.
 - Strict analyzer, focused tests, host build, and architecture implementation
   review pass with no changes outside the declared paths.
