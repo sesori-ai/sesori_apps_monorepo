@@ -28,7 +28,6 @@ import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -391,6 +390,7 @@ class _ReauthHarness {
         bridgeIdProvider: registrationService,
       ),
       plugin: plugin,
+      pluginId: plugin.id,
       sessionCreationService: SessionCreationService(
         metadataService: FakeMetadataService(),
         worktreeService: WorktreeService(
@@ -469,11 +469,6 @@ class _ReauthHarness {
           ),
           plugin: plugin,
         ),
-      ),
-      sessionEventEnrichmentService: SessionEventEnrichmentService(
-        sessionRepository: sessionRepository,
-        sessionMutationDispatcher: sessionTitleService,
-        failureReporter: FakeFailureReporter(),
       ),
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),

@@ -1072,7 +1072,12 @@ Future<void> _insertSession({
     lastAgentModel: null,
   );
   if (archivedAt != null) {
-    await db.sessionDao.setArchived(sessionId: sessionId, archivedAt: archivedAt, updatedAt: archivedAt);
+    await db.sessionDao.setArchived(
+      sessionId: sessionId,
+      archivedAt: archivedAt,
+      updatedAt: archivedAt,
+      projectionUpdatedAt: archivedAt,
+    );
   }
 }
 
@@ -1189,9 +1194,6 @@ class _FakeWorktreeService extends WorktreeService {
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
   @override
   String get id => "fake";
-
-  @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();

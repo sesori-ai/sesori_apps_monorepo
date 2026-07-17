@@ -4,6 +4,7 @@ import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -245,6 +246,45 @@ void main() {
     });
   });
 
+  group("OpenCodeApi.sendPrompt", () {
+    test("uses the synchronous endpoint for no-reply prompts", () async {
+      late http.BaseRequest capturedRequest;
+      late String capturedBody;
+      final mockClient = MockClient((request) async {
+        capturedRequest = request;
+        capturedBody = request.body;
+        return http.Response("{}", 200);
+      });
+      final api = OpenCodeApi(
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: "test-pass",
+          client: mockClient,
+        ),
+      );
+
+      await api.sendPrompt(
+        sessionId: "ses-123",
+        body: const SendPromptBody(
+          parts: [PluginPromptPart.text(text: "Keep auth decisions")],
+          agent: "build",
+          variant: null,
+          model: (providerID: "openai", modelID: "gpt-4.1"),
+          noReply: true,
+        ),
+        directory: "/repo",
+      );
+
+      expect(capturedRequest.method, equals("POST"));
+      expect(
+        capturedRequest.url.toString(),
+        equals("http://localhost:1234/session/ses-123/message"),
+      );
+      expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
+      expect(jsonDecodeMap(capturedBody)["noReply"], isTrue);
+    });
+  });
+
   group("OpenCodeApi.summarize", () {
     test("uses the injected client for POST /session/{id}/summarize", () async {
       var calls = 0;
@@ -297,9 +337,23 @@ void main() {
         agent: null,
         variant: null,
         model: null,
+        noReply: false,
       );
 
       expect(body.toJson().containsKey("variant"), isFalse);
+      expect(body.toJson().containsKey("noReply"), isFalse);
+    });
+
+    test("SendPromptBody includes noReply when enabled", () {
+      const body = SendPromptBody(
+        parts: [PluginPromptPart.text(text: "Keep auth decisions")],
+        agent: "build",
+        variant: null,
+        model: (providerID: "openai", modelID: "gpt-4.1"),
+        noReply: true,
+      );
+
+      expect(body.toJson()["noReply"], isTrue);
     });
 
     test("SendCommandBody includes variant when provided", () {

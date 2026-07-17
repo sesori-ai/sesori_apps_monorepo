@@ -5,12 +5,14 @@ class SendPromptBody {
   final String? agent;
   final String? variant;
   final ({String providerID, String modelID})? model;
+  final bool noReply;
 
   const SendPromptBody({
     required this.parts,
     required this.agent,
     required this.variant,
     required this.model,
+    required this.noReply,
   });
 
   /// Converts our domain types to OpenCode's wire format.
@@ -55,6 +57,7 @@ class SendPromptBody {
           "providerID": selectedModel.providerID,
           "modelID": selectedModel.modelID,
         },
+      if (noReply) "noReply": true,
     };
   }
 }

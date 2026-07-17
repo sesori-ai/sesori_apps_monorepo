@@ -201,16 +201,20 @@ void main() {
           reason: "getSessionsForProject must publish 3 session bindings",
         );
         expect(
-          sessionRows.map((r) => r.sessionId).toSet(),
+          sessionRows.map((r) => r.backendSessionId).toSet(),
           equals({"sess-1", "sess-2", "sess-3"}),
         );
         for (final row in sessionRows) {
-          expect(row.backendSessionId, equals(row.sessionId));
+          expect(row.sessionId, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+          expect(row.sessionId, isNot(row.backendSessionId));
           expect(row.pluginId, equals(plugin.id));
           expect(row.projectId, equals("sess-proj"));
           expect(row.directory, equals("/tmp/sess-proj"));
         }
-        expect(sessions.map((session) => session.id).toSet(), equals({"sess-1", "sess-2", "sess-3"}));
+        expect(
+          sessions.map((session) => session.id).toSet(),
+          equals(sessionRows.map((row) => row.sessionId).toSet()),
+        );
       },
     );
   });
@@ -261,9 +265,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "opencode";
-
-  @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();

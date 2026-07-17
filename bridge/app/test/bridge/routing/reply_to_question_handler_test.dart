@@ -11,13 +11,20 @@ void main() {
     late FakeBridgePlugin plugin;
     late ReplyToQuestionHandler handler;
 
-    setUp(() {
+    setUp(() async {
       plugin = FakeBridgePlugin();
       final db = createTestDatabase();
       addTearDown(db.close);
+      await recordSessionBinding(
+        database: db,
+        sessionId: "ses-1",
+        backendSessionId: "backend-ses-1",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        parentSessionId: null,
+      );
       handler = ReplyToQuestionHandler(
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
       );
     });
 
@@ -44,7 +51,7 @@ void main() {
       );
 
       expect(plugin.lastReplyQuestionId, equals("q1"));
-      expect(plugin.lastReplySessionId, equals("ses-1"));
+      expect(plugin.lastReplySessionId, equals("backend-ses-1"));
       expect(
         plugin.lastReplyAnswers,
         equals(const [

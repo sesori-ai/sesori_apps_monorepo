@@ -20,12 +20,10 @@ class BridgeEventMapper {
   SesoriSseEvent? map(BridgeSseEvent event) {
     try {
       return switch (event) {
-        BridgeSseServerConnected() => const SesoriSseEvent.serverConnected(),
+        BridgeSseServerConnected() => null,
         BridgeSseServerHeartbeat() => null,
-        BridgeSseServerInstanceDisposed(:final directory) => SesoriSseEvent.serverInstanceDisposed(
-          directory: directory,
-        ),
-        BridgeSseGlobalDisposed() => const SesoriSseEvent.globalDisposed(),
+        BridgeSseServerInstanceDisposed() => null,
+        BridgeSseGlobalDisposed() => null,
         BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
         BridgeSseSessionsUpdated(:final projectID) => SesoriSseEvent.sessionsUpdated(projectID: projectID),

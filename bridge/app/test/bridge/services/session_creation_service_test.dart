@@ -116,8 +116,9 @@ void main() {
         ),
       );
 
-      final stored = await db.sessionDao.getSession(sessionId: "backend-session");
-      expect(created.id, "backend-session");
+      final stored = await db.sessionDao.getSession(sessionId: created.id);
+      expect(created.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+      expect(created.id, isNot("backend-session"));
       expect(stored, isNotNull);
       expect(stored!.backendSessionId, "backend-session");
       expect(stored.pluginId, "fake");
@@ -127,7 +128,7 @@ void main() {
       expect(plugin.lastCreateDirectory, "/repo/.worktrees/session-one");
     });
 
-    test("rejects a cross-plugin stable id collision without changing the retained binding", () async {
+    test("allocates around a cross-plugin backend-id collision without changing the retained binding", () async {
       await db.projectsDao.recordOpenedProject(
         projectId: "/retained",
         path: "/retained",
@@ -149,31 +150,29 @@ void main() {
         lastAgentModel: null,
       );
 
-      await expectLater(
-        service.createSession(
-          request: const CreateSessionRequest(
-            projectId: "/repo",
-            pluginId: "fake",
-            dedicatedWorktree: false,
-            parts: [],
-            variant: null,
-            agent: null,
-            model: null,
-            command: null,
-          ),
-        ),
-        throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.statusCode, "statusCode", 409)
-              .having((error) => error.operation, "operation", "createSession"),
+      final created = await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
         ),
       );
 
       final retained = await db.sessionDao.getSession(sessionId: "backend-session");
+      final createdBinding = await db.sessionDao.getSession(sessionId: created.id);
       expect(plugin.createCalls, 1);
       expect(retained?.pluginId, "other");
       expect(retained?.backendSessionId, "backend-session");
       expect(retained?.projectId, "/retained");
+      expect(created.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+      expect(createdBinding?.pluginId, "fake");
+      expect(createdBinding?.backendSessionId, "backend-session");
+      expect(createdBinding?.projectId, "/repo");
     });
   });
 }

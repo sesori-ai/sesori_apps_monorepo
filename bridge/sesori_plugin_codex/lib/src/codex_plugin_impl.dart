@@ -177,9 +177,6 @@ class CodexPlugin implements CodexManagedApi {
   String get id => pluginId;
 
   @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
-
-  @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
 
   /// Lazily opens the WS connection, performs `initialize`, and starts

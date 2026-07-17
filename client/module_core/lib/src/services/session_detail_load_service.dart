@@ -41,10 +41,7 @@ class SessionDetailLoadService {
     try {
       final routeProjectId = projectId.normalize();
       final messagesFuture = _repository.getMessages(sessionId: sessionId);
-      final questionsFuture = _repository.getPendingQuestions(sessionId: sessionId);
-      final permissionsFuture = _repository.getPendingPermissions(sessionId: sessionId);
       final childrenFuture = _repository.getChildren(sessionId: sessionId);
-      final statusesFuture = _repository.getSessionStatuses();
       final sessionResponse = await _repository.getSession(sessionId: sessionId);
       final session = switch (sessionResponse) {
         SuccessResponse(:final data) => data,
@@ -60,17 +57,21 @@ class SessionDetailLoadService {
       final commandsFuture = _listCommands(projectId: effectiveProjectId, pluginId: pluginId);
       final agentsFuture = _listAgents(projectId: effectiveProjectId, pluginId: pluginId);
       final providersFuture = _listProviders(projectId: effectiveProjectId, pluginId: pluginId);
+      // Stage 4 child discovery persists legacy bindings. Pending input must
+      // observe those bindings rather than race the compatibility backfill.
+      final childrenResponse = await childrenFuture;
+      final questionsFuture = _repository.getPendingQuestions(sessionId: sessionId);
+      final permissionsFuture = _repository.getPendingPermissions(sessionId: sessionId);
+      final statusesFuture = _repository.getSessionStatuses();
       final (
         messagesResponse,
         questionsResponse,
         permissionsResponse,
-        childrenResponse,
         statusesResponse,
       ) = await (
         messagesFuture,
         questionsFuture,
         permissionsFuture,
-        childrenFuture,
         statusesFuture,
       ).wait;
       final (commandsResponse, agentsResponse, providersResponse) = await (

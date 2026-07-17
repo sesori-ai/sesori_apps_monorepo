@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -110,6 +112,28 @@ void main() {
 
       final loaded = await service.load(sessionId: "session-1", projectId: "project-1");
       expect(loaded, isA<SessionDetailLoadResultLoaded>());
+    });
+
+    test("loads children before pending input", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      final children = Completer<ApiResponse<SessionListResponse>>();
+      when(
+        () => repository.getChildren(sessionId: "session-1"),
+      ).thenAnswer((_) => children.future);
+
+      final load = service.load(sessionId: "session-1", projectId: "project-1");
+      await untilCalled(() => repository.getChildren(sessionId: "session-1"));
+
+      verifyNever(() => repository.getPendingQuestions(sessionId: "session-1"));
+      verifyNever(() => repository.getPendingPermissions(sessionId: "session-1"));
+      verifyNever(() => repository.getSessionStatuses());
+
+      children.complete(ApiResponse.success(const SessionListResponse(items: <Session>[])));
+      expect(await load, isA<SessionDetailLoadResultLoaded>());
+      verify(() => repository.getPendingQuestions(sessionId: "session-1")).called(1);
+      verify(() => repository.getPendingPermissions(sessionId: "session-1")).called(1);
+      verify(() => repository.getSessionStatuses()).called(1);
     });
 
     test("connected API failure does not auto-loop", () async {

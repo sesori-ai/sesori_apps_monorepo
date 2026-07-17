@@ -483,6 +483,15 @@ class _FakePullRequestRepository implements PullRequestRepository {
 
 class _FakeSessionRepository implements SessionRepository {
   @override
+  Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
+
+  @override
+  int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
   bool get sessionListIsAuthoritative => true;
 
   @override
@@ -518,12 +527,20 @@ class _FakeSessionRepository implements SessionRepository {
   @override
   Future<Session> createSession({
     required String pluginId,
+    required String projectId,
     required String directory,
     required String? parentSessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
+    required bool isDedicated,
+    required String? worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
   }) async => const Session(
     branchName: null,
     id: "",
@@ -552,10 +569,6 @@ class _FakeSessionRepository implements SessionRepository {
       Session.fromJson(pluginSession.toJson());
 
   @override
-  Future<Session> enrichPluginEventSessionJson({required Map<String, dynamic> sessionJson}) async =>
-      Session.fromJson(sessionJson);
-
-  @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
 
   @override
@@ -579,6 +592,34 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
+
+  @override
+  Future<StoredSession?> getStoredSessionByBackendId({
+    required String pluginId,
+    required String backendSessionId,
+  }) async => null;
+
+  @override
+  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+    required String pluginId,
+    required List<String> backendSessionIds,
+  }) async => const {};
+
+  @override
+  Future<StoredSession?> updateObservedSessionProjection({
+    required String pluginId,
+    required Session observed,
+    required bool updateCatalogTitle,
+    required int projectionUpdatedAt,
+  }) async => null;
+
+  @override
+  Future<StoredSession?> insertObservedChild({
+    required String pluginId,
+    required Session observed,
+    required StoredSession parent,
+    required int projectionUpdatedAt,
+  }) async => null;
 
   @override
   Future<void> archiveStoredSession({
@@ -691,6 +732,7 @@ StoredSession _storedSession({
     backendSessionId: id,
     pluginId: "fake",
     projectId: "project-1",
+    parentSessionId: null,
     directory: "/tmp/project-1",
     worktreePath: null,
     branchName: branchName,

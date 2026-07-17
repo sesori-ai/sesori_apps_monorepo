@@ -30,7 +30,6 @@ import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
@@ -89,6 +88,7 @@ void main() {
         ),
         client: _ThrowingConnectRelayClient(),
         plugin: plugin,
+        pluginId: plugin.id,
         sessionCreationService: SessionCreationService(
           metadataService: FakeMetadataService(),
           worktreeService: WorktreeService(
@@ -201,11 +201,6 @@ void main() {
             ),
             plugin: plugin,
           ),
-        ),
-        sessionEventEnrichmentService: SessionEventEnrichmentService(
-          sessionRepository: sessionRepository,
-          sessionMutationDispatcher: sessionTitleService,
-          failureReporter: FakeFailureReporter(),
         ),
         sessionMutationDispatcher: sessionTitleService,
         restartService: buildTestRestartService(),
@@ -365,12 +360,6 @@ class _TestHarness {
       ),
     );
     final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final sessionEventEnrichmentService = SessionEventEnrichmentService(
-      sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionTitleService,
-      failureReporter: FakeFailureReporter(),
-    );
-
     final projectActivityService = throwOnProjectReconciliation
         ? _ThrowingProjectActivityService(projectRepository: projectRepository)
         : ProjectActivityService(
@@ -387,6 +376,7 @@ class _TestHarness {
       ),
       client: relayClient,
       plugin: plugin,
+      pluginId: plugin.id,
       sessionCreationService: SessionCreationService(
         metadataService: metadataService,
         worktreeService: worktreeService,
@@ -460,7 +450,6 @@ class _TestHarness {
         projectsDao: database.projectsDao,
       ),
       worktreeService: worktreeService,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
       statusNotifier: null,
@@ -564,9 +553,6 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
 
   @override
   String get id => "throwing-summary";
-
-  @override
-  bool get supportsIdentityPreservingRowlessChildSessions => false;
 
   @override
   Stream<BridgeSseEvent> get events {

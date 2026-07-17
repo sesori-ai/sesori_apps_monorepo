@@ -105,11 +105,10 @@ class SessionUnseenService {
   }
 
   /// Records activity for [sessionId]. No-op when the session has no persisted
-  /// row — child/subagent sessions never have one, and a root not yet learned
-  /// (e.g. created while the bridge was offline) self-heals once a `/sessions`
-  /// fetch inserts its row and later activity stamps it. While the session is
-  /// being viewed, the seen timestamp is advanced too so it never bolds under
-  /// the watcher.
+  /// row. While the session is being viewed, the seen timestamp is advanced too
+  /// so it never bolds under the watcher. Durable child timestamps remain
+  /// available for child reads but do not independently affect project unseen
+  /// aggregation.
   ///
   /// [occurredAt] is the triggering message's own creation time (ms epoch),
   /// when the caller has one. It keeps the message timeline in a single clock
@@ -178,11 +177,10 @@ class SessionUnseenService {
     });
   }
 
-  /// Records that a brand-new ROOT session was created (observed live). Child
-  /// sessions ([parentId] != null) are ignored. The new root is stamped with
-  /// activity so it is immediately unseen — unless a phone is already viewing
-  /// it, in which case it stays seen. [sessionDirectory] supplies the live path
-  /// when a native-project plugin reports an opaque [projectId].
+  /// Records that a persisted ROOT session was created (observed live). Child
+  /// sessions ([parentId] != null) and missing durable bindings are ignored.
+  /// The root is stamped with activity so it is immediately unseen — unless a
+  /// phone is already viewing it, in which case it stays seen.
   ///
   /// [occurredAt] is the session's own creation time, preferred for the stamp
   /// so it lives in the same clock domain as the message-derived stamps: the
@@ -192,8 +190,6 @@ class SessionUnseenService {
   /// creation time even without skew).
   Future<void> recordSessionCreated({
     required String sessionId,
-    required String projectId,
-    required String sessionDirectory,
     required String? parentId,
     int? occurredAt,
   }) {
@@ -201,31 +197,25 @@ class SessionUnseenService {
     final viewedAtSubmit = _viewTracker.isViewed(sessionId: sessionId);
     return _serialize(sessionId, () async {
       final existing = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+      if (existing == null) return;
       // If an earlier activity event already stamped this row (it has any
       // unseen marker), don't overwrite it — that would advance activity past
       // the user's own message and wrongly bold it. But a bare placeholder
       // inserted by a `/sessions` refresh (no markers at all) must still be
       // stamped with creation activity so a new laptop-created session bolds
       // instead of staying seen forever.
-      final hasMarkers =
-          existing != null &&
-          (existing.activityAt != null || existing.userMessageAt != null || existing.seenAt != null);
+      final hasMarkers = existing.activityAt != null || existing.userMessageAt != null || existing.seenAt != null;
       if (hasMarkers) {
         await _emit(sessionId: sessionId, projectId: existing.projectId);
         return;
       }
-      await _unseenRepository.ensureRootSessionActivity(
+      await _unseenRepository.recordActivity(
         sessionId: sessionId,
-        projectId: projectId,
-        sessionDirectory: sessionDirectory,
-        // Local-domain guard timestamp (see [ensureRootSessionActivity]); only
-        // the activity marker uses the session's own creation time.
-        createdAt: _wallClock(),
-        activityAt: occurredAt ?? _nextTimestamp(),
+        at: occurredAt ?? _nextTimestamp(),
         advanceSeen: viewedAtSubmit,
         isUserMessage: false,
       );
-      await _emit(sessionId: sessionId, projectId: projectId);
+      await _emit(sessionId: sessionId, projectId: existing.projectId);
     });
   }
 

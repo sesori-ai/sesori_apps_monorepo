@@ -51,7 +51,6 @@ import "../services/pr_sync_service.dart";
 import "../services/project_activity_service.dart";
 import "../services/project_initialization_service.dart";
 import "../services/session_creation_service.dart";
-import "../services/session_event_enrichment_service.dart";
 import "../services/session_mutation_dispatcher.dart";
 import "../services/session_unseen_service.dart";
 import "../services/session_view_tracker.dart";
@@ -60,9 +59,7 @@ import "bridge_shutdown_coordinator.dart";
 
 class BridgeRuntime {
   final AppDatabase _database;
-  final BridgePluginApi _plugin;
   final FailureReporter _failureReporter;
-  final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final BridgeRestartService _restartService;
   // Owned here (composition root) because they are global/singleton and must
   // outlive any single OrchestratorSession (e.g. across a restart/reconnect).
@@ -75,18 +72,14 @@ class BridgeRuntime {
 
   BridgeRuntime({
     required AppDatabase database,
-    required BridgePluginApi plugin,
     required FailureReporter failureReporter,
-    required SessionEventEnrichmentService sessionEventEnrichmentService,
     required BridgeRestartService restartService,
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
     required SessionRepository sessionRepository,
     required this.session,
   }) : _database = database,
-       _plugin = plugin,
        _failureReporter = failureReporter,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService,
        _restartService = restartService,
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
@@ -95,6 +88,7 @@ class BridgeRuntime {
   static BridgeRuntime create({
     required BridgeConfig config,
     required BridgePluginApi plugin,
+    required String pluginId,
     // Constructed at the composition root (not here) so supervised mode can
     // wire its connectionState stream into the ControlStatusNotifier.
     required RelayClient relayClient,
@@ -110,6 +104,9 @@ class BridgeRuntime {
     // Supervised mode only; null in standalone (no control channel).
     required ControlStatusNotifier? statusNotifier,
   }) {
+    if (plugin.id != pluginId) {
+      throw StateError("selected plugin $pluginId started API ${plugin.id}");
+    }
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
       projectsDao: database.projectsDao,
@@ -149,11 +146,6 @@ class BridgeRuntime {
       viewTracker: sessionViewTracker,
     );
     final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final sessionEventEnrichmentService = SessionEventEnrichmentService(
-      sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionMutationDispatcher,
-      failureReporter: failureReporter,
-    );
     final pushTracker = PushSessionStateTracker(now: DateTime.now);
     final pushRateLimiter = PushRateLimiter(now: DateTime.now);
     final completionNotifier = CompletionNotifier(
@@ -222,9 +214,7 @@ class BridgeRuntime {
 
     return BridgeRuntime(
       database: database,
-      plugin: plugin,
       failureReporter: failureReporter,
-      sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: restartService,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
@@ -233,6 +223,7 @@ class BridgeRuntime {
         config: config,
         client: relayClient,
         plugin: plugin,
+        pluginId: pluginId,
         sessionCreationService: sessionCreationService,
         pushDispatcher: pushDispatcher,
         completionListener: CompletionPushListener(
@@ -278,7 +269,6 @@ class BridgeRuntime {
           projectsDao: database.projectsDao,
         ),
         worktreeService: worktreeService,
-        sessionEventEnrichmentService: sessionEventEnrichmentService,
         sessionMutationDispatcher: sessionMutationDispatcher,
         restartService: restartService,
         statusNotifier: statusNotifier,
@@ -292,11 +282,10 @@ class BridgeRuntime {
 
   DebugServer createDebugServer({required int port}) {
     return DebugServer(
-      plugin: _plugin,
+      pluginEvents: session.pluginEvents,
       router: session.router,
       port: port,
       failureReporter: _failureReporter,
-      sessionEventEnrichmentService: _sessionEventEnrichmentService,
       sessionRepository: _sessionRepository,
       restartService: _restartService,
       restartHandoff: session.handleRestartHandoff,
@@ -322,6 +311,7 @@ class BridgeRuntime {
 
     await step(_sessionUnseenService.dispose);
     await step(_sessionViewTracker.dispose);
+    await step(_sessionRepository.dispose);
     await step(_database.close);
 
     if (firstError != null) {

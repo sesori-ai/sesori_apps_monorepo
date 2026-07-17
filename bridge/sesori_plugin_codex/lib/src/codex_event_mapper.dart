@@ -8,8 +8,8 @@ import "codex_config_reader.dart";
 /// Translates `codex app-server` `ServerNotification` frames into
 /// bridge-neutral [BridgeSseEvent]s.
 ///
-/// The bridge core ([BridgeEventMapper] / [SessionEventEnrichmentService])
-/// requires the `info`/`status` maps on session and message events to be
+/// The bridge event pipeline requires the `info`/`status` maps on session and
+/// message events to be
 /// **sesori-schema JSON** — parseable by `Session.fromJson`,
 /// `Message.fromJson` and `SessionStatus.fromJson`. Codex's native
 /// `thread`/`item`/`status` objects use a different shape, so this mapper
