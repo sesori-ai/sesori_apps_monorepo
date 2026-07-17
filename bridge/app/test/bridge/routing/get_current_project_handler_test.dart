@@ -85,6 +85,11 @@ void main() {
         name: "My Project",
         activity: PluginProjectActivity(createdAt: 11, updatedAt: 22),
       );
+      await db.projectsDao.setDisplayName(
+        projectId: "/tmp/project",
+        displayName: "My Project",
+        updatedAt: 202,
+      );
 
       final response = await handler.handle(
         makeRequest("POST", "/project/current"),
@@ -94,9 +99,9 @@ void main() {
         fragment: null,
       );
 
-      expect(plugin.lastGetCurrentProjectProjectId, equals("/tmp/project"));
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
 
-      expect(response.id, equals("p1"));
+      expect(response.id, equals("/tmp/project"));
       expect(response.name, equals("My Project"));
       expect(response.time?.created, equals(101));
       expect(response.time?.updated, equals(202));

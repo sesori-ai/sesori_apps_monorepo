@@ -795,7 +795,7 @@ void main() {
     });
 
     group("moved project (stable id, new live path)", () {
-      test("getSessionsForProject publishes backend bindings and returns stable ids", () async {
+      test("getSessionsForProject reads stored bindings without plugin enumeration", () async {
         final db = createTestDatabase();
         addTearDown(db.close);
         await db.projectsDao.recordOpenedProject(
@@ -848,7 +848,7 @@ void main() {
         );
         final binding = await db.sessionDao.getSession(sessionId: "stable-live");
 
-        expect(plugin.lastGetSessionsWorktree, equals("/moved/a"));
+        expect(plugin.lastGetSessionsWorktree, isNull);
         expect(sessions.single.id, equals("stable-live"));
         expect(sessions.single.pluginId, equals(plugin.id));
         expect(sessions.single.projectID, equals("/projects/a"));
@@ -882,7 +882,7 @@ void main() {
         expect(plugin.lastGetCommandsProjectId, isNull);
       });
 
-      test("getProjectPath returns the live directory, probing the plugin for availability", () async {
+      test("getProjectPath returns the stored live directory without probing the plugin", () async {
         final db = createTestDatabase();
         addTearDown(db.close);
         await db.projectsDao.recordOpenedProject(
@@ -903,7 +903,7 @@ void main() {
         final path = await repository.getProjectPath(projectId: "/projects/a");
 
         expect(path, equals("/moved/a"));
-        expect(plugin.lastGetProjectDirectory, equals("/moved/a"));
+        expect(plugin.lastGetProjectDirectory, isNull);
       });
 
       test("resolveProjectDirectory rejects an unknown project id", () async {
@@ -1141,13 +1141,17 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
+      final bindingCommit = repository.bindingCommits.first;
       final summaries = await repository.getProjectActivitySummaries();
+      final commit = await bindingCommit;
 
       final active = summaries.single.activeSessions.single;
       expect(active.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
       expect(active.awaitingInput, isTrue);
       expect(plugin.lastGetProjectDirectory, directory);
       expect(plugin.lastGetSessionsWorktree, directory);
+      expect(commit.pluginId, plugin.id);
+      expect(commit.backendSessionIds, ["backend-root"]);
       expect(
         (await db.sessionDao.getSessionByBinding(
           pluginId: plugin.id,
@@ -1238,7 +1242,7 @@ void main() {
       );
     }
 
-    test("getSessionsForProject lists a worktree session under its parent project", () async {
+    test("getSessionsForProject lists the durable worktree session under its parent project", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -1262,13 +1266,7 @@ void main() {
 
       final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
 
-      // The in-project session AND the worktree session both list under parent.
-      final inProjectBinding = await db.sessionDao.getSessionByBinding(
-        pluginId: plugin.id,
-        backendSessionId: "s1",
-      );
-      expect(inProjectBinding?.sessionId, startsWith("ses_"));
-      expect(sessions.map((s) => s.id).toSet(), {inProjectBinding!.sessionId, "w1"});
+      expect(sessions.map((s) => s.id).toSet(), {"w1"});
       // Enrichment adopts the stored attribution as projectID (the plugin
       // reported the worktree cwd), so live created/updated events for this
       // session are not dropped by the parent project's session list. The
@@ -1276,10 +1274,7 @@ void main() {
       final worktreeSession = sessions.singleWhere((s) => s.id == "w1");
       expect(worktreeSession.projectID, parent);
       expect(worktreeSession.directory, worktree);
-      // The bridge told the plugin where to look: the project being served and
-      // the stored session's project + worktree paths — a directory-scoped
-      // backend (ACP) can only enumerate directories it is pointed at.
-      expect(plugin.receivedKnownDirectories, containsAll(<String>[parent, worktree]));
+      expect(plugin.receivedKnownDirectories, isNull);
     });
 
     test("findProjectIdForSession resolves a recorded worktree session to its parent via its stored row", () async {
@@ -1594,7 +1589,7 @@ void main() {
       }
     });
 
-    test("getChildSessions backfills backend children and preserves durable history", () async {
+    test("getChildSessions serves durable history without backend discovery", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       final plugin = _FakeDerivedPlugin(launchDirectory: "/repo", allSessions: const [])
@@ -1646,29 +1641,25 @@ void main() {
 
       final children = await repository.getChildSessions(sessionId: "stable-parent");
 
-      expect(plugin.lastGetChildSessionsParentId, "live-parent");
-      expect(children.map((session) => session.id), contains("stable-child"));
-      final discovered = children.singleWhere((session) => session.id != "stable-child");
-      expect(discovered.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
-      expect(discovered.parentID, "stable-parent");
-      expect(discovered.pluginId, equals(plugin.id));
+      expect(plugin.lastGetChildSessionsParentId, isNull);
+      expect(children.map((session) => session.id), ["stable-child"]);
       expect(
-        (await db.sessionDao.getSessionByBinding(
+        await db.sessionDao.getSessionByBinding(
           pluginId: plugin.id,
           backendSessionId: "new-backend-child",
-        ))?.sessionId,
-        discovered.id,
+        ),
+        isNull,
       );
       final childDetail = await repository.getSessionForProject(
         projectId: "/repo",
-        sessionId: discovered.id,
+        sessionId: "stable-child",
       );
-      expect(childDetail?.id, discovered.id);
+      expect(childDetail?.id, "stable-child");
       expect(childDetail?.parentID, "stable-parent");
       expect(
         await repository.getSessionForProject(
           projectId: "/other",
-          sessionId: discovered.id,
+          sessionId: "stable-child",
         ),
         isNull,
       );
@@ -1679,10 +1670,7 @@ void main() {
         message: "backend unavailable",
       );
       final offlineChildren = await repository.getChildSessions(sessionId: "stable-parent");
-      expect(
-        offlineChildren.map((session) => session.id),
-        containsAll(["stable-child", discovered.id]),
-      );
+      expect(offlineChildren.map((session) => session.id), ["stable-child"]);
     });
 
     test("deleteSession rejects a rowless session without plugin discovery", () async {
@@ -1739,7 +1727,7 @@ void main() {
       expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "sesori-id", pluginId: plugin.id), isFalse);
     });
 
-    test("tombstoned sessions are filtered from enumeration and resolution", () async {
+    test("tombstones do not enumerate or manufacture catalog sessions", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -1768,11 +1756,11 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
 
       final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
-      expect(sessions.single.id, startsWith("ses_"));
+      expect(sessions, isEmpty);
 
       expect(await repository.findProjectIdForSession(sessionId: "deleted-s"), isNull);
       expect(await repository.findProjectIdForSession(sessionId: "kept-s"), isNull);
-      expect(await repository.findProjectIdForSession(sessionId: sessions.single.id), parent);
+      expect(plugin.listAllSessionsCalls, 0);
     });
 
     test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {

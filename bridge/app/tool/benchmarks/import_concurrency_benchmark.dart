@@ -4,7 +4,6 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
-import "package:drift/native.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -90,7 +89,7 @@ class _ImportConcurrencyBenchmark {
     AppDatabase? database;
 
     try {
-      database = AppDatabase(NativeDatabase.createInBackground(databaseFile));
+      database = AppDatabase.openFile(file: databaseFile);
       final sqliteVersion = await _sqliteVersion(database: database);
       final fixture = _fixture(rootDirectory: temporaryDirectory.path);
       await _seed(database: database, projectPaths: fixture.projectPaths);
@@ -153,12 +152,11 @@ class _ImportConcurrencyBenchmark {
       releaseEnumeration.complete();
       await publicationTransactionStarted.future;
       final publicationReadStopwatch = Stopwatch()..start();
-      final publicationRead = database.projectsDao.getCatalogProjects();
-      await Future<void>.delayed(Duration.zero);
+      final publicationRows = await database.projectsDao.getCatalogProjects();
+      publicationReadStopwatch.stop();
+      final publicationReadCompletedDuringImport = !importDone.isCompleted;
       releasePublicationTransaction.complete();
       await importDone.future;
-      final publicationRows = await publicationRead;
-      publicationReadStopwatch.stop();
       schedulingProbe.stop();
       await importSubscription.cancel();
       if (publicationRows.length != _configuration.projectCount) {
@@ -207,6 +205,7 @@ class _ImportConcurrencyBenchmark {
         },
         "catalogReadWhileEnumerationBlockedMicroseconds": _percentiles(blockedEnumerationReadSamples),
         "catalogReadOverPublicationMicroseconds": publicationReadStopwatch.elapsedMicroseconds,
+        "catalogReadCompletedDuringImport": publicationReadCompletedDuringImport,
         "publicationMicroseconds": publicationStopwatch.elapsedMicroseconds,
         "schedulingLagMicroseconds": _percentiles(schedulingSamples),
         "rssBytes": {

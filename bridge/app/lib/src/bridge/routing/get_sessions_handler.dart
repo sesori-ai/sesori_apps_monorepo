@@ -10,7 +10,7 @@ import "request_handler.dart";
 
 /// Handles `GET /sessions` — returns sessions for a given project.
 ///
-/// Merges archive status from the database with plugin session data.
+/// Reads the durable catalog and applies bridge-owned enrichment.
 class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;

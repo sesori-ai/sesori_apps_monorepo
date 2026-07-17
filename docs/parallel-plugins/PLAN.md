@@ -8,8 +8,8 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 5 - explicit import and automatic hydration
-- **Next up:** Stage 6 - database-only list cutover
+- **Last completed stage:** Stage 6 - database-only list cutover
+- **Next up:** Stage 7 - multi-plugin routing, lifecycle, and events
 - **Runtime default:** one selected plugin until Stage 7
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
@@ -17,6 +17,7 @@
 - **Stage 3C implementation base:** `main` at `72ac20f4` (audited 2026-07-16)
 - **Stage 4 implementation base:** `main` at `86816cee` (audited 2026-07-16)
 - **Stage 5 implementation base:** `main` at `5a76c0c4` (audited 2026-07-17)
+- **Stage 6 implementation base:** stacked Stage 5 at `b8d6dd5f` (audited 2026-07-17)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -637,7 +638,7 @@ selection.
 | ☑ | 3C | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☑ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
 | ☑ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
-| ☐ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
+| ☑ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
 | ☐ | 7 | Multi-plugin routing, lifecycle, and event streams | Mixed-id routing, independent failure, startup/shutdown |
 | ☐ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
 | ☐ | 9 | Performance gate and cleanup | Fixed-host matrix, soak, dead-path removal, docs |
@@ -1058,6 +1059,83 @@ Acceptance: list routes make zero plugin calls even when all plugin methods
 throw or never complete; plugin outage leaves catalog browsing intact; import
 absence never deletes rows; list and import-concurrency budgets pass.
 
+PR-level implementation plan:
+
+1. In `bridge/app/lib/src/api/database/database.dart`, add
+   `AppDatabase.openFile({required File file})` as the one file-backed executor
+   factory used by production and benchmarks. Configure SQLite WAL and a bounded
+   read pool there so catalog SELECTs use independent read connections while the
+   import writer transaction is open. Keep foreign-key setup, schema v11, and
+   every migration unchanged. `AppDatabase.create` delegates to `openFile`, and
+   normal `AppDatabase.close` owns shutdown of the writer and reader isolates;
+   direct `AppDatabase(QueryExecutor)` construction remains only for injected
+   in-memory and migration-test executors. Add a file-backed test proving a
+   catalog read observes the last committed snapshot without waiting for a held
+   write transaction.
+2. Change `ProjectRepository.getProjects` to read
+   `ProjectsDao.getCatalogProjects`, batch unseen state once, and map rows with
+   the existing `ProjectCatalogMapper` using the stored path/name/activity and
+   `directoryMissing: false`. Change `getProject` to map one stored row or throw
+   `ProjectNotFoundException`. Remove plugin enumeration, list-time project
+   seeding, in-memory list sorting, and per-row filesystem probes from those two
+   read methods only. Keep plugin-backed open/rename and
+   `listProjectActivityEvidence` as targeted/reconciliation operations; keep
+   filesystem probing on targeted open/rename responses.
+3. Make `ProjectActivityService.getProjects` call the catalog repository read
+   directly instead of queuing behind the serialized mutation/reconciliation
+   tail. This prevents an unrelated blocked plugin reconciliation from blocking
+   `GET /projects` while preserving serialized open, event, and reconciliation
+   writes.
+4. Let `SessionDao.getRootCatalogSessions` accept the existing nullable limit
+   contract and use SQLite's unbounded limit with the requested offset when the
+   client omits a limit. Keep SQL ordering as `updated_at DESC, session_id DESC`
+   and keep the existing root/child indexes; add no new schema or query layer.
+5. Change public `SessionRepository.getSessionsForProject` to validate the
+   stored project and map `SessionDao.getRootCatalogSessions` directly. Change
+   `getSessionForProject` to validate project attribution and map that one stored
+   row without requiring an operational plugin. Change `getChildSessions` to
+   validate only the durable parent row, read direct children from the catalog,
+   and delete the pre-Stage-5 additive plugin-discovery compatibility path.
+   Change `getProjectPath` to return only the authoritative stored path so PR
+   refresh no longer probes a native plugin from the list handler.
+6. Preserve Stage 4's rowless native active-summary behavior through a private
+   targeted `SessionRepository` observation method. `_hydrateActiveRootBindings`
+   continues resolving the native project, then explicitly enumerates that
+   project's root sessions, publishes their bindings transactionally, and emits
+   binding commits. The public list methods never call this path; derived
+   live-list derivation and list-triggered root publication are removed.
+7. Keep `GetProjectsHandler`, `GetCurrentProjectHandler`, `GetSessionsHandler`,
+   `GetSessionHandler`, and `GetChildSessionsHandler` thin over the changed
+   repositories. Pending-title application and optional PR refresh remain local
+   committed-mutation/external-git behaviors, but project-path resolution and
+   every catalog response make zero `BridgePluginApi` calls. Update stale
+   plugin-backed comments. Do not add shadow reads.
+8. Add repository/handler/service tests using throwing and never-completing
+   plugin fakes. Prove project list/detail, root pagination/detail, and child
+   history complete from seeded rows; hidden projects remain excluded from the
+   list; SQL tie-break ordering and title/name precedence are preserved; an
+   in-flight plugin reconciliation cannot block a project list; unknown durable
+   ids retain existing 404 behavior; and targeted native active-root hydration
+   still publishes a binding.
+9. Update `live_list_baseline.dart` to seed and measure the post-cutover catalog
+   paths while asserting zero plugin calls. Move it,
+   `import_concurrency_benchmark.dart`, and `event_projection_benchmark.dart` to
+   `AppDatabase.openFile` so every file-backed production/benchmark consumer
+   shares one executor policy. Record the 500-project, 100-of-10,000,
+   1,000-unpaginated, and 50,000-row concurrent-import directional results in
+   this plan. Fixed-host gating remains Stage 9.
+10. Do not delete `ProjectActivityService.reconcile`, its repository evidence
+    path, the now-unreferenced legacy derived-project builder, or the unused
+    vanished-session reconciliation APIs in this PR. They are not on a list
+    response path, and Stage 9 owns evidence-based dead-path cleanup. The old
+    `SessionPersistenceService` mentioned in the stage summary was already
+    removed in Stage 3A; Stage 6 removes the remaining list-triggered behavior,
+    not a nonexistent class.
+
+Stage 6 changes only `bridge/app` and this plan. Shared/client contracts, plugin
+packages, import semantics, targeted session operations, runtime plugin count,
+and schema/migration artifacts remain unchanged.
+
 ### Stage 7 - Multi-Plugin Routing, Lifecycle, and Events
 
 - Make `--plugin` repeatable and honor ordered `enabledPlugins`.
@@ -1158,7 +1236,7 @@ release notes must identify that minimum rollback version.
 | Import overwrites a newer event/rename | `projection_updated_at` guard and bridge-owned override fields (3-5) |
 | Partial or destructive import | enumerate before one transaction; never delete absence (5) |
 | Codex scan blocks relay/event isolate | plugin-owned worker isolate and responsiveness test (5) |
-| Long publication blocks reads | bounded chunked transaction and concurrent-read benchmark (5); Stage 6 removes live-list work and owns the remaining publication-read serialization gate |
+| Long publication blocks reads | bounded chunked transaction (5); file-backed WAL/read pool and held-writer/concurrent-import read evidence (6) |
 | Unknown events discover external roots | binding lookup and proven-parent-only insertion (4) |
 | Out-of-order children grow memory | bounded pending map, drain on binding, warning on eviction (4) |
 | One event stream blocks another | normalize before stream merge; per-plugin ordering tests (4, 7) |
@@ -1174,6 +1252,25 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 6:** Project, project-detail, root-session, session-detail, child,
+  and project-path reads now map only durable catalog rows and never require an
+  operational plugin. Project lists batch unseen state once and leave directory
+  probing to targeted open/rename paths; session pagination and tie-breaking run
+  in SQL, and the temporary child/root live-list publication paths are gone.
+  Native rowless active summaries retain one private targeted enumeration that
+  commits bindings and publishes binding commits. Production and all three
+  file-backed benchmarks now share `AppDatabase.openFile`, with WAL and a
+  bounded four-reader pool; a held-writer test proves readers observe the last
+  committed snapshot without waiting. On the directional macOS arm64 M4 Pro AOT
+  fixture (2,000 samples), p95/p99 were 0.989/1.071 ms for 500 projects,
+  0.944/0.998 ms for 100 roots from 10,000, and 7.949/8.226 ms for 1,000
+  unpaginated roots, with zero plugin calls. A 10,000-root import published in
+  139.379 ms while a concurrent catalog read completed in 1.216 ms. During the
+  50,000-root fixture, the read completed in 1.147 ms before the 701.255 ms
+  publication finished; scheduling lag was 7.853/20.270 ms p99/max, RSS growth
+  was 78,004,224 bytes, and the database was 35,700,736 bytes. These are local
+  directional results; Stage 9 still owns fixed-host gating. Schema v11 and all
+  migration/generated artifacts are unchanged.
 - **Stage 5:** The selected plugin now has explicit HTTP/headless import and one
   automatic projection-v1 hydration. `CatalogImportService` owns one joinable,
   cancellable operation while `CatalogImportRepository` enumerates outside the

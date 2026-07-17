@@ -3,9 +3,10 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
-import "package:drift/native.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
+import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
@@ -18,7 +19,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 const _defaultWarmupCount = 25;
 const _defaultSampleCount = 2000;
 const _defaultTimestamp = 1700000000000;
-const _projectDirectory = "/benchmark/live-list-project";
+const _projectDirectory = "/benchmark/project-0000";
+const _smallProjectDirectory = "/benchmark/project-0001";
 
 Future<void> main(List<String> arguments) async {
   try {
@@ -67,7 +69,7 @@ class _LiveListBenchmark {
     AppDatabase? database;
 
     try {
-      database = AppDatabase(NativeDatabase.createInBackground(databaseFile));
+      database = AppDatabase.openFile(file: databaseFile);
       final sqliteVersion = await _sqliteVersion(database: database);
       final scenarios = await _runScenarios(database: database);
       final rssAfter = ProcessInfo.currentRss;
@@ -119,42 +121,17 @@ class _LiveListBenchmark {
   }
 
   Future<List<Map<String, Object?>>> _runScenarios({required AppDatabase database}) async {
-    final projects = List<PluginProject>.generate(
-      500,
-      (index) => PluginProject(
-        id: "/benchmark/project-${index.toString().padLeft(4, "0")}",
-        directory: "/benchmark/project-${index.toString().padLeft(4, "0")}",
-        name: "project-${index.toString().padLeft(4, "0")}",
-        activity: PluginProjectActivity(
-          createdAt: _defaultTimestamp + index,
-          updatedAt: _defaultTimestamp + index,
-        ),
-      ),
-      growable: false,
-    );
-    final sessions10000 = _sessions(count: 10000);
-    final sessions1000 = sessions10000.sublist(0, 1000);
-    final nativeLarge = _NativeBenchmarkPlugin(projects: projects, sessions: sessions10000);
-    final nativeSmall = _NativeBenchmarkPlugin(projects: const [], sessions: sessions1000);
-    final derivedLarge = _DerivedBenchmarkPlugin(sessions: sessions10000);
-    final derivedSmall = _DerivedBenchmarkPlugin(sessions: sessions1000);
+    await _seedProjects(database: database);
+    final plugin = _ThrowingBenchmarkPlugin();
     final filesystemApi = _ExistingFilesystemApi();
     const unseenCalculator = SessionUnseenCalculator();
     // Never invoked by the benchmarked listing paths; wired only to satisfy
     // the repository constructor.
     final gitCliApi = GitCliApi(processRunner: ProcessRunner(), gitPathExists: ({required String gitPath}) => false);
 
-    final nativeProjectRepository = ProjectRepository(
+    final projectRepository = ProjectRepository(
       gitCliApi: gitCliApi,
-      plugin: nativeLarge,
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      unseenCalculator: unseenCalculator,
-      filesystemApi: filesystemApi,
-    );
-    final derivedProjectRepository = ProjectRepository(
-      gitCliApi: gitCliApi,
-      plugin: derivedLarge,
+      plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,
@@ -163,76 +140,38 @@ class _LiveListBenchmark {
     final results = <Map<String, Object?>>[];
     results.add(
       await _measure(
-        name: "derived_1_project_from_10000_sessions",
+        name: "catalog_500_projects",
         fixture: const {
-          "capability": "bridge-derived-projects",
-          "sessionCount": 10000,
-          "expectedProjectId": _projectDirectory,
-        },
-        expectedRowsReturned: 1,
-        expectedPluginRowsEnumeratedPerSample: 10000,
-        plugin: derivedLarge,
-        operation: () async {
-          final derivedProjects = await derivedProjectRepository.getProjects(
-            defaultTimestamp: _defaultTimestamp,
-          );
-          if (derivedProjects.single.id != _projectDirectory) {
-            throw StateError(
-              "derived project id was ${derivedProjects.single.id}; expected $_projectDirectory",
-            );
-          }
-          return derivedProjects.length;
-        },
-      ),
-    );
-    results.add(
-      await _measure(
-        name: "native_500_projects",
-        fixture: const {
-          "capability": "native-projects",
+          "source": "catalog",
           "projectCount": 500,
         },
         expectedRowsReturned: 500,
-        plugin: nativeLarge,
-        operation: () async => (await nativeProjectRepository.getProjects(defaultTimestamp: _defaultTimestamp)).length,
+        plugin: plugin,
+        operation: () async => (await projectRepository.getProjects()).length,
       ),
     );
+    await _seedSessions(database: database);
 
-    await database.projectsDao.insertMissingProjectsWithActivity(
-      activities: const {
-        _projectDirectory: (
-          path: _projectDirectory,
-          createdAt: _defaultTimestamp,
-          updatedAt: _defaultTimestamp,
-        ),
-      },
-    );
-    final nativeLargeRepository = _sessionRepository(database: database, plugin: nativeLarge);
-    final nativeSmallRepository = _sessionRepository(database: database, plugin: nativeSmall);
-    final derivedLargeRepository = _sessionRepository(database: database, plugin: derivedLarge);
-    final derivedSmallRepository = _sessionRepository(database: database, plugin: derivedSmall);
-    final nativeLargeDispatcher = SessionMutationDispatcher(sessionRepository: nativeLargeRepository);
-    final nativeSmallDispatcher = SessionMutationDispatcher(sessionRepository: nativeSmallRepository);
-    final derivedLargeDispatcher = SessionMutationDispatcher(sessionRepository: derivedLargeRepository);
-    final derivedSmallDispatcher = SessionMutationDispatcher(sessionRepository: derivedSmallRepository);
+    final sessionRepository = _sessionRepository(database: database, plugin: plugin);
+    final mutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
 
     try {
       results.add(
         await _measure(
-          name: "native_100_of_10000_endpoint_core_without_pr_refresh",
+          name: "catalog_100_of_10000_endpoint_core_without_pr_refresh",
           fixture: const {
-            "capability": "native-projects",
+            "source": "catalog",
             "measuredPath": "endpoint-core-without-pr-refresh",
             "sessionCount": 10000,
             "start": 0,
             "limit": 100,
           },
           expectedRowsReturned: 100,
-          expectedPluginRowsEnumeratedPerSample: 10000,
-          plugin: nativeLarge,
+          plugin: plugin,
           operation: () => _sessionEndpointCoreCount(
-            repository: nativeLargeRepository,
-            mutationDispatcher: nativeLargeDispatcher,
+            repository: sessionRepository,
+            mutationDispatcher: mutationDispatcher,
+            projectId: _projectDirectory,
             start: 0,
             limit: 100,
           ),
@@ -240,60 +179,20 @@ class _LiveListBenchmark {
       );
       results.add(
         await _measure(
-          name: "native_1000_unpaginated_endpoint_core_without_pr_refresh",
+          name: "catalog_1000_unpaginated_endpoint_core_without_pr_refresh",
           fixture: const {
-            "capability": "native-projects",
+            "source": "catalog",
             "measuredPath": "endpoint-core-without-pr-refresh",
             "sessionCount": 1000,
             "start": null,
             "limit": null,
           },
           expectedRowsReturned: 1000,
-          plugin: nativeSmall,
+          plugin: plugin,
           operation: () => _sessionEndpointCoreCount(
-            repository: nativeSmallRepository,
-            mutationDispatcher: nativeSmallDispatcher,
-            start: null,
-            limit: null,
-          ),
-        ),
-      );
-      results.add(
-        await _measure(
-          name: "derived_100_of_10000_endpoint_core_without_pr_refresh",
-          fixture: const {
-            "capability": "bridge-derived-projects",
-            "measuredPath": "endpoint-core-without-pr-refresh",
-            "sessionCount": 10000,
-            "start": 0,
-            "limit": 100,
-          },
-          expectedRowsReturned: 100,
-          expectedPluginRowsEnumeratedPerSample: 10000,
-          plugin: derivedLarge,
-          operation: () => _sessionEndpointCoreCount(
-            repository: derivedLargeRepository,
-            mutationDispatcher: derivedLargeDispatcher,
-            start: 0,
-            limit: 100,
-          ),
-        ),
-      );
-      results.add(
-        await _measure(
-          name: "derived_1000_unpaginated_endpoint_core_without_pr_refresh",
-          fixture: const {
-            "capability": "bridge-derived-projects",
-            "measuredPath": "endpoint-core-without-pr-refresh",
-            "sessionCount": 1000,
-            "start": null,
-            "limit": null,
-          },
-          expectedRowsReturned: 1000,
-          plugin: derivedSmall,
-          operation: () => _sessionEndpointCoreCount(
-            repository: derivedSmallRepository,
-            mutationDispatcher: derivedSmallDispatcher,
+            repository: sessionRepository,
+            mutationDispatcher: mutationDispatcher,
+            projectId: _smallProjectDirectory,
             start: null,
             limit: null,
           ),
@@ -301,13 +200,36 @@ class _LiveListBenchmark {
       );
       return results;
     } finally {
-      await Future.wait([
-        nativeLargeDispatcher.dispose(),
-        nativeSmallDispatcher.dispose(),
-        derivedLargeDispatcher.dispose(),
-        derivedSmallDispatcher.dispose(),
-      ]);
+      await mutationDispatcher.dispose();
+      await sessionRepository.dispose();
     }
+  }
+
+  Future<void> _seedProjects({required AppDatabase database}) async {
+    await database.projectsDao.upsertProjectRows(
+      rows: [
+        for (var index = 0; index < 500; index++)
+          ProjectDto(
+            projectId: "/benchmark/project-${index.toString().padLeft(4, "0")}",
+            path: "/benchmark/project-${index.toString().padLeft(4, "0")}",
+            hidden: false,
+            baseBranch: null,
+            displayName: "project-${index.toString().padLeft(4, "0")}",
+            createdAt: _defaultTimestamp + index,
+            updatedAt: _defaultTimestamp + index,
+            projectionUpdatedAt: _defaultTimestamp + index,
+          ),
+      ],
+    );
+  }
+
+  Future<void> _seedSessions({required AppDatabase database}) async {
+    await database.sessionDao.upsertSessionRows(
+      rows: [
+        ..._sessions(count: 10000, projectId: _projectDirectory, idPrefix: "large"),
+        ..._sessions(count: 1000, projectId: _smallProjectDirectory, idPrefix: "small"),
+      ],
+    );
   }
 
   SessionRepository _sessionRepository({required AppDatabase database, required BridgePluginApi plugin}) {
@@ -323,11 +245,12 @@ class _LiveListBenchmark {
   Future<int> _sessionEndpointCoreCount({
     required SessionRepository repository,
     required SessionMutationDispatcher mutationDispatcher,
+    required String projectId,
     required int? start,
     required int? limit,
   }) async {
     var sessions = await repository.getSessionsForProject(
-      projectId: _projectDirectory,
+      projectId: projectId,
       start: start,
       limit: limit,
     );
@@ -342,7 +265,6 @@ class _LiveListBenchmark {
     required String name,
     required Map<String, Object?> fixture,
     required int expectedRowsReturned,
-    int? expectedPluginRowsEnumeratedPerSample,
     required _PluginCounters plugin,
     required Future<int> Function() operation,
   }) async {
@@ -362,13 +284,8 @@ class _LiveListBenchmark {
       rowsReturned += rows;
       samples.add(stopwatch.elapsedMicroseconds);
     }
-    if (expectedPluginRowsEnumeratedPerSample != null) {
-      final expected = expectedPluginRowsEnumeratedPerSample * _configuration.sampleCount;
-      if (plugin.rowsEnumerated != expected) {
-        throw StateError(
-          "$name enumerated ${plugin.rowsEnumerated} plugin rows; expected $expected",
-        );
-      }
+    if (plugin.calls != 0) {
+      throw StateError("$name made ${plugin.calls} plugin calls; expected zero");
     }
     samples.sort();
 
@@ -407,20 +324,32 @@ class _LiveListBenchmark {
     return sortedSamples[rank - 1];
   }
 
-  List<PluginSession> _sessions({required int count}) {
-    return List<PluginSession>.generate(
+  List<SessionDto> _sessions({required int count, required String projectId, required String idPrefix}) {
+    return List<SessionDto>.generate(
       count,
-      (index) => PluginSession(
-        id: "session-${index.toString().padLeft(5, "0")}",
-        projectID: _projectDirectory,
-        directory: _projectDirectory,
-        parentID: null,
-        title: "Session $index",
-        time: PluginSessionTime(
-          created: _defaultTimestamp + index,
-          updated: _defaultTimestamp + index,
-          archived: null,
-        ),
+      (index) => SessionDto(
+        sessionId: "$idPrefix-${index.toString().padLeft(5, "0")}",
+        backendSessionId: "$idPrefix-backend-${index.toString().padLeft(5, "0")}",
+        projectId: projectId,
+        parentSessionId: null,
+        directory: projectId,
+        worktreePath: null,
+        branchName: null,
+        isDedicated: false,
+        archivedAt: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        createdAt: _defaultTimestamp + index,
+        updatedAt: _defaultTimestamp + index,
+        projectionUpdatedAt: _defaultTimestamp + index,
+        lastActivityAt: null,
+        lastSeenAt: null,
+        lastUserMessageAt: null,
+        pluginId: "catalog-benchmark",
+        title: null,
+        catalogTitle: "Session $index",
       ),
       growable: false,
     );
@@ -518,53 +447,15 @@ mixin _PluginCounters {
   }
 }
 
-class _NativeBenchmarkPlugin with _PluginCounters implements NativeProjectsPluginApi {
-  _NativeBenchmarkPlugin({required this.projects, required this.sessions});
-
-  final List<PluginProject> projects;
-  final List<PluginSession> sessions;
+class _ThrowingBenchmarkPlugin with _PluginCounters implements NativeProjectsPluginApi {
+  @override
+  String get id => "catalog-benchmark";
 
   @override
-  String get id => "native-benchmark";
-
-  @override
-  Future<List<PluginProject>> getProjects() async {
-    recordCall(rows: projects.length);
-    return projects;
+  dynamic noSuchMethod(Invocation invocation) {
+    recordCall(rows: 0);
+    throw StateError("catalog benchmark unexpectedly called plugin member ${invocation.memberName}");
   }
-
-  @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async {
-    final allSessions = List<PluginSession>.of(sessions, growable: false);
-    recordCall(rows: allSessions.length);
-    final from = start ?? 0;
-    final until = limit == null ? allSessions.length : (from + limit).clamp(0, allSessions.length);
-    return allSessions.sublist(from, until);
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _DerivedBenchmarkPlugin with _PluginCounters implements BridgeDerivedProjectsPluginApi {
-  _DerivedBenchmarkPlugin({required this.sessions});
-
-  final List<PluginSession> sessions;
-
-  @override
-  String get id => "derived-benchmark";
-
-  @override
-  String get launchDirectory => _projectDirectory;
-
-  @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
-    recordCall(rows: sessions.length);
-    return sessions;
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ExistingFilesystemApi implements FilesystemApi {

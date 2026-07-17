@@ -3,13 +3,7 @@ import "dart:io" show FileSystemException;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show
-        BridgeDerivedProjectsPluginApi,
-        BridgePluginApi,
-        Log,
-        NativeProjectsPluginApi,
-        PluginProjectActivity,
-        PluginSessionTime;
+    show BridgeDerivedProjectsPluginApi, BridgePluginApi, Log, NativeProjectsPluginApi, PluginSessionTime;
 import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
 
 import "../../api/database/daos/projects_dao.dart";
@@ -17,34 +11,18 @@ import "../../api/database/daos/session_dao.dart" show SessionDao, SessionUnseen
 import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../api/filesystem_api.dart";
 import "../api/git_cli_api.dart";
-import "derived_project_builder.dart";
 import "mappers/git_remote_identity_parser.dart";
 import "mappers/plugin_project_mapper.dart";
+import "mappers/project_catalog_mapper.dart";
 import "models/project_activity.dart";
 import "models/project_activity_evidence.dart";
 import "models/project_not_found_exception.dart";
 import "session_unseen_calculator.dart";
 
-/// Project data aggregator with two paths chosen by the plugin's sealed
-/// subtype:
-///
-/// - [NativeProjectsPluginApi] (e.g. OpenCode): the plugin owns the project
-///   list. This path fetches `plugin.getProjects()` once, inserts rows for
-///   newly discovered projects using the plugin's session-derived activity, and
-///   returns projects with [Project.time] read from the persisted row.
-/// - [BridgeDerivedProjectsPluginApi] (Codex and every ACP plugin): the backend
-///   has no project concept, so the bridge derives the list from the plugin's
-///   sessions via [DerivedProjectBuilder] and owns created/updated persistence
-///   in the projects table.
-///
-/// All capability branching is contained here; routing handlers stay
-/// capability-agnostic and call these methods unconditionally.
-///
-/// This repository aggregates raw evidence, maps persistence rows, resolves open
-/// targets, and performs exact reads and writes. It does not order timestamps.
+/// Owns catalog project reads and bridge/plugin-backed targeted operations.
 class ProjectRepository {
-  static const DerivedProjectBuilder _derivedProjectBuilder = DerivedProjectBuilder();
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
+  static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
 
   final BridgePluginApi _plugin;
   final ProjectsDao _projectsDao;
@@ -67,78 +45,19 @@ class ProjectRepository {
        _filesystemApi = filesystemApi,
        _gitCliApi = gitCliApi;
 
-  Future<List<Project>> getProjects({required int defaultTimestamp}) async {
-    switch (_plugin) {
-      case final BridgeDerivedProjectsPluginApi plugin:
-        // Seed the plugin's launch directory so it always surfaces as a project
-        // — even with no sessions yet. Existing rows are left untouched.
-        await _projectsDao.insertMissingProjectsWithActivity(
-          activities: {
-            normalizeProjectDirectory(directory: plugin.launchDirectory): (
-              path: normalizeProjectDirectory(directory: plugin.launchDirectory),
-              createdAt: defaultTimestamp,
-              updatedAt: defaultTimestamp,
-            ),
-          },
-        );
-        final derived = await _deriveProjects(plugin);
-        await _seedNewProjects([
-          for (final project in derived) (project: project, directActivity: null),
-        ], defaultTimestamp: defaultTimestamp);
-        final hiddenIds = await _projectsDao.getHiddenProjectIds();
-        final visible = derived.where((project) => !hiddenIds.contains(project.id)).toList();
-        final unseenById = await unseenByProjectId(
-          projectIds: [for (final project in visible) project.id],
-        );
-        final activityById = _mapActivities(await _projectsDao.getAllProjects());
-        final projects = [
-          for (final project in visible)
-            project.copyWith(
-              hasUnseenChanges: unseenById[project.id] ?? false,
-              directoryMissing: _directoryMissing(project.id),
-              time: _activityToTime(activityById[project.id]!),
-            ),
-        ];
-        projects.sort(_projectComparator);
-        return projects;
-
-      case final NativeProjectsPluginApi plugin:
-        final pluginProjects = await plugin.getProjects();
-        await _seedNewProjects([
-          for (final p in pluginProjects)
-            (
-              project: p.toSharedProject(
-                path: p.directory,
-                hasUnseenChanges: false,
-                directoryMissing: false,
-                time: null,
-              ),
-              directActivity: p.activity,
-            ),
-        ], defaultTimestamp: defaultTimestamp);
-        final storedProjects = await _projectsDao.getAllProjects();
-        final pathById = {
-          for (final stored in storedProjects)
-            if (stored.path.isNotEmpty) stored.projectId: stored.path,
-        };
-        final hiddenIds = await _projectsDao.getHiddenProjectIds();
-        final visible = pluginProjects.where((p) => !hiddenIds.contains(p.id)).toList(growable: false);
-        final unseenById = await unseenByProjectId(
-          projectIds: [for (final p in visible) p.id],
-        );
-        final activityById = _mapActivities(storedProjects);
-        final projects = visible.map((p) {
-          final path = pathById[p.id] ?? p.directory;
-          return p.toSharedProject(
-            path: path,
-            hasUnseenChanges: unseenById[p.id] ?? false,
-            directoryMissing: _directoryMissing(path),
-            time: _activityToTime(activityById[p.id]!),
-          );
-        }).toList();
-        projects.sort(_projectComparator);
-        return projects;
-    }
+  Future<List<Project>> getProjects() async {
+    final rows = await _projectsDao.getCatalogProjects();
+    final unseenById = await unseenByProjectId(
+      projectIds: [for (final row in rows) row.projectId],
+    );
+    return [
+      for (final row in rows)
+        _projectCatalogMapper.map(
+          row: row,
+          hasUnseenChanges: unseenById[row.projectId] ?? false,
+          directoryMissing: false,
+        ),
+    ];
   }
 
   /// Whether [projectId] has at least one non-archived session with unseen
@@ -173,34 +92,16 @@ class ProjectRepository {
     return false;
   }
 
-  /// The project for [projectId]. A native plugin owns the lookup; for a
-  /// bridge-derived plugin the id IS the canonical directory and the plugin has
-  /// no `getProject`, so we resolve it from the derived set (or a placeholder).
   Future<Project> getProject({required String projectId}) async {
-    final path = await _projectsDao.getResolvedPath(projectId: projectId);
-    if (path == null) {
+    final row = await _projectsDao.getProject(projectId: projectId);
+    if (row == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
-    final activity = _mapActivity(await _projectsDao.getProject(projectId: projectId));
-    switch (_plugin) {
-      case final BridgeDerivedProjectsPluginApi plugin:
-        final project = await _findDerivedProject(plugin, normalizeProjectDirectory(directory: path));
-        return project.copyWith(
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
-          directoryMissing: _directoryMissing(project.id),
-          time: _activityToTime(activity!),
-        );
-      case final NativeProjectsPluginApi plugin:
-        // The backend needs the live directory — the id may point at a
-        // location the folder has since moved away from.
-        final pluginProject = await plugin.getProject(path);
-        return pluginProject.toSharedProject(
-          path: path,
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: pluginProject.id),
-          directoryMissing: _directoryMissing(path),
-          time: _activityToTime(activity!),
-        );
-    }
+    return _projectCatalogMapper.map(
+      row: row,
+      hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
+      directoryMissing: false,
+    );
   }
 
   /// Resolves the canonical target for opening [path].
@@ -269,20 +170,20 @@ class ProjectRepository {
     }
     final activity = _mapActivity(await _projectsDao.getProject(projectId: projectId));
     switch (_plugin) {
-      case final BridgeDerivedProjectsPluginApi plugin:
+      case BridgeDerivedProjectsPluginApi():
         // codex has no backend to store a project name, so persist a display-name
-        // override that _deriveProjects applies on the next listing.
+        // override that later catalog reads apply.
         final canonical = normalizeProjectDirectory(directory: path);
         await _projectsDao.setDisplayName(
           projectId: projectId,
           displayName: name,
           updatedAt: DateTime.now().millisecondsSinceEpoch,
         );
-        final project = await _findDerivedProject(plugin, canonical);
-        return project.copyWith(
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
-          directoryMissing: _directoryMissing(project.id),
-          time: _activityToTime(activity!),
+        final row = (await _projectsDao.getProject(projectId: projectId))!;
+        return _projectCatalogMapper.map(
+          row: row,
+          hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
+          directoryMissing: _directoryMissing(canonical),
         );
 
       case final NativeProjectsPluginApi plugin:
@@ -424,63 +325,6 @@ class ProjectRepository {
         },
       );
 
-  // ── Derived-project helpers ───────────────────────────────────────────────
-
-  Future<List<Project>> _deriveProjects(
-    BridgeDerivedProjectsPluginApi plugin,
-  ) async {
-    final (storedProjects, sessionProjectPaths, tombstoned) = await (
-      _projectsDao.getAllProjects(),
-      _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
-      _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
-    ).wait;
-    final sessions = await plugin.listAllSessions(
-      knownDirectories: {
-        for (final stored in storedProjects) stored.path,
-        for (final row in sessionProjectPaths) ?row.worktreePath,
-      },
-    );
-    return _derivedProjectBuilder.build(
-      // A backend without session deletion keeps enumerating deleted sessions
-      // forever — the tombstones keep them out of project derivation.
-      sessions: sessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
-      storedProjects: storedProjects,
-      projectPathBySessionId: {
-        for (final row in sessionProjectPaths) row.backendSessionId: row.projectPath,
-      },
-    );
-  }
-
-  Future<Project> _findDerivedProject(BridgeDerivedProjectsPluginApi plugin, String canonicalId) async {
-    final derived = await _deriveProjects(plugin);
-    for (final project in derived) {
-      if (project.id == canonicalId) return project;
-    }
-    final base = p.basename(canonicalId);
-    return Project(
-      id: canonicalId,
-      name: base.isEmpty ? canonicalId : base,
-      path: canonicalId,
-      time: null,
-    );
-  }
-
-  Future<void> _seedNewProjects(
-    List<({Project project, PluginProjectActivity? directActivity})> projects, {
-    required int defaultTimestamp,
-  }) async {
-    await _projectsDao.insertMissingProjectsWithActivity(
-      activities: {
-        for (final item in projects)
-          item.project.id: (
-            path: item.project.path,
-            createdAt: item.directActivity?.createdAt ?? defaultTimestamp,
-            updatedAt: item.directActivity?.updatedAt ?? defaultTimestamp,
-          ),
-      },
-    );
-  }
-
   bool _directoryMissing(String path) {
     try {
       return !_filesystemApi.directoryExists(path);
@@ -502,17 +346,6 @@ class ProjectRepository {
   static Map<String, ProjectActivity> _mapActivities(List<ProjectDto> projects) => {
     for (final project in projects) project.projectId: _mapActivity(project)!,
   };
-
-  static int _projectComparator(Project a, Project b) {
-    final updatedA = a.time?.updated ?? 0;
-    final updatedB = b.time?.updated ?? 0;
-    if (updatedA != updatedB) return updatedB.compareTo(updatedA);
-    final nameA = a.name ?? a.id;
-    final nameB = b.name ?? b.id;
-    final nameCompare = nameA.compareTo(nameB);
-    if (nameCompare != 0) return nameCompare;
-    return a.id.compareTo(b.id);
-  }
 }
 
 /// Canonical target returned by [ProjectRepository.resolveProjectOpenTarget].

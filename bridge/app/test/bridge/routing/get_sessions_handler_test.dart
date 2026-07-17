@@ -842,7 +842,7 @@ void main() {
       expect(pr?.checkStatus, equals(PrCheckStatus.success));
     });
 
-    test("writes through catalog fields while preserving stored worktree and pull request metadata", () async {
+    test("reads catalog fields while preserving stored worktree and pull request metadata", () async {
       final realRepository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -896,8 +896,15 @@ void main() {
           time: PluginSessionTime(created: 100, updated: 200, archived: null),
         ),
       ];
+      await db.sessionDao.updateObservedSessionProjection(
+        sessionId: "s1",
+        directory: "/tmp/project",
+        catalogTitle: "replacement payload",
+        updateCatalogTitle: true,
+        updatedAt: 200,
+        projectionUpdatedAt: 200,
+      );
 
-      final beforeFetch = DateTime.now().millisecondsSinceEpoch;
       final result = await realHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null),
@@ -905,7 +912,6 @@ void main() {
         queryParams: {},
         fragment: null,
       );
-      final afterFetch = DateTime.now().millisecondsSinceEpoch;
 
       expect(result.items, hasLength(1));
       expect(result.items.single.title, equals("replacement payload"));
@@ -921,10 +927,11 @@ void main() {
       expect(stored?.catalogTitle, "replacement payload");
       expect(stored?.createdAt, 10);
       expect(stored?.updatedAt, 200);
-      expect(stored?.projectionUpdatedAt, inInclusiveRange(beforeFetch, afterFetch));
+      expect(stored?.projectionUpdatedAt, 200);
       expect(stored?.worktreePath, "/tmp/worktree");
       expect(stored?.branchName, "feature/preserved-pr");
       expect(stored?.isDedicated, isTrue);
+      expect(plugin.lastGetSessionsWorktree, isNull);
     });
 
     test("keeps pullRequest null when session has no PR", () async {
@@ -1001,7 +1008,7 @@ void main() {
     });
 
     test("triggers PR refresh in background when waitForPrData is false", () async {
-      plugin.currentProjectResult = const PluginProject(id: "/tmp/project", directory: "/tmp/project");
+      sessionRepository.projectPathResult = "/tmp/project";
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
@@ -1016,8 +1023,8 @@ void main() {
       expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
     });
 
-    test("triggers PR refresh with project path resolved from plugin.getProject", () async {
-      plugin.currentProjectResult = const PluginProject(id: "/tmp/project", directory: "/tmp/project");
+    test("triggers PR refresh with the stored catalog project path", () async {
+      sessionRepository.projectPathResult = "/tmp/project";
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null, waitForPrData: true),
@@ -1028,10 +1035,10 @@ void main() {
 
       expect(prSyncService.calls, hasLength(1));
       expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
-    test("falls back to session directory when plugin.getProject fails", () async {
-      plugin.throwOnGetProjectError = Exception("failed");
+    test("falls back to session directory when the catalog project path is missing", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",

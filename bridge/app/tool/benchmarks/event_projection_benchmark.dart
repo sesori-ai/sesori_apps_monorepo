@@ -3,7 +3,6 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
-import "package:drift/native.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
@@ -76,7 +75,7 @@ class _EventProjectionBenchmark {
     SSEManager? sseManager;
 
     try {
-      database = AppDatabase(NativeDatabase.createInBackground(databaseFile));
+      database = AppDatabase.openFile(file: databaseFile);
       final sqliteVersion = await _sqliteVersion(database: database);
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
