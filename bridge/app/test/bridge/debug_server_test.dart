@@ -447,6 +447,69 @@ void main() {
     });
   });
 
+  group("DebugServer shutdown", () {
+    test("drain waits for a routed mutation after closing its response", () async {
+      final plugin = _BlockingMutationPlugin();
+      final db = createTestDatabase();
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
+      await db.sessionDao.insertSession(
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "/tmp/test",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      final harness = await _createDebugServerHarness(
+        plugin: plugin,
+        db: db,
+        port: 0,
+        failureReporter: FakeFailureReporter(),
+      );
+      addTearDown(plugin.close);
+      addTearDown(harness.close);
+      addTearDown(plugin.releaseMutation);
+      final debugServer = harness.debugServer;
+      await debugServer.start();
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.patchUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session/title"),
+      );
+      request.headers.contentType = ContentType.json;
+      request.write(
+        jsonEncode(const RenameSessionRequest(sessionId: "s1", title: "Renamed").toJson()),
+      );
+      final responseFuture = request.close();
+      await plugin.mutationStarted.timeout(const Duration(seconds: 2));
+
+      debugServer.beginShutdown();
+      final response = await responseFuture.timeout(const Duration(seconds: 2));
+      await utf8.decoder.bind(response).join().timeout(const Duration(seconds: 2));
+
+      final drain = debugServer.drain();
+      var drainCompleted = false;
+      unawaited(
+        drain.whenComplete(() {
+          drainCompleted = true;
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(drainCompleted, isFalse);
+
+      plugin.releaseMutation();
+      await drain.timeout(const Duration(seconds: 2));
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Renamed");
+    });
+  });
+
   group("DebugServer restart", () {
     test("POST /global/restart replies and spawns a successor", () async {
       final plugin = _FakeBridgePlugin();
@@ -850,6 +913,31 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePl
 
   void add(BridgeSseEvent event) => _controller.add(event);
   Future<void> close() => _controller.close();
+}
+
+class _BlockingMutationPlugin extends _FakeBridgePlugin {
+  final Completer<void> _mutationStarted = Completer<void>();
+  final Completer<void> _mutationRelease = Completer<void>();
+
+  Future<void> get mutationStarted => _mutationStarted.future;
+
+  void releaseMutation() {
+    if (!_mutationRelease.isCompleted) _mutationRelease.complete();
+  }
+
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    _mutationStarted.complete();
+    await _mutationRelease.future;
+    return PluginSession(
+      id: sessionId,
+      projectID: "/tmp/test",
+      directory: "/tmp/test",
+      parentID: null,
+      title: title,
+      time: null,
+    );
+  }
 }
 
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
