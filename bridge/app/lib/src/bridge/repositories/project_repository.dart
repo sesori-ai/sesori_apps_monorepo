@@ -142,13 +142,13 @@ class ProjectRepository {
   /// Persists the exact [activity] for an opened project and unhides it. This is
   /// a dumb exact write; the caller ([ProjectActivityService]) owns the decision.
   Future<void> persistOpenedProject({
-    required String projectId,
-    required String path,
+    required ProjectOpenTarget target,
     required ProjectActivity activity,
   }) async {
     await _projectsDao.recordOpenedProject(
-      projectId: projectId,
-      path: path,
+      projectId: target.projectId,
+      path: target.path,
+      displayName: _plugin is NativeProjectsPluginApi ? target.project.name : null,
       createdAt: activity.createdAt,
       updatedAt: activity.updatedAt,
     );

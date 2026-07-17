@@ -85,6 +85,7 @@ void main() {
       await db.projectsDao.recordOpenedProject(
         projectId: "backend-project-1",
         path: "/projects/one",
+        displayName: null,
         createdAt: 1,
         updatedAt: 2,
       );
@@ -116,6 +117,7 @@ void main() {
       await db.projectsDao.recordOpenedProject(
         projectId: "moved-project",
         path: "/projects/moved",
+        displayName: null,
         createdAt: 1,
         updatedAt: 1,
       );
@@ -240,8 +242,7 @@ void main() {
 
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-open");
       await repo.persistOpenedProject(
-        projectId: target.projectId,
-        path: target.path,
+        target: target,
         activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
       );
       final result = await repo.mapOpenedProject(target: target);
@@ -251,6 +252,50 @@ void main() {
       expect(result.name, equals("Opened"));
       final hiddenIds = await db.projectsDao.getHiddenProjectIds();
       expect(hiddenIds, isNot(contains("p-open")));
+    });
+
+    test("opening a new native project persists its backend display name", () async {
+      plugin.projectResult = const PluginProject(
+        id: "p-new",
+        directory: "/tmp/p-new",
+        name: "Backend project name",
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-new");
+      await repo.persistOpenedProject(
+        target: target,
+        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+      );
+
+      expect((await repo.getProjects()).single.name, "Backend project name");
+    });
+
+    test("reopening a native project preserves its user display name", () async {
+      plugin.projectResult = const PluginProject(
+        id: "p-renamed",
+        directory: "/tmp/p-renamed",
+        name: "Backend project name",
+      );
+      await db.projectsDao.recordOpenedProject(
+        projectId: "p-renamed",
+        path: "/tmp/p-renamed",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      await db.projectsDao.setDisplayName(
+        projectId: "p-renamed",
+        displayName: "User project name",
+        updatedAt: 1,
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-renamed");
+      await repo.persistOpenedProject(
+        target: target,
+        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+      );
+
+      expect((await repo.getProjects()).single.name, "User project name");
     });
 
     group("moved project (stable id, new live path)", () {
@@ -264,8 +309,7 @@ void main() {
 
         final target = await repo.resolveProjectOpenTarget(path: "/moved/a");
         await repo.persistOpenedProject(
-          projectId: target.projectId,
-          path: target.path,
+          target: target,
           activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
         );
         final result = await repo.mapOpenedProject(target: target);
@@ -298,8 +342,7 @@ void main() {
         );
         final target = await repo.resolveProjectOpenTarget(path: "/moved/a");
         await repo.persistOpenedProject(
-          projectId: target.projectId,
-          path: target.path,
+          target: target,
           activity: const ProjectActivity(createdAt: 0, updatedAt: 1),
         );
 
@@ -326,8 +369,7 @@ void main() {
         );
         final target = await repoWithMissing.resolveProjectOpenTarget(path: "/moved/a");
         await repoWithMissing.persistOpenedProject(
-          projectId: target.projectId,
-          path: target.path,
+          target: target,
           activity: const ProjectActivity(createdAt: 0, updatedAt: 1),
         );
 
@@ -341,6 +383,7 @@ void main() {
         await db.projectsDao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
+          displayName: null,
           createdAt: 0,
           updatedAt: 1,
         );
@@ -552,8 +595,7 @@ void main() {
     test("openProject records an opened folder so an empty project survives the listing", () async {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/proj/empty");
       await repo.persistOpenedProject(
-        projectId: target.projectId,
-        path: target.path,
+        target: target,
         activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
       );
       final opened = await repo.mapOpenedProject(target: target);
@@ -727,14 +769,26 @@ void main() {
     });
 
     test("returns null when the project has no usable remote", () async {
-      await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
+      await db.projectsDao.recordOpenedProject(
+        projectId: "/dev/app",
+        path: "/dev/app",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
       final repo = repoWith(remoteUrl: null);
 
       expect(await repo.getRemoteIdentity(projectId: "/dev/app"), isNull);
     });
 
     test("parses the remote URL of the stored project path into host and slug", () async {
-      await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
+      await db.projectsDao.recordOpenedProject(
+        projectId: "/dev/app",
+        path: "/dev/app",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
       final repo = repoWith(remoteUrl: "git@github.com:sesori-ai/sesori.git");
 
       expect(
@@ -744,7 +798,13 @@ void main() {
     });
 
     test("returns null for a local filesystem remote", () async {
-      await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
+      await db.projectsDao.recordOpenedProject(
+        projectId: "/dev/app",
+        path: "/dev/app",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
       final repo = repoWith(remoteUrl: "/srv/git/repo.git");
 
       expect(await repo.getRemoteIdentity(projectId: "/dev/app"), isNull);

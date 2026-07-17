@@ -36,6 +36,7 @@ void main() {
       await database.projectsDao.recordOpenedProject(
         projectId: "project",
         path: "/projects/project",
+        displayName: null,
         createdAt: 1,
         updatedAt: 1,
       );

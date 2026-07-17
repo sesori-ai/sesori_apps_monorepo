@@ -67,6 +67,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   Future<void> recordOpenedProject({
     required String projectId,
     required String path,
+    required String? displayName,
     required int createdAt,
     required int updatedAt,
   }) async {
@@ -74,6 +75,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
       ProjectsTableCompanion.insert(
         projectId: projectId,
         path: path,
+        displayName: Value(displayName),
         createdAt: Value(createdAt),
         updatedAt: Value(updatedAt),
         projectionUpdatedAt: updatedAt,

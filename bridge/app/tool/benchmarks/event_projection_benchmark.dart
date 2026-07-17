@@ -283,6 +283,7 @@ class _EventProjectionBenchmark {
     await database.projectsDao.recordOpenedProject(
       projectId: _projectId,
       path: _projectId,
+      displayName: null,
       createdAt: _defaultTimestamp,
       updatedAt: _defaultTimestamp,
     );

@@ -386,6 +386,7 @@ void main() {
     await database.projectsDao.recordOpenedProject(
       projectId: "canonical",
       path: "/old/path",
+      displayName: null,
       createdAt: 100,
       updatedAt: 500,
     );

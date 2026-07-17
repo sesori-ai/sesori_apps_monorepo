@@ -35,8 +35,7 @@ class ProjectActivityService {
         updatedAt: max(current?.updatedAt ?? now, now),
       );
       await _projectRepository.persistOpenedProject(
-        projectId: target.projectId,
-        path: target.path,
+        target: target,
         activity: activity,
       );
       if (current == null || activity.updatedAt > current.updatedAt) {

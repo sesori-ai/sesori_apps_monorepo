@@ -801,6 +801,7 @@ void main() {
         await db.projectsDao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
+          displayName: null,
           createdAt: 1,
           updatedAt: 1,
         );
@@ -862,6 +863,7 @@ void main() {
         await db.projectsDao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
+          displayName: null,
           createdAt: 1,
           updatedAt: 1,
         );
@@ -888,6 +890,7 @@ void main() {
         await db.projectsDao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
+          displayName: null,
           createdAt: 1,
           updatedAt: 1,
         );

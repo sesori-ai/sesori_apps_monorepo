@@ -130,6 +130,7 @@ void main() {
       await db.projectsDao.recordOpenedProject(
         projectId: "/retained",
         path: "/retained",
+        displayName: null,
         createdAt: 1,
         updatedAt: 1,
       );

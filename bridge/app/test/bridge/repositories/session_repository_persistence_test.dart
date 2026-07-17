@@ -18,6 +18,7 @@ void main() {
       await database.projectsDao.recordOpenedProject(
         projectId: "project-X",
         path: "/projects/X",
+        displayName: null,
         createdAt: 1,
         updatedAt: 1,
       );

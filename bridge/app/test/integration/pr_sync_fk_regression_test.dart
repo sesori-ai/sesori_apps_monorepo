@@ -75,6 +75,7 @@ void main() {
         await db.projectsDao.recordOpenedProject(
           projectId: "proj-X",
           path: "proj-X",
+          displayName: null,
           createdAt: 0,
           updatedAt: 100,
         );
@@ -180,6 +181,7 @@ void main() {
         await db.projectsDao.recordOpenedProject(
           projectId: "sess-proj",
           path: "/tmp/sess-proj",
+          displayName: null,
           createdAt: 1,
           updatedAt: 1,
         );
