@@ -701,7 +701,31 @@ void main() {
       expect(repository.lastSummarizeSessionId, equals("ses-1"));
       expect(repository.lastSummarizeDirectory, equals("/repo"));
       expect(repository.lastSummarizeModel, equals((providerID: "openai", modelID: "gpt-4.1")));
+      expect(repository.addCompactionInstructionsCalls, equals(0));
+      expect(repository.compactionOperations, equals(["summarize"]));
       // The real command endpoint must never be hit for compaction.
+      expect(repository.lastCommandName, isNull);
+    });
+
+    test("persists compact arguments before summarizing", () async {
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, tracker);
+
+      await service.sendCommand(
+        sessionId: "ses-1",
+        command: OpenCodeService.compactionCommandName,
+        arguments: "  Keep auth decisions  ",
+        agent: "build",
+        variant: const PluginSessionVariant(id: "high"),
+        model: (providerID: "openai", modelID: "gpt-4.1"),
+      );
+
+      expect(repository.addCompactionInstructionsCalls, equals(1));
+      expect(repository.lastCompactionInstructions, equals("Keep auth decisions"));
+      expect(repository.lastCompactionInstructionsDirectory, equals("/repo"));
+      expect(repository.lastCompactionInstructionsModel, equals((providerID: "openai", modelID: "gpt-4.1")));
+      expect(repository.compactionOperations, equals(["instructions", "summarize"]));
       expect(repository.lastCommandName, isNull);
     });
 
@@ -1903,10 +1927,15 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastCommandVariant;
   ({String providerID, String modelID})? lastCommandModel;
   Completer<void>? sendCommandCompleter;
+  int addCompactionInstructionsCalls = 0;
+  String? lastCompactionInstructions;
+  String? lastCompactionInstructionsDirectory;
+  ({String providerID, String modelID})? lastCompactionInstructionsModel;
   int summarizeCalls = 0;
   String? lastSummarizeSessionId;
   String? lastSummarizeDirectory;
   ({String providerID, String modelID})? lastSummarizeModel;
+  final List<String> compactionOperations = [];
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
   String? lastReplyQuestionId;
@@ -2079,6 +2108,22 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   }
 
   @override
+  Future<void> addCompactionInstructions({
+    required String sessionId,
+    required String? directory,
+    required String instructions,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID}) model,
+  }) async {
+    addCompactionInstructionsCalls += 1;
+    lastCompactionInstructions = instructions;
+    lastCompactionInstructionsDirectory = directory;
+    lastCompactionInstructionsModel = model;
+    compactionOperations.add("instructions");
+  }
+
+  @override
   Future<void> summarize({
     required String sessionId,
     required String? directory,
@@ -2088,6 +2133,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastSummarizeSessionId = sessionId;
     lastSummarizeDirectory = directory;
     lastSummarizeModel = model;
+    compactionOperations.add("summarize");
   }
 
   @override

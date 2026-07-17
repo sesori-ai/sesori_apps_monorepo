@@ -254,7 +254,7 @@ void main() {
       );
     });
 
-    test("getSessionMessages filters patch and compaction parts", () async {
+    test("getSessionMessages filters patch and automatic compaction parts", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
       final messages = await plugin.getSessionMessages("ses-new-parts-filter");
@@ -1408,7 +1408,7 @@ class _FakeOpenCodeServer {
                 "sessionID": "ses-new-parts-filter",
                 "messageID": "m-npf",
                 "type": "compaction",
-                "auto": false,
+                "auto": true,
               },
               {
                 "id": "p-text",

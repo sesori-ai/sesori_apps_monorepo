@@ -1085,6 +1085,37 @@ void main() {
     });
   });
 
+  group("OpenCodeRepository.addCompactionInstructions", () {
+    test("persists instructions as a no-reply prompt", () async {
+      final api = _FakeApi();
+      final repository = OpenCodeRepository(api);
+
+      await repository.addCompactionInstructions(
+        sessionId: "ses-1",
+        directory: " /repo ",
+        instructions: "Keep auth decisions",
+        agent: "build",
+        variant: const PluginSessionVariant(id: "high"),
+        model: (providerID: "openai", modelID: "gpt-4.1"),
+      );
+
+      expect(api.lastPromptSessionId, equals("ses-1"));
+      expect(api.lastPromptDirectory, equals("/repo"));
+      expect(
+        api.lastPromptBody?.toJson(),
+        equals({
+          "parts": [
+            {"type": "text", "text": "Keep auth decisions"},
+          ],
+          "agent": "build",
+          "variant": "high",
+          "model": {"providerID": "openai", "modelID": "gpt-4.1"},
+          "noReply": true,
+        }),
+      );
+    });
+  });
+
   group("Send*Body toJson", () {
     test("SendPromptBody emits variant only when provided", () {
       final withVariant = const SendPromptBody(
@@ -1092,12 +1123,14 @@ void main() {
         agent: "build",
         variant: "low",
         model: null,
+        noReply: false,
       ).toJson();
       final withoutVariant = const SendPromptBody(
         parts: [PluginPromptPart.text(text: "Hello")],
         agent: "build",
         variant: null,
         model: null,
+        noReply: false,
       ).toJson();
 
       expect(withVariant["variant"], equals("low"));
