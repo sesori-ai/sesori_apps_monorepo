@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
@@ -66,6 +67,32 @@ void main() {
     expect(plugin.apiImpl.disposeCalls, 1);
     await service.dispose();
     expect(plugin.shutdownCalls, 1);
+  });
+
+  test("ordinary start failure is logged with its plugin id and omitted from metadata", () async {
+    final service = createService();
+    final originalLevel = Log.level;
+    addTearDown(() {
+      Log.level = originalLevel;
+    });
+    Log.level = LogLevel.debug;
+    final logs = <String>[];
+
+    await IOOverrides.runZoned(
+      () => service.registerStart(
+        id: "one",
+        startFuture: Future<BridgePlugin>.error(
+          const PluginStartException("no runnable binary", cause: null),
+        ),
+        shutdownBudget: shutdownBudget,
+      ),
+      stderr: () => _CapturingStdout(logs),
+    );
+
+    expect(logs.join("\n"), allOf(contains('Plugin "one"'), contains("no runnable binary")));
+    expect(service.metadataSnapshot.first.state, PluginLifecycleState.failed);
+    expect(service.metadataSnapshot.first.actionHint, isNot(contains("no runnable binary")));
+    await service.dispose();
   });
 
   test("early disposal catches an API returned after shutdown begins", () async {
@@ -179,6 +206,20 @@ class _FakePluginApi extends NativeProjectsPluginApi {
   @override
   Future<void> dispose() async {
     disposeCalls++;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _CapturingStdout implements Stdout {
+  _CapturingStdout(this.lines);
+
+  final List<String> lines;
+
+  @override
+  void writeln([Object? object = ""]) {
+    lines.add(object.toString());
   }
 
   @override

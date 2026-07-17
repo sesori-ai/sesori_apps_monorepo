@@ -326,7 +326,7 @@ class SessionRepository {
       await load;
     } finally {
       if (identical(_tombstoneLoads[pluginId], load)) {
-        _tombstoneLoads.removeWhere((key, _) => key == pluginId);
+        unawaited(_tombstoneLoads.remove(pluginId));
       }
     }
   }
@@ -671,15 +671,20 @@ class SessionRepository {
       }
     }
 
-    return enrichSharedSessions(
-      sessions: sessions,
-      storedSessionsById: dbSessions,
-      pullRequestsBySessionId: pullRequestsBySessionId,
-      unseenCalculator: _unseenCalculator,
-      // Only a bridge-derived plugin cedes project attribution to the stored
-      // row; a native backend's reported projectID is authoritative.
-      adoptStoredProjectId: true,
-    );
+    return [
+      for (final session in sessions)
+        enrichSharedSession(
+          session: session,
+          storedSession: dbSessions[session.id],
+          pullRequest: pullRequestsBySessionId[session.id],
+          unseenCalculator: _unseenCalculator,
+          // Only the owning bridge-derived plugin cedes project attribution to
+          // the stored row; a native backend's reported projectID is authoritative.
+          adoptStoredProjectId:
+              _operationalPlugins[dbSessions[session.id]?.pluginId ?? session.pluginId]
+                  is BridgeDerivedProjectsPluginApi,
+        ),
+    ];
   }
 
   Future<List<Session>> _mapCatalogSessions({required List<SessionDto> rows}) async {

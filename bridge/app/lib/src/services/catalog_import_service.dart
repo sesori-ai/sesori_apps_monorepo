@@ -136,7 +136,7 @@ class CatalogImportService {
     } finally {
       if (identical(_controls[pluginId], control)) {
         _controls.remove(pluginId);
-        _operations.removeWhere((key, _) => key == pluginId);
+        unawaited(_operations.remove(pluginId));
       }
     }
   }

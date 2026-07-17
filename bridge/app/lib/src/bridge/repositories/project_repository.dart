@@ -276,30 +276,43 @@ class ProjectRepository {
     switch (plugin) {
       case final NativeProjectsPluginApi plugin:
         final pluginProjects = await plugin.getProjects();
-        await _projectsDao.insertProjectsWithPathsIfMissing(
-          projects: {
-            for (final project in pluginProjects)
-              project.id: (
-                path: project.directory,
-                createdAt: project.activity?.createdAt,
-                updatedAt: project.activity?.updatedAt,
-              ),
-          },
-        );
         final storedProjects = await _projectsDao.getAllProjects();
-        final storedByPath = {
-          for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
+        final storedById = {
+          for (final project in storedProjects) project.projectId: project,
         };
-        return [
-          for (final p in pluginProjects)
-            if (storedByPath[normalizeProjectDirectory(directory: p.directory)] case final stored?)
-              ProjectActivityEvidence(
-                pluginId: plugin.id,
-                projectId: stored.projectId,
-                pluginActivity: p.activity,
-                sessionActivities: const [],
-              ),
-        ];
+        final projectIdByPath = <String, String>{};
+        for (final project in storedProjects) {
+          projectIdByPath.putIfAbsent(
+            normalizeProjectDirectory(directory: project.path),
+            () => project.projectId,
+          );
+        }
+        final missingProjects = <String, ({String path, int? createdAt, int? updatedAt})>{};
+        final evidence = <ProjectActivityEvidence>[];
+        for (final project in pluginProjects) {
+          final normalizedPath = normalizeProjectDirectory(directory: project.directory);
+          final projectId = storedById[project.id]?.projectId ?? projectIdByPath[normalizedPath] ?? project.id;
+          if (!storedById.containsKey(project.id) && !projectIdByPath.containsKey(normalizedPath)) {
+            projectIdByPath[normalizedPath] = projectId;
+            missingProjects[projectId] = (
+              path: project.directory,
+              createdAt: project.activity?.createdAt,
+              updatedAt: project.activity?.updatedAt,
+            );
+          }
+          evidence.add(
+            ProjectActivityEvidence(
+              pluginId: plugin.id,
+              projectId: projectId,
+              pluginActivity: project.activity,
+              sessionActivities: const [],
+            ),
+          );
+        }
+        await _projectsDao.insertProjectsWithPathsIfMissing(
+          projects: missingProjects,
+        );
+        return evidence;
       case final BridgeDerivedProjectsPluginApi plugin:
         final (storedProjects, sessionProjectPaths, tombstoned) = await (
           _projectsDao.getAllProjects(),
@@ -324,14 +337,22 @@ class ProjectRepository {
           final key = normalizeProjectDirectory(directory: projectPath);
           grouped.putIfAbsent(key, () => []).add(time);
         }
+        final storedByPath = <String, ProjectDto>{};
+        for (final project in storedProjects) {
+          storedByPath.putIfAbsent(
+            normalizeProjectDirectory(directory: project.path),
+            () => project,
+          );
+        }
         return [
           for (final entry in grouped.entries)
-            ProjectActivityEvidence(
-              pluginId: plugin.id,
-              projectId: entry.key,
-              pluginActivity: null,
-              sessionActivities: entry.value,
-            ),
+            if (storedByPath[entry.key] case final stored?)
+              ProjectActivityEvidence(
+                pluginId: plugin.id,
+                projectId: stored.projectId,
+                pluginActivity: null,
+                sessionActivities: entry.value,
+              ),
         ];
     }
   }

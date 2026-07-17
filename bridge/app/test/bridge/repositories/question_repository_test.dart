@@ -120,6 +120,52 @@ void main() {
       expect(plugin.queriedSessionIds, contains("w1"));
     });
 
+    test("getProjectQuestions attributes derived worktrees by the resolved directory of a native-id row", () async {
+      const projectId = "native-project-id";
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      await db.projectsDao.recordOpenedProject(
+        projectId: projectId,
+        path: parent,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      await db.sessionDao.insertSession(
+        sessionId: "stable-w1",
+        backendSessionId: "w1",
+        projectId: projectId,
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: worktree,
+        branchName: "session-001",
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: "codex",
+      );
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: parent,
+        allSessions: [_session(worktree, id: "w1")],
+        questionsBySession: {
+          "w1": const [
+            PluginPendingQuestion(id: "q-w1", sessionID: "w1", displaySessionId: null, questions: []),
+          ],
+        },
+      );
+      final repository = singlePluginQuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      final questions = await repository.getProjectQuestions(projectId: projectId);
+
+      expect(questions.map((question) => question.id), contains("q-w1"));
+      expect(questions.single.sessionID, "stable-w1");
+    });
+
     test("getProjectQuestions skips tombstoned sessions", () async {
       const parent = "/tmp/proj/alpha";
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);

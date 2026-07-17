@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PluginMetadata {
 
- String get id; String get displayName; bool get isDefault; PluginLifecycleState get state; String? get actionHint;
+ String get id; String get displayName; bool get isDefault;@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState get state; String? get actionHint;
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $PluginMetadataCopyWith<$Res>  {
   factory $PluginMetadataCopyWith(PluginMetadata value, $Res Function(PluginMetadata) _then) = _$PluginMetadataCopyWithImpl;
 @useResult
 $Res call({
- String id, String displayName, bool isDefault, PluginLifecycleState state, String? actionHint
+ String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint
 });
 
 
@@ -84,13 +84,13 @@ as String?,
 @JsonSerializable()
 
 class _PluginMetadata implements PluginMetadata {
-  const _PluginMetadata({required this.id, required this.displayName, required this.isDefault, required this.state, required this.actionHint});
+  const _PluginMetadata({required this.id, required this.displayName, required this.isDefault, @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required this.state, required this.actionHint});
   factory _PluginMetadata.fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);
 
 @override final  String id;
 @override final  String displayName;
 @override final  bool isDefault;
-@override final  PluginLifecycleState state;
+@override@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) final  PluginLifecycleState state;
 @override final  String? actionHint;
 
 /// Create a copy of PluginMetadata
@@ -126,7 +126,7 @@ abstract mixin class _$PluginMetadataCopyWith<$Res> implements $PluginMetadataCo
   factory _$PluginMetadataCopyWith(_PluginMetadata value, $Res Function(_PluginMetadata) _then) = __$PluginMetadataCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String displayName, bool isDefault, PluginLifecycleState state, String? actionHint
+ String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint
 });
 
 
