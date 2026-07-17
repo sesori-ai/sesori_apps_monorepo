@@ -1,8 +1,8 @@
-import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/health_check_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/single_plugin_repository_test_support.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -11,7 +11,7 @@ void main() {
 
     HealthCheckHandler buildHandler({bool filesystemAccessOk = true}) {
       return HealthCheckHandler(
-        healthRepository: HealthRepository(
+        healthRepository: singlePluginHealthRepository(
           plugin: plugin,
           bridgeVersion: "9.9.9",
           filesystemAccessOk: filesystemAccessOk,
@@ -59,17 +59,17 @@ void main() {
       expect(response.filesystemAccessDegraded, isTrue);
     });
 
-    test("throws 503 when backend is unhealthy", () async {
+    test("reports plugin health without marking the bridge unhealthy", () async {
       plugin.healthCheckResult = false;
-      await expectLater(
-        () => buildHandler().handle(
-          makeRequest("GET", "/global/health"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
-        ),
-        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(503))),
+      final response = await buildHandler().handle(
+        makeRequest("GET", "/global/health"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
       );
+
+      expect(response.healthy, isTrue);
+      expect(response.plugins, [const PluginHealth(pluginId: "fake", healthy: false)]);
     });
   });
 }

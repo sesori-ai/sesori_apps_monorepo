@@ -21,7 +21,7 @@ void main() {
       db = createTestDatabase();
       addTearDown(db.close);
       plugin = FakeBridgePlugin();
-      repository = AgentRepository(plugin: plugin, projectsDao: db.projectsDao);
+      repository = singlePluginAgentRepository(plugin: plugin, projectsDao: db.projectsDao);
       handler = GetAgentsHandler(repository);
     });
 

@@ -131,11 +131,13 @@ class _LiveListBenchmark {
 
     final projectRepository = ProjectRepository(
       gitCliApi: gitCliApi,
-      plugin: plugin,
+      operationalPlugins: {plugin.id: plugin},
+      defaultEnabledPluginId: plugin.id,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,
       filesystemApi: filesystemApi,
+      aggregateSourceDeadline: const Duration(seconds: 5),
     );
     final results = <Map<String, Object?>>[];
     results.add(
@@ -234,11 +236,13 @@ class _LiveListBenchmark {
 
   SessionRepository _sessionRepository({required AppDatabase database, required BridgePluginApi plugin}) {
     return SessionRepository(
-      plugin: plugin,
+      operationalPlugins: {plugin.id: plugin},
+      enabledPluginIds: [plugin.id],
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      aggregateSourceDeadline: const Duration(seconds: 5),
     );
   }
 

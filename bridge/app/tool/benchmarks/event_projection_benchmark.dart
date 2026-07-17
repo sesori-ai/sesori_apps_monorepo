@@ -80,11 +80,13 @@ class _EventProjectionBenchmark {
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
       repository = SessionRepository(
-        plugin: plugin,
+        operationalPlugins: {plugin.id: plugin},
+        enabledPluginIds: [plugin.id],
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
       );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
       final failureReporter = _BenchmarkFailureReporter();
@@ -93,7 +95,7 @@ class _EventProjectionBenchmark {
         sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: SessionEventTracker(
-          maxPendingEntries: SessionEventTracker.defaultMaxPendingEntries,
+          maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
         ),
         failureReporter: failureReporter,
       );

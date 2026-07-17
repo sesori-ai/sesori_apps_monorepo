@@ -10,7 +10,6 @@ import "package:sesori_bridge/src/bridge/repositories/models/session_operation.d
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -430,7 +429,7 @@ void main() {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       plugin = _FakeBridgePlugin();
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -616,7 +615,7 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
-        worktreeRepository: WorktreeRepository(
+        worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           gitApi: GitCliApi(
@@ -638,6 +637,7 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<bool> removeWorktree({
+    required String pluginId,
     required String projectId,
     required String worktreePath,
     required bool force,

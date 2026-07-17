@@ -7,45 +7,15 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
-import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
-import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
-import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
-import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
-import "package:sesori_bridge/src/push/completion_notifier.dart";
-import "package:sesori_bridge/src/push/completion_push_listener.dart";
-import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
-import "package:sesori_bridge/src/push/push_dispatcher.dart";
-import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
-import "package:sesori_bridge/src/push/push_notification_client.dart";
-import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
-import "package:sesori_bridge/src/push/push_rate_limiter.dart";
-import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
-import "../helpers/fake_filesystem_api.dart";
-import "../helpers/fake_git_cli_api.dart";
+import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -317,6 +287,8 @@ class _ReauthHarness {
   final AppDatabase database;
   final _ScriptedTokenAuthority authority;
   final FakeBridgeRegistrationRepository registrationRepository;
+  final PluginLifecycleService lifecycleService;
+  final http.Client httpClient;
 
   _ReauthHarness._({
     required this.session,
@@ -325,6 +297,8 @@ class _ReauthHarness {
     required this.database,
     required this.authority,
     required this.registrationRepository,
+    required this.lifecycleService,
+    required this.httpClient,
   });
 
   static Future<_ReauthHarness> start({
@@ -334,42 +308,8 @@ class _ReauthHarness {
     final database = createTestDatabase();
     final plugin = FakeBridgePlugin();
     final registrationRepository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_initial";
-    final sessionRepository = SessionRepository(
-      plugin: plugin,
-      sessionDao: database.sessionDao,
-      projectsDao: database.projectsDao,
-      pullRequestDao: database.pullRequestDao,
-      unseenCalculator: const SessionUnseenCalculator(),
-    );
-    final sessionViewTracker = SessionViewTracker();
-    final sessionUnseenService = SessionUnseenService(
-      unseenRepository: SessionUnseenRepository(
-        plugin: plugin,
-        sessionDao: database.sessionDao,
-        projectsDao: database.projectsDao,
-        db: database,
-        calculator: const SessionUnseenCalculator(),
-      ),
-      projectRepository: ProjectRepository(
-        gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-      ),
-      viewTracker: sessionViewTracker,
-    );
-    final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final pushSubsystem = _createPushSubsystem();
-    final projectRepository = ProjectRepository(
-      gitCliApi: FakeGitCliApi(),
-      plugin: plugin,
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      unseenCalculator: const SessionUnseenCalculator(),
-      filesystemApi: FakeFilesystemApi(),
-    );
+    final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
+    final httpClient = http.Client();
     // One registration service feeds both the orchestrator and the relay client's
     // bridge-id provider, mirroring production — so the auth message reflects the
     // id the revoked path re-registers.
@@ -378,7 +318,6 @@ class _ReauthHarness {
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
-        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
         yolo: false,
@@ -388,92 +327,17 @@ class _ReauthHarness {
         accessTokenProvider: authority,
         bridgeIdProvider: registrationService,
       ),
-      plugin: plugin,
-      pluginId: plugin.id,
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      catalogHydrationsDao: database.catalogHydrationsDao,
-      sessionCreationService: SessionCreationService(
-        metadataService: FakeMetadataService(),
-        worktreeService: WorktreeService(
-          worktreeRepository: WorktreeRepository(
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            gitApi: GitCliApi(
-              processRunner: ProcessRunner(),
-              gitPathExists: ({required String gitPath}) => false,
-            ),
-            plugin: plugin,
-          ),
-        ),
-        sessionRepository: sessionRepository,
-        sessionMutationDispatcher: sessionTitleService,
-      ),
-      pushDispatcher: pushSubsystem.dispatcher,
-      completionListener: pushSubsystem.completionListener,
-      maintenanceListener: pushSubsystem.maintenanceListener,
+      legacyMissingPluginId: plugin.id,
+      pluginLifecycleService: lifecycleService,
+      database: database,
+      httpClient: httpClient,
+      processRunner: ProcessRunner(),
       accessTokenProvider: authority,
       tokenRefresher: authority,
       bridgeRegistrationService: registrationService,
       failureReporter: FakeFailureReporter(),
-      prSyncService: FakePrSyncService(),
-      sessionRepository: sessionRepository,
-      projectRepository: projectRepository,
-      sessionUnseenService: sessionUnseenService,
-      sessionViewTracker: sessionViewTracker,
-      filesystemRepository: FilesystemRepository(
-        filesystemApi: const FilesystemApi(),
-        permissionValidator: const FilesystemPermissionValidator(),
-      ),
-      gitCliApi: GitCliApi(
-        processRunner: ProcessRunner(),
-        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
-      ),
-      projectInitializationService: ProjectInitializationService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          plugin: plugin,
-          gitApi: GitCliApi(
-            processRunner: ProcessRunner(),
-            gitPathExists: ({required String gitPath}) => false,
-          ),
-        ),
-        filesystemRepository: FilesystemRepository(
-          filesystemApi: const FilesystemApi(),
-          permissionValidator: const FilesystemPermissionValidator(),
-        ),
-      ),
-      projectActivityService: ProjectActivityService(
-        projectRepository: projectRepository,
-        now: () => DateTime.now().millisecondsSinceEpoch,
-      ),
-      healthRepository: HealthRepository(
-        plugin: plugin,
-        bridgeVersion: "0.0.0-test",
-        filesystemAccessOk: true,
-      ),
-      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
-      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
-      permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
-      questionRepository: QuestionRepository(
-        plugin: plugin,
-        sessionDao: database.sessionDao,
-        projectsDao: database.projectsDao,
-      ),
-      worktreeService: WorktreeService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: ProcessRunner(),
-            gitPathExists: ({required String gitPath}) => false,
-          ),
-          plugin: plugin,
-        ),
-      ),
-      sessionMutationDispatcher: sessionTitleService,
       restartService: buildTestRestartService(),
+      filesystemAccessOk: true,
       statusNotifier: null,
     );
 
@@ -488,6 +352,8 @@ class _ReauthHarness {
       database: database,
       authority: authority,
       registrationRepository: registrationRepository,
+      lifecycleService: lifecycleService,
+      httpClient: httpClient,
     );
   }
 
@@ -498,6 +364,8 @@ class _ReauthHarness {
     } on Object {
       // run() may have already completed.
     }
+    await lifecycleService.dispose();
+    httpClient.close();
     await authority.dispose();
     await database.close();
     await relayServer.close();
@@ -526,55 +394,4 @@ class _CountingRelayServer {
   }
 
   Future<void> close() => _inner.close();
-}
-
-typedef _TestPushSubsystem = ({
-  PushDispatcher dispatcher,
-  CompletionPushListener completionListener,
-  MaintenancePushListener maintenanceListener,
-});
-
-_TestPushSubsystem _createPushSubsystem() {
-  final tracker = PushSessionStateTracker(now: DateTime.now);
-  final completionNotifier = CompletionNotifier(tracker: tracker);
-  final rateLimiter = PushRateLimiter();
-  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
-    completionNotifier: completionNotifier,
-    rateLimiter: rateLimiter,
-    rssBytesReader: () => null,
-  );
-  final dispatcher = PushDispatcher(
-    client: _NoopPushNotificationClient(),
-    rateLimiter: rateLimiter,
-    tracker: tracker,
-    contentBuilder: const PushNotificationContentBuilder(),
-  );
-  return (
-    dispatcher: dispatcher,
-    completionListener: CompletionPushListener(
-      tracker: tracker,
-      completionNotifier: completionNotifier,
-      contentBuilder: const PushNotificationContentBuilder(),
-      dispatcher: dispatcher,
-    ),
-    maintenanceListener: MaintenancePushListener(
-      tracker: tracker,
-      completionNotifier: completionNotifier,
-      rateLimiter: rateLimiter,
-      telemetryBuilder: telemetryBuilder,
-      maintenanceInterval: const Duration(minutes: 10),
-    ),
-  );
-}
-
-class _NoopPushNotificationClient extends PushNotificationClient {
-  _NoopPushNotificationClient()
-    : super(
-        authBackendURL: "http://127.0.0.1:8080",
-        tokenRefreshManager: FakeTokenRefresher(),
-        client: http.Client(),
-      );
-
-  @override
-  Future<void> sendNotification(SendNotificationPayload payload) async {}
 }

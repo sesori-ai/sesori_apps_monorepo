@@ -59,6 +59,31 @@ void main() {
       expect(operations, ["parallel.b"]);
     });
 
+    test("starts every action in a phase before awaiting a blocked peer", () async {
+      final coordinator = BridgeShutdownCoordinator(exitProcess: (_) {});
+      final blocked = Completer<void>();
+      final operations = <String>[];
+
+      coordinator.addPhase(
+        phase: BridgeShutdownPhase.drain,
+        action: () {
+          operations.add("blocked");
+          return blocked.future;
+        },
+      );
+      coordinator.addPhase(
+        phase: BridgeShutdownPhase.drain,
+        action: () => operations.add("ready"),
+      );
+
+      final shutdown = coordinator.shutdown();
+      await Future<void>.delayed(Duration.zero);
+      expect(operations, ["blocked", "ready"]);
+
+      blocked.complete();
+      await shutdown;
+    });
+
     test("repeated shutdown calls share one run", () async {
       final coordinator = BridgeShutdownCoordinator(exitProcess: (_) {});
       var disposals = 0;

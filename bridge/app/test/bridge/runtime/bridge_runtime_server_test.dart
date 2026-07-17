@@ -9,6 +9,8 @@ import "package:sesori_bridge/src/server/models/bridge_startup_lock.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_instance_service.dart";
+import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
+import "package:sesori_bridge/src/updater/models/managed_runtime_paths.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -23,6 +25,7 @@ void main() {
     late _RecordingDescriptor descriptor;
     late ProcessIdentity currentBridgeIdentity;
     late Directory runtimeDirectory;
+    late List<PluginLifecycleService> lifecycleServices;
 
     setUp(() async {
       startupMutexRepository = _FakeStartupMutexRepository();
@@ -30,9 +33,14 @@ void main() {
       descriptor = _RecordingDescriptor();
       currentBridgeIdentity = _identity(pid: 100, startMarker: "bridge-start");
       runtimeDirectory = await Directory.systemTemp.createTemp("bridge-runtime-server-test");
+      lifecycleServices = [];
     });
 
     tearDown(() async {
+      for (final service in lifecycleServices) {
+        await service.disposeStartedApis();
+        await service.dispose();
+      }
       if (runtimeDirectory.existsSync()) {
         await runtimeDirectory.delete(recursive: true);
       }
@@ -40,22 +48,37 @@ void main() {
 
     Future<BridgePlugin> startPlugin({String? stateDirectory, ControlProvisionNotifier? provisionNotifier}) {
       final directory = stateDirectory ?? runtimeDirectory.path;
-      return BridgeRuntimeRunner.startPluginUnderStartupMutex(
-        descriptor: descriptor,
-        pluginConfig: const PluginConfig(values: <String, Object?>{"port": "4096"}),
+      final lifecycleService = PluginLifecycleService()
+        ..registerSelection(
+          knownPluginIds: {descriptor.id},
+          enabledPlugins: [(id: descriptor.id, displayName: descriptor.displayName, isDefault: true)],
+        );
+      lifecycleServices.add(lifecycleService);
+      final startedPlugins = <String, BridgePlugin>{};
+      return BridgeRuntimeRunner.startPluginsUnderStartupMutex(
+        descriptors: [descriptor],
+        pluginConfigs: {
+          descriptor.id: const PluginConfig(values: <String, Object?>{"port": "4096"}),
+        },
+        lifecycleService: lifecycleService,
+        startedPlugins: startedPlugins,
+        managedRuntimePaths: ManagedRuntimePaths(
+          installRoot: directory,
+          binaryPath: "$directory/bin/sesori-bridge",
+          cacheDirectory: directory,
+        ),
         currentBridgeIdentity: currentBridgeIdentity,
         ownerSessionId: "owner-session",
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: _FakeProcessRepository(),
-        runtimeFileApi: RuntimeFileApi(runtimeDirectory: directory),
-        runtimeDirectory: directory,
+        openCodeRuntimeFileApi: RuntimeFileApi(runtimeDirectory: directory),
         serverClock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
         startAborted: StartAbortSignal.never,
         provisionNotifier: provisionNotifier,
-      );
+      ).then((_) => startedPlugins[descriptor.id]!);
     }
 
     test("allowed resolution starts the descriptor on a fully wired host", () async {
@@ -83,7 +106,7 @@ void main() {
 
       final host = descriptor.startedHosts.single;
       expect(host.config.value("port"), equals("4096"));
-      expect(host.stateDirectory, equals(runtimeDirectory.path));
+      expect(host.stateDirectory, equals("${runtimeDirectory.path}/plugins/fake"));
       expect(host.environment, containsPair("HOME", "/home/alex"));
       expect(host.bridge.identity.pid, equals(100));
       expect(host.bridge.ownerSessionId, equals("owner-session"));
@@ -366,9 +389,10 @@ class _RecordingDescriptor extends BridgePluginDescriptor {
 
 class _FakeBridgePlugin implements BridgePlugin {
   final PluginStatusController _status = PluginStatusController(initial: const PluginReady());
+  final BridgePluginApi _api = _FakeBridgePluginApi();
 
   @override
-  BridgePluginApi get api => throw UnsupportedError("never routed in these tests");
+  BridgePluginApi get api => _api;
 
   @override
   Stream<PluginStatus> get status => _status.stream;
@@ -383,6 +407,20 @@ class _FakeBridgePlugin implements BridgePlugin {
 
   @override
   Future<void> shutdown({required Duration? budget}) async {}
+}
+
+class _FakeBridgePluginApi extends NativeProjectsPluginApi {
+  @override
+  String get id => "fake";
+
+  @override
+  Stream<BridgeSseEvent> get events => const Stream.empty();
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Never invoked in these tests: the host's process service is constructed

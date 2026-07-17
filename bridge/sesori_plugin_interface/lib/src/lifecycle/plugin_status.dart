@@ -159,10 +159,10 @@ final class PluginRestarting extends PluginStatus {
 
 /// The plugin has terminally failed and will not recover on its own.
 ///
-/// The bridge core latches the first `PluginFailed` it observes and uses it
-/// to drive an orderly shutdown with a non-zero exit code. A plugin that is
-/// being stopped deliberately must never emit this — the state machine
-/// forbids `Failed` after `Stopping`.
+/// The bridge core removes a failed plugin from operational routing while the
+/// bridge and other plugins continue running. A plugin that is being stopped
+/// deliberately must never emit this — the state machine forbids `Failed`
+/// after `Stopping`.
 final class PluginFailed extends PluginStatus {
   const PluginFailed({required this.reason, required this.cause});
 

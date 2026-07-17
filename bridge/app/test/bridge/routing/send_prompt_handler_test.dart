@@ -22,7 +22,7 @@ void main() {
     setUp(() async {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      sessionRepository = SessionRepository(
+      sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -360,7 +360,7 @@ void main() {
         ),
       );
       final failingPlugin = _ThrowingSendPromptPlugin();
-      final localRepository = SessionRepository(
+      final localRepository = singlePluginSessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -412,7 +412,7 @@ void main() {
         ),
       );
       final failingPlugin = _ThrowingSendCommandPlugin();
-      final localRepository = SessionRepository(
+      final localRepository = singlePluginSessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -453,9 +453,7 @@ void main() {
     test("prompt defaults update failure after plugin success still returns success", () async {
       final throwingRepository = _ThrowingUpdateSessionRepository(
         plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
+        database: db,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final promptService = SessionPromptService(sessionRepository: throwingRepository);
@@ -649,12 +647,17 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
   int updatePromptDefaultsCallCount = 0;
 
   _ThrowingUpdateSessionRepository({
-    required super.plugin,
-    required super.sessionDao,
-    required super.projectsDao,
-    required super.pullRequestDao,
+    required BridgePluginApi plugin,
+    required AppDatabase database,
     required super.unseenCalculator,
-  });
+  }) : super(
+         operationalPlugins: {plugin.id: plugin},
+         enabledPluginIds: [plugin.id],
+         sessionDao: database.sessionDao,
+         projectsDao: database.projectsDao,
+         pullRequestDao: database.pullRequestDao,
+         aggregateSourceDeadline: const Duration(seconds: 5),
+       );
 
   @override
   Future<void> updatePromptDefaults({

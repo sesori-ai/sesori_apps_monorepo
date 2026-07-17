@@ -13,17 +13,17 @@ class WorktreeRepository {
   final GitCliApi _gitApi;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
-  final BridgePluginApi _plugin;
+  final Map<String, BridgePluginApi> _operationalPlugins;
 
   WorktreeRepository({
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required GitCliApi gitApi,
-    required BridgePluginApi plugin,
+    required Map<String, BridgePluginApi> operationalPlugins,
   }) : _gitApi = gitApi,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
-       _plugin = plugin;
+       _operationalPlugins = operationalPlugins;
 
   Future<({String path, String branchName, String baseBranch, String baseCommit})?> getParentWorktree({
     required String parentSessionId,
@@ -166,6 +166,7 @@ class WorktreeRepository {
   }
 
   Future<bool> removeWorktree({
+    required String pluginId,
     required String projectPath,
     required String worktreePath,
     required bool force,
@@ -182,8 +183,8 @@ class WorktreeRepository {
     if (removed) {
       // The backend resolves the workspace by directory, so it gets the live
       // project path — the same root the worktree was just removed under.
-      _plugin
-          .deleteWorkspace(
+      _operationalPlugins[pluginId]
+          ?.deleteWorkspace(
             projectId: projectPath,
             worktreePath: worktreePath,
           )

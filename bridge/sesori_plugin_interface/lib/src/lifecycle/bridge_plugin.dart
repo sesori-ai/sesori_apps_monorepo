@@ -12,7 +12,7 @@ abstract class BridgePlugin {
   /// The request surface the bridge routes traffic through.
   ///
   /// Must be the *same object* for the plugin's entire lifetime: the bridge
-  /// constructor-injects it into many components at startup. A plugin whose
+  /// publishes it in its operational plugin map. A plugin whose
   /// transport can be replaced (e.g. a restarted runtime) must put a stable
   /// facade here and swap the transport behind it.
   BridgePluginApi get api;

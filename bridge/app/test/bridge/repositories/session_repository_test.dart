@@ -5,7 +5,6 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -24,7 +23,7 @@ void main() {
     test("deleteSession records a plugin-scoped tombstone and removes the stored row", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -73,7 +72,7 @@ void main() {
       addTearDown(db.close);
       final readBlock = Completer<void>();
       final sessionDao = _CountingSessionDao(tombstones: {"gone"}, readBlock: readBlock);
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: sessionDao,
         projectsDao: db.projectsDao,
@@ -97,7 +96,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
       final sessionDao = _CountingSessionDao(tombstones: {"gone"}, readBlock: null)..failuresRemaining = 1;
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: sessionDao,
         projectsDao: db.projectsDao,
@@ -114,7 +113,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -219,7 +218,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -266,7 +265,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -356,7 +355,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -401,7 +400,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -456,7 +455,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -506,7 +505,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -562,7 +561,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -611,7 +610,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -673,7 +672,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -708,7 +707,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -727,7 +726,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -763,7 +762,7 @@ void main() {
     test("createSession rejects a plugin mismatch before plugin I/O", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -820,7 +819,7 @@ void main() {
           ],
         };
 
-        final repository = SessionRepository(
+        final repository = singlePluginSessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
@@ -868,7 +867,7 @@ void main() {
           updatedAt: 1,
         );
 
-        final repository = SessionRepository(
+        final repository = singlePluginSessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
@@ -895,7 +894,7 @@ void main() {
           updatedAt: 1,
         );
 
-        final repository = SessionRepository(
+        final repository = singlePluginSessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
@@ -913,7 +912,7 @@ void main() {
         final db = createTestDatabase();
         addTearDown(db.close);
 
-        final repository = SessionRepository(
+        final repository = singlePluginSessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
@@ -932,7 +931,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
 
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -983,7 +982,7 @@ void main() {
     test("session operations reject missing and mismatched bindings before plugin I/O", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1031,7 +1030,7 @@ void main() {
     test("messages and statuses map backend identities back to stable session ids", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1091,7 +1090,7 @@ void main() {
     test("unknown sessions reject message and abort operations", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1136,7 +1135,7 @@ void main() {
             ),
           ],
         };
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1193,7 +1192,7 @@ void main() {
             ),
           ],
         };
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1203,7 +1202,7 @@ void main() {
 
       final summaries = await repository.getProjectActivitySummaries();
 
-      expect(summaries.singleWhere((summary) => summary.id == failedDirectory).activeSessions, isEmpty);
+      expect(summaries.map((summary) => summary.id), isNot(contains(failedDirectory)));
       final healthy = summaries.singleWhere((summary) => summary.id == healthyDirectory).activeSessions.single;
       expect(healthy.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
       expect(healthy.awaitingInput, isTrue);
@@ -1258,7 +1257,7 @@ void main() {
           pluginSession(worktree, id: "w1"),
         ],
       );
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1293,7 +1292,7 @@ void main() {
         launchDirectory: parent,
         allSessions: [pluginSession(worktree, id: "a1")],
       );
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         unseenCalculator: const SessionUnseenCalculator(),
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -1316,7 +1315,7 @@ void main() {
         launchDirectory: "/tmp/proj/alpha",
         allSessions: [pluginSession(directory, id: "b1")],
       );
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1337,7 +1336,7 @@ void main() {
       const parent = "/tmp/proj/alpha";
       const worktree = "/tmp/proj/alpha/.worktrees/session-001";
       final plugin = _FakeDerivedPlugin(launchDirectory: parent, allSessions: const []);
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1397,7 +1396,7 @@ void main() {
       const parent = "/tmp/proj/alpha";
       const worktree = "/tmp/proj/alpha/.worktrees/session-001";
       final plugin = _FakeDerivedPlugin(launchDirectory: parent, allSessions: const []);
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1466,7 +1465,7 @@ void main() {
             ],
           ),
         ];
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1502,7 +1501,7 @@ void main() {
           ),
         ],
       );
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1544,7 +1543,7 @@ void main() {
         launchDirectory: "/repo",
         allSessions: const [],
       );
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1606,7 +1605,7 @@ void main() {
             time: PluginSessionTime(created: 3, updated: 4, archived: null),
           ),
         ];
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1683,7 +1682,7 @@ void main() {
         launchDirectory: "/repo",
         allSessions: const [],
       )..listAllSessionsError = StateError("enumeration failed");
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1703,7 +1702,7 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
       final plugin = _FakeDerivedPlugin(launchDirectory: "/repo", allSessions: const []);
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1744,7 +1743,7 @@ void main() {
           pluginSession(parent, id: "kept-s"),
         ],
       );
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1769,15 +1768,17 @@ void main() {
     test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
-      final derived = SessionRepository(
-        plugin: _FakeDerivedPlugin(launchDirectory: "/tmp/proj/alpha", allSessions: const []),
+      final derivedPlugin = _FakeDerivedPlugin(launchDirectory: "/tmp/proj/alpha", allSessions: const []);
+      final derived = singlePluginSessionRepository(
+        plugin: derivedPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final native = SessionRepository(
-        plugin: _FakeBridgePlugin(),
+      final nativePlugin = _FakeBridgePlugin();
+      final native = singlePluginSessionRepository(
+        plugin: nativePlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
@@ -1786,8 +1787,8 @@ void main() {
 
       // A derived enumeration is eventually-complete (rollout flush window),
       // so it must never be used to reconcile stored rows away.
-      expect(derived.sessionListIsAuthoritative, isFalse);
-      expect(native.sessionListIsAuthoritative, isTrue);
+      expect(derived.sessionListIsAuthoritative(pluginId: derivedPlugin.id), isFalse);
+      expect(native.sessionListIsAuthoritative(pluginId: nativePlugin.id), isTrue);
     });
 
     test("getSessionsForProject rejects a worktree path without a durable project row", () async {
@@ -1800,7 +1801,7 @@ void main() {
         launchDirectory: parent,
         allSessions: [pluginSession(worktree, id: "w1")],
       );
-      final repository = SessionRepository(
+      final repository = singlePluginSessionRepository(
         unseenCalculator: const SessionUnseenCalculator(),
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -1982,7 +1983,32 @@ class _CountingSessionDao implements SessionDao {
   }
 
   @override
-  Future<SessionDto?> getSession({required String sessionId}) async => null;
+  Future<SessionDto?> getSession({required String sessionId}) async {
+    return SessionDto(
+      sessionId: sessionId,
+      backendSessionId: sessionId,
+      projectId: "project",
+      parentSessionId: null,
+      directory: "/project",
+      worktreePath: null,
+      branchName: null,
+      isDedicated: false,
+      archivedAt: null,
+      baseBranch: null,
+      baseCommit: null,
+      lastAgent: null,
+      lastAgentModel: null,
+      createdAt: 1,
+      updatedAt: 1,
+      projectionUpdatedAt: 1,
+      lastActivityAt: null,
+      lastSeenAt: null,
+      lastUserMessageAt: null,
+      pluginId: "fake",
+      title: null,
+      catalogTitle: null,
+    );
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

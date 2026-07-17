@@ -14,13 +14,19 @@ import "package:test/test.dart";
 import "../bridge/routing/routing_test_helpers.dart";
 
 void main() {
+  CatalogImportService createService(CatalogImportRepository repository) {
+    return CatalogImportService(
+      repository: repository,
+      knownPluginIds: const {"selected", "other"},
+      enabledPluginIds: const ["selected"],
+      emptyHydrationPolicies: const {"selected": CatalogEmptyHydrationPolicy.complete},
+    );
+  }
+
   group("catalog import handlers", () {
     test("POST starts the selected import and GET returns its latest status", () async {
       final repository = _HandlerCatalogImportRepository();
-      final service = CatalogImportService(
-        repository: repository,
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
-      );
+      final service = createService(repository);
       addTearDown(service.dispose);
       final handler = StartCatalogImportHandler(service: service);
       final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
@@ -50,10 +56,7 @@ void main() {
     });
 
     test("POST and DELETE map an unselected plugin to 404", () async {
-      final service = CatalogImportService(
-        repository: _HandlerCatalogImportRepository(),
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
-      );
+      final service = createService(_HandlerCatalogImportRepository());
       addTearDown(service.dispose);
       final requestBody = jsonEncode(const CatalogImportRequest(pluginId: "other").toJson());
 
@@ -77,10 +80,7 @@ void main() {
     test("DELETE requests cooperative cancellation", () async {
       final release = Completer<void>();
       final repository = _HandlerCatalogImportRepository(release: release);
-      final service = CatalogImportService(
-        repository: repository,
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
-      );
+      final service = createService(repository);
       addTearDown(service.dispose);
       final cancelled = service.progress.firstWhere((status) => status is CatalogImportCancelled);
       service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
@@ -114,13 +114,16 @@ class _HandlerCatalogImportRepository implements CatalogImportRepository {
   CatalogImportControl? control;
 
   @override
-  String get pluginId => "selected";
+  Set<String> get operationalPluginIds => const {"selected"};
 
   @override
-  Future<CatalogHydrationDto?> getHydrationCompletion() async => null;
+  Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) async => null;
 
   @override
-  Stream<CatalogImportProgress> importCatalog({required CatalogImportControl control}) async* {
+  Stream<CatalogImportProgress> importCatalog({
+    required String pluginId,
+    required CatalogImportControl control,
+  }) async* {
     importCalls++;
     this.control = control;
     if (!started.isCompleted) started.complete();

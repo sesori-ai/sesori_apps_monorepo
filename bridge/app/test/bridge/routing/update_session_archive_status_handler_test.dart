@@ -9,9 +9,7 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
@@ -35,7 +33,7 @@ void main() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
       worktreeService = _FakeWorktreeService(database: db);
-      final sessionRepository = SessionRepository(
+      final sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1108,7 +1106,7 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
-        worktreeRepository: WorktreeRepository(
+        worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           gitApi: GitCliApi(
@@ -1132,6 +1130,7 @@ class _FakeWorktreeService extends WorktreeService {
 
   @override
   Future<bool> removeWorktree({
+    required String pluginId,
     required String projectId,
     required String worktreePath,
     required bool force,

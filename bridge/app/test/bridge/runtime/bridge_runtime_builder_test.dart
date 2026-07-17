@@ -3,6 +3,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
+import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
@@ -16,6 +17,7 @@ import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:test/test.dart";
 
+import "../../helpers/plugin_lifecycle_test_support.dart";
 import "../../helpers/restart_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
@@ -42,31 +44,39 @@ void main() {
     final plugin = FakeBridgePlugin();
     final database = createTestDatabase();
     final httpClient = http.Client();
-    final runtime = BridgeRuntime.create(
+    final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
+    final failureReporter = FakeFailureReporter();
+    final restartService = buildTestRestartService();
+    final composition = Orchestrator(
       config: const BridgeConfig(
         relayURL: "ws://127.0.0.1:9999",
-        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "https://api.sesori.test",
         sseReplayWindow: Duration(minutes: 5),
         yolo: false,
       ),
-      plugin: plugin,
-      pluginId: plugin.id,
-      relayClient: RelayClient(
+      client: RelayClient(
         relayURL: "ws://127.0.0.1:9999",
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       ),
+      legacyMissingPluginId: plugin.id,
+      pluginLifecycleService: lifecycleService,
+      database: database,
       httpClient: httpClient,
+      processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
-      database: database,
-      processRunner: ProcessRunner(),
-      failureReporter: FakeFailureReporter(),
-      restartService: buildTestRestartService(),
+      failureReporter: failureReporter,
+      restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
+    ).create();
+    final runtime = BridgeRuntime(
+      database: database,
+      failureReporter: failureReporter,
+      restartService: restartService,
+      composition: composition,
     );
     final debugServer = runtime.createDebugServer(port: 0);
 
@@ -74,6 +84,7 @@ void main() {
 
     await debugServer.stop();
     await runtime.close();
+    await lifecycleService.dispose();
     httpClient.close();
     await plugin.dispose();
   });

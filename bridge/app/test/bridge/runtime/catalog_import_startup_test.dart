@@ -8,7 +8,7 @@ void main() {
 
     BridgeRuntimeRunner.startCatalogImports(
       service: service,
-      pluginId: "selected",
+      pluginIds: const ["selected"],
       headlessPluginIds: const ["selected", "selected"],
     );
 

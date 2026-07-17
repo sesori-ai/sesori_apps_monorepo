@@ -189,7 +189,7 @@ void main() {
 }
 
 SessionRepository _repository({required AppDatabase database, required BridgePluginApi plugin}) {
-  return SessionRepository(
+  return singlePluginSessionRepository(
     plugin: plugin,
     projectsDao: database.projectsDao,
     sessionDao: database.sessionDao,

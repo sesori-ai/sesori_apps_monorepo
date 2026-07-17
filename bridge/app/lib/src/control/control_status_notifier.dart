@@ -1,7 +1,7 @@
 import "dart:convert";
 
 import "package:rxdart/rxdart.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../bridge/relay_client.dart";
@@ -32,7 +32,7 @@ import "../foundation/control_channel_client.dart";
 /// pushed exactly once (no periodic spam).
 class ControlStatusNotifier {
   final ControlChannelClient _client;
-  final Stream<PluginStatus> _pluginStatus;
+  final Stream<List<PluginMetadata>> _pluginMetadata;
   final Stream<RelayConnectionState> _relayConnectionState;
   final Stream<String> _registrations;
   final CompositeSubscription _subscriptions = CompositeSubscription();
@@ -49,11 +49,11 @@ class ControlStatusNotifier {
 
   ControlStatusNotifier({
     required ControlChannelClient client,
-    required Stream<PluginStatus> pluginStatus,
+    required Stream<List<PluginMetadata>> pluginMetadata,
     required Stream<RelayConnectionState> relayConnectionState,
     required Stream<String> registrations,
   }) : _client = client,
-       _pluginStatus = pluginStatus,
+       _pluginMetadata = pluginMetadata,
        _relayConnectionState = relayConnectionState,
        _registrations = registrations;
 
@@ -62,7 +62,7 @@ class ControlStatusNotifier {
   void start() {
     if (_started) return;
     _started = true;
-    _pluginStatus.listen(_handlePluginStatus).addTo(_subscriptions);
+    _pluginMetadata.listen(_handlePluginMetadata).addTo(_subscriptions);
     _relayConnectionState.listen(_handleRelayConnectionState).addTo(_subscriptions);
     _registrations.listen(_handleRegistered).addTo(_subscriptions);
     _client.connectionState.listen(_handleControlChannelState).addTo(_subscriptions);
@@ -90,8 +90,8 @@ class ControlStatusNotifier {
     _pushStatus();
   }
 
-  void _handlePluginStatus(PluginStatus status) {
-    final mapped = _mapPluginStatus(status);
+  void _handlePluginMetadata(List<PluginMetadata> metadata) {
+    final mapped = _mapPluginMetadata(metadata);
     if (mapped == _plugin) return;
     _plugin = mapped;
     _pushStatus();
@@ -148,17 +148,16 @@ class ControlStatusNotifier {
     }
   }
 
-  ControlPluginHealthState _mapPluginStatus(PluginStatus status) {
-    return switch (status) {
-      // Health is not yet determined while start() is still in flight.
-      PluginStarting() => ControlPluginHealthState.unknown,
-      PluginReady() => ControlPluginHealthState.healthy,
-      PluginDegraded() => ControlPluginHealthState.degraded,
-      PluginRestarting() => ControlPluginHealthState.degraded,
-      PluginFailed() => ControlPluginHealthState.unavailable,
-      PluginStopping() => ControlPluginHealthState.unavailable,
-      PluginStopped() => ControlPluginHealthState.unavailable,
-    };
+  ControlPluginHealthState _mapPluginMetadata(List<PluginMetadata> metadata) {
+    if (metadata.every((plugin) => plugin.state == PluginLifecycleState.ready)) {
+      return ControlPluginHealthState.healthy;
+    }
+    if (metadata.any(
+      (plugin) => plugin.state == PluginLifecycleState.ready || plugin.state == PluginLifecycleState.degraded,
+    )) {
+      return ControlPluginHealthState.degraded;
+    }
+    return ControlPluginHealthState.unavailable;
   }
 
   ControlRelayConnectionState _mapRelayState(RelayConnectionState state) {

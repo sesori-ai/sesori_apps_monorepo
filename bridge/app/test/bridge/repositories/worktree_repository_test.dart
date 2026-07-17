@@ -25,7 +25,7 @@ void main() {
       await db.close();
     });
 
-    WorktreeRepository repository() => WorktreeRepository(
+    WorktreeRepository repository() => singlePluginWorktreeRepository(
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       gitApi: GitCliApi(
@@ -41,6 +41,7 @@ void main() {
 
       final repo = repository();
       await repo.removeWorktree(
+        pluginId: plugin.id,
         projectPath: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
         force: false,
@@ -57,6 +58,7 @@ void main() {
 
       final repo = repository();
       await repo.removeWorktree(
+        pluginId: plugin.id,
         projectPath: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
         force: false,
@@ -73,6 +75,7 @@ void main() {
       final repo = repository();
       // Should not throw
       await repo.removeWorktree(
+        pluginId: plugin.id,
         projectPath: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
         force: false,

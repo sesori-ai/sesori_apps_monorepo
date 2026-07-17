@@ -14,8 +14,8 @@ class BridgeSettings {
 
   /// Plugin ids enabled to run (the `--plugin <id>` namespace). Null means
   /// unset — the bridge then defaults to opencode, so existing installs see
-  /// zero change. Until the orchestrator supports multiple concurrently
-  /// active plugins, more than one entry is rejected at startup.
+  /// zero change. Order is stable and the first id is the default offered to
+  /// new clients.
   final List<String>? enabledPlugins;
 
   /// Which release channel the auto-updater follows. Defaults to

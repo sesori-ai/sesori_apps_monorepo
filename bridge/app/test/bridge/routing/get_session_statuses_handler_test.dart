@@ -1,5 +1,4 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_statuses_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -19,7 +18,7 @@ void main() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
       handler = GetSessionStatusesHandler(
-        sessionRepository: SessionRepository(
+        sessionRepository: singlePluginSessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,

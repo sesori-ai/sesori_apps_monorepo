@@ -245,12 +245,14 @@ class SessionUnseenService {
   /// [fetchStartedAt] is the wall-clock time the fetch began; rows created
   /// after it are kept (they are legitimately absent from the older snapshot).
   Future<void> reconcileVanishedSessions({
+    required String pluginId,
     required String projectId,
     required List<String> keepSessionIds,
     required int fetchStartedAt,
   }) {
     return _serialize(projectId, () async {
       final deletedIds = await _unseenRepository.deleteSessionsNotIn(
+        pluginId: pluginId,
         projectId: projectId,
         keepSessionIds: keepSessionIds,
         createdBefore: fetchStartedAt,

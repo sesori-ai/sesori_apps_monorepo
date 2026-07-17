@@ -19,14 +19,11 @@ void main() {
     var clock = 1000;
 
     SessionUnseenRepository unseenRepository() => SessionUnseenRepository(
-      plugin: const _FakePlugin(),
       sessionDao: db.sessionDao,
-      projectsDao: db.projectsDao,
-      db: db,
       calculator: const SessionUnseenCalculator(),
     );
 
-    ProjectRepository projectRepository() => ProjectRepository(
+    ProjectRepository projectRepository() => singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(),
       plugin: const _FakePlugin(),
       projectsDao: db.projectsDao,
@@ -380,6 +377,7 @@ void main() {
 
       clock = 5000;
       await service.reconcileVanishedSessions(
+        pluginId: "opencode",
         projectId: "p1",
         keepSessionIds: ["s1"],
         fetchStartedAt: 5000,
@@ -415,6 +413,7 @@ void main() {
       );
 
       await service.reconcileVanishedSessions(
+        pluginId: "opencode",
         projectId: "p1",
         keepSessionIds: ["s1"],
         fetchStartedAt: 8000,
@@ -440,6 +439,7 @@ void main() {
       );
 
       await service.reconcileVanishedSessions(
+        pluginId: "opencode",
         projectId: "p1",
         keepSessionIds: ["s1"],
         fetchStartedAt: 8000,

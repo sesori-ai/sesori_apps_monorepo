@@ -8,9 +8,9 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 6 - database-only list cutover
-- **Next up:** Stage 7 - multi-plugin routing, lifecycle, and events
-- **Runtime default:** one selected plugin until Stage 7
+- **Last completed stage:** Stage 7 - multi-plugin routing, lifecycle, and events
+- **Next up:** Stage 8 - client plugin and model/agent selection
+- **Runtime default:** OpenCode remains the one-plugin default; ordered multi-plugin selection is active
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
 - **Stage 3B implementation base:** `main` at `7c8b6440` (audited 2026-07-16)
@@ -18,6 +18,7 @@
 - **Stage 4 implementation base:** `main` at `86816cee` (audited 2026-07-16)
 - **Stage 5 implementation base:** `main` at `5a76c0c4` (audited 2026-07-17)
 - **Stage 6 implementation base:** stacked Stage 5 at `b8d6dd5f` (audited 2026-07-17)
+- **Stage 7 implementation base:** stacked Stage 6 at `297fecc3` (audited 2026-07-17)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -49,35 +50,36 @@ teams behavior, or offline client caching.
 
 ## 2. Re-Audit Findings
 
-The planning references were rechecked against `main` at `f190b039`.
+The Stage 7 planning references were rechecked against the stacked Stage 6 base
+at `297fecc3`. Findings in completed stage sections remain historical evidence;
+they do not describe the current list, identity, import, or event paths.
 
-- `SessionTable.sessionId` is both the client identity and backend handle and is
-  globally keyed. `pluginId` is already non-null and is the correct routing
-  datum.
-- `ProjectsTable` already separates stable `projectId` from live `path` and has
-  one shared hidden/name/base-branch row across plugins.
-- `DeletedSessionsTable` already keys tombstones by `ownerIdentity`, `pluginId`,
-  and backend-shaped `sessionId`.
-- `ProjectRepository.getProjects` and
-  `SessionRepository.getSessionsForProject` still enumerate the selected
-  plugin. Derived enumeration can scan all Codex rollouts or issue ACP calls for
-  every known directory.
-- `GetSessionsHandler` persists the result of a list request. Child sessions are
-  fetched live and are not durable.
-- `BridgeRuntime.create`, `RequestRouter`, repositories, and the orchestrator
-  receive one plugin. `PluginManager` stores a map but rejects a second running
-  plugin and couples stopping one plugin to cancelling the whole bridge session.
-- Plugin events contain backend session handles but no source-plugin identity.
-  The orchestrator processes one stream through serial `asyncMap` stages.
-- `GetSessionStatusesHandler` still calls `BridgePluginApi` directly.
-- `PluginProject` does not expose a directory independently from its
-  plugin-defined id, although directory is the cross-plugin project merge key.
-- `CreateSessionRequest`, project-scoped composer requests, and `Session` do not
-  carry the plugin choice needed by clients.
-- Codex discovery uses synchronous recursive directory and file reads inside an
-  async method, so a large import can block the bridge isolate.
-- There is no repeatable percentile benchmark harness. Stage 1 adds it before
-  production behavior changes and records the measured baseline in this file.
+- Stable Sesori session ids, plugin ids, and backend handles are already
+  separate and durable. Project/root/detail/child list requests now read the
+  catalog only; they neither enumerate a plugin nor persist a list result.
+- `GetSessionsHandler` applies bridge-owned pending-title/PR enrichment after
+  the DAO-backed read. `GetSessionStatusesHandler` already delegates only to
+  `SessionRepository`; neither handler calls a plugin API directly.
+- Codex catalog enumeration already crosses its plugin-owned worker-isolate
+  boundary. The old main-isolate scan finding is historical Stage 1/5 evidence.
+- `RequestRouter` already accepts only an ordered handler list and selects the
+  first match. It has no plugin dependency and must remain generic in Stage 7.
+- `DebugServer` already receives the orchestrator's exact router. Stage 7 keeps
+  that shared router, moves source-aware normalization solely through the
+  orchestrator, and gives debug the orchestrator's already-mapped local wire
+  stream; it creates no debug-specific plugin routing/listeners.
+- Runtime startup still selects one descriptor/config, `PluginManager` still
+  owns a start callback and rejects a second active id, and one API is still
+  injected through plugin-aware repositories and event composition. Those are
+  the current Stage 7 cutover seams.
+- One `SessionEventTracker` currently has a global 1,024-entry eviction order,
+  so one plugin could evict another plugin's pending events. The binding and
+  deletion streams are already global; only raw plugin event streams multiply.
+- `CatalogImportService` and `CatalogImportRepository` still own one selected
+  plugin operation, while the shared import DTOs are already plugin-attributed.
+- The interface has three production descriptor implementors: OpenCode, Codex,
+  and Cursor. Their signatures already support parallel composition; Stage 7
+  needs documentation corrections, not a contract signature change.
 
 ## 3. Locked Design Decisions
 
@@ -123,14 +125,20 @@ normalized declared directory and no longer assumes a native plugin id is a
 path. Plugin-defined project ids and backend session handles remain inside the
 plugin/repository boundary.
 
-Source plugin identity is attached by the bridge when it subscribes:
+Source plugin identity is attached by the bridge when it subscribes. Stage 4's
+existing captured-input typedef remains:
 
 ```text
-(pluginId, BridgeSseEvent)
+SourcedBridgeEvent = (pluginId, projectionUpdatedAt, raw BridgeSseEvent)
 ```
 
-This is an app-internal record, not a new plugin event type and not a relay
-field. Shared events continue to contain Sesori session ids only.
+Stage 7 adds the dispatcher-output typedef
+`NormalizedSourcedBridgeEvent = ({String pluginId, BridgeSseEvent event})` and
+keeps that envelope through `OrchestratorSession._processPluginEvent`. The
+orchestrator alone unwraps and maps it to `SesoriSseEvent`; `DebugServer`
+receives the orchestrator's already-mapped `Stream<SesoriSseEvent>` local wire
+events. Both sourced records are app-internal, not new plugin event types or
+relay fields. Shared events continue to contain Sesori session ids only.
 
 The existing sealed `NativeProjectsPluginApi` /
 `BridgeDerivedProjectsPluginApi` split remains the capability declaration for
@@ -162,10 +170,12 @@ data source. Services and handlers never do.
 
 ### 3.4 Lifecycle Shape
 
-Replace the changed `PluginManager` role with `PluginLifecycleService`. It owns
-registered/running/stopping state per plugin, idempotent start/stop, status
-snapshots, and shutdown of every started instance. It does not construct plugin
-hosts or peer services.
+Replace `PluginManager` with `PluginLifecycleService`. The service is the sole
+runtime-state authority: it owns ordered enabled/unavailable metadata, every
+returned `BridgePlugin`, status subscriptions, operational API publication, one
+internally consistent `PluginCompositionView`, and idempotent concurrent
+shutdown. It does not own or invoke availability, provisioning, descriptor
+start callbacks, host construction, or process construction.
 
 `BridgeRuntimeRunner` remains the process startup orchestrator:
 
@@ -177,30 +187,50 @@ hosts or peer services.
 5. Acquire the cross-instance startup mutex once and enforce one live bridge
    once.
 6. Construct one host and state directory per startable plugin.
-7. Provision plugins sequentially in configured order. Start each plugin as
-   soon as its provisioning phase settles; starts may overlap later
+7. Provision plugins sequentially in configured order. Invoke each descriptor's
+   `start(host)` as soon as its provisioning phase settles, and immediately
+   register that future with `PluginLifecycleService`; starts may overlap later
    provisioning and each other.
-8. Await every start outcome. One failed/degraded plugin does not cancel a
-   successful plugin.
-9. Build one bridge runtime from the operational plugin map plus lifecycle
-   status for unavailable plugins.
+8. Await every `registerStart` lifecycle-settlement future, not merely the raw
+   descriptor futures. One failed/degraded plugin does not cancel a successful
+   plugin.
+9. Read one `PluginLifecycleService.compositionView` and build one bridge
+   runtime from it. If availability justified takeover but every start then
+   fails, still compose the catalog/relay runtime with an empty operational map
+   and the failed lifecycle metadata.
 
-The mutex remains held through provisioning and all starts, preserving the
-current descriptor contract. Narrowing runtime-install locks is a separate
-foundation change only if measured cold-start contention proves it necessary.
+The mutex remains held through provisioning and all lifecycle start
+settlements, preserving the current descriptor contract. Narrowing runtime-
+install locks is a separate foundation change only if measured cold-start
+contention proves it necessary.
 
-`PluginLifecycleService` has no host-building or process dependencies. It is
-constructed without collaborators; `BridgeRuntimeRunner` constructs each
-`PluginHost`, captures `descriptor.start(host)` in a `PluginStarter`, and calls
-`register({id, displayName, isDefault, starter, shutdownBudget})`. The service
-stores the metadata it serves plus the already-wired starters, observes returned
-plugin status streams, and owns running/stopping state. It never constructs
-hosts, process runners, repositories, or peer services.
+`PluginLifecycleService` is constructed without collaborators. After selection
+validation the runner registers the complete known-id set and ordered enabled
+display/default metadata once, then calls `registerUnavailable(...)` for a
+failed availability probe or
+`registerStart(..., startFuture:, ...)` immediately after invoking
+`descriptor.start(host)`. `registerStart` returns `Future<void>`; that settlement
+future completes only after a returned instance has had its identity validated,
+its initial `currentStatus` inspected, its replay-latest status subscription
+installed, its API published to or removed from the operational map, and its
+ordered metadata published. A thrown start is converted to failed metadata and
+also settles only after that publication. Lifecycle retains every returned
+instance even when it is terminal or unroutable. Every returned instance whose
+current status is nonterminal, including `PluginStarting`, is operational
+immediately; `PluginFailed` and `PluginStopped` are not. A later terminal
+`PluginFailed` removes only that API from operational publication. Lifecycle
+never owns a host, process runner, repository, descriptor start callback, or
+bridge-session cancellation.
 
 At runtime, a terminal plugin failure removes that plugin from operational
 routing but leaves the bridge, relay, catalog, and other plugins running.
-Shutdown first stops request/event consumption, then attempts every plugin
-shutdown concurrently, then closes shared bridge resources.
+Shutdown first signals start/session/import/debug cancellation and closes trigger
+inputs, then immediately early-disposes every returned API concurrently to
+unblock arbitrary backend calls. It next drains import, session, listeners,
+dispatcher, and debug work; shuts down/closes lifecycle; and only then closes
+shared bridge resources. Every phase attempts all work and preserves the first
+non-expected error. A `PluginStartAbortedException` is expected only when the
+shared shutdown `StartAbortController` has actually been aborted.
 
 ### 3.5 Compatibility Default
 
@@ -348,15 +378,17 @@ SessionRepository.bindingCommits
   -> SessionBindingCommitListener
 SessionMutationDispatcher.deletedSessions
   -> SessionDeletionListener
-all three listeners
-  -> SessionEventDispatcher serializes and validates shared output
+all listeners
+  -> SessionEventDispatcher orders each plugin and validates shared output
   -> SessionEventService
   -> SessionEventTracker records/drains unresolved roots and ancestry
   -> SessionRepository / SessionMutationDispatcher perform exact writes
   -> SessionEventMapper rewrites every session reference to Sesori ids
   -> SessionEventDispatcher
+  -> NormalizedSourcedBridgeEvent(pluginId, normalized BridgeSseEvent)
   -> Orchestrator
-  -> BridgeEventMapper -> phones
+  -> BridgeEventMapper -> SesoriSseEvent
+  -> phones + shared local wire stream -> DebugServer
 ```
 
 Rules:
@@ -376,18 +408,21 @@ Rules:
   newly learned child before applying its update.
 - An unresolved child waits in a bounded in-memory map keyed by
   `(pluginId, backendParentId)`. Committing a parent drains resolvable
-  descendants recursively. Overflow drops the oldest unresolved entry with a
-  warning; there is no global enumeration or durable unresolved sentinel. The
-  bound is an internal safety limit, not user configuration, and Stage 4 sizes
-  it from the largest concurrent out-of-order event fixture. Import does not use
-  this map: it validates ancestry inside its complete snapshot.
+  descendants recursively. Stage 7 partitions capacity and oldest-entry
+  eviction by plugin, so one noisy plugin cannot consume another plugin's
+  pending allowance. There is still one tracker owner, no global enumeration,
+  and no durable unresolved sentinel. The per-plugin bound remains an internal
+  safety limit sized from the largest concurrent out-of-order event fixture.
+  Import does not use this map: it validates ancestry inside its complete
+  snapshot.
 - Backend deletion does not delete catalog history and does not emit a client
   deletion that would contradict the next catalog read. A targeted operation
   later surfaces typed backend not-found.
 - Events whose embedded session references cannot all be translated are
   dropped rather than leaking a backend handle.
 - Plugin connected, heartbeat, and disposed events are plugin lifecycle input;
-  they do not masquerade as whole-bridge lifecycle events.
+  they do not masquerade as whole-bridge lifecycle events. A connected event
+  retains its source id so only that plugin's project activity is reconciled.
 
 `SessionEventService` replaces the narrower
 `SessionEventEnrichmentService`. It is a thin Layer 3 orchestrator constructed
@@ -402,25 +437,29 @@ to resolve them in one batch, and gives the mapper the resulting
 backend-to-Sesori id map. The mapper owns only the exhaustive event-shape
 rewrite and performs no I/O.
 
-`SessionEventTracker` is constructed with only its maximum pending-entry count.
-It owns typed pending projection and translation entries, the in-memory
-root/child maps, same-plugin pending-binding index, shared insertion order,
-eviction invariant, and recursive drain bookkeeping. It has no service,
-repository, DAO, or plugin dependency and returns typed entries for
+`SessionEventTracker` is constructed with only its maximum pending-entry count
+per plugin. It owns typed pending projection and translation entries, the
+in-memory root/child maps, same-plugin pending-binding index, per-plugin
+insertion order and eviction invariant, and recursive drain bookkeeping. It has
+no service, repository, DAO, or plugin dependency and returns typed entries for
 `SessionEventService` to persist or retry after a matching binding commit.
 
 Each `PluginEventListener` is constructed with one already-selected raw
 `Stream<BridgeSseEvent>`, its explicit descriptor-selected plugin id, and the
 shared `SessionEventDispatcher`. It owns exactly one raw event subscription and
-captures receipt order synchronously before dispatch. Separate one-trigger
-listeners own binding commits and bridge-owned deletions. The dispatcher is the
-single serialized choke point: it delegates projection/translation to
-`SessionEventService`, validates durable created events immediately before
-publication, and exposes one normalized broadcast stream to both `Orchestrator`
-and `DebugServer`. No listener depends on a peer or on `BridgePluginApi`. In
-Stage 7 the orchestrator constructs one plugin listener per operational plugin;
-the orchestrator remains the only component deciding which validated normalized
-events become phone SSE events.
+captures receipt order synchronously before dispatch. One unfiltered
+`SessionBindingCommitListener` owns the repository's one global binding stream,
+and one `SessionDeletionListener` owns the one global bridge-deletion stream.
+The dispatcher is the single choke point with one ordered tail per plugin: it
+delegates projection/translation to `SessionEventService`, validates durable
+created events immediately before publication, wraps every output in
+`NormalizedSourcedBridgeEvent`, and exposes one sourced normalized broadcast
+stream to `OrchestratorSession`. No listener depends on a peer or on
+`BridgePluginApi`. In Stage 7 the orchestrator constructs one plugin listener
+per operational plugin and the two singleton listeners; the orchestrator is the
+only component that unwraps sourced events, performs reconnect behavior, maps
+validated normalized events to phone SSE, and publishes the already-mapped
+local wire stream consumed by `DebugServer`.
 
 ## 6. Import
 
@@ -502,9 +541,8 @@ shared SSE events. `CatalogImportConsoleListener` is constructed with the
 service progress stream in headless composition, owns that subscription, and
 prints coarse user-actionable progress through `Console`.
 
-Before import ships, Codex rollout enumeration moves behind `Isolate.run` (or
-an equivalent worker-isolate boundary) inside the Codex plugin. Backend file
-layout and parsing never enter bridge app code.
+Stage 5 moved Codex rollout enumeration behind `Isolate.run` inside the Codex
+plugin. Backend file layout and parsing never enter bridge app code.
 
 ## 7. Parallel Endpoint Semantics
 
@@ -518,20 +556,28 @@ layout and parsing never enter bridge app code.
 | Session statuses | Query operational plugins concurrently, translate known bindings, expose unavailable sources separately |
 | Active-session summaries | Merge translated summaries by shared project path |
 | Bridge health | Catalog/relay health remains bridge-level; plugin reachability is a per-plugin list |
-| Plugin metadata | Enabled order, display name, default marker, lifecycle state, and generic action hint |
+| Plugin metadata | Enabled order, display name, default marker, lifecycle state, and bridge-authored generic action hint only |
 
 `SessionRepository.getSessionStatuses` owns concurrent plugin queries and
 binding translation through `SessionDao`; `GetSessionStatusesHandler` receives
 only that repository and no `BridgePluginApi`. The repository knows the ordered
 enabled ids and operational API map, so missing/failed sources can be reported
-without a handler-layer plugin dependency.
+without a handler-layer plugin dependency; those constructor values come from
+the orchestrator's single `PluginCompositionView`, not independent runtime
+getters. Status and health repositories apply a five-second deadline to each
+source; a timeout is ordered unavailable/false just like a throw. Project
+questions use the same per-source deadline but retain all-or-nothing failure
+semantics.
 
 `GET /plugin` is the client discovery endpoint. `GetPluginsHandler` depends on
 `PluginLifecycleService`, whose state machine already owns enabled order,
 default selection, display metadata, and lifecycle snapshots; the handler does
-not inspect descriptors or plugin APIs. The endpoint lands in Stage 7; Stage 1
-adds only its shared DTO contracts. It exposes no backend URLs, process details,
-or assistant-specific fields. A failed plugin remains listed and disabled for
+not inspect descriptors or plugin APIs. The endpoint and its minimal additive
+shared DTO contract land together in Stage 7. It exposes no backend URLs,
+process details, assistant-specific fields, raw descriptor availability
+guidance, or `PluginStatus.userActionHint`. `actionHint` is mapped only from the
+bridge lifecycle state to fixed bridge-authored generic text or null. Descriptor
+guidance remains Console-only. A failed plugin remains listed and disabled for
 new-session selection.
 
 Shared request changes are additive:
@@ -573,9 +619,10 @@ core/shared changes.
 
 ## 9. Performance Gates
 
-The source audit established that every list waits for plugin enumeration,
-derived lists paginate after global discovery, Codex discovery can block the
-bridge isolate, and event enrichment is globally serial. Stage 1A added the
+The historical Stage 1 source audit established that every list then waited for
+plugin enumeration, derived lists paginated after global discovery, Codex
+discovery could block the bridge isolate, and event enrichment was globally
+serial. Stages 4-6 removed those production paths. Stage 1A added the
 first repeatable AOT harnesses and recorded the raw pre-change measurements in
 `baselines/stage-1a-macos-arm64.json`.
 
@@ -639,7 +686,7 @@ selection.
 | ☑ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
 | ☑ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
 | ☑ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
-| ☐ | 7 | Multi-plugin routing, lifecycle, and event streams | Mixed-id routing, independent failure, startup/shutdown |
+| ☑ | 7 | Multi-plugin routing, lifecycle, and event streams | Mixed-id routing, independent failure, startup/shutdown |
 | ☐ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
 | ☐ | 9 | Performance gate and cleanup | Fixed-host matrix, soak, dead-path removal, docs |
 
@@ -823,9 +870,10 @@ PR-level implementation plan:
 1. Add a repository-layer `SessionEventMapper` that exhaustively extracts and
    rewrites every session-bearing `BridgeSseEvent` field from backend handles to
    Sesori ids. Add a Layer-2 `SessionEventTracker` with a 1,024-entry internal
-   bound, global insertion-order eviction, exact root-binding release, and
-   parent-keyed child drains; it stores no durable unresolved sentinel and has
-   no repository, service, DAO, or plugin dependency.
+   bound and, historically for the one-plugin Stage 4 runtime, global insertion-
+   order eviction, exact root-binding release, and parent-keyed child drains; it
+   stores no durable unresolved sentinel and has no repository, service, DAO, or
+   plugin dependency. Stage 7 partitions that existing bound/eviction by plugin.
 2. Replace `SessionEventEnrichmentService` with a Layer-3
    `SessionEventService`. It receives a source-plugin event, updates only known
    projections through `SessionRepository`, accepts a new child only under a
@@ -845,15 +893,18 @@ PR-level implementation plan:
    subscription and submits typed input to one Layer-3 `SessionEventDispatcher`,
    which serializes all three sources, delegates to `SessionEventService`,
    validates durable created events, and exposes a broadcast normalized stream.
-   The Layer-5 `Orchestrator` constructs the listeners/dispatcher and exposes
-   that same normalized stream to `DebugServer`. `BridgeRuntime.create`
+   The Layer-5 `Orchestrator` constructs the listeners/dispatcher. In the
+   shipped Stage 4 one-plugin wiring, `BridgeRuntime.create` also shares that
+   normalized stream with local debug and
    receives the selected descriptor id from `BridgeRuntimeRunner`, verifies it
    matches the started API identity, and passes it into `Orchestrator`; the
    plugin listener never depends on the API. The orchestrator retains local reconnect
    decisions for plugin-connected input, while `BridgeEventMapper` stops
    emitting plugin connected/heartbeat/disposed events as bridge-global wire
    lifecycle events. Multi-plugin listener construction, stream fan-in, and
-   cross-plugin progress verification remain Stage 7 work.
+   cross-plugin progress verification remain Stage 7 work. Stage 7 replaces
+   debug's normalized input with the orchestrator's already-mapped local wire
+   stream as specified in sections 3.2 and 7.
 4. Add dumb DAO writes for exact known-session projection updates and durable
    child insertion. Keep ancestry, random-id allocation, tombstone handling,
    and unknown-root decisions above the DAO. Use the existing session-table
@@ -1142,21 +1193,596 @@ and schema/migration artifacts remain unchanged.
 - Introduce `PluginLifecycleService`, per-plugin hosts/state, independent status,
   one mutex acquisition, sequential provisioning, overlapping starts, and
   all-plugin shutdown.
-- Change `BridgeRuntime.create`, repositories, router, and orchestrator to the
-  operational plugin map plus compatibility default.
-- Inject the shared normalized multi-plugin event stream and shared router into
-  `DebugServer`; remove its direct single-plugin dependency.
+- Let `Orchestrator` read one `PluginCompositionView` from
+  `PluginLifecycleService` and compose plugin-aware repositories/services from
+  that sole runtime-state authority. Keep `RequestRouter` generic and let
+  `BridgeRuntime` own only the already-composed result/shared instances.
+- Keep `DebugServer` on the orchestrator's shared router and already-mapped
+  local wire stream; Stage 7 introduces no debug-specific plugin listener,
+  mapper, repository aggregation, or routing authority.
 - Add plugin-scoped providers/agents/commands, aggregated translated statuses/
   activity, and per-plugin health. Route `GetSessionStatusesHandler` only
   through `SessionRepository.getSessionStatuses`.
 - Add `GetPluginsHandler` over `PluginLifecycleService` for enabled order,
   default marker, display metadata, and lifecycle state.
-- Start one event listener/normalization stream per plugin.
+- Start one raw event listener per operational plugin, one unfiltered global
+  binding listener, and one global deletion listener over one sourced normalized
+  stream.
 
 Acceptance: one unavailable/failed plugin cannot stop another or catalog reads;
 same backend id in two plugins routes correctly; plugin-global disposal is not
-bridge-global; all selected configs validate before takeover; standalone and
-supervised shutdown semantics remain intact.
+bridge-global; all selected configs validate before takeover; if takeover was
+justified but all starts fail, the relay/catalog runtime still serves with an
+empty operational map and failed metadata; sourced reconnects reconcile only
+their plugin; raw descriptor/status guidance never reaches shared DTOs; and
+standalone and supervised shutdown semantics remain intact.
+
+PR-level implementation plan:
+
+1. Add only the shared response shape that Stage 7 must put on the wire. In
+   `shared/sesori_shared/lib/src/models/sesori/plugin_list_response.dart`, add
+   `PluginLifecycleState` with only `unavailable`, `ready`, `degraded`, and
+   `failed`; startup-only registration/start/stop phases are not observable
+   after the endpoint starts serving. Add
+   `PluginMetadata({required String id, required String displayName, required
+   bool isDefault, required PluginLifecycleState state, required String?
+   actionHint})`, and
+   `PluginListResponse({plugins})`. Add `PluginHealth({pluginId, healthy})` and
+   an additive `@Default(<PluginHealth>[]) plugins` field in
+   `health_response.dart`; add additive
+   `@Default(<String>[]) unavailablePluginIds` to `SessionStatusResponse` in
+   `session_status.dart`. Export the new source from
+   `lib/sesori_shared.dart` and generate the corresponding `.freezed.dart` and
+   `.g.dart` parts. Put these exact source comments immediately above the two
+   defaults:
+
+   ```dart
+   // COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before per-plugin health omit plugins. Remove @Default and require plugins once pre-v1.5.1 bridges are unsupported.
+   // COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once pre-v1.5.1 bridges are unsupported.
+   ```
+
+   Do not add any other speculative status/health fields. No
+   request, SSE, relay, database, or persisted contract changes are required.
+2. Correct documentation only in
+   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`,
+   `plugin_availability.dart`, `plugin_status.dart`, and `bridge_plugin.dart`:
+   all enabled descriptors contribute options; one unavailable descriptor is
+   skipped/listed and is globally fatal only when no enabled descriptor is
+   available; and `PluginFailed` is terminal for that plugin, not for the
+   bridge. Audit
+   `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_plugin_descriptor.dart`,
+   `bridge/sesori_plugin_codex/lib/src/runtime/codex_plugin_descriptor.dart`, and
+   `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_plugin_descriptor.dart`
+   against the corrected text. Change no interface signature or plugin
+   implementation.
+3. In `bridge/app/lib/src/bridge/runtime/plugin_registry.dart`, make
+   `PluginSelector` resolve an ordered descriptor list. Its raw-argument scan
+   retains every `--plugin <id>` and `--plugin=<id>` occurrence before `--`.
+   Any CLI occurrence overrides settings; otherwise the exact
+   `BridgeSettings.enabledPlugins` order wins; only an unset key falls back to
+   sole OpenCode. Reject duplicate ids, unknown ids, `--plugin=` and an
+   explicitly empty settings list. Continue deferring invalid-settings errors
+   to `RunCommand` so help/logout/config remain usable, but never silently turn
+   an explicit empty set into OpenCode.
+4. In `bridge/app/bin/bridge.dart`, register `plugin` with `addMultiOption` and
+   `splitCommas: false`, then construct one `PluginCliOptionsMapper` per selected
+   descriptor so all selected namespaced options are accepted in one parse.
+   Parse an insertion-ordered `Map<String, PluginConfig>`, run every descriptor's
+   `validateConfig` in selected order, and validate every `--import-plugin`
+   against the complete selected set before sleep-prevention work,
+   authentication, availability I/O, predecessor waiting, or startup-lock/
+   takeover work. Emit deprecation notices only after every config is valid.
+   Carry the ordered ids/configs through `BridgeCliOptions`, `runBridgeApp`, and
+   `BridgeRuntimeRunner.run`; update `BridgeSettings.enabledPlugins` comments
+   without changing its persisted JSON shape.
+   Keep two defaults explicit and separate. Name the first configured id
+   `defaultEnabledPluginId` and mark it `PluginMetadata.isDefault` for
+   new-client discovery, but
+   `legacyMissingPluginId` remains the OpenCode compatibility value decoded by
+   `CreateSessionRequest`, `PluginProjectIdRequest`, and `Session`. Deprecated
+   `GET /agent` also uses that OpenCode value. An omitted legacy id therefore
+   returns 503 when OpenCode is not operational; it is never rewritten to
+   `enabledPluginIds.first`. New clients remain responsible for sending the id
+   selected from `GET /plugin` in Stage 8.
+5. Replace `bridge/app/lib/src/bridge/runtime/plugin_manager.dart` with the
+   canonical Layer-3
+   `bridge/app/lib/src/services/plugin_lifecycle_service.dart`.
+   `PluginLifecycleService()` has no injected collaborator and no start
+   callback type. Add the exact app-internal record
+   `typedef PluginCompositionView = ({Set<String> knownPluginIds, List<String>
+   enabledPluginIds, String defaultEnabledPluginId, Map<String,
+   BridgePluginApi> operationalPlugins});`. The list/set are unmodifiable stable
+   selection values and `operationalPlugins` is the service's unmodifiable live
+   view. `compositionView` returns all four fields from one synchronous service
+   read; no consumer assembles them from independent getters. Its runner-facing
+   initialization is `registerSelection({required Set<String> knownPluginIds,
+   required List<({String id, String displayName, bool isDefault})>
+   enabledPlugins})`, called exactly once before availability I/O so selected
+   order never depends on concurrent probe/start completion order. Its outcome
+   methods are `registerUnavailable({required String id})` and `Future<void>
+   registerStart({required String id, required Future<BridgePlugin> startFuture,
+   required Duration shutdownBudget})`. It
+   owns ordered metadata, every returned instance and registration-settlement
+   future, status subscriptions, the live operational view, and replay-latest
+   ordered metadata snapshots. On each returned instance it validates
+   `id == plugin.api.id` in this service, not in `BridgeRuntime` or
+   `Orchestrator`; an identity mismatch is failed/unroutable but the instance
+   remains owned for teardown.
+6. Publish every returned nonterminal instance as operational immediately,
+   including `PluginStarting`. Map `PluginStarting`/`PluginReady` to wire
+   `ready`, `PluginDegraded`/`PluginRestarting`/`PluginStopping` to `degraded`,
+   descriptor unavailability to `unavailable`, and terminal `PluginFailed`/
+   `PluginStopped` or a thrown start to `failed`. A terminal status removes only
+   that API from the live operational map. Never copy
+   `PluginUnavailable.message`, `PluginStatus.userActionHint`, failure reasons,
+   diagnostics, endpoints, process details, or backend names into
+   `PluginMetadata.actionHint`. Use only these bridge-authored mappings from the
+   exposed lifecycle state: unavailable -> `Check the bridge console to make
+   this plugin available.`; degraded -> `Check the bridge console if this
+   plugin needs attention.`; failed -> `Check the bridge console and restart
+   the bridge to retry this plugin.`; ready -> null. Descriptor-authored
+   availability guidance remains Console-only.
+   A `registerStart` settlement handles an ordinary thrown start as failed
+   metadata and completes normally so one source cannot cancel its peers. It
+   publishes the same failed metadata for `PluginStartAbortedException` but
+   rethrows that exception after publication; the runner treats it as expected
+   only when the shared shutdown controller is aborted and otherwise preserves
+   it. For a returned instance the settlement completes only after identity
+   validation, initial `currentStatus` inspection, replay-latest status
+   subscription installation, the corresponding operational-map publication/
+   removal, and ordered metadata publication have all settled. Install the
+   subscription and reconcile
+   `currentStatus` idempotently so a transition at registration cannot be
+   missed. The runner must not compose from lifecycle before all such futures
+   complete.
+   `disposeStartedApis()` concurrently calls `api.dispose()` on every returned
+   instance, including instances no longer operational; once early disposal has
+   begun, any instance returned later is disposed before its registration
+   settles. `stopAll` snapshots every returned/in-flight registration, awaits
+   lifecycle settlements, launches all available instance shutdowns
+   concurrently, attempts all, and preserves the first non-expected error.
+   Status subscriptions and the metadata stream close in `dispose` even when a
+   stop fails. Replace `test/bridge/runtime/plugin_manager_test.dart`
+   with `test/services/plugin_lifecycle_service_test.dart`; delete
+   `plugin_failure_latch.dart` and its test. This removes only the old
+   bridge-global `PluginFailureLatch` reaction: a terminal plugin failure no
+   longer cancels the relay session or determines the process exit code.
+7. Refactor `BridgeRuntimeRunner` so all selected
+   `BridgePluginDescriptor.checkAvailability` calls start concurrently after
+   authentication and all settle before the startup mutex is requested.
+   Register the complete static descriptor-id set and ordered selected metadata
+   once through `registerSelection` before availability I/O or lifecycle
+   outcomes are recorded.
+   Preserve selected order when recording results and printing each unavailable
+   plugin's descriptor-authored Console guidance. If no descriptor is
+   available, return the existing failure outcome before predecessor takeover,
+   startup-lock acquisition, or `BridgeInstanceService.enforceSingleLiveBridge`;
+   unavailable descriptors are registered with lifecycle for discovery when at
+   least one descriptor can start. If at least one descriptor was available,
+   takeover remains justified even when every later start fails: continue to
+   composition with an empty operational view and ordered failed metadata. The
+   runner, not lifecycle, invokes all descriptor methods.
+8. Replace `startPluginUnderStartupMutex` with a plural startup operation that
+   puts the whole available set inside one logical
+   `StartupMutexRepository.withLock` scope (the existing contention retry may
+   retry that whole scope, never one plugin). Call
+   `BridgeInstanceService.enforceSingleLiveBridge` exactly once after lock
+   acquisition. Build one `BridgePluginHostImpl` per available descriptor with
+   `pluginStateDirectoryPath(paths:, pluginId:)`: OpenCode keeps its frozen
+   `<cacheDirectory>/runtime` directory and reuses the runner's existing
+   `RuntimeFileApi` plus one `BridgeHostJsonStore`; each non-OpenCode
+   `<installRoot>/plugins/<id>` directory gets exactly one new `RuntimeFileApi`
+   and one `BridgeHostJsonStore`. Never construct two `RuntimeFileApi` instances
+   for the same state directory. Lifecycle receives no host/process/store input.
+9. Under that one mutex, call `_ensurePluginRuntime` sequentially in configured
+   order. Immediately after one descriptor's provisioning settles, the runner
+   invokes `Future.sync(() => descriptor.start(host))`, passes that future to
+   `registerStart`, and proceeds to the next descriptor without awaiting it.
+   Collect the `Future<void>` returned by each `registerStart` and await all of
+   those lifecycle-settlement futures after the provisioning loop, capturing
+   each error so one failure cannot skip later settlements; awaiting raw
+   descriptor futures is insufficient because identity/status/map/metadata
+   publication may still be pending. After all settle, ignore only a
+   `PluginStartAbortedException` paired with the shared controller's aborted
+   state and preserve any other settlement error. When the controller is
+   aborted, return the existing successful "start aborted as requested" outcome
+   after all settlements instead of composing a new runtime. Starts still
+   overlap later provisioning and each other. Record an individual ordinary
+   thrown or terminal start as failed/unroutable and continue; returned
+   nonterminal instances remain operational. Keep the mutex through the
+   existing cooperative global-abort result and all lifecycle settlements. A
+   single shared
+   `StartAbortController` is passed to every host and is triggered by shutdown.
+10. Make `Orchestrator` the sole composer of the runtime domain graph. Its
+    Stage 7 constructor is `Orchestrator({required BridgeConfig config,
+    required RelayClient client, required String legacyMissingPluginId,
+    required PluginLifecycleService pluginLifecycleService, required
+    AppDatabase database, required http.Client httpClient, required
+    ProcessRunner processRunner, required AccessTokenProvider
+    accessTokenProvider, required TokenRefresher tokenRefresher, required
+    BridgeRegistrationService bridgeRegistrationService, required
+    FailureReporter failureReporter, required BridgeRestartService
+    restartService, required bool filesystemAccessOk, required
+    ControlStatusNotifier? statusNotifier})`. Remove the separate
+    `operationalPlugins`, `enabledPluginIds`, and `defaultEnabledPluginId`
+    parameters completely. At the start of `create`, read exactly one
+    `final pluginComposition = pluginLifecycleService.compositionView` and use
+    that view for every repository/service constructor. The lifecycle service
+    remains the sole runtime-state authority; the compatibility-only
+    `legacyMissingPluginId` is not an enabled/default substitute. Orchestrator
+    constructs repositories, services, listeners, handlers, and the router; no
+    other class composes across those layers.
+11. Remove `BridgeRuntime.create`. `BridgeRuntimeRunner` creates the database,
+    calls `Orchestrator(...).create()`, then passes the completed
+    `OrchestratorComposition` to `BridgeRuntime({required AppDatabase database,
+    required FailureReporter failureReporter, required BridgeRestartService
+    restartService, required OrchestratorComposition composition})`.
+    Keep the exact record `typedef OrchestratorComposition = ({OrchestratorSession
+    session, CatalogImportService catalogImportService, SessionRepository
+    sessionRepository, SessionUnseenService sessionUnseenService,
+    SessionViewTracker sessionViewTracker});`; these are the composed/shared
+    instances that runtime/debug ownership actually reads.
+    `BridgeRuntime` stores/disposes those exact instances and constructs no DAO,
+    repository, service, handler, listener, or router. `OrchestratorSession`
+    receives only collaborators it invokes or disposes: replace its singular
+    `PluginEventListener` parameter with required
+    `List<PluginEventListener> pluginEventListeners`, retain the one required
+    binding listener, deletion listener, and dispatcher, remove its
+    `BridgePluginApi`, and pass neither the operational map nor lifecycle
+    service. It exposes its exact shared `RequestRouter` plus
+    `Stream<SesoriSseEvent> localWireEvents`; the latter contains the already-
+    mapped events the orchestrator publishes to phones. Audit every remaining
+    private-constructor field for an actual read.
+    Remove singular `BridgeConfig.pluginEndpoint` from
+    `lib/src/bridge/models/bridge_config.dart` without replacing it with another
+    runtime field; after starts settle, `BridgeRuntimeRunner` prints each
+    returned instance's `describe()` target in enabled order. Startup output has
+    no singular target assumption and session state carries no unused target
+    list.
+12. Convert the direct single-plugin fields in `SessionRepository`,
+    `ProjectRepository`, `SessionUnseenRepository`, `AgentRepository`,
+    `ProviderRepository`, `QuestionRepository`, `PermissionRepository`,
+    `WorktreeRepository`, and `HealthRepository` to the shared live operational
+    map only where those repositories perform plugin I/O. Pass enabled order,
+    configured default, or legacy OpenCode id only to repositories that consume
+    that value; do not thread lifecycle or the map through handlers/services
+    with no plugin selection. Keep
+    `RequestRouter({required List<RequestHandlerBase> handlers})` unchanged: it
+    receives ordered handlers only and never a plugin map.
+    Keep `ProjectRepository.getProjects/getProject` and
+    `SessionRepository` project/root/detail/child catalog methods exactly DAO-
+    backed: they must not inspect, call, or await the map. Preserve the current
+    project-only open/rename behavior against the configured new-client default
+    API and return 503 if that API is unavailable; do not fall through to a
+    different operational plugin.
+    In this stage, delete the unused
+    `SessionUnseenRepository.ensureRootSessionActivity` method from
+    `bridge/app/lib/src/bridge/repositories/session_unseen_repository.dart`
+    rather than generalizing its native/derived plugin branching. The
+    `297fecc3` call audit finds no production or test invocation: only the
+    declaration and its class/field doc links exist. Remove those links and the
+    method-only `ProjectsDao`/`AppDatabase`/capability/`Log` dependencies, and
+    update constructor fixtures in
+    `test/bridge/services/session_unseen_service_test.dart`,
+    `test/bridge/orchestrator_emit_bridge_event_test.dart`,
+    `test/bridge/orchestrator_registration_test.dart`,
+    `test/bridge/orchestrator_error_recovery_test.dart`,
+    `test/bridge/orchestrator_token_reauth_test.dart`, and
+    `test/bridge/routing/routing_test_helpers.dart`. Retain
+    `SessionUnseenService.reconcileVanishedSessions` and
+    `SessionUnseenRepository.deleteSessionsNotIn` for Stage 9; make only their
+    source plugin id explicit as needed to remove the singular API constructor
+    dependency. The Stage 7 audit command is
+    `rg "ensureRootSessionActivity" bridge/app/lib bridge/app/test`; it must
+    return no matches. Do not delete or otherwise broaden cleanup of any other
+    Stage 9 dead path.
+13. In `SessionRepository`, make one lookup helper resolve an explicit request
+    id and another resolve `SessionDao`'s persisted `pluginId`; both return 503
+    before plugin, git-cleanup, or mutation side effects when the API is absent.
+    Route create/commands by the request id and route rename, delete, archive,
+    prompt, command dispatch, abort, messages, and derived-directory priming by
+    the stored binding. Key tombstone caches, binding lookups, binding commits,
+    status translation, and active-summary
+    translation by `(pluginId, backendSessionId)`, not backend id alone. Pass a
+    stored session's plugin id through `SessionLifecycleService` ->
+    `WorktreeService` -> `WorktreeRepository.removeWorktree` for best-effort
+    `deleteWorkspace`. Apply the same binding-first rule in
+    `QuestionRepository` and `PermissionRepository`; the nullable legacy
+    `rejectQuestion` path uses OpenCode, never the first enabled id.
+14. Make `AgentRepository`, `ProviderRepository`, and
+    `SessionRepository.getCommands` select the exact `PluginProjectIdRequest`
+    id before resolving the persisted project path or doing plugin I/O.
+    `SessionCreationService` retains its current early
+    `ensurePluginAvailable` ordering before metadata/git work. An unknown,
+    disabled, or enabled-but-unavailable requested plugin returns 503 on these
+    execution routes; project 404 remains distinct.
+    Provider/model/agent/command ids are never merged across plugins.
+15. Implement aggregate semantics and finite per-source deadlines in the owning
+    repositories, not handlers. Add required `Duration aggregateSourceDeadline`
+    constructor parameters to `SessionRepository`, `ProjectRepository`,
+    `HealthRepository`, and `QuestionRepository`; `Orchestrator` passes the same
+    `Duration(seconds: 5)` to all four, and each repository applies it around
+    each aggregate-source plugin call before awaiting the calls concurrently.
+    `SessionRepository.getSessionStatuses` concurrently queries every
+    operational API, translates with same-plugin DAO bindings, merges successful
+    Sesori-id statuses, drops unknown backend handles, and reports every enabled
+    non-operational, throwing, or timed-out source once in ordered
+    `unavailablePluginIds`; `GetSessionStatusesHandler` continues to depend only
+    on that repository. Active summaries are translated per plugin, merged by
+    normalized durable project path, and isolate a throwing source by logging
+    its plugin id and omitting only that source.
+    `QuestionRepository.getProjectQuestions`
+    validates the project once, concurrently queries every operational plugin,
+    translates each result under that plugin id, and applies the same five-second
+    deadline per source. It remains all-or-nothing: any throw or timeout fails
+    the whole request because no partial-question contract exists; an empty
+    operational map returns 503 rather than a misleading empty result.
+    `HealthRepository` concurrently probes operational APIs and emits `healthy:
+    false` for enabled unavailable/throwing/timed-out plugins in enabled order.
+    Top-level `HealthResponse.healthy` remains bridge-level, so
+    `HealthCheckHandler` no longer maps one backend outage to a bridge-global
+    503.
+    Define `ProjectActivityService.reconcile({required String? pluginId})`
+    exactly: `pluginId: null` is the startup aggregate and snapshots every
+    currently operational id from `ProjectRepository.operationalPluginIds`; a
+    non-null id is a sourced reconnect and reconciles only that plugin.
+    `OrchestratorSession.run` calls `reconcile(pluginId: null)` before its
+    startup project summary. Change
+    `ProjectRepository.listProjectActivityEvidence` to
+    `Future<List<ProjectActivityEvidence>>
+    listProjectActivityEvidence({required String pluginId})`; it resolves one API
+    from the shared live map, applies the source deadline, and returns only that
+    source's evidence. Add `pluginId` to
+    `ProjectActivityEvidence` in
+    `lib/src/bridge/repositories/models/project_activity_evidence.dart` and key
+    every derived-session/tombstone lookup by that same id. Native evidence maps
+    each declared normalized `PluginProject.directory` back to the durable
+    catalog project id; it never uses a backend-native project id as a shared
+    aggregation key. Remove the stale-snapshot
+    `ProjectActivityReconciliationData` wrapper; add
+    `getActivities({required Set<String> projectIds})` for the service to batch-
+    read current stored values immediately before each successful source's
+    serialized merge/write. Startup launches all source reads concurrently;
+    each throw/timeout is logged and omitted independently, while each successful
+    source publishes independently. Thus one source cannot prevent another
+    source's publication. `getProjects` remains a direct catalog repository call
+    outside that write tail, so failed, timed-out, or in-flight reconciliation
+    never blocks catalog reads.
+16. Generalize the existing import domain without per-plugin repository peers.
+    Use `CatalogImportRepository({required Map<String, BridgePluginApi>
+    operationalPlugins, required ProjectsDao projectsDao, required SessionDao
+    sessionDao, required CatalogHydrationsDao catalogHydrationsDao})`, with
+    `getHydrationCompletion({required String pluginId})` and
+    `importCatalog({required String pluginId, required CatalogImportControl
+    control})`; each operation resolves one API once and keeps all enumeration/
+    publication keys scoped to that id. Use
+    `CatalogImportService({required CatalogImportRepository repository, required
+    Set<String> knownPluginIds, required List<String> enabledPluginIds, required
+    Map<String, CatalogEmptyHydrationPolicy> emptyHydrationPolicies})`. In
+    `Orchestrator`, source the known/enabled/map inputs from its one
+    `pluginComposition` view and build the exact policy map from operational API
+    capability:
+    `NativeProjectsPluginApi` maps to `complete` and
+    `BridgeDerivedProjectsPluginApi` maps to `retry`. The service contains no
+    OpenCode/Codex/Cursor ids or other backend strings.
+17. `CatalogImportService` owns controls, operations, latest statuses, and
+    policies keyed by plugin while exposing the existing one broadcast progress
+    stream. Duplicate same-plugin starts join, different plugins import
+    independently, and dispose cancels/awaits every operation. Validate before
+    mutation with distinct typed failures:
+    `CatalogImportPluginUnknownException` for an id outside `knownPluginIds`
+    maps to HTTP 404 `plugin not found`;
+    `CatalogImportPluginNotEnabledException` for a known id outside
+    `enabledPluginIds` keeps the current HTTP 404 `plugin not selected`; and
+    `CatalogImportPluginUnavailableException` for an enabled id absent from the
+    operational repository map maps to HTTP 503 `plugin unavailable`.
+    Automatic hydration starts once for each operational id in enabled order
+    after SSE/Console subscribers exist; ordered `--import-plugin` triggers then
+    join or start their selected ids. One plugin's failed/cancelled import
+    publishes its typed terminal progress and does not cancel another pipeline.
+18. Keep one shared `SessionEventService`, one
+    `SessionEventTracker({required int maxPendingEntriesPerPlugin})`, and one
+    `SessionEventDispatcher`, but change the dispatcher's single `_tail` to
+    per-plugin ordered tails keyed by source/commit/deleted-session plugin id.
+    Replace the tracker's global insertion list with per-plugin insertion lists
+    and evict only the oldest entry for the plugin exceeding its 1,024-entry
+    allowance; root/child/translation indexes remain keyed by plugin and there
+    is no tracker per plugin.
+    This preserves source order and mutation invariants within one plugin while
+    allowing plugin B to progress when plugin A normalization blocks. In
+    `Orchestrator.create`, construct one `PluginEventListener` per operational
+    API, exactly one unfiltered `SessionBindingCommitListener({required
+    Stream<SessionBindingsCommitted> source, required SessionEventDispatcher
+    dispatcher})` over `SessionRepository.bindingCommits`, and exactly one
+    `SessionDeletionListener` over
+    `SessionMutationDispatcher.deletedSessions`. Keep the existing input
+    `SourcedBridgeEvent` in `session_event_service.dart`, and add exactly
+    `typedef NormalizedSourcedBridgeEvent = ({String pluginId, BridgeSseEvent
+    event});` beside `SessionEventDispatcher`. Its `events` getter becomes
+    `Stream<NormalizedSourcedBridgeEvent>`. Plugin normalization output uses the
+    captured source id, binding output uses `commit.pluginId`, and deletion
+    output uses `session.pluginId`; source attribution is never inferred from an
+    event payload. Start all listeners from that one sourced normalized
+    broadcast stream and cancel/await all listeners before awaiting dispatcher
+    tails and closing its stream. A source error/closure is reported but never
+    closes another plugin's input or the shared phone SSE pipeline.
+19. Add the canonical `bridge/app/lib/src/routing/get_plugins_handler.dart` with
+    `GetPluginsHandler({required PluginLifecycleService lifecycleService})` for
+    `GET /plugin`. It receives only that Layer-3 service and returns
+    `PluginListResponse` from its ordered snapshots; it never inspects
+    descriptors, hosts, diagnostics, or APIs, and exposes no endpoint, process,
+    assistant-specific detail, descriptor guidance, status user-action text, or
+    failure reason. It returns only lifecycle's fixed generic `actionHint`
+    mapping from item 6.
+    Register it in the one `RequestRouter` built by `Orchestrator.create`.
+    `RequestRouter` remains an ordered-handler iterator with no plugin map.
+    `OrchestratorSession` consumes
+    `Stream<NormalizedSourcedBridgeEvent>`; `_processPluginEvent` reads
+    `pluginId` before unwrapping, calls
+    `ProjectActivityService.reconcile(pluginId: pluginId)` for
+    `BridgeSseServerConnected`, and alone maps/enriches the event to
+    `SesoriSseEvent`. Route every phone enqueue through one orchestrator-owned
+    publisher that also exposes `Stream<SesoriSseEvent> localWireEvents`.
+    `BridgeRuntime` passes that already-mapped stream and the exact shared router
+    to `DebugServer`. Change `DebugServer` to accept the shared-event stream,
+    remove its `BridgeEventMapper` and `SessionRepository`, and retain only JSON
+    local fan-out plus routing through the injected router. It constructs no
+    plugin listener, normalizer, mapper, repository aggregator, router, or
+    plugin API.
+20. Update `ControlStatusNotifier` in
+    `bridge/app/lib/src/control/control_status_notifier.dart` to observe the
+    lifecycle metadata snapshot stream instead of one `BridgePlugin.status`;
+    its constructor receives only that consumed stream, relay connection state,
+    registration stream, and control client, never the lifecycle service or
+    operational map. The runner keeps composing this optional supervised-shell
+    listener because it owns the control channel; `Orchestrator` passes it only
+    to `OrchestratorSession`, which consumes project summaries, and does not
+    thread lifecycle/map state with it. Preserve the existing singular
+    control-wire field by deriving bridge plugin health:
+    all enabled plugins wire-ready is healthy; any degraded/unavailable/failed
+    enabled plugin with at least one operational plugin is degraded; no
+    operational plugin is unavailable. Startup phases are settled before this
+    notifier is composed and need no new control state. Do not
+    change `ControlMessage`, supervised sentinel values, or standalone output
+    ownership.
+21. Register the full ordered shutdown with `BridgeShutdownCoordinator` before
+    any provisioning/start can begin and keep nullable lifecycle/runtime/debug
+    references in those already-registered closures. Split signal/acceptance
+    closure from drain so the exact sequence is:
+    (a) synchronously call the shared `StartAbortController.abort()`, mark
+    `CatalogImportService` disposing and cancel every control, complete
+    `OrchestratorSession`'s shutdown/request-race signal and close relay input,
+    dispose the Console import progress listener, and make `DebugServer` close
+    its `HttpServer` plus signal in-flight route races; no debug/import/relay
+    request can start after this phase;
+    (b) immediately invoke lifecycle `disposeStartedApis()`, which launches
+    `api.dispose()` concurrently for every returned terminal, identity-
+    mismatched, failed, operational, or otherwise unrouted instance and catches
+    late returns as specified in item 6, before waiting for arbitrary backend
+    work;
+    (c) await the early-disposal batch and all already-signalled import
+    operations, the stored session `run` future, plugin/binding/deletion
+    listeners, dispatcher tails, prompt/import/local-wire subscriptions and
+    streams, and in-flight debug requests/SSE clients; attempt all drains even
+    if API disposal or another drain fails;
+    (d) call lifecycle `dispose()`, whose `stopAll` concurrently shuts down every
+    returned instance and whose `finally` closes status subscriptions and
+    metadata streams; and only then
+    (e) run shared runtime/database/control/token/update/HTTP cleanup.
+    `OrchestratorSession` no longer owns plugin API disposal. Give
+    `CatalogImportService`, `OrchestratorSession`, and `DebugServer` idempotent
+    begin-shutdown/drain behavior rather than awaiting any of them before phase
+    (b).
+22. In every shutdown owner, isolate each step, attempt all steps, and retain
+    the first non-expected error/stack for rethrow after cleanup. Update
+    `BridgeShutdownCoordinator` so errors in a later phase cannot replace an
+    earlier error and one synchronously/asynchronously throwing action cannot
+    skip another action in that or later phases. A
+    `PluginStartAbortedException` is expected successful shutdown settlement
+    only when the shared `StartAbortController.isAborted` is true; exclude that
+    exact case from first-error capture in runner provisioning/start settlement,
+    lifecycle `stopAll`, and coordinator shutdown. The same exception before
+    that controller is aborted, and every unrelated error, remains reportable
+    and eligible as the first failure. Lifecycle must cancel every status
+    subscription and close its snapshot stream in `finally` even when `stopAll`
+    fails; session listener/dispatcher/local-wire streams likewise close after
+    their tails settle. Keep
+    `SupervisedExitCode` values `86/87/88/0/1`, contention/auth/restart sentinel
+    precedence, signal behavior, standalone exit behavior, and shutdown-error
+    preservation unchanged. The stop-all ordered budget is one concurrent
+    plugin budget, not the sum of plugin counts.
+23. Add
+    `bridge/app/tool/benchmarks/multi_plugin_startup_benchmark.dart`. Compile and
+    run it AOT with deterministic fake descriptors for 1, 3, and 8 plugins,
+    sequential fixed provisioning gates, and independently blocked starts. Emit
+    versioned JSON with commit/OS/CPU, warmup/sample counts, selected count,
+    total startup p50/p95/p99/max, first-operational latency, per-plugin start
+    latency, maximum concurrent starts, mutex-acquisition count, singleton-
+    enforcement count, and state-directory identities. The harness asserts one
+    mutex/enforcement, unique state paths, configured provisioning order,
+    immediate post-provision launch, overlapping starts, and every lifecycle
+    settlement awaited before composition. Record directional results in Stage
+    7 findings; fixed-host gating remains Stage 9.
+24. Add focused shared contract round trips in
+    `shared/sesori_shared/test/models/plugin_runtime_contract_test.dart`. In
+    `bridge/app`, extend `plugin_registry_test.dart`,
+    `bridge_cli_options_test.dart`, `bridge_cli_dispatch_test.dart`, and
+    `run_command_catalog_import_test.dart` for ordered repeatable selection,
+    precedence, duplicate/unknown/empty rejection, all-config validation before
+    any startup spy, and OpenCode-not-first compatibility. Add lifecycle/runner
+    tests for concurrent probes, no mutex/takeover when none are available, one
+    mutex/enforcement, state-directory isolation, sequential provision plus
+    overlapping starts, and a `registerStart` future that remains pending until
+    identity validation, current-status inspection, status subscription,
+    operational publication/removal, and metadata publication are observable.
+    Cover immediate `PluginStarting` routing, identity mismatch,
+    failed/unavailable isolation, raw descriptor/status-hint sentinel strings
+    never appearing in DTOs, one consistent `PluginCompositionView`, no
+    Orchestrator duplicate-state parameters, all starts failing after justified
+    takeover while empty-map relay/catalog composition proceeds, aborting an
+    in-flight start, early disposal of every returned/late-returned API,
+    concurrent stop-all, subscription closure on stop error, shutdown-caused
+    `PluginStartAbortedException` settling successfully, the same exception
+    without controller abort remaining an error, and every lifecycle settlement
+    awaited before composition.
+25. Extend repository/handler/event/import/runtime tests for equal backend ids
+    under two plugin ids, binding-routed operations, explicit composer routing,
+    unavailable 503 before side effects, ordered status/health metadata,
+    per-source status/health timeout fallback, all-or-nothing question timeout,
+    and merged activity. In `project_activity_service_test.dart`, prove startup
+    calls every operational source independently, a throw/timeout in one source
+    does not block another source's merge, `reconcile(pluginId: ...)` calls only
+    that source, and a blocked reconciliation does not block `getProjects`.
+    Cover independent imports and import unknown/disabled/unavailable route
+    distinctions. In `session_event_dispatcher_test.dart`,
+    `plugin_event_listener_test.dart`, orchestrator event tests, and
+    `debug_server_test.dart`, prove plugin/binding/deletion outputs retain the
+    `NormalizedSourcedBridgeEvent` id, a connected event reconciles only its
+    source, one global binding/deletion listener remains, per-plugin tracker
+    eviction/order permits cross-plugin progress, and DebugServer receives the
+    same already-mapped local wire event/router without a second mapper or
+    plugin listener/router. Cover `GET /plugin` and full phased shutdown:
+    triggers close first, all returned APIs are disposed concurrently before
+    blocked import/request/event/debug drains, every phase is attempted, and the
+    first non-expected error is preserved.
+    Keep and strengthen
+    `catalog_read_handlers_test.dart` plus `live_list_baseline.dart` with 1/3/8
+    throwing or never-completing plugin maps to prove project/root/detail/child
+    reads make zero plugin calls. No timing assertion substitutes for completer-
+    based concurrency tests.
+26. Verify the documentation-only `bridge/sesori_plugin_interface` changes with
+    `dart analyze --fatal-infos` and `dart test`. Regenerate and verify
+    `shared/sesori_shared` with
+    `dart run build_runner build --delete-conflicting-outputs`,
+    `dart analyze --fatal-infos`, and `dart test`. Verify `bridge/app` with
+    `dart analyze --fatal-infos`, `dart test`, a host build, AOT compilation of
+    `multi_plugin_startup_benchmark.dart`, and one directional 1/3/8 benchmark
+    run; analyze the unchanged client workspace against the additive shared
+    constructors. Run the no-match call audit from item 12, then run
+    `git diff --check` and `aristotle-impl-review`. In the same
+    implementation PR, mark Stage 7 complete, advance Current Pointer to Stage
+    8, record the implementation base/results/findings and any real plan/risk
+    delta. Do not claim completion before those evidence updates land.
+
+Stage 7 workspace and file matrix:
+
+| Workspace | Production changes | Verification |
+|---|---|---|
+| `shared/sesori_shared` | New plugin-list source/export/generated parts; additive health and status fields/generated parts | old/new JSON round trips; fatal analysis; full package tests |
+| `bridge/sesori_plugin_interface` | Documentation-only corrections for multi-descriptor options and per-plugin unavailable/failed semantics; no signature change | audit OpenCode/Codex/Cursor descriptor implementors; fatal analysis; full package tests |
+| `bridge/app` | CLI selection/config, lifecycle/runner/host composition, runtime/repository routing, import/event fan-in, discovery/health handlers, control status, shutdown wiring, benchmark | focused plus full app tests; fatal analysis; host build; benchmark AOT/run |
+| `docs/parallel-plugins` | pointer, Stage 7 findings/results, plan/risk deltas | plan consistency; `git diff --check` |
+
+Stage 7 does not change plugin implementations, `sesori_plugin_interface`
+signatures/behavior, database schema/migrations, relay/auth contracts, or client
+API/repository/cubit/UI code. Its interface edits are documentation only. Stage
+8 exclusively owns client discovery consumption, chooser state, plugin-scoped
+saved selections, and mobile/desktop presentation. Stage 9 exclusively owns
+fixed-host performance gating, soak runs, remaining compatibility/dead-path
+cleanup (including the other retained reconciliation helpers), broad
+architecture documentation, and evidence-based budget changes. Stage 7's
+explicit removal of the already-unused `ensureRootSessionActivity` is the only
+cleanup exception.
 
 ### Stage 8 - Client Plugin and Model/Agent Selection
 
@@ -1175,8 +1801,8 @@ documented compatibility fallback; module dependency direction is unchanged.
 ### Stage 9 - Performance Gate and Cleanup
 
 - Run the fixed-host matrix and large-history import/event soak tests.
-- Remove dead live-list derivation, reconciliation, compatibility branches whose
-  removal date has arrived, and temporary shadow instrumentation.
+- Remove remaining dead live-list derivation, reconciliation, compatibility
+  branches whose removal date has arrived, and temporary shadow instrumentation.
 - Record final schema/query plans, performance results, operational import
   guidance, and any evidence-based budget revisions.
 - Update `ARCHITECTURE.md`, `CONSIDERATIONS.md`, `ROADMAP.md`, and compatibility debt to
@@ -1238,7 +1864,7 @@ release notes must identify that minimum rollback version.
 | Codex scan blocks relay/event isolate | plugin-owned worker isolate and responsiveness test (5) |
 | Long publication blocks reads | bounded chunked transaction (5); file-backed WAL/read pool and held-writer/concurrent-import read evidence (6) |
 | Unknown events discover external roots | binding lookup and proven-parent-only insertion (4) |
-| Out-of-order children grow memory | bounded pending map, drain on binding, warning on eviction (4) |
+| Out-of-order children grow memory or cross-evict | one tracker with bounded per-plugin pending partitions, drain on binding, warning on same-plugin eviction (4, 7) |
 | One event stream blocks another | normalize before stream merge; per-plugin ordering tests (4, 7) |
 | Backend ids leak to clients | exhaustive event/request mapping tests (3-4) |
 | Provider/model ids cross-route | explicit plugin scope and project+plugin saved keys (7-8) |
@@ -1252,6 +1878,60 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 7:** Implemented from stacked Stage 6 base `297fecc3`. Ordered
+  repeatable selection now starts available plugins under one takeover/mutex,
+  provisions in configured order while overlapping starts, and composes one
+  lifecycle-owned live operational view. Repositories route execution by
+  explicit or persisted plugin identity; aggregate status, health, activity,
+  imports, and sourced events isolate plugins; `GET /plugin` exposes only
+  bridge-authored lifecycle metadata; catalog reads remain database-only; and
+  phased shutdown immediately disposes returned APIs while independently
+  draining import/session/debug work and preserving the first failure. Shared
+  generation was stable; fatal analysis passed for shared, plugin interface,
+  bridge app, all OpenCode/Codex/Cursor descriptor implementors, and all six
+  client modules. Full tests passed for shared (316), plugin interface (145),
+  and bridge app (1,967); the host binary and benchmark compiled AOT; the
+  `ensureRootSessionActivity` audit and `git diff --check` returned no matches/
+  errors. On the directional macOS arm64 working-tree fixture (3 warmups, 20
+  samples), total-startup p95 was 7.959/13.079/26.024 ms for 1/3/8 plugins and
+  first-operational p95 was 7.943/7.843/7.776 ms. Multi-plugin runs reached two
+  concurrent starts while every run retained one mutex acquisition, one
+  singleton enforcement, configured provisioning order, and unique state
+  directories. Aristotle implementation review
+  `ses_08fb288c7ffeAAA2ajnLeWmeK5` approved the final architecture. The review
+  exposed test-only production factories, grouped shutdown actions, and
+  duplicate wire-publication paths; all were removed without changing a locked
+  decision. Host verification also exposed the app Makefile's stale standalone
+  Dart lookup, which now resolves the workspace-pinned Flutter SDK like the
+  bridge Makefile. No plan or risk delta was required.
+- **Stage 7 planning:** The stacked Stage 6 code at `297fecc3` still selects and
+  validates one descriptor/config, probes and starts it under a per-start mutex
+  helper, binds production ownership to `PluginManager` plus a bridge-global
+  `PluginFailureLatch`, and constructor-injects one API through runtime,
+  repositories, import, events, health, and supervised status. The current
+  catalog list handlers are DAO-backed, status routing is repository-owned,
+  Codex import is isolate-backed, `RequestRouter` is already generic, and Stage
+  4 already gives `DebugServer` the orchestrator's router and normalized stream;
+  Stage 7 retains the router but moves debug to the orchestrator's mapped local
+  wire stream so source identity survives normalization without duplicate
+  mapping. Stage 7 therefore broadens existing composition rather than
+  rebuilding those seams. Aristotle plan review
+  `ses_0905a3941ffeqKbiIw4bPEgb0e` also fixed
+  startup ownership in the runner, lifecycle registration/id validation,
+  per-plugin tracker eviction, singleton global listeners, finite aggregate
+  deadlines, host-store isolation, exact import policy/routing, minimal wire
+  states, and complete first-error-preserving shutdown. The second Stage 7
+  Aristotle review made lifecycle registration itself awaitable through map and
+  metadata settlement, removed duplicate Orchestrator state authorities, kept a
+  source envelope through reconnect processing, defined per-plugin activity
+  reconciliation, selected the already-unused
+  `ensureRootSessionActivity` for Stage 7 removal, reordered shutdown around
+  immediate API disposal, classified only controller-caused start abort as
+  expected, retained empty-map composition after all starts fail, and prohibited
+  raw descriptor/status guidance on shared DTOs. `/plugin`, per-plugin health,
+  and unavailable status sources require additive shared DTO fields;
+  plugin-interface edits are documentation-only, and plugin implementations,
+  client layers, schema, and migrations remain unchanged.
 - **Stage 6:** Project, project-detail, root-session, session-detail, child,
   and project-path reads now map only durable catalog rows and never require an
   operational plugin. Project lists batch unseen state once and leave directory
@@ -1341,7 +2021,7 @@ affected locked decision and updates the owning section in the same PR.
   startup. Stage 1 was split into cohesive 1A benchmark and 1B contract PRs.
   Live-list and Codex AOT harnesses now record the honest current baseline; the
   remaining executables moved to their owning implementation stages.
-- **Stage 0:** Current code was re-audited at `f190b039`; catalog identity,
+- **Stage 0 (historical):** Code was re-audited at `f190b039`; catalog identity,
   schema, import, event, lifecycle, compatibility, rollout, performance, and PR
   boundaries were made concrete. `aristotle-plan-review` approved the execution
-  plan. Implementation has not started.
+  plan. Implementation had not started at that point.

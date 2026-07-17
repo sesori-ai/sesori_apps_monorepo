@@ -8,19 +8,31 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
+  CatalogImportService createService({
+    required CatalogImportRepository repository,
+    required CatalogEmptyHydrationPolicy policy,
+  }) {
+    return CatalogImportService(
+      repository: repository,
+      knownPluginIds: const {"selected", "other"},
+      enabledPluginIds: const ["selected"],
+      emptyHydrationPolicies: {"selected": policy},
+    );
+  }
+
   group("CatalogImportService", () {
     test("rejects an unselected plugin synchronously before repository access", () {
       final repository = _FakeCatalogImportRepository();
-      final service = CatalogImportService(
+      final service = createService(
         repository: repository,
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+        policy: CatalogEmptyHydrationPolicy.complete,
       );
 
       expect(
         () => service.start(pluginId: "other", trigger: CatalogImportTrigger.explicit),
-        throwsA(isA<CatalogImportPluginNotSelectedException>()),
+        throwsA(isA<CatalogImportPluginNotEnabledException>()),
       );
-      expect(() => service.cancel(pluginId: "other"), throwsA(isA<CatalogImportPluginNotSelectedException>()));
+      expect(() => service.cancel(pluginId: "other"), throwsA(isA<CatalogImportPluginNotEnabledException>()));
       expect(repository.hydrationReads, 0);
       expect(repository.importCalls, 0);
     });
@@ -33,9 +45,9 @@ void main() {
           completedAt: 1234,
         ),
       );
-      final service = CatalogImportService(
+      final service = createService(
         repository: repository,
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+        policy: CatalogEmptyHydrationPolicy.complete,
       );
       addTearDown(service.dispose);
       final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
@@ -57,9 +69,9 @@ void main() {
         hydrationGate: hydrationGate,
         releaseImport: releaseImport,
       );
-      final service = CatalogImportService(
+      final service = createService(
         repository: repository,
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+        policy: CatalogEmptyHydrationPolicy.complete,
       );
       addTearDown(service.dispose);
       final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
@@ -85,9 +97,9 @@ void main() {
     test("cancellation produces a truthful terminal status", () async {
       final releaseImport = Completer<void>();
       final repository = _FakeCatalogImportRepository(releaseImport: releaseImport);
-      final service = CatalogImportService(
+      final service = createService(
         repository: repository,
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+        policy: CatalogEmptyHydrationPolicy.complete,
       );
       addTearDown(service.dispose);
       final cancelled = service.progress.firstWhere((status) => status is CatalogImportCancelled);
@@ -103,9 +115,9 @@ void main() {
 
     test("repository errors become one failed terminal status", () async {
       final repository = _FakeCatalogImportRepository(importError: StateError("enumeration failed"));
-      final service = CatalogImportService(
+      final service = createService(
         repository: repository,
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+        policy: CatalogEmptyHydrationPolicy.complete,
       );
       addTearDown(service.dispose);
       final statuses = <CatalogImportProgress>[];
@@ -121,9 +133,9 @@ void main() {
 
     test("an empty derived import remains eligible for automatic retry", () async {
       final repository = _FakeCatalogImportRepository();
-      final service = CatalogImportService(
+      final service = createService(
         repository: repository,
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.retry,
+        policy: CatalogEmptyHydrationPolicy.retry,
       );
       addTearDown(service.dispose);
 
@@ -136,9 +148,9 @@ void main() {
     test("concurrent dispose callers share one teardown", () async {
       final releaseImport = Completer<void>();
       final repository = _FakeCatalogImportRepository(releaseImport: releaseImport);
-      final service = CatalogImportService(
+      final service = createService(
         repository: repository,
-        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+        policy: CatalogEmptyHydrationPolicy.complete,
       );
       service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
       await repository.importStarted.future;
@@ -172,16 +184,19 @@ class _FakeCatalogImportRepository implements CatalogImportRepository {
   CatalogImportControl? lastControl;
 
   @override
-  String get pluginId => "selected";
+  Set<String> get operationalPluginIds => const {"selected"};
 
   @override
-  Future<CatalogHydrationDto?> getHydrationCompletion() async {
+  Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) async {
     hydrationReads++;
     return hydrationGate == null ? completion : hydrationGate!.future;
   }
 
   @override
-  Stream<CatalogImportProgress> importCatalog({required CatalogImportControl control}) async* {
+  Stream<CatalogImportProgress> importCatalog({
+    required String pluginId,
+    required CatalogImportControl control,
+  }) async* {
     importCalls++;
     lastControl = control;
     if (!importStarted.isCompleted) importStarted.complete();

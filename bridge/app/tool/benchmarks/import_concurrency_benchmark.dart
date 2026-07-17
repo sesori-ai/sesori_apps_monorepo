@@ -103,7 +103,7 @@ class _ImportConcurrencyBenchmark {
         releaseEnumeration: releaseEnumeration,
       );
       final repository = CatalogImportRepository(
-        plugin: plugin,
+        operationalPlugins: {plugin.id: plugin},
         projectsDao: _BenchmarkProjectsDao(
           database,
           publicationStarted: publicationTransactionStarted,
@@ -116,6 +116,7 @@ class _ImportConcurrencyBenchmark {
       final publicationStopwatch = Stopwatch();
       final importSubscription = repository
           .importCatalog(
+            pluginId: plugin.id,
             control: CatalogImportControl(
               explicitImportRequested: false,
               hydrationMarkerRequested: true,
@@ -162,7 +163,7 @@ class _ImportConcurrencyBenchmark {
       if (publicationRows.length != _configuration.projectCount) {
         throw StateError("publication read returned ${publicationRows.length} projects");
       }
-      final hydration = await repository.getHydrationCompletion();
+      final hydration = await repository.getHydrationCompletion(pluginId: plugin.id);
       if (hydration == null) throw StateError("import did not atomically record hydration completion");
 
       final rssAfter = ProcessInfo.currentRss;

@@ -9,45 +9,59 @@ enum CatalogImportTrigger { automatic, explicit, headless }
 
 enum CatalogEmptyHydrationPolicy { complete, retry }
 
-class CatalogImportPluginNotSelectedException implements Exception {
-  CatalogImportPluginNotSelectedException({required this.pluginId});
+class CatalogImportPluginUnknownException implements Exception {
+  CatalogImportPluginUnknownException({required this.pluginId});
 
   final String pluginId;
+}
 
-  @override
-  String toString() => "plugin $pluginId is not selected";
+class CatalogImportPluginNotEnabledException implements Exception {
+  CatalogImportPluginNotEnabledException({required this.pluginId});
+
+  final String pluginId;
+}
+
+class CatalogImportPluginUnavailableException implements Exception {
+  CatalogImportPluginUnavailableException({required this.pluginId});
+
+  final String pluginId;
 }
 
 class CatalogImportService {
   CatalogImportService({
     required CatalogImportRepository repository,
-    required CatalogEmptyHydrationPolicy emptyHydrationPolicy,
+    required Set<String> knownPluginIds,
+    required List<String> enabledPluginIds,
+    required Map<String, CatalogEmptyHydrationPolicy> emptyHydrationPolicies,
   }) : _repository = repository,
-       _emptyHydrationPolicy = emptyHydrationPolicy;
+       _knownPluginIds = knownPluginIds,
+       _enabledPluginIds = enabledPluginIds,
+       _emptyHydrationPolicies = emptyHydrationPolicies;
 
   final CatalogImportRepository _repository;
-  final CatalogEmptyHydrationPolicy _emptyHydrationPolicy;
+  final Set<String> _knownPluginIds;
+  final List<String> _enabledPluginIds;
+  final Map<String, CatalogEmptyHydrationPolicy> _emptyHydrationPolicies;
   final StreamController<CatalogImportProgress> _progressController = StreamController<CatalogImportProgress>.broadcast(
     sync: true,
   );
-
-  CatalogImportControl? _control;
-  Future<void>? _operation;
-  CatalogImportProgress? _latestStatus;
-  Future<void>? _disposal;
+  final Map<String, CatalogImportControl> _controls = <String, CatalogImportControl>{};
+  final Map<String, Future<void>> _operations = <String, Future<void>>{};
+  final Map<String, CatalogImportProgress> _latestStatuses = <String, CatalogImportProgress>{};
+  bool _disposing = false;
+  Future<void>? _drainFuture;
 
   Stream<CatalogImportProgress> get progress => _progressController.stream;
 
-  List<CatalogImportProgress> get latestStatuses {
-    final latestStatus = _latestStatus;
-    return latestStatus == null ? const [] : List.unmodifiable([latestStatus]);
-  }
+  List<CatalogImportProgress> get latestStatuses => List<CatalogImportProgress>.unmodifiable([
+    for (final pluginId in _enabledPluginIds) ?_latestStatuses[pluginId],
+  ]);
 
   void start({required String pluginId, required CatalogImportTrigger trigger}) {
-    _validateSelectedPlugin(pluginId);
-    if (_disposal != null) throw StateError("catalog import service is disposed");
+    _validatePlugin(pluginId);
+    if (_disposing) throw StateError("catalog import service is disposed");
 
-    final activeControl = _control;
+    final activeControl = _controls[pluginId];
     if (activeControl != null) {
       _applyTrigger(control: activeControl, trigger: trigger);
       return;
@@ -57,37 +71,49 @@ class CatalogImportService {
       explicitImportRequested: trigger != CatalogImportTrigger.automatic,
       hydrationMarkerRequested: trigger == CatalogImportTrigger.automatic,
     );
-    _control = control;
-    final operation = _run(control: control);
-    _operation = operation;
+    _controls[pluginId] = control;
+    final operation = _run(pluginId: pluginId, control: control);
+    _operations[pluginId] = operation;
     unawaited(operation);
   }
 
   void cancel({required String pluginId}) {
-    _validateSelectedPlugin(pluginId);
-    _control?.cancellationRequested = true;
+    _validatePlugin(pluginId);
+    _controls[pluginId]?.cancellationRequested = true;
   }
 
-  Future<void> dispose() => _disposal ??= _dispose();
+  void beginShutdown() {
+    if (_disposing) return;
+    _disposing = true;
+    for (final control in _controls.values) {
+      control.cancellationRequested = true;
+    }
+  }
 
-  Future<void> _dispose() async {
-    _control?.cancellationRequested = true;
-    await _operation;
+  Future<void> drain() => _drainFuture ??= _drain();
+
+  Future<void> dispose() {
+    beginShutdown();
+    return drain();
+  }
+
+  Future<void> _drain() async {
+    await Future.wait(_operations.values.toList(growable: false));
     await _progressController.close();
   }
 
-  Future<void> _run({required CatalogImportControl control}) async {
+  Future<void> _run({required String pluginId, required CatalogImportControl control}) async {
     try {
       if (!control.explicitImportRequested) {
-        final completion = await _repository.getHydrationCompletion();
+        final completion = await _repository.getHydrationCompletion(pluginId: pluginId);
         if (control.cancellationRequested) {
-          _publish(CatalogImportProgress.cancelled(pluginId: _repository.pluginId));
+          _publish(CatalogImportProgress.cancelled(pluginId: pluginId));
           return;
         }
         if (!control.explicitImportRequested && completion != null) {
           _publish(
             CatalogImportProgress.completed(
-              pluginId: _repository.pluginId,
+              pluginId: pluginId,
               projectsImported: 0,
               sessionsImported: 0,
               completedAt: completion.completedAt,
@@ -97,25 +123,20 @@ class CatalogImportService {
         }
       }
 
-      await for (final progress in _repository.importCatalog(control: control)) {
+      await for (final progress in _repository.importCatalog(pluginId: pluginId, control: control)) {
         if (progress case CatalogImportCommitting(
           sessionsSeen: 0,
-        ) when _emptyHydrationPolicy == CatalogEmptyHydrationPolicy.retry) {
+        ) when _emptyHydrationPolicies[pluginId] == CatalogEmptyHydrationPolicy.retry) {
           control.hydrationMarkerRequested = false;
         }
         _publish(progress);
       }
     } on Object catch (error) {
-      _publish(
-        CatalogImportProgress.failed(
-          pluginId: _repository.pluginId,
-          message: error.toString(),
-        ),
-      );
+      _publish(CatalogImportProgress.failed(pluginId: pluginId, message: error.toString()));
     } finally {
-      if (identical(_control, control)) {
-        _control = null;
-        _operation = null;
+      if (identical(_controls[pluginId], control)) {
+        _controls.remove(pluginId);
+        _operations.removeWhere((key, _) => key == pluginId);
       }
     }
   }
@@ -131,13 +152,19 @@ class CatalogImportService {
   }
 
   void _publish(CatalogImportProgress status) {
-    _latestStatus = status;
+    _latestStatuses[status.pluginId] = status;
     if (!_progressController.isClosed) _progressController.add(status);
   }
 
-  void _validateSelectedPlugin(String pluginId) {
-    if (pluginId != _repository.pluginId) {
-      throw CatalogImportPluginNotSelectedException(pluginId: pluginId);
+  void _validatePlugin(String pluginId) {
+    if (!_knownPluginIds.contains(pluginId)) {
+      throw CatalogImportPluginUnknownException(pluginId: pluginId);
+    }
+    if (!_enabledPluginIds.contains(pluginId)) {
+      throw CatalogImportPluginNotEnabledException(pluginId: pluginId);
+    }
+    if (!_repository.operationalPluginIds.contains(pluginId)) {
+      throw CatalogImportPluginUnavailableException(pluginId: pluginId);
     }
   }
 }

@@ -24,8 +24,12 @@ class CancelCatalogImportHandler extends BodyRequestHandler<CatalogImportRequest
   }) async {
     try {
       _service.cancel(pluginId: body.pluginId);
-    } on CatalogImportPluginNotSelectedException {
+    } on CatalogImportPluginUnknownException {
+      throw buildErrorResponse(request, 404, "plugin not found");
+    } on CatalogImportPluginNotEnabledException {
       throw buildErrorResponse(request, 404, "plugin not selected");
+    } on CatalogImportPluginUnavailableException {
+      throw buildErrorResponse(request, 503, "plugin unavailable");
     }
     return const SuccessEmptyResponse();
   }

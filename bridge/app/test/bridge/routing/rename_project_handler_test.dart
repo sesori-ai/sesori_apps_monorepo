@@ -1,5 +1,4 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/rename_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -23,7 +22,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.projectsDao.setActivity(projectId: "p1", createdAt: 101, updatedAt: 202);
       handler = RenameProjectHandler(
-        ProjectRepository(
+        singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: db.projectsDao,

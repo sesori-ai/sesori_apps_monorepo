@@ -20,7 +20,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      projectRepository = ProjectRepository(
+      projectRepository = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,

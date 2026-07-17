@@ -35,7 +35,7 @@ void main() {
 
       final surface = await selector.resolve(args: ["run", "--port", "4096"]);
 
-      expect(surface.id, "opencode");
+      expect(surface.single.id, "opencode");
     });
 
     test("a --plugin value on the command line wins over settings", () async {
@@ -51,7 +51,7 @@ void main() {
 
       final surface = await selector.resolve(args: ["--plugin", "opencode"]);
 
-      expect(surface.id, "opencode");
+      expect(surface.single.id, "opencode");
       expect(loads, 0, reason: "settings are only read when the command line selects nothing");
     });
 
@@ -60,15 +60,15 @@ void main() {
 
       final surface = await selector.resolve(args: ["--plugin=cursor"]);
 
-      expect(surface.id, "cursor");
+      expect(surface.single.id, "cursor");
     });
 
-    test("the last --plugin occurrence wins, like the parser's last-wins rule", () async {
+    test("retains every --plugin occurrence in order", () async {
       final selector = _selector(enabledPlugins: null);
 
       final surface = await selector.resolve(args: ["--plugin", "cursor", "--plugin=opencode"]);
 
-      expect(surface.id, "opencode");
+      expect(surface.map((plugin) => plugin.id), ["cursor", "opencode"]);
     });
 
     test("the scan stops at a standalone -- terminator", () async {
@@ -76,7 +76,7 @@ void main() {
 
       final surface = await selector.resolve(args: ["run", "--", "--plugin", "opencode"]);
 
-      expect(surface.id, "cursor", reason: "tokens after -- are rest arguments, not options");
+      expect(surface.single.id, "cursor", reason: "tokens after -- are rest arguments, not options");
     });
 
     test("the space form consumes the next token unconditionally, like the parser", () async {
@@ -84,7 +84,7 @@ void main() {
 
       final surface = await selector.resolve(args: ["--plugin", "cursor", "--", "--plugin=opencode"]);
 
-      expect(surface.id, "cursor");
+      expect(surface.single.id, "cursor");
     });
 
     test("the space form swallows even a -- token as the value, exactly like the parser", () async {
@@ -93,7 +93,7 @@ void main() {
       final surface = await selector.resolve(args: ["--plugin", "--", "x"]);
 
       expect(
-        surface.id,
+        surface.single.id,
         "opencode",
         reason: 'the parser reads "--" as the value (unknown id -> fallback); settings must not win',
       );
@@ -105,7 +105,7 @@ void main() {
       final surface = await selector.resolve(args: ["--plugin", "--port", "4096"]);
 
       expect(
-        surface.id,
+        surface.single.id,
         "opencode",
         reason: 'the parser reads "--port" as the value (unknown id -> fallback); the full parse reports it',
       );
@@ -116,7 +116,7 @@ void main() {
 
       final surface = await selector.resolve(args: ["--plugin="]);
 
-      expect(surface.id, "opencode");
+      expect(surface.single.id, "opencode");
     });
 
     test("an unknown --plugin value resolves to the fallback surface", () async {
@@ -125,7 +125,7 @@ void main() {
       final surface = await selector.resolve(args: ["--plugin", "bogus"]);
 
       expect(
-        surface.id,
+        surface.single.id,
         "opencode",
         reason: "the parser still gets built; its allowed: list reports the unknown id on the full parse",
       );
@@ -136,7 +136,7 @@ void main() {
 
       final surface = await selector.resolve(args: ["--port", "4096", "--plugin"]);
 
-      expect(surface.id, "cursor", reason: "the full parse reports the missing argument");
+      expect(surface.single.id, "cursor", reason: "the full parse reports the missing argument");
     });
 
     test("settings select the plugin when the command line does not", () async {
@@ -144,30 +144,21 @@ void main() {
 
       final surface = await selector.resolve(args: ["run"]);
 
-      expect(surface.id, "cursor");
+      expect(surface.single.id, "cursor");
     });
 
-    test("an empty enabledPlugins list falls back to the default", () async {
+    test("an explicitly empty enabledPlugins list is rejected", () async {
       final selector = _selector(enabledPlugins: []);
+
+      await expectLater(selector.resolve(args: []), throwsA(isA<PluginSelectionException>()));
+    });
+
+    test("multiple enabledPlugins entries retain settings order", () async {
+      final selector = _selector(enabledPlugins: ["opencode", "cursor"]);
 
       final surface = await selector.resolve(args: []);
 
-      expect(surface.id, "opencode");
-    });
-
-    test("multiple enabledPlugins entries throw a selection error", () async {
-      final selector = _selector(enabledPlugins: ["opencode", "cursor"]);
-
-      await expectLater(
-        selector.resolve(args: []),
-        throwsA(
-          isA<PluginSelectionException>().having(
-            (e) => e.message,
-            "message",
-            allOf(contains("opencode, cursor"), contains("exactly one")),
-          ),
-        ),
-      );
+      expect(surface.map((plugin) => plugin.id), ["opencode", "cursor"]);
     });
 
     test("a default id missing from the known plugins is a descriptive wiring error", () async {
@@ -222,8 +213,7 @@ class _FakeDescriptor extends BridgePluginDescriptor {
   void validateConfig(PluginConfig config) {}
 
   @override
-  Future<BridgePlugin> start(PluginHost host) =>
-      throw UnsupportedError("selector tests never start a plugin");
+  Future<BridgePlugin> start(PluginHost host) => throw UnsupportedError("selector tests never start a plugin");
 }
 
 const _descriptors = [

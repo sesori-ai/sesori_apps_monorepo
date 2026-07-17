@@ -9,6 +9,8 @@ sealed class HealthResponse with _$HealthResponse {
   const factory HealthResponse({
     required bool healthy,
     required String version,
+    // COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before per-plugin health omit plugins. Remove @Default and require plugins once pre-v1.5.1 bridges are unsupported.
+    @Default(<PluginHealth>[]) List<PluginHealth> plugins,
     // Whether the bridge detected degraded host filesystem access at startup
     // (e.g. macOS Full Disk Access not granted), so the phone can proactively
     // warn the user. Nullable for backward compatibility: an older bridge that
@@ -18,4 +20,14 @@ sealed class HealthResponse with _$HealthResponse {
   }) = _HealthResponse;
 
   factory HealthResponse.fromJson(Map<String, dynamic> json) => _$HealthResponseFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class PluginHealth with _$PluginHealth {
+  const factory PluginHealth({
+    required String pluginId,
+    required bool healthy,
+  }) = _PluginHealth;
+
+  factory PluginHealth.fromJson(Map<String, dynamic> json) => _$PluginHealthFromJson(json);
 }

@@ -3,7 +3,13 @@ import "dart:io" show FileSystemException;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgeDerivedProjectsPluginApi, BridgePluginApi, Log, NativeProjectsPluginApi, PluginSessionTime;
+    show
+        BridgeDerivedProjectsPluginApi,
+        BridgePluginApi,
+        Log,
+        NativeProjectsPluginApi,
+        PluginOperationException,
+        PluginSessionTime;
 import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
 
 import "../../api/database/daos/projects_dao.dart";
@@ -24,26 +30,34 @@ class ProjectRepository {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
 
-  final BridgePluginApi _plugin;
+  final Map<String, BridgePluginApi> _operationalPlugins;
+  final String _defaultEnabledPluginId;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final SessionUnseenCalculator _unseenCalculator;
   final FilesystemApi _filesystemApi;
   final GitCliApi _gitCliApi;
+  final Duration _aggregateSourceDeadline;
 
   ProjectRepository({
-    required BridgePluginApi plugin,
+    required Map<String, BridgePluginApi> operationalPlugins,
+    required String defaultEnabledPluginId,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required SessionUnseenCalculator unseenCalculator,
     required FilesystemApi filesystemApi,
     required GitCliApi gitCliApi,
-  }) : _plugin = plugin,
+    required Duration aggregateSourceDeadline,
+  }) : _operationalPlugins = operationalPlugins,
+       _defaultEnabledPluginId = defaultEnabledPluginId,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _unseenCalculator = unseenCalculator,
        _filesystemApi = filesystemApi,
-       _gitCliApi = gitCliApi;
+       _gitCliApi = gitCliApi,
+       _aggregateSourceDeadline = aggregateSourceDeadline;
+
+  Set<String> get operationalPluginIds => Set<String>.unmodifiable(_operationalPlugins.keys);
 
   Future<List<Project>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
@@ -110,7 +124,7 @@ class ProjectRepository {
   /// project id (a moved folder keeps its identity). For a bridge-derived
   /// plugin the canonical id is the normalized directory itself.
   Future<ProjectOpenTarget> resolveProjectOpenTarget({required String path}) async {
-    switch (_plugin) {
+    switch (_requireDefaultPlugin(operation: "openProject")) {
       case BridgeDerivedProjectsPluginApi():
         final canonical = normalizeProjectDirectory(directory: path);
         final stored = await _projectsDao.getProject(projectId: canonical);
@@ -148,7 +162,7 @@ class ProjectRepository {
     await _projectsDao.recordOpenedProject(
       projectId: target.projectId,
       path: target.path,
-      displayName: _plugin is NativeProjectsPluginApi ? target.project.name : null,
+      displayName: _operationalPlugins[_defaultEnabledPluginId] is NativeProjectsPluginApi ? target.project.name : null,
       createdAt: activity.createdAt,
       updatedAt: activity.updatedAt,
     );
@@ -169,7 +183,7 @@ class ProjectRepository {
       throw ProjectNotFoundException(projectId: projectId);
     }
     final activity = _mapActivity(await _projectsDao.getProject(projectId: projectId));
-    switch (_plugin) {
+    switch (_requireDefaultPlugin(operation: "renameProject")) {
       case BridgeDerivedProjectsPluginApi():
         // codex has no backend to store a project name, so persist a display-name
         // override that later catalog reads apply.
@@ -246,8 +260,20 @@ class ProjectRepository {
     return StoredProjectActivity(projectId: session.projectId, activity: activity);
   }
 
-  Future<ProjectActivityReconciliationData> listProjectActivityEvidence() async {
-    switch (_plugin) {
+  Future<List<ProjectActivityEvidence>> listProjectActivityEvidence({required String pluginId}) async {
+    final selected = _operationalPlugins[pluginId];
+    if (selected == null) {
+      throw PluginOperationException(
+        "listProjectActivityEvidence",
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
+    }
+    return _listProjectActivityEvidence(plugin: selected).timeout(_aggregateSourceDeadline);
+  }
+
+  Future<List<ProjectActivityEvidence>> _listProjectActivityEvidence({required BridgePluginApi plugin}) async {
+    switch (plugin) {
       case final NativeProjectsPluginApi plugin:
         final pluginProjects = await plugin.getProjects();
         await _projectsDao.insertProjectsWithPathsIfMissing(
@@ -261,17 +287,19 @@ class ProjectRepository {
           },
         );
         final storedProjects = await _projectsDao.getAllProjects();
-        return ProjectActivityReconciliationData(
-          evidence: [
-            for (final p in pluginProjects)
+        final storedByPath = {
+          for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
+        };
+        return [
+          for (final p in pluginProjects)
+            if (storedByPath[normalizeProjectDirectory(directory: p.directory)] case final stored?)
               ProjectActivityEvidence(
-                projectId: p.id,
+                pluginId: plugin.id,
+                projectId: stored.projectId,
                 pluginActivity: p.activity,
                 sessionActivities: const [],
               ),
-          ],
-          storedActivities: _mapActivities(storedProjects),
-        );
+        ];
       case final BridgeDerivedProjectsPluginApi plugin:
         final (storedProjects, sessionProjectPaths, tombstoned) = await (
           _projectsDao.getAllProjects(),
@@ -296,18 +324,24 @@ class ProjectRepository {
           final key = normalizeProjectDirectory(directory: projectPath);
           grouped.putIfAbsent(key, () => []).add(time);
         }
-        return ProjectActivityReconciliationData(
-          evidence: [
-            for (final entry in grouped.entries)
-              ProjectActivityEvidence(
-                projectId: entry.key,
-                pluginActivity: null,
-                sessionActivities: entry.value,
-              ),
-          ],
-          storedActivities: _mapActivities(storedProjects),
-        );
+        return [
+          for (final entry in grouped.entries)
+            ProjectActivityEvidence(
+              pluginId: plugin.id,
+              projectId: entry.key,
+              pluginActivity: null,
+              sessionActivities: entry.value,
+            ),
+        ];
     }
+  }
+
+  Future<Map<String, ProjectActivity>> getActivities({required Set<String> projectIds}) async {
+    final projects = await _projectsDao.getAllProjects();
+    return {
+      for (final project in projects)
+        if (projectIds.contains(project.projectId)) project.projectId: _mapActivity(project)!,
+    };
   }
 
   Future<ProjectActivity?> getActivity({required String projectId}) async {
@@ -343,9 +377,15 @@ class ProjectRepository {
     return ProjectActivity(createdAt: project.createdAt, updatedAt: project.updatedAt);
   }
 
-  static Map<String, ProjectActivity> _mapActivities(List<ProjectDto> projects) => {
-    for (final project in projects) project.projectId: _mapActivity(project)!,
-  };
+  BridgePluginApi _requireDefaultPlugin({required String operation}) {
+    final plugin = _operationalPlugins[_defaultEnabledPluginId];
+    if (plugin != null) return plugin;
+    throw PluginOperationException(
+      operation,
+      statusCode: 503,
+      message: "plugin $_defaultEnabledPluginId is not running",
+    );
+  }
 }
 
 /// Canonical target returned by [ProjectRepository.resolveProjectOpenTarget].

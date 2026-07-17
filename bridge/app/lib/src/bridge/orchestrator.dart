@@ -1,16 +1,17 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io" show FileSystemEntity, FileSystemEntityType;
 import "dart:math";
 import "dart:typed_data";
 
+import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
+import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../api/database/daos/catalog_hydrations_dao.dart";
-import "../api/database/daos/projects_dao.dart";
-import "../api/database/daos/session_dao.dart";
+import "../api/database/database.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
@@ -18,17 +19,31 @@ import "../control/control_status_notifier.dart";
 import "../listeners/plugin_event_listener.dart";
 import "../listeners/session_binding_commit_listener.dart";
 import "../listeners/session_deletion_listener.dart";
+import "../push/completion_notifier.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
+import "../push/push_maintenance_telemetry.dart" show PushMaintenanceTelemetryBuilder, readCurrentRssBytes;
+import "../push/push_notification_client.dart";
+import "../push/push_notification_content_builder.dart";
+import "../push/push_rate_limiter.dart";
+import "../push/push_session_state_tracker.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../routing/cancel_catalog_import_handler.dart";
 import "../routing/get_catalog_import_statuses_handler.dart";
+import "../routing/get_plugins_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/catalog_import_service.dart";
+import "../services/plugin_lifecycle_service.dart";
+import "../version.dart";
+import "api/filesystem_api.dart";
+import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
+import "foundation/filesystem_permission_validator.dart";
+import "foundation/process_runner.dart";
 import "key_exchange.dart";
+import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
@@ -37,12 +52,17 @@ import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
 import "repositories/permission_repository.dart";
+import "repositories/pr_source_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
+import "repositories/pull_request_repository.dart";
 import "repositories/question_repository.dart";
 import "repositories/session_diff_repository.dart";
 import "repositories/session_repository.dart";
+import "repositories/session_unseen_calculator.dart";
+import "repositories/session_unseen_repository.dart";
 import "repositories/trackers/session_event_tracker.dart";
+import "repositories/worktree_repository.dart";
 import "routing/abort_session_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
@@ -99,6 +119,9 @@ import "sse/sse_manager.dart";
 typedef OrchestratorComposition = ({
   OrchestratorSession session,
   CatalogImportService catalogImportService,
+  SessionRepository sessionRepository,
+  SessionUnseenService sessionUnseenService,
+  SessionViewTracker sessionViewTracker,
 });
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
@@ -106,111 +129,190 @@ typedef OrchestratorComposition = ({
 class Orchestrator {
   final BridgeConfig config;
   final RelayClient _client;
-  final BridgePluginApi _plugin;
-  final String _pluginId;
-  final SessionCreationService _sessionCreationService;
-  final PushDispatcher _pushDispatcher;
-  final CompletionPushListener _completionListener;
-  final MaintenancePushListener _maintenanceListener;
+  final String _legacyMissingPluginId;
+  final PluginLifecycleService _pluginLifecycleService;
+  final AppDatabase _database;
+  final http.Client _httpClient;
+  final ProcessRunner _processRunner;
   final AccessTokenProvider _accessTokenProvider;
   final TokenRefresher _tokenRefresher;
   final BridgeRegistrationService _bridgeRegistrationService;
   final FailureReporter _failureReporter;
-  final PrSyncService _prSyncService;
-  final SessionRepository _sessionRepository;
-  final ProjectRepository _projectRepository;
-  final SessionUnseenService _sessionUnseenService;
-  final SessionViewTracker _sessionViewTracker;
-  final FilesystemRepository _filesystemRepository;
-  final GitCliApi _gitCliApi;
-  final ProjectInitializationService _projectInitializationService;
-  final ProjectActivityService _projectActivityService;
-  final HealthRepository _healthRepository;
-  final ProviderRepository _providerRepository;
-  final AgentRepository _agentRepository;
-  final PermissionRepository _permissionRepository;
-  final QuestionRepository _questionRepository;
-  final WorktreeService _worktreeService;
-  final SessionMutationDispatcher _sessionMutationDispatcher;
   final BridgeRestartService _restartService;
+  final bool _filesystemAccessOk;
   final ControlStatusNotifier? _statusNotifier;
-  final ProjectsDao _projectsDao;
-  final SessionDao _sessionDao;
-  final CatalogHydrationsDao _catalogHydrationsDao;
 
   Orchestrator({
     required this.config,
     required RelayClient client,
-    required BridgePluginApi plugin,
-    required String pluginId,
-    required SessionCreationService sessionCreationService,
-    required PushDispatcher pushDispatcher,
-    required CompletionPushListener completionListener,
-    required MaintenancePushListener maintenanceListener,
+    required String legacyMissingPluginId,
+    required PluginLifecycleService pluginLifecycleService,
+    required AppDatabase database,
+    required http.Client httpClient,
+    required ProcessRunner processRunner,
     required AccessTokenProvider accessTokenProvider,
     required TokenRefresher tokenRefresher,
     required BridgeRegistrationService bridgeRegistrationService,
     required FailureReporter failureReporter,
-    required PrSyncService prSyncService,
-    required SessionRepository sessionRepository,
-    required ProjectRepository projectRepository,
-    required SessionUnseenService sessionUnseenService,
-    required SessionViewTracker sessionViewTracker,
-    required FilesystemRepository filesystemRepository,
-    required GitCliApi gitCliApi,
-    required ProjectInitializationService projectInitializationService,
-    required ProjectActivityService projectActivityService,
-    required HealthRepository healthRepository,
-    required ProviderRepository providerRepository,
-    required AgentRepository agentRepository,
-    required PermissionRepository permissionRepository,
-    required QuestionRepository questionRepository,
-    required WorktreeService worktreeService,
-    required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
-    required ProjectsDao projectsDao,
-    required SessionDao sessionDao,
-    required CatalogHydrationsDao catalogHydrationsDao,
+    required bool filesystemAccessOk,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
     // Standalone has no control channel, so this is null there.
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
-       _plugin = plugin,
-       _pluginId = pluginId,
-       _sessionCreationService = sessionCreationService,
-       _pushDispatcher = pushDispatcher,
-       _completionListener = completionListener,
-       _maintenanceListener = maintenanceListener,
+       _legacyMissingPluginId = legacyMissingPluginId,
+       _pluginLifecycleService = pluginLifecycleService,
+       _database = database,
+       _httpClient = httpClient,
+       _processRunner = processRunner,
        _accessTokenProvider = accessTokenProvider,
        _tokenRefresher = tokenRefresher,
        _bridgeRegistrationService = bridgeRegistrationService,
        _failureReporter = failureReporter,
-       _sessionRepository = sessionRepository,
-       _prSyncService = prSyncService,
-       _projectRepository = projectRepository,
-       _sessionUnseenService = sessionUnseenService,
-       _sessionViewTracker = sessionViewTracker,
-       _filesystemRepository = filesystemRepository,
-       _gitCliApi = gitCliApi,
-       _projectInitializationService = projectInitializationService,
-       _projectActivityService = projectActivityService,
-       _healthRepository = healthRepository,
-       _providerRepository = providerRepository,
-       _agentRepository = agentRepository,
-       _permissionRepository = permissionRepository,
-       _questionRepository = questionRepository,
-       _worktreeService = worktreeService,
-       _sessionMutationDispatcher = sessionMutationDispatcher,
        _restartService = restartService,
-       _statusNotifier = statusNotifier,
-       _projectsDao = projectsDao,
-       _sessionDao = sessionDao,
-       _catalogHydrationsDao = catalogHydrationsDao;
+       _filesystemAccessOk = filesystemAccessOk,
+       _statusNotifier = statusNotifier;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
+    final pluginComposition = _pluginLifecycleService.compositionView;
+    const aggregateSourceDeadline = Duration(seconds: 5);
+    const unseenCalculator = SessionUnseenCalculator();
+    final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
+    final sessionRepository = SessionRepository(
+      operationalPlugins: pluginComposition.operationalPlugins,
+      enabledPluginIds: pluginComposition.enabledPluginIds,
+      sessionDao: _database.sessionDao,
+      projectsDao: _database.projectsDao,
+      pullRequestDao: _database.pullRequestDao,
+      unseenCalculator: unseenCalculator,
+      aggregateSourceDeadline: aggregateSourceDeadline,
+    );
+    final projectRepository = ProjectRepository(
+      operationalPlugins: pluginComposition.operationalPlugins,
+      defaultEnabledPluginId: pluginComposition.defaultEnabledPluginId,
+      projectsDao: _database.projectsDao,
+      sessionDao: _database.sessionDao,
+      unseenCalculator: unseenCalculator,
+      filesystemApi: const FilesystemApi(),
+      gitCliApi: gitCliApi,
+      aggregateSourceDeadline: aggregateSourceDeadline,
+    );
+    final sessionViewTracker = SessionViewTracker();
+    final sessionUnseenService = SessionUnseenService(
+      unseenRepository: SessionUnseenRepository(
+        sessionDao: _database.sessionDao,
+        calculator: unseenCalculator,
+      ),
+      projectRepository: projectRepository,
+      viewTracker: sessionViewTracker,
+    );
+    final filesystemRepository = FilesystemRepository(
+      filesystemApi: const FilesystemApi(),
+      permissionValidator: const FilesystemPermissionValidator(),
+    );
+    final worktreeRepository = WorktreeRepository(
+      projectsDao: _database.projectsDao,
+      sessionDao: _database.sessionDao,
+      gitApi: gitCliApi,
+      operationalPlugins: pluginComposition.operationalPlugins,
+    );
+    final worktreeService = WorktreeService(worktreeRepository: worktreeRepository);
+    final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
+    final pushTracker = PushSessionStateTracker(now: DateTime.now);
+    final pushRateLimiter = PushRateLimiter(now: DateTime.now);
+    final completionNotifier = CompletionNotifier(
+      tracker: pushTracker,
+      debounceDuration: const Duration(milliseconds: 500),
+    );
+    final pushDispatcher = PushDispatcher(
+      client: PushNotificationClient(
+        authBackendURL: config.authBackendURL,
+        tokenRefreshManager: _tokenRefresher,
+        client: _httpClient,
+      ),
+      rateLimiter: pushRateLimiter,
+      tracker: pushTracker,
+      contentBuilder: const PushNotificationContentBuilder(),
+    );
+    const pushContentBuilder = PushNotificationContentBuilder();
+    final completionListener = CompletionPushListener(
+      tracker: pushTracker,
+      completionNotifier: completionNotifier,
+      contentBuilder: pushContentBuilder,
+      dispatcher: pushDispatcher,
+    );
+    final maintenanceListener = MaintenancePushListener(
+      tracker: pushTracker,
+      completionNotifier: completionNotifier,
+      rateLimiter: pushRateLimiter,
+      telemetryBuilder: PushMaintenanceTelemetryBuilder(
+        completionNotifier: completionNotifier,
+        rateLimiter: pushRateLimiter,
+        rssBytesReader: readCurrentRssBytes,
+      ),
+    );
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: _database.pullRequestDao,
+      projectsDao: _database.projectsDao,
+    );
+    final prSyncService = PrSyncService(
+      prSource: PrSourceRepository(
+        ghCli: GhCliApi(processRunner: _processRunner),
+        gitCli: gitCliApi,
+      ),
+      pullRequestRepository: pullRequestRepository,
+      sessionRepository: sessionRepository,
+      clock: const Clock(),
+    );
+    final projectActivityService = ProjectActivityService(
+      projectRepository: projectRepository,
+      now: () => DateTime.now().millisecondsSinceEpoch,
+    );
+    final permissionRepository = PermissionRepository(
+      operationalPlugins: pluginComposition.operationalPlugins,
+      sessionDao: _database.sessionDao,
+    );
+    final healthRepository = HealthRepository(
+      enabledPluginIds: pluginComposition.enabledPluginIds,
+      operationalPlugins: pluginComposition.operationalPlugins,
+      bridgeVersion: appVersion,
+      filesystemAccessOk: _filesystemAccessOk,
+      aggregateSourceDeadline: aggregateSourceDeadline,
+    );
+    final providerRepository = ProviderRepository(
+      operationalPlugins: pluginComposition.operationalPlugins,
+      projectsDao: _database.projectsDao,
+    );
+    final agentRepository = AgentRepository(
+      operationalPlugins: pluginComposition.operationalPlugins,
+      projectsDao: _database.projectsDao,
+      legacyPluginId: _legacyMissingPluginId,
+    );
+    final questionRepository = QuestionRepository(
+      operationalPlugins: pluginComposition.operationalPlugins,
+      sessionDao: _database.sessionDao,
+      projectsDao: _database.projectsDao,
+      legacyMissingPluginId: _legacyMissingPluginId,
+      aggregateSourceDeadline: aggregateSourceDeadline,
+    );
+    final sessionCreationService = SessionCreationService(
+      metadataService: MetadataService(
+        client: _httpClient,
+        baseUrl: config.authBackendURL,
+        tokenRefresher: _tokenRefresher,
+      ),
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionMutationDispatcher,
+    );
+    final projectInitializationService = ProjectInitializationService(
+      worktreeRepository: worktreeRepository,
+      filesystemRepository: filesystemRepository,
+    );
     final roomKey = _generateRoomKey();
     final bytesSentController = StreamController<int>.broadcast();
+    final localWireEventsController = StreamController<SesoriSseEvent>.broadcast();
     final sseManager = SSEManager(
       replayWindow: config.sseReplayWindow,
       onBytesSent: bytesSentController.add,
@@ -219,58 +321,45 @@ class Orchestrator {
     sseManager.setRoomKey(roomKey);
 
     final catalogImportService = CatalogImportService(
-      emptyHydrationPolicy: switch (_plugin) {
-        NativeProjectsPluginApi() => CatalogEmptyHydrationPolicy.complete,
-        BridgeDerivedProjectsPluginApi() => CatalogEmptyHydrationPolicy.retry,
+      knownPluginIds: pluginComposition.knownPluginIds,
+      enabledPluginIds: pluginComposition.enabledPluginIds,
+      emptyHydrationPolicies: {
+        for (final entry in pluginComposition.operationalPlugins.entries)
+          entry.key: switch (entry.value) {
+            NativeProjectsPluginApi() => CatalogEmptyHydrationPolicy.complete,
+            BridgeDerivedProjectsPluginApi() => CatalogEmptyHydrationPolicy.retry,
+          },
       },
       repository: CatalogImportRepository(
-        plugin: _plugin,
-        projectsDao: _projectsDao,
-        sessionDao: _sessionDao,
-        catalogHydrationsDao: _catalogHydrationsDao,
+        operationalPlugins: pluginComposition.operationalPlugins,
+        projectsDao: _database.projectsDao,
+        sessionDao: _database.sessionDao,
+        catalogHydrationsDao: _database.catalogHydrationsDao,
       ),
     );
-    final catalogImportSubscriptions = CompositeSubscription();
-    catalogImportService.progress
-        .listen((progress) {
-          sseManager.enqueueEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
-        })
-        .addTo(catalogImportSubscriptions);
-
     final sessionPromptService = SessionPromptService(
-      sessionRepository: _sessionRepository,
+      sessionRepository: sessionRepository,
     );
-    final promptDefaultsSubscriptions = CompositeSubscription();
-    sessionPromptService.promptDefaultsChanges
-        .listen((change) {
-          sseManager.enqueueEvent(
-            SesoriSseEvent.sessionPromptDefaultsChanged(
-              sessionID: change.sessionId,
-              promptDefaults: change.promptDefaults,
-            ),
-          );
-        })
-        .addTo(promptDefaultsSubscriptions);
     final sessionLifecycleService = SessionLifecycleService(
-      worktreeService: _worktreeService,
-      sessionRepository: _sessionRepository,
-      filesystemRepository: _filesystemRepository,
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      filesystemRepository: filesystemRepository,
     );
-    final sessionAbortService = SessionAbortService(sessionRepository: _sessionRepository);
+    final sessionAbortService = SessionAbortService(sessionRepository: sessionRepository);
     final sessionDiffService = SessionDiffService(
-      sessionRepository: _sessionRepository,
+      sessionRepository: sessionRepository,
       sessionDiffRepository: SessionDiffRepository(
-        gitCliApi: _gitCliApi,
+        gitCliApi: gitCliApi,
         outputMapper: const GitDiffOutputMapper(),
       ),
-      filesystemRepository: _filesystemRepository,
+      filesystemRepository: filesystemRepository,
     );
     final sessionEventService = SessionEventService(
-      sessionRepository: _sessionRepository,
-      sessionMutationDispatcher: _sessionMutationDispatcher,
+      sessionRepository: sessionRepository,
+      sessionMutationDispatcher: sessionMutationDispatcher,
       eventMapper: const SessionEventMapper(),
       eventTracker: SessionEventTracker(
-        maxPendingEntries: SessionEventTracker.defaultMaxPendingEntries,
+        maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
       ),
       failureReporter: _failureReporter,
     );
@@ -278,79 +367,81 @@ class Orchestrator {
       sessionEventService: sessionEventService,
     );
     final permissionAutoApprovalService = PermissionAutoApprovalService(
-      sessionRepository: _sessionRepository,
-      permissionRepository: _permissionRepository,
+      sessionRepository: sessionRepository,
+      permissionRepository: permissionRepository,
     );
-    final pluginEventListener = PluginEventListener(
-      pluginId: _pluginId,
-      source: _plugin.events,
-      dispatcher: sessionEventDispatcher,
-    );
+    final pluginEventListeners = [
+      for (final pluginId in pluginComposition.enabledPluginIds)
+        if (pluginComposition.operationalPlugins[pluginId] case final plugin?)
+          PluginEventListener(pluginId: pluginId, source: plugin.events, dispatcher: sessionEventDispatcher),
+    ];
     final sessionBindingCommitListener = SessionBindingCommitListener(
-      pluginId: _pluginId,
-      source: _sessionRepository.bindingCommits,
+      source: sessionRepository.bindingCommits,
       dispatcher: sessionEventDispatcher,
     );
     final sessionDeletionListener = SessionDeletionListener(
-      source: _sessionMutationDispatcher.deletedSessions,
+      source: sessionMutationDispatcher.deletedSessions,
       dispatcher: sessionEventDispatcher,
     );
     final normalizedPluginEvents = sessionEventDispatcher.events.doOnListen(() {
-      pluginEventListener.start();
+      for (final listener in pluginEventListeners) {
+        listener.start();
+      }
       sessionBindingCommitListener.start();
       sessionDeletionListener.start();
     });
     final router = RequestRouter(
       handlers: [
-        HealthCheckHandler(healthRepository: _healthRepository),
+        HealthCheckHandler(healthRepository: healthRepository),
+        GetPluginsHandler(lifecycleService: _pluginLifecycleService),
         RestartBridgeHandler(restartService: _restartService),
-        GetCurrentProjectHandler(projectRepository: _projectRepository),
-        GetProjectsHandler(projectActivityService: _projectActivityService),
-        GetCommandsHandler(sessionRepository: _sessionRepository),
-        GetSessionStatusesHandler(sessionRepository: _sessionRepository),
-        GetChildSessionsHandler(sessionRepository: _sessionRepository),
-        GetSessionHandler(_sessionRepository),
-        GetSessionMessagesHandler(sessionRepository: _sessionRepository),
+        GetCurrentProjectHandler(projectRepository: projectRepository),
+        GetProjectsHandler(projectActivityService: projectActivityService),
+        GetCommandsHandler(sessionRepository: sessionRepository),
+        GetSessionStatusesHandler(sessionRepository: sessionRepository),
+        GetChildSessionsHandler(sessionRepository: sessionRepository),
+        GetSessionHandler(sessionRepository),
+        GetSessionMessagesHandler(sessionRepository: sessionRepository),
         GetSessionsHandler(
-          sessionRepository: _sessionRepository,
-          prSyncService: _prSyncService,
-          sessionMutationDispatcher: _sessionMutationDispatcher,
+          sessionRepository: sessionRepository,
+          prSyncService: prSyncService,
+          sessionMutationDispatcher: sessionMutationDispatcher,
         ),
-        CreateSessionHandler(sessionCreationService: _sessionCreationService),
-        RenameSessionHandler(sessionMutationDispatcher: _sessionMutationDispatcher),
-        MarkSessionSeenHandler(sessionUnseenService: _sessionUnseenService),
+        CreateSessionHandler(sessionCreationService: sessionCreationService),
+        RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher),
+        MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
         UpdateSessionArchiveStatusHandler(
           sessionLifecycleService: sessionLifecycleService,
-          sessionUnseenService: _sessionUnseenService,
+          sessionUnseenService: sessionUnseenService,
         ),
         DeleteSessionHandler(
           sessionLifecycleService: sessionLifecycleService,
-          sessionMutationDispatcher: _sessionMutationDispatcher,
+          sessionMutationDispatcher: sessionMutationDispatcher,
         ),
         SendPromptHandler(sessionPromptService: sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
-        GetProvidersHandler(_providerRepository),
-        GetAgentsHandler(_agentRepository),
-        PostAgentsHandler(_agentRepository),
-        GetSessionQuestionsHandler(questionRepository: _questionRepository),
-        GetProjectQuestionsHandler(questionRepository: _questionRepository),
-        GetSessionPermissionsHandler(permissionRepository: _permissionRepository),
-        ReplyToQuestionHandler(questionRepository: _questionRepository),
-        RejectQuestionHandler(questionRepository: _questionRepository),
-        ReplyToPermissionHandler(permissionRepository: _permissionRepository),
-        RenameProjectHandler(_projectRepository),
+        GetProvidersHandler(providerRepository),
+        GetAgentsHandler(agentRepository),
+        PostAgentsHandler(agentRepository),
+        GetSessionQuestionsHandler(questionRepository: questionRepository),
+        GetProjectQuestionsHandler(questionRepository: questionRepository),
+        GetSessionPermissionsHandler(permissionRepository: permissionRepository),
+        ReplyToQuestionHandler(questionRepository: questionRepository),
+        RejectQuestionHandler(questionRepository: questionRepository),
+        ReplyToPermissionHandler(permissionRepository: permissionRepository),
+        RenameProjectHandler(projectRepository),
         CreateProjectHandler(
-          projectInitializationService: _projectInitializationService,
-          projectActivityService: _projectActivityService,
+          projectInitializationService: projectInitializationService,
+          projectActivityService: projectActivityService,
         ),
         OpenProjectHandler(
-          filesystemRepository: _filesystemRepository,
-          projectActivityService: _projectActivityService,
+          filesystemRepository: filesystemRepository,
+          projectActivityService: projectActivityService,
         ),
-        HideProjectHandler(projectRepository: _projectRepository),
-        GetBaseBranchHandler(projectRepository: _projectRepository),
-        SetBaseBranchHandler(projectRepository: _projectRepository),
-        FilesystemSuggestionsHandler(filesystemRepository: _filesystemRepository),
+        HideProjectHandler(projectRepository: projectRepository),
+        GetBaseBranchHandler(projectRepository: projectRepository),
+        SetBaseBranchHandler(projectRepository: projectRepository),
+        FilesystemSuggestionsHandler(filesystemRepository: filesystemRepository),
         StartCatalogImportHandler(service: catalogImportService),
         CancelCatalogImportHandler(service: catalogImportService),
         GetCatalogImportStatusesHandler(service: catalogImportService),
@@ -363,15 +454,14 @@ class Orchestrator {
     final session = OrchestratorSession._(
       config: config,
       client: _client,
-      plugin: _plugin,
       pluginEvents: normalizedPluginEvents,
-      pluginEventListener: pluginEventListener,
+      pluginEventListeners: pluginEventListeners,
       sessionBindingCommitListener: sessionBindingCommitListener,
       sessionDeletionListener: sessionDeletionListener,
       sessionEventDispatcher: sessionEventDispatcher,
-      pushDispatcher: _pushDispatcher,
-      completionListener: _completionListener,
-      maintenanceListener: _maintenanceListener,
+      pushDispatcher: pushDispatcher,
+      completionListener: completionListener,
+      maintenanceListener: maintenanceListener,
       accessTokenProvider: _accessTokenProvider,
       tokenRefresher: _tokenRefresher,
       bridgeRegistrationService: _bridgeRegistrationService,
@@ -380,22 +470,28 @@ class Orchestrator {
       router: router,
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
       sessionPromptService: sessionPromptService,
-      promptDefaultsSubscriptions: promptDefaultsSubscriptions,
-      catalogImportSubscriptions: catalogImportSubscriptions,
+      catalogImportProgress: catalogImportService.progress,
+      localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
-      sessionRepository: _sessionRepository,
-      prSyncService: _prSyncService,
-      sessionUnseenService: _sessionUnseenService,
-      sessionViewTracker: _sessionViewTracker,
-      projectActivityService: _projectActivityService,
+      sessionRepository: sessionRepository,
+      prSyncService: prSyncService,
+      sessionUnseenService: sessionUnseenService,
+      sessionViewTracker: sessionViewTracker,
+      projectActivityService: projectActivityService,
       permissionAutoApprovalService: permissionAutoApprovalService,
       sessionAbortService: sessionAbortService,
-      sessionMutationDispatcher: _sessionMutationDispatcher,
+      sessionMutationDispatcher: sessionMutationDispatcher,
       restartService: _restartService,
       statusNotifier: _statusNotifier,
     );
-    return (session: session, catalogImportService: catalogImportService);
+    return (
+      session: session,
+      catalogImportService: catalogImportService,
+      sessionRepository: sessionRepository,
+      sessionUnseenService: sessionUnseenService,
+      sessionViewTracker: sessionViewTracker,
+    );
   }
 
   static List<int> _generateRoomKey() {
@@ -406,6 +502,10 @@ class Orchestrator {
   }
 }
 
+bool _gitPathExists({required String gitPath}) {
+  return FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound;
+}
+
 /// A running bridge session with immutable runtime state.
 ///
 /// Created by [Orchestrator.create]. Call [run] to start the relay loop
@@ -413,9 +513,8 @@ class Orchestrator {
 class OrchestratorSession {
   final BridgeConfig config;
   final RelayClient _client;
-  final BridgePluginApi _plugin;
-  final Stream<BridgeSseEvent> _pluginEvents;
-  final PluginEventListener _pluginEventListener;
+  final Stream<NormalizedSourcedBridgeEvent> _pluginEvents;
+  final List<PluginEventListener> _pluginEventListeners;
   final SessionBindingCommitListener _sessionBindingCommitListener;
   final SessionDeletionListener _sessionDeletionListener;
   final SessionEventDispatcher _sessionEventDispatcher;
@@ -430,6 +529,7 @@ class OrchestratorSession {
   final TokenRefresher _tokenRefresher;
   final BridgeRegistrationService _bridgeRegistrationService;
   final StreamController<int> _bytesSentController;
+  final StreamController<SesoriSseEvent> _localWireEventsController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
   final SessionUnseenService _sessionUnseenService;
@@ -439,15 +539,20 @@ class OrchestratorSession {
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionAbortService _sessionAbortService;
   final SessionPromptService _sessionPromptService;
-  final CompositeSubscription _promptDefaultsSubscriptions;
-  final CompositeSubscription _catalogImportSubscriptions;
+  // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
+  final CompositeSubscription _promptDefaultsSubscriptions = CompositeSubscription();
+  // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
+  final CompositeSubscription _catalogImportSubscriptions = CompositeSubscription();
   final ProjectActivityService _projectActivityService;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
+  // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final Random _backoffJitter = Random();
 
   bool _cancelled = false;
+  Object? _beginShutdownError;
+  StackTrace? _beginShutdownStackTrace;
 
   /// Guards [handleRestartHandoff] so concurrent relay + debug restart triggers
   /// spawn at most one successor.
@@ -470,9 +575,8 @@ class OrchestratorSession {
   OrchestratorSession._({
     required this.config,
     required RelayClient client,
-    required BridgePluginApi plugin,
-    required Stream<BridgeSseEvent> pluginEvents,
-    required PluginEventListener pluginEventListener,
+    required Stream<NormalizedSourcedBridgeEvent> pluginEvents,
+    required List<PluginEventListener> pluginEventListeners,
     required SessionBindingCommitListener sessionBindingCommitListener,
     required SessionDeletionListener sessionDeletionListener,
     required SessionEventDispatcher sessionEventDispatcher,
@@ -487,9 +591,9 @@ class OrchestratorSession {
     required RequestRouter router,
     required BridgeEventMapper mapper,
     required SessionPromptService sessionPromptService,
-    required CompositeSubscription promptDefaultsSubscriptions,
-    required CompositeSubscription catalogImportSubscriptions,
+    required Stream<CatalogImportProgress> catalogImportProgress,
     required StreamController<int> bytesSentController,
+    required StreamController<SesoriSseEvent> localWireEventsController,
     required FailureReporter failureReporter,
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
@@ -502,9 +606,8 @@ class OrchestratorSession {
     required BridgeRestartService restartService,
     required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
-       _plugin = plugin,
        _pluginEvents = pluginEvents,
-       _pluginEventListener = pluginEventListener,
+       _pluginEventListeners = pluginEventListeners,
        _sessionBindingCommitListener = sessionBindingCommitListener,
        _sessionDeletionListener = sessionDeletionListener,
        _sessionEventDispatcher = sessionEventDispatcher,
@@ -519,9 +622,8 @@ class OrchestratorSession {
        _router = router,
        _mapper = mapper,
        _sessionPromptService = sessionPromptService,
-       _promptDefaultsSubscriptions = promptDefaultsSubscriptions,
-       _catalogImportSubscriptions = catalogImportSubscriptions,
        _bytesSentController = bytesSentController,
+       _localWireEventsController = localWireEventsController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
        _sessionUnseenService = sessionUnseenService,
@@ -532,14 +634,30 @@ class OrchestratorSession {
        _sessionAbortService = sessionAbortService,
        _projectActivityService = projectActivityService,
        _restartService = restartService,
-       _statusNotifier = statusNotifier;
+       _statusNotifier = statusNotifier {
+    catalogImportProgress
+        .listen((progress) {
+          _enqueueWireEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
+        })
+        .addTo(_catalogImportSubscriptions);
+    _sessionPromptService.promptDefaultsChanges
+        .listen((change) {
+          _enqueueWireEvent(
+            SesoriSseEvent.sessionPromptDefaultsChanged(
+              sessionID: change.sessionId,
+              promptDefaults: change.promptDefaults,
+            ),
+          );
+        })
+        .addTo(_promptDefaultsSubscriptions);
+  }
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
   ///
   /// Includes both API responses and SSE events. Subscribe to this stream to
   /// track bandwidth (e.g. with [BandwidthTracker]).
   Stream<int> get bytesSent => _bytesSentController.stream;
-  Stream<BridgeSseEvent> get pluginEvents => _pluginEvents;
+  Stream<SesoriSseEvent> get localWireEvents => _localWireEventsController.stream;
   RequestRouter get router => _router;
 
   Future<void> run() async {
@@ -568,7 +686,7 @@ class OrchestratorSession {
               projectID: change.projectId,
               updatedAt: change.updatedAt,
             );
-            _sseManager.enqueueEvent(event);
+            _enqueueWireEvent(event);
             _completionListener.handleSseEvent(event);
           })
           .addTo(_subscriptions);
@@ -576,7 +694,7 @@ class OrchestratorSession {
       // Reconcile in one batch before publishing the startup baseline. Failure
       // is isolated so project activity cannot prevent the relay session from
       // starting.
-      await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
+      await _projectActivityService.reconcile(pluginId: null).catchError((Object e, StackTrace st) {
         Log.w("ProjectActivityService: startup reconciliation failed", e, st);
       });
       if (config.yolo) await _permissionAutoApprovalService.approvePending();
@@ -613,12 +731,12 @@ class OrchestratorSession {
       Log.d("plugin event stream subscribed");
       _prSyncService.prChanges
           .listen((String projectId) {
-            _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
+            _enqueueWireEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
           })
           .addTo(_subscriptions);
       _sessionUnseenService.unseenChanges
           .listen((change) {
-            _sseManager.enqueueEvent(
+            _enqueueWireEvent(
               SesoriSseEvent.sessionUnseenChanged(
                 projectID: change.projectId,
                 sessionId: change.sessionId,
@@ -651,7 +769,6 @@ class OrchestratorSession {
     }
 
     Console.message("Relay:  ${config.relayURL}");
-    Console.message("Target: ${config.pluginEndpoint}\n");
     Console.message("Waiting for relay events...");
 
     try {
@@ -730,6 +847,18 @@ class OrchestratorSession {
       }
     } finally {
       final teardownSw = Stopwatch()..start();
+      Object? firstTeardownError = _beginShutdownError;
+      StackTrace? firstTeardownStackTrace = _beginShutdownStackTrace;
+
+      Future<void> attempt(FutureOr<void> Function() action) async {
+        try {
+          await action();
+        } on Object catch (error, stackTrace) {
+          firstTeardownError ??= error;
+          firstTeardownStackTrace ??= stackTrace;
+        }
+      }
+
       final sinceCancelMs = _cancelRequestedAt == null
           ? null
           : DateTime.now().difference(_cancelRequestedAt!).inMilliseconds;
@@ -739,48 +868,56 @@ class OrchestratorSession {
         "(${sinceCancelMs == null ? "no cancel timestamp" : "${sinceCancelMs}ms since cancel()"}"
         "${_inFlightRequestLabel == null ? "" : ", in-flight request: $_inFlightRequestLabel"})",
       );
-      await _subscriptions.cancel();
+      await Future.wait([
+        attempt(_subscriptions.cancel),
+        attempt(_promptDefaultsSubscriptions.cancel),
+        attempt(_catalogImportSubscriptions.cancel),
+      ]);
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
-      await _promptDefaultsSubscriptions.cancel();
-      await _catalogImportSubscriptions.cancel();
-      await _sessionPromptService.dispose();
-      await _pluginEventListener.dispose();
-      await _sessionBindingCommitListener.dispose();
-      await _sessionDeletionListener.dispose();
-      await _sessionEventDispatcher.dispose();
-      _permissionAutoApprovalService.dispose();
-      await _sessionMutationDispatcher.dispose();
-      await _projectActivityService.dispose();
+      await attempt(_sessionPromptService.dispose);
+      await Future.wait([
+        for (final listener in _pluginEventListeners) attempt(listener.dispose),
+        attempt(_sessionBindingCommitListener.dispose),
+        attempt(_sessionDeletionListener.dispose),
+      ]);
+      await attempt(_sessionEventDispatcher.dispose);
+      await attempt(_permissionAutoApprovalService.dispose);
+      await attempt(_sessionMutationDispatcher.dispose);
+      await attempt(_projectActivityService.dispose);
       Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
-      await _sessionAbortService.dispose();
+      await attempt(_sessionAbortService.dispose);
       Log.v("[shutdown] session abort service disposed (+${teardownSw.elapsedMilliseconds}ms)");
-      await _completionListener.dispose();
+      await attempt(_completionListener.dispose);
       Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
-      _maintenanceListener.dispose();
-      _prSyncService.dispose();
+      await attempt(_maintenanceListener.dispose);
+      await attempt(_prSyncService.dispose);
       Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
       // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
       // shutdown coordinator's ordered step — the deprecated direct
       // api.dispose() call is gone since the descriptor flip.
       Log.v("stopping sse manager...");
-      _sseManager.stop();
+      await attempt(_sseManager.stop);
       Log.v("sse manager stopped (+${teardownSw.elapsedMilliseconds}ms)");
       Log.v("disposing push notification service...");
-      await _pushDispatcher.dispose();
+      await attempt(_pushDispatcher.dispose);
       Log.v("push notification service disposed (+${teardownSw.elapsedMilliseconds}ms)");
-      await _bytesSentController.close();
-      try {
+      await Future.wait([
+        attempt(_localWireEventsController.close),
+        attempt(_bytesSentController.close),
+      ]);
+      await attempt(() async {
         Log.v("closing relay client...");
         await _client.close();
         Log.v("relay client closed (+${teardownSw.elapsedMilliseconds}ms)");
-      } catch (e) {
-        Log.e("error closing relay connection: $e");
-      }
+      });
       Log.d("[shutdown] session teardown complete (${teardownSw.elapsedMilliseconds}ms total)");
+      if (firstTeardownError != null) {
+        Error.throwWithStackTrace(firstTeardownError!, firstTeardownStackTrace!);
+      }
     }
   }
 
-  Future<void> cancel() async {
+  void beginShutdown() {
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(
@@ -791,24 +928,23 @@ class OrchestratorSession {
       Log.v("[shutdown] cancel() again (already shutting down)");
     }
     _cancelled = true;
-    _permissionAutoApprovalService.dispose();
     if (!_shutdownCompleter.isCompleted) {
       _shutdownCompleter.complete();
     }
+    unawaited(_client.close());
+    try {
+      _permissionAutoApprovalService.dispose();
+    } on Object catch (error, stackTrace) {
+      _beginShutdownError ??= error;
+      _beginShutdownStackTrace ??= stackTrace;
+    }
+  }
+
+  Future<void> cancel() async {
+    beginShutdown();
     final sw = Stopwatch()..start();
     await _client.close();
     Log.d("[shutdown] cancel(): relay client closed in ${sw.elapsedMilliseconds}ms");
-    // Fire-and-forget: closing the plugin's HTTP client is the only way to
-    // unblock an in-flight OpenCode request that the read loop is awaiting.
-    // Idempotent disposal still runs through the shutdown coordinator later;
-    // this call just makes it happen early enough to prevent a 15–30s hang.
-    // Future.sync so a synchronously-throwing dispose() (e.g. a test fake) is
-    // captured by catchError instead of escaping this method.
-    unawaited(
-      Future.sync(_plugin.dispose).catchError((Object e) {
-        Log.v("[shutdown] early plugin dispose error (ignored): $e");
-      }),
-    );
   }
 
   /// Performs the restart handoff after the `{restarting:true}` reply has been
@@ -853,7 +989,9 @@ class OrchestratorSession {
     await cancel();
   }
 
-  Future<void> _processPluginEvent(BridgeSseEvent event) async {
+  Future<void> _processPluginEvent(NormalizedSourcedBridgeEvent source) async {
+    final pluginId = source.pluginId;
+    final event = source.event;
     try {
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
 
@@ -878,7 +1016,7 @@ class OrchestratorSession {
       // sessions. Reconcile persisted project activity so we don't miss
       // offline activity that arrived while disconnected.
       if (event is BridgeSseServerConnected) {
-        await _projectActivityService.reconcile().catchError((Object e, StackTrace st) {
+        await _projectActivityService.reconcile(pluginId: pluginId).catchError((Object e, StackTrace st) {
           Log.w("ProjectActivityService: server-connected reconciliation failed", e, st);
         });
         if (config.yolo) await _permissionAutoApprovalService.approvePending();
@@ -932,7 +1070,7 @@ class OrchestratorSession {
     if (event is SesoriSessionCreated) {
       await _routeUnseenActivity(event);
     }
-    _sseManager.enqueueEvent(event);
+    _enqueueWireEvent(event);
     if (event is! SesoriSessionCreated) {
       try {
         await _routeUnseenActivity(event);
@@ -945,6 +1083,11 @@ class OrchestratorSession {
     } catch (e, st) {
       Log.w("failed to route project activity for ${event.runtimeType}", e, st);
     }
+  }
+
+  void _enqueueWireEvent(SesoriSseEvent event) {
+    _sseManager.enqueueEvent(event);
+    if (!_localWireEventsController.isClosed) _localWireEventsController.add(event);
   }
 
   /// Builds the projects-summary SSE event: fetches the activity summary with
@@ -1407,7 +1550,7 @@ class OrchestratorSession {
           _sseManager.subscribePath(connID, subscribe.path, _client);
           final projSummary = await _buildProjectsSummary();
           if (projSummary != null) {
-            _sseManager.enqueueEvent(projSummary);
+            _enqueueWireEvent(projSummary);
             _completionListener.handleSseEvent(projSummary);
           }
           Log.v("initial projectsSummary enqueued");

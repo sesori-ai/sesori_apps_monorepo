@@ -1,5 +1,4 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -108,7 +107,11 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
+      final repo = singlePluginQuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -139,7 +142,7 @@ void main() {
           PluginPendingQuestion(id: "q-gone", sessionID: "gone", displaySessionId: null, questions: []),
         ],
       );
-      final repo = QuestionRepository(
+      final repo = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -178,7 +181,11 @@ void main() {
           PluginPendingQuestion(id: "q-fresh", sessionID: "s-fresh", displaySessionId: null, questions: []),
         ],
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
+      final repo = singlePluginQuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -204,7 +211,11 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
+      final repo = singlePluginQuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -244,7 +255,11 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
+      final repo = singlePluginQuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -269,7 +284,11 @@ void main() {
           ],
         },
       );
-      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
+      final repo = singlePluginQuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
 
       final questions = await repo.getProjectQuestions(projectId: parent);
 
@@ -297,7 +316,7 @@ void main() {
           ],
         },
       );
-      final repository = QuestionRepository(
+      final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -365,7 +384,7 @@ void main() {
           ],
         },
       );
-      final repository = QuestionRepository(
+      final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -398,7 +417,7 @@ void main() {
           ],
         },
       );
-      final repository = QuestionRepository(
+      final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -435,7 +454,7 @@ void main() {
           ],
         },
       );
-      final repository = QuestionRepository(
+      final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -482,7 +501,7 @@ void main() {
           ),
         ],
       );
-      final repository = QuestionRepository(
+      final repository = singlePluginQuestionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,

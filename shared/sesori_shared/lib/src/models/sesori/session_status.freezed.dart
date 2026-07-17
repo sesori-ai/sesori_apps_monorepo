@@ -16,7 +16,8 @@ T _$identity<T>(T value) => value;
 mixin _$SessionStatusResponse {
 
 // key is session id, value is status
- Map<String, SessionStatus> get statuses;
+ Map<String, SessionStatus> get statuses;// COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once pre-v1.5.1 bridges are unsupported.
+ List<String> get unavailablePluginIds;
 /// Create a copy of SessionStatusResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +30,16 @@ $SessionStatusResponseCopyWith<SessionStatusResponse> get copyWith => _$SessionS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusResponse&&const DeepCollectionEquality().equals(other.statuses, statuses));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusResponse&&const DeepCollectionEquality().equals(other.statuses, statuses)&&const DeepCollectionEquality().equals(other.unavailablePluginIds, unavailablePluginIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(statuses));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(statuses),const DeepCollectionEquality().hash(unavailablePluginIds));
 
 @override
 String toString() {
-  return 'SessionStatusResponse(statuses: $statuses)';
+  return 'SessionStatusResponse(statuses: $statuses, unavailablePluginIds: $unavailablePluginIds)';
 }
 
 
@@ -49,7 +50,7 @@ abstract mixin class $SessionStatusResponseCopyWith<$Res>  {
   factory $SessionStatusResponseCopyWith(SessionStatusResponse value, $Res Function(SessionStatusResponse) _then) = _$SessionStatusResponseCopyWithImpl;
 @useResult
 $Res call({
- Map<String, SessionStatus> statuses
+ Map<String, SessionStatus> statuses, List<String> unavailablePluginIds
 });
 
 
@@ -66,10 +67,11 @@ class _$SessionStatusResponseCopyWithImpl<$Res>
 
 /// Create a copy of SessionStatusResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? statuses = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? statuses = null,Object? unavailablePluginIds = null,}) {
   return _then(_self.copyWith(
 statuses: null == statuses ? _self.statuses : statuses // ignore: cast_nullable_to_non_nullable
-as Map<String, SessionStatus>,
+as Map<String, SessionStatus>,unavailablePluginIds: null == unavailablePluginIds ? _self.unavailablePluginIds : unavailablePluginIds // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 
@@ -81,7 +83,7 @@ as Map<String, SessionStatus>,
 @JsonSerializable()
 
 class _SessionStatusResponse implements SessionStatusResponse {
-  const _SessionStatusResponse({required final  Map<String, SessionStatus> statuses}): _statuses = statuses;
+  const _SessionStatusResponse({required final  Map<String, SessionStatus> statuses, final  List<String> unavailablePluginIds = const <String>[]}): _statuses = statuses,_unavailablePluginIds = unavailablePluginIds;
   factory _SessionStatusResponse.fromJson(Map<String, dynamic> json) => _$SessionStatusResponseFromJson(json);
 
 // key is session id, value is status
@@ -91,6 +93,15 @@ class _SessionStatusResponse implements SessionStatusResponse {
   if (_statuses is EqualUnmodifiableMapView) return _statuses;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_statuses);
+}
+
+// COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once pre-v1.5.1 bridges are unsupported.
+ final  List<String> _unavailablePluginIds;
+// COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once pre-v1.5.1 bridges are unsupported.
+@override@JsonKey() List<String> get unavailablePluginIds {
+  if (_unavailablePluginIds is EqualUnmodifiableListView) return _unavailablePluginIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_unavailablePluginIds);
 }
 
 
@@ -107,16 +118,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionStatusResponse&&const DeepCollectionEquality().equals(other._statuses, _statuses));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionStatusResponse&&const DeepCollectionEquality().equals(other._statuses, _statuses)&&const DeepCollectionEquality().equals(other._unavailablePluginIds, _unavailablePluginIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_statuses));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_statuses),const DeepCollectionEquality().hash(_unavailablePluginIds));
 
 @override
 String toString() {
-  return 'SessionStatusResponse(statuses: $statuses)';
+  return 'SessionStatusResponse(statuses: $statuses, unavailablePluginIds: $unavailablePluginIds)';
 }
 
 
@@ -127,7 +138,7 @@ abstract mixin class _$SessionStatusResponseCopyWith<$Res> implements $SessionSt
   factory _$SessionStatusResponseCopyWith(_SessionStatusResponse value, $Res Function(_SessionStatusResponse) _then) = __$SessionStatusResponseCopyWithImpl;
 @override @useResult
 $Res call({
- Map<String, SessionStatus> statuses
+ Map<String, SessionStatus> statuses, List<String> unavailablePluginIds
 });
 
 
@@ -144,10 +155,11 @@ class __$SessionStatusResponseCopyWithImpl<$Res>
 
 /// Create a copy of SessionStatusResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? statuses = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? statuses = null,Object? unavailablePluginIds = null,}) {
   return _then(_SessionStatusResponse(
 statuses: null == statuses ? _self._statuses : statuses // ignore: cast_nullable_to_non_nullable
-as Map<String, SessionStatus>,
+as Map<String, SessionStatus>,unavailablePluginIds: null == unavailablePluginIds ? _self._unavailablePluginIds : unavailablePluginIds // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 

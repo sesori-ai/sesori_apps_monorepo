@@ -8,11 +8,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  test("binding listener forwards only the selected plugin's commits", () async {
+  test("binding listener forwards commits from every plugin", () async {
     final source = StreamController<SessionBindingsCommitted>.broadcast();
     final dispatcher = _RecordingDispatcher();
     final listener = SessionBindingCommitListener(
-      pluginId: "selected",
       source: source.stream,
       dispatcher: dispatcher,
     );
@@ -23,6 +22,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(dispatcher.commits, [
+      (pluginId: "other", backendSessionIds: const ["ignored"]),
       (pluginId: "selected", backendSessionIds: const ["root"]),
     ]);
     await listener.dispose();

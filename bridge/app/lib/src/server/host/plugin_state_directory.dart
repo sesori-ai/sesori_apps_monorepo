@@ -16,11 +16,7 @@ String pluginStateDirectoryPath({
   required ManagedRuntimePaths paths,
   required String pluginId,
 }) {
-  if (pluginId.isEmpty ||
-      pluginId == "." ||
-      pluginId == ".." ||
-      pluginId.contains("/") ||
-      pluginId.contains(r"\")) {
+  if (pluginId.isEmpty || pluginId == "." || pluginId == ".." || pluginId.contains("/") || pluginId.contains(r"\")) {
     throw ArgumentError.value(pluginId, "pluginId", "must be a plain directory name");
   }
 

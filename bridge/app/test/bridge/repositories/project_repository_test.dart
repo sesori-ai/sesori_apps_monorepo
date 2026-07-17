@@ -25,7 +25,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeBridgePlugin();
-      repo = ProjectRepository(
+      repo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -124,7 +124,7 @@ void main() {
       final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
       addTearDown(service.dispose);
 
-      await service.reconcile();
+      await service.reconcile(pluginId: null);
 
       final newProject = await db.projectsDao.getProject(projectId: "new-project");
       expect(newProject?.path, "/projects/new");
@@ -201,7 +201,7 @@ void main() {
         ),
       ];
       final projectsDao = _CountingProjectsDao(database: db);
-      final countingRepo = ProjectRepository(
+      final countingRepo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: projectsDao,
@@ -358,7 +358,7 @@ void main() {
         plugin.projectsResult = const [
           PluginProject(id: "/projects/a", directory: "/projects/a", name: "A"),
         ];
-        final repoWithMissing = ProjectRepository(
+        final repoWithMissing = singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: db.projectsDao,
@@ -425,7 +425,7 @@ void main() {
         PluginProject(id: "/present", directory: "/present", name: "Present"),
         PluginProject(id: "/moved", directory: "/moved", name: "Moved"),
       ];
-      final repoWithMissing = ProjectRepository(
+      final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -453,7 +453,7 @@ void main() {
     test("getProject leaves directoryMissing false without a filesystem probe", () async {
       plugin.projectResult = const PluginProject(id: "/gone", directory: "/gone", name: "Gone");
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/gone"]);
-      final repoWithMissing = ProjectRepository(
+      final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -470,7 +470,7 @@ void main() {
 
     test("a directory whose existence probe throws is treated as present, not missing", () async {
       await db.projectsDao.setActivity(projectId: "/denied", createdAt: 1, updatedAt: 2);
-      final repoWithThrow = ProjectRepository(
+      final repoWithThrow = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -493,7 +493,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeDerivedPlugin([]);
-      repo = ProjectRepository(
+      repo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -587,9 +587,9 @@ void main() {
         deletedAt: 1,
       );
 
-      final result = await repo.listProjectActivityEvidence();
+      final result = await repo.listProjectActivityEvidence(pluginId: plugin.id);
 
-      expect(result.evidence.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
+      expect(result.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
     });
 
     test("openProject records an opened folder so an empty project survives the listing", () async {
@@ -645,7 +645,7 @@ void main() {
       plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
       await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 30, updatedAt: 40);
       final projectsDao = _CountingProjectsDao(database: db);
-      final countingRepo = ProjectRepository(
+      final countingRepo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: projectsDao,
@@ -714,7 +714,7 @@ void main() {
         _session("/tmp/proj/alpha", id: "a1", created: 1, updated: 2),
         _session("/tmp/proj/beta", id: "b1", created: 1, updated: 1),
       ];
-      final repoWithMissing = ProjectRepository(
+      final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -753,7 +753,7 @@ void main() {
       await db.close();
     });
 
-    ProjectRepository repoWith({required String? remoteUrl}) => ProjectRepository(
+    ProjectRepository repoWith({required String? remoteUrl}) => singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(remoteUrl: remoteUrl),
       plugin: plugin,
       projectsDao: db.projectsDao,
@@ -849,7 +849,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  String get id => throw UnimplementedError();
+  String get id => "fake";
 
   @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();

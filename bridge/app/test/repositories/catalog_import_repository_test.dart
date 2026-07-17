@@ -94,7 +94,7 @@ void main() {
         hydrationMarkerRequested: true,
       );
 
-      final statuses = await repository.importCatalog(control: control).toList();
+      final statuses = await repository.importCatalog(pluginId: plugin.id, control: control).toList();
 
       expect(statuses.last, isA<CatalogImportCompleted>());
       final project = await database.projectsDao.getProject(projectId: "stored-project");
@@ -128,10 +128,11 @@ void main() {
           isNull,
         );
       }
-      expect(await repository.getHydrationCompletion(), isNotNull);
+      expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNotNull);
 
       await repository
           .importCatalog(
+            pluginId: plugin.id,
             control: CatalogImportControl(
               explicitImportRequested: true,
               hydrationMarkerRequested: false,
@@ -196,6 +197,7 @@ void main() {
 
       final statuses = await repository
           .importCatalog(
+            pluginId: plugin.id,
             control: CatalogImportControl(
               explicitImportRequested: true,
               hydrationMarkerRequested: false,
@@ -271,6 +273,7 @@ void main() {
 
       await repository
           .importCatalog(
+            pluginId: plugin.id,
             control: CatalogImportControl(
               explicitImportRequested: true,
               hydrationMarkerRequested: false,
@@ -305,6 +308,7 @@ void main() {
 
       await repository
           .importCatalog(
+            pluginId: "native",
             control: CatalogImportControl(
               explicitImportRequested: true,
               hydrationMarkerRequested: false,
@@ -329,7 +333,7 @@ void main() {
         explicitImportRequested: true,
         hydrationMarkerRequested: false,
       );
-      final result = repository.importCatalog(control: control).toList();
+      final result = repository.importCatalog(pluginId: plugin.id, control: control).toList();
       await plugin.getProjectsStarted.future;
 
       control.cancellationRequested = true;
@@ -358,6 +362,7 @@ void main() {
       await expectLater(
         repository
             .importCatalog(
+              pluginId: plugin.id,
               control: CatalogImportControl(
                 explicitImportRequested: true,
                 hydrationMarkerRequested: false,
@@ -373,7 +378,7 @@ void main() {
 }
 
 CatalogImportRepository _repository({required AppDatabase database, required BridgePluginApi plugin}) {
-  return CatalogImportRepository(
+  return singlePluginCatalogImportRepository(
     plugin: plugin,
     projectsDao: database.projectsDao,
     sessionDao: database.sessionDao,

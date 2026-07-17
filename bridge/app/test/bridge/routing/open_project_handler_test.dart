@@ -32,7 +32,7 @@ void main() {
       db = createTestDatabase();
       tempDir = Directory.systemTemp.createTempSync("sesori_discover_test_");
       tempFile = File("${tempDir.path}/test_file.txt")..createSync();
-      projectRepository = ProjectRepository(
+      projectRepository = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,

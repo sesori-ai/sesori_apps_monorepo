@@ -10,7 +10,6 @@ import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
@@ -73,7 +72,7 @@ void main() {
       plugin = _OpenCodeFakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
-      sessionRepository = SessionRepository(
+      sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -466,7 +465,7 @@ void main() {
 
     test("plugin failure is propagated and no session row is inserted", () async {
       final failingPlugin = _ThrowingCreateSessionPlugin();
-      final localRepository = SessionRepository(
+      final localRepository = singlePluginSessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -939,7 +938,7 @@ void main() {
           title: "Ordered Session",
           time: null,
         );
-      final orderedRepository = SessionRepository(
+      final orderedRepository = singlePluginSessionRepository(
         plugin: orderedPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1133,7 +1132,7 @@ void main() {
         title: "Session",
         time: null,
       );
-      final throwingRepository = SessionRepository(
+      final throwingRepository = singlePluginSessionRepository(
         plugin: throwingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -1187,7 +1186,7 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
-        worktreeRepository: WorktreeRepository(
+        worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           gitApi: GitCliApi(

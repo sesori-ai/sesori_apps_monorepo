@@ -5,7 +5,6 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -32,7 +31,7 @@ void main() {
       gitDirectoryExists = true;
       final fakePlugin = _FakeBridgePluginApi();
       service = WorktreeService(
-        worktreeRepository: WorktreeRepository(
+        worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: projectsDao,
           sessionDao: sessionDao,
           gitApi: GitCliApi(
@@ -710,7 +709,7 @@ void main() {
       db = createTestDatabase();
       processRunner = _FakeProcessRunner();
       service = WorktreeService(
-        worktreeRepository: WorktreeRepository(
+        worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           gitApi: GitCliApi(
@@ -831,7 +830,7 @@ void main() {
       processRunner = _FakeProcessRunner();
       plugin = _FakeBridgePluginApi();
       service = WorktreeService(
-        worktreeRepository: WorktreeRepository(
+        worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           gitApi: GitCliApi(
@@ -856,6 +855,7 @@ void main() {
       processRunner.enqueue(result: _ok());
 
       final result = await service.removeWorktree(
+        pluginId: plugin.id,
         projectId: _projectId,
         worktreePath: "$_projectId/.worktrees/session-001",
         force: false,
@@ -889,6 +889,7 @@ void main() {
       processRunner.enqueue(result: _ok());
 
       final result = await service.removeWorktree(
+        pluginId: plugin.id,
         projectId: _projectId,
         worktreePath: "/moved/project/.worktrees/session-001",
         force: false,
@@ -911,6 +912,7 @@ void main() {
       processRunner.enqueue(result: _ok());
 
       final result = await service.removeWorktree(
+        pluginId: plugin.id,
         projectId: _projectId,
         worktreePath: "$_projectId/.worktrees/session-001",
         force: true,
@@ -935,6 +937,7 @@ void main() {
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "fatal: not a worktree"));
 
       final result = await service.removeWorktree(
+        pluginId: plugin.id,
         projectId: _projectId,
         worktreePath: "$_projectId/.worktrees/session-001",
         force: false,

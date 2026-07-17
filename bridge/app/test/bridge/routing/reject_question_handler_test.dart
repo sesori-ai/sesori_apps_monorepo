@@ -1,4 +1,3 @@
-import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/reject_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -24,7 +23,7 @@ void main() {
         parentSessionId: null,
       );
       handler = RejectQuestionHandler(
-        questionRepository: QuestionRepository(
+        questionRepository: singlePluginQuestionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
