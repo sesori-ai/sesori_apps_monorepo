@@ -76,14 +76,28 @@ eagerly "just in case."
 - Do not rerun an unchanged passing command or reread unchanged files solely for
   additional confidence. Expand verification only when impact or a failure gives
   a concrete reason.
-- Aristotle is only for architecture-bearing production work: new or moved
-  production classes/files, dependency or DI ownership changes, public/wire/
-  persisted contracts, cross-layer flow, lifecycle triggers, or shared boundaries.
+- Aristotle is an architecture reviewer, not a general implementation or code
+  correctness reviewer. Invoke it only for architecture-bearing production work:
+  new or moved production classes/files, dependency or DI ownership changes,
+  public/wire/persisted contracts, cross-layer flow, lifecycle triggers, or
+  shared boundaries.
 - Do not invoke Aristotle for docs, instructions, agent/skill definitions,
-  tests-only edits, formatting, copy, or non-architectural tooling changes.
-  Broader wording in reviewer metadata applies only within this architecture scope.
-- Architecture approval becomes stale only when architecture-bearing content
-  changes. Editorial or evidence-only follow-ups do not trigger deep re-review.
+  tests-only edits, formatting, copy, localized bug fixes, ordinary method logic,
+  or non-architectural tooling changes. Broader wording in reviewer metadata
+  applies only within this architecture scope.
+- Invoke `aristotle-plan-review` at most once for a plan. Apply its valid findings
+  directly and do not invoke it again to approve the fixes, stale-plan edits, or
+  review-feedback updates.
+- Invoke `aristotle-impl-review` at most twice for one implementation effort. Use
+  the second pass only after fixing first-pass findings; never start a third pass.
+- Prefer a Git-defined implementation-review scope such as the current branch
+  against `main`, a commit range, the last N commits, or a PR. File or directory
+  scopes are also valid when useful; the reviewer uses Git history and diffs
+  where available to avoid treating pre-existing code as part of the change.
+- Do not let implementation review expand the work into a broad cleanup. If a
+  finding would move, rename, or refactor pre-existing files, classes, or
+  architecture beyond the current request, ask the user whether that scope
+  expansion is acceptable before making it.
 
 ## Repeated Pitfalls
 
