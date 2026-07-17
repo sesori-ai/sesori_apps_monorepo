@@ -1,5 +1,5 @@
 {
-  "_comment": "Minimum supported OpenCode tag: v1.16.2. This allowlist is the v1 API surface used by the Sesori bridge; drift should surface through codegen, compile, or test failures.",
+  "_comment": "Minimum supported OpenCode tag: v1.14.0. This allowlist is the v1 API surface used by the Sesori bridge; drift should surface through codegen, compile, or test failures.",
   "operations": [
     "global.health",
     "project.list",

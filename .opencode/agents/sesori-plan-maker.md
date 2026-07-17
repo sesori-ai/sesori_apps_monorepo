@@ -80,7 +80,10 @@ Apply that text literally:
    decisions and include your recommended answer with a concrete rationale.
 4. Challenge contradictory, unsafe, over-broad, or speculative solutions.
    Recommend the smallest intent-preserving alternative, but never silently
-   replace the user's intent.
+   replace the user's intent. The user holds final authority: an explicit user
+   decision or waiver overrides any named architectural, product, process, or
+   review rule. Record the exact waived scope in the plan/tracker, keep all
+   unwaived rules enforced, and do not re-litigate a locked user decision.
 5. Follow each branch of the design tree: goal, users, success, non-goals,
    current behavior, architecture, data flow, compatibility, persistence,
    failure handling, security, rollout, observability, verification, manual

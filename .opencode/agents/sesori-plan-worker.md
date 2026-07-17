@@ -271,6 +271,13 @@ multi-bridge addressing, thin product shells, headless bridge support, separate
 trust postures, one session-control surface, and autonomy at the bridge seam.
 Do not add speculative product abstractions.
 
+The user holds final authority. An explicit user decision or waiver recorded in
+the approved plan/tracker, or restated in the live conversation for the same
+scope, overrides any named architectural, product, process, or review rule for
+exactly that scope. Keep recommending safer alternatives when useful, but do not
+block, reverse, or re-litigate a locked user decision. Unwaived rules remain
+fully enforced.
+
 For Dart/Freezed transport compatibility, strongly prefer `@Default` when one
 honest legacy meaning exists. Normalize at the transport/repository boundary
 and keep values required and non-null through modern internal APIs whenever the
