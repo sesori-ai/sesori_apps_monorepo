@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:math";
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgeDerivedProjectsPluginApi,
@@ -542,25 +541,23 @@ class SessionRepository {
           preferredProjectId: project.id,
           observedPath: project.directory,
         );
-        final projectId = existing?.projectId ?? project.id;
-        if (!hydratedProjectIds.add(projectId)) continue;
-        await _observeNativeRootSessions(
+        final candidateProjectId = existing?.projectId ?? project.id;
+        if (hydratedProjectIds.contains(candidateProjectId)) continue;
+        final hydratedProject = await _observeNativeRootSessions(
           pluginId: pluginId,
           plugin: plugin,
-          projectId: projectId,
+          preferredProjectId: project.id,
           projectDirectory: project.directory,
         );
-        if (existing == null) {
-          final inserted = ProjectDto(
-            projectId: projectId,
-            path: project.directory,
-            createdAt: 0,
-            updatedAt: 0,
-            projectionUpdatedAt: 0,
+        hydratedProjectIds.add(hydratedProject.projectId);
+        projectsById[hydratedProject.projectId] = hydratedProject;
+        projectsByNormalizedPath
+          ..clear()
+          ..addAll(
+            _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+              projects: projectsById.values,
+            ),
           );
-          projectsById[projectId] = inserted;
-          projectsByNormalizedPath[normalizeProjectDirectory(directory: project.directory)] = inserted;
-        }
       } on Object catch (error, stackTrace) {
         Log.w(
           "Could not hydrate active project ${summary.id}; omitting unresolved sessions",
@@ -571,17 +568,40 @@ class SessionRepository {
     }
   }
 
-  Future<void> _observeNativeRootSessions({
+  Future<ProjectDto> _observeNativeRootSessions({
     required String pluginId,
     required NativeProjectsPluginApi plugin,
-    required String projectId,
+    required String preferredProjectId,
     required String projectDirectory,
   }) async {
     final projectionUpdatedAt = captureProjectionTimestamp();
     final pluginSessions = await plugin.getSessions(projectDirectory, start: null, limit: null);
     final backendSessionIds = [for (final session in pluginSessions) session.id];
-    final committedByBackendId = await _sessionDao.attachedDatabase.transaction(() async {
-      await _projectsDao.insertProjectIfMissing(projectId: projectId, path: projectDirectory);
+    final result = await _sessionDao.attachedDatabase.transaction(() async {
+      final storedProjects = await _projectsDao.getAllProjects();
+      final existingProject = _projectCatalogIdentityCalculator.calculate(
+        projectsById: {
+          for (final project in storedProjects) project.projectId: project,
+        },
+        projectsByNormalizedPath: _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+          projects: storedProjects,
+        ),
+        preferredProjectId: preferredProjectId,
+        observedPath: projectDirectory,
+      );
+      final hydratedProject =
+          existingProject ??
+          ProjectDto(
+            projectId: preferredProjectId,
+            path: projectDirectory,
+            createdAt: 0,
+            updatedAt: 0,
+            projectionUpdatedAt: 0,
+          );
+      await _projectsDao.insertProjectIfMissing(
+        projectId: hydratedProject.projectId,
+        path: projectDirectory,
+      );
       final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
         pluginId: pluginId,
         backendSessionIds: backendSessionIds,
@@ -600,7 +620,7 @@ class SessionRepository {
         observedRoots.add((
           sessionId: existingBinding?.sessionId ?? allocatedSessionIds[allocatedIndex++],
           backendSessionId: session.id,
-          projectId: projectId,
+          projectId: hydratedProject.projectId,
           directory: session.directory,
           catalogTitle: session.title,
           createdAt: session.time?.created ?? existingBinding?.createdAt ?? projectionUpdatedAt,
@@ -609,15 +629,17 @@ class SessionRepository {
           projectionUpdatedAt: projectionUpdatedAt,
         ));
       }
-      return _sessionDao.upsertObservedRootSessions(
+      final committedByBackendId = await _sessionDao.upsertObservedRootSessions(
         pluginId: pluginId,
         sessions: observedRoots,
       );
+      return (project: hydratedProject, committedByBackendId: committedByBackendId);
     });
     _publishBindingsCommitted(
       pluginId: pluginId,
-      backendSessionIds: committedByBackendId.keys.toList(growable: false),
+      backendSessionIds: result.committedByBackendId.keys.toList(growable: false),
     );
+    return result.project;
   }
 
   PluginSessionVariant? _toPluginVariant(SessionVariant? variant) {

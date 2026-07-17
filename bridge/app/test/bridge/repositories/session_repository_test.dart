@@ -1,7 +1,9 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
@@ -1298,6 +1300,83 @@ void main() {
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
     });
 
+    test("active native-root hydration atomically rechecks identity against catalog import", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const directory = "/projects/racing-shared";
+      const normalizedAlias = "$directory/.";
+      const nativeProjectId = "native-project-id";
+      const importedProjectId = "catalog-project-id";
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: directory,
+            activeSessions: [PluginActiveSession(id: "backend-root-one", awaitingInput: true)],
+          ),
+          PluginProjectActivitySummary(
+            id: normalizedAlias,
+            activeSessions: [PluginActiveSession(id: "backend-root-two", awaitingInput: false)],
+          ),
+        ]
+        ..projectsByDirectory = const {
+          directory: PluginProject(id: nativeProjectId, directory: normalizedAlias),
+          normalizedAlias: PluginProject(id: nativeProjectId, directory: normalizedAlias),
+        }
+        ..sessionsByWorktree = const {
+          normalizedAlias: [
+            PluginSession(
+              id: "backend-root-one",
+              projectID: nativeProjectId,
+              directory: normalizedAlias,
+              parentID: null,
+              title: "Active root one",
+              time: PluginSessionTime(created: 1, updated: 2, archived: null),
+            ),
+            PluginSession(
+              id: "backend-root-two",
+              projectID: nativeProjectId,
+              directory: normalizedAlias,
+              parentID: null,
+              title: "Active root two",
+              time: PluginSessionTime(created: 3, updated: 4, archived: null),
+            ),
+          ],
+        };
+      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final hydration = repository.getProjectActivitySummaries();
+      await projectsDao.snapshotTaken.future;
+      await db.projectsDao.recordOpenedProject(
+        projectId: importedProjectId,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      projectsDao.releaseSnapshot.complete();
+
+      final summaries = await hydration;
+      final projects = await db.projectsDao.getAllProjects();
+      final bindings = await db.sessionDao.getSessionsByBackendIds(
+        pluginId: plugin.id,
+        backendSessionIds: const ["backend-root-one", "backend-root-two"],
+      );
+
+      expect(projects.map((project) => project.projectId), [importedProjectId]);
+      expect(summaries.single.id, importedProjectId);
+      expect(summaries.single.activeSessions, hasLength(2));
+      expect(bindings.keys, {"backend-root-one", "backend-root-two"});
+      expect(bindings.values.map((binding) => binding.projectId), everyElement(importedProjectId));
+      expect(plugin.getSessionsCalls, 1, reason: "normalized summaries must hydrate their shared project once");
+    });
+
     test("getProjectActivitySummaries isolates a failed active-root hydration", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -2148,6 +2227,23 @@ class _CountingSessionDao implements SessionDao {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _BlockingSnapshotProjectsDao extends ProjectsDao {
+  _BlockingSnapshotProjectsDao({required AppDatabase database}) : super(database);
+
+  final Completer<void> snapshotTaken = Completer<void>();
+  final Completer<void> releaseSnapshot = Completer<void>();
+
+  @override
+  Future<List<ProjectDto>> getAllProjects() async {
+    final projects = await super.getAllProjects();
+    if (!snapshotTaken.isCompleted) {
+      snapshotTaken.complete();
+      await releaseSnapshot.future;
+    }
+    return projects;
+  }
 }
 
 /// A derive-style plugin (Codex/ACP shaped): reports every session through
