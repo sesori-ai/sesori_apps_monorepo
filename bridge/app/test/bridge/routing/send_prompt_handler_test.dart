@@ -653,6 +653,9 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
     required super.unseenCalculator,
   }) : super(
          operationalPlugins: {plugin.id: plugin},
+         bridgeDerivedProjectPluginIds: {
+           if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
+         },
          enabledPluginIds: [plugin.id],
          sessionDao: database.sessionDao,
          projectsDao: database.projectsDao,

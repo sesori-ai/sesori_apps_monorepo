@@ -5,13 +5,31 @@ import "package:test/test.dart";
 void main() {
   const calculator = ProjectCatalogIdentityCalculator();
 
+  test("builds an order-independent normalized-path index", () {
+    final winner = _project(id: "a-project", path: "/projects/current/.");
+    final duplicate = _project(id: "z-project", path: "/projects/current");
+
+    final forward = calculator.buildProjectsByNormalizedPath(
+      projects: [duplicate, winner],
+    );
+    final reversed = calculator.buildProjectsByNormalizedPath(
+      projects: [winner, duplicate],
+    );
+
+    expect(forward["/projects/current"], same(winner));
+    expect(reversed["/projects/current"], same(winner));
+  });
+
   test("prefers an exact project id over an observed-path match", () {
-    final exact = _project(id: "preferred", path: "/projects/old");
-    final pathMatch = _project(id: "path-owner", path: "/projects/current");
+    final exact = _project(id: "z-preferred", path: "/projects/current/.");
+    final pathMatch = _project(id: "a-path-owner", path: "/projects/current");
+    final projects = [pathMatch, exact];
 
     final result = calculator.calculate(
-      projectsById: {pathMatch.projectId: pathMatch, exact.projectId: exact},
-      projectsByNormalizedPath: {pathMatch.path: pathMatch, exact.path: exact},
+      projectsById: {for (final project in projects) project.projectId: project},
+      projectsByNormalizedPath: calculator.buildProjectsByNormalizedPath(
+        projects: projects,
+      ),
       preferredProjectId: exact.projectId,
       observedPath: pathMatch.path,
     );

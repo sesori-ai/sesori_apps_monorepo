@@ -82,6 +82,7 @@ class _EventProjectionBenchmark {
       final plugin = _BenchmarkPlugin();
       repository = SessionRepository(
         operationalPlugins: {plugin.id: plugin},
+        bridgeDerivedProjectPluginIds: const {},
         enabledPluginIds: [plugin.id],
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
