@@ -14,14 +14,13 @@ class AcpApprovalListener {
 
   final AcpApprovalRegistry _registry;
   final Stream<AcpServerRequest> _requests;
+  // The analyzer cannot trace cancellation through this listener's dispose().
+  // ignore: cancel_subscriptions
   StreamSubscription<AcpServerRequest>? _subscription;
 
   void attach() {
     if (_subscription != null) return;
-    // Ownership transfers to this listener and is released by dispose().
-    // ignore: cancel_subscriptions
-    final subscription = _requests.listen(_registry.handleRequest);
-    _subscription = subscription;
+    _subscription = _requests.listen(_registry.handleRequest);
   }
 
   Future<void> reset() => _registry.reset();

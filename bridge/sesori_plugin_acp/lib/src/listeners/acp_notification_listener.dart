@@ -12,16 +12,15 @@ class AcpNotificationListener {
 
   final AcpNotificationRepository notificationRepository;
   final AcpTurnEventDispatcher eventDispatcher;
+  // The analyzer cannot trace cancellation through this listener's dispose().
+  // ignore: cancel_subscriptions
   StreamSubscription<AcpNotificationRecord>? _subscription;
 
   void attach() {
     if (_subscription != null) return;
-    // Ownership transfers to this listener and is released by dispose().
-    // ignore: cancel_subscriptions
-    final subscription = notificationRepository.notifications.listen(
+    _subscription = notificationRepository.notifications.listen(
       eventDispatcher.consume,
     );
-    _subscription = subscription;
   }
 
   Future<void> dispose() async {
