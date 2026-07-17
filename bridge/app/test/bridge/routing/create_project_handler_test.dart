@@ -269,6 +269,22 @@ void main() {
 
       expect(File("$path/user-file.txt").existsSync(), isTrue);
     });
+
+    test("preserves the original error when Git execution throws", () async {
+      final path = "${tempDir.path}/new-project";
+      final cause = StateError("git unavailable");
+      final service = ProjectInitializationService(
+        worktreeRepository: _ThrowingInitializationWorktreeRepository(cause: cause),
+        filesystemRepository: filesystemRepository,
+      );
+
+      await expectLater(
+        service.initializeProject(path: path),
+        throwsA(
+          isA<ProjectGitSetupException>().having((error) => error.cause, "cause", same(cause)),
+        ),
+      );
+    });
   });
 }
 
@@ -299,6 +315,18 @@ class _FailingInitializationWorktreeRepository implements WorktreeRepository {
     }
     return false;
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ThrowingInitializationWorktreeRepository implements WorktreeRepository {
+  final Object cause;
+
+  _ThrowingInitializationWorktreeRepository({required this.cause});
+
+  @override
+  Future<bool> initRepository({required String path}) => Future.error(cause);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -218,6 +218,29 @@ void main() {
       expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
     });
 
+    test("opens a folder inside an enclosing Git worktree without initializing it", () async {
+      gitCliApi.insideWorkTree = true;
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
+
+      for (final gitAction in [OpenProjectGitAction.promptIfNeeded, OpenProjectGitAction.initializeGit]) {
+        final result = await handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: OpenProjectRequest(
+            path: tempDir.path,
+            gitAction: gitAction,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        );
+
+        expect(result.supportsDedicatedWorktrees, isFalse);
+      }
+
+      expect(gitCliApi.initCalls, 0);
+      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+    });
+
     test("an explicit Git action retries setup for a repository without commits", () async {
       gitCliApi.initialized = true;
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
@@ -426,6 +449,7 @@ void main() {
 
 class _ConfigurableGitCliApi extends FakeGitCliApi {
   bool initialized = false;
+  bool insideWorkTree = false;
   bool committed = false;
   bool initSucceeds = true;
   bool stageSucceeds = true;
@@ -436,6 +460,9 @@ class _ConfigurableGitCliApi extends FakeGitCliApi {
 
   @override
   Future<bool> isGitInitialized({required String projectPath}) async => initialized;
+
+  @override
+  Future<bool> isInsideGitWorkTree({required String projectPath}) async => insideWorkTree;
 
   @override
   Future<bool> initRepository({required String path}) async {

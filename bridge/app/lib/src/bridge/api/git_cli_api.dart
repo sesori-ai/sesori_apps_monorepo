@@ -33,6 +33,14 @@ class GitCliApi {
     return _gitPathExists(gitPath: p.join(projectPath, ".git"));
   }
 
+  Future<bool> isInsideGitWorkTree({required String projectPath}) async {
+    final result = await runGit(
+      projectPath: projectPath,
+      arguments: const ["rev-parse", "--is-inside-work-tree"],
+    );
+    return result.exitCode == 0 && result.stdout.toString().trim() == "true";
+  }
+
   /// Initializes a new git repository at [path]. Returns `true` on success.
   Future<bool> initRepository({required String path}) async {
     final result = await _processRunner.run("git", ["init", path]);

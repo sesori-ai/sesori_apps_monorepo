@@ -49,6 +49,10 @@ class WorktreeRepository {
     return _gitApi.isGitInitialized(projectPath: projectPath);
   }
 
+  Future<bool> isInsideGitWorkTree({required String projectPath}) {
+    return _gitApi.isInsideGitWorkTree(projectPath: projectPath);
+  }
+
   Future<bool> initRepository({required String path}) {
     return _gitApi.initRepository(path: path);
   }

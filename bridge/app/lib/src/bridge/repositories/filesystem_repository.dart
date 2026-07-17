@@ -213,7 +213,7 @@ class FilesystemRepository {
           )
           .toList();
 
-      return FilesystemSuggestions(data: suggestions);
+      return FilesystemSuggestions(data: suggestions, path: prefix);
     });
   }
 

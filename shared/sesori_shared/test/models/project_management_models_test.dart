@@ -180,4 +180,23 @@ void main() {
       );
     });
   });
+
+  group("FilesystemSuggestions", () {
+    test("JSON roundtrip carries the resolved directory path", () {
+      const original = FilesystemSuggestions(data: [], path: "/Users/dev");
+
+      final json = original.toJson();
+
+      expect(FilesystemSuggestions.fromJson(json), original);
+      expect(json, {"data": <Object>[], "path": "/Users/dev"});
+    });
+
+    test("missing path from an older bridge decodes to null", () {
+      final suggestions = FilesystemSuggestions.fromJson({
+        "data": <Object>[],
+      });
+
+      expect(suggestions.path, isNull);
+    });
+  });
 }

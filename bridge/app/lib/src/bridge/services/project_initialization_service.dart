@@ -29,8 +29,13 @@ class ProjectParentMissingException implements Exception {
 class ProjectGitSetupException implements Exception {
   final String path;
   final String operation;
+  final Object? cause;
 
-  ProjectGitSetupException({required this.path, required this.operation});
+  ProjectGitSetupException({
+    required this.path,
+    required this.operation,
+    required this.cause,
+  });
 
   @override
   String toString() => "ProjectGitSetupException: $operation failed: $path";
@@ -91,13 +96,17 @@ class ProjectInitializationService {
     required OpenProjectGitAction gitAction,
   }) async {
     final isGitInitialized = await _worktreeRepository.isGitInitialized(projectPath: path);
+    final isInsideGitWorkTree = isGitInitialized || await _worktreeRepository.isInsideGitWorkTree(projectPath: path);
     switch (gitAction) {
       case OpenProjectGitAction.promptIfNeeded:
-        if (!isGitInitialized) {
+        if (!isInsideGitWorkTree) {
           return ExistingProjectPreparationOutcome.gitChoiceRequired;
         }
       case OpenProjectGitAction.initializeGit:
-        final hasCommit = isGitInitialized && await _worktreeRepository.hasAtLeastOneCommit(projectPath: path);
+        if (isInsideGitWorkTree && !isGitInitialized) {
+          break;
+        }
+        final hasCommit = isInsideGitWorkTree && await _worktreeRepository.hasAtLeastOneCommit(projectPath: path);
         if (!hasCommit) {
           try {
             await _initializeGitProject(path: path);
@@ -142,13 +151,13 @@ class ProjectInitializationService {
   }) async {
     try {
       if (await run()) return;
-    } on Object catch (_, stackTrace) {
+    } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
-        ProjectGitSetupException(path: path, operation: operation),
+        ProjectGitSetupException(path: path, operation: operation, cause: error),
         stackTrace,
       );
     }
-    throw ProjectGitSetupException(path: path, operation: operation);
+    throw ProjectGitSetupException(path: path, operation: operation, cause: null);
   }
 
   void _cleanupCreatedProject({required String path}) {

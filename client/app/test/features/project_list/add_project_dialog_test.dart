@@ -123,11 +123,14 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
 void _stubSuggestionsWithEntries(
   MockProjectListCubit cubit, {
   required List<FilesystemSuggestion> entries,
+  String? path,
 }) {
   when(
     () => cubit.fetchFilesystemSuggestions(prefix: any(named: "prefix")),
   ).thenAnswer(
-    (_) async => FilesystemSuggestionsSuccess(suggestions: FilesystemSuggestions(data: entries)),
+    (_) async => FilesystemSuggestionsSuccess(
+      suggestions: FilesystemSuggestions(data: entries, path: path),
+    ),
   );
 }
 
@@ -137,7 +140,9 @@ void _stubSuggestionsPerPrefix(
 }) {
   when(() => cubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) async {
     final prefix = invocation.namedArguments[const Symbol("prefix")] as String?;
-    return FilesystemSuggestionsSuccess(suggestions: FilesystemSuggestions(data: byPrefix[prefix ?? ""] ?? []));
+    return FilesystemSuggestionsSuccess(
+      suggestions: FilesystemSuggestions(data: byPrefix[prefix ?? ""] ?? [], path: null),
+    );
   });
 }
 
@@ -357,6 +362,36 @@ void main() {
 
       // No tab bar
       expect(find.byType(TabBar), findsNothing);
+    });
+
+    testWidgets("uses the bridge-resolved initial path as the selected folder", (tester) async {
+      _stubSuggestionsWithEntries(
+        mockCubit,
+        entries: const [],
+        path: "/home/user",
+      );
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("/home/user"), findsOneWidget);
+      final openButton = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, "Open as Project"),
+      );
+      expect(openButton.onPressed, isNotNull);
     });
 
     testWidgets("tapping a directory entry navigates into it", (tester) async {

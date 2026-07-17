@@ -1294,7 +1294,7 @@ abstract class AppLocalizations {
   /// No description provided for @addProjectEnableGitBody.
   ///
   /// In en, this message translates to:
-  /// **'Git keeps change history and enables parallel sessions with dedicated worktrees. Sesori will set it up with an initial commit.'**
+  /// **'Sesori will commit all non-ignored files to enable history and parallel sessions with dedicated worktrees.'**
   String get addProjectEnableGitBody;
 
   /// No description provided for @addProjectContinueWithoutGit.

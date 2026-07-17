@@ -379,7 +379,7 @@
   "projectCreated": "Project created",
   "projectDiscovered": "Project discovered",
   "addProjectEnableGitTitle": "Enable Git tracking?",
-  "addProjectEnableGitBody": "Git keeps change history and enables parallel sessions with dedicated worktrees. Sesori will set it up with an initial commit.",
+  "addProjectEnableGitBody": "Sesori will commit all non-ignored files to enable history and parallel sessions with dedicated worktrees.",
   "addProjectContinueWithoutGit": "Continue Without Git",
   "addProjectEnableGit": "Enable Git",
   "addProjectGitSetupIncompleteTitle": "Project opened, Git setup incomplete",

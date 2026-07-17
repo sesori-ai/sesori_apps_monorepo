@@ -1103,6 +1103,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
       const suggestions = FilesystemSuggestions(
         data: [FilesystemSuggestion(path: "/dev/a", name: "a", isGitRepo: false)],
+        path: "/dev",
       );
       when(
         () => mockProjectRepository.getFilesystemSuggestions(prefix: any(named: "prefix")),

@@ -31,11 +31,28 @@ void main() {
       "Initial commit",
     ]);
   });
+
+  test("isInsideGitWorkTree queries Git membership", () async {
+    final processRunner = _RecordingProcessRunner(stdout: "true\n");
+    final api = GitCliApi(
+      processRunner: processRunner,
+      gitPathExists: ({required String gitPath}) => false,
+    );
+
+    final isInside = await api.isInsideGitWorkTree(projectPath: "/project/child");
+
+    expect(isInside, isTrue);
+    expect(processRunner.workingDirectory, "/project/child");
+    expect(processRunner.arguments, ["rev-parse", "--is-inside-work-tree"]);
+  });
 }
 
 class _RecordingProcessRunner implements ProcessRunner {
+  final String stdout;
   List<String>? arguments;
   String? workingDirectory;
+
+  _RecordingProcessRunner({this.stdout = ""});
 
   @override
   Future<ProcessResult> run(
@@ -48,7 +65,7 @@ class _RecordingProcessRunner implements ProcessRunner {
     expect(executable, "git");
     this.arguments = arguments;
     this.workingDirectory = workingDirectory;
-    return ProcessResult(1, 0, "", "");
+    return ProcessResult(1, 0, stdout, "");
   }
 
   @override

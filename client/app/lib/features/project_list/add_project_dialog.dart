@@ -289,10 +289,16 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
     );
 
     if (!mounted) return;
+    String? resolvedInitialPath;
     setState(() {
       _loading = false;
       switch (outcome) {
         case FilesystemSuggestionsSuccess(:final suggestions):
+          final resolvedPath = suggestions.path;
+          if (_currentPath.isEmpty && resolvedPath != null && resolvedPath.isNotEmpty) {
+            resolvedInitialPath = resolvedPath;
+            _currentPath = resolvedPath;
+          }
           _entries = suggestions.data;
           _hasError = false;
           _permissionDenied = false;
@@ -306,6 +312,9 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
           _permissionDenied = false;
       }
     });
+    if (resolvedInitialPath != null) {
+      widget.onPathChanged?.call(resolvedInitialPath!);
+    }
   }
 
   void _navigateInto({required String path}) {
