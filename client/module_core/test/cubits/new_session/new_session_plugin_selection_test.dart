@@ -1,7 +1,10 @@
 import "dart:async";
 
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/errors/remote_failure_reason.dart";
@@ -25,26 +28,150 @@ const pluginB = PluginMetadata(
   state: PluginLifecycleState.ready,
   actionHint: null,
 );
+const connectedStatus = ConnectionStatus.connected(
+  config: ServerConnectionConfig(relayHost: "relay.example.com"),
+  health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
+);
 
 void main() {
   group("NewSessionCubit plugin selection", () {
     late MockSessionService sessionService;
     late MockPluginRepository pluginRepository;
+    late MockConnectionService connectionService;
+    late BehaviorSubject<ConnectionStatus> connectionStatus;
     late NewSessionSelectionTracker selectionTracker;
 
     setUp(() {
       sessionService = MockSessionService();
       pluginRepository = MockPluginRepository();
+      connectionService = MockConnectionService();
+      connectionStatus = BehaviorSubject.seeded(connectedStatus);
       selectionTracker = NewSessionSelectionTracker();
+      when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
+      when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
       _stubEmptyResources(sessionService);
     });
 
+    tearDown(() => connectionStatus.close());
+
     NewSessionCubit buildCubit() => NewSessionCubit(
+      connectionService: connectionService,
       sessionService: sessionService,
       pluginRepository: pluginRepository,
       selectionTracker: selectionTracker,
       projectId: "project-1",
     );
+
+    test("discovery error recovers after a reconnect", () async {
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        if (discoveryCalls == 1) {
+          return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null));
+        }
+        return ApiResponse.success(const PluginListResponse(plugins: [pluginA]));
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitUntil(() => cubit.state is NewSessionError);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() {
+        final data = cubit.state.agentModelData;
+        return data?.plugin?.id == "plugin-a" && !(data?.isLoading ?? true);
+      });
+
+      expect(discoveryCalls, 2);
+      expect(cubit.state, isA<NewSessionIdle>());
+      expect(cubit.state.agentModelData?.plugin, pluginA);
+    });
+
+    test("reconnect refreshes metadata, preserving a routable selection before falling back to default", () async {
+      const refreshedDefault = PluginMetadata(
+        id: "plugin-c",
+        displayName: "Plugin C",
+        isDefault: true,
+        state: PluginLifecycleState.ready,
+        actionHint: null,
+      );
+      const refreshedB = PluginMetadata(
+        id: "plugin-b",
+        displayName: "Plugin B refreshed",
+        isDefault: false,
+        state: PluginLifecycleState.degraded,
+        actionHint: "Check the bridge console.",
+      );
+      const unavailableB = PluginMetadata(
+        id: "plugin-b",
+        displayName: "Plugin B unavailable",
+        isDefault: false,
+        state: PluginLifecycleState.unavailable,
+        actionHint: "Start the plugin.",
+      );
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return switch (discoveryCalls) {
+          1 => ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])),
+          2 => ApiResponse.success(const PluginListResponse(plugins: [refreshedDefault, refreshedB])),
+          _ => ApiResponse.success(const PluginListResponse(plugins: [refreshedDefault, unavailableB])),
+        };
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      expect(discoveryCalls, 1);
+
+      cubit.selectPlugin(pluginId: "plugin-b");
+      await _waitForComposer(cubit);
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() {
+        final data = cubit.state.agentModelData;
+        return data?.plugin == refreshedB && !(data?.isLoading ?? true);
+      });
+
+      expect(discoveryCalls, 2);
+      expect(cubit.state.agentModelData?.plugins, [refreshedDefault, refreshedB]);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() {
+        final data = cubit.state.agentModelData;
+        return data?.plugin == refreshedDefault && !(data?.isLoading ?? true);
+      });
+
+      expect(discoveryCalls, 3);
+      expect(cubit.state.agentModelData?.plugins, [refreshedDefault, unavailableB]);
+    });
+
+    test("connection changes have no effects after close", () async {
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        return ApiResponse.success(const PluginListResponse(plugins: [pluginA]));
+      });
+      final cubit = buildCubit();
+      await _waitForComposer(cubit);
+      final stateBeforeClose = cubit.state;
+      expect(connectionStatus.hasListener, isTrue);
+
+      await cubit.close();
+      expect(connectionStatus.hasListener, isFalse);
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(discoveryCalls, 1);
+      expect(cubit.state, stateBeforeClose);
+    });
 
     test("initial state has no synthetic selection and waits for discovery", () {
       when(pluginRepository.listPlugins).thenAnswer((_) => Completer<ApiResponse<PluginListResponse>>().future);

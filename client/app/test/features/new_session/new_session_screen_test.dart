@@ -7,6 +7,7 @@ import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/new_session/new_session_plugin_chooser.dart";
@@ -78,6 +79,8 @@ Widget _buildApp({ThemeMode themeMode = ThemeMode.light}) {
 void main() {
   late MockSessionService sessionService;
   late MockPluginRepository pluginRepository;
+  late MockConnectionService connectionService;
+  late BehaviorSubject<ConnectionStatus> connectionStatus;
   late MockVoiceTranscriptionService voiceTranscriptionService;
 
   // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
@@ -87,7 +90,17 @@ void main() {
     await GetIt.instance.reset();
     sessionService = MockSessionService();
     pluginRepository = MockPluginRepository();
+    connectionService = MockConnectionService();
+    connectionStatus = BehaviorSubject.seeded(
+      const ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com"),
+        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
+      ),
+    );
     voiceTranscriptionService = MockVoiceTranscriptionService();
+
+    when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
+    when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
 
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
@@ -143,12 +156,14 @@ void main() {
 
     GetIt.instance.registerSingleton<SessionService>(sessionService);
     GetIt.instance.registerSingleton<PluginRepository>(pluginRepository);
+    GetIt.instance.registerSingleton<ConnectionService>(connectionService);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
   });
 
   tearDown(() async {
     await GetIt.instance.reset();
+    await connectionStatus.close();
   });
 
   testWidgets("shows variant picker when selected agent has a variant", (tester) async {

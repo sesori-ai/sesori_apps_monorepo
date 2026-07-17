@@ -1,8 +1,12 @@
+import "dart:async";
+
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../capabilities/server_connection/connection_service.dart";
+import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
@@ -12,20 +16,25 @@ import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
+  final ConnectionService _connectionService;
   final SessionService _sessionService;
   final PluginRepository _pluginRepository;
   final NewSessionSelectionTracker _selectionTracker;
   final String _projectId;
+  late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
+  late bool _wasConnected;
   int _loadGeneration = 0;
 
   static const _defaultModelSelector = DefaultModelSelector();
 
   NewSessionCubit({
+    required ConnectionService connectionService,
     required SessionService sessionService,
     required PluginRepository pluginRepository,
     required NewSessionSelectionTracker selectionTracker,
     required String projectId,
-  }) : _sessionService = sessionService,
+  }) : _connectionService = connectionService,
+       _sessionService = sessionService,
        _pluginRepository = pluginRepository,
        _selectionTracker = selectionTracker,
        _projectId = projectId,
@@ -43,10 +52,21 @@ class NewSessionCubit extends Cubit<NewSessionState> {
            availableVariants: [],
          ),
        ) {
-    _initialize();
+    _wasConnected = _connectionService.currentStatus is ConnectionConnected;
+    _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
+    unawaited(_discoverPlugins());
   }
 
-  Future<void> _initialize() async {
+  void _onConnectionStatusChanged(ConnectionStatus status) {
+    if (isClosed) return;
+    final isConnected = status is ConnectionConnected;
+    final reconnected = isConnected && !_wasConnected;
+    _wasConnected = isConnected;
+    if (!reconnected || state is NewSessionSending || state is NewSessionCreated) return;
+    unawaited(_discoverPlugins());
+  }
+
+  Future<void> _discoverPlugins() async {
     final generation = ++_loadGeneration;
     try {
       final response = await _pluginRepository.listPlugins();
@@ -55,7 +75,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       switch (response) {
         case SuccessResponse(:final data):
           final plugins = data.plugins;
-          final selectedPlugin = plugins.where((plugin) => plugin.isDefault).singleOrNull;
+          final currentPluginId = state.agentModelData?.plugin?.id;
+          final currentPlugin = currentPluginId == null
+              ? null
+              : plugins.firstWhereOrNull((plugin) => plugin.id == currentPluginId && plugin.isRoutable);
+          final selectedPlugin = currentPlugin ?? plugins.where((plugin) => plugin.isDefault).singleOrNull;
           final canLoad = selectedPlugin?.isRoutable ?? false;
           emit(
             NewSessionState.idle(
@@ -219,6 +243,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   bool _canApplyLoad({required int generation, required String? pluginId}) {
     if (isClosed || generation != _loadGeneration) return false;
+    if (pluginId == null && (state is NewSessionSending || state is NewSessionCreated)) return false;
     return pluginId == null || state.agentModelData?.plugin?.id == pluginId;
   }
 
@@ -543,5 +568,12 @@ class NewSessionCubit extends Cubit<NewSessionState> {
           ),
         );
     }
+  }
+
+  @override
+  Future<void> close() async {
+    ++_loadGeneration;
+    await _connectionStatusSubscription.cancel();
+    await super.close();
   }
 }
