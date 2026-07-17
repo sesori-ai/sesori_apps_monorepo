@@ -278,7 +278,7 @@ void main() {
       expect(capturedRequest.method, equals("POST"));
       expect(
         capturedRequest.url.toString(),
-        equals("http://localhost:1234/session/ses-123/prompt"),
+        equals("http://localhost:1234/session/ses-123/message"),
       );
       expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
       expect(jsonDecodeMap(capturedBody)["noReply"], isTrue);
