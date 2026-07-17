@@ -245,7 +245,9 @@ class OpenCodeApi {
     required String? directory,
   }) async {
     await _client.post(
-      path: "/session/$sessionId/prompt_async",
+      // A no-reply prompt may be immediately followed by a dependent request,
+      // so wait for OpenCode to persist it instead of forking prompt_async.
+      path: "/session/$sessionId/${body.noReply ? "prompt" : "prompt_async"}",
       headers: {
         "content-type": "application/json",
         _directoryOpenCodeHeader: ?directory,
