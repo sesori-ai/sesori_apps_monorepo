@@ -353,12 +353,14 @@ void main() {
       expect(result[1].pullRequest, isNull);
     });
 
-    test("enrichSessions adopts stored project identity only for each derived owner", () async {
+    test("enrichSessions retains derived project attribution after operational removal", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       final derivedPlugin = _FakeDerivedPlugin(launchDirectory: "/derived", allSessions: const []);
+      final operationalPlugins = {plugin.id: plugin, derivedPlugin.id: derivedPlugin};
       final repository = SessionRepository(
-        operationalPlugins: {plugin.id: plugin, derivedPlugin.id: derivedPlugin},
+        operationalPlugins: operationalPlugins,
+        bridgeDerivedProjectPluginIds: {derivedPlugin.id},
         enabledPluginIds: [plugin.id, derivedPlugin.id],
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -397,6 +399,7 @@ void main() {
         lastAgentModel: null,
       );
 
+      operationalPlugins.remove(derivedPlugin.id);
       final result = await repository.enrichSessions(
         sessions: const [
           Session(

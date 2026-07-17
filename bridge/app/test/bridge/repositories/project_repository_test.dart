@@ -323,11 +323,14 @@ void main() {
       await db.projectsDao.hideProject(projectId: "p-open");
 
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-open");
-      await repo.persistOpenedProject(
+      final commit = await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        observedAt: 2,
       );
-      final result = await repo.mapOpenedProject(target: target);
+      final result = await repo.mapOpenedProject(
+        target: commit.committedTarget,
+        committedActivity: commit.committedActivity,
+      );
 
       expect(plugin.lastGetProjectId, equals("/tmp/p-open"));
       expect(result.id, equals("p-open"));
@@ -346,7 +349,7 @@ void main() {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-new");
       await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        observedAt: 2,
       );
 
       expect((await repo.getProjects()).single.name, "Backend project name");
@@ -368,14 +371,65 @@ void main() {
       );
 
       final target = await repo.resolveProjectOpenTarget(path: directory);
-      await repo.persistOpenedProject(
+      final commit = await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        observedAt: 2,
       );
-      final opened = await repo.mapOpenedProject(target: target);
+      final opened = await repo.mapOpenedProject(
+        target: commit.committedTarget,
+        committedActivity: commit.committedActivity,
+      );
 
       expect(opened.id, directory);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
+    });
+
+    test("openProject atomically rechecks identity after a concurrent catalog import", () async {
+      const directory = "/tmp/projects/racing-open";
+      const nativeProjectId = "native-project-id";
+      const importedProjectId = "catalog-project-id";
+      plugin.projectResult = const PluginProject(
+        id: nativeProjectId,
+        directory: directory,
+        name: "Native project",
+      );
+      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
+      final racingRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        plugin: plugin,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+      final service = ProjectActivityService(projectRepository: racingRepo, now: () => 10);
+      addTearDown(service.dispose);
+      final changes = <ProjectActivityChange>[];
+      final subscription = service.changes.listen(changes.add);
+      addTearDown(subscription.cancel);
+
+      final opening = service.openProject(path: directory);
+      await projectsDao.snapshotTaken.future;
+      await db.projectsDao.recordOpenedProject(
+        projectId: importedProjectId,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      projectsDao.releaseSnapshot.complete();
+
+      final opened = await opening;
+      await Future<void>.delayed(Duration.zero);
+      final rows = await db.projectsDao.getAllProjects();
+
+      expect(rows, hasLength(1));
+      expect(rows.single.projectId, importedProjectId);
+      expect(rows.single.createdAt, 1, reason: "opening must preserve the imported row's creation time");
+      expect(rows.single.updatedAt, 10, reason: "opening must advance activity monotonically to observed now");
+      expect(opened.id, importedProjectId);
+      expect(opened.time, const ProjectTime(created: 1, updated: 10));
+      expect(changes, [const ProjectActivityChange(projectId: importedProjectId, updatedAt: 10)]);
     });
 
     test("reopening a native project preserves its user display name", () async {
@@ -400,7 +454,7 @@ void main() {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-renamed");
       await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        observedAt: 2,
       );
 
       expect((await repo.getProjects()).single.name, "User project name");
@@ -416,11 +470,14 @@ void main() {
         await db.projectsDao.setBaseBranch(projectId: "/projects/a", baseBranch: "develop");
 
         final target = await repo.resolveProjectOpenTarget(path: "/moved/a");
-        await repo.persistOpenedProject(
+        final commit = await repo.persistOpenedProject(
           target: target,
-          activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+          observedAt: 2,
         );
-        final result = await repo.mapOpenedProject(target: target);
+        final result = await repo.mapOpenedProject(
+          target: commit.committedTarget,
+          committedActivity: commit.committedActivity,
+        );
 
         expect(result.id, equals("/projects/a"));
         expect(result.path, equals("/moved/a"));
@@ -451,7 +508,7 @@ void main() {
         final target = await repo.resolveProjectOpenTarget(path: "/moved/a");
         await repo.persistOpenedProject(
           target: target,
-          activity: const ProjectActivity(createdAt: 0, updatedAt: 1),
+          observedAt: 1,
         );
 
         final result = await repo.getProjects();
@@ -478,7 +535,7 @@ void main() {
         final target = await repoWithMissing.resolveProjectOpenTarget(path: "/moved/a");
         await repoWithMissing.persistOpenedProject(
           target: target,
-          activity: const ProjectActivity(createdAt: 0, updatedAt: 1),
+          observedAt: 1,
         );
 
         final result = await repoWithMissing.getProjects();
@@ -759,11 +816,14 @@ void main() {
 
     test("openProject records an opened folder so an empty project survives the listing", () async {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/proj/empty");
-      await repo.persistOpenedProject(
+      final commit = await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        observedAt: 2,
       );
-      final opened = await repo.mapOpenedProject(target: target);
+      final opened = await repo.mapOpenedProject(
+        target: commit.committedTarget,
+        committedActivity: commit.committedActivity,
+      );
 
       expect(opened.id, "/tmp/proj/empty");
       expect(opened.name, "empty");
@@ -772,7 +832,7 @@ void main() {
         contains("/tmp/proj/empty"),
       );
       final row = (await db.select(db.projectsTable).get()).firstWhere((r) => r.projectId == "/tmp/proj/empty");
-      expect(row.createdAt, equals(1));
+      expect(row.createdAt, equals(2));
       expect(row.updatedAt, equals(2));
       expect(plugin.receivedKnownDirectories, isNull);
     });
@@ -791,7 +851,7 @@ void main() {
       final target = await repo.resolveProjectOpenTarget(path: directory);
       await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 3),
+        observedAt: 3,
       );
 
       expect(target.projectId, nativeProjectId);

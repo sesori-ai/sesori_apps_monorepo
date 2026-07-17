@@ -36,8 +36,8 @@ class ProjectsTable extends Table {
 
   /// Wall-clock ms of the last recorded activity for this project. Advanced by
   /// the project-activity service from plugin activity, session evidence, and
-  /// user-facing events. The repository writes exact values supplied by the
-  /// service and performs no min/max itself.
+  /// user-facing events. The repository monotonically merges observations and
+  /// the DAO writes the resulting exact values.
   IntColumn get updatedAt => integer().clientDefault(() => DateTime.now().millisecondsSinceEpoch)();
 
   IntColumn get projectionUpdatedAt => integer()();

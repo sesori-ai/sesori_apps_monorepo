@@ -183,6 +183,10 @@ class Orchestrator {
     final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
     final sessionRepository = SessionRepository(
       operationalPlugins: pluginComposition.operationalPlugins,
+      bridgeDerivedProjectPluginIds: {
+        for (final entry in pluginComposition.operationalPlugins.entries)
+          if (entry.value is BridgeDerivedProjectsPluginApi) entry.key,
+      },
       enabledPluginIds: pluginComposition.enabledPluginIds,
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
@@ -553,6 +557,7 @@ class OrchestratorSession {
   final ControlStatusNotifier? _statusNotifier;
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  final Map<String, Future<void>> _pluginEventProcessingTails = <String, Future<void>>{};
   final Random _backoffJitter = Random();
 
   bool _cancelled = false;
@@ -712,9 +717,10 @@ class OrchestratorSession {
       }
       Log.d("subscribing to plugin event stream...");
       _pluginEvents
-          .asyncMap<void>(_processPluginEvent)
           .listen(
-            (_) {},
+            (source) {
+              unawaited(_processPluginEventInOrder(source));
+            },
             onError: (Object e, StackTrace st) {
               Log.w("plugin event stream error: $e");
               unawaited(
@@ -879,6 +885,10 @@ class OrchestratorSession {
         attempt(_catalogImportSubscriptions.cancel),
       ]);
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
+      await attempt(() async {
+        await Future.wait(_pluginEventProcessingTails.values);
+      });
+      Log.v("[shutdown] plugin event processing drained (+${teardownSw.elapsedMilliseconds}ms)");
       await attempt(_sessionPromptService.dispose);
       await Future.wait([
         for (final listener in _pluginEventListeners) attempt(listener.dispose),
@@ -992,6 +1002,20 @@ class OrchestratorSession {
     }
     Log.i("[restart] handing off; shutting down");
     await cancel();
+  }
+
+  Future<void> _processPluginEventInOrder(NormalizedSourcedBridgeEvent source) {
+    final previous = _pluginEventProcessingTails[source.pluginId] ?? Future<void>.value();
+    final release = Completer<void>();
+    _pluginEventProcessingTails[source.pluginId] = release.future;
+    return () async {
+      await previous;
+      try {
+        await _processPluginEvent(source);
+      } finally {
+        release.complete();
+      }
+    }();
   }
 
   Future<void> _processPluginEvent(NormalizedSourcedBridgeEvent source) async {

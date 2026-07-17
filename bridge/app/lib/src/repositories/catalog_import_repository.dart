@@ -261,9 +261,9 @@ class CatalogImportRepository {
       final projectsById = <String, ProjectDto>{
         for (final project in currentProjects) project.projectId: project,
       };
-      final projectsByNormalizedPath = <String, ProjectDto>{
-        for (final project in currentProjects) _normalizeRequiredPath(project.path): project,
-      };
+      final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+        projects: currentProjects,
+      );
       final publicationProjects = <String, _ObservedProject>{};
       if (plugin is BridgeDerivedProjectsPluginApi) {
         final launchDirectory = derivedLaunchDirectory!;

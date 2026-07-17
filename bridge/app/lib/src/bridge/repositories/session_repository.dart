@@ -55,6 +55,7 @@ class SessionRepository {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
   final Map<String, BridgePluginApi> _operationalPlugins;
+  final Set<String> _bridgeDerivedProjectPluginIds;
   final List<String> _enabledPluginIds;
   final SessionDao _sessionDao;
   final ProjectsDao _projectsDao;
@@ -72,6 +73,7 @@ class SessionRepository {
 
   SessionRepository({
     required Map<String, BridgePluginApi> operationalPlugins,
+    required Set<String> bridgeDerivedProjectPluginIds,
     required List<String> enabledPluginIds,
     required SessionDao sessionDao,
     required ProjectsDao projectsDao,
@@ -80,6 +82,7 @@ class SessionRepository {
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
     required Duration aggregateSourceDeadline,
   }) : _operationalPlugins = operationalPlugins,
+       _bridgeDerivedProjectPluginIds = Set<String>.unmodifiable(bridgeDerivedProjectPluginIds),
        _enabledPluginIds = enabledPluginIds,
        _sessionDao = sessionDao,
        _projectsDao = projectsDao,
@@ -525,9 +528,9 @@ class SessionRepository {
     final projectsById = <String, ProjectDto>{
       for (final project in storedProjects) project.projectId: project,
     };
-    final projectsByNormalizedPath = <String, ProjectDto>{
-      for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
-    };
+    final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+      projects: storedProjects,
+    );
     for (final summary in summaries) {
       if (!summary.activeSessions.any((active) => missingRootIds.contains(active.id))) continue;
 
@@ -711,9 +714,9 @@ class SessionRepository {
           unseenCalculator: _unseenCalculator,
           // Only the owning bridge-derived plugin cedes project attribution to
           // the stored row; a native backend's reported projectID is authoritative.
-          adoptStoredProjectId:
-              _operationalPlugins[dbSessions[session.id]?.pluginId ?? session.pluginId]
-                  is BridgeDerivedProjectsPluginApi,
+          adoptStoredProjectId: _bridgeDerivedProjectPluginIds.contains(
+            dbSessions[session.id]?.pluginId ?? session.pluginId,
+          ),
         ),
     ];
   }

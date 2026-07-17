@@ -106,6 +106,9 @@ SessionRepository singlePluginSessionRepository({
 }) {
   return SessionRepository(
     operationalPlugins: {plugin.id: plugin},
+    bridgeDerivedProjectPluginIds: {
+      if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
+    },
     enabledPluginIds: [plugin.id],
     sessionDao: sessionDao,
     projectsDao: projectsDao,
