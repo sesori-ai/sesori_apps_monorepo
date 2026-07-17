@@ -1,7 +1,8 @@
 import "dart:async";
 import "dart:io" as io;
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStartAbortedException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show Log, PluginStartAbortedException, StartAbortSignal;
 
 enum BridgeShutdownPhase {
   signal,
@@ -13,20 +14,19 @@ enum BridgeShutdownPhase {
 
 class BridgeShutdownCoordinator {
   BridgeShutdownCoordinator({
+    required StartAbortSignal startAbortSignal,
     int Function()? backstopExitCode,
     void Function(int code)? exitProcess,
-    bool Function()? startWasAborted,
   }) : _backstopExitCode = backstopExitCode ?? _alwaysZero,
        _exitProcess = exitProcess ?? io.exit,
-       _startWasAborted = startWasAborted ?? _alwaysFalse;
+       _startAbortSignal = startAbortSignal;
 
   static int _alwaysZero() => 0;
-  static bool _alwaysFalse() => false;
   static const Duration _backstopSlack = Duration(seconds: 10);
 
   final int Function() _backstopExitCode;
   final void Function(int code) _exitProcess;
-  final bool Function() _startWasAborted;
+  final StartAbortSignal _startAbortSignal;
   final Map<BridgeShutdownPhase, List<_ShutdownAction>> _actions = {
     for (final phase in BridgeShutdownPhase.values) phase: <_ShutdownAction>[],
   };
@@ -98,7 +98,7 @@ class BridgeShutdownCoordinator {
   }
 
   bool _isExpected(Object error) {
-    return error is PluginStartAbortedException && _startWasAborted();
+    return error is PluginStartAbortedException && _startAbortSignal.isAborted;
   }
 }
 

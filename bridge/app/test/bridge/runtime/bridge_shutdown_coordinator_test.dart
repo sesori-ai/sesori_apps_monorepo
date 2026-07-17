@@ -2,12 +2,16 @@ import "dart:async";
 
 import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show StartAbortSignal;
 import "package:test/test.dart";
 
 void main() {
   group("BridgeShutdownCoordinator", () {
     test("runs ordered steps in order, before the parallel phase", () async {
-      final coordinator = BridgeShutdownCoordinator(exitProcess: (_) {});
+      final coordinator = BridgeShutdownCoordinator(
+        startAbortSignal: StartAbortSignal.never,
+        exitProcess: (_) {},
+      );
       final operations = <String>[];
 
       coordinator.add(disposable: () => operations.add("parallel.a"));
@@ -27,7 +31,10 @@ void main() {
     });
 
     test("a failing ordered step does not block later steps or the parallel phase, then surfaces", () async {
-      final coordinator = BridgeShutdownCoordinator(exitProcess: (_) {});
+      final coordinator = BridgeShutdownCoordinator(
+        startAbortSignal: StartAbortSignal.never,
+        exitProcess: (_) {},
+      );
       final operations = <String>[];
 
       coordinator.addOrdered(
@@ -49,7 +56,10 @@ void main() {
     });
 
     test("a synchronously throwing disposable does not prevent the others from running", () async {
-      final coordinator = BridgeShutdownCoordinator(exitProcess: (_) {});
+      final coordinator = BridgeShutdownCoordinator(
+        startAbortSignal: StartAbortSignal.never,
+        exitProcess: (_) {},
+      );
       final operations = <String>[];
 
       coordinator.add(disposable: () => throw StateError("sync disposable failure"));
@@ -60,7 +70,10 @@ void main() {
     });
 
     test("starts every action in a phase before awaiting a blocked peer", () async {
-      final coordinator = BridgeShutdownCoordinator(exitProcess: (_) {});
+      final coordinator = BridgeShutdownCoordinator(
+        startAbortSignal: StartAbortSignal.never,
+        exitProcess: (_) {},
+      );
       final blocked = Completer<void>();
       final operations = <String>[];
 
@@ -85,7 +98,10 @@ void main() {
     });
 
     test("repeated shutdown calls share one run", () async {
-      final coordinator = BridgeShutdownCoordinator(exitProcess: (_) {});
+      final coordinator = BridgeShutdownCoordinator(
+        startAbortSignal: StartAbortSignal.never,
+        exitProcess: (_) {},
+      );
       var disposals = 0;
       coordinator.add(disposable: () => disposals++);
 
@@ -102,6 +118,7 @@ void main() {
       fakeAsync((async) {
         final exitCalls = <int>[];
         final coordinator = BridgeShutdownCoordinator(
+          startAbortSignal: StartAbortSignal.never,
           backstopExitCode: () => 1,
           exitProcess: exitCalls.add,
         );
@@ -122,7 +139,10 @@ void main() {
     test("backstop covers a hung parallel phase even with no ordered steps", () {
       fakeAsync((async) {
         final exitCalls = <int>[];
-        final coordinator = BridgeShutdownCoordinator(exitProcess: exitCalls.add);
+        final coordinator = BridgeShutdownCoordinator(
+          startAbortSignal: StartAbortSignal.never,
+          exitProcess: exitCalls.add,
+        );
         coordinator.add(disposable: () => Completer<void>().future);
 
         unawaited(coordinator.shutdown());
@@ -135,7 +155,10 @@ void main() {
     test("backstop never fires when shutdown completes in time", () {
       fakeAsync((async) {
         final exitCalls = <int>[];
-        final coordinator = BridgeShutdownCoordinator(exitProcess: exitCalls.add);
+        final coordinator = BridgeShutdownCoordinator(
+          startAbortSignal: StartAbortSignal.never,
+          exitProcess: exitCalls.add,
+        );
         coordinator.addOrdered(action: () async {}, budget: const Duration(seconds: 10));
         coordinator.add(disposable: () {});
 

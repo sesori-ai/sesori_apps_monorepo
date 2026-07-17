@@ -204,8 +204,8 @@ class BridgeRuntimeRunner {
     // decided intentional exit.
     SupervisedExitCode? requestedSupervisedExit;
     final shutdownCoordinator = BridgeShutdownCoordinator(
+      startAbortSignal: startAbortController.signal,
       backstopExitCode: () => requestedSupervisedExit?.code ?? 0,
-      startWasAborted: () => startAbortController.isAborted,
     );
     shutdownCoordinator
       ..addPhase(
@@ -635,7 +635,7 @@ class BridgeRuntimeRunner {
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: processRepository,
-        openCodeRuntimeFileApi: runtimeFileApi,
+        runtimeFileApi: runtimeFileApi,
         serverClock: serverClock,
         environment: environment,
         currentUser: currentUser,
@@ -1053,13 +1053,17 @@ class BridgeRuntimeRunner {
     required StartupMutexRepository startupMutexRepository,
     required BridgeInstanceService bridgeInstanceService,
     required ProcessRepository processRepository,
-    required RuntimeFileApi openCodeRuntimeFileApi,
+    required RuntimeFileApi runtimeFileApi,
     required ServerClock serverClock,
     required Map<String, String> environment,
     required ProcessUser? currentUser,
     required StartAbortSignal startAborted,
     required ControlProvisionNotifier? provisionNotifier,
   }) {
+    final fileApisByStateDirectory = <String, RuntimeFileApi>{
+      runtimeFileApi.runtimeDirectory: runtimeFileApi,
+    };
+
     Future<void> attemptStart({required int attempt}) {
       return startupMutexRepository.withLock<void>(
         bridgePid: currentBridgeIdentity.pid,
@@ -1075,9 +1079,10 @@ class BridgeRuntimeRunner {
               for (final descriptor in descriptors) {
                 final stateDirectory = pluginStateDirectoryPath(paths: managedRuntimePaths, pluginId: descriptor.id);
                 await io.Directory(stateDirectory).create(recursive: true);
-                final fileApi = descriptor.id == openCodePluginId
-                    ? openCodeRuntimeFileApi
-                    : RuntimeFileApi(runtimeDirectory: stateDirectory);
+                final fileApi = fileApisByStateDirectory.putIfAbsent(
+                  stateDirectory,
+                  () => RuntimeFileApi(runtimeDirectory: stateDirectory),
+                );
                 hosts[descriptor.id] = BridgePluginHostImpl(
                   config: pluginConfigs[descriptor.id]!,
                   stateDirectory: stateDirectory,

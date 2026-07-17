@@ -72,7 +72,7 @@ void main() {
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: _FakeProcessRepository(),
-        openCodeRuntimeFileApi: RuntimeFileApi(runtimeDirectory: directory),
+        runtimeFileApi: RuntimeFileApi(runtimeDirectory: directory),
         serverClock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
