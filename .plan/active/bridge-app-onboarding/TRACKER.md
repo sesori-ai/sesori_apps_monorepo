@@ -25,10 +25,10 @@
 
 | Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
 |---|---|---|---|---|---|
+| S01 | W01 | `sesori-ai/sesori_auth_server` | `master` | `b17a6e760b0c70c3dc3d1cd456ff93d814c75453` | No drift: current `master` matches the latest audited tip. |
 
-No implementation wave has started. Workers add one authoritative row for each
-started stage/wave/repository/base pair after drift assessment and before branch
-creation.
+Workers add one authoritative row for each started stage/wave/repository/base
+pair after drift assessment and before branch creation.
 
 ## PR Steps
 
