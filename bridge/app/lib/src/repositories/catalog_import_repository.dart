@@ -261,6 +261,9 @@ class CatalogImportRepository {
       final projectsById = <String, ProjectDto>{
         for (final project in currentProjects) project.projectId: project,
       };
+      final projectsByNormalizedPath = <String, ProjectDto>{
+        for (final project in currentProjects) _normalizeRequiredPath(project.path): project,
+      };
       final publicationProjects = <String, _ObservedProject>{};
       if (plugin is BridgeDerivedProjectsPluginApi) {
         final launchDirectory = derivedLaunchDirectory!;
@@ -293,7 +296,8 @@ class CatalogImportRepository {
       final importedProjectIdByPath = <String, String>{};
       for (final observation in publicationProjects.values) {
         final existing = _projectCatalogIdentityCalculator.calculate(
-          existingProjects: currentProjects,
+          projectsById: projectsById,
+          projectsByNormalizedPath: projectsByNormalizedPath,
           preferredProjectId: observation.preferredId,
           observedPath: observation.path,
         );
@@ -303,13 +307,15 @@ class CatalogImportRepository {
           importStartedAt: importStartedAt,
         );
         projectRows.add(row);
-        projectsById[row.projectId] = row;
-        final currentIndex = currentProjects.indexWhere((project) => project.projectId == row.projectId);
-        if (currentIndex < 0) {
-          currentProjects.add(row);
-        } else {
-          currentProjects[currentIndex] = row;
+        final previousPath = existing == null ? null : _normalizeRequiredPath(existing.path);
+        final nextPath = _normalizeRequiredPath(row.path);
+        if (previousPath != null &&
+            previousPath != nextPath &&
+            projectsByNormalizedPath[previousPath]?.projectId == existing?.projectId) {
+          projectsByNormalizedPath.remove(previousPath);
         }
+        projectsById[row.projectId] = row;
+        projectsByNormalizedPath[nextPath] = row;
         importedProjectIdByPath[observation.path] = row.projectId;
       }
 

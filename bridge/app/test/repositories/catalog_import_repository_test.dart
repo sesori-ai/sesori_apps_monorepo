@@ -6,6 +6,8 @@ import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -222,6 +224,44 @@ void main() {
         ))?.projectId,
         sharedPath,
       );
+    });
+
+    test("project identity indexes are reused and updated throughout an import batch", () async {
+      final firstPath = "${directory.path}/first";
+      final secondPath = "${directory.path}/second";
+      final calculator = _TrackingProjectCatalogIdentityCalculator(
+        firstProjectId: "first",
+        firstPath: firstPath,
+      );
+      final plugin = _NativeImportPlugin(
+        projects: [
+          PluginProject(id: "first", directory: firstPath),
+          PluginProject(id: "second", directory: secondPath),
+        ],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+      final repository = CatalogImportRepository(
+        operationalPlugins: {plugin.id: plugin},
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: calculator,
+      );
+
+      await repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      expect(calculator.callCount, 2);
+      expect(calculator.reusedIndexes, isTrue);
+      expect(calculator.sawFirstRowOnSecondLookup, isTrue);
     });
 
     test("derived import sends complete normalized hints and retains owning-project attribution", () async {
@@ -454,6 +494,45 @@ void main() {
       expect(await database.projectsDao.getProject(projectId: "rollback"), isNull);
     });
   });
+}
+
+class _TrackingProjectCatalogIdentityCalculator extends ProjectCatalogIdentityCalculator {
+  _TrackingProjectCatalogIdentityCalculator({required this.firstProjectId, required this.firstPath});
+
+  final String firstProjectId;
+  final String firstPath;
+  Map<String, ProjectDto>? _firstProjectsById;
+  Map<String, ProjectDto>? _firstProjectsByNormalizedPath;
+  int callCount = 0;
+  bool reusedIndexes = false;
+  bool sawFirstRowOnSecondLookup = false;
+
+  @override
+  ProjectDto? calculate({
+    required Map<String, ProjectDto> projectsById,
+    required Map<String, ProjectDto> projectsByNormalizedPath,
+    required String preferredProjectId,
+    required String observedPath,
+  }) {
+    if (callCount == 0) {
+      _firstProjectsById = projectsById;
+      _firstProjectsByNormalizedPath = projectsByNormalizedPath;
+    } else if (callCount == 1) {
+      reusedIndexes =
+          identical(_firstProjectsById, projectsById) &&
+          identical(_firstProjectsByNormalizedPath, projectsByNormalizedPath);
+      sawFirstRowOnSecondLookup =
+          projectsById[firstProjectId]?.projectId == firstProjectId &&
+          projectsByNormalizedPath[normalizeProjectDirectory(directory: firstPath)]?.projectId == firstProjectId;
+    }
+    callCount++;
+    return super.calculate(
+      projectsById: projectsById,
+      projectsByNormalizedPath: projectsByNormalizedPath,
+      preferredProjectId: preferredProjectId,
+      observedPath: observedPath,
+    );
+  }
 }
 
 CatalogImportRepository _repository({required AppDatabase database, required BridgePluginApi plugin}) {

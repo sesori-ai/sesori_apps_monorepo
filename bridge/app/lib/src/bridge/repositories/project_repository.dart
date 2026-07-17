@@ -125,17 +125,27 @@ class ProjectRepository {
   /// Resolves the canonical target for opening [path].
   ///
   /// For a native plugin the backend maps the opened directory to the stable
-  /// project id (a moved folder keeps its identity). For a bridge-derived
-  /// plugin the canonical id is the normalized directory itself.
+  /// project id (a moved folder keeps its identity). A bridge-derived plugin
+  /// prefers the normalized directory while retaining any same-path catalog id.
   Future<ProjectOpenTarget> resolveProjectOpenTarget({required String path}) async {
     switch (_requireDefaultPlugin(operation: "openProject")) {
       case BridgeDerivedProjectsPluginApi():
         final canonical = normalizeProjectDirectory(directory: path);
-        final stored = await _projectsDao.getProject(projectId: canonical);
+        final storedProjects = await _projectsDao.getAllProjects();
+        final stored = _projectCatalogIdentityCalculator.calculate(
+          projectsById: {
+            for (final project in storedProjects) project.projectId: project,
+          },
+          projectsByNormalizedPath: {
+            for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
+          },
+          preferredProjectId: canonical,
+          observedPath: canonical,
+        );
         final base = p.basename(canonical);
         return ProjectOpenTarget(
           project: Project(
-            id: canonical,
+            id: stored?.projectId ?? canonical,
             name: stored?.displayName ?? (base.isEmpty ? canonical : base),
             path: canonical,
             time: null,
@@ -147,7 +157,12 @@ class ProjectRepository {
         final pluginProject = await plugin.getProject(openedPath);
         final storedProjects = await _projectsDao.getAllProjects();
         final existing = _projectCatalogIdentityCalculator.calculate(
-          existingProjects: storedProjects,
+          projectsById: {
+            for (final project in storedProjects) project.projectId: project,
+          },
+          projectsByNormalizedPath: {
+            for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
+          },
           preferredProjectId: pluginProject.id,
           observedPath: openedPath,
         );
@@ -222,12 +237,14 @@ class ProjectRepository {
           displayName: name,
           updatedAt: renamedAt,
         );
-        return updated.toSharedProject(
-          path: path,
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: updated.id),
-          directoryMissing: _directoryMissing(path),
-          time: _activityToTime(activity!),
-        );
+        return updated
+            .toSharedProject(
+              path: path,
+              hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
+              directoryMissing: _directoryMissing(path),
+              time: _activityToTime(activity!),
+            )
+            .copyWith(id: projectId);
     }
   }
 
@@ -289,11 +306,18 @@ class ProjectRepository {
       case final NativeProjectsPluginApi plugin:
         final pluginProjects = await plugin.getProjects();
         final storedProjects = (await _projectsDao.getAllProjects()).toList();
+        final projectsById = <String, ProjectDto>{
+          for (final project in storedProjects) project.projectId: project,
+        };
+        final projectsByNormalizedPath = <String, ProjectDto>{
+          for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
+        };
         final missingProjects = <String, ({String path, int? createdAt, int? updatedAt})>{};
         final evidence = <ProjectActivityEvidence>[];
         for (final project in pluginProjects) {
           final existing = _projectCatalogIdentityCalculator.calculate(
-            existingProjects: storedProjects,
+            projectsById: projectsById,
+            projectsByNormalizedPath: projectsByNormalizedPath,
             preferredProjectId: project.id,
             observedPath: project.directory,
           );
@@ -304,15 +328,15 @@ class ProjectRepository {
               createdAt: project.activity?.createdAt,
               updatedAt: project.activity?.updatedAt,
             );
-            storedProjects.add(
-              ProjectDto(
-                projectId: projectId,
-                path: project.directory,
-                createdAt: project.activity?.createdAt ?? 0,
-                updatedAt: project.activity?.updatedAt ?? 0,
-                projectionUpdatedAt: 0,
-              ),
+            final inserted = ProjectDto(
+              projectId: projectId,
+              path: project.directory,
+              createdAt: project.activity?.createdAt ?? 0,
+              updatedAt: project.activity?.updatedAt ?? 0,
+              projectionUpdatedAt: 0,
             );
+            projectsById[projectId] = inserted;
+            projectsByNormalizedPath[normalizeProjectDirectory(directory: project.directory)] = inserted;
           }
           evidence.add(
             ProjectActivityEvidence(
@@ -351,10 +375,17 @@ class ProjectRepository {
           final key = normalizeProjectDirectory(directory: projectPath);
           grouped.putIfAbsent(key, () => []).add(time);
         }
+        final projectsById = <String, ProjectDto>{
+          for (final project in storedProjects) project.projectId: project,
+        };
+        final projectsByNormalizedPath = <String, ProjectDto>{
+          for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
+        };
         final evidence = <ProjectActivityEvidence>[];
         for (final entry in grouped.entries) {
           final stored = _projectCatalogIdentityCalculator.calculate(
-            existingProjects: storedProjects,
+            projectsById: projectsById,
+            projectsByNormalizedPath: projectsByNormalizedPath,
             preferredProjectId: entry.key,
             observedPath: entry.key,
           );

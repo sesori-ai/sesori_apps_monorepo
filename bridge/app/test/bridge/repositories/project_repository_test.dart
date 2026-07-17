@@ -447,6 +447,42 @@ void main() {
         expect(plugin.lastRenameProjectId, equals("/moved/a"));
         expect(renamed.path, equals("/moved/a"));
       });
+
+      test("native rename retains the requested durable catalog identity and unseen state", () async {
+        const directory = "/moved/shared";
+        plugin.projectResult = const PluginProject(
+          id: "native-project-id",
+          directory: directory,
+          name: "Renamed",
+        );
+        await db.projectsDao.recordOpenedProject(
+          projectId: directory,
+          path: directory,
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 2,
+        );
+        await db.sessionDao.insertSession(
+          pluginId: plugin.id,
+          sessionId: "shared-session",
+          backendSessionId: "shared-session",
+          projectId: directory,
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+        );
+        await db.sessionDao.forceUnseen(sessionId: "shared-session", activityAt: 10);
+
+        final renamed = await repo.renameProject(projectId: directory, name: "Renamed");
+
+        expect(renamed.id, directory);
+        expect(renamed.hasUnseenChanges, isTrue);
+      });
     });
 
     test("hideProject persists hidden project id", () async {
@@ -682,6 +718,27 @@ void main() {
       expect(row.createdAt, equals(1));
       expect(row.updatedAt, equals(2));
       expect(plugin.receivedKnownDirectories, isNull);
+    });
+
+    test("derived open reuses a native catalog row for the normalized directory", () async {
+      const directory = "/tmp/proj/shared-open";
+      const nativeProjectId = "native-project-id";
+      await db.projectsDao.recordOpenedProject(
+        projectId: nativeProjectId,
+        path: "$directory/.",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: directory);
+      await repo.persistOpenedProject(
+        target: target,
+        activity: const ProjectActivity(createdAt: 1, updatedAt: 3),
+      );
+
+      expect(target.projectId, nativeProjectId);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [nativeProjectId]);
     });
 
     test("renameProject persists a display-name override applied on the next listing", () async {

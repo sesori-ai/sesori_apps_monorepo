@@ -10,7 +10,8 @@ void main() {
     final pathMatch = _project(id: "path-owner", path: "/projects/current");
 
     final result = calculator.calculate(
-      existingProjects: [pathMatch, exact],
+      projectsById: {pathMatch.projectId: pathMatch, exact.projectId: exact},
+      projectsByNormalizedPath: {pathMatch.path: pathMatch, exact.path: exact},
       preferredProjectId: exact.projectId,
       observedPath: pathMatch.path,
     );
@@ -22,7 +23,8 @@ void main() {
     final pathMatch = _project(id: "path-owner", path: "/projects/current/.");
 
     final result = calculator.calculate(
-      existingProjects: [pathMatch],
+      projectsById: {pathMatch.projectId: pathMatch},
+      projectsByNormalizedPath: {"/projects/current": pathMatch},
       preferredProjectId: "unknown",
       observedPath: "/projects/current",
     );
@@ -31,8 +33,10 @@ void main() {
   });
 
   test("returns null when neither identity signal matches", () {
+    final other = _project(id: "other", path: "/projects/other");
     final result = calculator.calculate(
-      existingProjects: [_project(id: "other", path: "/projects/other")],
+      projectsById: {other.projectId: other},
+      projectsByNormalizedPath: {other.path: other},
       preferredProjectId: "unknown",
       observedPath: "/projects/current",
     );
