@@ -274,8 +274,8 @@ class BridgeRuntimeRunner {
     final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(
       environment: environment,
     );
-    // Also the OpenCode plugin's state directory: its ownership file lives
-    // here under a frozen cross-version contract (see pluginStateDirectoryPath).
+    // Also the legacy shared plugin state directory. Shipped ownership files
+    // live here under a frozen cross-version contract (see pluginStateDirectoryPath).
     final runtimeDirectory = path.join(managedRuntimePaths.cacheDirectory, "runtime");
     final runtimeFileApi = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
     final systemProcessApi = SystemProcessApi(
@@ -1080,7 +1080,11 @@ class BridgeRuntimeRunner {
             case BridgeInstanceResolutionStatus.allowed:
               final hosts = <String, BridgePluginHostImpl>{};
               for (final descriptor in descriptors) {
-                final stateDirectory = pluginStateDirectoryPath(paths: managedRuntimePaths, pluginId: descriptor.id);
+                final stateDirectory = pluginStateDirectoryPath(
+                  paths: managedRuntimePaths,
+                  pluginId: descriptor.id,
+                  stateStorage: descriptor.stateStorage,
+                );
                 await io.Directory(stateDirectory).create(recursive: true);
                 final fileApi = fileApisByStateDirectory.putIfAbsent(
                   stateDirectory,

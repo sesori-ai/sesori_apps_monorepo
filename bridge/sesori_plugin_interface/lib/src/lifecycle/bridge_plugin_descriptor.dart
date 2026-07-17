@@ -6,6 +6,7 @@ import "bridge_plugin.dart";
 import "plugin_availability.dart";
 import "plugin_config.dart";
 import "plugin_option.dart";
+import "plugin_state_storage.dart";
 import "runtime_provision_progress.dart";
 
 /// The registration unit for a bridge plugin.
@@ -24,6 +25,12 @@ abstract class BridgePluginDescriptor {
 
   /// Human-readable name for logs and help output.
   String get displayName;
+
+  /// Layout used for the plugin's private host state.
+  ///
+  /// New plugins are isolated by default. Plugins with shipped state in the
+  /// legacy shared runtime directory can preserve that location explicitly.
+  PluginStateStorage get stateStorage => PluginStateStorage.isolated;
 
   /// CLI options this plugin contributes when selected.
   List<PluginOption> get options;

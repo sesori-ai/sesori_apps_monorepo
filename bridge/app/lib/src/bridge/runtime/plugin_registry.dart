@@ -3,8 +3,6 @@ import "package:cursor_plugin/cursor_plugin.dart" show CursorPluginDescriptor;
 import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginDescriptor;
 
-import "../../server/host/plugin_state_directory.dart" show openCodePluginId;
-
 /// Every plugin this bridge build knows how to run.
 ///
 /// Descriptors are const and side-effect free — registered is *not* started.
@@ -19,7 +17,7 @@ const List<BridgePluginDescriptor> knownPlugins = [
 
 /// The plugin used when neither `--plugin` nor `enabledPlugins` selects one,
 /// so existing installs see zero change.
-const String defaultPluginId = openCodePluginId;
+const String defaultPluginId = "opencode";
 
 /// Selection cannot be resolved from the bridge settings — the user must fix
 /// `enabledPlugins`. Command-line problems are never reported through this:
