@@ -540,6 +540,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriServerHeartbeat() ||
       SesoriServerInstanceDisposed() ||
       SesoriGlobalDisposed() ||
+      SesoriCatalogImportProgress() ||
       SesoriSessionDeleted() ||
       SesoriSessionDiff() ||
       SesoriSessionError() ||
@@ -621,6 +622,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriServerHeartbeat() ||
             SesoriServerInstanceDisposed() ||
             SesoriGlobalDisposed() ||
+            SesoriCatalogImportProgress() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||
             SesoriMessagePartUpdated() ||

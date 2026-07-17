@@ -8,14 +8,15 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 4 - known-event projection and durable child hierarchy
-- **Next up:** Stage 5 - explicit import and automatic hydration
+- **Last completed stage:** Stage 5 - explicit import and automatic hydration
+- **Next up:** Stage 6 - database-only list cutover
 - **Runtime default:** one selected plugin until Stage 7
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
 - **Stage 3B implementation base:** `main` at `7c8b6440` (audited 2026-07-16)
 - **Stage 3C implementation base:** `main` at `72ac20f4` (audited 2026-07-16)
 - **Stage 4 implementation base:** `main` at `86816cee` (audited 2026-07-16)
+- **Stage 5 implementation base:** `main` at `5a76c0c4` (audited 2026-07-17)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -443,15 +444,18 @@ existing operation. `DELETE /plugin/import` invokes
 `CatalogImportService.latestStatuses` and never starts or cancels work.
 
 `CatalogImportService` is constructed with one already-built
-`CatalogImportRepository`. The composition root constructs that repository with
-the enabled plugin API map and DAOs. The service receives no plugin API, DAO,
-database, host, or configuration pass-through parameter. It owns one in-flight
-operation per plugin, cancellation tokens, latest in-memory status, and a
-broadcast progress stream.
+`CatalogImportRepository`. In Stage 5, `Orchestrator` constructs that repository
+with the one selected plugin API and DAOs. The service receives no plugin API,
+DAO, database, host, or configuration pass-through parameter. It owns one
+in-flight operation, its cancellation control, latest in-memory status, and a
+broadcast progress stream. Stage 7 replaces this singular selected-plugin
+composition when multiple operational plugins become a current requirement.
 
 ### Enumeration and Publication
 
-`CatalogImportRepository` receives the requested plugin API and DAOs.
+`CatalogImportRepository` receives the selected plugin API and DAOs. Its exposed
+plugin id is the only id Stage 5 routes or starts; Stage 7 replaces this singular
+dependency when parallel runtime routing lands.
 
 - Native-project plugins enumerate declared projects and their root sessions,
   then recursively enumerate children where the API exposes them.
@@ -632,7 +636,7 @@ selection.
 | ☑ | 3B | Relocate the database API layer | Rename-only diff; schema/tests unchanged |
 | ☑ | 3C | Catalog write-through and stable session binding | Mutation/routing tests; existing IDs preserved |
 | ☑ | 4 | Known-event projection and durable child hierarchy | Exhaustive event translation and ancestry tests |
-| ☐ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
+| ☑ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
 | ☐ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
 | ☐ | 7 | Multi-plugin routing, lifecycle, and event streams | Mixed-id routing, independent failure, startup/shutdown |
 | ☐ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
@@ -897,6 +901,149 @@ and non-destructive; concurrent mutations win over stale snapshots; one marker
 is written atomically per plugin/projection version; old catalog reads complete
 while enumeration is blocked.
 
+PR-level implementation plan:
+
+1. In `shared/sesori_shared`, add `CatalogImportRequest` in
+   `lib/src/models/sesori/catalog_import_request.dart`, the sealed
+   `CatalogImportProgress` phases in `catalog_import_progress.dart`, and
+   `CatalogImportStatusesResponse` in `catalog_import_statuses_response.dart`.
+   Export all three and add `SesoriSseEvent.catalogImportProgress` in
+   `sesori_sse_event.dart`. These are the only transport/domain DTOs; the bridge
+   does not create duplicate progress models.
+2. In `bridge/sesori_plugin_codex`, add
+   `SessionRolloutReader.listSessionsInIsolate()` using `Isolate.run` while
+   retaining `listSessions()` as the plugin-private synchronous filesystem API.
+   Add the Layer-2
+   `lib/src/repositories/codex_catalog_repository.dart` with
+   `CodexCatalogRepository({required SessionRolloutReader rolloutReader,
+   required String launchDirectory})`, `listAllSessions`, and `getSessions`.
+   It awaits the isolate API and maps rollout records to `PluginSession`;
+   `CodexPlugin.listAllSessions` and `CodexPlugin.getSessions` delegate to that
+   repository. Synchronous targeted transcript/metadata helpers remain
+   unchanged. Add repository mapping and responsiveness fixtures alongside
+   `test/session_rollout_reader_test.dart`.
+3. In `bridge/app`, add only dumb exact-row methods
+   `ProjectsDao.upsertProjectRows({required List<ProjectDto> rows})` and
+   `SessionDao.upsertSessionRows({required List<SessionDto> rows})`. The import
+   repository re-reads current rows and decides preservation, stale eligibility,
+   ancestry, tombstones, and every final column value before invoking them.
+   DAOs batch-insert or update the supplied rows exactly; they do not normalize,
+   compare import timestamps, merge display names, allocate ids, inspect
+   tombstones, decide ancestry, or open the publication transaction. Schema v11
+   and migration artifacts remain unchanged.
+4. Add `bridge/app/lib/src/repositories/catalog_import_repository.dart` with
+   constructor `CatalogImportRepository({required BridgePluginApi plugin,
+   required ProjectsDao projectsDao, required SessionDao sessionDao, required
+   CatalogHydrationsDao catalogHydrationsDao})`, `pluginId`,
+   `getHydrationCompletion`, and `importCatalog`. Add
+   `lib/src/repositories/models/catalog_import_control.dart`; the service owns this
+   mutable cooperative control while the repository only reads cancellation,
+   explicit-import, and hydration-marker requests at the documented boundaries.
+5. `CatalogImportRepository.importCatalog` captures `importStartedAt` and emits
+   a `Stream<CatalogImportProgress>`. Native enumeration calls `getProjects`,
+   then root and recursive child methods with cancellation checks between each
+   call. Derived enumeration builds `knownDirectories` from normalized
+   `ProjectsDao.getAllProjects()` paths, the owning project paths and worktree
+   paths from `SessionDao.getSessionProjectPaths(pluginId:)`, and
+   `launchDirectory`, then calls `listAllSessions` once and validates its parent
+   graph. Existing normalized paths and `(pluginId, backendSessionId)` bindings
+   are reused; orphan/cyclic imported descendants are omitted, tombstones are
+   skipped, and missing observations leave durable rows untouched.
+6. The repository alone opens the publication transaction with
+   `sessionDao.attachedDatabase.transaction`; composition guarantees that the
+   project, session, and hydration DAOs are all accessors from that same
+   `AppDatabase`. Inside it, the repository re-reads paths, bindings, and
+   tombstones, allocates collision-checked random ids, orders parents before
+   descendants, invokes both batched DAO writes, and conditionally calls
+   `CatalogHydrationsDao.recordCompletion`. Cancellation is checked immediately
+   before the transaction; once publication begins it runs to commit or rollback.
+7. Add `bridge/app/lib/src/services/catalog_import_service.dart` with
+   constructor `CatalogImportService({required CatalogImportRepository
+   repository})`, `start({required String pluginId, required
+   CatalogImportTrigger trigger})`, `cancel({required String pluginId})`,
+   `latestStatuses`, `progress`, and `dispose`. `start` validates `pluginId`
+   synchronously against `repository.pluginId`, records the operation, launches
+   it without awaiting enumeration, and returns immediately. `cancel` performs
+   the same validation before touching only the in-memory control. A missing id
+   throws `CatalogImportPluginNotSelectedException` before plugin or DAO access.
+8. Duplicate starts for that selected plugin join the one stored future/control.
+   An explicit or headless
+   join sets `explicitImportRequested`, so a completed hydration marker cannot
+   suppress that operation; an automatic join sets `hydrationMarkerRequested`,
+   so the shared operation records the marker even if an explicit trigger won
+   the start race. Automatic-only starts map an existing current-version marker
+   to completed status without enumeration. The service rebroadcasts repository
+   progress, maps thrown failures to one terminal failed status, and owns closing
+   the progress stream after cancelling and awaiting all operations.
+9. Add `StartCatalogImportHandler`, `CancelCatalogImportHandler`, and
+   `GetCatalogImportStatusesHandler` under `bridge/app/lib/src/routing/`. POST
+   and DELETE parse
+   `CatalogImportRequest`, delegate to the service, map the typed non-selected
+   exception to 404, and return `SuccessEmptyResponse`; GET accepts no plugin
+   input and returns only `CatalogImportService.latestStatuses`, so it cannot
+   query an unselected plugin. Register all three in `Orchestrator.create`.
+10. `Orchestrator.create` subscribes to its newly constructed service's
+    `progress`, enqueues `SesoriSseEvent.catalogImportProgress`, stores that
+    subscription in a dedicated `CompositeSubscription`, and passes the owner to
+    `OrchestratorSession`, which cancels it during teardown alongside the prompt
+    subscription. No service, repository, handler, or listener accesses
+    `SSEManager`.
+11. `BridgeRuntime.create` passes the selected plugin and the three already-built
+    database accessors into the Layer-5 `Orchestrator`, which constructs the new
+    repository and service in `Orchestrator.create`. Change that method to return
+    an `OrchestratorComposition` record containing the session and shared import
+    service. `BridgeRuntime` constructs neither layer; it stores the returned
+    service as a runtime-owned field exposed directly to `BridgeRuntimeRunner`
+    and disposes it before closing the database. Add
+    `CatalogImportConsoleListener` under `bridge/app/lib/src/listeners/` with
+    `start`/`dispose`; the runner constructs and starts it only in standalone
+    mode, registers its disposal with `BridgeShutdownCoordinator`, and it renders
+    coarse progress from its one subscription through `Console`.
+12. Add repeatable `--import-plugin <id>` as an args `addMultiOption`, store its
+    ordered values in `BridgeCliOptions.importPluginIds`, and validate every
+    value against the selected descriptor in `RunCommand` before authentication,
+    plugin probing, or startup-mutex acquisition. Repeated equal ids are retained
+    and harmless because `start` joins them. Supervised and standalone modes both
+    honor the trigger; supervised mode omits only Console rendering.
+13. After `BridgeRuntime.create` has installed both SSE and optional Console
+    subscribers, but before starting DebugServer or `OrchestratorSession.run`,
+    the runner calls non-blocking `start(automatic)` for the selected plugin and
+    then `start(headless)` for each ordered CLI value. Automatic-first ordering
+    and the join rules above yield one import and an atomic hydration marker when
+    startup and headless triggers overlap; relay startup is not blocked by
+    backend enumeration.
+14. In `client/module_core`, update the exhaustive shared-event switches in
+    `capabilities/server_connection/models/sse_event.dart`,
+    `services/sse_event_tracker.dart`,
+    `cubits/session_list/session_list_cubit.dart`, and
+    `cubits/session_detail/session_detail_cubit.dart` to classify catalog import
+    progress as a global, non-session event with no Stage 8 UI behavior. Add the
+    focused decoding/classification assertions required by those consumers.
+15. Add repository/service/handler/orchestrator/runner tests for native and
+    derived enumeration, recursive ancestry, complete `knownDirectories`,
+    tombstones, idempotence, stale-write guards, transaction rollback,
+    cancellation boundaries, duplicate/overlapping triggers, version markers,
+    selected-plugin rejection, route responses, SSE, Console lifecycle, and CLI
+    parsing. Add
+    `bridge/app/tool/benchmarks/import_concurrency_benchmark.dart` with catalog
+    read latency, publication duration, scheduling lag, RSS, database size, and
+    Stage-1A fixture metadata. Keep client import APIs/UI and project/root list
+    response paths untouched until Stages 8 and 6 respectively.
+
+Stage 5 workspace and file matrix:
+
+| Workspace | Production changes | Verification |
+|---|---|---|
+| `shared/sesori_shared` | Three new import DTO sources, barrel export, additive `SesoriSseEvent` variant, generated Freezed/JSON parts | DTO/SSE JSON round trips; fatal analysis; full package tests |
+| `bridge/sesori_plugin_codex` | `session_rollout_reader.dart`, new `repositories/codex_catalog_repository.dart`, `codex_plugin_impl.dart` | repository mapping and isolate-responsiveness tests; fatal analysis; full package tests |
+| `bridge/app` | project/session DAOs; canonical-layer import repository/control/service/listener and three handlers; `Orchestrator`, `BridgeRuntime`, runner, CLI options and `bin/bridge.dart`; benchmark | focused import/route/runtime tests; fatal analysis; full app tests and benchmark AOT compile |
+| `client/module_core` | Exhaustive event classification only; no API, repository, cubit state, or UI feature | focused SSE decoding/classification tests; fatal analysis; full module tests; downstream app/desktop analysis |
+| `docs/parallel-plugins` | pointer, Stage 5 plan/findings/risk evidence | plan consistency and `git diff --check` |
+
+Client import APIs/UI, plugin-interface contracts, other plugin implementations,
+database schema/migrations, normal project/root list behavior, and multi-plugin
+runtime activation are explicitly untouched by Stage 5.
+
 ### Stage 6 - Database-Only List Cutover
 
 - Switch project, project detail, root-session, session detail, and child list
@@ -1011,7 +1158,7 @@ release notes must identify that minimum rollback version.
 | Import overwrites a newer event/rename | `projection_updated_at` guard and bridge-owned override fields (3-5) |
 | Partial or destructive import | enumerate before one transaction; never delete absence (5) |
 | Codex scan blocks relay/event isolate | plugin-owned worker isolate and responsiveness test (5) |
-| Long publication blocks reads | bounded set-based transaction and concurrent-read benchmark (5-6) |
+| Long publication blocks reads | bounded chunked transaction and concurrent-read benchmark (5); Stage 6 removes live-list work and owns the remaining publication-read serialization gate |
 | Unknown events discover external roots | binding lookup and proven-parent-only insertion (4) |
 | Out-of-order children grow memory | bounded pending map, drain on binding, warning on eviction (4) |
 | One event stream blocks another | normalize before stream merge; per-plugin ordering tests (4, 7) |
@@ -1027,6 +1174,32 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 5:** The selected plugin now has explicit HTTP/headless import and one
+  automatic projection-v1 hydration. `CatalogImportService` owns one joinable,
+  cancellable operation while `CatalogImportRepository` enumerates outside the
+  database, validates complete ancestry, and publishes exact project/session
+  rows plus the automatic marker in one transaction without deleting absence or
+  overwriting newer projections. Codex catalog enumeration now crosses a
+  plugin-owned worker-isolate repository. Shared progress DTOs/SSE are additive;
+  current clients classify them as global events without adding the Stage 8 UI.
+  On the directional macOS arm64 AOT fixture, first hydration of 10,000 roots
+  published in 132.194 ms with 4.133 ms p99 scheduling lag. The 50,000-root
+  guardrail used 75,317,248 bytes of additional RSS and 35,680,256 database
+  bytes, with 6.429/21.022 ms p99/max scheduling lag. A catalog read while
+  enumeration was blocked completed in 0.982 ms; a read queued on the same
+  connection during the 50,000-row publication waited 660.598 ms, so Stage 6
+  retains ownership of the <=50 ms concurrent-read gate. These local results are
+  directional; Stage 9 still owns the fixed-host matrix. Schema v11 is unchanged.
+- **Stage 4:** Newly created, listed, and event-discovered bindings now receive
+  random Sesori ids while every backend session reference is translated at the
+  plugin boundary. Known events update durable projections through one ordered
+  dispatcher; same-plugin ancestry admits durable children and bounded pending
+  state drains out-of-order roots, descendants, and dependent input in source
+  order. Child, question, permission, activity, and YOLO paths resolve durable
+  bindings, while backend deletion preserves catalog history. Child reads keep
+  one temporary additive discovery path until automatic import and the Stage 6
+  database-only cutover remove released rowless-history compatibility. Stage 4
+  merged as PR #481 at `a0b031af`; schema v11 is unchanged.
 - **Stage 3C:** Root session lists now publish complete observed projections
   transactionally before returning, preserve stable ids for existing backend
   bindings, and reject stale snapshots from overwriting bridge-owned title,

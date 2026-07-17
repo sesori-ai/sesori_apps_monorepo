@@ -8,6 +8,9 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/database/daos/catalog_hydrations_dao.dart";
+import "../api/database/daos/projects_dao.dart";
+import "../api/database/daos/session_dao.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
@@ -18,7 +21,12 @@ import "../listeners/session_deletion_listener.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
+import "../repositories/catalog_import_repository.dart";
+import "../routing/cancel_catalog_import_handler.dart";
+import "../routing/get_catalog_import_statuses_handler.dart";
+import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
+import "../services/catalog_import_service.dart";
 import "api/git_cli_api.dart";
 import "key_exchange.dart";
 import "models/bridge_config.dart";
@@ -88,6 +96,11 @@ import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
 
+typedef OrchestratorComposition = ({
+  OrchestratorSession session,
+  CatalogImportService catalogImportService,
+});
+
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
 class Orchestrator {
@@ -121,6 +134,9 @@ class Orchestrator {
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
+  final ProjectsDao _projectsDao;
+  final SessionDao _sessionDao;
+  final CatalogHydrationsDao _catalogHydrationsDao;
 
   Orchestrator({
     required this.config,
@@ -152,6 +168,9 @@ class Orchestrator {
     required WorktreeService worktreeService,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required BridgeRestartService restartService,
+    required ProjectsDao projectsDao,
+    required SessionDao sessionDao,
+    required CatalogHydrationsDao catalogHydrationsDao,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
     // Standalone has no control channel, so this is null there.
     required ControlStatusNotifier? statusNotifier,
@@ -183,10 +202,13 @@ class Orchestrator {
        _worktreeService = worktreeService,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _restartService = restartService,
-       _statusNotifier = statusNotifier;
+       _statusNotifier = statusNotifier,
+       _projectsDao = projectsDao,
+       _sessionDao = sessionDao,
+       _catalogHydrationsDao = catalogHydrationsDao;
 
   /// Creates a new session with a fresh room key and SSE manager.
-  OrchestratorSession create() {
+  OrchestratorComposition create() {
     final roomKey = _generateRoomKey();
     final bytesSentController = StreamController<int>.broadcast();
     final sseManager = SSEManager(
@@ -195,6 +217,21 @@ class Orchestrator {
       failureReporter: _failureReporter,
     );
     sseManager.setRoomKey(roomKey);
+
+    final catalogImportService = CatalogImportService(
+      repository: CatalogImportRepository(
+        plugin: _plugin,
+        projectsDao: _projectsDao,
+        sessionDao: _sessionDao,
+        catalogHydrationsDao: _catalogHydrationsDao,
+      ),
+    );
+    final catalogImportSubscriptions = CompositeSubscription();
+    catalogImportService.progress
+        .listen((progress) {
+          sseManager.enqueueEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
+        })
+        .addTo(catalogImportSubscriptions);
 
     final sessionPromptService = SessionPromptService(
       sessionRepository: _sessionRepository,
@@ -310,13 +347,16 @@ class Orchestrator {
         GetBaseBranchHandler(projectRepository: _projectRepository),
         SetBaseBranchHandler(projectRepository: _projectRepository),
         FilesystemSuggestionsHandler(filesystemRepository: _filesystemRepository),
+        StartCatalogImportHandler(service: catalogImportService),
+        CancelCatalogImportHandler(service: catalogImportService),
+        GetCatalogImportStatusesHandler(service: catalogImportService),
         GetSessionDiffsHandler(
           sessionDiffService: sessionDiffService,
         ),
       ],
     );
 
-    return OrchestratorSession._(
+    final session = OrchestratorSession._(
       config: config,
       client: _client,
       plugin: _plugin,
@@ -337,6 +377,7 @@ class Orchestrator {
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
       sessionPromptService: sessionPromptService,
       promptDefaultsSubscriptions: promptDefaultsSubscriptions,
+      catalogImportSubscriptions: catalogImportSubscriptions,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
       sessionRepository: _sessionRepository,
@@ -350,6 +391,7 @@ class Orchestrator {
       restartService: _restartService,
       statusNotifier: _statusNotifier,
     );
+    return (session: session, catalogImportService: catalogImportService);
   }
 
   static List<int> _generateRoomKey() {
@@ -394,6 +436,7 @@ class OrchestratorSession {
   final SessionAbortService _sessionAbortService;
   final SessionPromptService _sessionPromptService;
   final CompositeSubscription _promptDefaultsSubscriptions;
+  final CompositeSubscription _catalogImportSubscriptions;
   final ProjectActivityService _projectActivityService;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
@@ -441,6 +484,7 @@ class OrchestratorSession {
     required BridgeEventMapper mapper,
     required SessionPromptService sessionPromptService,
     required CompositeSubscription promptDefaultsSubscriptions,
+    required CompositeSubscription catalogImportSubscriptions,
     required StreamController<int> bytesSentController,
     required FailureReporter failureReporter,
     required SessionRepository sessionRepository,
@@ -472,6 +516,7 @@ class OrchestratorSession {
        _mapper = mapper,
        _sessionPromptService = sessionPromptService,
        _promptDefaultsSubscriptions = promptDefaultsSubscriptions,
+       _catalogImportSubscriptions = catalogImportSubscriptions,
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
@@ -693,6 +738,7 @@ class OrchestratorSession {
       await _subscriptions.cancel();
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
       await _promptDefaultsSubscriptions.cancel();
+      await _catalogImportSubscriptions.cancel();
       await _sessionPromptService.dispose();
       await _pluginEventListener.dispose();
       await _sessionBindingCommitListener.dispose();

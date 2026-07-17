@@ -10,6 +10,7 @@ import "codex_config_reader.dart";
 import "codex_event_mapper.dart";
 import "codex_metadata_repository.dart";
 import "codex_skill_reader.dart";
+import "repositories/codex_catalog_repository.dart";
 import "runtime/codex_managed_api.dart";
 import "session_rollout_reader.dart";
 
@@ -44,6 +45,7 @@ class CodexPlugin implements CodexManagedApi {
   final CodexAppServerClient Function()? _clientFactory;
   final SessionRolloutReader _rolloutReader;
   final CodexConfigReader _configReader;
+  final CodexCatalogRepository _catalogRepository;
   final CodexMetadataRepository _metadataRepository;
   final CodexEventMapper _eventMapper;
   final String _projectCwd;
@@ -122,6 +124,10 @@ class CodexPlugin implements CodexManagedApi {
       clientFactory: clientFactory,
       rolloutReader: resolvedRolloutReader,
       configReader: resolvedConfigReader,
+      catalogRepository: CodexCatalogRepository(
+        rolloutReader: resolvedRolloutReader,
+        launchDirectory: resolvedProjectCwd,
+      ),
       // Shares the plugin's own rollout/config readers so both resolve project
       // metadata from the same codex home.
       metadataRepository:
@@ -152,6 +158,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexAppServerClient Function()? clientFactory,
     required SessionRolloutReader rolloutReader,
     required CodexConfigReader configReader,
+    required CodexCatalogRepository catalogRepository,
     required CodexMetadataRepository metadataRepository,
     required CodexEventMapper eventMapper,
     required String projectCwd,
@@ -164,6 +171,7 @@ class CodexPlugin implements CodexManagedApi {
        _clientFactory = clientFactory,
        _rolloutReader = rolloutReader,
        _configReader = configReader,
+       _catalogRepository = catalogRepository,
        _metadataRepository = metadataRepository,
        _eventMapper = eventMapper,
        _projectCwd = projectCwd,
@@ -250,14 +258,12 @@ class CodexPlugin implements CodexManagedApi {
   void _attachApprovalRegistry(CodexAppServerClient client) {
     final registry = ApprovalRegistry(
       emit: _eventBuffer.add,
-      respond: (id, result) =>
-          client.respondToServerRequest(id: id, result: result),
-      respondError: (id, code, message) =>
-          client.respondToServerRequestWithError(
-            id: id,
-            code: code,
-            message: message,
-          ),
+      respond: (id, result) => client.respondToServerRequest(id: id, result: result),
+      respondError: (id, code, message) => client.respondToServerRequestWithError(
+        id: id,
+        code: code,
+        message: message,
+      ),
     );
     _approvalRegistry = registry;
     registry.attach(client.serverRequests);
@@ -280,9 +286,7 @@ class CodexPlugin implements CodexManagedApi {
     // usage cost). The response is irrelevant — the point is the traffic; a
     // failure (e.g. transport already gone) is swallowed.
     unawaited(
-      client
-          .request(method: "model/list", timeout: _keepaliveInterval)
-          .catchError((Object _) => null),
+      client.request(method: "model/list", timeout: _keepaliveInterval).catchError((Object _) => null),
     );
   }
 
@@ -352,7 +356,7 @@ class CodexPlugin implements CodexManagedApi {
   /// every session globally, so the bridge's directory hints add nothing.
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async =>
-      _rolloutReader.listSessions().map(_toPluginSession).toList(growable: false);
+      _catalogRepository.listAllSessions();
 
   @override
   String get launchDirectory => _projectCwd;
@@ -369,55 +373,16 @@ class CodexPlugin implements CodexManagedApi {
     String projectId, {
     int? start,
     int? limit,
-  }) async {
-    final records = _rolloutReader.listSessions();
-    // Match on the normalized directory (not exact cwd) so the canonical project
-    // id the bridge derives keeps matching a session's own cwd spelling. A
-    // record with no cwd falls back to the launch cwd — the same fallback
-    // [_toPluginSession] uses — so it stays listed under the project it derives
-    // into instead of vanishing from that project's session list.
-    final target = normalizeProjectDirectory(directory: projectId);
-    final filtered = records.where((r) {
-      final cwd = r.cwd ?? _projectCwd;
-      return normalizeProjectDirectory(directory: cwd) == target;
-    });
-    final mapped = filtered.map(_toPluginSession).toList(growable: false);
-    final from = start ?? 0;
-    final until = limit == null
-        ? mapped.length
-        : (from + limit).clamp(0, mapped.length);
-    if (from >= mapped.length) return const [];
-    return mapped.sublist(from, until);
-  }
-
-  PluginSession _toPluginSession(CodexSessionRecord record) {
-    final created = record.createdAt?.millisecondsSinceEpoch;
-    final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
-    // The session belongs to the project for its own cwd — never the launch cwd
-    // — so the bridge groups it under the right directory. Normalized so it
-    // matches the canonical project id the bridge derives from the same value.
-    final directory = normalizeProjectDirectory(directory: record.cwd ?? _projectCwd);
-    return PluginSession(
-      id: record.id,
-      projectID: directory,
-      directory: directory,
-      parentID: null,
-      title: record.threadName,
-      time: created == null || updated == null
-          ? null
-          : PluginSessionTime(
-              created: created,
-              updated: updated,
-              archived: null,
-            ),
-    );
-  }
+  }) async => _catalogRepository.getSessions(
+    projectId: projectId,
+    start: start,
+    limit: limit,
+  );
 
   @override
   Future<List<PluginCommand>> getCommands({
     required String? projectId,
-  }) async =>
-      _metadataRepository.getCommands(projectId: projectId);
+  }) async => _metadataRepository.getCommands(projectId: projectId);
 
   @override
   Future<PluginSession> createSession({
@@ -765,8 +730,7 @@ class CodexPlugin implements CodexManagedApi {
   }
 
   @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async =>
-      Map.unmodifiable(_sessionStatuses);
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => Map.unmodifiable(_sessionStatuses);
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
@@ -783,8 +747,7 @@ class CodexPlugin implements CodexManagedApi {
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    final (:modelID, :providerID) =
-        _metadataRepository.resolveModelDefaults(projectId: projectId);
+    final (:modelID, :providerID) = _metadataRepository.resolveModelDefaults(projectId: projectId);
     return [
       PluginAgent(
         name: "codex",
@@ -820,14 +783,12 @@ class CodexPlugin implements CodexManagedApi {
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
-  }) async =>
-      _approvalRegistry?.pendingForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingForSession(sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingPermission>> getPendingPermissions({
     required String sessionId,
-  }) async =>
-      _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({
@@ -840,9 +801,7 @@ class CodexPlugin implements CodexManagedApi {
     // each session's directory via [_directoryForSession] so a freshly-created
     // session (not yet flushed to its rollout) is still scoped correctly.
     final target = normalizeProjectDirectory(directory: projectId);
-    final sessionIds = _sessionStatuses.keys
-        .where((id) => _directoryForSession(id) == target)
-        .toList(growable: false);
+    final sessionIds = _sessionStatuses.keys.where((id) => _directoryForSession(id) == target).toList(growable: false);
     return registry.pendingForProject(sessionIds);
   }
 
@@ -878,8 +837,7 @@ class CodexPlugin implements CodexManagedApi {
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    final (:modelID, :providerID) =
-        _metadataRepository.resolveModelDefaults(projectId: projectId);
+    final (:modelID, :providerID) = _metadataRepository.resolveModelDefaults(projectId: projectId);
 
     // Prefer codex's live catalog (`model/list`) so the mobile picker shows
     // every model the user can switch to, not just the configured default.

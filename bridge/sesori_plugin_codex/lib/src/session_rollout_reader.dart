@@ -1,5 +1,6 @@
 import "dart:convert";
 import "dart:io";
+import "dart:isolate";
 
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
@@ -112,8 +113,7 @@ class CodexSessionRecord {
 ///   1. `$CODEX_HOME` if set.
 ///   2. `$HOME/.codex` (or `$USERPROFILE\.codex` on Windows).
 class SessionRolloutReader {
-  SessionRolloutReader({Map<String, String>? environment})
-    : _environment = environment ?? Platform.environment;
+  SessionRolloutReader({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
 
   final Map<String, String> _environment;
 
@@ -241,8 +241,7 @@ class SessionRolloutReader {
         final map = decoded.cast<String, dynamic>();
         final type = map["type"];
         if (type == "session_meta") {
-          final payload =
-              (map["payload"] as Map?)?.cast<String, dynamic>() ?? {};
+          final payload = (map["payload"] as Map?)?.cast<String, dynamic>() ?? {};
           final metaId = payload["id"];
           if (metaId is! String || metaId.isEmpty) continue;
           id = metaId;
@@ -320,6 +319,10 @@ class SessionRolloutReader {
     return out;
   }
 
+  /// Enumerates the global session catalog without blocking the caller's
+  /// isolate on filesystem traversal and rollout-header parsing.
+  Future<List<CodexSessionRecord>> listSessionsInIsolate() => Isolate.run(listSessions);
+
   /// Reads `response_item` records out of a rollout and maps each one to a
   /// [PluginMessageWithParts].
   ///
@@ -375,15 +378,14 @@ class SessionRolloutReader {
     String? sessionProvider;
     String? currentModel;
 
-    PluginMessage assistantInfo(String id, PluginMessageTime? time) =>
-        PluginMessage.assistant(
-          id: id,
-          sessionID: sessionId,
-          agent: "codex",
-          modelID: currentModel ?? config.model,
-          providerID: sessionProvider ?? config.modelProvider ?? "openai",
-          time: time,
-        );
+    PluginMessage assistantInfo(String id, PluginMessageTime? time) => PluginMessage.assistant(
+      id: id,
+      sessionID: sessionId,
+      agent: "codex",
+      modelID: currentModel ?? config.model,
+      providerID: sessionProvider ?? config.modelProvider ?? "openai",
+      time: time,
+    );
 
     for (final line in lines) {
       if (line.trim().isEmpty) continue;
@@ -559,10 +561,7 @@ class SessionRolloutReader {
     if (n.contains("patch") || n.contains("edit") || n.contains("write")) {
       return "edit";
     }
-    if (n.contains("exec") ||
-        n.contains("shell") ||
-        n.contains("bash") ||
-        n.contains("command")) {
+    if (n.contains("exec") || n.contains("shell") || n.contains("bash") || n.contains("command")) {
       return "shell";
     }
     return name;
@@ -584,9 +583,7 @@ class SessionRolloutReader {
     } catch (_) {
       // Fall through to the raw arguments.
     }
-    return argumentsJson.length > 120
-        ? argumentsJson.substring(0, 120)
-        : argumentsJson;
+    return argumentsJson.length > 120 ? argumentsJson.substring(0, 120) : argumentsJson;
   }
 
   /// Deletes the rollout file for [sessionId] and drops its entry from

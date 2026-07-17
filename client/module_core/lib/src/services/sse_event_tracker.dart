@@ -103,6 +103,7 @@ class SseEventTracker with Disposable {
             SesoriServerHeartbeat() ||
             SesoriServerInstanceDisposed() ||
             SesoriGlobalDisposed() ||
+            SesoriCatalogImportProgress() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||

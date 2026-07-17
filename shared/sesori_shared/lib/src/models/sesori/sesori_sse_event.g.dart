@@ -40,6 +40,21 @@ Map<String, dynamic> _$SesoriGlobalDisposedToJson(
   SesoriGlobalDisposed instance,
 ) => <String, dynamic>{'type': instance.$type};
 
+SesoriCatalogImportProgress _$SesoriCatalogImportProgressFromJson(Map json) =>
+    SesoriCatalogImportProgress(
+      progress: CatalogImportProgress.fromJson(
+        Map<String, dynamic>.from(json['progress'] as Map),
+      ),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriCatalogImportProgressToJson(
+  SesoriCatalogImportProgress instance,
+) => <String, dynamic>{
+  'progress': instance.progress.toJson(),
+  'type': instance.$type,
+};
+
 SesoriSessionCreated _$SesoriSessionCreatedFromJson(Map json) =>
     SesoriSessionCreated(
       info: Session.fromJson(Map<String, dynamic>.from(json['info'] as Map)),

@@ -22,6 +22,7 @@ import "../../push/push_notification_content_builder.dart";
 import "../../push/push_rate_limiter.dart";
 import "../../push/push_session_state_tracker.dart";
 import "../../server/services/bridge_restart_service.dart";
+import "../../services/catalog_import_service.dart";
 import "../../version.dart";
 import "../api/filesystem_api.dart";
 import "../api/gh_cli_api.dart";
@@ -69,6 +70,7 @@ class BridgeRuntime {
   // projects-summary pipeline on the same instance.
   final SessionRepository _sessionRepository;
   final OrchestratorSession session;
+  final CatalogImportService catalogImportService;
 
   BridgeRuntime({
     required AppDatabase database,
@@ -78,6 +80,7 @@ class BridgeRuntime {
     required SessionViewTracker sessionViewTracker,
     required SessionRepository sessionRepository,
     required this.session,
+    required this.catalogImportService,
   }) : _database = database,
        _failureReporter = failureReporter,
        _restartService = restartService,
@@ -211,6 +214,64 @@ class BridgeRuntime {
       sessionMutationDispatcher: sessionMutationDispatcher,
     );
 
+    final composition = Orchestrator(
+      config: config,
+      client: relayClient,
+      plugin: plugin,
+      pluginId: pluginId,
+      sessionCreationService: sessionCreationService,
+      pushDispatcher: pushDispatcher,
+      completionListener: CompletionPushListener(
+        tracker: pushTracker,
+        completionNotifier: completionNotifier,
+        contentBuilder: pushContentBuilder,
+        dispatcher: pushDispatcher,
+      ),
+      maintenanceListener: MaintenancePushListener(
+        tracker: pushTracker,
+        completionNotifier: completionNotifier,
+        rateLimiter: pushRateLimiter,
+        telemetryBuilder: telemetryBuilder,
+      ),
+      accessTokenProvider: accessTokenProvider,
+      tokenRefresher: tokenRefresher,
+      bridgeRegistrationService: bridgeRegistrationService,
+      failureReporter: failureReporter,
+      prSyncService: PrSyncService(
+        prSource: PrSourceRepository(
+          ghCli: GhCliApi(processRunner: processRunner),
+          gitCli: gitCliApi,
+        ),
+        pullRequestRepository: pullRequestRepository,
+        sessionRepository: sessionRepository,
+        clock: const Clock(),
+      ),
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      sessionUnseenService: sessionUnseenService,
+      sessionViewTracker: sessionViewTracker,
+      filesystemRepository: filesystemRepository,
+      gitCliApi: gitCliApi,
+      projectInitializationService: projectInitializationService,
+      projectActivityService: projectActivityService,
+      healthRepository: healthRepository,
+      providerRepository: providerRepository,
+      agentRepository: agentRepository,
+      permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      questionRepository: QuestionRepository(
+        plugin: plugin,
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+      ),
+      worktreeService: worktreeService,
+      sessionMutationDispatcher: sessionMutationDispatcher,
+      restartService: restartService,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      catalogHydrationsDao: database.catalogHydrationsDao,
+      statusNotifier: statusNotifier,
+    ).create();
+
     return BridgeRuntime(
       database: database,
       failureReporter: failureReporter,
@@ -218,60 +279,8 @@ class BridgeRuntime {
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
       sessionRepository: sessionRepository,
-      session: Orchestrator(
-        config: config,
-        client: relayClient,
-        plugin: plugin,
-        pluginId: pluginId,
-        sessionCreationService: sessionCreationService,
-        pushDispatcher: pushDispatcher,
-        completionListener: CompletionPushListener(
-          tracker: pushTracker,
-          completionNotifier: completionNotifier,
-          contentBuilder: pushContentBuilder,
-          dispatcher: pushDispatcher,
-        ),
-        maintenanceListener: MaintenancePushListener(
-          tracker: pushTracker,
-          completionNotifier: completionNotifier,
-          rateLimiter: pushRateLimiter,
-          telemetryBuilder: telemetryBuilder,
-        ),
-        accessTokenProvider: accessTokenProvider,
-        tokenRefresher: tokenRefresher,
-        bridgeRegistrationService: bridgeRegistrationService,
-        failureReporter: failureReporter,
-        prSyncService: PrSyncService(
-          prSource: PrSourceRepository(
-            ghCli: GhCliApi(processRunner: processRunner),
-            gitCli: gitCliApi,
-          ),
-          pullRequestRepository: pullRequestRepository,
-          sessionRepository: sessionRepository,
-          clock: const Clock(),
-        ),
-        sessionRepository: sessionRepository,
-        projectRepository: projectRepository,
-        sessionUnseenService: sessionUnseenService,
-        sessionViewTracker: sessionViewTracker,
-        filesystemRepository: filesystemRepository,
-        gitCliApi: gitCliApi,
-        projectInitializationService: projectInitializationService,
-        projectActivityService: projectActivityService,
-        healthRepository: healthRepository,
-        providerRepository: providerRepository,
-        agentRepository: agentRepository,
-        permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
-        questionRepository: QuestionRepository(
-          plugin: plugin,
-          sessionDao: database.sessionDao,
-          projectsDao: database.projectsDao,
-        ),
-        worktreeService: worktreeService,
-        sessionMutationDispatcher: sessionMutationDispatcher,
-        restartService: restartService,
-        statusNotifier: statusNotifier,
-      ).create(),
+      session: composition.session,
+      catalogImportService: composition.catalogImportService,
     );
   }
 
@@ -311,6 +320,7 @@ class BridgeRuntime {
     await step(_sessionUnseenService.dispose);
     await step(_sessionViewTracker.dispose);
     await step(_sessionRepository.dispose);
+    await step(catalogImportService.dispose);
     await step(_database.close);
 
     if (firstError != null) {

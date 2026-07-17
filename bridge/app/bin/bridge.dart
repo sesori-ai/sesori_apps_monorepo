@@ -105,6 +105,10 @@ class RunCommand extends cli.Command<void> {
         'plugin',
         help: 'Plugin backend to run. Defaults to "enabledPlugins" in the bridge settings, then opencode',
         allowed: [for (final plugin in knownPlugins) plugin.id],
+      )
+      ..addMultiOption(
+        'import-plugin',
+        help: 'Import the selected plugin catalog after startup. Repeatable.',
       );
     // The selected plugin contributes its own CLI options, namespaced under the
     // plugin id (for OpenCode: --opencode-port, --opencode-host, etc.).
@@ -164,6 +168,13 @@ class RunCommand extends cli.Command<void> {
       usageException(e.message);
     } on PluginConfigException catch (e) {
       usageException(e.message);
+    }
+    for (final importPluginId in options.importPluginIds) {
+      if (importPluginId != _selectedPlugin.id) {
+        usageException(
+          'Cannot import plugin "$importPluginId" because the selected plugin is "${_selectedPlugin.id}".',
+        );
+      }
     }
     Log.level = LogLevel.values.byName(options.logLevelName);
 
