@@ -150,6 +150,24 @@
     }
   },
   "settingsLogout": "Log Out",
+  "settingsSectionAccount": "Account",
+  "settingsNotificationsTitle": "Notifications",
+  "settingsProfileTitle": "Profile",
+  "settingsClose": "Close settings",
+  "settingsVersion": "v{version} ({buildNumber})",
+  "@settingsVersion": {
+    "description": "App version footer at the bottom of the settings screen",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationSectionAi": "AI Notifications",
+  "notificationSectionSystem": "System",
   "notificationCategoryAiInteraction": "AI Interactions",
   "notificationCategoryAiInteractionDescription": "Questions and permission requests from active AI sessions",
   "notificationCategorySessionMessage": "Session Messages",

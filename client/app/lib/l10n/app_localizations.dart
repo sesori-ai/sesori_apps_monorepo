@@ -397,6 +397,48 @@ abstract class AppLocalizations {
   /// **'Log Out'**
   String get settingsLogout;
 
+  /// No description provided for @settingsSectionAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get settingsSectionAccount;
+
+  /// No description provided for @settingsNotificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsNotificationsTitle;
+
+  /// No description provided for @settingsProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get settingsProfileTitle;
+
+  /// No description provided for @settingsClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close settings'**
+  String get settingsClose;
+
+  /// App version footer at the bottom of the settings screen
+  ///
+  /// In en, this message translates to:
+  /// **'v{version} ({buildNumber})'**
+  String settingsVersion(String version, String buildNumber);
+
+  /// No description provided for @notificationSectionAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Notifications'**
+  String get notificationSectionAi;
+
+  /// No description provided for @notificationSectionSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get notificationSectionSystem;
+
   /// No description provided for @notificationCategoryAiInteraction.
   ///
   /// In en, this message translates to:

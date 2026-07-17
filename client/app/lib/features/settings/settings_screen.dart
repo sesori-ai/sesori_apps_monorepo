@@ -1,28 +1,32 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
+import "package:package_info_plus/package_info_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/connection_banner.dart";
+import "widgets/account_row.dart";
+import "widgets/settings_section.dart";
 
+/// Vertical inset between the nav bar and the first settings section.
+const double _contentTopPadding = 10.0;
+
+/// The settings landing screen, presented as a full-screen modal.
+///
+/// Shows the signed-in account (navigating to the profile screen), a
+/// notifications row (navigating to notification preferences), and the app
+/// version footer.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (_) => NotificationPreferencesCubit(getIt<NotificationPreferencesRepository>()),
-        ),
-        BlocProvider(
-          create: (_) => SettingsCubit(authSession: getIt<AuthSession>()),
-        ),
-      ],
+    return BlocProvider(
+      create: (_) => SettingsCubit(authSession: getIt<AuthSession>()),
       child: const _SettingsBody(),
     );
   }
@@ -34,150 +38,89 @@ class _SettingsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final prego = context.prego;
-    final notificationState = context.watch<NotificationPreferencesCubit>().state;
-    final settingsState = context.watch<SettingsCubit>().state;
-    final isLoggingOut = settingsState.logoutStatus == SettingsLogoutStatus.inProgress;
+    final account = context.watch<SettingsCubit>().state.account;
 
-    return BlocListener<SettingsCubit, SettingsState>(
-      // Only react to logout transitions — account updates from the auth
-      // stream also emit new states and must not re-trigger navigation.
-      listenWhen: (prev, curr) => prev.logoutStatus != curr.logoutStatus,
-      listener: (context, settingsState) {
-        switch (settingsState.logoutStatus) {
-          case SettingsLogoutStatus.success:
-            context.goRoute(const AppRoute.splash());
-          case SettingsLogoutStatus.failure:
-            ScaffoldMessenger.of(context)
-              ..clearSnackBars()
-              ..showSnackBar(SnackBar(content: Text(loc.connectErrorUnknown)));
-          case SettingsLogoutStatus.idle:
-          case SettingsLogoutStatus.inProgress:
-            break;
-        }
-      },
-      child: PregoGlassScaffold(
-        title: loc.settingsTitle,
-        banner: ConnectionBanner.maybeFor(context),
-        slivers: [
-          SliverList.list(
-            children: [
-              _AccountTile(account: settingsState.account),
-              ...switch (notificationState) {
-                NotificationPreferencesLoading() => const [
-                  SizedBox(height: 32),
-                  Center(child: CircularProgressIndicator()),
+    return PregoGlassScaffold(
+      title: loc.settingsTitle,
+      banner: ConnectionBanner.maybeFor(context),
+      automaticallyImplyLeading: false,
+      actions: [
+        PregoButtonsIconGlass(
+          icon: TablerRegular.x,
+          semanticLabel: loc.settingsClose,
+          onPressed: () => context.pop(),
+        ),
+      ],
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: PregoSpacing.xl,
+              vertical: _contentTopPadding,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (account != null) ...[
+                  SettingsSection(
+                    title: loc.settingsSectionAccount,
+                    child: PregoGroupedRows(
+                      children: [
+                        AccountRow(
+                          account: account,
+                          onTap: () => context.pushRoute(const AppRoute.settingsProfile()),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: PregoSpacing.xl),
                 ],
-                NotificationPreferencesLoaded(:final preferences) => [
-                  SwitchListTile(
-                    title: Text(loc.notificationCategoryAiInteraction),
-                    subtitle: Text(loc.notificationCategoryAiInteractionDescription),
-                    value: preferences[NotificationCategory.aiInteraction] ?? true,
-                    onChanged: (enabled) {
-                      context.read<NotificationPreferencesCubit>().toggle(
-                        NotificationCategory.aiInteraction,
-                        enabled: enabled,
-                      );
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(loc.notificationCategorySessionMessage),
-                    subtitle: Text(loc.notificationCategorySessionMessageDescription),
-                    value: preferences[NotificationCategory.sessionMessage] ?? true,
-                    onChanged: (enabled) {
-                      context.read<NotificationPreferencesCubit>().toggle(
-                        NotificationCategory.sessionMessage,
-                        enabled: enabled,
-                      );
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(loc.notificationCategoryConnectionStatus),
-                    subtitle: Text(loc.notificationCategoryConnectionStatusDescription),
-                    value: preferences[NotificationCategory.connectionStatus] ?? true,
-                    onChanged: (enabled) {
-                      context.read<NotificationPreferencesCubit>().toggle(
-                        NotificationCategory.connectionStatus,
-                        enabled: enabled,
-                      );
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(loc.notificationCategorySystemUpdate),
-                    subtitle: Text(loc.notificationCategorySystemUpdateDescription),
-                    value: preferences[NotificationCategory.systemUpdate] ?? true,
-                    onChanged: (enabled) {
-                      context.read<NotificationPreferencesCubit>().toggle(
-                        NotificationCategory.systemUpdate,
-                        enabled: enabled,
-                      );
-                    },
-                  ),
-                ],
-              },
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.logout),
-                title: Text(loc.settingsLogout),
-                textColor: prego.colors.fgErrorPrimary,
-                iconColor: prego.colors.fgErrorPrimary,
-                trailing: isLoggingOut
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : null,
-                onTap: isLoggingOut ? null : () => context.read<SettingsCubit>().logout(),
-              ),
-            ],
+                PregoGroupedRows(
+                  children: [
+                    PregoGroupedRow(
+                      icon: TablerRegular.bell,
+                      title: Text(loc.settingsNotificationsTitle),
+                      trailing: const Icon(TablerRegular.chevron_right),
+                      onTap: () => context.pushRoute(const AppRoute.settingsNotifications()),
+                      isLast: true,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: PregoSpacing.xl),
+                const _VersionFooter(),
+              ],
+            ),
           ),
-          SliverToBoxAdapter(
-            child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
-          ),
-        ],
-      ),
+        ),
+        SliverToBoxAdapter(
+          child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
+        ),
+      ],
     );
   }
 }
 
-/// Header tile showing which account this device is signed in as — the same
-/// account surfaced during onboarding (see `_AccountLine`).
-///
-/// The [account] is sourced from [SettingsCubit] state (which subscribes to
-/// the auth stream), so it stays in sync as the session resolves on launch.
-/// Renders nothing when there is no account, so the trailing [Divider] never
-/// hangs above an empty tile.
-class _AccountTile extends StatelessWidget {
-  const _AccountTile({required this.account});
+/// Centred "v1.2.3 (456)" footer sourced from the platform package info.
+class _VersionFooter extends StatelessWidget {
+  const _VersionFooter();
 
-  final AuthUser? account;
+  static final Future<PackageInfo> _packageInfo = PackageInfo.fromPlatform();
 
   @override
   Widget build(BuildContext context) {
-    final user = account;
-    if (user == null) return const SizedBox.shrink();
+    final prego = context.prego;
 
-    final loc = context.loc;
-    final providerLabel = loc.settingsAccountSignedInWith(user.provider.label);
-    final username = user.providerUsername;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ListTile(
-          leading: const Icon(Icons.account_circle_outlined),
-          title: Text(switch (username) {
-            final String name when name.isNotEmpty => name,
-            _ => providerLabel,
-          }),
-          subtitle: switch (username) {
-            final String name when name.isNotEmpty => Text(providerLabel),
-            _ => null,
-          },
-        ),
-        const Divider(),
-      ],
+    return FutureBuilder<PackageInfo>(
+      future: _packageInfo,
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        if (info == null) return const SizedBox.shrink();
+        return Text(
+          context.loc.settingsVersion(info.version, info.buildNumber),
+          textAlign: TextAlign.center,
+          style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+        );
+      },
     );
   }
 }

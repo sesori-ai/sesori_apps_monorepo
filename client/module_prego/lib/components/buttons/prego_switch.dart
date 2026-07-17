@@ -5,32 +5,36 @@ import "../../utils/lerp_utils.dart";
 
 /// Track width for the toggle.
 ///
-/// Figma specifies 50px track width (28px height × 50/28 aspect ratio).
-const double _trackWidth = 50.0;
+/// Figma `Toggle - Switch` specifies a 64px track width.
+const double _trackWidth = 64.0;
 
 /// Track height for the toggle.
 ///
 /// Figma specifies 28px track height.
 const double _trackHeight = 28.0;
 
-/// Thumb diameter.
+/// Knob width.
 ///
-/// Figma specifies 24px thumb in the 28px toggle (28 - 2*2 inset).
-const double _thumbSize = 24.0;
+/// Figma specifies a wide 39×24 pill knob inside the 64×28 track.
+const double _knobWidth = 39.0;
 
-/// Inset between thumb edge and track edge.
+/// Knob height.
+const double _knobHeight = 24.0;
+
+/// Inset between knob edge and track edge.
 ///
-/// Figma specifies 2px padding between thumb and track.
+/// Figma specifies 2px padding between knob and track.
 /// 2px = PregoSpacing.xxs (2px).
-const double _thumbInset = PregoSpacing.xxs;
+const double _knobInset = PregoSpacing.xxs;
 
 /// Duration for the toggle animation.
 const Duration _animationDuration = Duration(milliseconds: 200);
 
-/// A toggle switch matching the Figma `pregoSwitch` component.
+/// A toggle switch matching the Figma `Toggle - Switch` component.
 ///
-/// Renders a pill-shaped track with a circular thumb that slides between
-/// the off (start) and on (end) positions with a smooth animation.
+/// Renders a pill-shaped track with a wide pill knob that slides between
+/// the off (start) and on (end) positions with a smooth animation. The track
+/// fills with the brand colour when on and a subtle alpha tint when off.
 ///
 /// The switch is disabled when [onChanged] is `null`, following the Prego
 /// convention of deriving disabled state from callback nullability.
@@ -114,9 +118,8 @@ class _PregoSwitchState extends State<PregoSwitch> with SingleTickerProviderStat
     final isDisabled = widget._isDisabled;
 
     final trackColorOn = isDisabled ? colors.bgDisabled : colors.bgBrandSolid;
-    final trackColorOff = isDisabled ? colors.bgDisabled : colors.bgQuaternary;
-    final thumbColor = isDisabled ? colors.toggleButtonFgDisabled : colors.fgWhite;
-    final borderColor = colors.toggleBorder;
+    final trackColorOff = isDisabled ? colors.bgDisabled : colors.alphaBlack10;
+    final knobColor = isDisabled ? colors.toggleButtonFgDisabled : colors.fgWhite;
 
     return Semantics(
       toggled: widget.value,
@@ -131,8 +134,8 @@ class _PregoSwitchState extends State<PregoSwitch> with SingleTickerProviderStat
             final animationValue = _curvedAnimation.value;
             final trackColor = lerpColorNonNull(trackColorOff, trackColorOn, animationValue);
 
-            // Thumb slides from _thumbInset to (_trackWidth - _thumbSize - _thumbInset).
-            final thumbOffset = _thumbInset + animationValue * (_trackWidth - _thumbSize - _thumbInset * 2);
+            // Knob slides from _knobInset to (_trackWidth - _knobWidth - _knobInset).
+            final knobOffset = _knobInset + animationValue * (_trackWidth - _knobWidth - _knobInset * 2);
 
             return SizedBox(
               width: _trackWidth,
@@ -141,15 +144,14 @@ class _PregoSwitchState extends State<PregoSwitch> with SingleTickerProviderStat
                 decoration: BoxDecoration(
                   color: trackColor,
                   borderRadius: BorderRadius.circular(PregoRadius.full),
-                  border: Border.all(color: borderColor, width: 1),
                 ),
                 child: Stack(
                   children: [
-                    if (child case final thumbWidget?)
+                    if (child case final knobWidget?)
                       PositionedDirectional(
-                        start: thumbOffset,
-                        top: _thumbInset,
-                        child: thumbWidget,
+                        start: knobOffset,
+                        top: _knobInset,
+                        child: knobWidget,
                       ),
                   ],
                 ),
@@ -158,17 +160,10 @@ class _PregoSwitchState extends State<PregoSwitch> with SingleTickerProviderStat
           },
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: thumbColor,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: colors.shadowXs,
-                  offset: const Offset(0, 1),
-                  blurRadius: 2,
-                ),
-              ],
+              color: knobColor,
+              borderRadius: BorderRadius.circular(PregoRadius.full),
             ),
-            child: const SizedBox.square(dimension: _thumbSize),
+            child: const SizedBox(width: _knobWidth, height: _knobHeight),
           ),
         ),
       ),
