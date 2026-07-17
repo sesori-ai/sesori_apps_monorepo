@@ -22,6 +22,10 @@ import "models/openapi/tool_state_running.g.dart";
 class MessagePartMapper {
   const MessagePartMapper();
 
+  // OpenCode omits the original text from manual compaction parts, so restore
+  // the built-in command that produced the part for display in clients.
+  static const String _manualCompactionCommandText = "/compact";
+
   /// Maps a generated [Part] union to the plugin-facing [PluginMessagePart].
   ///
   /// Dispatches on the sealed [Part] variants — the generated discriminator
@@ -65,7 +69,7 @@ class MessagePartMapper {
       raw.sessionID,
       raw.messageID,
       auto ? PluginMessagePartType.compaction : PluginMessagePartType.text,
-      text: auto ? null : "/compact",
+      text: auto ? null : _manualCompactionCommandText,
     ),
     StepStartPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.stepStart),
     StepFinishPart() => _part(raw.id, raw.sessionID, raw.messageID, PluginMessagePartType.stepFinish),
