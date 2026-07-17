@@ -18,6 +18,7 @@ void main() {
     test("declares the OpenCode CLI options with bare names", () {
       expect(descriptor.id, equals("opencode"));
       expect(descriptor.displayName, equals("OpenCode"));
+      expect(descriptor.stateStorage, PluginStateStorage.legacySharedRuntime);
       expect(
         descriptor.options.map((o) => o.name).toList(),
         equals(<String>["port", "host", "no-auto-start", "password", "no-password", "bin"]),
