@@ -6,25 +6,34 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
+import "../../repositories/plugin_repository.dart";
 import "../../services/new_session_selection_tracker.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
+  final PluginRepository _pluginRepository;
   final NewSessionSelectionTracker _selectionTracker;
   final String _projectId;
+  int _loadGeneration = 0;
+
   static const _defaultModelSelector = DefaultModelSelector();
 
   NewSessionCubit({
     required SessionService sessionService,
+    required PluginRepository pluginRepository,
     required NewSessionSelectionTracker selectionTracker,
     required String projectId,
   }) : _sessionService = sessionService,
+       _pluginRepository = pluginRepository,
        _selectionTracker = selectionTracker,
        _projectId = projectId,
        super(
          const NewSessionState.idle(
+           availablePlugins: [],
+           selectedPlugin: null,
+           isComposerDataLoading: true,
            availableAgents: [],
            availableProviders: [],
            availableCommands: [],
@@ -34,112 +43,202 @@ class NewSessionCubit extends Cubit<NewSessionState> {
            availableVariants: [],
          ),
        ) {
-    _loadComposerData();
+    _initialize();
   }
 
-  Future<void> _loadComposerData() async {
+  Future<void> _initialize() async {
+    final generation = ++_loadGeneration;
     try {
-      final (
-        ApiResponse<Agents> agentsResponse,
-        ApiResponse<ProviderListResponse> providersResponse,
-        ApiResponse<CommandListResponse> commandsResponse,
-      ) = await wait3(
-        // COMPATIBILITY 2026-07-13 (v1.5.0): Project-only composer routes lack plugin identity and historically target OpenCode. Pass selected plugin identity once the composer owns it.
-        _sessionService.listAgents(projectId: _projectId, pluginId: legacyMissingPluginId),
-        _sessionService.listProviders(projectId: _projectId, pluginId: legacyMissingPluginId),
-        _sessionService.listCommands(projectId: _projectId, pluginId: legacyMissingPluginId),
-      );
+      final response = await _pluginRepository.listPlugins();
+      if (!_canApplyLoad(generation: generation, pluginId: null)) return;
 
-      if (isClosed) return;
+      switch (response) {
+        case SuccessResponse(:final data):
+          final plugins = data.plugins;
+          final selectedPlugin = plugins.where((plugin) => plugin.isDefault).singleOrNull;
+          final canLoad = selectedPlugin?.isRoutable ?? false;
+          emit(
+            NewSessionState.idle(
+              availablePlugins: plugins,
+              selectedPlugin: selectedPlugin,
+              isComposerDataLoading: canLoad,
+              availableAgents: const [],
+              availableProviders: const [],
+              availableCommands: const [],
+              selectedAgent: null,
+              selectedAgentModel: null,
+              stagedCommand: null,
+              availableVariants: const [],
+            ),
+          );
+          if (selectedPlugin != null && canLoad) {
+            await _loadComposerData(pluginId: selectedPlugin.id, generation: generation);
+          }
+        case ErrorResponse(:final error):
+          _emitDiscoveryError(reason: error.remoteFailureReason);
+      }
+    } on Object catch (error, stackTrace) {
+      if (!_canApplyLoad(generation: generation, pluginId: null)) return;
+      loge("New session: failed to discover plugins", error, stackTrace);
+      _emitDiscoveryError(reason: RemoteFailureReason.unknown);
+    }
+  }
 
-      _logComposerDataError(resource: "agents", response: agentsResponse);
-      _logComposerDataError(resource: "providers", response: providersResponse);
-      _logComposerDataError(resource: "commands", response: commandsResponse);
+  void _emitDiscoveryError({required RemoteFailureReason reason}) {
+    if (isClosed) return;
+    emit(
+      NewSessionState.error(
+        reason: reason,
+        availablePlugins: const [],
+        selectedPlugin: null,
+        isComposerDataLoading: false,
+        availableAgents: const [],
+        availableProviders: const [],
+        availableCommands: const [],
+        selectedAgent: null,
+        selectedAgentModel: null,
+        stagedCommand: null,
+        availableVariants: const [],
+      ),
+    );
+  }
 
-      final agents = switch (agentsResponse) {
-        SuccessResponse(:final data) => data.agents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
+  void selectPlugin({required String pluginId}) {
+    final current = state;
+    if (current is NewSessionSending || current is NewSessionCreated) return;
+    final data = current.agentModelData;
+    if (data == null || data.plugin?.id == pluginId) return;
+
+    final selectedPlugin = data.plugins.firstWhereOrNull((plugin) => plugin.id == pluginId);
+    if (selectedPlugin == null || !selectedPlugin.isRoutable) return;
+
+    final generation = ++_loadGeneration;
+    emit(
+      NewSessionState.idle(
+        availablePlugins: data.plugins,
+        selectedPlugin: selectedPlugin,
+        isComposerDataLoading: true,
+        availableAgents: const [],
+        availableProviders: const [],
+        availableCommands: const [],
+        selectedAgent: null,
+        selectedAgentModel: null,
+        stagedCommand: null,
+        availableVariants: const [],
+      ),
+    );
+    _loadComposerData(pluginId: pluginId, generation: generation);
+  }
+
+  Future<void> _loadComposerData({required String pluginId, required int generation}) async {
+    final (agents, providers, commands) = await (
+      _loadAgents(pluginId: pluginId),
+      _loadProviders(pluginId: pluginId),
+      _loadCommands(pluginId: pluginId),
+    ).wait;
+
+    if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
+
+    final defaultAgent = agents.firstOrNull?.name;
+    final agentModel = agents.firstOrNull?.model;
+    final AgentModel? defaultAgentModel;
+    if (agentModel != null) {
+      defaultAgentModel = agentModel;
+    } else {
+      AgentModel? pickedModel;
+      for (final provider in providers) {
+        final picked = _defaultModelSelector.pickFromProvider(models: provider.models);
+        if (picked != null) {
+          pickedModel = AgentModel(providerID: provider.id, modelID: picked.id, variant: null);
+          break;
+        }
+      }
+      defaultAgentModel = pickedModel;
+    }
+
+    final (:selectedAgent, :selectedAgentModel) = _resolveInitialSelection(
+      pluginId: pluginId,
+      defaultAgent: defaultAgent,
+      defaultAgentModel: defaultAgentModel,
+      agents: agents,
+      providers: providers,
+    );
+
+    _emitAgentModelUpdate(
+      availableAgents: agents,
+      availableProviders: providers,
+      availableCommands: commands,
+      selectedAgent: selectedAgent,
+      selectedAgentModel: selectedAgentModel,
+      isComposerDataLoading: false,
+    );
+  }
+
+  Future<List<AgentInfo>> _loadAgents({required String pluginId}) async {
+    try {
+      final response = await _sessionService.listAgents(projectId: _projectId, pluginId: pluginId);
+      _logComposerDataError(resource: "agents", pluginId: pluginId, response: response);
+      return switch (response) {
+        SuccessResponse(:final data) =>
+          data.agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList(),
         ErrorResponse() => <AgentInfo>[],
       };
+    } on Object catch (error, stackTrace) {
+      loge("New session: failed to load agents for project $_projectId and plugin $pluginId", error, stackTrace);
+      return <AgentInfo>[];
+    }
+  }
 
-      final providers = switch (providersResponse) {
+  Future<List<ProviderInfo>> _loadProviders({required String pluginId}) async {
+    try {
+      final response = await _sessionService.listProviders(projectId: _projectId, pluginId: pluginId);
+      _logComposerDataError(resource: "providers", pluginId: pluginId, response: response);
+      return switch (response) {
         SuccessResponse(:final data) => data.items,
         ErrorResponse() => <ProviderInfo>[],
       };
-      final commands = switch (commandsResponse) {
+    } on Object catch (error, stackTrace) {
+      loge("New session: failed to load providers for project $_projectId and plugin $pluginId", error, stackTrace);
+      return <ProviderInfo>[];
+    }
+  }
+
+  Future<List<CommandInfo>> _loadCommands({required String pluginId}) async {
+    try {
+      final response = await _sessionService.listCommands(projectId: _projectId, pluginId: pluginId);
+      _logComposerDataError(resource: "commands", pluginId: pluginId, response: response);
+      return switch (response) {
         SuccessResponse(:final data) => data.items,
         ErrorResponse() => <CommandInfo>[],
       };
-
-      final defaultAgent = agents.isNotEmpty ? agents.first.name : "build";
-      final agentModel = agents.isNotEmpty ? agents.first.model : null;
-      final AgentModel? defaultAgentModel;
-      if (agentModel != null) {
-        defaultAgentModel = agentModel;
-      } else if (providers.isNotEmpty) {
-        // Walk the provider list and use the first one that has at least
-        // one available model. Previously we only looked at `providers.first`,
-        // which silently produced `null` when the first provider happened
-        // to be misconfigured or fully deprecated.
-        AgentModel? pickedModel;
-        for (final provider in providers) {
-          final picked = _defaultModelSelector.pickFromProvider(
-            models: provider.models,
-          );
-          if (picked != null) {
-            pickedModel = AgentModel(
-              providerID: provider.id,
-              modelID: picked.id,
-              variant: null,
-            );
-            break;
-          }
-        }
-        defaultAgentModel = pickedModel;
-      } else {
-        defaultAgentModel = null;
-      }
-
-      // Restore a previously chosen (non-default) agent / model / variant so a
-      // deliberate selection survives leaving and returning to the new-session
-      // screen (where this cubit is recreated). Validate every part against the
-      // freshly loaded data so a now-unavailable choice falls back to default.
-      final (:selectedAgent, :selectedAgentModel) = _resolveInitialSelection(
-        defaultAgent: defaultAgent,
-        defaultAgentModel: defaultAgentModel,
-        agents: agents,
-        providers: providers,
-      );
-
-      _emitAgentModelUpdate(
-        availableAgents: agents,
-        availableProviders: providers,
-        availableCommands: commands,
-        selectedAgent: selectedAgent,
-        selectedAgentModel: selectedAgentModel,
-      );
-    } catch (e, stackTrace) {
-      loge("New session: failed to load composer data for project $_projectId", e, stackTrace);
-      return;
+    } on Object catch (error, stackTrace) {
+      loge("New session: failed to load commands for project $_projectId and plugin $pluginId", error, stackTrace);
+      return <CommandInfo>[];
     }
   }
 
-  /// The composer degrades gracefully on partial failures (empty pickers),
-  /// which previously made these errors invisible. Log them so missing
-  /// agent/model pickers can be traced back to the failing request.
-  void _logComposerDataError<T>({required String resource, required ApiResponse<T> response}) {
+  bool _canApplyLoad({required int generation, required String? pluginId}) {
+    if (isClosed || generation != _loadGeneration) return false;
+    return pluginId == null || state.agentModelData?.plugin?.id == pluginId;
+  }
+
+  void _logComposerDataError<T>({
+    required String resource,
+    required String pluginId,
+    required ApiResponse<T> response,
+  }) {
     if (response case ErrorResponse(:final error)) {
-      loge("New session: failed to load $resource for project $_projectId", error);
+      loge("New session: failed to load $resource for project $_projectId and plugin $pluginId", error);
     }
   }
 
-  /// Applies agent/model field updates to the current state.
-  /// No-op when the cubit is closed or in `created`.
   void _emitAgentModelUpdate({
     required List<AgentInfo>? availableAgents,
     required List<ProviderInfo>? availableProviders,
     required List<CommandInfo>? availableCommands,
     required String? selectedAgent,
     required AgentModel? selectedAgentModel,
+    required bool? isComposerDataLoading,
   }) {
     if (isClosed) return;
     final current = state;
@@ -159,6 +258,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             availableVariants: derivedVariants,
+            isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
           ),
         );
       case NewSessionSending():
@@ -170,6 +270,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             availableVariants: derivedVariants,
+            isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
           ),
         );
       case NewSessionError():
@@ -181,6 +282,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
             availableVariants: derivedVariants,
+            isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
           ),
         );
       case NewSessionCreated():
@@ -194,38 +296,38 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }) {
     final providerID = model?.providerID;
     final modelID = model?.modelID;
-    final provider = providerID != null ? providers.firstWhereOrNull((p) => p.id == providerID) : null;
-    final m = provider?.models[modelID];
-    return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
+    final provider = providerID != null ? providers.firstWhereOrNull((item) => item.id == providerID) : null;
+    final providerModel = provider?.models[modelID];
+    return providerModel?.variants
+            .where((variant) => variant != "none")
+            .map((variant) => SessionVariant(id: variant))
+            .toList() ??
+        [];
   }
 
-  /// Picks the agent / model / variant to start with: a previously persisted
-  /// user selection (validated against the current [agents]/[providers]) when
-  /// present and still available, otherwise the supplied defaults. Parts that
-  /// are no longer available degrade independently to their default.
   ({String? selectedAgent, AgentModel? selectedAgentModel}) _resolveInitialSelection({
+    required String pluginId,
     required String? defaultAgent,
     required AgentModel? defaultAgentModel,
     required List<AgentInfo> agents,
     required List<ProviderInfo> providers,
   }) {
-    final saved = _selectionTracker.read(projectId: _projectId);
+    final saved = _selectionTracker.read(projectId: _projectId, pluginId: pluginId);
     if (saved == null) {
       return (selectedAgent: defaultAgent, selectedAgentModel: defaultAgentModel);
     }
 
     final savedAgent = saved.agent;
-    final selectedAgent = (savedAgent != null && agents.any((a) => a.name == savedAgent))
+    final selectedAgent = savedAgent != null && agents.any((agent) => agent.name == savedAgent)
         ? savedAgent
         : defaultAgent;
 
     final savedModel = saved.agentModel;
     AgentModel? selectedAgentModel = defaultAgentModel;
     if (savedModel != null && _modelIsAvailable(providers: providers, model: savedModel)) {
-      // Drop a saved variant the model no longer offers.
       final availableVariants = _deriveAvailableVariants(providers: providers, model: savedModel);
       final variant = savedModel.variant;
-      final validVariant = (variant != null && availableVariants.any((v) => v.id == variant)) ? variant : null;
+      final validVariant = variant != null && availableVariants.any((item) => item.id == variant) ? variant : null;
       selectedAgentModel = savedModel.copyWith(variant: validVariant);
     }
 
@@ -233,51 +335,52 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }
 
   bool _modelIsAvailable({required List<ProviderInfo> providers, required AgentModel model}) {
-    final m = providers.firstWhereOrNull((p) => p.id == model.providerID)?.models[model.modelID];
-    // Mirror the picker / DefaultModelSelector, which both filter on
-    // `isAvailable`: a deprecated model lingers in the provider map with
-    // `isAvailable: false`, so restoring it would show a selection absent from
-    // the picker. Fall back to the default instead.
-    return m != null && m.isAvailable;
+    final providerModel = providers.firstWhereOrNull((item) => item.id == model.providerID)?.models[model.modelID];
+    return providerModel != null && providerModel.isAvailable;
   }
 
-  /// Persists the current agent / model / variant selection so it survives a
-  /// round-trip away from the new-session screen. Called after every explicit
-  /// user change (never for the auto-computed default), so a stale entry can
-  /// never shadow a future default.
+  bool get _canEditComposer {
+    final data = state.agentModelData;
+    return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
+  }
+
   void _persistSelection() {
     final data = state.agentModelData;
-    if (data == null) return;
-    _selectionTracker.write(projectId: _projectId, agent: data.agent, agentModel: data.agentModel);
+    final pluginId = data?.plugin?.id;
+    if (data == null || pluginId == null || data.isLoading) return;
+    _selectionTracker.write(
+      projectId: _projectId,
+      pluginId: pluginId,
+      agent: data.agent,
+      agentModel: data.agentModel,
+    );
   }
 
   void selectAgent(String agent) {
+    if (!_canEditComposer) return;
     final current = state;
     final agentInfo = switch (current) {
-      NewSessionIdle() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
-      NewSessionSending() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
-      NewSessionError() => current.availableAgents.firstWhereOrNull((a) => a.name == agent),
-      NewSessionCreated() => null,
+      NewSessionIdle() => current.availableAgents.firstWhereOrNull((item) => item.name == agent),
+      NewSessionError() => current.availableAgents.firstWhereOrNull((item) => item.name == agent),
+      NewSessionSending() || NewSessionCreated() => null,
     };
-    final agentModel = agentInfo?.model;
+    if (agentInfo == null) return;
     _emitAgentModelUpdate(
       selectedAgent: agent,
-      selectedAgentModel: agentModel,
-      availableAgents: null, // no change
-      availableCommands: null, // no change
-      availableProviders: null, // no change
+      selectedAgentModel: agentInfo.model,
+      availableAgents: null,
+      availableCommands: null,
+      availableProviders: null,
+      isComposerDataLoading: null,
     );
     _persistSelection();
   }
 
   void selectVariant(SessionVariant? variant) {
+    if (!_canEditComposer) return;
     final current = state;
     switch (current) {
       case NewSessionIdle():
-        final agentModel = current.selectedAgentModel;
-        if (agentModel == null) return;
-        emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
-      case NewSessionSending():
         final agentModel = current.selectedAgentModel;
         if (agentModel == null) return;
         emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
@@ -285,41 +388,40 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         final agentModel = current.selectedAgentModel;
         if (agentModel == null) return;
         emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
-      case NewSessionCreated():
+      case NewSessionSending() || NewSessionCreated():
         return;
     }
     _persistSelection();
   }
 
   void stageCommand(CommandInfo command) {
+    if (!_canEditComposer) return;
     final current = state;
     switch (current) {
       case NewSessionIdle():
         emit(current.copyWith(stagedCommand: command));
-      case NewSessionSending():
-        emit(current.copyWith(stagedCommand: command));
       case NewSessionError():
         emit(current.copyWith(stagedCommand: command));
-      case NewSessionCreated():
+      case NewSessionSending() || NewSessionCreated():
         break;
     }
   }
 
   void clearStagedCommand() {
+    if (!_canEditComposer) return;
     final current = state;
     switch (current) {
       case NewSessionIdle():
         emit(current.copyWith(stagedCommand: null));
-      case NewSessionSending():
-        emit(current.copyWith(stagedCommand: null));
       case NewSessionError():
         emit(current.copyWith(stagedCommand: null));
-      case NewSessionCreated():
+      case NewSessionSending() || NewSessionCreated():
         break;
     }
   }
 
   void selectModel({required String providerID, required String modelID}) {
+    if (!_canEditComposer) return;
     final current = state.agentModelData;
     if (current == null) return;
 
@@ -327,33 +429,25 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       providers: current.providers,
       model: AgentModel(providerID: providerID, modelID: modelID, variant: null),
     );
-
     final agentModel = _resolveAgentModel(
       agents: current.agents,
       providerID: providerID,
       modelID: modelID,
     );
-
     final previousVariant = current.agentModel?.variant;
-    final String? variant;
-    if (previousVariant != null && availableVariants.any((v) => v.id == previousVariant)) {
-      variant = previousVariant;
-    } else {
-      variant = agentModel?.variant;
-    }
+    final variant = previousVariant != null && availableVariants.any((item) => item.id == previousVariant)
+        ? previousVariant
+        : agentModel?.variant;
 
     _emitAgentModelUpdate(
       selectedAgentModel:
           agentModel?.copyWith(variant: variant) ??
-          AgentModel(
-            providerID: providerID,
-            modelID: modelID,
-            variant: variant,
-          ),
-      selectedAgent: null, // no change
-      availableAgents: null, // no change
-      availableCommands: null, // no change
-      availableProviders: null, // no change
+          AgentModel(providerID: providerID, modelID: modelID, variant: variant),
+      selectedAgent: null,
+      availableAgents: null,
+      availableCommands: null,
+      availableProviders: null,
+      isComposerDataLoading: null,
     );
     _persistSelection();
   }
@@ -364,14 +458,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String modelID,
   }) {
     final agent = agents.firstWhereOrNull(
-      (a) => a.model?.providerID == providerID && a.model?.modelID == modelID,
+      (item) => item.model?.providerID == providerID && item.model?.modelID == modelID,
     );
-    return agent?.model ??
-        AgentModel(
-          providerID: providerID,
-          modelID: modelID,
-          variant: null,
-        );
+    return agent?.model ?? AgentModel(providerID: providerID, modelID: modelID, variant: null);
   }
 
   Future<void> createSession({
@@ -379,81 +468,73 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required bool dedicatedWorktree,
     required String? command,
   }) async {
-    if (state is NewSessionSending) return;
+    final current = state;
+    if (current is NewSessionSending || current is NewSessionCreated) return;
+    final config = current.agentModelData;
+    final selectedPlugin = config?.plugin;
+    if (config == null || config.isLoading || selectedPlugin == null || !selectedPlugin.isRoutable) return;
 
     final normalizedCommand = command?.trim();
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
     final trimmed = text.trim();
     if (trimmed.isEmpty && !hasCommand) return;
 
-    final config = state.agentModelData;
-    final variantId = config?.agentModel?.variant;
-    // Snapshot the selection this request is sending with, so a late success
-    // clears only its own snapshot (see below) and never a newer selection a
-    // reopened composer wrote for the same project in the meantime.
-    final selectionAtSend = _selectionTracker.read(projectId: _projectId);
-
+    final pluginId = selectedPlugin.id;
+    final selectionAtSend = _selectionTracker.read(projectId: _projectId, pluginId: pluginId);
     emit(
       NewSessionState.sending(
-        availableAgents: config?.agents ?? const [],
-        availableProviders: config?.providers ?? const [],
-        availableCommands: config?.commands ?? const [],
-        selectedAgent: config?.agent,
-        selectedAgentModel: config?.agentModel,
-        stagedCommand: config?.stagedCommand,
-        availableVariants: config?.availableVariants ?? const [],
+        availablePlugins: config.plugins,
+        selectedPlugin: selectedPlugin,
+        isComposerDataLoading: false,
+        availableAgents: config.agents,
+        availableProviders: config.providers,
+        availableCommands: config.commands,
+        selectedAgent: config.agent,
+        selectedAgentModel: config.agentModel,
+        stagedCommand: config.stagedCommand,
+        availableVariants: config.availableVariants,
       ),
     );
 
-    // COMPATIBILITY 2026-07-13 (v1.5.0): Project-only composer routes lack plugin identity and historically target OpenCode. Pass selected plugin identity once the composer owns it.
+    final variantId = config.agentModel?.variant;
     final response = await _sessionService.createSessionWithMessage(
       projectId: _projectId,
-      pluginId: legacyMissingPluginId,
+      pluginId: pluginId,
       text: trimmed,
-      agent: config?.agent,
-      providerID: config?.agentModel?.providerID,
-      modelID: config?.agentModel?.modelID,
+      agent: config.agent,
+      providerID: config.agentModel?.providerID,
+      modelID: config.agentModel?.modelID,
       variant: variantId == null ? null : SessionVariant(id: variantId),
       command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
     );
 
-    // A created session means the composer is done, so the next new session for
-    // this project must start from the default — clear the persisted selection
-    // even when the user backed out mid-send and closed this cubit (a launch
-    // can still succeed in the background; the text draft is likewise cleared
-    // the moment the prompt is sent). Must run before the isClosed guard below.
-    //
-    // Clear only the snapshot this request was sent with: if the user reopened
-    // the composer for the same project and picked a different model/effort
-    // while this request was in flight, that newer selection must survive.
     if (response case SuccessResponse()) {
-      if (_selectionTracker.read(projectId: _projectId) == selectionAtSend) {
-        _selectionTracker.clear(projectId: _projectId);
+      if (_selectionTracker.read(projectId: _projectId, pluginId: pluginId) == selectionAtSend) {
+        _selectionTracker.clear(projectId: _projectId, pluginId: pluginId);
       }
     }
 
     if (isClosed) return;
-
     switch (response) {
       case SuccessResponse(:final data):
         emit(NewSessionState.created(session: data));
       case ErrorResponse(:final error):
         loge("New session creation failed", error);
-        // Read from current state (not pre-request snapshot) so that any
-        // agent/provider data loaded while the request was in-flight is
-        // preserved.
-        final current = state.agentModelData;
+        final latest = state.agentModelData;
         emit(
           NewSessionState.error(
             reason: error.remoteFailureReason,
-            availableAgents: current?.agents ?? const [],
-            availableProviders: current?.providers ?? const [],
-            availableCommands: current?.commands ?? const [],
-            selectedAgent: current?.agent,
-            selectedAgentModel: current?.agentModel,
-            stagedCommand: current?.stagedCommand,
-            availableVariants: current?.availableVariants ?? const [],
+            availablePlugins: latest?.plugins ?? config.plugins,
+            selectedPlugin: latest?.plugin ?? selectedPlugin,
+            isComposerDataLoading: latest?.isLoading ?? false,
+            availableAgents: latest?.agents ?? config.agents,
+            availableProviders: latest?.providers ?? config.providers,
+            availableCommands: latest?.commands ?? config.commands,
+            selectedAgent: latest?.agent ?? config.agent,
+            selectedAgentModel: latest?.agentModel ?? config.agentModel,
+            stagedCommand: latest?.stagedCommand ?? config.stagedCommand,
+            availableVariants: latest?.availableVariants ?? config.availableVariants,
           ),
         );
     }

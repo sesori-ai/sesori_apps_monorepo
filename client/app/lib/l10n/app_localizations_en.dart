@@ -727,6 +727,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionDedicatedWorktreeDescription => 'Creates a dedicated git worktree and branch for this session';
 
   @override
+  String get newSessionPluginChooserLabel => 'Coding tool';
+
+  @override
+  String get newSessionPluginDegraded => 'Needs attention';
+
+  @override
+  String get newSessionPluginUnavailable => 'Unavailable';
+
+  @override
+  String get newSessionPluginFailed => 'Failed';
+
+  @override
+  String get newSessionPluginLoading => 'Loading coding tool options';
+
+  @override
   String get sessionListDeleteWorktreeCheckbox => 'Delete worktree';
 
   @override

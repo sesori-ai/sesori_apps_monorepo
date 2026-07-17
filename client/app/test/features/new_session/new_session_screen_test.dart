@@ -9,7 +9,9 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
+import "package:sesori_mobile/features/new_session/new_session_plugin_chooser.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
+import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -17,6 +19,8 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
+
+class MockPluginRepository extends Mock implements PluginRepository {}
 
 AgentInfo _testAgent({required String name, required String description, required String? variant}) {
   return AgentInfo(
@@ -72,6 +76,7 @@ Widget _buildApp() {
 
 void main() {
   late MockSessionService sessionService;
+  late MockPluginRepository pluginRepository;
   late MockVoiceTranscriptionService voiceTranscriptionService;
 
   // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
@@ -80,7 +85,24 @@ void main() {
   setUp(() async {
     await GetIt.instance.reset();
     sessionService = MockSessionService();
+    pluginRepository = MockPluginRepository();
     voiceTranscriptionService = MockVoiceTranscriptionService();
+
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        const PluginListResponse(
+          plugins: [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "Plugin One",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+          ],
+        ),
+      ),
+    );
 
     when(
       () => sessionService.listAgents(
@@ -119,6 +141,7 @@ void main() {
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
 
     GetIt.instance.registerSingleton<SessionService>(sessionService);
+    GetIt.instance.registerSingleton<PluginRepository>(pluginRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
   });
@@ -145,6 +168,178 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
+  });
+
+  testWidgets("renders bridge order with generic degraded and blocked presentation", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        const PluginListResponse(
+          plugins: [
+            PluginMetadata(
+              id: "failed-id",
+              displayName: "First Tool",
+              isDefault: false,
+              state: PluginLifecycleState.failed,
+              actionHint: "Restart the bridge to retry.",
+            ),
+            PluginMetadata(
+              id: "degraded-id",
+              displayName: "Second Tool",
+              isDefault: true,
+              state: PluginLifecycleState.degraded,
+              actionHint: "Check the bridge console.",
+            ),
+            PluginMetadata(
+              id: "unavailable-id",
+              displayName: "Third Tool",
+              isDefault: false,
+              state: PluginLifecycleState.unavailable,
+              actionHint: "Make this tool available on the bridge.",
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NewSessionPluginChooser), findsOneWidget);
+    expect(tester.getTopLeft(find.text("First Tool")).dy, lessThan(tester.getTopLeft(find.text("Second Tool")).dy));
+    expect(tester.getTopLeft(find.text("Second Tool")).dy, lessThan(tester.getTopLeft(find.text("Third Tool")).dy));
+    expect(find.text("Needs attention"), findsOneWidget);
+    expect(find.text("Failed"), findsOneWidget);
+    expect(find.text("Unavailable"), findsOneWidget);
+    expect(find.text("Restart the bridge to retry."), findsOneWidget);
+    expect(find.text("Check the bridge console."), findsOneWidget);
+
+    expect(
+      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_failed-id"))).onTap,
+      isNull,
+    );
+    expect(
+      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_unavailable-id"))).onTap,
+      isNull,
+    );
+    expect(
+      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_degraded-id"))).onTap,
+      isNotNull,
+    );
+    expect(find.text("failed-id"), findsNothing);
+    expect(find.text("degraded-id"), findsNothing);
+  });
+
+  testWidgets("keeps chooser usable while clearing and reloading composer data", (tester) async {
+    const toolA = PluginMetadata(
+      id: "tool-a",
+      displayName: "Tool A",
+      isDefault: true,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+    );
+    const toolB = PluginMetadata(
+      id: "tool-b",
+      displayName: "Tool B",
+      isDefault: false,
+      state: PluginLifecycleState.degraded,
+      actionHint: "Check the bridge console.",
+    );
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(const PluginListResponse(plugins: [toolA, toolB])),
+    );
+    final toolBAgents = Completer<ApiResponse<Agents>>();
+    when(
+      () => sessionService.listAgents(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer((invocation) {
+      final pluginId = invocation.namedArguments[#pluginId] as String;
+      if (pluginId == "tool-b") return toolBAgents.future;
+      return Future.value(
+        ApiResponse.success(
+          Agents(
+            agents: [_testAgent(name: "coder", description: "Coder", variant: "xhigh")],
+          ),
+        ),
+      );
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("new_session_plugin_tool-b")));
+    await tester.pump();
+
+    expect(find.widgetWithText(GlassButton, "coder"), findsNothing);
+    final disabledComposer = find.ancestor(
+      of: find.byType(PromptInput),
+      matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
+    );
+    expect(disabledComposer, findsOneWidget);
+    expect(
+      tester.widget<InkWell>(find.byKey(const Key("new_session_plugin_tool-a"))).onTap,
+      isNotNull,
+    );
+
+    await tester.tap(find.byKey(const Key("new_session_plugin_tool-a")));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(GlassButton, "coder"), findsOneWidget);
+    verifyNever(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    );
+    toolBAgents.complete(ApiResponse.success(const Agents(agents: [])));
+  });
+
+  testWidgets("discovery failure shows localized error with no chooser or creation path", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    final context = tester.element(find.byType(NewSessionScreen));
+    final loc = AppLocalizations.of(context)!;
+    expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
+    expect(find.text(loc.newSessionPluginChooserLabel), findsNothing);
+    expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsNothing);
+    expect(
+      find.ancestor(
+        of: find.byType(PromptInput),
+        matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byType(EditableText), "must not send");
+    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.pump();
+    verifyNever(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    );
   });
 
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {

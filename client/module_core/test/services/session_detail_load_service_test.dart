@@ -81,26 +81,30 @@ void main() {
       verify(() => repository.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     });
 
-    test("load uses the legacy OpenCode default when session identity is unavailable", () async {
+    test("load uses catalog fallback plugin identity when session detail is unavailable", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
       when(
         () => repository.getSession(sessionId: "session-1"),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
       when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
-        (_) async => const ProjectSessionContext(projectId: "project-1", sessionTitle: "Recovered title"),
+        (_) async => const ProjectSessionContext(
+          projectId: "project-1",
+          pluginId: "catalog-plugin",
+          sessionTitle: "Recovered title",
+        ),
       );
       when(
-        () => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId),
+        () => repository.listCommands(projectId: "project-1", pluginId: "catalog-plugin"),
       ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])));
 
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       expect((result as SessionDetailLoadResultLoaded).snapshot.canonicalSessionTitle, "Recovered title");
-      verify(() => repository.listAgents(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
-      verify(() => repository.listProviders(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
-      verify(() => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
+      verify(() => repository.listAgents(projectId: "project-1", pluginId: "catalog-plugin")).called(1);
+      verify(() => repository.listProviders(projectId: "project-1", pluginId: "catalog-plugin")).called(1);
+      verify(() => repository.listCommands(projectId: "project-1", pluginId: "catalog-plugin")).called(1);
     });
 
     test("initial load waits for connection readiness and then loads", () async {
@@ -167,7 +171,7 @@ void main() {
       ).thenAnswer(
         (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
       );
-      when(() => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId)).thenAnswer(
+      when(() => repository.listCommands(projectId: "project-1", pluginId: "catalog-plugin")).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
@@ -218,8 +222,22 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
       expect(loaded.snapshot.providerData?.items, isEmpty);
+      expect(loaded.snapshot.agents, isEmpty);
+      expect(loaded.snapshot.commands, isEmpty);
+      verifyNever(
+        () => repository.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
       verifyNever(
         () => repository.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
+      verifyNever(
+        () => repository.listCommands(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
         ),
@@ -233,9 +251,13 @@ void main() {
         () => repository.getSession(sessionId: "session-1"),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
       when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
-        (_) async => const ProjectSessionContext(projectId: "project-1", sessionTitle: "Recovered title"),
+        (_) async => const ProjectSessionContext(
+          projectId: "project-1",
+          pluginId: "catalog-plugin",
+          sessionTitle: "Recovered title",
+        ),
       );
-      when(() => repository.listCommands(projectId: "project-1", pluginId: legacyMissingPluginId)).thenAnswer(
+      when(() => repository.listCommands(projectId: "project-1", pluginId: "catalog-plugin")).thenAnswer(
         (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
 
@@ -245,7 +267,7 @@ void main() {
       final loaded = result as SessionDetailLoadResultLoaded;
       expect(loaded.snapshot.projectId, "project-1");
       expect(loaded.snapshot.canonicalSessionTitle, "Recovered title");
-      verify(() => repository.listProviders(projectId: "project-1", pluginId: legacyMissingPluginId)).called(1);
+      verify(() => repository.listProviders(projectId: "project-1", pluginId: "catalog-plugin")).called(1);
     });
   });
 }

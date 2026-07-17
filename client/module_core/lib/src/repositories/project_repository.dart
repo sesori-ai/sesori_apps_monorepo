@@ -93,7 +93,11 @@ class ProjectRepository {
             };
 
             if (session != null) {
-              return ProjectSessionContext(projectId: project.id, sessionTitle: session.title);
+              return ProjectSessionContext(
+                projectId: project.id,
+                pluginId: session.pluginId,
+                sessionTitle: session.title,
+              );
             }
 
             return null;
@@ -107,9 +111,14 @@ class ProjectRepository {
 
 class ProjectSessionContext {
   final String projectId;
+  final String pluginId;
   final String? sessionTitle;
 
-  const ProjectSessionContext({required this.projectId, required this.sessionTitle});
+  const ProjectSessionContext({
+    required this.projectId,
+    required this.pluginId,
+    required this.sessionTitle,
+  });
 }
 
 /// A project's git context: the configured base branch and the repository

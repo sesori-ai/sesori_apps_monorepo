@@ -105,4 +105,21 @@ void main() {
       expect(response, ApiResponse<ProjectGitContext>.error(error));
     });
   });
+
+  test("findSessionContext retains the catalog session plugin identity", () async {
+    final api = MockProjectApi();
+    final repository = ProjectRepository(api: api, filesystemApi: MockFilesystemApi());
+    const project = Project(id: "project-1", name: "Project", path: "/project", time: null);
+    final session = testSession(id: "session-1", pluginId: "plugin-b", title: "Session");
+    when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
+    when(
+      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
+
+    final context = await repository.findSessionContext(sessionId: "session-1");
+
+    expect(context?.projectId, "project-1");
+    expect(context?.pluginId, "plugin-b");
+    expect(context?.sessionTitle, "Session");
+  });
 }

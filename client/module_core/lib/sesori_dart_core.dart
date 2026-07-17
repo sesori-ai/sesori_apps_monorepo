@@ -94,6 +94,7 @@ export "src/repositories/models/repo_provider.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";
+export "src/repositories/plugin_repository.dart";
 export "src/repositories/project_repository.dart";
 export "src/repositories/registered_bridges_store.dart";
 export "src/repositories/session_repository.dart";

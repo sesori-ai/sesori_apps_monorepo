@@ -23,6 +23,8 @@ class MockSessionDetailLoadService extends Mock implements SessionDetailLoadServ
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
+class MockPluginRepository extends Mock implements PluginRepository {}
+
 class AdaptiveSessionRouterTestHarness {
   late final MockProjectRepository projectRepository;
   late final MockBridgeRepository bridgeRepository;
@@ -36,6 +38,7 @@ class AdaptiveSessionRouterTestHarness {
   late final MockSessionDetailLoadService sessionDetailLoadService;
   late final MockNotificationCanceller notificationCanceller;
   late final MockVoiceTranscriptionService voiceTranscriptionService;
+  late final MockPluginRepository pluginRepository;
   late final MockAuthSession authSession;
   late final BehaviorSubject<ConnectionStatus> statusController;
   late final BehaviorSubject<AuthState> authStateController;
@@ -67,6 +70,7 @@ class AdaptiveSessionRouterTestHarness {
     sessionDetailLoadService = MockSessionDetailLoadService();
     notificationCanceller = MockNotificationCanceller();
     voiceTranscriptionService = MockVoiceTranscriptionService();
+    pluginRepository = MockPluginRepository();
     authSession = MockAuthSession();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(_connectedStatus);
     authStateController = BehaviorSubject<AuthState>.seeded(const AuthState.unauthenticated());
@@ -80,6 +84,21 @@ class AdaptiveSessionRouterTestHarness {
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEventsController.stream);
 
     when(() => projectRepository.listProjects()).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        const PluginListResponse(
+          plugins: [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "Plugin One",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+          ],
+        ),
+      ),
+    );
 
     when(
       () => bridgeRepository.getRegisteredBridges(),
@@ -180,6 +199,7 @@ class AdaptiveSessionRouterTestHarness {
 
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectRepository>(projectRepository);
+    getIt.registerSingleton<PluginRepository>(pluginRepository);
     registerListServices(
       projectRepository: projectRepository,
     );

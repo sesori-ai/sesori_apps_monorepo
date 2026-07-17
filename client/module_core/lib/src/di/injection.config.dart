@@ -20,6 +20,7 @@ import 'package:sesori_dart_core/src/api/notification_api.dart' as _i400;
 import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
     as _i396;
 import 'package:sesori_dart_core/src/api/permission_api.dart' as _i231;
+import 'package:sesori_dart_core/src/api/plugin_api.dart' as _i546;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
@@ -45,6 +46,8 @@ import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
     as _i471;
 import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
     as _i679;
+import 'package:sesori_dart_core/src/repositories/plugin_repository.dart'
+    as _i337;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
@@ -153,6 +156,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i231.PermissionApi>(
       () => _i231.PermissionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
+    gh.lazySingleton<_i546.PluginApi>(
+      () => _i546.PluginApi(client: gh<_i857.RelayHttpApiClient>()),
+    );
     gh.lazySingleton<_i733.ProjectApi>(
       () => _i733.ProjectApi(client: gh<_i857.RelayHttpApiClient>()),
     );
@@ -230,6 +236,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i369.ConnectionService>(),
         failureReporter: gh<_i553.FailureReporter>(),
       ),
+    );
+    gh.lazySingleton<_i337.PluginRepository>(
+      () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
     );
     gh.lazySingleton<_i12.SessionService>(
       () => _i12.SessionService(repository: gh<_i7.SessionRepository>()),

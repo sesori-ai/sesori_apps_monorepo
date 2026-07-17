@@ -12,6 +12,7 @@ import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
+import "new_session_plugin_chooser.dart";
 
 class NewSessionScreen extends StatelessWidget {
   final String projectId;
@@ -28,6 +29,7 @@ class NewSessionScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NewSessionCubit(
         sessionService: getIt<SessionService>(),
+        pluginRepository: getIt<PluginRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
         projectId: projectId,
       ),
@@ -126,6 +128,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final loc = context.loc;
     final prego = context.prego;
     final isSending = state is NewSessionSending;
+    final composerData = state.agentModelData;
+    final isComposerEnabled =
+        composerData != null && !composerData.isLoading && (composerData.plugin?.isRoutable ?? false) && !isSending;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
     // object stays stable, so `isCurrent` remains safe to read at event time.
@@ -186,6 +191,15 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          NewSessionPluginChooser(
+                            plugins: composerData?.plugins ?? const [],
+                            selectedPluginId: composerData?.plugin?.id,
+                            isComposerDataLoading: composerData?.isLoading ?? false,
+                            onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(
+                              pluginId: pluginId,
+                            ),
+                          ),
+                          if (composerData?.plugins.isNotEmpty ?? false) SizedBox(height: prego.spacing.sm),
                           SwitchListTile(
                             title: Text(loc.newSessionDedicatedWorktree),
                             subtitle: Text(
@@ -203,26 +217,35 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: PromptInput(
-                      // Persist the unsent prompt per project so it survives
-                      // leaving and returning to the new-session screen before
-                      // a session exists; cleared once the session is created.
-                      draftKey: "new-session:${widget.projectId}",
-                      isBusy: state is NewSessionSending,
-                      onSend: (String text, String? command) {
-                        context.read<NewSessionCubit>().createSession(
-                          text: text,
-                          command: command,
-                          dedicatedWorktree: _dedicatedWorktree,
-                        );
-                      },
-                      onAbort: _dismissScreen,
-                      header: _buildErrorBanner(state),
-                      composerHeader: _buildComposerHeader(state),
-                      availableCommands: state.agentModelData?.commands ?? const [],
-                      stagedCommand: state.agentModelData?.stagedCommand,
-                      onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-                      onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+                    child: Semantics(
+                      enabled: isComposerEnabled,
+                      child: ExcludeFocus(
+                        excluding: !isComposerEnabled,
+                        child: IgnorePointer(
+                          ignoring: !isComposerEnabled,
+                          child: PromptInput(
+                            // Persist the unsent prompt per project so it survives
+                            // leaving and returning to the new-session screen before
+                            // a session exists; cleared once the session is created.
+                            draftKey: "new-session:${widget.projectId}",
+                            isBusy: state is NewSessionSending,
+                            onSend: (String text, String? command) {
+                              context.read<NewSessionCubit>().createSession(
+                                text: text,
+                                command: command,
+                                dedicatedWorktree: _dedicatedWorktree,
+                              );
+                            },
+                            onAbort: _dismissScreen,
+                            header: _buildErrorBanner(state),
+                            composerHeader: _buildComposerHeader(state),
+                            availableCommands: composerData?.commands ?? const [],
+                            stagedCommand: composerData?.stagedCommand,
+                            onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                            onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],

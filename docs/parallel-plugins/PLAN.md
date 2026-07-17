@@ -8,8 +8,8 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 7 - multi-plugin routing, lifecycle, and events
-- **Next up:** Stage 8 - client plugin and model/agent selection
+- **Last completed stage:** Stage 8 - client plugin and model/agent selection
+- **Next up:** Stage 9 - performance gate and cleanup
 - **Runtime default:** OpenCode remains the one-plugin default; ordered multi-plugin selection is active
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
@@ -20,6 +20,7 @@
 - **Stage 6 implementation base:** stacked Stage 5 at `b8d6dd5f` (audited 2026-07-17)
 - **Stage 7 implementation base:** stacked Stage 6 at `297fecc3` (audited 2026-07-17)
 - **Stage 8 planning base:** stacked Stage 7 at `2482e15d` (audited 2026-07-17)
+- **Stage 8 implementation base:** approved Stage 8 plan at `abd24c3e` (audited 2026-07-17)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -688,7 +689,7 @@ selection.
 | ☑ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
 | ☑ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
 | ☑ | 7 | Multi-plugin routing, lifecycle, and event streams | Mixed-id routing, independent failure, startup/shutdown |
-| ☐ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
+| ☑ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
 | ☐ | 9 | Performance gate and cleanup | Fixed-host matrix, soak, dead-path removal, docs |
 
 ### Stage 1A - Pre-Change Baseline Harness
@@ -2020,6 +2021,30 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 8:** Implemented from the approved Stage 8
+  plan at `abd24c3e`. `module_core` now discovers ordered bridge-authored plugin
+  metadata through `PluginApi`/`PluginRepository`, selects only the unique
+  server default, treats ready/degraded plugins as routable, and keeps
+  unavailable/failed plugins visible but blocked. New-session resource loads,
+  saved agent/model/variant choices, and creation are explicitly plugin-scoped;
+  synchronous resets plus one generation guard reject A-B and A-B-A stale
+  completions. Discovery failures expose their mapped reason without synthetic
+  OpenCode metadata. Existing-session composer loads use detail identity first,
+  catalog identity second, and make no plugin-scoped calls when neither exists.
+  Mobile owns the generic ordered chooser, bridge action-hint rendering, and
+  composer gates; no desktop, `module_desktop_core`, `module_prego`, bridge, or
+  shared production source changed. Core Injectable/Freezed and mobile
+  localization generation completed. Fatal analysis and full tests passed for
+  `module_core` (548), mobile (659), `module_desktop_core` (52), and desktop
+  (15); the shared legacy-plugin compatibility test passed (8), and
+  `git diff --check` was clean. Full mobile verification exposed one shared
+  adaptive-router test harness that also constructs `NewSessionScreen`; adding
+  its required plugin repository fixture resolved all six downstream failures.
+  No locked design or risk-register delta was required. The environment exposes
+  Stage 7's reviewed lifecycle-decoder follow-up was then merged forward;
+  combined-base fatal analysis passed for core/mobile, and focused core/mobile
+  discovery, selection, routing, and widget tests passed. Aristotle implementation
+  review `ses_08f1d58bfffeOQfHeu6yR5XkGH` approved the final architecture.
 - **Stage 7:** Implemented from stacked Stage 6 base `297fecc3`. Ordered
   repeatable selection now starts available plugins under one takeover/mutex,
   provisions in configured order while overlapping starts, and composes one

@@ -8,6 +8,9 @@ part "new_session_state.freezed.dart";
 @Freezed()
 sealed class NewSessionState with _$NewSessionState {
   const factory NewSessionState.idle({
+    required List<PluginMetadata> availablePlugins,
+    required PluginMetadata? selectedPlugin,
+    required bool isComposerDataLoading,
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
@@ -18,6 +21,9 @@ sealed class NewSessionState with _$NewSessionState {
   }) = NewSessionIdle;
 
   const factory NewSessionState.sending({
+    required List<PluginMetadata> availablePlugins,
+    required PluginMetadata? selectedPlugin,
+    required bool isComposerDataLoading,
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
@@ -29,6 +35,9 @@ sealed class NewSessionState with _$NewSessionState {
 
   const factory NewSessionState.error({
     required RemoteFailureReason reason,
+    required List<PluginMetadata> availablePlugins,
+    required PluginMetadata? selectedPlugin,
+    required bool isComposerDataLoading,
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
@@ -45,6 +54,9 @@ sealed class NewSessionState with _$NewSessionState {
 /// the [NewSessionIdle], [NewSessionSending], and [NewSessionError] variants.
 /// Returns `null` for [NewSessionCreated] (where the data is irrelevant).
 typedef AgentModelData = ({
+  List<PluginMetadata> plugins,
+  PluginMetadata? plugin,
+  bool isLoading,
   List<AgentInfo> agents,
   List<ProviderInfo> providers,
   List<CommandInfo> commands,
@@ -57,6 +69,9 @@ typedef AgentModelData = ({
 extension NewSessionStateAgentModel on NewSessionState {
   AgentModelData? get agentModelData => switch (this) {
     NewSessionIdle(
+      :final availablePlugins,
+      :final selectedPlugin,
+      :final isComposerDataLoading,
       :final availableAgents,
       :final availableProviders,
       :final availableCommands,
@@ -66,6 +81,9 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final availableVariants,
     ) =>
       (
+        plugins: availablePlugins,
+        plugin: selectedPlugin,
+        isLoading: isComposerDataLoading,
         agents: availableAgents,
         providers: availableProviders,
         commands: availableCommands,
@@ -75,6 +93,9 @@ extension NewSessionStateAgentModel on NewSessionState {
         availableVariants: availableVariants,
       ),
     NewSessionSending(
+      :final availablePlugins,
+      :final selectedPlugin,
+      :final isComposerDataLoading,
       :final availableAgents,
       :final availableProviders,
       :final availableCommands,
@@ -84,6 +105,9 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final availableVariants,
     ) =>
       (
+        plugins: availablePlugins,
+        plugin: selectedPlugin,
+        isLoading: isComposerDataLoading,
         agents: availableAgents,
         providers: availableProviders,
         commands: availableCommands,
@@ -93,6 +117,9 @@ extension NewSessionStateAgentModel on NewSessionState {
         availableVariants: availableVariants,
       ),
     NewSessionError(
+      :final availablePlugins,
+      :final selectedPlugin,
+      :final isComposerDataLoading,
       :final availableAgents,
       :final availableProviders,
       :final availableCommands,
@@ -102,6 +129,9 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final availableVariants,
     ) =>
       (
+        plugins: availablePlugins,
+        plugin: selectedPlugin,
+        isLoading: isComposerDataLoading,
         agents: availableAgents,
         providers: availableProviders,
         commands: availableCommands,
@@ -112,4 +142,8 @@ extension NewSessionStateAgentModel on NewSessionState {
       ),
     NewSessionCreated() => null,
   };
+}
+
+extension PluginMetadataSelection on PluginMetadata {
+  bool get isRoutable => state == PluginLifecycleState.ready || state == PluginLifecycleState.degraded;
 }
