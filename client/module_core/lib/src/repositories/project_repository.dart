@@ -94,10 +94,14 @@ class ProjectRepository {
               projectId: project.id,
               waitForPrData: false,
             );
-            final roots = switch (sessionsResponse) {
-              SuccessResponse(:final data) => data.items,
-              ErrorResponse() => const <Session>[],
-            };
+            final List<Session> roots;
+            switch (sessionsResponse) {
+              case SuccessResponse(:final data):
+                roots = data.items;
+              case ErrorResponse(:final error):
+                logw("Failed to list root sessions while searching project ${project.id}", error);
+                roots = const <Session>[];
+            }
             return (projectId: project.id, roots: roots);
           }),
         );
@@ -155,8 +159,11 @@ class ProjectRepository {
       }
 
       final childrenResponse = await _sessionApi.getChildren(sessionId: session.id);
-      if (childrenResponse case SuccessResponse(:final data)) {
-        pending.addAll(data.items);
+      switch (childrenResponse) {
+        case SuccessResponse(:final data):
+          pending.addAll(data.items);
+        case ErrorResponse(:final error):
+          throw error;
       }
     }
   }

@@ -199,6 +199,111 @@ void main() {
     verify(() => sessionApi.getChildren(sessionId: "child")).called(1);
   });
 
+  test("findSessionContext surfaces a child lookup error when no project matches", () async {
+    final api = MockProjectApi();
+    final sessionApi = MockSessionApi();
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: sessionApi,
+    );
+    const project = Project(id: "project-1", name: "Project", path: "/project", time: null);
+    final root = testSession(id: "root", pluginId: "plugin-a", title: "Root");
+    final error = ApiError.generic();
+    when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
+    when(
+      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [root])));
+    when(() => sessionApi.getChildren(sessionId: "root")).thenAnswer((_) async => ApiResponse.error(error));
+
+    await expectLater(repository.findSessionContext(sessionId: "missing"), throwsA(same(error)));
+  });
+
+  test("findSessionContext returns another project match after a child lookup error", () async {
+    final api = MockProjectApi();
+    final sessionApi = MockSessionApi();
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: sessionApi,
+    );
+    const failedProject = Project(id: "failed-project", name: "Failed", path: "/failed", time: null);
+    const matchingProject = Project(id: "matching-project", name: "Matching", path: "/matching", time: null);
+    final failedRoot = testSession(id: "failed-root", pluginId: "plugin-a", title: "Failed root");
+    final matchingRoot = testSession(id: "matching-root", pluginId: "plugin-b", title: "Matching root");
+    final target = testSession(id: "target", pluginId: "plugin-b", title: "Target");
+    final failedChildren = Completer<ApiResponse<SessionListResponse>>();
+    final matchingChildren = Completer<ApiResponse<SessionListResponse>>();
+    final failedChildrenRequested = Completer<void>();
+    final matchingChildrenRequested = Completer<void>();
+    final error = ApiError.generic();
+
+    when(
+      api.listProjects,
+    ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [failedProject, matchingProject])));
+    when(
+      () => api.listSessions(projectId: "failed-project", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [failedRoot])));
+    when(
+      () => api.listSessions(projectId: "matching-project", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [matchingRoot])));
+    when(() => sessionApi.getChildren(sessionId: "failed-root")).thenAnswer((_) {
+      failedChildrenRequested.complete();
+      return failedChildren.future;
+    });
+    when(() => sessionApi.getChildren(sessionId: "matching-root")).thenAnswer((_) {
+      matchingChildrenRequested.complete();
+      return matchingChildren.future;
+    });
+
+    final lookup = repository.findSessionContext(sessionId: "target");
+    await Future.wait([failedChildrenRequested.future, matchingChildrenRequested.future]);
+    failedChildren.complete(ApiResponse.error(error));
+    await pumpEventQueue();
+    matchingChildren.complete(ApiResponse.success(SessionListResponse(items: [target])));
+
+    final context = await lookup;
+    await pumpEventQueue();
+
+    expect(context?.projectId, "matching-project");
+    expect(context?.pluginId, "plugin-b");
+    expect(context?.sessionTitle, "Target");
+  });
+
+  test("findSessionContext logs a root list error and searches other projects", () async {
+    final api = MockProjectApi();
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: MockSessionApi(),
+    );
+    const failedProject = Project(id: "failed-project", name: "Failed", path: "/failed", time: null);
+    const matchingProject = Project(id: "matching-project", name: "Matching", path: "/matching", time: null);
+    final target = testSession(id: "target", pluginId: "plugin-b", title: "Target");
+    final error = ApiError.generic();
+    final logs = <String>[];
+
+    when(
+      api.listProjects,
+    ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [failedProject, matchingProject])));
+    when(
+      () => api.listSessions(projectId: "failed-project", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.error(error));
+    when(
+      () => api.listSessions(projectId: "matching-project", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [target])));
+
+    final context = await runZoned(
+      () => repository.findSessionContext(sessionId: "target"),
+      zoneSpecification: ZoneSpecification(
+        print: (self, parent, zone, line) => logs.add(line),
+      ),
+    );
+
+    expect(context?.projectId, "matching-project");
+    expect(logs, contains(allOf(contains("failed-project"), contains(error.toString()))));
+  });
+
   test("findSessionContext returns a match without waiting for an unrelated child search", () async {
     final api = MockProjectApi();
     final sessionApi = MockSessionApi();
