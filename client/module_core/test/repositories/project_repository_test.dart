@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
@@ -195,5 +197,58 @@ void main() {
     expect(context?.sessionTitle, "Nested");
     verify(() => sessionApi.getChildren(sessionId: "root")).called(1);
     verify(() => sessionApi.getChildren(sessionId: "child")).called(1);
+  });
+
+  test("findSessionContext returns a match without waiting for an unrelated child search", () async {
+    final api = MockProjectApi();
+    final sessionApi = MockSessionApi();
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: sessionApi,
+    );
+    const blockedProject = Project(id: "blocked-project", name: "Blocked", path: "/blocked", time: null);
+    const matchingProject = Project(id: "matching-project", name: "Matching", path: "/matching", time: null);
+    final blockedRoot = testSession(id: "blocked-root", pluginId: "plugin-a", title: "Blocked root");
+    final blockedChild = testSession(id: "blocked-child", pluginId: "plugin-a", title: "Blocked child");
+    final matchingRoot = testSession(id: "matching-root", pluginId: "plugin-b", title: "Matching root");
+    final target = testSession(id: "target", pluginId: "plugin-b", title: "Target");
+    final blockedChildren = Completer<ApiResponse<SessionListResponse>>();
+    final matchingChildrenRequested = Completer<void>();
+
+    when(
+      api.listProjects,
+    ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [blockedProject, matchingProject])));
+    when(
+      () => api.listSessions(projectId: "blocked-project", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [blockedRoot])));
+    when(
+      () => api.listSessions(projectId: "matching-project", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [matchingRoot])));
+    when(() => sessionApi.getChildren(sessionId: "blocked-root")).thenAnswer((_) => blockedChildren.future);
+    when(() => sessionApi.getChildren(sessionId: "matching-root")).thenAnswer((_) async {
+      matchingChildrenRequested.complete();
+      return ApiResponse.success(SessionListResponse(items: [target]));
+    });
+    when(
+      () => sessionApi.getChildren(sessionId: "blocked-child"),
+    ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+
+    final lookup = repository.findSessionContext(sessionId: "target");
+    final observedResult = Completer<ProjectSessionContext?>();
+    unawaited(lookup.then(observedResult.complete));
+    await matchingChildrenRequested.future;
+    await pumpEventQueue();
+    final completedBeforeUnblocking = observedResult.isCompleted;
+
+    blockedChildren.complete(ApiResponse.success(SessionListResponse(items: [blockedChild])));
+    final context = await lookup;
+    await pumpEventQueue();
+
+    expect(completedBeforeUnblocking, isTrue);
+    expect(context?.projectId, "matching-project");
+    expect(context?.pluginId, "plugin-b");
+    expect(context?.sessionTitle, "Target");
+    verifyNever(() => sessionApi.getChildren(sessionId: "blocked-child"));
   });
 }
