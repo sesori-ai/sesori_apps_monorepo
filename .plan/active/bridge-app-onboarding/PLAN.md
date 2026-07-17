@@ -19,20 +19,22 @@ a bounded terminal QR plus the exact URL
 `https://sesori.com/app/?openStore=true`, waits for one server-held 30-second
 registration round, and then continues startup regardless of outcome.
 
-After registration is confirmed, the bridge persists that account's existing
-JWT `userId` claim and never checks that account again. A different account is
-checked normally. Accepted CLI logout clears the marker so the next login checks
-again.
+After registration is confirmed, the bridge attempts to persist the normalized
+configured auth-backend identity together with that account's existing JWT
+`userId` claim. When persistence succeeds, the same account on the same backend
+is never checked again; a different account or backend is checked normally.
+Accepted CLI logout clears the marker so the next login checks again.
 
 ## Locked Behavior
 
 1. Run only for standalone interactive startup.
 2. Run after authentication and the selected plugin's quick availability check,
    but before provisioning, startup mutex acquisition, or plugin startup.
-3. Parse the account id with existing `parseJwtUserId`; do not change profile,
-   login, validation, refresh, `TokenManager`, or token persistence.
-4. If the stored onboarding account id matches, perform no status request and
-   emit no onboarding output.
+3. Parse the account id with existing `parseJwtUserId` and normalize the
+   configured auth base without changing profile, login, validation, refresh,
+   `TokenManager`, or token persistence.
+4. If both the stored backend identity and onboarding account id match, perform
+   no status request and emit no onboarding output.
 5. Otherwise perform one immediate authenticated status request.
 6. `registered: true` marks the account complete and continues silently.
 7. `registered: false` prints same-account guidance, a QR when safe, and the
@@ -40,15 +42,19 @@ again.
 8. A true long-poll result marks the account complete, prints one success line,
    and continues.
 9. A false long-poll result prints one concise timeout/continuation line and
-   continues. The total onboarding delay is bounded by the server's one
-   30-second wait plus a 35-second client deadline.
+   continues. Each of the immediate and long-poll requests has its own
+   abortable 35-second deadline, so even a slow immediate false response followed
+   by the long poll remains bounded to about 70 seconds total.
 10. Any auth, network, timeout, malformed-response, or unsupported-server failure
-    warns once and fails open. There is no refresh, retry loop, timer, skip
-    prompt, or asynchronous stdin ownership.
+    warns once and fails open. There is no refresh, retry loop, retry timer, skip
+    prompt, or asynchronous stdin ownership; only the status API owns a
+    request-local deadline timer/abort trigger.
 11. A marker read failure warns and still performs the remote check. A marker
     write failure warns and continues; the next run may check again.
-12. CLI logout clears the marker only after logout is accepted. Cancelled logout
-    changes neither tokens nor the marker.
+12. After logout is accepted, clear the marker before clearing tokens. If marker
+    deletion fails, return the existing failed logout result and leave tokens
+    intact so no successful logout can leave stale completion state. Cancelled
+    logout changes neither tokens nor the marker.
 13. QR output is rendered only with validated ANSI and Unicode support and known
     sufficient terminal width. Otherwise output the URL only.
 
@@ -61,7 +67,8 @@ again.
 - Add one bridge-local Freezed `{registered: bool}` response model.
 - Add a narrow app-client-status API and repository without migrating existing
   auth APIs.
-- Add a tiny raw marker-file API and repository keyed by JWT `userId`.
+- Add a tiny raw marker-file storage and repository keyed by normalized auth
+  backend plus JWT `userId`.
 - Add one onboarding service and one QR formatter.
 - Add pure-Dart `qr` and its normal lockfile update.
 - Insert one bounded runner checkpoint and clear the marker in accepted CLI
@@ -96,8 +103,14 @@ AppClientStatusRepository + AppOnboardingStateRepository
   -> BridgeRuntimeRunner (existing startup composition)
 
 AppOnboardingStateRepository
-  -> BridgeLogoutRunner (clear after accepted token clear)
+  -> BridgeLogoutRunner (after acceptance, clear marker before tokens;
+     marker-clear failure returns failed and leaves tokens intact)
 ```
+
+`AppClientStatusApi` uses a request-local `http.AbortableRequest`, deadline
+`Timer`, and abort completer so its 35-second deadline closes the underlying
+request. It cleans the timer/trigger in `finally`; this does not add a shared
+cancellation abstraction or touch any existing auth operation.
 
 The existing auth provider boundary is already split across legacy use-case APIs
 and top-level functions. Adding `AppClientStatusApi` is a deliberate narrow
@@ -134,7 +147,9 @@ Tests mirror those owners. No other production path is expected to change.
 - Bearer token appears only in the authorization header.
 - Only HTTP 200 with strict `{registered: bool}` is accepted.
 - API requests use the runner-owned shared `http.Client`; the API never closes it.
-- Both immediate and long-poll requests have a 35-second client deadline.
+- Both immediate and long-poll requests have a 35-second client deadline that
+  actively aborts the request and cancels its local timer in every completion
+  path.
 - Repository maps 404/405 through this exact compatibility seam:
 
 ```dart
@@ -143,8 +158,13 @@ Tests mirror those owners. No other production path is expected to change.
 
 - All remote failures become one unavailable outcome. The service is the sole
   warning owner.
-- Marker file contains one non-empty user id and no token or profile data.
-- Missing marker means not completed. A different user id means not completed.
+- Marker file contains one normalized auth-backend identity and one non-empty
+  user id, with no token or profile data.
+- Marker storage enforces a 0700 parent directory and 0600 file on Unix,
+  matching existing token and bridge-id storage; Windows retains existing
+  platform behavior.
+- Missing marker means not completed. A different backend or user id means not
+  completed.
 - The marker is written only after a true response, never after timeout, false,
   or failure.
 - A missing/unreadable JWT `userId` cannot be cached; warn and fail open without
@@ -169,14 +189,16 @@ Focused tests prove:
 - exact immediate/long-poll URI, bearer header, strict model parsing, status and
   timeout failures;
 - repository registered/absent/unavailable mapping and 404/405 marker;
-- marker missing/match/different/read-write-clear/error behavior;
+- marker missing/match/different-backend/different-user/read-write-clear/error
+  behavior and Unix permissions;
 - matching account performs zero network requests;
 - confirmed immediate/long-poll registration writes the account id;
 - false long poll is bounded and does not write; failures warn and fail open;
 - formatter quiet zone, width/capability fallback, explicit colors/reset, and
   exact URL;
 - runner mode/order insertion remains before plugin startup and outside mutex;
-- accepted logout clears tokens then marker; cancelled logout clears neither.
+- accepted logout clears marker then tokens; marker-clear failure returns failed
+  and leaves tokens intact; cancelled logout clears neither.
 
 Commands:
 

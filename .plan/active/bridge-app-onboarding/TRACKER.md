@@ -52,8 +52,8 @@ pair after drift assessment and before branch creation.
   auth PR because the repositories are separate; release ordering remains auth
   server first.
 - Latest audited tips: monorepo `main`
-  `5a76c0c420cd7db445f7fe2c8a2570265b4c84e0`
-  (2026-07-17T06:57:01Z); auth-server `master`
+  `4a156a78b3bf8572c280ce859b3b1370300a8105`
+  (2026-07-17T18:02:33+03:00); auth-server `master`
   `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
   (2026-07-16T14:14:09Z). Each worker assesses and pins current drift.
 - The independent active `session-pull-request-monitoring` plan may proceed; a
@@ -89,6 +89,10 @@ pair after drift assessment and before branch creation.
   architecture violations.
 - **2026-07-17 — Reduced-plan PR:** Opened documentation-only correction PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/494 against `main`.
+- **2026-07-17 — PR review hardening:** Required request-local active deadline
+  abort, backend-scoped account markers, Unix marker permissions, current audited
+  main metadata, and marker-first logout so deletion failure leaves tokens intact.
+  Follow-up `aristotle-plan-review` approved the corrected minimal architecture.
 - **2026-07-17 — Plan delivery:** Opened plan-only PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/490 against selected
   implementation base `main`; tracker state is optimistically post-merge on the
