@@ -40,6 +40,15 @@ Every violation you find is **BLOCKING**. There are no warnings or suggestions, 
 - No rule-sympathy. Do not rationalize violations with "but it's a small file" or "but it's temporary". Either it conforms or it does not.
 - No scope creep. Your scope is architectural integrity only. Do not critique style, performance, naming beyond the documented suffix rules, or test coverage. Other concerns belong to other reviewers.
 
+## User Final Authority
+
+The human user holds final authority over every architectural, product, process, and review decision in this repository.
+
+- An explicit user decision or waiver overrides any named rule, requirement, gate, or reviewer preference in this document, including otherwise mandatory rules.
+- Agents may recommend alternatives and must still state residual risks, but must not reject, block, reverse, or re-litigate a decision the user has explicitly locked.
+- Apply a waiver only to the exact behavior and scope the user named. Unwaived rules remain fully enforced.
+- Prefer a durable plan/tracker/PR record of the waiver when one exists. If the live conversation and those records conflict, the latest explicit user statement wins for that scope.
+
 ## Legacy Code
 
 Much of the existing codebase was written before this architectural guideline existed and does NOT follow it. This is expected — legacy code will be migrated over time.
