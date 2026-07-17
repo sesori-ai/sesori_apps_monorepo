@@ -657,7 +657,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addProjectEnableGitBody =>
-      'Git tracking keeps change history and lets Sesori run sessions in parallel with dedicated worktrees. Sesori will initialize Git, add .worktrees/ to .gitignore, stage all files not ignored by Git, and create an initial commit.';
+      'Git keeps change history and enables parallel sessions with dedicated worktrees. Sesori will set it up with an initial commit.';
 
   @override
   String get addProjectContinueWithoutGit => 'Continue Without Git';
