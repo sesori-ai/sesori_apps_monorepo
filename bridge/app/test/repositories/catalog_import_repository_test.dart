@@ -152,7 +152,7 @@ void main() {
       final launchDirectory = "${directory.path}/launch";
       await database.projectsDao.upsertProjectRows(
         rows: [
-          _projectRow(id: "one", path: projectOne),
+          _projectRow(id: "one", path: projectOne, updatedAt: 200),
           _projectRow(id: "two", path: projectTwo),
         ],
       );
@@ -165,6 +165,7 @@ void main() {
             directory: selectedWorktree,
             worktreePath: selectedWorktree,
             pluginId: "derived",
+            catalogTitle: "Stored catalog title",
             projectionUpdatedAt: 20,
             updatedAt: 200,
           ),
@@ -209,10 +210,13 @@ void main() {
       expect(plugin.knownDirectories, isNot(contains(otherWorktree)));
       expect(statuses.whereType<CatalogImportCommitting>().single.projectsSeen, 2);
       final selected = await database.sessionDao.getSession(sessionId: "ses_selected");
+      final selectedProject = await database.projectsDao.getProject(projectId: "one");
       final child = await database.sessionDao.getSessionByBinding(pluginId: "derived", backendSessionId: "child");
+      expect(selectedProject?.updatedAt, 200);
       expect(selected?.projectId, "one");
       expect(selected?.directory, selectedWorktree);
       expect(selected?.updatedAt, 200);
+      expect(selected?.catalogTitle, "Stored catalog title");
       expect(child?.projectId, "one");
       expect(child?.parentSessionId, "ses_selected");
       expect(await database.projectsDao.getProjectsByPath(path: selectedWorktree), isEmpty);
@@ -275,6 +279,41 @@ void main() {
           .drain<void>();
 
       expect(await database.sessionDao.getSession(sessionId: "ses_stale"), newerRow);
+    });
+
+    test("project activity uses import time only when no real timestamp exists", () async {
+      final observedPath = "${directory.path}/observed";
+      final persistedPath = "${directory.path}/persisted";
+      await database.projectsDao.upsertProjectRows(
+        rows: [_projectRow(id: "persisted", path: persistedPath, updatedAt: 200)],
+      );
+      final repository = _repository(
+        database: database,
+        plugin: _NativeImportPlugin(
+          projects: [
+            PluginProject(
+              id: "observed",
+              directory: observedPath,
+              activity: const PluginProjectActivity(createdAt: 50, updatedAt: 100),
+            ),
+            PluginProject(id: "persisted", directory: persistedPath),
+          ],
+          rootsByProject: const {},
+          childrenByParent: const {},
+        ),
+      );
+
+      await repository
+          .importCatalog(
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      expect((await database.projectsDao.getProject(projectId: "observed"))?.updatedAt, 100);
+      expect((await database.projectsDao.getProject(projectId: "persisted"))?.updatedAt, 200);
     });
 
     test("cancellation after a backend call publishes no rows", () async {
@@ -342,7 +381,7 @@ CatalogImportRepository _repository({required AppDatabase database, required Bri
   );
 }
 
-ProjectDto _projectRow({required String id, required String path}) {
+ProjectDto _projectRow({required String id, required String path, int updatedAt = 20}) {
   return ProjectDto(
     projectId: id,
     path: path,
@@ -350,7 +389,7 @@ ProjectDto _projectRow({required String id, required String path}) {
     baseBranch: null,
     displayName: null,
     createdAt: 10,
-    updatedAt: 20,
+    updatedAt: updatedAt,
     projectionUpdatedAt: 20,
   );
 }

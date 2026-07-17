@@ -370,7 +370,12 @@ class CatalogImportRepository {
       baseBranch: existing?.baseBranch,
       displayName: existing?.displayName ?? observation.displayName,
       createdAt: existing?.createdAt ?? observation.createdAt ?? importStartedAt,
-      updatedAt: observation.updatedAt ?? existing?.updatedAt ?? importStartedAt,
+      updatedAt: switch ((observation.updatedAt, existing?.updatedAt)) {
+        (final observed?, final persisted?) => max(observed, persisted),
+        (final observed?, null) => observed,
+        (null, final persisted?) => persisted,
+        (null, null) => importStartedAt,
+      },
       projectionUpdatedAt: importStartedAt,
     );
   }
@@ -409,7 +414,7 @@ class CatalogImportRepository {
       lastUserMessageAt: existing?.lastUserMessageAt,
       pluginId: pluginId,
       title: existing?.title,
-      catalogTitle: _usefulText(session.title),
+      catalogTitle: _usefulText(session.title) ?? existing?.catalogTitle,
     );
   }
 
