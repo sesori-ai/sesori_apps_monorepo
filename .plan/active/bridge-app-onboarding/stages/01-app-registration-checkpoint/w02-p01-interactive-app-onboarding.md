@@ -18,14 +18,16 @@ showing a bounded terminal QR and exact URL.
 ## Implementation
 
 1. Add `qr` to `bridge/app` and update `bridge/pubspec.lock` normally.
-2. Add bridge-local Freezed `AppClientStatusResponse(registered: bool)` and run
-   bridge code generation.
-3. Add `AppClientStatusApi` for only the new endpoint. It borrows the runner's
-   shared HTTP client, uses the configured auth base, bearer header, strict model,
-   and a request-local abortable 35-second deadline that closes the underlying
-   request and cleans its timer in every completion path.
-4. Add `AppClientStatusRepository` with three outcomes: registered, absent, and
-   unavailable. Keep the dated/versioned 404/405 compatibility marker here.
+2. Add bridge-local Freezed `AppClientStatusResponse(registered: bool)` under
+   `src/api/` and run bridge code generation.
+3. Add provider-level `SesoriServerApi` under `src/api/` with only the new status
+   operation. It borrows the runner's shared HTTP client, uses the configured
+   auth base, bearer header, strict model, and a request-local abortable 35-second
+   deadline that closes the underlying request and cleans its timer in every
+   completion path. Do not migrate any legacy auth operation into this boundary.
+4. Add `AppClientStatusRepository` under `src/repositories/` with three outcomes:
+   registered, absent, and unavailable. Keep the dated/versioned 404/405
+   compatibility marker here.
 5. Add `AppOnboardingStateStorage` for raw exists/write/clear-all operations over
    a marker directory under the existing Sesori data directory. Require 0700
    directory and 0600 file permissions on Unix. Add

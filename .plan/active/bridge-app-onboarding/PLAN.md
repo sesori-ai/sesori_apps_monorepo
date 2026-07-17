@@ -68,8 +68,8 @@ checks again.
 - Consume auth PR #44's `GET /auth/app-clients/status` endpoint in immediate and
   `?wait=true` modes.
 - Add one bridge-local Freezed `{registered: bool}` response model.
-- Add a narrow app-client-status API and repository without migrating existing
-  auth APIs.
+- Add the app-client-status operation to a new provider-level `SesoriServerApi`
+  boundary and a narrow repository without migrating existing auth APIs.
 - Add a tiny raw marker-directory storage and repository with one opaque
   SHA-256-named flag per normalized-auth-backend/JWT-userId pair.
 - Add one onboarding service and one QR formatter.
@@ -81,8 +81,8 @@ checks again.
 
 ### Explicit Non-Goals
 
-- No `SesoriAuthApi` consolidation or migration of email, OAuth, profile,
-  validation, refresh, or bridge-registration HTTP.
+- No migration or consolidation of existing email, OAuth, profile, validation,
+  refresh, or bridge-registration HTTP into `SesoriServerApi`.
 - No `TokenManager` rename, token contract change, cancellation primitive,
   forced refresh, token repository/storage layering, or call-site migration.
 - No terminal API/repository move, asynchronous stdin owner, provider/password/
@@ -94,7 +94,7 @@ checks again.
 ## Minimal Architecture
 
 ```text
-AppClientStatusApi (new Layer 1 HTTP boundary)
+SesoriServerApi (new Layer 1 provider HTTP boundary; status operation only)
   -> AppClientStatusRepository (new Layer 2 result mapping)
 
 AppOnboardingStateStorage (new Layer 1 raw marker directory)
@@ -110,24 +110,24 @@ AppOnboardingStateRepository
      state-clear failure returns failed and leaves tokens intact)
 ```
 
-`AppClientStatusApi` uses a request-local `http.AbortableRequest`, deadline
+`SesoriServerApi` uses a request-local `http.AbortableRequest`, deadline
 `Timer`, and abort completer so its 35-second deadline closes the underlying
 request. It cleans the timer/trigger in `finally`; this does not add a shared
 cancellation abstraction or touch any existing auth operation.
 
 The existing auth provider boundary is already split across legacy use-case APIs
-and top-level functions. Adding `AppClientStatusApi` is a deliberate narrow
-exception to the normal one-API-per-provider preference: consolidating the
-provider was attempted and explicitly rejected as disproportionate scope. This
-PR must not use the new class as a reason to migrate existing auth behavior.
+and top-level functions. New code follows the provider-wide API rule by adding
+`SesoriServerApi`, but W02 adds only the app-client-status operation. Migrating
+legacy auth behavior into it was attempted and explicitly rejected as
+disproportionate scope; this PR must not use the new class as a reason to do so.
 
 ## Expected Files
 
 New production files:
 
-- `bridge/app/lib/src/auth/app_client_status_response.dart` plus generated files
-- `bridge/app/lib/src/auth/app_client_status_api.dart`
-- `bridge/app/lib/src/auth/app_client_status_repository.dart`
+- `bridge/app/lib/src/api/app_client_status_response.dart` plus generated files
+- `bridge/app/lib/src/api/sesori_server_api.dart`
+- `bridge/app/lib/src/repositories/app_client_status_repository.dart`
 - `bridge/app/lib/src/api/app_onboarding_state_storage.dart`
 - `bridge/app/lib/src/repositories/app_onboarding_state_repository.dart`
 - `bridge/app/lib/src/foundation/app_onboarding_formatter.dart`
