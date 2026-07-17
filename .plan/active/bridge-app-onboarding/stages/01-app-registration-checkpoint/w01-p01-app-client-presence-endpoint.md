@@ -362,5 +362,5 @@ with mocks that cannot prove durable ordering.
 - The auth implementation branch remains auth-server-only. The remote plan-host
   tracking branch records S01/W01 baseline before branch creation, then branch,
   PR URL, and optimistic checked state after PR opening; it creates no tracker PR.
-- W02 does not start until this PR merges; deployment is confirmed before bridge
-  release.
+- By explicit user authorization, W02 planning/implementation may overlap this
+  separate-repository PR; deployment is still confirmed before bridge release.
