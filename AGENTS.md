@@ -73,6 +73,8 @@ eagerly "just in case."
   failures reported by the PR monitor rather than duplicating that matrix locally.
 - Instruction, documentation, plan, agent, and skill changes need only their own
   relevant validation. Do not run Dart/Flutter suites for non-code changes.
+- Add tests only when they provide meaningful confidence; do not create tests
+  solely to satisfy a process checklist.
 - Do not rerun an unchanged passing command or reread unchanged files solely for
   additional confidence. Expand verification only when impact or a failure gives
   a concrete reason.
@@ -85,11 +87,13 @@ eagerly "just in case."
   tests-only edits, formatting, copy, localized bug fixes, ordinary method logic,
   or non-architectural tooling changes. Broader wording in reviewer metadata
   applies only within this architecture scope.
-- Invoke `aristotle-plan-review` at most once for a plan. Apply its valid findings
-  directly and do not invoke it again to approve the fixes, stale-plan edits, or
-  review-feedback updates.
-- Invoke `aristotle-impl-review` at most twice for one implementation effort. Use
-  the second pass only after fixing first-pass findings; never start a third pass.
+- Apply valid `aristotle-plan-review` findings directly without re-reviewing the
+  fixes. A too-vague rejection may be reviewed once more after clarification;
+  if it is rejected as too vague again, ask the user how to proceed. Considerable
+  plan changes caused by new findings or user requests may also be reviewed again.
+- Use `aristotle-impl-review` at most twice before asking the user how to proceed.
+  If rejection is based only on an explicitly approved user decision, that
+  decision supersedes the review; do not re-review or re-litigate it.
 - Prefer a Git-defined implementation-review scope such as the current branch
   against `main`, a commit range, the last N commits, or a PR. File or directory
   scopes are also valid when useful; the reviewer uses Git history and diffs
@@ -98,6 +102,12 @@ eagerly "just in case."
   finding would move, rename, or refactor pre-existing files, classes, or
   architecture beyond the current request, ask the user whether that scope
   expansion is acceptable before making it.
+- These review rules supersede broader Aristotle requirements in older roadmap
+  or plan documents.
+- Cleanup and refactoring are acceptable when the value is clear. Before a
+  considerable refactor, explain its approximate size and ask the user to
+  approve it. Prefer a dedicated PR without unrelated functionality changes
+  when practical.
 
 ## Repeated Pitfalls
 

@@ -56,17 +56,28 @@ when they will help execution.
 ## Plan Review
 
 Use `aristotle-plan-review` only for architecture-bearing production plans, as
-defined by repository instructions. Invoke it no more than once for a given
-plan. Apply valid findings directly and do not invoke it again to approve the
-fixes, stale-plan edits, or review-feedback updates.
+defined by repository instructions. Apply valid findings directly and do not
+invoke it again merely to approve those fixes.
+
+If the reviewer rejects a plan as too vague, clarify the listed gaps and invoke
+it once more. If the second review also rejects the plan as too vague, ask the
+user how to proceed. A reviewed plan may also be reviewed again after
+considerable changes caused by new findings or user requests; routine edits do
+not require another review.
 
 If applying a finding would change user intent or materially expand scope, ask
 the user for that decision. Record the review result and resulting corrections
-honestly; do not claim the reviewer approved a revised plan unless its single
-review pass actually did.
+honestly; do not claim the reviewer approved a revised plan unless that version
+was reviewed and passed.
 
 ## Working Style
 
 Follow repository instructions and normal Git safety rules. Make the smallest
 change that satisfies the request, keep unrelated work intact, verify what you
-change, and state clearly what remains unresolved.
+change, and state clearly what remains unresolved. Include tests only when they
+provide meaningful confidence.
+
+Cleanup or refactoring is acceptable when its value is clear. Before planning a
+considerable refactor, explain its approximate size and ask the user to approve
+it. Prefer a dedicated PR without unrelated functionality changes when
+practical.

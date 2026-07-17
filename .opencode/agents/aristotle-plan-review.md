@@ -1,5 +1,5 @@
 ---
-description: Reviews an architecture-bearing development plan against strict Sesori architectural rules. Invoke at most once for a plan; the caller fixes findings directly and must not invoke this agent again to approve those fixes or later plan updates.
+description: Reviews an architecture-bearing development plan against strict Sesori architectural rules. The caller fixes findings directly without re-reviewing those fixes. A plan may be reviewed again after a too-vague rejection or considerable changes caused by new findings or user requests.
 mode: subagent
 model: openai/gpt-5.6-sol
 variant: high
@@ -48,7 +48,7 @@ Before reviewing a plan, verify it contains BOTH:
 1. **A clear goal** — what the feature/change achieves
 2. **A concrete implementation plan** — which files/classes/layers are touched, what goes where, how data flows
 
-If either is missing or too vague to assess architecturally, **reject the plan entirely**. Do not attempt a partial review. Instead, list the specific gaps the author must fix.
+If either is missing or too vague to assess architecturally, **reject the plan entirely**. Do not attempt a partial review. Instead, list the specific gaps and ask the author to clarify them before resubmitting the plan.
 
 Reject as too vague if the plan:
 

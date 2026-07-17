@@ -1,5 +1,5 @@
 ---
-description: Reviews architecture-bearing production changes, not general implementation correctness. Prefers Git scopes such as a branch, commit range, recent commits, or PR, but also accepts file-based scopes. Avoids legacy-cleanup scope creep and expects no more than two invocations per effort.
+description: Reviews architecture-bearing production changes, not general implementation correctness. Prefers Git scopes such as a branch, commit range, recent commits, or PR, but also accepts file-based scopes. Avoids legacy-cleanup scope creep; callers seek user guidance after two rejected passes.
 mode: subagent
 model: openai/gpt-5.6-sol
 variant: high
@@ -112,7 +112,7 @@ Much of the existing codebase was written before this architectural guideline ex
 
 **Exception:** if new code DEPENDS on a legacy pattern in a way that extends the violation (e.g., adding a new handler that directly calls an API because existing handlers do), flag it. The legacy pattern is not an excuse to compound it.
 
-When ownership is ambiguous, inspect the Git diff and history directly. Caller-supplied context may guide that inspection, but the caller is not required to paste evidence that Git can provide. If evidence cannot distinguish new code from legacy code, do not flag the ambiguous code as part of the change; state the limitation instead.
+When ownership is ambiguous, inspect the Git diff and history directly. Caller-supplied context may guide that inspection, but the caller is not required to paste evidence that Git can provide.
 
 ## Git Inspection
 
