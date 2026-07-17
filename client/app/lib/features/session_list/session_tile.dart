@@ -155,7 +155,7 @@ class SessionTile extends StatelessWidget {
         SizedBox(
           width: _iconSlotWidth,
           height: _titleLineHeight,
-          child: Center(child: _stateIcon()),
+          child: Center(child: _stateIcon(context: context)),
         ),
         Expanded(
           child: Text(
@@ -176,8 +176,15 @@ class SessionTile extends StatelessWidget {
   /// resting solid when there is activity the user hasn't opened, absent for a
   /// quiet session. A live turn is the more informative of the two, so it wins;
   /// unseen still shows through the title's weight.
-  Widget? _stateIcon() {
-    if (isActive) return PregoAiLoader(size: _stateIconSize, phase: PregoAiLoader.phaseFor(session.id));
+  Widget? _stateIcon({required BuildContext context}) {
+    if (isActive) {
+      // The twinkle is visual-only, so the merged row semantics carry the
+      // words the old "Running" label used to speak.
+      return Semantics(
+        label: context.loc.sessionListRunning,
+        child: PregoAiLoader(size: _stateIconSize, phase: PregoAiLoader.phaseFor(session.id)),
+      );
+    }
     if (unseen) return const PregoAiLoader(size: _stateIconSize, animate: false);
     return null;
   }

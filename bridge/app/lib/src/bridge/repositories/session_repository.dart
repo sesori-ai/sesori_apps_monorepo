@@ -692,22 +692,13 @@ class SessionRepository {
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
 
-    final (dbSessions, prsBySessionId) = await (
-      _sessionDao.getSessionsByIds(sessionIds: sessionIds),
-      _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds),
-    ).wait;
-
-    final pullRequestsBySessionId = <String, PullRequestInfo>{};
-    for (final session in sessions) {
-      final selectedPr = _selectBestPr(prsBySessionId[session.id]);
-      if (selectedPr != null) {
-        pullRequestsBySessionId[session.id] = pullRequestInfoFromDto(selectedPr);
-      }
-    }
+    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
 
     // Resolved here as well as in the list path: a live session event carries
     // no branch of its own, so without this the row would lose the branch the
-    // list had just shown for it.
+    // list had just shown for it. Resolved before PRs are queried: the PR join
+    // reads the stored branch_name in SQL, so it must see the branch this
+    // response is about to show.
     final branchesByDirectory = await _resolveBranches(
       directories: {
         for (final session in sessions)
@@ -715,6 +706,15 @@ class SessionRepository {
       },
       rows: dbSessions.values,
     );
+
+    final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
+    final pullRequestsBySessionId = <String, PullRequestInfo>{};
+    for (final session in sessions) {
+      final selectedPr = _selectBestPr(prsBySessionId[session.id]);
+      if (selectedPr != null) {
+        pullRequestsBySessionId[session.id] = pullRequestInfoFromDto(selectedPr);
+      }
+    }
 
     return enrichSharedSessions(
       sessions: sessions,
@@ -801,16 +801,17 @@ class SessionRepository {
 
   Future<List<Session>> _mapCatalogSessions({required List<SessionDto> rows}) async {
     final sessionIds = [for (final row in rows) row.sessionId];
-    final (prsBySessionId, branchesByDirectory) = await (
-      _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds),
-      _resolveBranches(
-        directories: {
-          for (final row in rows)
-            if (row.worktreePath == null) row.directory,
-        },
-        rows: rows,
-      ),
-    ).wait;
+    // Branches before PRs, not concurrently: the PR join reads the stored
+    // branch_name in SQL, so it must run after _resolveBranches has written
+    // the branch this response is about to show.
+    final branchesByDirectory = await _resolveBranches(
+      directories: {
+        for (final row in rows)
+          if (row.worktreePath == null) row.directory,
+      },
+      rows: rows,
+    );
+    final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
     return [
       for (final row in rows)
         _sessionCatalogMapper.map(

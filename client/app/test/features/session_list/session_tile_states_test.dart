@@ -77,6 +77,20 @@ void main() {
       expect(titleWeight(tester, "My Session"), FontWeight.w400);
     });
 
+    testWidgets("still tells assistive technology it is running", (tester) async {
+      final semantics = tester.ensureSemantics();
+
+      await pumpTile(tester, tile(session: testSession(title: "My Session"), isActive: true));
+      // The twinkle is visual-only, so the row's merged semantics must carry
+      // the words the old "Running" label used to speak.
+      expect(find.bySemanticsLabel(RegExp("Running")), findsOneWidget);
+
+      await pumpTile(tester, tile(session: testSession(title: "My Session")));
+      expect(find.bySemanticsLabel(RegExp("Running")), findsNothing);
+
+      semantics.dispose();
+    });
+
     testWidgets("keeps its words when input is wanted", (tester) async {
       await pumpTile(
         tester,

@@ -111,7 +111,7 @@ class GitCliApi {
       }
       return branch;
     } on Object catch (e) {
-      Log.w("[GitCli] failed to read current branch: $e");
+      Log.w("[GitCli] failed to read current branch", e);
       return null;
     }
   }

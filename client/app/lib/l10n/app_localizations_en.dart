@@ -521,6 +521,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginPkceStateMissing => 'Login session expired. Please start again.';
 
   @override
+  String get sessionListRunning => 'Running';
+
+  @override
   String get sessionListRunningRetrying => 'Running (retrying)';
 
   @override

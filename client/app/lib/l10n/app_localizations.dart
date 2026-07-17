@@ -1045,6 +1045,12 @@ abstract class AppLocalizations {
   /// **'Login session expired. Please start again.'**
   String get loginPkceStateMissing;
 
+  /// Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get sessionListRunning;
+
   /// Label shown next to the red dot for sessions that are active but in a retry/error state
   ///
   /// In en, this message translates to:

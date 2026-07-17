@@ -308,6 +308,10 @@
   "loginCallbackMissingParams": "Invalid authorization callback. Please try again.",
   "loginStateMismatch": "Authorization state mismatch. Please try again.",
   "loginPkceStateMissing": "Login session expired. Please start again.",
+  "sessionListRunning": "Running",
+  "@sessionListRunning": {
+    "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"
+  },
   "sessionListRunningRetrying": "Running (retrying)",
   "@sessionListRunningRetrying": {
     "description": "Label shown next to the red dot for sessions that are active but in a retry/error state"

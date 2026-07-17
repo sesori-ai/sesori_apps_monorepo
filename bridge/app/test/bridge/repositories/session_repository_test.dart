@@ -2098,9 +2098,6 @@ void main() {
         directory: "/repo",
         sessionIds: ["s1", "s2"],
       );
-      // The branch has to be stored before the PR can be joined to a session,
-      // so this is the listing that puts it there.
-      await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "/repo",
@@ -2117,6 +2114,9 @@ void main() {
         ),
       );
 
+      // The very first listing that names the branch must already join its PR:
+      // the branch is resolved and stored before PRs are queried, so a response
+      // never pairs a fresh branch with a stale PR answer.
       final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
 
       expect(sessions, hasLength(2));
