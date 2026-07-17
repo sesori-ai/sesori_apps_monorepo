@@ -956,6 +956,7 @@ class FakeSessionRepository implements SessionRepository {
   final AppDatabase? _persistenceDatabase;
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
+  String? projectPathResult;
   final Map<String, String?> enrichedTitleOverrides = {};
   Object? publicationError;
 
@@ -1180,15 +1181,7 @@ class FakeSessionRepository implements SessionRepository {
   }) async => false;
 
   @override
-  Future<String?> getProjectPath({required String projectId}) async {
-    try {
-      final project = await _plugin.getProject(projectId);
-      if (project.id.isEmpty) return null;
-      return project.id;
-    } catch (_) {
-      return null;
-    }
-  }
+  Future<String?> getProjectPath({required String projectId}) async => projectPathResult;
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async {

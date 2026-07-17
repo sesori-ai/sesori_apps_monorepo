@@ -339,7 +339,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   Future<List<SessionDto>> getRootCatalogSessions({
     required String projectId,
     required int offset,
-    required int limit,
+    required int? limit,
   }) {
     return (select(sessionTable)
           ..where(
@@ -349,7 +349,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
             (table) => OrderingTerm.desc(table.updatedAt),
             (table) => OrderingTerm.desc(table.sessionId),
           ])
-          ..limit(limit, offset: offset))
+          ..limit(limit ?? -1, offset: offset))
         .get();
   }
 

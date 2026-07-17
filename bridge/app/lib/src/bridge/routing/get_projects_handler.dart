@@ -3,7 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../services/project_activity_service.dart";
 import "request_handler.dart";
 
-/// Handles `GET /projects` — returns all projects from the plugin.
+/// Handles `GET /projects` — returns visible projects from the catalog.
 class GetProjectsHandler extends GetRequestHandler<Projects> {
   final ProjectActivityService _projectActivityService;
 

@@ -28,9 +28,6 @@ class GetCurrentProjectHandler extends BodyRequestHandler<ProjectIdRequest, Proj
       throw buildErrorResponse(request, 400, "empty project id");
     }
 
-    // Route through the repository so a bridge-derived plugin (whose
-    // `getProject` is a guarded no-op) resolves via the derived project set
-    // instead of throwing a 502.
     return _projectRepository.getProject(projectId: projectId);
   }
 }

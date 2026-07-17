@@ -22,9 +22,7 @@ class ProjectActivityService {
   Stream<ProjectActivityChange> get changes => _changes.stream;
 
   Future<List<Project>> getProjects() {
-    return _serialize(
-      () => _projectRepository.getProjects(defaultTimestamp: _now()),
-    );
+    return _projectRepository.getProjects();
   }
 
   Future<Project> openProject({required String path}) async {
@@ -37,8 +35,7 @@ class ProjectActivityService {
         updatedAt: max(current?.updatedAt ?? now, now),
       );
       await _projectRepository.persistOpenedProject(
-        projectId: target.projectId,
-        path: target.path,
+        target: target,
         activity: activity,
       );
       if (current == null || activity.updatedAt > current.updatedAt) {

@@ -33,7 +33,6 @@ import "../../api/database/daos/pull_request_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/tables/pull_requests_table.dart";
 import "../../api/database/tables/session_table.dart" show SessionDto;
-import "derived_session_builder.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";
@@ -51,7 +50,6 @@ import "session_unseen_calculator.dart";
 typedef SessionBindingsCommitted = ({String pluginId, List<String> backendSessionIds});
 
 class SessionRepository {
-  static const DerivedSessionBuilder _derivedSessionBuilder = DerivedSessionBuilder();
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
   final BridgePluginApi _plugin;
@@ -86,134 +84,21 @@ class SessionRepository {
     required int? start,
     required int? limit,
   }) async {
-    final projectionUpdatedAt = captureProjectionTimestamp();
-    final pluginSessions = await _pluginSessionsForProject(
-      projectId: projectId,
-      start: start,
-      limit: limit,
-    );
-    final backendSessionIds = [for (final session in pluginSessions) session.id];
-    final committedByBackendId = await _sessionDao.attachedDatabase.transaction(() async {
-      final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
-        pluginId: _plugin.id,
-        backendSessionIds: backendSessionIds,
-      );
-      final tombstoned = await _sessionDao.getTombstonedSessionIds(
-        pluginId: _plugin.id,
-      );
-      final observedRoots = <ObservedRootSession>[];
-      final allocatedSessionIds = await _allocateSessionIds(
-        count: pluginSessions
-            .where((session) => !tombstoned.contains(session.id) && existingByBackendId[session.id] == null)
-            .length,
-      );
-      var allocatedIndex = 0;
-      for (final session in pluginSessions) {
-        if (tombstoned.contains(session.id)) continue;
-        final existingBinding = existingByBackendId[session.id];
-        observedRoots.add((
-          sessionId: existingBinding?.sessionId ?? allocatedSessionIds[allocatedIndex++],
-          backendSessionId: session.id,
-          projectId: projectId,
-          directory: session.directory,
-          catalogTitle: session.title,
-          createdAt: session.time?.created ?? existingBinding?.createdAt ?? projectionUpdatedAt,
-          updatedAt: session.time?.updated ?? existingBinding?.updatedAt ?? projectionUpdatedAt,
-          archivedAt: session.time?.archived,
-          projectionUpdatedAt: projectionUpdatedAt,
-        ));
-      }
-      return _sessionDao.upsertObservedRootSessions(
-        pluginId: _plugin.id,
-        sessions: observedRoots,
-      );
-    });
-    _publishBindingsCommitted(
-      backendSessionIds: committedByBackendId.keys.toList(growable: false),
-    );
-    return _mapCatalogSessions(
-      rows: [
-        for (final session in pluginSessions) ?committedByBackendId[session.id],
-      ],
-    );
-  }
-
-  /// The plugin sessions that belong to [projectId].
-  ///
-  /// A native plugin owns its own project→session grouping, so we delegate
-  /// straight to it. A bridge-derived plugin only knows each session's own cwd
-  /// — which, for a session started in a dedicated worktree, is the worktree
-  /// path rather than the project the user opened. The bridge owns that
-  /// session→project attribution (the row it wrote at creation), so for
-  /// derived plugins we scope via [DerivedSessionBuilder] and paginate here,
-  /// keeping a worktree session under its project.
-  Future<List<PluginSession>> _pluginSessionsForProject({
-    required String projectId,
-    required int? start,
-    required int? limit,
-  }) async {
-    switch (_plugin) {
-      case final NativeProjectsPluginApi plugin:
-        // The plugin scopes sessions by directory, so hand it the project's
-        // live directory — the id may point where the folder used to be.
-        final directory = await resolveProjectDirectory(projectId: projectId);
-        final sessions = await plugin.getSessions(directory, start: start, limit: limit);
-        // Sessions fetched for a project belong to it by construction. Re-key
-        // them to the stable id: when the lookup went through a moved folder's
-        // live path, the plugin can only echo the directory it was asked
-        // about, not the identifier the phone and the bridge key on.
-        return [
-          for (final session in sessions) session.copyWith(projectID: projectId),
-        ];
-
-      case final BridgeDerivedProjectsPluginApi plugin:
-        final projectDirectory = await resolveProjectDirectory(projectId: projectId);
-        final sessionProjectPaths = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);
-        final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
-        final allSessions = await plugin.listAllSessions(
-          knownDirectories: _knownDirectories(
-            sessionProjectPaths: sessionProjectPaths,
-            projectId: projectDirectory,
-          ),
-        );
-        final scoped = _derivedSessionBuilder.build(
-          projectId: projectDirectory,
-          // A backend without session deletion keeps enumerating deleted
-          // sessions forever — the tombstones filter them out.
-          sessions: allSessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
-          projectPathBySessionId: {
-            for (final row in sessionProjectPaths) row.backendSessionId: row.projectPath,
-          },
-        );
-
-        final from = start ?? 0;
-        if (from >= scoped.length) return const [];
-        final until = limit == null ? scoped.length : (from + limit).clamp(0, scoped.length);
-        return [
-          for (final session in scoped.sublist(from, until)) session.copyWith(projectID: projectId),
-        ];
+    if (await _projectsDao.getProject(projectId: projectId) == null) {
+      throw ProjectNotFoundException(projectId: projectId);
     }
+    final effectiveLimit = limit == null || limit <= 0 ? null : limit;
+    return _mapCatalogSessions(
+      rows: await _sessionDao.getRootCatalogSessions(
+        projectId: projectId,
+        offset: start ?? 0,
+        limit: effectiveLimit,
+      ),
+    );
   }
 
-  /// The enumeration hints for a derive-style plugin: every stored project
-  /// path and dedicated-worktree path the bridge attributes to it, plus the
-  /// [projectId] being served (which may not have a stored session yet).
-  static Set<String> _knownDirectories({
-    required List<SessionProjectPathRow> sessionProjectPaths,
-    required String? projectId,
-  }) {
-    return {
-      ?projectId,
-      for (final row in sessionProjectPaths) ...[
-        row.projectPath,
-        ?row.worktreePath,
-      ],
-    };
-  }
-
-  /// Whether an unpaginated [getSessionsForProject] result is the complete
-  /// authoritative session list for a project — the precondition for
-  /// reconciling away stored rows missing from it.
+  /// Legacy reconciliation capability retained until Stage 9 removes the
+  /// vanished-session reconciliation path.
   ///
   /// A native plugin owns its session list, so the fetched list is complete.
   /// A bridge-derived plugin's enumeration is only eventually-complete: a
@@ -576,9 +461,8 @@ class SessionRepository {
       case final BridgeDerivedProjectsPluginApi plugin:
         final rows = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);
         final projectPathBySessionId = {for (final row in rows) row.backendSessionId: row.projectPath};
-        // Regroup under the stored attribution — the same rule the REST path's
-        // DerivedSessionBuilder/DerivedProjectBuilder apply. Unknown sessions
-        // are omitted because no stable Sesori identity can be published.
+        // Regroup under the durable parent-project attribution. Unknown
+        // sessions are omitted because no stable Sesori identity can publish.
         final byProject = <String, List<PluginActiveSession>>{};
         for (final summary in summaries) {
           for (final active in summary.activeSessions) {
@@ -616,8 +500,11 @@ class SessionRepository {
       try {
         final project = await plugin.getProject(summary.id);
         if (!hydratedProjectIds.add(project.id)) continue;
-        await _projectsDao.insertProjectIfMissing(projectId: project.id, path: project.directory);
-        await getSessionsForProject(projectId: project.id, start: null, limit: null);
+        await _observeNativeRootSessions(
+          plugin: plugin,
+          projectId: project.id,
+          projectDirectory: project.directory,
+        );
       } on Object catch (error, stackTrace) {
         Log.w(
           "Could not hydrate active project ${summary.id}; omitting unresolved sessions",
@@ -628,6 +515,53 @@ class SessionRepository {
     }
   }
 
+  Future<void> _observeNativeRootSessions({
+    required NativeProjectsPluginApi plugin,
+    required String projectId,
+    required String projectDirectory,
+  }) async {
+    final projectionUpdatedAt = captureProjectionTimestamp();
+    final pluginSessions = await plugin.getSessions(projectDirectory, start: null, limit: null);
+    final backendSessionIds = [for (final session in pluginSessions) session.id];
+    final committedByBackendId = await _sessionDao.attachedDatabase.transaction(() async {
+      await _projectsDao.insertProjectIfMissing(projectId: projectId, path: projectDirectory);
+      final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
+        pluginId: _plugin.id,
+        backendSessionIds: backendSessionIds,
+      );
+      final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: _plugin.id);
+      final allocatedSessionIds = await _allocateSessionIds(
+        count: pluginSessions
+            .where((session) => !tombstoned.contains(session.id) && existingByBackendId[session.id] == null)
+            .length,
+      );
+      var allocatedIndex = 0;
+      final observedRoots = <ObservedRootSession>[];
+      for (final session in pluginSessions) {
+        if (tombstoned.contains(session.id)) continue;
+        final existingBinding = existingByBackendId[session.id];
+        observedRoots.add((
+          sessionId: existingBinding?.sessionId ?? allocatedSessionIds[allocatedIndex++],
+          backendSessionId: session.id,
+          projectId: projectId,
+          directory: session.directory,
+          catalogTitle: session.title,
+          createdAt: session.time?.created ?? existingBinding?.createdAt ?? projectionUpdatedAt,
+          updatedAt: session.time?.updated ?? existingBinding?.updatedAt ?? projectionUpdatedAt,
+          archivedAt: session.time?.archived,
+          projectionUpdatedAt: projectionUpdatedAt,
+        ));
+      }
+      return _sessionDao.upsertObservedRootSessions(
+        pluginId: _plugin.id,
+        sessions: observedRoots,
+      );
+    });
+    _publishBindingsCommitted(
+      backendSessionIds: committedByBackendId.keys.toList(growable: false),
+    );
+  }
+
   PluginSessionVariant? _toPluginVariant(SessionVariant? variant) {
     return switch (variant) {
       SessionVariant(:final id) => PluginSessionVariant(id: id),
@@ -636,19 +570,9 @@ class SessionRepository {
   }
 
   Future<Session?> getSessionForProject({required String projectId, required String sessionId}) async {
-    final binding = await _requireActiveBinding(
-      sessionId: sessionId,
-      operation: SessionOperation.getSession,
-    );
-    if (binding.projectId != projectId) return null;
-    if (binding.parentSessionId != null) {
-      return getCatalogSession(sessionId: sessionId);
-    }
-    final sessions = await getSessionsForProject(projectId: projectId, start: null, limit: null);
-    for (final session in sessions) {
-      if (session.id == sessionId) return session;
-    }
-    return null;
+    final row = await _sessionDao.getSession(sessionId: sessionId);
+    if (row == null || row.projectId != projectId) return null;
+    return (await _mapCatalogSessions(rows: [row])).single;
   }
 
   Future<String?> findProjectIdForSession({required String sessionId}) async {
@@ -761,40 +685,12 @@ class SessionRepository {
   }
 
   Future<List<Session>> getChildSessions({required String sessionId}) async {
-    final parent = await _requireActiveBinding(
-      sessionId: sessionId,
-      operation: SessionOperation.getChildSessions,
-    );
-    await _primeDerivedSessionDirectory(binding: parent);
-    final durableRows = await _sessionDao.getChildCatalogSessions(parentSessionId: sessionId);
-    // COMPATIBILITY 2026-07-16 (pre-Stage 5 catalog import): released bridges
-    // kept backend children rowless. Remove this additive plugin discovery once
-    // automatic catalog hydration imports existing child ancestry.
-    final projectionUpdatedAt = captureProjectionTimestamp();
-    final List<PluginSession> pluginChildren;
-    try {
-      pluginChildren = await _plugin.getChildSessions(parent.backendSessionId);
-    } on PluginOperationException catch (error, stackTrace) {
-      if (durableRows.isEmpty) rethrow;
-      Log.w(
-        "Could not refresh children for ${parent.pluginId}/${parent.backendSessionId}; serving durable catalog history",
-        error,
-        stackTrace,
+    if (await _sessionDao.getSession(sessionId: sessionId) == null) {
+      throw PluginOperationException.notFound(
+        SessionOperation.getChildSessions.name,
+        message: "session $sessionId was not found",
       );
-      return _mapCatalogSessions(rows: durableRows);
     }
-    final committedBackendIds = <String>[];
-    for (final pluginChild in pluginChildren) {
-      final child = pluginChild.copyWith(parentID: parent.backendSessionId).toSharedSession(pluginId: _plugin.id);
-      final committed = await insertObservedChild(
-        pluginId: _plugin.id,
-        observed: child,
-        parent: parent.toStoredSession(),
-        projectionUpdatedAt: projectionUpdatedAt,
-      );
-      if (committed != null) committedBackendIds.add(pluginChild.id);
-    }
-    _publishBindingsCommitted(backendSessionIds: committedBackendIds);
     return _mapCatalogSessions(
       rows: await _sessionDao.getChildCatalogSessions(parentSessionId: sessionId),
     );
@@ -831,27 +727,7 @@ class SessionRepository {
   }
 
   Future<String?> getProjectPath({required String projectId}) async {
-    switch (_plugin) {
-      case BridgeDerivedProjectsPluginApi():
-        // The project id IS the canonical directory and the plugin has no
-        // getProject — resolve the path directly.
-        final trimmed = projectId.trim();
-        return trimmed.isEmpty ? null : normalizeProjectDirectory(directory: trimmed);
-
-      case final NativeProjectsPluginApi plugin:
-        final directory = await resolveProjectDirectory(projectId: projectId);
-        try {
-          // Probe the plugin so an unreachable backend yields null (callers
-          // fall back rather than running git tooling blind), then hand back
-          // the live directory — not the plugin's id, which may point where
-          // the folder used to be.
-          await plugin.getProject(directory);
-          return directory;
-        } catch (e) {
-          Log.w("[SessionRepository] getProjectPath failed for $projectId: $e");
-          return null;
-        }
-    }
+    return _projectsDao.getResolvedPath(projectId: projectId);
   }
 
   Future<StoredSession?> getStoredSession({required String sessionId}) async {

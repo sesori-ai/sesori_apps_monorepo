@@ -161,6 +161,13 @@ void main() {
       sessionId: "pending-root",
       backendSessionId: "pending-root-session",
     );
+    await _insertChildSessionBinding(
+      database: database,
+      pluginId: plugin.id,
+      sessionId: "pending-child",
+      backendSessionId: "pending-child-session",
+      parentSessionId: "pending-root",
+    );
     await _insertRootSessionBinding(
       database: database,
       pluginId: plugin.id,

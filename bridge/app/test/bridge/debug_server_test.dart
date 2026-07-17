@@ -275,6 +275,11 @@ void main() {
       plugin.projectsResult = [
         const PluginProject(id: "p1", directory: "p1", name: "My Project"),
       ];
+      await db.projectsDao.setDisplayName(
+        projectId: "/tmp/test",
+        displayName: "My Project",
+        updatedAt: 1,
+      );
 
       final client = HttpClient();
       addTearDown(client.close);
@@ -290,7 +295,7 @@ void main() {
       final data = decoded["data"] as List<dynamic>;
       expect(data.length, equals(1));
       final project = data[0] as Map<String, dynamic>;
-      expect(project["id"], equals("p1"));
+      expect(project["id"], equals("/tmp/test"));
       expect(project["name"], equals("My Project"));
     });
 
@@ -316,6 +321,20 @@ void main() {
           time: null,
         ),
       ];
+      await db.sessionDao.insertSession(
+        pluginId: plugin.id,
+        sessionId: "stable-s1",
+        backendSessionId: "s1",
+        projectId: "/tmp/test",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
 
       final client = HttpClient();
       addTearDown(client.close);
@@ -334,7 +353,7 @@ void main() {
       expect(items.length, equals(1));
       final session = items[0] as Map<String, dynamic>;
       final sessionId = session["id"] as String;
-      expect(sessionId, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+      expect(sessionId, "stable-s1");
       final binding = await db.sessionDao.getSession(sessionId: sessionId);
       expect(binding?.backendSessionId, "s1");
     });
@@ -386,7 +405,7 @@ void main() {
       expect(plugin.messageSessionIds, equals(["backend-s1"]));
     });
 
-    test("returns 500 on plugin error", () async {
+    test("catalog project browsing remains available on plugin error", () async {
       plugin.throwOnGetProjects = true;
 
       final client = HttpClient();
@@ -398,8 +417,8 @@ void main() {
       final response = await request.close();
       final body = await utf8.decoder.bind(response).join();
 
-      expect(response.statusCode, equals(HttpStatus.internalServerError));
-      expect(body, contains("Internal Server Error"));
+      expect(response.statusCode, equals(HttpStatus.ok));
+      expect(body, contains("/tmp/test"));
     });
   });
 

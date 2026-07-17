@@ -26,6 +26,8 @@ part "database.g.dart";
   daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
 )
 class AppDatabase extends _$AppDatabase {
+  static const _readPoolSize = 4;
+
   AppDatabase(super.e);
 
   @override
@@ -258,6 +260,16 @@ class AppDatabase extends _$AppDatabase {
       dbDir.createSync(recursive: true);
     }
     final dbFile = File("${dbDir.path}/sesori.db");
-    return AppDatabase(NativeDatabase.createInBackground(dbFile));
+    return openFile(file: dbFile);
+  }
+
+  static AppDatabase openFile({required File file}) {
+    return AppDatabase(
+      NativeDatabase.createInBackground(
+        file,
+        setup: (database) => database.execute("PRAGMA journal_mode = WAL"),
+        readPool: _readPoolSize,
+      ),
+    );
   }
 }

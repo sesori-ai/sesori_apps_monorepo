@@ -105,6 +105,7 @@ void main() {
       await db.projectsDao.recordOpenedProject(
         projectId: "/Users/dev/my-app",
         path: "/Users/dev/my-app",
+        displayName: null,
         createdAt: 1,
         updatedAt: 1,
       );

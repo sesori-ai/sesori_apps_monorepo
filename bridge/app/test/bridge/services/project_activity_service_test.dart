@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_activity.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
@@ -166,7 +168,7 @@ void main() {
     );
   });
 
-  test("ordinary project listing seeds with now without reconciling", () async {
+  test("ordinary project listing reads the catalog without reconciling", () async {
     plugin.projectsResult = const [
       PluginProject(
         id: "project",
@@ -174,11 +176,38 @@ void main() {
         activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
       ),
     ];
+    await database.projectsDao.setActivity(projectId: "project", createdAt: 10, updatedAt: 20);
 
     final projects = await service.getProjects();
 
-    expect(plugin.getProjectsCallCount, 1);
+    expect(plugin.getProjectsCallCount, 0);
     expect(projects.single.time, const ProjectTime(created: 10, updated: 20));
+  });
+
+  test("a hanging reconciliation does not block a project list", () async {
+    final hangingPlugin = _HangingProjectsPlugin();
+    final localService = ProjectActivityService(
+      projectRepository: ProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        plugin: hangingPlugin,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      ),
+      now: () => now,
+    );
+    await database.projectsDao.setActivity(projectId: "stored", createdAt: 10, updatedAt: 20);
+    final reconcile = localService.reconcile();
+    await hangingPlugin.reconciliationStarted.future;
+
+    final projects = await localService.getProjects().timeout(const Duration(seconds: 1));
+
+    expect(projects.single.id, "stored");
+    hangingPlugin.releaseReconciliation.complete();
+    await reconcile;
+    await localService.dispose();
+    await hangingPlugin.close();
   });
 
   test("touches root question and permission events and skips displayed children", () async {
@@ -357,6 +386,7 @@ void main() {
     await database.projectsDao.recordOpenedProject(
       projectId: "canonical",
       path: "/old/path",
+      displayName: null,
       createdAt: 100,
       updatedAt: 500,
     );
@@ -402,4 +432,17 @@ Future<ProjectActivity?> _activity({required AppDatabase database, required Stri
   final row = await database.projectsDao.getProject(projectId: projectId);
   if (row == null) return null;
   return ProjectActivity(createdAt: row.createdAt, updatedAt: row.updatedAt);
+}
+
+class _HangingProjectsPlugin extends FakeBridgePlugin {
+  final reconciliationStarted = Completer<void>();
+  final releaseReconciliation = Completer<void>();
+
+  @override
+  Future<List<PluginProject>> getProjects() async {
+    getProjectsCallCount++;
+    reconciliationStarted.complete();
+    await releaseReconciliation.future;
+    return const [];
+  }
 }

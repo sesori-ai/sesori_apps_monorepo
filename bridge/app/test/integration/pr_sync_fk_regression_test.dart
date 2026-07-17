@@ -5,11 +5,11 @@
 /// With `PRAGMA foreign_keys = ON`, this caused `FOREIGN KEY constraint failed`
 /// because `pull_requests_table.projectId` references `projects_table.project_id`.
 ///
-/// This test proves that project discovery, defensive PR upsert, and session
-/// binding publication all preserve the relevant foreign-key invariants.
+/// This test proves that catalog reads, defensive PR upsert, and imported
+/// session bindings all preserve the relevant foreign-key invariants.
 ///
-/// Scenario A — Primary path (GetProjects before PR sync):
-///   ProjectRepository.getProjects() persists projects; subsequent
+/// Scenario A — Primary path (catalog project before PR sync):
+///   ProjectRepository.getProjects() reads an imported project; subsequent
 ///   PullRequestRepository.upsertFromGhPr succeeds without FK exception.
 ///
 /// Scenario B — Defensive path (skip GetProjects, go straight to upsertFromGhPr):
@@ -18,8 +18,8 @@
 ///   creates the project row and succeeds.
 ///
 /// Scenario C — GetSessions path:
-///   SessionRepository.getSessionsForProject publishes session bindings after
-///   project discovery without FK exceptions.
+///   SessionRepository.getSessionsForProject reads imported bindings without FK
+///   exceptions.
 library;
 
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
@@ -38,10 +38,10 @@ import "../helpers/test_database.dart";
 void main() {
   group("PR sync FK regression — forward-prevention paths (pre-v5 schema)", () {
     // -------------------------------------------------------------------------
-    // Scenario A — Primary path: GetProjects before PR sync
+    // Scenario A — Primary path: catalog project before PR sync
     // -------------------------------------------------------------------------
     test(
-      "Scenario A: ProjectRepository.getProjects persists project; "
+      "Scenario A: ProjectRepository.getProjects reads a catalog project; "
       "subsequent upsertFromGhPr succeeds without FK exception",
       () async {
         final db = createTestDatabase();
@@ -72,14 +72,20 @@ void main() {
           projectsDao: db.projectsDao,
         );
 
-        // Project discovery persists the project row.
-        await projectRepo.getProjects(defaultTimestamp: 1234);
+        await db.projectsDao.recordOpenedProject(
+          projectId: "proj-X",
+          path: "proj-X",
+          displayName: null,
+          createdAt: 0,
+          updatedAt: 100,
+        );
+        await projectRepo.getProjects();
 
         final projectRows = await db.select(db.projectsTable).get();
         expect(
           projectRows.map((r) => r.projectId).toList(),
           contains("proj-X"),
-          reason: "getProjects must persist the project row",
+          reason: "the imported project row must remain available",
         );
 
         // Now upsertFromGhPr must succeed — project row already exists.
@@ -96,7 +102,7 @@ void main() {
         expect(
           prRows,
           hasLength(1),
-          reason: "no FK exception when project row was pre-seeded by getProjects",
+          reason: "no FK exception when the catalog already contains the project",
         );
         expect(prRows.first.prNumber, equals(42));
         expect(prRows.first.projectId, equals("proj-X"));
@@ -151,7 +157,7 @@ void main() {
     // Scenario C — GetSessions path via SessionRepository
     // -------------------------------------------------------------------------
     test(
-      "Scenario C: SessionRepository.getSessionsForProject publishes bindings without FK exception",
+      "Scenario C: SessionRepository.getSessionsForProject reads bindings without FK exception",
       () async {
         final db = createTestDatabase();
         addTearDown(db.close);
@@ -175,8 +181,23 @@ void main() {
         await db.projectsDao.recordOpenedProject(
           projectId: "sess-proj",
           path: "/tmp/sess-proj",
+          displayName: null,
           createdAt: 1,
           updatedAt: 1,
+        );
+        await db.sessionDao.insertSessionsIfMissing(
+          pluginId: plugin.id,
+          sessions: [
+            for (var index = 1; index <= 3; index++)
+              (
+                sessionId: "stable-$index",
+                backendSessionId: "sess-$index",
+                projectId: "sess-proj",
+                directory: "/tmp/sess-proj",
+                createdAt: index * 1000,
+                archivedAt: null,
+              ),
+          ],
         );
         final sessions = await repository.getSessionsForProject(
           projectId: "sess-proj",
@@ -192,19 +213,19 @@ void main() {
           reason: "the discovered project remains available for binding publication",
         );
 
-        // The list is not returned until all three stable/backend bindings exist.
+        // The imported stable/backend bindings remain unchanged by the read.
         final sessionRows = await db.select(db.sessionTable).get();
         expect(
           sessionRows,
           hasLength(3),
-          reason: "getSessionsForProject must publish 3 session bindings",
+          reason: "getSessionsForProject must return 3 imported session bindings",
         );
         expect(
           sessionRows.map((r) => r.backendSessionId).toSet(),
           equals({"sess-1", "sess-2", "sess-3"}),
         );
         for (final row in sessionRows) {
-          expect(row.sessionId, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
+          expect(row.sessionId, startsWith("stable-"));
           expect(row.sessionId, isNot(row.backendSessionId));
           expect(row.pluginId, equals(plugin.id));
           expect(row.projectId, equals("sess-proj"));
