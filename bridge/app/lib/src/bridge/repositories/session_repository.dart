@@ -461,7 +461,6 @@ class SessionRepository {
       case final BridgeDerivedProjectsPluginApi plugin:
         final rows = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);
         final projectPathBySessionId = {for (final row in rows) row.backendSessionId: row.projectPath};
-        // Regroup under the stored attribution — the same rule the REST path's
         // Regroup under the durable parent-project attribution. Unknown
         // sessions are omitted because no stable Sesori identity can publish.
         final byProject = <String, List<PluginActiveSession>>{};
