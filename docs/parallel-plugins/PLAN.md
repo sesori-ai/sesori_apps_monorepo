@@ -1904,6 +1904,12 @@ affected locked decision and updates the owning section in the same PR.
   decision. Host verification also exposed the app Makefile's stale standalone
   Dart lookup, which now resolves the workspace-pinned Flutter SDK like the
   bridge Makefile. No plan or risk delta was required.
+  Final pre-PR review `ses_08f6f612fffeF3DVktms317gbE` removed a callback
+  wrapper around `StartAbortSignal` and an OpenCode-id branch from runtime-file
+  selection; the coordinator now reads the signal directly and the runner
+  reuses file APIs generically by resolved state-directory identity. The
+  corrected architecture was approved, with focused runtime tests and fatal
+  analysis passing.
 - **Stage 7 planning:** The stacked Stage 6 code at `297fecc3` still selects and
   validates one descriptor/config, probes and starts it under a per-start mutex
   helper, binds production ownership to `PluginManager` plus a bridge-global
