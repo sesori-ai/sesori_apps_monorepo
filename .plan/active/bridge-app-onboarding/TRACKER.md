@@ -19,7 +19,7 @@
 - **Verdict:** Approved — no architectural violations
 - **Reviewer:** `aristotle-plan-review`
 - **Date:** 2026-07-17
-- **Reviewed commit:** `5a76c0c420cd7db445f7fe2c8a2570265b4c84e0` plus the complete uncommitted `.plan/active/bridge-app-onboarding/` tree; external auth baseline `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
+- **Reviewed commit:** `c75b597ddb965f02031b42a6f6d27feb11827aba` plus the complete uncommitted final architecture corrections in `.plan/active/bridge-app-onboarding/`; external auth baseline `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
 
 ## Wave Baselines
 
