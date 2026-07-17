@@ -21,7 +21,7 @@ void main() {
       final processes = _ProbeProcessService(
         process: _ProbeProcess(
           pid: 4242,
-          stdoutBytes: utf8.encode("2026.06.15-18-00-12-6f5a2cf\n"),
+          stdoutBytes: utf8.encode("2026.07.16-899851b\n"),
           exitCode: Future<int>.value(0),
         ),
       );
