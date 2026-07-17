@@ -558,6 +558,7 @@ class OrchestratorSession {
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final Map<String, Future<void>> _pluginEventProcessingTails = <String, Future<void>>{};
+  Future<void> _projectsSummaryTail = Future<void>.value();
   final Random _backoffJitter = Random();
 
   bool _cancelled = false;
@@ -1066,8 +1067,7 @@ class OrchestratorSession {
       // Both trigger types mean activity changed. Rebuild from repository data
       // after delivering session.deleted so clients observe deletion first.
       if (refreshProjectsSummary) {
-        final summary = await _buildProjectsSummary();
-        if (summary != null) await _deliverSseEvent(event: summary);
+        await _buildAndDeliverProjectsSummaryInOrder();
       }
     } catch (e, st) {
       Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
@@ -1112,6 +1112,21 @@ class OrchestratorSession {
     } catch (e, st) {
       Log.w("failed to route project activity for ${event.runtimeType}", e, st);
     }
+  }
+
+  Future<void> _buildAndDeliverProjectsSummaryInOrder() {
+    final previous = _projectsSummaryTail;
+    final release = Completer<void>();
+    _projectsSummaryTail = release.future;
+    return () async {
+      await previous;
+      try {
+        final summary = await _buildProjectsSummary();
+        if (summary != null) await _deliverSseEvent(event: summary);
+      } finally {
+        release.complete();
+      }
+    }();
   }
 
   void _enqueueWireEvent(SesoriSseEvent event) {

@@ -130,6 +130,103 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
+  test("aggregate project summaries are built and delivered in trigger order across plugins", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one", "two"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+
+    final runFuture = harness.composition.session.run();
+    unawaited(runFuture.catchError((_) {}));
+    await relayServer.nextClient();
+    await _waitFor(
+      () => harness.plugins.every((plugin) => plugin.getProjectsCallCount > 0),
+      reason: "startup activity reconciliation",
+    );
+    final subscribed = harness.composition.session.localWireEvents.firstWhere(
+      (event) => event is SesoriVcsBranchUpdated,
+    );
+    harness.plugins.last.emitEvent(const BridgeSseVcsBranchUpdated());
+    await subscribed.timeout(const Duration(seconds: 2));
+
+    const directory = "/projects/one";
+    const oldSession = PluginSession(
+      id: "old-session",
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: "Old session",
+      time: PluginSessionTime(created: 1, updated: 1, archived: null),
+    );
+    const newSession = PluginSession(
+      id: "new-session",
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: "New session",
+      time: PluginSessionTime(created: 2, updated: 2, archived: null),
+    );
+    final firstPlugin = harness.plugins.first;
+    final firstReadBlocked = Completer<void>();
+    final releaseFirstRead = Completer<void>();
+    firstPlugin
+      ..activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: directory,
+          activeSessions: [PluginActiveSession(id: "old-session", awaitingInput: false)],
+        ),
+      ]
+      ..currentProjectResult = const PluginProject(id: directory, directory: directory)
+      ..sessionsResult = const [oldSession, newSession]
+      ..getProjectStarted = firstReadBlocked
+      ..getProjectGate = releaseFirstRead;
+    final summaries = <SesoriProjectsSummary>[];
+    final summarySubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriProjectsSummary)
+        .cast<SesoriProjectsSummary>()
+        .listen(summaries.add);
+    addTearDown(summarySubscription.cancel);
+
+    firstPlugin.emitEvent(const BridgeSseProjectUpdated());
+    await firstReadBlocked.future.timeout(const Duration(seconds: 2));
+
+    final secondReadStarted = Completer<void>();
+    firstPlugin
+      ..activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: directory,
+          activeSessions: [PluginActiveSession(id: "new-session", awaitingInput: true)],
+        ),
+      ]
+      ..activeSummaryReadStarted = secondReadStarted;
+    harness.plugins.last.emitEvent(const BridgeSseProjectUpdated());
+
+    var secondReadStartedWhileFirstWasBlocked = false;
+    unawaited(
+      secondReadStarted.future.then((_) {
+        secondReadStartedWhileFirstWasBlocked = !releaseFirstRead.isCompleted;
+        if (!releaseFirstRead.isCompleted) releaseFirstRead.complete();
+      }),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    if (!releaseFirstRead.isCompleted) releaseFirstRead.complete();
+
+    await _waitFor(() => summaries.length == 2, reason: "both project summaries");
+    expect(secondReadStartedWhileFirstWasBlocked, isFalse);
+    expect(
+      summaries.map((summary) => summary.projects.single.activeSessions.single.awaitingInput),
+      [false, true],
+    );
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+  });
+
   test("shutdown drains in-flight post-normalization work", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
@@ -266,6 +363,10 @@ class _SourcedPlugin extends FakeBridgePlugin {
   final String pluginId;
   Completer<void>? getProjectsStarted;
   Completer<void>? getProjectsGate;
+  Completer<void>? getProjectStarted;
+  Completer<void>? getProjectGate;
+  Completer<void>? activeSummaryReadStarted;
+  List<PluginProjectActivitySummary> activitySummaries = const [];
 
   @override
   String get id => pluginId;
@@ -275,6 +376,25 @@ class _SourcedPlugin extends FakeBridgePlugin {
     getProjectsStarted?.complete();
     if (getProjectsGate case final gate?) await gate.future;
     return super.getProjects();
+  }
+
+  @override
+  Future<PluginProject> getProject(String projectId) async {
+    if (getProjectStarted case final started?) {
+      getProjectStarted = null;
+      final gate = getProjectGate;
+      getProjectGate = null;
+      started.complete();
+      if (gate != null) await gate.future;
+    }
+    return super.getProject(projectId);
+  }
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    activeSummaryReadStarted?.complete();
+    activeSummaryReadStarted = null;
+    return activitySummaries;
   }
 }
 

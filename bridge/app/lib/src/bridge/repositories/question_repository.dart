@@ -86,16 +86,28 @@ class QuestionRepository {
         message: "no plugins are running",
       );
     }
-    final questions = await Future.wait(
-      plugins.map(
-        (plugin) => _getPluginProjectQuestions(
-          plugin: plugin,
-          projectId: projectId,
-          directory: directory,
-        ).timeout(_aggregateSourceDeadline),
-      ),
+    final sources = await Future.wait<List<PendingQuestion>?>(
+      plugins.map((plugin) async {
+        try {
+          return await _getPluginProjectQuestions(
+            plugin: plugin,
+            projectId: projectId,
+            directory: directory,
+          ).timeout(_aggregateSourceDeadline);
+        } on Object catch (error, stackTrace) {
+          Log.w("Could not read project questions from plugin ${plugin.id}", error, stackTrace);
+          return null;
+        }
+      }),
     );
-    return [for (final source in questions) ...source];
+    if (sources.every((source) => source == null)) {
+      throw const PluginOperationException(
+        "getProjectQuestions",
+        statusCode: 503,
+        message: "all running plugins failed to get project questions",
+      );
+    }
+    return [for (final source in sources) ...?source];
   }
 
   Future<List<PendingQuestion>> _getPluginProjectQuestions({
