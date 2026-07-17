@@ -214,6 +214,44 @@ void main() {
       },
     );
 
+    test("createSession preserves a worktree request while project capability loads", () async {
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-loading")));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+      );
+
+      verify(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: "project-1",
+          pluginId: legacyMissingPluginId,
+          text: "hello",
+          agent: null,
+          providerID: null,
+          modelID: null,
+          variant: null,
+          command: null,
+          dedicatedWorktree: true,
+        ),
+      ).called(1);
+    });
+
     test("createSession disables a requested worktree when the project does not support it", () async {
       when(
         () => mockProjectRepository.getProject(projectId: any(named: "projectId")),

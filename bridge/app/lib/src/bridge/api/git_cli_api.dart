@@ -54,6 +54,8 @@ class GitCliApi {
         "user.name=Sesori",
         "-c",
         "user.email=sesori@localhost",
+        "-c",
+        "commit.gpgSign=false",
         "commit",
         "-m",
         message,

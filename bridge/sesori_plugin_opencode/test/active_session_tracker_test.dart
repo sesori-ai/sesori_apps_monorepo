@@ -2346,6 +2346,20 @@ void main() {
         expect(tracker.buildSummary().first.id, equals("/old-repo"));
       });
     });
+
+    group("registerProjectWorktree", () {
+      test("a later status resolves a directory learned before the project", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.handleEvent(_sessionCreated("s1", "/repo/sub"), null);
+
+        tracker.registerProjectWorktree(worktree: "/repo");
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        final summary = tracker.buildSummary();
+        expect(summary, hasLength(1));
+        expect(summary.single.id, "/repo");
+      });
+    });
   });
 
   group("resolveDisplaySessionId", () {

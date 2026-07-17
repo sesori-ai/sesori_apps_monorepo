@@ -273,8 +273,9 @@ class FilesystemRepository {
     final gitignorePath = p.join(projectPath, ".gitignore");
     _guard(path: gitignorePath, () {
       final content = _filesystemApi.readFileIfExists(gitignorePath) ?? "";
-      if (!content.contains(entry)) {
-        _filesystemApi.appendToFile(gitignorePath, "$entry\n");
+      if (!const LineSplitter().convert(content).contains(entry)) {
+        final separator = content.isEmpty || content.endsWith("\n") ? "" : "\n";
+        _filesystemApi.appendToFile(gitignorePath, "$separator$entry\n");
       }
     });
   }

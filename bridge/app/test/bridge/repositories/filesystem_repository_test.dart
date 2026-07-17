@@ -95,6 +95,35 @@ void main() {
       expect(repo.defaultBrowsePath, r"C:\Users\dev");
     });
 
+    for (final existingContent in ["build/", "# .worktrees/", "!.worktrees/"]) {
+      test("ensureGitignoreEntry appends an exact rule after '$existingContent'", () {
+        final gitignore = File("${tempDir.path}/.gitignore")..writeAsStringSync(existingContent);
+
+        repository.ensureGitignoreEntry(projectPath: tempDir.path, entry: ".worktrees/");
+
+        expect(gitignore.readAsStringSync(), "$existingContent\n.worktrees/\n");
+      });
+    }
+
+    test("listSuggestions ignores a dangling .git symlink", () {
+      final directory = Directory("${tempDir.path}/dangling")..createSync();
+      Link("${directory.path}/.git").createSync("${tempDir.path}/missing-git-target");
+
+      final result = repository.listSuggestions(prefix: tempDir.path, maxResults: 10);
+
+      expect(result.data.singleWhere((entry) => entry.name == "dangling").isGitRepo, isFalse);
+    });
+
+    test("listSuggestions follows a valid .git symlink", () {
+      final gitTarget = Directory("${tempDir.path}/git-target")..createSync();
+      final directory = Directory("${tempDir.path}/linked")..createSync();
+      Link("${directory.path}/.git").createSync(gitTarget.path);
+
+      final result = repository.listSuggestions(prefix: tempDir.path, maxResults: 10);
+
+      expect(result.data.singleWhere((entry) => entry.name == "linked").isGitRepo, isTrue);
+    });
+
     test("listSuggestions throws not-found for a missing prefix", () {
       expect(
         () => repository.listSuggestions(prefix: "${tempDir.path}/missing", maxResults: 10),

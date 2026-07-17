@@ -97,7 +97,8 @@ class ProjectInitializationService {
           return ExistingProjectPreparationOutcome.gitChoiceRequired;
         }
       case OpenProjectGitAction.initializeGit:
-        if (!isGitInitialized) {
+        final hasCommit = isGitInitialized && await _worktreeRepository.hasAtLeastOneCommit(projectPath: path);
+        if (!hasCommit) {
           try {
             await _initializeGitProject(path: path);
           } on Object catch (error, stackTrace) {

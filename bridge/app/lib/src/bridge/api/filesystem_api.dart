@@ -38,11 +38,11 @@ class FilesystemApi {
 
   /// Whether [directoryPath] contains a `.git` entry (a git working copy).
   bool gitDirectoryExists(String directoryPath) {
-    return FileSystemEntity.typeSync(
-          p.join(directoryPath, ".git"),
-          followLinks: false,
-        ) !=
-        FileSystemEntityType.notFound;
+    final type = FileSystemEntity.typeSync(
+      p.join(directoryPath, ".git"),
+      followLinks: true,
+    );
+    return type == FileSystemEntityType.directory || type == FileSystemEntityType.file;
   }
 
   /// Raw process-environment lookup for repository-level fallback policy.

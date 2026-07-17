@@ -218,6 +218,27 @@ void main() {
       expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
     });
 
+    test("an explicit Git action retries setup for a repository without commits", () async {
+      gitCliApi.initialized = true;
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
+
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: OpenProjectRequest(
+          path: tempDir.path,
+          gitAction: OpenProjectGitAction.initializeGit,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(gitCliApi.initCalls, 1);
+      expect(gitCliApi.stageCalls, 1);
+      expect(gitCliApi.commitCalls, 1);
+      expect(result.supportsDedicatedWorktrees, isTrue);
+    });
+
     test("initializes, stages, and commits before opening when Git is enabled", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 

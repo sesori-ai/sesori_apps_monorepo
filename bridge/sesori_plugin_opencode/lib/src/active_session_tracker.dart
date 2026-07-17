@@ -168,8 +168,11 @@ class ActiveSessionTracker {
         _sessionParentIds.remove(event.info.id);
         _clearPendingInputForSession(event.info.id);
       case SseSessionStatus():
-        if (!_sessionWorktrees.containsKey(event.sessionID) && directory != null) {
-          _updateSessionWorktree(event.sessionID, directory);
+        if (!_sessionWorktrees.containsKey(event.sessionID)) {
+          final resolvedDirectory = directory ?? _sessionDirectories[event.sessionID];
+          if (resolvedDirectory != null) {
+            _updateSessionWorktree(event.sessionID, resolvedDirectory);
+          }
         }
         switch (event.status) {
           case SessionStatusIdle():
