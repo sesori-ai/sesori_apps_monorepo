@@ -731,9 +731,6 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> dispose() async {}
 
   @override
-  bool sessionListIsAuthoritative({required String pluginId}) => true;
-
-  @override
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
@@ -960,13 +957,6 @@ class FakeSessionRepository implements SessionRepository {
   String? projectPathResult;
   final Map<String, String?> enrichedTitleOverrides = {};
   Object? publicationError;
-
-  /// Settable so handler tests can exercise the non-authoritative
-  /// (bridge-derived) reconcile gating.
-  bool sessionListIsAuthoritativeResult = true;
-
-  @override
-  bool sessionListIsAuthoritative({required String pluginId}) => sessionListIsAuthoritativeResult;
 
   FakeSessionRepository({
     required FakeBridgePlugin plugin,

@@ -84,28 +84,6 @@ class SessionUnseenRepository {
     return _sessionDao.deleteSession(sessionId: sessionId);
   }
 
-  /// Removes the rows of sessions that vanished from the authoritative
-  /// complete session list for [projectId] (deleted while the bridge was
-  /// offline / backend-side without a `session.deleted` event), returning the
-  /// deleted ids. Rows created at/after [createdBefore] (the time the fetch
-  /// started) are kept — they are legitimately absent from the stale snapshot.
-  /// Scoped to the active plugin: the list is only authoritative for the
-  /// plugin that produced it, so rows another plugin recorded for the same
-  /// project are never reconciled away.
-  Future<List<String>> deleteSessionsNotIn({
-    required String pluginId,
-    required String projectId,
-    required List<String> keepSessionIds,
-    required int createdBefore,
-  }) {
-    return _sessionDao.deleteSessionsForProjectNotIn(
-      projectId: projectId,
-      keepSessionIds: keepSessionIds,
-      createdBefore: createdBefore,
-      pluginId: pluginId,
-    );
-  }
-
   /// Whether [sessionId] currently has unseen changes.
   Future<bool> isUnseen({required String sessionId}) async {
     final row = await getUnseenRow(sessionId: sessionId);

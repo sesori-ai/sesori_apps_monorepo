@@ -1371,12 +1371,13 @@ PR-level implementation plan:
    retry that whole scope, never one plugin). Call
    `BridgeInstanceService.enforceSingleLiveBridge` exactly once after lock
    acquisition. Build one `BridgePluginHostImpl` per available descriptor with
-   `pluginStateDirectoryPath(paths:, pluginId:)`: OpenCode keeps its frozen
-   `<cacheDirectory>/runtime` directory and reuses the runner's existing
-   `RuntimeFileApi` plus one `BridgeHostJsonStore`; each non-OpenCode
-   `<installRoot>/plugins/<id>` directory gets exactly one new `RuntimeFileApi`
-   and one `BridgeHostJsonStore`. Never construct two `RuntimeFileApi` instances
-   for the same state directory. Lifecycle receives no host/process/store input.
+   `pluginStateDirectoryPath(paths:, pluginId:, stateStorage:)`. Descriptors
+   declare backend-neutral storage policy: OpenCode and Codex keep their shipped
+   shared `<cacheDirectory>/runtime` root, while isolated plugins use
+   `<installRoot>/plugins/<id>`. Reuse one `RuntimeFileApi` and
+   `BridgeHostJsonStore` for descriptors that resolve to the same root; managed
+   runtime subdirectories and ownership/intent filenames remain plugin-specific.
+   Lifecycle receives no host/process/store input.
 9. Under that one mutex, call `_ensurePluginRuntime` sequentially in configured
    order. Immediately after one descriptor's provisioning settles, the runner
    invokes `Future.sync(() => descriptor.start(host))`, passes that future to

@@ -1,8 +1,12 @@
 # Sesori Bridge CLI
 
-Native CLI tool written in Dart, compiled to a platform binary, that bridges a local AI assistant server to mobile devices over the internet via an encrypted WebSocket relay.
+Native CLI tool written in Dart, compiled to a platform bundle, that runs headlessly and bridges local AI assistant backends to mobile and desktop clients over an encrypted WebSocket relay.
 
-The bridge authenticates with OAuth PKCE, loads the selected plugin, connects to the relay, performs an X25519 key exchange with each connecting phone, and routes encrypted requests and responses between them. All traffic is end-to-end encrypted; the relay server only ever sees ciphertext. The plugin (e.g. `sesori_plugin_opencode`) owns all backend-specific logic: spawning the assistant, health checks, SSE event parsing, and graceful shutdown.
+The bridge authenticates with OAuth PKCE, loads the ordered enabled plugins,
+connects to the relay, performs an X25519 key exchange with each connecting
+client, and routes encrypted requests and responses. All traffic is end-to-end
+encrypted; the relay server only ever sees ciphertext. Each plugin owns its
+backend-specific spawning, health checks, event parsing, and graceful shutdown.
 
 ## Quick Start
 
@@ -14,7 +18,9 @@ make build
 ./dist/bridge-macos-arm64
 ```
 
-Press `Ctrl+C` to stop. This shuts down the bridge and triggers the selected plugin's ordered shutdown, which in turn stops any backend server it started.
+Press `Ctrl+C` to stop. This shuts down the bridge, independently drains plugin
+sessions/imports/listeners, and triggers ordered shutdown for every returned
+plugin instance and any backend process it started.
 
 No Dart SDK? You can bootstrap the managed install with npm:
 
@@ -97,19 +103,19 @@ If you used the npm bootstrap path, `npm uninstall @sesori/bridge` does not remo
 ## How It Works
 
 ```
-Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Plugin] -> AI assistant server
+Clients <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Plugins] -> AI assistant backends
 ```
 
-1. The bridge loads the selected plugin descriptor and runs its `start(PluginHost)`.
-2. The plugin starts (or attaches to) its backend server on a local port and reports `Ready`.
-3. The bridge authenticates with the auth backend (OAuth PKCE).
+1. The bridge resolves repeated `--plugin` values, otherwise persisted `enabledPlugins`, otherwise the OpenCode fallback.
+2. The bridge authenticates with the auth backend (OAuth PKCE).
+3. It probes descriptors concurrently, provisions available plugins in configured order under one startup mutex, and starts each plugin as its provisioning settles.
 4. The bridge connects to the relay WebSocket with role `"bridge"`.
-5. The phone connects to the same relay, grouped by user ID.
-6. Key exchange: phone sends its X25519 public key; bridge derives a shared secret via HKDF-SHA256 and sends an encrypted ready message containing the room key.
+5. The client connects to the same relay, grouped by user ID.
+6. Key exchange: the client sends its X25519 public key; the bridge derives a shared secret via HKDF-SHA256 and sends an encrypted ready message containing the room key.
 7. All subsequent traffic is end-to-end encrypted. The relay cannot read any data.
-8. Up to 5 phones can connect simultaneously.
-9. Phone HTTP requests are decrypted by the bridge and forwarded to the local assistant server through the plugin.
-10. Responses flow back encrypted through the relay to the phone.
+8. Up to 5 clients can connect simultaneously.
+9. Client HTTP requests are decrypted by the bridge. Catalog reads use the local database; targeted controls route through the session's stored plugin binding.
+10. Responses flow back encrypted through the relay to the client.
 
 ## CLI Flags (for `run` command)
 
@@ -120,7 +126,8 @@ Bridge core flags:
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--relay` | `wss://relay.sesori.com` | Relay server URL |
-| `--plugin` | `opencode` | Plugin backend to run |
+| `--plugin` | `enabledPlugins`, then `opencode` | Plugin backend to run. Repeat in the desired order; CLI selection overrides settings. |
+| `--import-plugin` | *(none)* | Start an import for this enabled plugin after startup. Repeatable. |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
 | `--log-level` | `info` | Minimum **diagnostic log** level (written to stderr): `verbose`, `debug`, `info`, `warning`, `error` |
@@ -128,7 +135,9 @@ Bridge core flags:
 
 > `--log-level` controls **diagnostic logging only**. Logs are written to stderr and can be silenced freely. User-facing messages — login prompts, the authorization URL and code, startup status, "Authenticated as…" — are written to stdout and are **always shown regardless of `--log-level`**, so the bridge stays operable even with logging disabled (`--log-level error`, or redirecting stderr with `2>/dev/null`).
 
-The selected plugin contributes its own options, parsed after `--plugin` resolves the backend. Run `--help` to see the options for the selected plugin. The OpenCode plugin adds:
+Every enabled plugin contributes its namespaced options after selection is
+resolved. Run `--help` with the desired repeated `--plugin` values to see their
+combined options. The OpenCode plugin adds:
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -166,6 +175,18 @@ without sending the request to connected clients. The bridge prints a warning
 at startup whenever this mode is active. Use `sesori-bridge config yolo on` or
 `sesori-bridge config yolo off` to change it without editing the file directly.
 
+To persist ordered plugin selection, add `enabledPlugins` to the same file:
+
+```json
+{
+  "enabledPlugins": ["opencode", "codex"]
+}
+```
+
+The first entry is the current default plugin. It is not the fallback for old
+payloads: missing legacy `pluginId` always means OpenCode. Duplicate, unknown,
+or explicitly empty selections are rejected.
+
 ## Examples
 
 ```bash
@@ -175,8 +196,11 @@ at startup whenever this mode is active. Use `sesori-bridge config yolo on` or
 # Use a custom auth backend
 ./dist/bridge-macos-arm64 --auth-backend https://my-auth.example.com
 
-# Select a different plugin (when available)
-./dist/bridge-macos-arm64 --plugin opencode
+# Run OpenCode and Codex in order
+./dist/bridge-macos-arm64 --plugin opencode --plugin codex
+
+# Run both and import Codex after startup
+./dist/bridge-macos-arm64 --plugin opencode --plugin codex --import-plugin codex
 
 # Log out (clear stored tokens)
 ./dist/bridge-macos-arm64 logout
@@ -213,35 +237,51 @@ The bridge generates a 64-character hex password (32 random bytes) and passes it
 
 ## Plugin Process Management
 
-Backend process lifecycle is owned by the plugin, not the bridge core:
+Backend process lifecycle is owned independently by each plugin, not the bridge core:
 
-- On startup, the plugin starts (or attaches to) its backend server.
-- On `Ctrl+C` (SIGINT) or SIGTERM, the bridge calls the plugin's ordered `shutdown()`, which sends the appropriate signals and waits for a clean exit.
+- On startup, each available plugin starts (or attaches to) its backend server.
+- On `Ctrl+C` (SIGINT) or SIGTERM, the bridge disposes and drains all returned plugin APIs, then calls each plugin's idempotent ordered `shutdown()`.
 - On Windows, SIGTERM is unavailable; the plugin typically sends SIGKILL directly.
-- If the backend process exits unexpectedly, the plugin attempts a bounded restart (status `Restarting`, on the same pinned port). Only a terminal `Failed` — restarts exhausted or the port never frees — cancels the relay session and shuts the bridge down (exit 1). Transient problems surface as recoverable `Degraded` and do not stop the bridge.
+- If a backend process exits unexpectedly, its plugin may attempt a bounded restart. A terminal `Failed` removes only that API from operational routing. The relay, durable catalog, and other plugins continue; transient problems surface as recoverable `Degraded`.
 - A 10-second safety timer forces process exit if graceful shutdown stalls.
 
 See the plugin package (e.g. `sesori_plugin_opencode`) for backend-specific details.
 
 ## Build
 
-Requires Dart 3.11+. Run from `bridge/app/`.
+Requires Dart `^3.12.2`. The Makefile uses Dart from the Flutter SDK pinned in
+the repository's `.tool-versions`; install that asdf Flutter version first. Run
+from `bridge/app/`.
 
 | Command | Description |
 |---------|-------------|
-| `make build` | Build all targets: host-native binary plus Linux cross-compiled binaries |
+| `make build` | Build the host-native CLI bundle |
 | `make build-host` | Build the native binary for the current OS and architecture only |
-| `make build-linux` | Cross-compile Linux binaries for arm, arm64, riscv64, and x64 |
 
-Artifacts land in `dist/` named `bridge-<os>-<arch>`. Example outputs on Apple Silicon macOS:
+The launcher artifact lands in `dist/` as `bridge-<os>-<arch>`, while required
+native libraries remain in `build/cli/bundle/`. `sqlite3` build hooks require
+native target compilation, so other release platforms build on matching CI
+runners. Example output on Apple Silicon macOS:
 
 | Artifact | How it's produced |
 |----------|-------------------|
 | `dist/bridge-macos-arm64` | `make build-host` |
-| `dist/bridge-linux-arm` | `make build` |
-| `dist/bridge-linux-arm64` | `make build` |
-| `dist/bridge-linux-riscv64` | `make build` |
-| `dist/bridge-linux-x64` | `make build` |
+
+## Catalog And Import
+
+The bridge owns a durable project/session/child catalog. Normal project,
+root-session, session-detail, and child reads are database-only and remain
+available when a plugin is degraded or failed.
+
+Import is a non-destructive observation of one plugin. Use
+`POST /plugin/import` with `{"pluginId":"codex"}` to start,
+`DELETE /plugin/import` with the same body to request cooperative cancellation,
+and `GET /plugin/import` to retrieve the latest ordered per-plugin statuses.
+Progress is also emitted as plugin-attributed SSE. Duplicate starts join the
+same plugin operation; another plugin imports independently. Enumeration occurs
+before an atomic publication transaction, and readers see the last committed
+catalog while enumeration or publication is in progress. Missing imported rows
+are retained.
 
 ## Run
 

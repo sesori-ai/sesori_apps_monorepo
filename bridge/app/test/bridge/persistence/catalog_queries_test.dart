@@ -180,6 +180,13 @@ void main() {
     );
     expect(
       await plan(
+        "SELECT * FROM projects_table WHERE hidden = 0 "
+        "ORDER BY updated_at DESC, project_id DESC",
+      ),
+      allOf(contains("idx_projects_updated"), isNot(contains("USE TEMP B-TREE"))),
+    );
+    expect(
+      await plan(
         "SELECT * FROM sessions_table WHERE plugin_id = 'codex' "
         "AND backend_session_id = 'backend'",
       ),
@@ -191,6 +198,14 @@ void main() {
         "AND parent_session_id IS NULL ORDER BY updated_at DESC, session_id DESC",
       ),
       contains("idx_sessions_roots"),
+    );
+    expect(
+      await plan(
+        "SELECT * FROM sessions_table WHERE project_id = 'project-1' "
+        "AND parent_session_id IS NULL ORDER BY updated_at DESC, session_id DESC "
+        "LIMIT 10 OFFSET 1",
+      ),
+      allOf(contains("idx_sessions_roots"), isNot(contains("USE TEMP B-TREE"))),
     );
     expect(
       await plan(

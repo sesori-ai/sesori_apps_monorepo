@@ -17,9 +17,14 @@ source directory.
 Bridge CI runs `dart analyze --fatal-infos`, which is stricter than `make analyze` — info-level lints (e.g. `directives_ordering` import sorting) fail CI. Before pushing, run `dart analyze --fatal-infos` from each changed module dir (e.g. `bridge/app/`).
 
 From `bridge/app/`:
-- `make build` — build all targets (host-native + Linux cross-compiled)
+- `make build` — build the host-native CLI bundle
 - `make build-host` — native binary only
-- `make build-linux` — Linux cross-compiled binaries only
+
+The workspace requires Dart `^3.12.2`. The Makefiles resolve Dart from the
+Flutter SDK pinned in the repository's `.tool-versions`; install that asdf
+Flutter version before using the Make targets. `sqlite3` build hooks require
+native target compilation, so cross-platform release artifacts are built on the
+matching CI OS/architecture rather than cross-compiled locally.
 
 ## Module Order
 
@@ -28,8 +33,10 @@ Dependencies flow in one direction:
 1. `sesori_plugin_interface` — no internal deps; defines the contract (also the home of foundational primitives like `Log`, `Console`, `HostProcessService`)
 2. `sesori_bridge_foundation` — depends on interface; **bridge-wide** Layer-0 primitives shared by the main app AND plugins (`SemanticVersion`, `PlatformTarget`, `ChecksumValidator`, `BinaryDownloadClient`, format-keyed `ArchiveExtractor`, `CommandExecutor`/`HostProcessCommandExecutor`). NOT plugin-only.
 3. `sesori_plugin_runtime` — depends on interface; **plugin-only** managed-runtime supervision (`ManagedProcessService`, `ManagedRuntimeMonitor`, ownership/restart/intent). Used by plugins to supervise their backend process; the main app does not depend on it.
-4. `sesori_plugin_opencode` — depends on interface + foundation + runtime + `sesori_shared`
-5. `app` — depends on interface + foundation + `opencode_plugin` + `sesori_shared` (NOT runtime)
+4. `sesori_plugin_opencode` and `sesori_plugin_codex` — depend on interface + foundation + runtime + `sesori_shared`
+5. `sesori_plugin_acp` — ACP protocol plugin base; depends on interface + foundation + `sesori_shared`
+6. `sesori_plugin_cursor` — Cursor descriptor/adapter; depends on interface + foundation + ACP
+7. `app` — depends on interface + foundation + registered concrete plugins + `sesori_shared` (NOT runtime)
 
 When changing shared types, update in this order.
 
@@ -37,10 +44,10 @@ Decide placement by audience: a primitive used by **both** the app and plugins (
 
 ## Plugin Runtime Provisioning (`ensureRuntime`)
 
-`BridgePluginDescriptor` has an `ensureRuntime({host})` phase that runs **after** `checkAvailability` and **immediately before** `start()`, under the cross-instance startup mutex (so two bridges never install the same managed runtime at once). It returns a `Stream<RuntimeProvisionProgress>` whose terminal event is `ProvisionReady(binaryPath)` or `ProvisionFailed(message)`. The default is a no-op (remote/attach plugins need no runtime).
+`BridgePluginDescriptor` has an `ensureRuntime({host})` phase that runs **after** concurrent `checkAvailability` probes and **immediately before** that descriptor's `start()`, under the bridge's one cross-instance startup mutex (so two bridges never install the same managed runtime at once). Enabled plugins provision sequentially in configured order; each `start()` is registered as soon as its provisioning settles, so starts can overlap later provisioning and other starts. It returns a `Stream<RuntimeProvisionProgress>` whose terminal event is `ProvisionReady(binaryPath)` or `ProvisionFailed(message)`. The default is a no-op (remote/attach plugins need no runtime).
 
 - The runner consumes the stream, renders progress (`RuntimeProvisionFormatter`), and records `ProvisionReady.binaryPath` on the host (`PluginHost.provisionedRuntimePath`) for `start()` to launch.
-- **`ProvisionFailed` is non-fatal**: the bridge proceeds to `start()`, which returns a **degraded** plugin (`PluginDegraded`, never `PluginFailed` — a `PluginFailed` status exits the bridge). The relay/phone stay connected; a restart re-attempts provisioning.
+- **`ProvisionFailed` is non-fatal**: the bridge proceeds to `start()`, which can return a degraded plugin. A terminal `PluginFailed` removes only that plugin from operational routing; the relay, catalog, phones, and other plugins stay active. A restart re-attempts provisioning.
 - A cooperative abort during provisioning surfaces as `PluginStartAbortedException` (a stream error), handled by the runner as "aborted as requested".
 - When mapping a long-running primitive stream into provisioning progress, prefer `await for (...) { yield ... }` over `yield*` if you need to **catch** errors from the inner stream: `yield*` forwards the inner stream's error straight to the consumer and bypasses your surrounding `try/catch`.
 
@@ -67,6 +74,13 @@ migration/snapshot; never fold them into the merged version.
 - Plugin implementations must implement the full `BridgePluginApi` surface — no partial implementations
 - SSE events use sealed classes (see `bridge_sse_event.dart`)
 - Pure Dart only — no Flutter dependencies anywhere in this workspace
+- Repeated `--plugin` values and persisted `enabledPlugins` are ordered. The
+  first enabled plugin is the current default; the OpenCode legacy identity is
+  only for released payloads that omit `pluginId` and must never be replaced by
+  "first enabled".
+- Project/root/detail/child catalog reads are database-only. Import is explicit,
+  non-destructive, and per plugin; reads during import return the last committed
+  catalog.
 
 ## Class Suffix Guidance
 

@@ -15,6 +15,11 @@
 
 - Second backend shipped: **Codex** plugin alongside OpenCode — proves
   multi-backend.
+- Ordered **parallel-plugin runtime** is implemented: repeated CLI selection or
+  persisted `enabledPlugins`, isolated lifecycle/failure, per-plugin imports and
+  events, and database-only mixed catalog reads.
+- Client **plugin selection and scoped composer resources** are implemented for
+  new and existing sessions.
 - Bridge **control channel** + supervised mode — desktop-supervision groundwork.
 - Shared **runtime provisioning** — auto-installs backend runtimes on first run.
 - Multi-bridge **seam** on the client (`bridge_api` / `bridge_repository` /
@@ -30,14 +35,21 @@
   `module_app_ui` shared-UI split.
 - **Invariants:** I3 (shared brain / thin shells), I4 (headless-first).
 
-## Stage B — Multi-plugin parallelism + per-session model control
+## Stage B — Multi-plugin parallelism + per-session model control — *final gate pending*
 
-- **Outcome:** run multiple plugins concurrently; per-session model/agent
-  selection in the client; a **capability descriptor** on `BridgePluginApi` so
-  the client renders only what a given plugin supports.
-- **Priority:** the next major capability after Stage A — and may run **in
-  parallel with** it; this is ahead of multi-bridge.
-- **Depends on:** additive plugin-interface evolution; independent of Stage A.
+- **Implemented outcome:** run ordered enabled plugins concurrently with
+  independent lifecycle/failure; browse one database-backed catalog; import each
+  plugin independently; choose a plugin and its agents/models/commands in the
+  client. Existing-session composer requests use the stored plugin identity.
+- **Compatibility:** the bridge's enabled/default marker is separate from the
+  fixed OpenCode identity used only when released peers omit `pluginId`.
+- **Remaining gate:** Stage 9's tooling and reduced local smoke are directional.
+  The controlled fixed-host matrix/soak artifact is pending, so this stage and
+  the parallel-plugin plan are not complete.
+- **Capability policy:** current backends satisfy the declared plugin API shape;
+  no speculative all-true capability descriptor was added. Introduce an
+  optional capability only for a demonstrated backend difference.
+- **Depends on:** independent of Stage A.
 - **Unlocks:** own harness (D), master agent (G), a richer client.
 - **Explicitly excluded:** moving a *live* session between plugins (VISION
   non-goal).
@@ -58,9 +70,9 @@
 ## Stage D — Sesori's own harness (as a plugin)
 
 - **Outcome:** a first-party agent harness implemented **behind
-  `BridgePluginApi`**, using the optional-capability mechanism from Stage B; no
-  privileged path.
-- **Depends on:** B (capability model).
+  `BridgePluginApi`**, with no privileged path. Add an optional capability only
+  if this concrete backend cannot implement an existing contract operation.
+- **Depends on:** B (parallel composition and plugin-scoped client routing).
 - **Invariants:** I1.
 
 ## Stage E — CI / review integration with opt-in auto-handle
@@ -104,9 +116,12 @@
 
 ## Notes on ordering
 
-- **B (multi-plugin) is the priority after A** and can run in parallel with A.
+- **B (multi-plugin)** implemented its production path in parallel with A; its
+  fixed-host completion gate remains open.
 - **C (multi-bridge)** can follow or overlap B; the two are independent.
 - **F** should not start before **C** is real (it depends on the bridge being
   "one of many" and fully headless).
+- The desktop workstream remains paused for human reassessment after parallel
+  plugins; this roadmap does not choose its next desktop PR or phase.
 - Nothing here is approved to build ahead of need — each stage earns its design
   at `aristotle-plan-review` time, against the then-current code.

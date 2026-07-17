@@ -1,6 +1,6 @@
 # Sesori Bridge (Dart)
 
-Dart CLI compiled to native binary. Runs on laptop, authenticates via OAuth PKCE, connects to relay, routes E2E-encrypted traffic between phones and a local AI assistant server. Plugin-based architecture supports multiple backends (OpenCode, Codex, etc.).
+Dart CLI compiled to a native bundle. Runs headlessly on a laptop or VM, authenticates via OAuth PKCE, connects to the relay, and routes E2E-encrypted traffic between clients and ordered enabled backend plugins. OpenCode, Codex, and Cursor can run concurrently in one bridge.
 
 ## STRUCTURE
 
@@ -28,22 +28,19 @@ lib/src/
 
 bridge/ workspace modules (siblings of app/):
 ├── sesori_plugin_interface/   Plugin contract — BridgePlugin, BridgePluginDescriptor, PluginHost
-└── sesori_plugin_opencode/    OpenCode implementation
-    ├── runtime/               OpenCode lifecycle: descriptor, managed runtime (spawn, health, restart), ownership records
-    ├── models/                Freezed models (project, session, message, SSE events, etc.)
-    ├── opencode_plugin_impl.dart  BridgePlugin implementation
-    ├── opencode_service.dart      Business logic coordinator
-    ├── opencode_repository.dart   Data access (project/session merging, virtual projects)
-    ├── opencode_api.dart          Raw HTTP client for OpenCode REST API
-    ├── active_session_tracker.dart  Tracks active sessions via SSE events
-    └── sse_event_parser.dart      Parses raw SSE JSON into typed events
+├── sesori_bridge_foundation/  Bridge/plugin shared pure-Dart primitives
+├── sesori_plugin_runtime/     Managed backend-process supervision for plugins
+├── sesori_plugin_opencode/    OpenCode implementation
+├── sesori_plugin_codex/       Codex implementation
+├── sesori_plugin_acp/         ACP protocol plugin base
+└── sesori_plugin_cursor/      Cursor implementation over ACP
 ```
 
 ## WHERE TO LOOK
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, `--plugin`, etc.); the selected plugin contributes its own, namespaced by plugin id (OpenCode adds `--opencode-port`, `--opencode-host`, `--opencode-no-auto-start`, …) |
+| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, repeatable `--plugin`/`--import-plugin`, etc.); every enabled plugin contributes namespaced options |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
@@ -55,8 +52,11 @@ bridge/ workspace modules (siblings of app/):
 
 ## CONVENTIONS
 
-- **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/` (e.g. `sesori_plugin_opencode`). The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point.
+- **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/`. Core repositories, services, handlers, and shared contracts remain backend-neutral. `plugin_registry.dart` is the supported composition point that imports the OpenCode, Codex, and Cursor descriptors; do not import concrete plugins elsewhere in bridge core.
+- **Ordered plugin selection** — repeated `--plugin <id>` flags override persisted `enabledPlugins`; otherwise settings win, otherwise OpenCode is the sole fallback. Preserve order and reject duplicates/unknown/explicitly empty selection. The first enabled plugin is the current default. Missing legacy `pluginId` still means OpenCode, not the first enabled plugin.
 - **Plugin CLI options are namespaced** — plugins declare **bare** option names in their descriptor (`port`, `host`, `bin`, …). `PluginCliOptionsMapper` namespaces each to `--<pluginId>-<name>` (e.g. `--opencode-host`) at registration so options can't collide once multiple plugins run in parallel. Never bake the plugin prefix into the declared name. When renaming/migrating a previously un-prefixed flag, keep the old spelling working via `PluginOption.deprecatedAliases` (registered hidden, emits a `Log.w` deprecation when used) rather than breaking existing invocations. Plugin code reads values by the **bare** name through `PluginConfig`, unaware of namespacing.
+- **Catalog and import semantics** — project/root/detail/child reads use only the durable database catalog. `POST`, `DELETE`, and `GET /plugin/import` start, cancel, and report independent per-plugin imports; progress SSE is plugin-attributed. Imports are atomic/non-destructive, and concurrent catalog reads observe the last committed snapshot.
+- **Independent lifecycle** — `PluginLifecycleService` owns ordered enabled/default metadata and the operational API map. A terminal plugin failure disables only that plugin's routes and new-session choice; it does not stop catalog browsing, the relay, or another plugin.
 - **Explicit routing** — every supported route has a dedicated handler; `RequestRouter` returns 404 for unmatched routes (no catch-all proxy).
 - **Layer 4 trigger listeners** — new reactive/scheduled consumers live in
   `lib/src/listeners/`. Each owns one trigger's subscription/timer lifecycle,
@@ -107,10 +107,10 @@ For push code specifically, `PushDispatcher` owns only outbound push sends (imme
 ## TESTING
 
 ```bash
-# Run all commands from the bridge/ workspace root.
+# Run analysis/tests from the bridge/ workspace root.
 make analyze                                   # Analyze all bridge modules
 make test                                      # Test all bridge modules
-(cd app && make build)                         # Compile the native binary
+(cd app && make build)                         # Build the host-native CLI bundle
 
 # Target a single module (the subshell keeps your shell at bridge/):
 (cd app && dart test)                          # Bridge app tests only
@@ -123,4 +123,8 @@ Test helpers in `test/helpers/test_helpers.dart`: `makeRoomKey()`, `startTestRel
 
 ## RELEASE
 
-`make build` produces host binary + Linux cross-compiled binaries. GitHub Actions release workflow builds 5 platform artifacts from release tags, creates the GitHub Release, and then publishes the npm bootstrap packages automatically via npm trusted publishing from that same workflow.
+The workspace requires Dart `^3.12.2`; Makefiles use the Flutter SDK pinned in
+the root `.tool-versions`. `make build` builds only the host-native CLI bundle
+because sqlite build hooks require native target compilation. GitHub Actions
+builds release artifacts on the matching platform runners, creates the GitHub
+Release, and publishes the npm bootstrap packages via trusted publishing.

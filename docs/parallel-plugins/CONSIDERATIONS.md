@@ -1,39 +1,38 @@
-# Parallel Plugin Support — Pre-Scoping Considerations
+# Parallel Plugin Support - Historical Considerations And Current State
 
-> Status: **direction captured; execution planned; implementation not started**.
-> The durable
-> ownership and catalog direction is recorded in
-> [`ARCHITECTURE.md`](ARCHITECTURE.md). This document remains the pre-scoping
-> code audit gathered while building
-> bridge-derived project tracking (PR #360). Its live-aggregation assumptions
-> are superseded by the bridge-owned catalog decision, but its inventory of
-> current seams remains useful. Before implementation, read both documents and
-> re-verify every code reference. The current re-audit, concrete decisions, and
-> staged execution are tracked in [`PLAN.md`](PLAN.md).
+> Status: **historical audit reconciled through Stage 8; Stage 9 in progress**.
+> The durable ownership model is recorded in
+> [`ARCHITECTURE.md`](ARCHITECTURE.md), and staged execution remains in
+> [`PLAN.md`](PLAN.md). The original pre-scoping audit assumed one running plugin
+> and request-time backend lists. Those assumptions are historical, not current
+> architecture. Stage 9's controlled fixed-host artifact remains pending.
 
-## 1. Target
+## 1. Implemented Outcome
 
-Today the bridge runs **exactly one plugin per process**, selected at startup
-(`--plugin opencode` / `--plugin codex`). The target is multiple plugins
-running **in parallel in one bridge**: codex, opencode, and future backends
-live at the same time, their sessions appearing together — one project card
-per directory with sessions from every plugin under it.
+One bridge process can run OpenCode, Codex, and Cursor concurrently. Repeated
+`--plugin <id>` flags select plugins in stable order and override persisted
+`enabledPlugins`; settings otherwise win, and OpenCode remains the sole fallback
+when neither surface selects anything. Duplicates, unknown ids, and an explicit
+empty settings list fail validation.
+
+The first enabled plugin is the bridge-authored default for current clients.
+That default is not the same concept as `legacyMissingPluginId`: missing identity
+from released peers always means OpenCode, regardless of enabled order.
+
+Projects merge into one catalog entity per normalized directory. Root sessions
+from different plugins appear together under that project, with each durable
+session retaining its plugin binding and opaque backend handle.
 
 Related directional invariants from the root `AGENTS.md` still bind: the
 plugin boundary stays sacred (no backend specifics past `BridgePluginApi`),
 and there is one session-control surface.
 
-## 2. Foundations already in place
+## 2. Current Foundations
 
-These decisions were made single-plugin but were shaped for this future.
-They should be treated as settled unless planning finds a hard reason not to.
-
-- **`sessions.plugin_id` (NOT NULL, no defaults).** Every session row is
-  stamped with its owning plugin at insert; the v7→v8 migration backfilled
-  history to `opencode`. Under parallel plugins this is the routing datum:
-  it answers *which plugin* owns a session (prompt/abort/question routing for
-  mixed lists) and keys every per-plugin query. Do not weaken it back to a
-  default. (`bridge/app/lib/src/api/database/tables/session_table.dart`)
+- **Separated session identity.** `session_id` is the stable Sesori identity,
+  `plugin_id` is the routing key, and `backend_session_id` is opaque outside the
+  owning plugin/repository boundary. Existing ids were preserved; new bindings
+  receive random Sesori ids.
 
 - **Plugin-agnostic projects table keyed by `path`.** `projects_table` has no
   plugin column, deliberately: projects are cross-plugin entities. The
@@ -42,17 +41,14 @@ They should be treated as settled unless planning finds a hard reason not to.
   cross-plugin merging can join on the directory.
   (`bridge/app/lib/src/api/database/tables/projects_table.dart`)
 
-- **DB rows as session→project attribution.** `SessionDao.getSessionProjectPaths`
-  (sessions⋈projects join, filtered by `plugin_id`) is how derived plugins
-  scope sessions to projects; the row the bridge wrote at creation is
-  authoritative, worktree sessions fold to their parent through it. The DB is
-  the natural cross-plugin merge point, so this only gets more central.
+- **Database-only catalog reads.** Project, root-session, session-detail, and
+  child reads query indexed durable rows. They do not call plugins, persist a
+  backend list result, or remove rows because a later import omitted them.
 
-- **Plugin-scoped reconciliation.** `deleteSessionsForProjectNotIn` filters by
-  `plugin_id`: a plugin's authoritative session list can only reconcile away
-  *that plugin's* rows. Under parallel plugins this is mandatory, not
-  defensive — opencode's list must never delete codex rows in the same
-  project. Any new reconcile/cleanup path must follow the same rule.
+- **Non-destructive per-plugin import.** Enumeration and mapping occur outside
+  the publication transaction. A complete snapshot publishes atomically for one
+  plugin; absence never deletes or archives catalog history. Readers continue to
+  observe the last committed catalog while import runs.
 
 - **Sealed plugin capability split.** `BridgePluginApi` is sealed into
   `NativeProjectsPluginApi` (backend owns projects) and
@@ -61,121 +57,88 @@ They should be treated as settled unless planning finds a hard reason not to.
   so it composes under parallelism: each plugin in the set is one or the
   other, and per-plugin code keeps switching over the sealed type.
 
-- **Derived merging already keys by normalized directory.**
-  `DerivedProjectBuilder` groups by normalized path, and opencode project ids
-  are paths, so two plugins operating in the same repo collide on the same
-  key — which is exactly the merge point a unified project card needs.
+- **Cross-plugin project space.** Import and exact writes merge projects by the
+  plugin-declared normalized directory. Hidden, display-name, and base-branch
+  metadata remain shared on the one catalog row.
 
-- **Cross-plugin project listing is intended behavior.** A derived plugin
-  already lists every stored project row (e.g. folders recorded during
-  opencode use surface under codex until hidden). This looked like a UX
-  oddity single-plugin; it is the end state arriving early — one shared
-  project space.
+## 3. Implemented Replacements For The Singular Assumptions
 
-## 3. Single-plugin assumptions that must change
+1. **Composition and lifecycle.** `PluginLifecycleService` owns one ordered
+   composition view. Availability probes are concurrent; provisioning follows
+   configured order under one startup mutex while starts may overlap. A failed
+   or terminal plugin is removed from operational routing without stopping the
+   relay, catalog, or other plugins. Shutdown disposes and drains plugins
+   independently.
+2. **Repository routing.** Domain repositories receive the ordered enabled ids
+   and operational API map where needed. Session operations resolve the stored
+   binding; plugin-scoped project operations use an explicit/default plugin id.
+   Handlers and services remain plugin-agnostic.
+3. **Endpoint semantics.** Catalog lists are database-only. Session status,
+   health, project questions, and active summaries aggregate with explicit
+   timeout/failure semantics. Agents, providers/models, and commands remain
+   plugin-scoped rather than merging backend-local ids.
+4. **Sourced events.** The bridge attaches source identity at subscription,
+   preserves per-plugin ordering, translates every backend session reference,
+   and emits only Sesori identities. One blocked plugin does not block another
+   plugin's event stream.
+5. **Creation and composer routing.** Current clients discover ordered plugin
+   metadata, choose a routable plugin, load that plugin's composer resources,
+   and send its id when creating a session. Existing-session composer requests
+   use `Session.pluginId`. Saved agent/model/variant choices are keyed by project
+   and plugin.
+6. **Import.** `POST`, `DELETE`, and `GET /plugin/import` start, cancel, and
+   report per-plugin operations. Progress is plugin-attributed SSE, duplicate
+   starts join that plugin's operation, and failures do not cancel imports for
+   other plugins. Repeated headless `--import-plugin <id>` starts selected
+   imports after startup.
 
-An inventory of the places that assume "the plugin", roughly ordered by how
-much design they need. This is the core of the future scoping work.
+## 4. Contract Boundaries That Remain
 
-1. **Composition wiring.** `BridgeRuntime.create` takes one `plugin`;
-   `bridge_runtime_runner` starts one descriptor under the startup mutex and
-   binds one plugin session; `PluginManager`/registry select one descriptor.
-   Parallel plugins need a plugin *set* with per-plugin lifecycle
-   (start/degrade/stop independently — one backend failing must not take the
-   bridge down), and DI that constructs per-plugin object graphs.
+- **`PluginProject.directory` is required.** Cross-plugin merging uses the
+  declared normalized directory and never assumes a backend project id is a
+  path.
 
-2. **Repositories hold exactly one `BridgePluginApi`.**
-   `SessionRepository`, `ProjectRepository`, `QuestionRepository`,
-   `PermissionRepository`, `ProviderRepository`, `AgentRepository`,
-   `HealthRepository`, `WorktreeRepository` each take one plugin. The main
-   design fork to resolve at planning time:
-   - *(a) per-plugin repository instances* + an aggregation layer above, or
-   - *(b) repositories take the plugin collection* and aggregate internally.
-   Layer rules apply either way (aggregation is still Layer 2/3; handlers stay
-   plugin-agnostic). The session-level routing primitive already exists:
-   resolve a session's `plugin_id` from its stored row, then dispatch to that
-   plugin's API.
+- **Do not let backend-specific state leak into shared wire models.** Clients
+  see one project space and mixed session lists. Generic `pluginId` crosses the
+  wire where attribution or choice is required; backend-local ids and behavior
+  remain behind `BridgePluginApi`.
 
-3. **Aggregation semantics per endpoint.** `/project` becomes a union of
-   native project lists + derived derivations, merged by directory into one
-   card (union times, one hidden flag, one rename). `/sessions` for a project
-   becomes a per-plugin union sorted by time. Health, session statuses,
-   active-session summaries, providers, agents, and commands all need a
-   merge-or-namespace decision (e.g. are agents/models per-plugin namespaced
-   in the picker?).
+## 5. Known Seams And Risks
 
-4. **Events carry no plugin identity.** The orchestrator subscribes to one
-   `plugin.events` stream. With several streams merged, downstream consumers
-   (unseen service placeholders, session enrichment, push listeners) must
-   know the source plugin — e.g. to stamp the right `plugin_id` on a
-   placeholder row. Expect this to be the first `sesori_plugin_interface`
-   contract change of the workstream (either a `pluginId` on `BridgeSseEvent`
-   or a bridge-side envelope added at subscription time). The
-   `SessionUnseenRepository`'s constructor-injected single `pluginId` is a
-   direct casualty of this.
+- **Catalog freshness is deliberately explicit.** Direct harness work is not
+  continuously synchronized. Import and known-session events refresh durable
+  projections; import absence is not deletion.
 
-5. **Session-create routing.** `CreateSessionRequest` reaches one plugin
-   today. With several capable backends, creating a session needs an explicit
-   plugin choice (client-supplied), which touches the shared request model —
-   a relay-protocol change, so it must be backwards compatible (missing field
-   = the only/default plugin).
+- **Operational state is not catalog existence.** A failed plugin remains in
+  ordered metadata and its sessions remain browsable, but controls routed to it
+  are unavailable until it is operational again.
 
-6. **Startup/provisioning serialization.** `ensureRuntime` runs under the
-   cross-instance startup mutex per plugin; several managed runtimes
-   provisioning at once need an ordering/parallelism decision (probably
-   sequential provisioning, parallel `start`).
-
-7. **Per-plugin CLI/config.** Options are already namespaced
-   (`--codex-*`, `--opencode-*`) which composes; the `--plugin` selector
-   becomes multi-valued (`enabledPlugins` bridge setting already hints at
-   this).
-
-## 4. Contract doors to keep open (cheap now, expensive later)
-
-- **`PluginProject` may need an explicit directory.** Cross-plugin project
-  merging relies on the directory. For derived plugins it is inherent; for
-  natives it works because opencode ids *are* paths. If a native backend ever
-  ships non-path project ids, `PluginProject` needs a `directory` field so
-  the merge keeps working. Cheap to add when needed — this note exists so the
-  reason isn't rediscovered from scratch.
-
-- **Do not let per-plugin state leak into shared wire models.** The phone
-  should see one project space and mixed session lists; `plugin_id` on the
-  wire is only needed where the client must choose (session creation,
-  possibly a badge). Keep the relay protocol additive.
-
-## 5. Known seams and risks
-
-- **Two async sources of derived truth.** Derived plugins are read through
-  both the backend's enumeration (codex: rollout files on disk) and the
-  bridge's rows, and these transiently disagree (rollout-flush window,
-  placeholder races). Single-plugin, this produced a series of point patches:
-  `DerivedSessionBuilder.buildSessionIds` unioning stored-row attributions,
-  merging the plugin's own project-scoped questions, guarded
-  orphaned-placeholder cleanup in `insertStoredSession`. Parallel plugins
-  multiply the writers on these tables. If this seam keeps producing bugs,
-  prefer promoting the bridge's rows to the *single* source of truth (plugin
-  enumeration demoted to hydration/discovery) over adding a fourth
-  reconciliation special case.
-
-- **Unseen subsystem is single-plugin in shape.** Placeholder stamping,
-  view-tracking, and project aggregates assume one event source and one
-  `pluginId`. It composes only after events carry plugin identity (§3.4).
-
-- **Project metadata contention.** Hidden/rename/base-branch live once per
-  project row and become genuinely shared across plugins — hiding a project
-  hides it for every backend. That is probably the desired semantics, but it
-  should be an explicit product decision at scoping time.
+- **Project metadata is intentionally shared.** Hidden/display-name/base-branch
+  values live once per project row, so changing them applies to every plugin in
+  that directory.
 
 - **Worktrees are bridge-owned and plugin-scoped today.** Worktree naming
   uses a per-project counter with no plugin dimension; two plugins creating
   worktrees in one repo share the counter (fine) but cleanup flows
   (`deleteWorkspace`) go to the owning plugin — session `plugin_id` again.
 
-## 6. Explicitly out of scope for this document
+## 6. Parallel-Plugin Compatibility Debt
+
+Generated Freezed copies repeat some comments below; the source markers are the
+debt authorities. Every listed marker is retained. The version in a marker
+records introduction context, not an established support cutoff.
+
+| Source marker(s) | Rationale | Exact future removal criterion | Release uncertainty |
+|---|---|---|---|
+| `plugin_identity.dart`; plugin defaults in `session.dart`, `create_session_request.dart`, and `plugin_project_id_request.dart` | Released peers omit `pluginId` and could only mean OpenCode. | After the minimum supported bridge and every supported client always send `pluginId`, remove all three defaults plus `legacyMissingPluginId` and its export, then require the field in round trips. | Marked v1.5.0; no minimum-supported bridge/client release or date is set. |
+| `health_response.dart` (`plugins`) | Bridges before per-plugin health omit the list. | After all supported bridges send `plugins`, remove `@Default`, require the field, and update compatibility round trips. | Marked v1.5.1; the new stable release boundary and support window are not yet established. |
+| `session_status.dart` (`unavailablePluginIds`) | Bridges before aggregate per-plugin status omit unavailable sources. | After all supported bridges send `unavailablePluginIds`, remove `@Default`, require the field, and update compatibility round trips. | Marked v1.5.1; the new stable release boundary and support window are not yet established. |
+| `bridge/sesori_plugin_codex/lib/src/codex_config_reader.dart` | Durable old Codex rollouts can omit `turn_context` model metadata, so config remains the fallback. | Remove the config fallback only when the product explicitly stops supporting every rollout that can omit `turn_context`, then remove its fallback tests. | Marked v1.1.2; rollout history has no defined retention/support cutoff. |
+| `PluginStateStorage.legacySharedRuntime` on the OpenCode and Codex descriptors | Released installs stored managed binaries, ownership records, and start intent beneath the shared runtime root. Moving either descriptor would strand offline binaries and crash-recovery state. | Move a descriptor to isolated storage only after an atomic migration for its runtime subdirectory and ownership/intent files has shipped, and the minimum supported bridge is newer than that migration. | Both storage layouts predate parallel startup; no migration release or minimum-supported bridge is scheduled. |
+
+## 7. Explicitly Out Of Scope
 
 - Cross-plugin live session migration (dropped per root `AGENTS.md`).
 - A master agent across sessions (later roadmap; same session-control
   surface, so parallelism should not special-case it).
-- Client-side UX for mixed lists (badging, filtering) — client workstream,
-  driven by the same wire models.
+- Additional mixed-list badging or filtering beyond current plugin selection.
