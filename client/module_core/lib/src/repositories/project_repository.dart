@@ -1,6 +1,6 @@
+import "dart:async";
 import "dart:collection";
 
-import "package:collection/collection.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../api/filesystem_api.dart";
 import "../api/project_api.dart";
 import "../api/session_api.dart";
+import "../logging/logging.dart";
 import "models/repo_provider.dart";
 
 @lazySingleton
@@ -87,7 +88,7 @@ class ProjectRepository {
         return null;
       case final SuccessResponse<Projects> success:
         final projects = success.data.data;
-        final sessionContexts = await Future.wait(
+        final projectRoots = await Future.wait(
           projects.map((project) async {
             final sessionsResponse = await _api.listSessions(
               projectId: project.id,
@@ -97,35 +98,60 @@ class ProjectRepository {
               SuccessResponse(:final data) => data.items,
               ErrorResponse() => const <Session>[],
             };
-            return _findSessionContext(
-              projectId: project.id,
-              sessionId: sessionId,
-              roots: roots,
-            );
+            return (projectId: project.id, roots: roots);
           }),
         );
 
-        return sessionContexts.nonNulls.firstOrNull;
+        if (projectRoots.isEmpty) return null;
+
+        final completion = Completer<ProjectSessionContext?>();
+        final searches = projectRoots.map(
+          (project) => _findSessionContext(
+            projectId: project.projectId,
+            sessionId: sessionId,
+            roots: project.roots,
+            completion: completion,
+          ),
+        );
+        unawaited(
+          Future.wait(searches).then<void>(
+            (_) {
+              if (!completion.isCompleted) completion.complete(null);
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              if (!completion.isCompleted) {
+                completion.completeError(error, stackTrace);
+              } else {
+                logw("Session context search failed after another project matched", error, stackTrace);
+              }
+            },
+          ),
+        );
+        return completion.future;
     }
   }
 
-  Future<ProjectSessionContext?> _findSessionContext({
+  Future<void> _findSessionContext({
     required String projectId,
     required String sessionId,
     required List<Session> roots,
+    required Completer<ProjectSessionContext?> completion,
   }) async {
     final pending = Queue<Session>.of(roots);
     final visited = <String>{};
 
-    while (pending.isNotEmpty) {
+    while (pending.isNotEmpty && !completion.isCompleted) {
       final session = pending.removeFirst();
       if (!visited.add(session.id)) continue;
       if (session.id == sessionId) {
-        return ProjectSessionContext(
-          projectId: projectId,
-          pluginId: session.pluginId,
-          sessionTitle: session.title,
+        completion.complete(
+          ProjectSessionContext(
+            projectId: projectId,
+            pluginId: session.pluginId,
+            sessionTitle: session.title,
+          ),
         );
+        return;
       }
 
       final childrenResponse = await _sessionApi.getChildren(sessionId: session.id);
@@ -133,8 +159,6 @@ class ProjectRepository {
         pending.addAll(data.items);
       }
     }
-
-    return null;
   }
 }
 

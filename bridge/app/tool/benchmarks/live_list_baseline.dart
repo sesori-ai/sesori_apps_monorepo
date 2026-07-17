@@ -239,6 +239,9 @@ class _LiveListBenchmark {
   SessionRepository _sessionRepository({required AppDatabase database, required BridgePluginApi plugin}) {
     return SessionRepository(
       operationalPlugins: {plugin.id: plugin},
+      bridgeDerivedProjectPluginIds: {
+        if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
+      },
       enabledPluginIds: [plugin.id],
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,

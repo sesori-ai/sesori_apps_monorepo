@@ -1,4 +1,5 @@
 import "dart:io" show FileSystemException;
+import "dart:math" show max;
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
@@ -136,9 +137,9 @@ class ProjectRepository {
           projectsById: {
             for (final project in storedProjects) project.projectId: project,
           },
-          projectsByNormalizedPath: {
-            for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
-          },
+          projectsByNormalizedPath: _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+            projects: storedProjects,
+          ),
           preferredProjectId: canonical,
           observedPath: canonical,
         );
@@ -160,9 +161,9 @@ class ProjectRepository {
           projectsById: {
             for (final project in storedProjects) project.projectId: project,
           },
-          projectsByNormalizedPath: {
-            for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
-          },
+          projectsByNormalizedPath: _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+            projects: storedProjects,
+          ),
           preferredProjectId: pluginProject.id,
           observedPath: openedPath,
         );
@@ -180,25 +181,67 @@ class ProjectRepository {
     }
   }
 
-  /// Persists the exact [activity] for an opened project and unhides it. This is
-  /// a dumb exact write; the caller ([ProjectActivityService]) owns the decision.
-  Future<void> persistOpenedProject({
+  /// Rechecks the opened project's canonical identity, merges [observedAt]
+  /// monotonically with that row's activity, persists it, and unhides it in one
+  /// transaction. A concurrent catalog import may have claimed
+  /// [ProjectOpenTarget.path] after [resolveProjectOpenTarget] took its snapshot.
+  Future<
+    ({
+      ProjectActivity committedActivity,
+      ProjectOpenTarget committedTarget,
+      bool updatedAtAdvanced,
+    })
+  >
+  persistOpenedProject({
     required ProjectOpenTarget target,
-    required ProjectActivity activity,
-  }) async {
-    await _projectsDao.recordOpenedProject(
-      projectId: target.projectId,
-      path: target.path,
-      displayName: _operationalPlugins[_defaultEnabledPluginId] is NativeProjectsPluginApi ? target.project.name : null,
-      createdAt: activity.createdAt,
-      updatedAt: activity.updatedAt,
-    );
+    required int observedAt,
+  }) {
+    return _projectsDao.transaction(() async {
+      final storedProjects = await _projectsDao.getAllProjects();
+      final existing = _projectCatalogIdentityCalculator.calculate(
+        projectsById: {
+          for (final project in storedProjects) project.projectId: project,
+        },
+        projectsByNormalizedPath: _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+          projects: storedProjects,
+        ),
+        preferredProjectId: target.projectId,
+        observedPath: target.path,
+      );
+      final committedTarget = existing == null
+          ? target
+          : ProjectOpenTarget(
+              project: target.project.copyWith(id: existing.projectId),
+              path: target.path,
+            );
+      final currentActivity = _mapActivity(existing);
+      final committedActivity = ProjectActivity(
+        createdAt: currentActivity?.createdAt ?? observedAt,
+        updatedAt: max(currentActivity?.updatedAt ?? observedAt, observedAt),
+      );
+      await _projectsDao.recordOpenedProject(
+        projectId: committedTarget.projectId,
+        path: committedTarget.path,
+        displayName: _operationalPlugins[_defaultEnabledPluginId] is NativeProjectsPluginApi
+            ? committedTarget.project.name
+            : null,
+        createdAt: committedActivity.createdAt,
+        updatedAt: committedActivity.updatedAt,
+      );
+      return (
+        committedActivity: committedActivity,
+        committedTarget: committedTarget,
+        updatedAtAdvanced: currentActivity == null || committedActivity.updatedAt > currentActivity.updatedAt,
+      );
+    });
   }
 
-  Future<Project> mapOpenedProject({required ProjectOpenTarget target}) async {
-    final activity = await getActivity(projectId: target.projectId);
+  Future<Project> mapOpenedProject({
+    required ProjectOpenTarget target,
+    required ProjectActivity committedActivity,
+  }) async {
     return target.project.copyWith(
-      time: _activityToTime(activity!),
+      time: _activityToTime(committedActivity),
       hasUnseenChanges: await projectHasUnseenChanges(projectId: target.projectId),
       directoryMissing: _directoryMissing(target.path),
     );
@@ -305,52 +348,54 @@ class ProjectRepository {
     switch (plugin) {
       case final NativeProjectsPluginApi plugin:
         final pluginProjects = await plugin.getProjects();
-        final storedProjects = (await _projectsDao.getAllProjects()).toList();
-        final projectsById = <String, ProjectDto>{
-          for (final project in storedProjects) project.projectId: project,
-        };
-        final projectsByNormalizedPath = <String, ProjectDto>{
-          for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
-        };
-        final missingProjects = <String, ({String path, int? createdAt, int? updatedAt})>{};
-        final evidence = <ProjectActivityEvidence>[];
-        for (final project in pluginProjects) {
-          final existing = _projectCatalogIdentityCalculator.calculate(
-            projectsById: projectsById,
-            projectsByNormalizedPath: projectsByNormalizedPath,
-            preferredProjectId: project.id,
-            observedPath: project.directory,
+        return _projectsDao.transaction(() async {
+          final storedProjects = (await _projectsDao.getAllProjects()).toList();
+          final projectsById = <String, ProjectDto>{
+            for (final project in storedProjects) project.projectId: project,
+          };
+          final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+            projects: storedProjects,
           );
-          final projectId = existing?.projectId ?? project.id;
-          if (existing == null) {
-            missingProjects[projectId] = (
-              path: project.directory,
-              createdAt: project.activity?.createdAt,
-              updatedAt: project.activity?.updatedAt,
+          final missingProjects = <String, ({String path, int? createdAt, int? updatedAt})>{};
+          final evidence = <ProjectActivityEvidence>[];
+          for (final project in pluginProjects) {
+            final existing = _projectCatalogIdentityCalculator.calculate(
+              projectsById: projectsById,
+              projectsByNormalizedPath: projectsByNormalizedPath,
+              preferredProjectId: project.id,
+              observedPath: project.directory,
             );
-            final inserted = ProjectDto(
-              projectId: projectId,
-              path: project.directory,
-              createdAt: project.activity?.createdAt ?? 0,
-              updatedAt: project.activity?.updatedAt ?? 0,
-              projectionUpdatedAt: 0,
+            final projectId = existing?.projectId ?? project.id;
+            if (existing == null) {
+              missingProjects[projectId] = (
+                path: project.directory,
+                createdAt: project.activity?.createdAt,
+                updatedAt: project.activity?.updatedAt,
+              );
+              final inserted = ProjectDto(
+                projectId: projectId,
+                path: project.directory,
+                createdAt: project.activity?.createdAt ?? 0,
+                updatedAt: project.activity?.updatedAt ?? 0,
+                projectionUpdatedAt: 0,
+              );
+              projectsById[projectId] = inserted;
+              projectsByNormalizedPath[normalizeProjectDirectory(directory: project.directory)] = inserted;
+            }
+            evidence.add(
+              ProjectActivityEvidence(
+                pluginId: plugin.id,
+                projectId: projectId,
+                pluginActivity: project.activity,
+                sessionActivities: const [],
+              ),
             );
-            projectsById[projectId] = inserted;
-            projectsByNormalizedPath[normalizeProjectDirectory(directory: project.directory)] = inserted;
           }
-          evidence.add(
-            ProjectActivityEvidence(
-              pluginId: plugin.id,
-              projectId: projectId,
-              pluginActivity: project.activity,
-              sessionActivities: const [],
-            ),
+          await _projectsDao.insertProjectsWithPathsIfMissing(
+            projects: missingProjects,
           );
-        }
-        await _projectsDao.insertProjectsWithPathsIfMissing(
-          projects: missingProjects,
-        );
-        return evidence;
+          return evidence;
+        });
       case final BridgeDerivedProjectsPluginApi plugin:
         final (storedProjects, sessionProjectPaths, tombstoned) = await (
           _projectsDao.getAllProjects(),
@@ -378,9 +423,9 @@ class ProjectRepository {
         final projectsById = <String, ProjectDto>{
           for (final project in storedProjects) project.projectId: project,
         };
-        final projectsByNormalizedPath = <String, ProjectDto>{
-          for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
-        };
+        final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+          projects: storedProjects,
+        );
         final evidence = <ProjectActivityEvidence>[];
         for (final entry in grouped.entries) {
           final stored = _projectCatalogIdentityCalculator.calculate(

@@ -29,20 +29,20 @@ class ProjectActivityService {
   Future<Project> openProject({required String path}) async {
     final target = await _projectRepository.resolveProjectOpenTarget(path: path);
     return _serialize(() async {
-      final current = await _projectRepository.getActivity(projectId: target.projectId);
-      final now = _now();
-      final activity = ProjectActivity(
-        createdAt: current?.createdAt ?? now,
-        updatedAt: max(current?.updatedAt ?? now, now),
-      );
-      await _projectRepository.persistOpenedProject(
+      final result = await _projectRepository.persistOpenedProject(
         target: target,
-        activity: activity,
+        observedAt: _now(),
       );
-      if (current == null || activity.updatedAt > current.updatedAt) {
-        _emit(projectId: target.projectId, updatedAt: activity.updatedAt);
+      if (result.updatedAtAdvanced) {
+        _emit(
+          projectId: result.committedTarget.projectId,
+          updatedAt: result.committedActivity.updatedAt,
+        );
       }
-      return _projectRepository.mapOpenedProject(target: target);
+      return _projectRepository.mapOpenedProject(
+        target: result.committedTarget,
+        committedActivity: result.committedActivity,
+      );
     });
   }
 

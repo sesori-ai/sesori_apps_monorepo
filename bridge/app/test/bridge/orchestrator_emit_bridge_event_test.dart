@@ -69,10 +69,210 @@ void main() {
     await harness.composition.session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
   });
+
+  test("post-normalization work is concurrent across plugins and ordered within each plugin", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one", "two"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+
+    final runFuture = harness.composition.session.run();
+    unawaited(runFuture.catchError((_) {}));
+    await relayServer.nextClient();
+    await _waitFor(
+      () => harness.plugins.every((plugin) => plugin.getProjectsCallCount > 0),
+      reason: "startup activity reconciliation",
+    );
+
+    final firstPlugin = harness.plugins.first;
+    final projectReadStarted = Completer<void>();
+    final projectReadGate = Completer<void>();
+    firstPlugin
+      ..getProjectsStarted = projectReadStarted
+      ..getProjectsGate = projectReadGate;
+    final branchEvents = <SesoriVcsBranchUpdated>[];
+    final branchSubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriVcsBranchUpdated)
+        .cast<SesoriVcsBranchUpdated>()
+        .listen(branchEvents.add);
+    addTearDown(branchSubscription.cancel);
+
+    firstPlugin.emitEvent(const BridgeSseServerConnected());
+    await projectReadStarted.future.timeout(const Duration(seconds: 2));
+    firstPlugin.emitEvent(const BridgeSseVcsBranchUpdated());
+    harness.plugins.last.emitEvent(const BridgeSseVcsBranchUpdated());
+
+    try {
+      await _waitFor(
+        () => branchEvents.isNotEmpty,
+        reason: "second plugin event while first plugin is reconciling",
+        timeout: const Duration(milliseconds: 500),
+      );
+      expect(
+        branchEvents,
+        hasLength(1),
+        reason: "the following event from the first plugin must remain ordered behind reconciliation",
+      );
+    } finally {
+      projectReadGate.complete();
+    }
+
+    await _waitFor(
+      () => branchEvents.length == 2,
+      reason: "first plugin event after reconciliation",
+    );
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+  });
+
+  test("aggregate project summaries are built and delivered in trigger order across plugins", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one", "two"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+
+    final runFuture = harness.composition.session.run();
+    unawaited(runFuture.catchError((_) {}));
+    await relayServer.nextClient();
+    await _waitFor(
+      () => harness.plugins.every((plugin) => plugin.getProjectsCallCount > 0),
+      reason: "startup activity reconciliation",
+    );
+    final subscribed = harness.composition.session.localWireEvents.firstWhere(
+      (event) => event is SesoriVcsBranchUpdated,
+    );
+    harness.plugins.last.emitEvent(const BridgeSseVcsBranchUpdated());
+    await subscribed.timeout(const Duration(seconds: 2));
+
+    const directory = "/projects/one";
+    const oldSession = PluginSession(
+      id: "old-session",
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: "Old session",
+      time: PluginSessionTime(created: 1, updated: 1, archived: null),
+    );
+    const newSession = PluginSession(
+      id: "new-session",
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: "New session",
+      time: PluginSessionTime(created: 2, updated: 2, archived: null),
+    );
+    final firstPlugin = harness.plugins.first;
+    final firstReadBlocked = Completer<void>();
+    final releaseFirstRead = Completer<void>();
+    firstPlugin
+      ..activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: directory,
+          activeSessions: [PluginActiveSession(id: "old-session", awaitingInput: false)],
+        ),
+      ]
+      ..currentProjectResult = const PluginProject(id: directory, directory: directory)
+      ..sessionsResult = const [oldSession, newSession]
+      ..getProjectStarted = firstReadBlocked
+      ..getProjectGate = releaseFirstRead;
+    final summaries = <SesoriProjectsSummary>[];
+    final summarySubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriProjectsSummary)
+        .cast<SesoriProjectsSummary>()
+        .listen(summaries.add);
+    addTearDown(summarySubscription.cancel);
+
+    firstPlugin.emitEvent(const BridgeSseProjectUpdated());
+    await firstReadBlocked.future.timeout(const Duration(seconds: 2));
+
+    final secondReadStarted = Completer<void>();
+    firstPlugin
+      ..activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: directory,
+          activeSessions: [PluginActiveSession(id: "new-session", awaitingInput: true)],
+        ),
+      ]
+      ..activeSummaryReadStarted = secondReadStarted;
+    harness.plugins.last.emitEvent(const BridgeSseProjectUpdated());
+
+    var secondReadStartedWhileFirstWasBlocked = false;
+    unawaited(
+      secondReadStarted.future.then((_) {
+        secondReadStartedWhileFirstWasBlocked = !releaseFirstRead.isCompleted;
+        if (!releaseFirstRead.isCompleted) releaseFirstRead.complete();
+      }),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    if (!releaseFirstRead.isCompleted) releaseFirstRead.complete();
+
+    await _waitFor(() => summaries.length == 2, reason: "both project summaries");
+    expect(secondReadStartedWhileFirstWasBlocked, isFalse);
+    expect(
+      summaries.map((summary) => summary.projects.single.activeSessions.single.awaitingInput),
+      [false, true],
+    );
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+  });
+
+  test("shutdown drains in-flight post-normalization work", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one", "two"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+
+    final runFuture = harness.composition.session.run();
+    unawaited(runFuture.catchError((_) {}));
+    await relayServer.nextClient();
+    await _waitFor(
+      () => harness.plugins.every((plugin) => plugin.getProjectsCallCount > 0),
+      reason: "startup activity reconciliation",
+    );
+
+    final projectReadStarted = Completer<void>();
+    final projectReadGate = Completer<void>();
+    harness.plugins.first
+      ..getProjectsStarted = projectReadStarted
+      ..getProjectsGate = projectReadGate;
+    harness.plugins.first.emitEvent(const BridgeSseServerConnected());
+    await projectReadStarted.future.timeout(const Duration(seconds: 2));
+
+    var runCompleted = false;
+    unawaited(runFuture.whenComplete(() => runCompleted = true));
+    try {
+      await harness.composition.session.cancel();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(runCompleted, isFalse);
+    } finally {
+      projectReadGate.complete();
+    }
+    await runFuture.timeout(const Duration(seconds: 5));
+  });
 }
 
-Future<void> _waitFor(bool Function() condition, {required String reason}) async {
-  final timeoutAt = DateTime.now().add(const Duration(seconds: 5));
+Future<void> _waitFor(
+  bool Function() condition, {
+  required String reason,
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final timeoutAt = DateTime.now().add(timeout);
   while (!condition()) {
     if (DateTime.now().isAfter(timeoutAt)) {
       fail("Timed out waiting for $reason");
@@ -161,9 +361,41 @@ class _SourcedPlugin extends FakeBridgePlugin {
   _SourcedPlugin(this.pluginId);
 
   final String pluginId;
+  Completer<void>? getProjectsStarted;
+  Completer<void>? getProjectsGate;
+  Completer<void>? getProjectStarted;
+  Completer<void>? getProjectGate;
+  Completer<void>? activeSummaryReadStarted;
+  List<PluginProjectActivitySummary> activitySummaries = const [];
 
   @override
   String get id => pluginId;
+
+  @override
+  Future<List<PluginProject>> getProjects() async {
+    getProjectsStarted?.complete();
+    if (getProjectsGate case final gate?) await gate.future;
+    return super.getProjects();
+  }
+
+  @override
+  Future<PluginProject> getProject(String projectId) async {
+    if (getProjectStarted case final started?) {
+      getProjectStarted = null;
+      final gate = getProjectGate;
+      getProjectGate = null;
+      started.complete();
+      if (gate != null) await gate.future;
+    }
+    return super.getProject(projectId);
+  }
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    activeSummaryReadStarted?.complete();
+    activeSummaryReadStarted = null;
+    return activitySummaries;
+  }
 }
 
 class _FakeTokenRefresher implements TokenRefresher {

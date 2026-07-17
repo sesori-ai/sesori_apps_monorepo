@@ -2,7 +2,10 @@ import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
@@ -15,6 +18,8 @@ void main() {
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
     late MockPluginRepository mockPluginRepository;
+    late MockConnectionService mockConnectionService;
+    late BehaviorSubject<ConnectionStatus> connectionStatus;
     late NewSessionSelectionTracker selectionTracker;
 
     const defaultPlugin = PluginMetadata(
@@ -28,7 +33,17 @@ void main() {
     setUp(() {
       mockSessionService = MockSessionService();
       mockPluginRepository = MockPluginRepository();
+      mockConnectionService = MockConnectionService();
+      connectionStatus = BehaviorSubject.seeded(
+        const ConnectionStatus.connected(
+          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
+        ),
+      );
       selectionTracker = NewSessionSelectionTracker();
+
+      when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus.stream);
+      when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
 
       when(mockPluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(const PluginListResponse(plugins: [defaultPlugin])),
@@ -60,7 +75,10 @@ void main() {
       );
     });
 
+    tearDown(() => connectionStatus.close());
+
     NewSessionCubit buildCubit() => NewSessionCubit(
+      connectionService: mockConnectionService,
       sessionService: mockSessionService,
       pluginRepository: mockPluginRepository,
       selectionTracker: selectionTracker,
@@ -187,6 +205,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
+          connectionService: mockConnectionService,
           sessionService: mockSessionService,
           pluginRepository: mockPluginRepository,
           selectionTracker: selectionTracker,

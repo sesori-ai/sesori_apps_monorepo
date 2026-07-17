@@ -28,6 +28,7 @@ class NewSessionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => NewSessionCubit(
+        connectionService: getIt<ConnectionService>(),
         sessionService: getIt<SessionService>(),
         pluginRepository: getIt<PluginRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),

@@ -1,4 +1,8 @@
+import "dart:async";
+import "dart:io";
+
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -118,6 +122,132 @@ void main() {
       expect(questions.map((q) => q.id), contains("q-w1"));
       // It resolved the question by asking the worktree session, not the parent dir.
       expect(plugin.queriedSessionIds, contains("w1"));
+    });
+
+    test("getProjectQuestions retains and dedupes a healthy source when other plugins fail", () async {
+      const parent = "/tmp/proj/alpha";
+      await recordSession(
+        stableId: "stable-s1",
+        backendId: "s1",
+        projectId: parent,
+        parentStableId: null,
+      );
+      const pendingQuestion = PluginPendingQuestion(
+        id: "q-s1",
+        sessionID: "s1",
+        displaySessionId: null,
+        questions: [],
+      );
+      final healthyPlugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: parent,
+        allSessions: [_session(parent, id: "s1")],
+        questionsBySession: const {
+          "s1": [pendingQuestion],
+        },
+        ownProjectQuestions: const [pendingQuestion],
+      );
+      final throwingPlugin = _FakeNativeQuestionPlugin(
+        id: "throwing",
+        projectQuestions: () => Future.error(
+          StateError("question query failed"),
+          StackTrace.fromString("throwing-plugin-stack"),
+        ),
+      );
+      final timedOutPlugin = _FakeNativeQuestionPlugin(
+        id: "timed-out",
+        projectQuestions: () => Completer<List<PluginPendingQuestion>>().future,
+      );
+      final repository = QuestionRepository(
+        operationalPlugins: {
+          healthyPlugin.id: healthyPlugin,
+          throwingPlugin.id: throwingPlugin,
+          timedOutPlugin.id: timedOutPlugin,
+        },
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        legacyMissingPluginId: healthyPlugin.id,
+        aggregateSourceDeadline: const Duration(milliseconds: 20),
+      );
+      final previousLogLevel = Log.level;
+      final logs = <String>[];
+      addTearDown(() {
+        Log.level = previousLogLevel;
+      });
+      Log.level = LogLevel.debug;
+
+      final questions = await IOOverrides.runZoned(
+        () => repository.getProjectQuestions(projectId: parent),
+        stderr: () => _CapturingStdout(logs),
+      );
+
+      expect(questions.map((question) => question.id), ["q-s1"]);
+      expect(
+        logs.join("\n"),
+        allOf(
+          contains("throwing"),
+          contains("question query failed"),
+          contains("throwing-plugin-stack"),
+          contains("timed-out"),
+          contains("TimeoutException"),
+        ),
+      );
+    });
+
+    test("getProjectQuestions treats a successful empty source as available", () async {
+      const projectId = "/tmp/proj/alpha";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      final emptyPlugin = _FakeNativeQuestionPlugin(
+        id: "empty",
+        projectQuestions: () async => const [],
+      );
+      final failedPlugin = _FakeNativeQuestionPlugin(
+        id: "failed",
+        projectQuestions: () async => throw StateError("unavailable"),
+      );
+      final repository = QuestionRepository(
+        operationalPlugins: {
+          emptyPlugin.id: emptyPlugin,
+          failedPlugin.id: failedPlugin,
+        },
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        legacyMissingPluginId: emptyPlugin.id,
+        aggregateSourceDeadline: const Duration(milliseconds: 20),
+      );
+
+      expect(await repository.getProjectQuestions(projectId: projectId), isEmpty);
+    });
+
+    test("getProjectQuestions throws 503 when every operational plugin fails", () async {
+      const projectId = "/tmp/proj/alpha";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      final throwingPlugin = _FakeNativeQuestionPlugin(
+        id: "throwing",
+        projectQuestions: () async => throw StateError("unavailable"),
+      );
+      final timedOutPlugin = _FakeNativeQuestionPlugin(
+        id: "timed-out",
+        projectQuestions: () => Completer<List<PluginPendingQuestion>>().future,
+      );
+      final repository = QuestionRepository(
+        operationalPlugins: {
+          throwingPlugin.id: throwingPlugin,
+          timedOutPlugin.id: timedOutPlugin,
+        },
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        legacyMissingPluginId: throwingPlugin.id,
+        aggregateSourceDeadline: const Duration(milliseconds: 20),
+      );
+
+      await expectLater(
+        repository.getProjectQuestions(projectId: projectId),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.operation, "operation", "getProjectQuestions")
+              .having((error) => error.statusCode, "statusCode", 503),
+        ),
+      );
     });
 
     test("getProjectQuestions attributes derived worktrees by the resolved directory of a native-id row", () async {
@@ -621,4 +751,37 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeNativeQuestionPlugin implements NativeProjectsPluginApi {
+  _FakeNativeQuestionPlugin({
+    required this.id,
+    required this.projectQuestions,
+  });
+
+  @override
+  final String id;
+
+  final Future<List<PluginPendingQuestion>> Function() projectQuestions;
+
+  @override
+  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) => projectQuestions();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _CapturingStdout implements Stdout {
+  _CapturingStdout(this.output);
+
+  final List<String> output;
+
+  @override
+  void write(Object? object) => output.add(object.toString());
+
+  @override
+  void writeln([Object? object = ""]) => output.add(object.toString());
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

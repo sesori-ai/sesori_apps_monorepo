@@ -128,6 +128,7 @@ class DebugServer {
     // synchronously right after routing so a concurrently-handled relay request
     // cannot steal the shared flag before this handler triggers the handoff.
     bool restartRequested = false;
+    Future<RelayResponse>? routeToDrain;
     try {
       final rawBody = await utf8.decoder.bind(request).join();
       final body = rawBody.isEmpty ? null : rawBody;
@@ -147,33 +148,42 @@ class DebugServer {
               )
               as RelayRequest;
 
+      final route = _router.route(relayRequest);
       final message = await Future.any<RelayResponse?>([
-        _router.route(relayRequest),
+        route,
         _shutdownSignal.future.then<RelayResponse?>((_) => null),
       ]);
-      if (message == null) return;
-      // The RestartBridgeHandler arms the shared restart flag during routing;
-      // consume it now, attributed to this request, mirroring the relay path.
-      restartRequested = _restartService.consumeRestartRequest();
-      request.response.statusCode = message.status;
-      // Skip hop-by-hop and length headers — dart:io sets them
-      // automatically based on the actual response body written.
-      const skipHeaders = {"content-length", "transfer-encoding", "connection"};
-      message.headers.forEach((k, v) {
-        if (!skipHeaders.contains(k.toLowerCase())) {
-          request.response.headers.set(k, v);
+      if (message == null) {
+        routeToDrain = route;
+      } else {
+        // The RestartBridgeHandler arms the shared restart flag during routing;
+        // consume it now, attributed to this request, mirroring the relay path.
+        restartRequested = _restartService.consumeRestartRequest();
+        request.response.statusCode = message.status;
+        // Skip hop-by-hop and length headers — dart:io sets them
+        // automatically based on the actual response body written.
+        const skipHeaders = {"content-length", "transfer-encoding", "connection"};
+        message.headers.forEach((k, v) {
+          if (!skipHeaders.contains(k.toLowerCase())) {
+            request.response.headers.set(k, v);
+          }
+        });
+        if (message.body != null) {
+          // Write as UTF-8 bytes — dart:io defaults to Latin1 which
+          // cannot represent the full range of characters in JSON payloads.
+          request.response.add(utf8.encode(message.body!));
         }
-      });
-      if (message.body != null) {
-        // Write as UTF-8 bytes — dart:io defaults to Latin1 which
-        // cannot represent the full range of characters in JSON payloads.
-        request.response.add(utf8.encode(message.body!));
       }
     } catch (e) {
       request.response.statusCode = HttpStatus.badGateway;
       request.response.add(utf8.encode("Debug server proxy error: $e"));
     } finally {
       await request.response.close();
+    }
+
+    if (routeToDrain != null) {
+      await routeToDrain;
+      return;
     }
 
     // Drive the handoff only after the `{restarting:true}` reply has been
