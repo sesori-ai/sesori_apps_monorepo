@@ -250,9 +250,6 @@ class _FakeDescriptor extends BridgePluginDescriptor {
   String get displayName => id;
 
   @override
-  PluginStateStorage get stateStorage => PluginStateStorage.isolated;
-
-  @override
   List<PluginOption> get options => const [];
 
   @override
