@@ -136,16 +136,24 @@ class _NotificationToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = this.subtitle;
-    return PregoGroupedRow(
-      title: Text(title),
-      subtitle: subtitle != null ? Text(subtitle) : null,
-      trailing: PregoSwitch(
-        value: preferences[category] ?? true,
-        onChanged: (enabled) {
-          context.read<NotificationPreferencesCubit>().toggle(category, enabled: enabled);
-        },
+    final enabled = preferences[category] ?? true;
+    void toggle({required bool enabled}) {
+      context.read<NotificationPreferencesCubit>().toggle(category, enabled: enabled);
+    }
+
+    // Merged so assistive tech announces one labelled toggle (title,
+    // description, state) instead of an unlabelled switch beside plain text.
+    return MergeSemantics(
+      child: PregoGroupedRow(
+        title: Text(title),
+        subtitle: subtitle != null ? Text(subtitle) : null,
+        trailing: PregoSwitch(
+          value: enabled,
+          onChanged: (enabled) => toggle(enabled: enabled),
+        ),
+        onTap: () => toggle(enabled: !enabled),
+        isLast: isLast,
       ),
-      isLast: isLast,
     );
   }
 }

@@ -69,6 +69,27 @@ void main() {
     },
   );
 
+  blocTest<NotificationPreferencesCubit, NotificationPreferencesState>(
+    "toggle keeps the persisted value when the write fails",
+    setUp: () {
+      when(() => mockRepository.getAll()).thenAnswer((_) async => initialPreferences);
+      when(
+        () => mockRepository.setEnabled(
+          category: NotificationCategory.sessionMessage,
+          enabled: true,
+        ),
+      ).thenThrow(Exception("storage unavailable"));
+    },
+    build: () => NotificationPreferencesCubit(mockRepository),
+    act: (cubit) => cubit.toggle(
+      NotificationCategory.sessionMessage,
+      enabled: true,
+    ),
+    expect: () => [
+      NotificationPreferencesState.loaded(preferences: initialPreferences),
+    ],
+  );
+
   test("toggle while loading only persists preference", () async {
     when(
       () => mockRepository.getAll(),

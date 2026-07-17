@@ -61,20 +61,30 @@ class _SettingsBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (account != null) ...[
-                  SettingsSection(
-                    title: loc.settingsSectionAccount,
-                    child: PregoGroupedRows(
-                      children: [
+                SettingsSection(
+                  title: loc.settingsSectionAccount,
+                  child: PregoGroupedRows(
+                    children: [
+                      // The profile screen owns the only logout action, so its
+                      // row must stay reachable even when the cached account
+                      // is absent (valid tokens without a stored user).
+                      if (account != null)
                         AccountRow(
                           account: account,
                           onTap: () => context.pushRoute(const AppRoute.settingsProfile()),
+                        )
+                      else
+                        PregoGroupedRow(
+                          leading: const PregoAvatarUser(),
+                          title: Text(loc.settingsProfileTitle),
+                          trailing: const Icon(TablerRegular.chevron_right),
+                          onTap: () => context.pushRoute(const AppRoute.settingsProfile()),
+                          isLast: true,
                         ),
-                      ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: PregoSpacing.xl),
-                ],
+                ),
+                const SizedBox(height: PregoSpacing.xl),
                 PregoGroupedRows(
                   children: [
                     PregoGroupedRow(
