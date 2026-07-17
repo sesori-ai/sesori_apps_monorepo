@@ -2,17 +2,17 @@
 
 ## Plan State
 
-- **Status:** Approved — ready for delivery
+- **Status:** Approved — plan PR merged (branch-relative optimistic state)
 - **Implementation base:** `main`
 - **Plan slug:** `bridge-app-onboarding`
-- **Plan PR:** —
+- **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/490
 - **Repositories:** `sesori-ai/sesori_apps_monorepo`, `sesori-ai/sesori_auth_server`
 
 ## Current Pointer
 
 - **Stage:** S01 — App Registration Checkpoint
 - **Wave:** W01
-- **Next action:** Choose plan delivery. After delivery, use `sesori-plan-worker` with slug `bridge-app-onboarding` to pin the current auth-server `master` baseline for S01/W01 and implement S01-W01-P01.
+- **Next action:** Use `sesori-plan-worker` with slug `bridge-app-onboarding` to pin the current auth-server `master` baseline for S01/W01 and implement S01-W01-P01.
 
 ## Plan Review
 
@@ -59,6 +59,10 @@ creation.
 
 ## Findings and Plan Deltas
 
+- **2026-07-17 — Plan delivery:** Opened plan-only PR
+  https://github.com/sesori-ai/sesori_apps_monorepo/pull/490 against selected
+  implementation base `main`; tracker state is optimistically post-merge on the
+  plan branch.
 - **2026-07-17 — Full-plan approval:** `aristotle-plan-review` approved the
   complete two-repository plan after all architecture, lifecycle, compatibility,
   command, wave, and tracker corrections; no violations remain.
