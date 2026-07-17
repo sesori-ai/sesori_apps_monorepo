@@ -33,7 +33,8 @@ showing a bounded terminal QR and exact URL.
    UTF-8 JSON encoding of `[normalizedAuthBackend, userId]` and map
    present/absent/read-failure outcomes. One empty file is retained per confirmed
    pair; read failures warn and still perform the remote status check, and never
-   count as present.
+   count as present. A later true response still attempts the idempotent marker
+   write; read and write failures remain independently observable.
 6. Add `AppOnboardingFormatter` for the exact URL and bounded ANSI+Unicode QR.
 7. Add `AppClientOnboardingService`. It receives the existing authenticated
    access token and configured auth backend, derives `userId` via
@@ -71,7 +72,10 @@ showing a bounded terminal QR and exact URL.
 - Immediate false: guidance, QR-or-URL, exact URL, then exactly one long poll.
 - Long-poll true: marker written, one success line.
 - Long-poll false: one continuation line, no marker, startup continues.
-- Any failure: at most one warning, no marker, startup continues.
+- Marker-read failure: one warning, remote check continues, and a later true
+  response still attempts the marker write.
+- Remote or marker-write failure: one warning for that failed operation, no new
+  marker from that operation, and startup continues.
 - Supervised/noninteractive/plugin-unavailable paths never call the endpoint.
 - Accepted logout clears all markers before tokens; state-clear failure is
   observable and leaves tokens intact; cancelled logout preserves both.

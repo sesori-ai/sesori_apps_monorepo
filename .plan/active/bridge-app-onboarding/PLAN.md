@@ -50,8 +50,10 @@ checks again.
     warns once and fails open. There is no refresh, retry loop, retry timer, skip
     prompt, or asynchronous stdin ownership; only the status API owns a
     request-local deadline timer/abort trigger.
-11. A marker read failure warns and still performs the remote check. A marker
-    write failure warns and continues; the next run may check again.
+11. A marker read failure warns and still performs the remote check. If that
+    check later confirms registration, still attempt the idempotent pair-marker
+    write. A marker write failure warns and continues; the next run may check
+    again.
 12. After logout is accepted, clear all onboarding markers before clearing
     tokens. If state deletion fails, return the existing failed logout result
     and leave tokens intact so no successful logout can leave stale completion
@@ -168,7 +170,9 @@ Tests mirror those owners. No other production path is expected to change.
 - A missing pair marker means not completed. Different backend/user pairs retain
   independent markers; confirming B never replaces A.
 - A pair marker is written only after a true response, never after timeout,
-  false, or failure. Accepted logout clears the entire marker directory.
+  false, or remote failure. Accepted logout clears the entire marker directory.
+- A failed marker-existence read does not suppress a later write attempt after a
+  true response. Read and write failures remain independently observable.
 - A missing/unreadable JWT `userId` cannot be cached; warn and fail open without
   making a status request because the same-account invariant cannot be enforced.
 
@@ -195,6 +199,8 @@ Focused tests prove:
   all/error behavior and Unix permissions;
 - matching account performs zero network requests;
 - confirmed immediate/long-poll registration writes that pair marker;
+- marker-read failure warns and still attempts the pair-marker write after a
+  confirmed response;
 - false long poll is bounded and does not write; failures warn and fail open;
 - formatter quiet zone, width/capability fallback, explicit colors/reset, and
   exact URL;
