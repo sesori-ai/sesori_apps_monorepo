@@ -16,10 +16,10 @@
 
 ## Plan Review
 
-- **Verdict:** Approved after the multi-pair marker correction
+- **Verdict:** Approved after the provider-boundary and marker-read corrections
 - **Reviewer:** `aristotle-plan-review`
 - **Date:** 2026-07-18
-- **Reviewed commit:** `bf6b40e9c00d9b1c27a898f02fe0d00f5bde9d07` (follow-up review covered the architecture-bearing multi-pair correction; later edits in that commit were review evidence and grammar only)
+- **Reviewed commit:** `7e26a27bab24276ad6d7da4e9407fff8f1edf91b`
 
 ## Wave Baselines
 
@@ -97,6 +97,10 @@ pair after drift assessment and before branch creation.
   independent opaque SHA-256-named pair flags so confirming another backend or
   account cannot forget a previously completed pair. Follow-up
   `aristotle-plan-review` approved the revised architecture.
+- **2026-07-18 — Final review hardening:** Clarified that a marker-read failure
+  does not suppress a later confirmed write, and replaced the endpoint-specific
+  status API with provider-level `SesoriServerApi` without migrating legacy auth
+  operations. `aristotle-plan-review` approved exact commit `7e26a27b`.
 - **2026-07-17 — Plan delivery:** Opened plan-only PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/490 against selected
   implementation base `main`; tracker state is optimistically post-merge on the
