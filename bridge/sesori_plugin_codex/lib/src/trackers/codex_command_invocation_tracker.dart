@@ -188,6 +188,13 @@ class CodexCommandInvocationTracker {
     if (active != null) _removeActive(active);
   }
 
+  /// Drops connection-scoped invocations without reusing synthetic IDs.
+  void reset() {
+    _pendingByThread.clear();
+    _activeByThread.clear();
+    _activeByTurn.clear();
+  }
+
   void _removeActive(_MutableInvocation invocation) {
     _activeByThread.remove(invocation.threadId);
     final turnId = invocation.turnId;

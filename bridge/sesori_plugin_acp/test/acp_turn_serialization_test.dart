@@ -441,7 +441,53 @@ void main() {
       respondTo(queuedPrompt, {"stopReason": "end_turn"});
     });
 
-    test("abort drops an already-accepted queued command", () async {
+    test("accepted queued command emits its envelope before streamed results", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      final command = plugin.sendCommand(
+        sessionId: sessionId,
+        invocationId: "ordered-invocation",
+        command: "review",
+        arguments: "queued",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await command.timeout(const Duration(seconds: 1));
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      final queuedPrompt = await waitForFrameCount("session/prompt", 2);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "ordered-result",
+            "content": {"type": "text", "text": "result"},
+          },
+        },
+      });
+      await pump();
+
+      final envelopeIndex = emitted.indexWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info["invocationId"] == "ordered-invocation",
+      );
+      final resultIndex = emitted.indexWhere(
+        (event) => event is BridgeSseMessagePartUpdated && event.part.messageID == "s1-command-ordered-invocation",
+      );
+      expect(envelopeIndex, isNonNegative);
+      expect(resultIndex, greaterThan(envelopeIndex));
+
+      respondTo(queuedPrompt, {"stopReason": "end_turn"});
+    });
+
+    test("abort emits then removes an already-accepted queued command", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
@@ -463,13 +509,42 @@ void main() {
       );
 
       await plugin.abortSession(sessionId: sessionId);
+      await pump();
+      final commandLifecycle = emitted
+          .where((event) {
+            return switch (event) {
+              BridgeSseMessageUpdated(:final info) => info["id"] == "s1-command-queued-invocation",
+              BridgeSseMessageRemoved(:final messageID) => messageID == "s1-command-queued-invocation",
+              _ => false,
+            };
+          })
+          .toList(growable: false);
+      expect(commandLifecycle, hasLength(2));
+      expect(
+        commandLifecycle.first,
+        isA<BridgeSseMessageUpdated>().having(
+          (event) => event.info["invocationId"],
+          "invocationId",
+          "queued-invocation",
+        ),
+      );
+      expect(
+        commandLifecycle.last,
+        isA<BridgeSseMessageRemoved>()
+            .having((event) => event.sessionID, "sessionID", sessionId)
+            .having(
+              (event) => event.messageID,
+              "messageID",
+              "s1-command-queued-invocation",
+            ),
+      );
+
       respondTo(firstPrompt, {"stopReason": "cancelled"});
       for (var i = 0; i < 10; i++) {
         await pump();
       }
 
       expect(frames("session/prompt"), hasLength(1));
-      expect(emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["role"] == "command"), isEmpty);
       expect(emitted.whereType<BridgeSseSessionError>(), isEmpty);
     });
 

@@ -317,6 +317,53 @@ void main() {
     expect(repeatedDisplay.text, "complete");
   });
 
+  test("history replaces cached live text before building the command card", () async {
+    await timeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(
+        invocationId: null,
+        resultParts: [_textPart(messageId: "backend-command", partId: "stale", text: "stale")],
+      ),
+    );
+    plugin.messages = const [
+      PluginMessageWithParts(
+        info: PluginMessage.command(
+          id: "backend-command",
+          sessionID: "backend-session",
+          name: "review",
+          arguments: null,
+          origin: PluginCommandOrigin.automatic,
+          invocationId: null,
+          time: PluginMessageTime(created: 10, completed: null),
+        ),
+        parts: [
+          PluginMessagePart(
+            id: "current",
+            sessionID: "backend-session",
+            messageID: "backend-command",
+            type: PluginMessagePartType.text,
+            text: "current",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ],
+      ),
+    ];
+
+    final card = (await timeline.getSessionMessages(sessionId: "session")).single;
+    final live = await timeline.canonicalizePluginCandidate(
+      candidate: _resultPartCandidate(partId: "later", text: "later"),
+    );
+
+    expect(card.parts.singleWhere((part) => part.id.endsWith(":display")).text, "current");
+    expect(_updatedDisplayText(live), "currentlater");
+  });
+
   test("live text parts aggregate across updates, deltas, and removals", () async {
     await timeline.canonicalizePluginCandidate(
       candidate: _commandCandidate(invocationId: null),
@@ -351,6 +398,35 @@ void main() {
     expect(_updatedDisplayText(second), "onetwo");
     expect(_updatedDisplayText(delta), "one+two");
     expect(_updatedDisplayText(removed), "two");
+  });
+
+  test("removal clears text streamed only through deltas", () async {
+    await timeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(invocationId: null),
+    );
+    final delta = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandResultPartDeltaTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+        backendPartId: "delta-only",
+        field: "text",
+        delta: "streamed",
+      ),
+    );
+
+    final removed = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandResultPartRemovedTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+        backendPartId: "delta-only",
+      ),
+    );
+
+    expect(_updatedDisplayText(delta), "streamed");
+    expect(_updatedDisplayText(removed), isEmpty);
+    expect(removed.mutations, isNot(contains(isA<CommandTimelinePartRemoved>())));
   });
 
   test("command message removal targets the canonical card and clears correlation", () async {

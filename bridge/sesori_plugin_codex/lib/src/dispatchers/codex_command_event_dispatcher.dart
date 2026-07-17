@@ -41,9 +41,11 @@ class CodexCommandEventDispatcher {
     _heldEventsByThread.remove(threadId);
   }
 
-  void dispose() {
+  void reset() {
     _heldEventsByThread.clear();
   }
+
+  void dispose() => reset();
 
   List<BridgeSseEvent> handleEvent({
     required CodexEventRecord event,

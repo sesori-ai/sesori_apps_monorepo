@@ -390,6 +390,98 @@ void main() {
     expect(mapped.single.parts.single.text, "the plan");
   });
 
+  test("duplicate command history pairs newest accepted contexts to newest echoes", () {
+    final mapped = const AcpMessageRepository().mapHistory(
+      sessionId: "s1",
+      agentId: "ACP",
+      modelId: null,
+      providerId: null,
+      records: const [
+        AcpReplayMessage(
+          id: "user-1",
+          role: AcpReplayRole.user,
+          text: "/review same",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+        AcpReplayMessage(
+          id: "assistant-1",
+          role: AcpReplayRole.assistant,
+          text: "first result",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+        AcpReplayMessage(
+          id: "user-2",
+          role: AcpReplayRole.user,
+          text: "/review same",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+        AcpReplayMessage(
+          id: "assistant-2",
+          role: AcpReplayRole.assistant,
+          text: "second result",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+        AcpReplayMessage(
+          id: "user-3",
+          role: AcpReplayRole.user,
+          text: "/review same",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+        AcpReplayMessage(
+          id: "assistant-3",
+          role: AcpReplayRole.assistant,
+          text: "third result",
+          reasoning: "",
+          tools: [],
+          errorName: null,
+          errorMessage: null,
+        ),
+      ],
+      acceptedCommands: const [
+        PluginCommandInvocationContext(
+          invocationId: "newest-invocation",
+          name: "review",
+          arguments: "same",
+          acceptedAt: 200,
+          backendMessageId: null,
+        ),
+        PluginCommandInvocationContext(
+          invocationId: "older-invocation",
+          name: "review",
+          arguments: "same",
+          acceptedAt: 100,
+          backendMessageId: null,
+        ),
+      ],
+      knownCommandNames: const {"review"},
+    );
+
+    expect(mapped, hasLength(3));
+    expect(
+      mapped.map((message) => (message.info as PluginMessageCommand).invocationId),
+      [null, "older-invocation", "newest-invocation"],
+    );
+    expect(
+      mapped.map((message) => message.parts.single.text),
+      ["first result", "second result", "third result"],
+    );
+  });
+
   test("recognized external slash history has manual origin", () {
     final mapped = const AcpMessageRepository().mapHistory(
       sessionId: "s1",

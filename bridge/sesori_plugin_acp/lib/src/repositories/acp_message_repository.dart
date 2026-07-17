@@ -16,17 +16,21 @@ class AcpMessageRepository {
     required List<PluginCommandInvocationContext> acceptedCommands,
     required Set<String> knownCommandNames,
   }) {
-    final unusedContexts = [...acceptedCommands]..sort((a, b) => a.acceptedAt.compareTo(b.acceptedAt));
+    final acceptedContextsByRecord = _matchAcceptedCommands(
+      records: records,
+      acceptedCommands: acceptedCommands,
+    );
     final normalizedKnownCommandNames = knownCommandNames.map(_normalizeCommandName).toSet();
     final output = <PluginMessageWithParts>[];
     _HistoryCommand? activeCommand;
 
-    for (final record in records) {
+    for (var recordIndex = 0; recordIndex < records.length; recordIndex++) {
+      final record = records[recordIndex];
       if (record.role == AcpReplayRole.user) {
         activeCommand = null;
         final correlation = _correlateCommand(
           text: record.text,
-          contexts: unusedContexts,
+          context: acceptedContextsByRecord[recordIndex],
           knownCommandNames: normalizedKnownCommandNames,
         );
         if (correlation != null) {
@@ -112,13 +116,10 @@ class AcpMessageRepository {
 
   _AcpCommandCorrelation? _correlateCommand({
     required String text,
-    required List<PluginCommandInvocationContext> contexts,
+    required PluginCommandInvocationContext? context,
     required Set<String> knownCommandNames,
   }) {
-    for (var index = 0; index < contexts.length; index++) {
-      final context = contexts[index];
-      if (_commandBody(context.name, context.arguments ?? "") != text) continue;
-      contexts.removeAt(index);
+    if (context != null) {
       return _AcpCommandCorrelation(
         name: _normalizeCommandName(context.name),
         arguments: _normalizeArguments(context.arguments),
@@ -134,6 +135,32 @@ class AcpMessageRepository {
       arguments: separator < 0 ? null : _normalizeArguments(text.substring(separator + 1)),
       context: null,
     );
+  }
+
+  Map<int, PluginCommandInvocationContext> _matchAcceptedCommands({
+    required List<AcpReplayMessage> records,
+    required List<PluginCommandInvocationContext> acceptedCommands,
+  }) {
+    final replayIndexesByBody = <String, List<int>>{};
+    for (var index = 0; index < records.length; index++) {
+      final record = records[index];
+      if (record.role != AcpReplayRole.user) continue;
+      (replayIndexesByBody[record.text] ??= []).add(index);
+    }
+
+    final contextsByNewest = acceptedCommands.asMap().entries.toList()
+      ..sort((a, b) {
+        final acceptedAt = b.value.acceptedAt.compareTo(a.value.acceptedAt);
+        return acceptedAt != 0 ? acceptedAt : b.key.compareTo(a.key);
+      });
+    final matched = <int, PluginCommandInvocationContext>{};
+    for (final entry in contextsByNewest) {
+      final context = entry.value;
+      final replayIndexes = replayIndexesByBody[_commandBody(context.name, context.arguments ?? "")];
+      if (replayIndexes == null || replayIndexes.isEmpty) continue;
+      matched[replayIndexes.removeLast()] = context;
+    }
+    return matched;
   }
 
   static String _commandBody(String name, String arguments) {

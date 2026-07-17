@@ -377,6 +377,15 @@ class OpenCodeService {
         onTimeout: () {
           unawaited(
             sendFuture.catchError((Object error, StackTrace stackTrace) {
+              if (commandTracker.hasPendingDispatch(
+                sessionId: sessionId,
+                invocationId: invocationId,
+              )) {
+                commandTracker.cancelDispatch(
+                  sessionId: sessionId,
+                  invocationId: invocationId,
+                );
+              }
               Log.w(
                 "command '$command' for session $sessionId failed after dispatch",
                 error,

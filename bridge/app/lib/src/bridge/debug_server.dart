@@ -305,8 +305,8 @@ class DebugServer {
     final release = Completer<void>();
     _commandTimelineDeliveryTail = release.future;
     return () async {
-      await previous;
       try {
+        await previous;
         await _fanOutEvents(events);
       } finally {
         release.complete();

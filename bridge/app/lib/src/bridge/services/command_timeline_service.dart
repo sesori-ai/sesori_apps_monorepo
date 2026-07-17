@@ -96,7 +96,7 @@ class CommandTimelineService {
             snapshot: tracked.snapshot!,
             backendMessageId: candidate.backendMessageId,
           );
-          _recordTextResultParts(snapshot: snapshot, parts: candidate.resultParts);
+          _replaceTextResultParts(snapshot: snapshot, parts: candidate.resultParts);
           final next = _candidateCard(candidate: candidate, snapshot: snapshot);
           entries[snapshot.canonicalMessageId] = _TimelineEntry(
             message: _mergeCards(previous: entries[snapshot.canonicalMessageId]?.message, next: next),
@@ -398,7 +398,9 @@ class CommandTimelineService {
     required CommandResultPartRemovedTimelineCandidate candidate,
     required CommandInvocationSnapshot snapshot,
   }) {
-    final wasText = snapshot.backendPartTypes[candidate.backendPartId] == MessagePartType.text;
+    final wasText =
+        snapshot.backendPartTypes[candidate.backendPartId] == MessagePartType.text ||
+        _liveTextResultParts[_liveKey(snapshot)]?.containsKey(candidate.backendPartId) == true;
     if (!wasText) {
       return CommandTimelinePartRemoved(
         sessionId: snapshot.sessionId,
@@ -430,6 +432,15 @@ class CommandTimelineService {
     for (final part in parts) {
       if (part.type == MessagePartType.text) textParts[part.id] = part;
     }
+  }
+
+  void _replaceTextResultParts({
+    required CommandInvocationSnapshot snapshot,
+    required Iterable<MessagePart> parts,
+  }) {
+    _liveTextResultParts[_liveKey(snapshot)] = LinkedHashMap<String, MessagePart>.fromEntries(
+      parts.where((part) => part.type == MessagePartType.text).map((part) => MapEntry(part.id, part)),
+    );
   }
 
   LinkedHashMap<String, MessagePart> _textResultParts(CommandInvocationSnapshot snapshot) {

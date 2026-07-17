@@ -89,17 +89,37 @@ class OpenCodeCommandEventService {
           final partEvent = _eventMapper.map(event);
           return [messageEvent, partEvent].nonNulls.toList();
         }
-      case SseMessagePartDelta(:final messageID) || SseMessagePartRemoved(:final messageID):
+      case SseMessagePartDelta(:final messageID, :final partID) ||
+          SseMessagePartRemoved(:final messageID, :final partID):
+        if (event is SseMessagePartDelta) {
+          _tracker.observePartDelta(messageId: messageID, partId: partID);
+        }
         if (_tracker.isGuidanceSuppressed(messageID)) return const [];
         final command = _tracker.commandForResult(messageID);
         if (command != null) {
           return _reparent(event: event, commandMessageId: command.triggerMessageId);
         }
-      case SseMessageRemoved(:final messageID):
-        final isResult = _tracker.commandForResult(messageID) != null;
+      case SseMessageRemoved(:final sessionID, :final messageID):
+        final command = _tracker.commandForResult(messageID);
         final isSuppressed = _tracker.isGuidanceSuppressed(messageID);
+        final removedParts = command == null
+            ? const <BridgeSseEvent>[]
+            : [
+                for (final partID in _tracker.partIdsForResult(
+                  messageId: messageID,
+                ))
+                  ..._reparent(
+                    event: SseEventData.messagePartRemoved(
+                      sessionID: sessionID,
+                      messageID: messageID,
+                      partID: partID,
+                    ),
+                    commandMessageId: command.triggerMessageId,
+                  ),
+              ];
         _tracker.forgetMessage(messageID);
-        if (isResult || isSuppressed) return const [];
+        if (command != null) return removedParts;
+        if (isSuppressed) return const [];
       case SseSessionDeleted(:final info):
         _tracker.forgetSession(info.id);
       default:

@@ -119,15 +119,16 @@ class AcpTurnService {
 
   Future<void> abortSession({required String sessionId}) async {
     queueTracker.abortSession(sessionId);
-    for (final turnId in commandTurnTracker.turnIdsForSession(
-      sessionId: sessionId,
-      onlyUnaccepted: true,
-    )) {
-      commandTurnTracker.reject(
-        turnId: turnId,
-        error: StateError("ACP command was aborted before acceptance"),
-        stackTrace: StackTrace.current,
-      );
+    for (final invocation in commandTurnTracker.pendingForSession(sessionId)) {
+      if (commandTurnTracker.isAccepted(invocation.turnId)) {
+        eventDispatcher.abortPendingCommand(turnId: invocation.turnId);
+      } else {
+        commandTurnTracker.reject(
+          turnId: invocation.turnId,
+          error: StateError("ACP command was aborted before acceptance"),
+          stackTrace: StackTrace.current,
+        );
+      }
     }
     connectionService.current?.repository.cancelSession(sessionId: sessionId);
   }
@@ -361,12 +362,19 @@ class AcpTurnService {
     eventDispatcher.beginTurn(sessionId: sessionId);
     queueTracker.beginInFlight(sessionId);
     try {
-      if (commandTurnId != null) _startCommand(commandTurnId);
+      var commandAcceptedBeforePrompt = false;
+      if (commandTurnId != null) {
+        _startCommand(commandTurnId);
+        commandAcceptedBeforePrompt = commandTurnTracker.isAccepted(commandTurnId);
+        if (commandAcceptedBeforePrompt) {
+          eventDispatcher.flushCommand(commandTurnId);
+        }
+      }
       final request = connection.repository.prompt(
         sessionId: sessionId,
         blocks: blocks,
       );
-      if (commandTurnId != null) {
+      if (commandTurnId != null && !commandAcceptedBeforePrompt) {
         await _awaitCommandAcceptance(
           turnId: commandTurnId,
           request: request,

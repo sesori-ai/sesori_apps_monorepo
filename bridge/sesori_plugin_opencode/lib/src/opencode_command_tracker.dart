@@ -30,6 +30,7 @@ class OpenCodeCommandTracker {
   final Map<String, String> _suppressedGuidanceSessions = {};
   final Map<String, OpenCodeTrackedCommand> _commandsByTrigger = {};
   final Map<String, String> _resultToTrigger = {};
+  final Map<String, Set<String>> _partIdsByResult = {};
 
   void registerDispatch({
     required String sessionId,
@@ -73,6 +74,10 @@ class OpenCodeCommandTracker {
         .map((entry) => entry.key)
         .toSet();
     triggerIds.forEach(forgetMessage);
+  }
+
+  bool hasPendingDispatch({required String sessionId, required String invocationId}) {
+    return _pendingBySession[sessionId]?.any((command) => command.invocationId == invocationId) ?? false;
   }
 
   /// Records a message envelope. User envelopes are held until their first
@@ -132,6 +137,10 @@ class OpenCodeCommandTracker {
 
     final messageId = _partMessageId(part);
     if (messageId == null) return;
+    final partId = _partId(part);
+    if (partId != null && _resultToTrigger.containsKey(messageId)) {
+      (_partIdsByResult[messageId] ??= {}).add(partId);
+    }
     final user = _heldUsers[messageId];
     if (user == null || _releasedUsers.contains(user.id)) return;
     final pending = _firstPendingCompact(user.sessionID);
@@ -167,6 +176,18 @@ class OpenCodeCommandTracker {
     return triggerId == null ? null : _commandsByTrigger[triggerId];
   }
 
+  void observePartDelta({required String messageId, required String partId}) {
+    if (_resultToTrigger.containsKey(messageId)) {
+      (_partIdsByResult[messageId] ??= {}).add(partId);
+    }
+  }
+
+  List<String> partIdsForResult({required String messageId}) {
+    return List<String>.unmodifiable(
+      _partIdsByResult[messageId] ?? const <String>{},
+    );
+  }
+
   void forgetMessage(String messageId) {
     _heldUsers.remove(messageId);
     _releasedUsers.remove(messageId);
@@ -174,9 +195,15 @@ class OpenCodeCommandTracker {
     _suppressedGuidanceSessions.remove(messageId);
     final command = _commandsByTrigger.remove(messageId);
     if (command != null) {
+      final resultIds = _resultToTrigger.entries
+          .where((entry) => entry.value == messageId)
+          .map((entry) => entry.key)
+          .toList();
       _resultToTrigger.removeWhere((_, triggerId) => triggerId == messageId);
+      resultIds.forEach(_partIdsByResult.remove);
     } else {
       _resultToTrigger.remove(messageId);
+      _partIdsByResult.remove(messageId);
     }
   }
 
@@ -198,7 +225,12 @@ class OpenCodeCommandTracker {
         .toSet();
     _commandsByTrigger.removeWhere((_, command) => command.sessionId == sessionId);
     _emittedTriggers.removeAll(triggerIds);
+    final resultIds = _resultToTrigger.entries
+        .where((entry) => triggerIds.contains(entry.value))
+        .map((entry) => entry.key)
+        .toList();
     _resultToTrigger.removeWhere((_, triggerId) => triggerIds.contains(triggerId));
+    resultIds.forEach(_partIdsByResult.remove);
   }
 
   OpenCodePendingCommand? _firstPendingCompact(String sessionId) {
@@ -231,6 +263,23 @@ class OpenCodeCommandTracker {
     SubtaskPart(:final messageID) ||
     TextPart(:final messageID) ||
     ToolPart(:final messageID) => messageID,
+    PartUnknown() => null,
+    _ => null,
+  };
+
+  static String? _partId(Part part) => switch (part) {
+    AgentPart(:final id) ||
+    CompactionPart(:final id) ||
+    FilePart(:final id) ||
+    PatchPart(:final id) ||
+    ReasoningPart(:final id) ||
+    RetryPart(:final id) ||
+    SnapshotPart(:final id) ||
+    StepFinishPart(:final id) ||
+    StepStartPart(:final id) ||
+    SubtaskPart(:final id) ||
+    TextPart(:final id) ||
+    ToolPart(:final id) => id,
     PartUnknown() => null,
     _ => null,
   };

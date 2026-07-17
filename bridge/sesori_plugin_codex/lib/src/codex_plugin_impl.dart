@@ -261,6 +261,8 @@ class CodexPlugin implements CodexManagedApi {
     _client = null;
     _keepaliveListener?.stop();
     _keepaliveListener = null;
+    _commandTracker.reset();
+    _commandEventDispatcher.reset();
     _turnService = null;
     _onDisconnected?.call();
   }

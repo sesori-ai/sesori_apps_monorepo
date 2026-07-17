@@ -273,6 +273,90 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a command is accepted after disconnect and reconnect", () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final sockets = <WebSocket>[];
+      final firstSocket = Completer<WebSocket>();
+      final disconnected = Completer<void>();
+      final methodsByConnection = <int, List<String>>{};
+      var connectionNumber = 0;
+      var turnNumber = 0;
+      final serverSubscription = server.transform(WebSocketTransformer()).listen((socket) {
+        sockets.add(socket);
+        final currentConnection = ++connectionNumber;
+        methodsByConnection[currentConnection] = [];
+        if (currentConnection == 1) firstSocket.complete(socket);
+        socket.listen((frame) {
+          final request = jsonDecode(frame as String) as Map<String, dynamic>;
+          final method = request["method"] as String;
+          methodsByConnection[currentConnection]!.add(method);
+          final result = switch (method) {
+            "initialize" => _initOk,
+            "thread/resume" => {
+              "thread": {"id": "t-reconnect"},
+            },
+            "turn/start" => {"turnId": "turn-${++turnNumber}"},
+            _ => throw StateError("unexpected method $method"),
+          };
+          socket.add(
+            jsonEncode({
+              "jsonrpc": "2.0",
+              "id": request["id"],
+              "result": result,
+            }),
+          );
+        });
+      });
+      final reconnectingPlugin = CodexPlugin(
+        serverUrl: "ws://${server.address.address}:${server.port}",
+        rolloutReader: SessionRolloutReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+        projectCwd: "/work/sample",
+        onDisconnected: () {
+          if (!disconnected.isCompleted) disconnected.complete();
+        },
+      );
+      addTearDown(() async {
+        await reconnectingPlugin.dispose();
+        for (final socket in sockets) {
+          await socket.close();
+        }
+        await server.close(force: true);
+        await serverSubscription.cancel();
+      });
+
+      final first = await reconnectingPlugin.sendCommand(
+        sessionId: "t-reconnect",
+        invocationId: "first-invocation",
+        command: "plan",
+        arguments: "first",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(first.backendMessageId, "turn-1");
+
+      await (await firstSocket.future).close();
+      await disconnected.future;
+
+      final second = await reconnectingPlugin.sendCommand(
+        sessionId: "t-reconnect",
+        invocationId: "second-invocation",
+        command: "review",
+        arguments: "second",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(second.backendMessageId, "turn-2");
+      expect(methodsByConnection, {
+        1: ["initialize", "thread/resume", "turn/start"],
+        2: ["initialize", "thread/resume", "turn/start"],
+      });
+    });
+
     test("command notifications before turn response bind to the returned turn", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),

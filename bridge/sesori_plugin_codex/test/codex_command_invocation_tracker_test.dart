@@ -122,6 +122,69 @@ void main() {
     );
   });
 
+  test("reset clears pending and active invocation indexes", () {
+    final tracker = CodexCommandInvocationTracker()
+      ..register(
+        threadId: "pending-thread",
+        invocationId: "pending-invocation",
+        command: "plan",
+        arguments: "",
+      )
+      ..register(
+        threadId: "active-thread",
+        invocationId: "active-invocation",
+        command: "review",
+        arguments: "",
+      )
+      ..bindReturnedTurn(
+        threadId: "active-thread",
+        invocationId: "active-invocation",
+        turnId: "active-turn",
+      );
+
+    tracker.reset();
+
+    expect(tracker.pendingForThread(threadId: "pending-thread"), isNull);
+    expect(
+      tracker.activeFor(threadId: "active-thread", turnId: null),
+      isNull,
+    );
+    expect(
+      tracker.activeFor(threadId: "active-thread", turnId: "active-turn"),
+      isNull,
+    );
+    expect(
+      () => tracker.register(
+        threadId: "active-thread",
+        invocationId: "replacement-invocation",
+        command: "review",
+        arguments: "",
+      ),
+      returnsNormally,
+    );
+  });
+
+  test("reset preserves the synthetic message sequence", () {
+    final tracker = CodexCommandInvocationTracker();
+    final beforeReset = tracker.register(
+      threadId: "thread-1",
+      invocationId: "first",
+      command: "plan",
+      arguments: "",
+    );
+
+    tracker.reset();
+    final afterReset = tracker.register(
+      threadId: "thread-1",
+      invocationId: "second",
+      command: "review",
+      arguments: "",
+    );
+
+    expect(beforeReset.commandMessageId, "codex-command-0");
+    expect(afterReset.commandMessageId, "codex-command-1");
+  });
+
   test("removing one result part keeps later item cleanup idempotent", () {
     final tracker = CodexCommandInvocationTracker()
       ..register(

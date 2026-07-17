@@ -814,6 +814,18 @@ void main() {
         );
       }
 
+      Future<String?> sendCompact({required String invocationId}) {
+        return service.sendCommand(
+          sessionId: "ses-1",
+          invocationId: invocationId,
+          command: OpenCodeService.compactionCommandName,
+          arguments: "",
+          agent: null,
+          variant: null,
+          model: (providerID: "openai", modelID: "gpt-4.1"),
+        );
+      }
+
       test("propagates a failure raised within the window", () async {
         final completer = Completer<void>();
         repository.sendCommandCompleter = completer;
@@ -870,6 +882,74 @@ void main() {
         final messageId = repository.lastCommandMessageId;
         expect(messageId, isNotNull);
         expect(commandTracker.commandForTrigger(messageId!), isNotNull);
+      });
+
+      test("clears a late compact failure before correlating a subsequent compact", () async {
+        final completer = Completer<void>();
+        repository.summarizeCompleter = completer;
+
+        await sendCompact(invocationId: "inv-failed-compact");
+        expect(
+          commandTracker.hasPendingDispatch(
+            sessionId: "ses-1",
+            invocationId: "inv-failed-compact",
+          ),
+          isTrue,
+        );
+
+        completer.completeError(StateError("compaction failed"));
+        await Future<void>.delayed(Duration.zero);
+        expect(
+          commandTracker.hasPendingDispatch(
+            sessionId: "ses-1",
+            invocationId: "inv-failed-compact",
+          ),
+          isFalse,
+        );
+
+        repository.summarizeCompleter = null;
+        await sendCompact(invocationId: "inv-next-compact");
+        commandTracker.observeMessage(
+          Message.fromJson(_userMessageJson(id: "next-trigger", sessionId: "ses-1")),
+        );
+        commandTracker.observePart(
+          Part.fromJson(_compactionPartJson(messageId: "next-trigger")),
+        );
+
+        expect(
+          commandTracker.commandForTrigger("next-trigger")?.invocationId,
+          "inv-next-compact",
+        );
+      });
+
+      test("does not tear down a compact correlated before its late failure", () async {
+        final completer = Completer<void>();
+        repository.summarizeCompleter = completer;
+
+        await sendCompact(invocationId: "inv-correlated-compact");
+        commandTracker.observeMessage(
+          Message.fromJson(
+            _userMessageJson(id: "correlated-trigger", sessionId: "ses-1"),
+          ),
+        );
+        commandTracker.observePart(
+          Part.fromJson(_compactionPartJson(messageId: "correlated-trigger")),
+        );
+        expect(
+          commandTracker.hasPendingDispatch(
+            sessionId: "ses-1",
+            invocationId: "inv-correlated-compact",
+          ),
+          isFalse,
+        );
+
+        completer.completeError(StateError("response failed after SSE correlation"));
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          commandTracker.commandForTrigger("correlated-trigger")?.invocationId,
+          "inv-correlated-compact",
+        );
       });
     });
   });
@@ -1763,6 +1843,27 @@ SessionMessagesResponseItem _msg(String role, String id) {
   );
 }
 
+Map<String, dynamic> _userMessageJson({
+  required String id,
+  required String sessionId,
+}) => {
+  "role": "user",
+  "id": id,
+  "sessionID": sessionId,
+  "time": const {"created": 0},
+  "agent": "build",
+  "model": const {"providerID": "openai", "modelID": "gpt-4.1"},
+};
+
+Map<String, dynamic> _compactionPartJson({required String messageId}) => {
+  "id": "$messageId-compaction",
+  "sessionID": "ses-1",
+  "messageID": messageId,
+  "type": "compaction",
+  "auto": false,
+  "overflow": false,
+};
+
 String? _messageId(PluginMessageWithParts message) {
   return switch (message.info) {
     PluginMessageUser(:final id) => id,
@@ -1977,6 +2078,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastCommandVariant;
   ({String providerID, String modelID})? lastCommandModel;
   Completer<void>? sendCommandCompleter;
+  Completer<void>? summarizeCompleter;
   int addCompactionInstructionsCalls = 0;
   String? lastCompactionInstructions;
   String? lastCompactionInstructionsDirectory;
@@ -2187,6 +2289,9 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastSummarizeDirectory = directory;
     lastSummarizeModel = model;
     compactionOperations.add("summarize");
+    if (summarizeCompleter case final completer?) {
+      await completer.future;
+    }
   }
 
   @override

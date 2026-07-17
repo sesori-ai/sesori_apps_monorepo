@@ -80,6 +80,18 @@ class AcpTurnEventDispatcher {
     _commandTurnTracker.accept(turnId).forEach(emit);
   }
 
+  void abortPendingCommand({required String turnId}) {
+    final invocation = _commandTurnTracker.byTurnId(turnId)!;
+    emit(_commandEnvelope(invocation));
+    emit(
+      BridgeSseMessageRemoved(
+        sessionID: invocation.sessionId,
+        messageID: invocation.commandMessageId,
+      ),
+    );
+    _commandTurnTracker.complete(turnId);
+  }
+
   void emit(BridgeSseEvent event) {
     if (!_disposed && !_events.isClosed) _events.add(event);
   }

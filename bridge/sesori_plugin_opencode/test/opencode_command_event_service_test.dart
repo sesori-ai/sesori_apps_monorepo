@@ -74,6 +74,16 @@ void main() {
       ),
       isEmpty,
     );
+    expect(
+      service.map(
+        const SseEventData.messageRemoved(
+          sessionID: "session",
+          messageID: "guidance",
+        ),
+        displaySessionId: null,
+      ),
+      isEmpty,
+    );
     service.map(
       SseEventData.messageUpdated(
         info: Message.fromJson(_userInfo(id: "manual-trigger", created: 20)),
@@ -168,6 +178,76 @@ void main() {
     expect(part.messageID, triggerId);
     expect(part.type, PluginMessagePartType.text);
     expect(part.text, "Model unavailable");
+  });
+
+  test("removes every tracked part when a correlated result is removed", () {
+    const triggerId = "msg_sesori_00112233445566778899aabbccddeeff";
+    tracker.registerDispatch(
+      sessionId: "session",
+      invocationId: "remove-invocation",
+      name: "review",
+      arguments: "",
+      backendMessageId: triggerId,
+    );
+    service.map(
+      SseEventData.messagePartUpdated(
+        part: Part.fromJson(
+          _textPart(id: "trigger-part", messageId: triggerId, text: "Review"),
+        ),
+      ),
+      displaySessionId: null,
+    );
+    service.map(
+      SseEventData.messageUpdated(
+        info: Message.fromJson(
+          _assistantInfo(
+            id: "result",
+            parentId: triggerId,
+            summary: false,
+            mode: "primary",
+          ),
+        ),
+      ),
+      displaySessionId: null,
+    );
+    service.map(
+      SseEventData.messagePartUpdated(
+        part: Part.fromJson(
+          _textPart(id: "updated-part", messageId: "result", text: "Result"),
+        ),
+      ),
+      displaySessionId: null,
+    );
+    service.map(
+      const SseEventData.messagePartDelta(
+        sessionID: "session",
+        messageID: "result",
+        partID: "delta-part",
+        field: "text",
+        delta: "More",
+      ),
+      displaySessionId: null,
+    );
+
+    final events = service.map(
+      const SseEventData.messageRemoved(
+        sessionID: "session",
+        messageID: "result",
+      ),
+      displaySessionId: null,
+    );
+
+    expect(events, hasLength(2));
+    expect(
+      events.map((event) => (event as BridgeSseMessagePartRemoved).partID),
+      ["updated-part", "delta-part"],
+    );
+    for (final event in events.cast<BridgeSseMessagePartRemoved>()) {
+      expect(event.sessionID, "session");
+      expect(event.messageID, triggerId);
+    }
+    expect(tracker.commandForResult("result"), isNull);
+    expect(tracker.commandForTrigger(triggerId), isNotNull);
   });
 
   test("leaves a non-command user and part unchanged", () {
