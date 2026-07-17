@@ -75,12 +75,16 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       switch (response) {
         case SuccessResponse(:final data):
           final plugins = data.plugins;
-          final currentPluginId = state.agentModelData?.plugin?.id;
+          final currentData = state.agentModelData;
+          final currentPluginId = currentData?.plugin?.id;
           final currentPlugin = currentPluginId == null
               ? null
               : plugins.firstWhereOrNull((plugin) => plugin.id == currentPluginId && plugin.isRoutable);
           final selectedPlugin = currentPlugin ?? plugins.where((plugin) => plugin.isDefault).singleOrNull;
           final canLoad = selectedPlugin?.isRoutable ?? false;
+          final stagedCommand = currentPluginId != null && selectedPlugin?.id == currentPluginId
+              ? currentData?.stagedCommand
+              : null;
           emit(
             NewSessionState.idle(
               availablePlugins: plugins,
@@ -91,7 +95,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
               availableCommands: const [],
               selectedAgent: null,
               selectedAgentModel: null,
-              stagedCommand: null,
+              stagedCommand: stagedCommand,
               availableVariants: const [],
             ),
           );
@@ -269,6 +273,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final current = state;
     final data = current.agentModelData;
     if (data == null) return;
+    final stagedCommand = data.stagedCommand;
+    final revalidatedStagedCommand = availableCommands == null || stagedCommand == null
+        ? stagedCommand
+        : availableCommands.firstWhereOrNull((command) => command.name == stagedCommand.name);
     final derivedVariants = _deriveAvailableVariants(
       providers: availableProviders ?? data.providers,
       model: selectedAgentModel ?? data.agentModel,
@@ -282,6 +290,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableCommands: availableCommands ?? current.availableCommands,
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
+            stagedCommand: revalidatedStagedCommand,
             availableVariants: derivedVariants,
             isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
           ),
@@ -294,6 +303,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableCommands: availableCommands ?? current.availableCommands,
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
+            stagedCommand: revalidatedStagedCommand,
             availableVariants: derivedVariants,
             isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
           ),
@@ -306,6 +316,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableCommands: availableCommands ?? current.availableCommands,
             selectedAgent: selectedAgent ?? current.selectedAgent,
             selectedAgentModel: selectedAgentModel ?? current.selectedAgentModel,
+            stagedCommand: revalidatedStagedCommand,
             availableVariants: derivedVariants,
             isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
           ),
