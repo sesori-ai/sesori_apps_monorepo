@@ -6,6 +6,7 @@ import "dart:io";
 import "package:args/args.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
@@ -95,6 +96,8 @@ class _ImportConcurrencyBenchmark {
       await _seed(database: database, projectPaths: fixture.projectPaths);
 
       final releaseEnumeration = Completer<void>();
+      final publicationTransactionStarted = Completer<void>();
+      final releasePublicationTransaction = Completer<void>();
       final plugin = _BenchmarkPlugin(
         launchDirectory: fixture.projectPaths.first,
         sessions: fixture.sessions,
@@ -102,12 +105,15 @@ class _ImportConcurrencyBenchmark {
       );
       final repository = CatalogImportRepository(
         plugin: plugin,
-        projectsDao: database.projectsDao,
+        projectsDao: _BenchmarkProjectsDao(
+          database,
+          publicationStarted: publicationTransactionStarted,
+          releasePublication: releasePublicationTransaction,
+        ),
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
       );
       final importDone = Completer<void>();
-      final commitStarted = Completer<void>();
       final publicationStopwatch = Stopwatch();
       final importSubscription = repository
           .importCatalog(
@@ -120,7 +126,6 @@ class _ImportConcurrencyBenchmark {
             (progress) {
               if (progress is CatalogImportCommitting) {
                 publicationStopwatch.start();
-                if (!commitStarted.isCompleted) commitStarted.complete();
               } else if (progress is CatalogImportCompleted) {
                 publicationStopwatch.stop();
                 if (!importDone.isCompleted) importDone.complete();
@@ -146,9 +151,11 @@ class _ImportConcurrencyBenchmark {
 
       final schedulingProbe = _SchedulingLagProbe()..start();
       releaseEnumeration.complete();
-      await commitStarted.future;
+      await publicationTransactionStarted.future;
       final publicationReadStopwatch = Stopwatch()..start();
       final publicationRead = database.projectsDao.getCatalogProjects();
+      await Future<void>.delayed(Duration.zero);
+      releasePublicationTransaction.complete();
       await importDone.future;
       final publicationRows = await publicationRead;
       publicationReadStopwatch.stop();
@@ -353,6 +360,24 @@ class _SchedulingLagProbe {
     _running = false;
     _timer?.cancel();
     _stopwatch.stop();
+  }
+}
+
+class _BenchmarkProjectsDao extends ProjectsDao {
+  _BenchmarkProjectsDao(
+    super.attachedDatabase, {
+    required this.publicationStarted,
+    required this.releasePublication,
+  });
+
+  final Completer<void> publicationStarted;
+  final Completer<void> releasePublication;
+
+  @override
+  Future<void> upsertProjectRows({required List<ProjectDto> rows}) async {
+    await super.upsertProjectRows(rows: rows);
+    publicationStarted.complete();
+    await releasePublication.future;
   }
 }
 

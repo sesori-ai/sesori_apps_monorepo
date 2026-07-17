@@ -219,6 +219,10 @@ class Orchestrator {
     sseManager.setRoomKey(roomKey);
 
     final catalogImportService = CatalogImportService(
+      emptyHydrationPolicy: switch (_plugin) {
+        NativeProjectsPluginApi() => CatalogEmptyHydrationPolicy.complete,
+        BridgeDerivedProjectsPluginApi() => CatalogEmptyHydrationPolicy.retry,
+      },
       repository: CatalogImportRepository(
         plugin: _plugin,
         projectsDao: _projectsDao,

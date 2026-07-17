@@ -7,20 +7,16 @@ import "../session_rollout_reader.dart";
 class CodexCatalogRepository {
   CodexCatalogRepository({
     required SessionRolloutReader rolloutReader,
-    required String launchDirectory,
-  }) : _rolloutReader = rolloutReader,
-       _launchDirectory = launchDirectory;
+  }) : _rolloutReader = rolloutReader;
 
   final SessionRolloutReader _rolloutReader;
-  final String _launchDirectory;
 
   Future<List<PluginSession>> listAllSessions() async {
     final records = await _rolloutReader.listSessionsInIsolate();
-    return records.map(_toPluginSession).toList(growable: false);
+    return records.map(_toPluginSession).nonNulls.toList(growable: false);
   }
 
-  /// Filters by normalized rollout CWD before applying pagination. Rollouts
-  /// without a CWD belong to the launch directory.
+  /// Filters by normalized rollout CWD before applying pagination.
   Future<List<PluginSession>> getSessions({
     required String projectId,
     required int? start,
@@ -29,27 +25,23 @@ class CodexCatalogRepository {
     final records = await _rolloutReader.listSessionsInIsolate();
     final target = normalizeProjectDirectory(directory: projectId);
     final sessions = records
-        .where(
-          (record) =>
-              normalizeProjectDirectory(
-                directory: record.cwd ?? _launchDirectory,
-              ) ==
-              target,
-        )
         .map(_toPluginSession)
+        .nonNulls
+        .where((session) => session.directory == target)
         .toList(growable: false);
-    final from = start ?? 0;
-    final until = limit == null ? sessions.length : (from + limit).clamp(0, sessions.length);
+    final from = (start ?? 0).clamp(0, sessions.length);
+    final pageSize = limit?.clamp(0, sessions.length);
+    final until = pageSize == null ? sessions.length : (from + pageSize).clamp(from, sessions.length);
     if (from >= sessions.length) return const [];
     return sessions.sublist(from, until);
   }
 
-  PluginSession _toPluginSession(CodexSessionRecord record) {
+  PluginSession? _toPluginSession(CodexSessionRecord record) {
+    final cwd = record.cwd?.trim();
+    if (cwd == null || cwd.isEmpty) return null;
     final created = record.createdAt?.millisecondsSinceEpoch;
     final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
-    final directory = normalizeProjectDirectory(
-      directory: record.cwd ?? _launchDirectory,
-    );
+    final directory = normalizeProjectDirectory(directory: cwd);
     return PluginSession(
       id: record.id,
       projectID: directory,

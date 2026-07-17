@@ -166,6 +166,7 @@ void main() {
             worktreePath: selectedWorktree,
             pluginId: "derived",
             projectionUpdatedAt: 20,
+            updatedAt: 200,
           ),
           _sessionRow(
             sessionId: "ses_other",
@@ -181,7 +182,11 @@ void main() {
       final plugin = _DerivedImportPlugin(
         launchDirectory: launchDirectory,
         sessions: [
-          _pluginSession(id: "selected", directory: selectedWorktree),
+          _pluginSession(
+            id: "selected",
+            directory: "$selectedWorktree/stale-catalog-path",
+            updatedAt: 100,
+          ),
           _pluginSession(id: "child", parentId: "selected", directory: selectedWorktree),
           _pluginSession(id: "orphan", parentId: "missing", directory: selectedWorktree),
         ],
@@ -206,6 +211,8 @@ void main() {
       final selected = await database.sessionDao.getSession(sessionId: "ses_selected");
       final child = await database.sessionDao.getSessionByBinding(pluginId: "derived", backendSessionId: "child");
       expect(selected?.projectId, "one");
+      expect(selected?.directory, selectedWorktree);
+      expect(selected?.updatedAt, 200);
       expect(child?.projectId, "one");
       expect(child?.parentSessionId, "ses_selected");
       expect(await database.projectsDao.getProjectsByPath(path: selectedWorktree), isEmpty);
@@ -359,6 +366,7 @@ SessionDto _sessionRow({
   String? title,
   String? catalogTitle,
   required int projectionUpdatedAt,
+  int updatedAt = 20,
 }) {
   return SessionDto(
     sessionId: sessionId,
@@ -375,7 +383,7 @@ SessionDto _sessionRow({
     lastAgent: "agent",
     lastAgentModel: null,
     createdAt: 10,
-    updatedAt: 20,
+    updatedAt: updatedAt,
     projectionUpdatedAt: projectionUpdatedAt,
     lastActivityAt: 18,
     lastSeenAt: 17,
@@ -392,6 +400,7 @@ PluginSession _pluginSession({
   String? parentId,
   String? title,
   int? archivedAt,
+  int updatedAt = 100,
 }) {
   return PluginSession(
     id: id,
@@ -399,7 +408,7 @@ PluginSession _pluginSession({
     directory: directory,
     parentID: parentId,
     title: title,
-    time: PluginSessionTime(created: 1, updated: 100, archived: archivedAt),
+    time: PluginSessionTime(created: 1, updated: updatedAt, archived: archivedAt),
   );
 }
 

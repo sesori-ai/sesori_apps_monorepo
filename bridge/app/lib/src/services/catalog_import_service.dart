@@ -7,6 +7,8 @@ import "../repositories/models/catalog_import_control.dart";
 
 enum CatalogImportTrigger { automatic, explicit, headless }
 
+enum CatalogEmptyHydrationPolicy { complete, retry }
+
 class CatalogImportPluginNotSelectedException implements Exception {
   CatalogImportPluginNotSelectedException({required this.pluginId});
 
@@ -17,9 +19,14 @@ class CatalogImportPluginNotSelectedException implements Exception {
 }
 
 class CatalogImportService {
-  CatalogImportService({required CatalogImportRepository repository}) : _repository = repository;
+  CatalogImportService({
+    required CatalogImportRepository repository,
+    required CatalogEmptyHydrationPolicy emptyHydrationPolicy,
+  }) : _repository = repository,
+       _emptyHydrationPolicy = emptyHydrationPolicy;
 
   final CatalogImportRepository _repository;
+  final CatalogEmptyHydrationPolicy _emptyHydrationPolicy;
   final StreamController<CatalogImportProgress> _progressController = StreamController<CatalogImportProgress>.broadcast(
     sync: true,
   );
@@ -27,7 +34,7 @@ class CatalogImportService {
   CatalogImportControl? _control;
   Future<void>? _operation;
   CatalogImportProgress? _latestStatus;
-  bool _disposed = false;
+  Future<void>? _disposal;
 
   Stream<CatalogImportProgress> get progress => _progressController.stream;
 
@@ -38,7 +45,7 @@ class CatalogImportService {
 
   void start({required String pluginId, required CatalogImportTrigger trigger}) {
     _validateSelectedPlugin(pluginId);
-    if (_disposed) throw StateError("catalog import service is disposed");
+    if (_disposal != null) throw StateError("catalog import service is disposed");
 
     final activeControl = _control;
     if (activeControl != null) {
@@ -61,9 +68,9 @@ class CatalogImportService {
     _control?.cancellationRequested = true;
   }
 
-  Future<void> dispose() async {
-    if (_disposed) return;
-    _disposed = true;
+  Future<void> dispose() => _disposal ??= _dispose();
+
+  Future<void> _dispose() async {
     _control?.cancellationRequested = true;
     await _operation;
     await _progressController.close();
@@ -90,7 +97,14 @@ class CatalogImportService {
         }
       }
 
-      await _repository.importCatalog(control: control).forEach(_publish);
+      await for (final progress in _repository.importCatalog(control: control)) {
+        if (progress case CatalogImportCommitting(
+          sessionsSeen: 0,
+        ) when _emptyHydrationPolicy == CatalogEmptyHydrationPolicy.retry) {
+          control.hydrationMarkerRequested = false;
+        }
+        _publish(progress);
+      }
     } on Object catch (error) {
       _publish(
         CatalogImportProgress.failed(

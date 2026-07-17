@@ -313,9 +313,7 @@ class CatalogImportRepository {
             parent?.projectId ??
             (rootProjectPath == null ? null : importedProjectIdByPath[_normalizeRequiredPath(rootProjectPath)]);
         if (projectId == null) {
-          // This can only occur when a concurrently changed stale binding no
-          // longer matches the enumerated ancestry. Retain it by omission.
-          continue;
+          throw StateError("plugin $pluginId returned session ${session.id} without a publishable project");
         }
         final row = _mergeSessionRow(
           observation: observation,
@@ -394,7 +392,7 @@ class CatalogImportRepository {
       backendSessionId: session.id,
       projectId: projectId,
       parentSessionId: parentSessionId,
-      directory: _normalizeRequiredPath(session.directory),
+      directory: existing?.directory ?? _normalizeRequiredPath(session.directory),
       worktreePath: existing?.worktreePath,
       branchName: existing?.branchName,
       isDedicated: existing?.isDedicated ?? false,
@@ -404,7 +402,7 @@ class CatalogImportRepository {
       lastAgent: existing?.lastAgent,
       lastAgentModel: existing?.lastAgentModel,
       createdAt: createdAt,
-      updatedAt: time?.updated ?? existing?.updatedAt ?? createdAt,
+      updatedAt: max(time?.updated ?? createdAt, existing?.updatedAt ?? createdAt),
       projectionUpdatedAt: importStartedAt,
       lastActivityAt: existing?.lastActivityAt,
       lastSeenAt: existing?.lastSeenAt,

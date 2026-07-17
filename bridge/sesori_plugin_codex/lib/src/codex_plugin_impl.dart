@@ -126,7 +126,6 @@ class CodexPlugin implements CodexManagedApi {
       configReader: resolvedConfigReader,
       catalogRepository: CodexCatalogRepository(
         rolloutReader: resolvedRolloutReader,
-        launchDirectory: resolvedProjectCwd,
       ),
       // Shares the plugin's own rollout/config readers so both resolve project
       // metadata from the same codex home.

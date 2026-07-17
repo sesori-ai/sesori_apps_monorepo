@@ -17,7 +17,10 @@ void main() {
   group("catalog import handlers", () {
     test("POST starts the selected import and GET returns its latest status", () async {
       final repository = _HandlerCatalogImportRepository();
-      final service = CatalogImportService(repository: repository);
+      final service = CatalogImportService(
+        repository: repository,
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+      );
       addTearDown(service.dispose);
       final handler = StartCatalogImportHandler(service: service);
       final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
@@ -47,7 +50,10 @@ void main() {
     });
 
     test("POST and DELETE map an unselected plugin to 404", () async {
-      final service = CatalogImportService(repository: _HandlerCatalogImportRepository());
+      final service = CatalogImportService(
+        repository: _HandlerCatalogImportRepository(),
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+      );
       addTearDown(service.dispose);
       final requestBody = jsonEncode(const CatalogImportRequest(pluginId: "other").toJson());
 
@@ -71,7 +77,10 @@ void main() {
     test("DELETE requests cooperative cancellation", () async {
       final release = Completer<void>();
       final repository = _HandlerCatalogImportRepository(release: release);
-      final service = CatalogImportService(repository: repository);
+      final service = CatalogImportService(
+        repository: repository,
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+      );
       addTearDown(service.dispose);
       final cancelled = service.progress.firstWhere((status) => status is CatalogImportCancelled);
       service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);

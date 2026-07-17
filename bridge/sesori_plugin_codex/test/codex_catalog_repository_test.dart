@@ -23,13 +23,19 @@ void main() {
             createdAt: null,
             updatedAt: null,
           ),
+          _record(
+            id: "session-with-blank-cwd",
+            cwd: "  ",
+            title: null,
+            createdAt: null,
+            updatedAt: null,
+          ),
         ]),
-        launchDirectory: "/launch/project/.",
       );
 
       final sessions = await repository.listAllSessions();
 
-      expect(sessions, hasLength(2));
+      expect(sessions, hasLength(1));
       expect(sessions[0].id, "session-with-cwd");
       expect(sessions[0].projectID, "/repo/app");
       expect(sessions[0].directory, "/repo/app");
@@ -44,9 +50,6 @@ void main() {
         updatedAt.millisecondsSinceEpoch,
       );
       expect(sessions[0].time?.archived, isNull);
-      expect(sessions[1].projectID, "/launch/project");
-      expect(sessions[1].directory, "/launch/project");
-      expect(sessions[1].time, isNull);
     });
 
     test("filters normalized project directories before paginating", () async {
@@ -57,7 +60,6 @@ void main() {
           _record(id: "second", cwd: "/repo/app/.", title: "Second"),
           _record(id: "third", cwd: "/repo/app", title: "Third"),
         ]),
-        launchDirectory: "/repo/launch",
       );
 
       final page = await repository.getSessions(
@@ -72,6 +74,22 @@ void main() {
           projectId: "/repo/app",
           start: 3,
           limit: null,
+        ),
+        isEmpty,
+      );
+      expect(
+        await repository.getSessions(
+          projectId: "/repo/app",
+          start: -1,
+          limit: 1,
+        ),
+        hasLength(1),
+      );
+      expect(
+        await repository.getSessions(
+          projectId: "/repo/app",
+          start: 1,
+          limit: -1,
         ),
         isEmpty,
       );

@@ -36,10 +36,16 @@ class CatalogImportConsoleListener {
         Console.message(
           "Imported $pluginId catalog: $projectsImported project(s), $sessionsImported session(s).",
         );
+        _lastPhase = null;
+        return;
       case CatalogImportCancelled(:final pluginId):
         Console.warning("Cancelled $pluginId catalog import.");
+        _lastPhase = null;
+        return;
       case CatalogImportFailed(:final pluginId, :final message):
         Console.error("Failed to import $pluginId catalog: $message");
+        _lastPhase = null;
+        return;
     }
     _lastPhase = progress.runtimeType;
   }

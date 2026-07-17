@@ -11,7 +11,10 @@ void main() {
   group("CatalogImportService", () {
     test("rejects an unselected plugin synchronously before repository access", () {
       final repository = _FakeCatalogImportRepository();
-      final service = CatalogImportService(repository: repository);
+      final service = CatalogImportService(
+        repository: repository,
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+      );
 
       expect(
         () => service.start(pluginId: "other", trigger: CatalogImportTrigger.explicit),
@@ -30,7 +33,10 @@ void main() {
           completedAt: 1234,
         ),
       );
-      final service = CatalogImportService(repository: repository);
+      final service = CatalogImportService(
+        repository: repository,
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+      );
       addTearDown(service.dispose);
       final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
 
@@ -51,7 +57,10 @@ void main() {
         hydrationGate: hydrationGate,
         releaseImport: releaseImport,
       );
-      final service = CatalogImportService(repository: repository);
+      final service = CatalogImportService(
+        repository: repository,
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+      );
       addTearDown(service.dispose);
       final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
 
@@ -76,7 +85,10 @@ void main() {
     test("cancellation produces a truthful terminal status", () async {
       final releaseImport = Completer<void>();
       final repository = _FakeCatalogImportRepository(releaseImport: releaseImport);
-      final service = CatalogImportService(repository: repository);
+      final service = CatalogImportService(
+        repository: repository,
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+      );
       addTearDown(service.dispose);
       final cancelled = service.progress.firstWhere((status) => status is CatalogImportCancelled);
 
@@ -91,7 +103,10 @@ void main() {
 
     test("repository errors become one failed terminal status", () async {
       final repository = _FakeCatalogImportRepository(importError: StateError("enumeration failed"));
-      final service = CatalogImportService(repository: repository);
+      final service = CatalogImportService(
+        repository: repository,
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+      );
       addTearDown(service.dispose);
       final statuses = <CatalogImportProgress>[];
       final subscription = service.progress.listen(statuses.add);
@@ -102,6 +117,38 @@ void main() {
 
       expect(statuses.whereType<CatalogImportFailed>(), hasLength(1));
       expect((service.latestStatuses.single as CatalogImportFailed).message, contains("enumeration failed"));
+    });
+
+    test("an empty derived import remains eligible for automatic retry", () async {
+      final repository = _FakeCatalogImportRepository();
+      final service = CatalogImportService(
+        repository: repository,
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.retry,
+      );
+      addTearDown(service.dispose);
+
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.automatic);
+      await service.progress.firstWhere((status) => status is CatalogImportCompleted);
+
+      expect(repository.lastControl?.hydrationMarkerRequested, isFalse);
+    });
+
+    test("concurrent dispose callers share one teardown", () async {
+      final releaseImport = Completer<void>();
+      final repository = _FakeCatalogImportRepository(releaseImport: releaseImport);
+      final service = CatalogImportService(
+        repository: repository,
+        emptyHydrationPolicy: CatalogEmptyHydrationPolicy.complete,
+      );
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
+      await repository.importStarted.future;
+
+      final first = service.dispose();
+      final second = service.dispose();
+
+      expect(identical(first, second), isTrue);
+      releaseImport.complete();
+      await Future.wait([first, second]);
     });
   });
 }
@@ -149,6 +196,11 @@ class _FakeCatalogImportRepository implements CatalogImportRepository {
       yield const CatalogImportProgress.cancelled(pluginId: "selected");
       return;
     }
+    yield const CatalogImportProgress.committing(
+      pluginId: "selected",
+      projectsSeen: 1,
+      sessionsSeen: 0,
+    );
     yield const CatalogImportProgress.completed(
       pluginId: "selected",
       projectsImported: 1,
