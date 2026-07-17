@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:math";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgeDerivedProjectsPluginApi,
@@ -30,6 +31,7 @@ import "package:sesori_shared/sesori_shared.dart"
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/pull_request_dao.dart";
 import "../../api/database/daos/session_dao.dart";
+import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../../api/database/tables/pull_requests_table.dart";
 import "../../api/database/tables/session_table.dart" show SessionDto;
 import "../../repositories/project_catalog_identity_calculator.dart";
@@ -519,13 +521,21 @@ class SessionRepository {
     // stable project identity and live path. Derived plugins cannot safely do
     // that for an unknown worktree, so their rowless activity stays omitted.
     final hydratedProjectIds = <String>{};
+    final storedProjects = await _projectsDao.getAllProjects();
+    final projectsById = <String, ProjectDto>{
+      for (final project in storedProjects) project.projectId: project,
+    };
+    final projectsByNormalizedPath = <String, ProjectDto>{
+      for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
+    };
     for (final summary in summaries) {
       if (!summary.activeSessions.any((active) => missingRootIds.contains(active.id))) continue;
 
       try {
         final project = await plugin.getProject(summary.id);
         final existing = _projectCatalogIdentityCalculator.calculate(
-          existingProjects: await _projectsDao.getAllProjects(),
+          projectsById: projectsById,
+          projectsByNormalizedPath: projectsByNormalizedPath,
           preferredProjectId: project.id,
           observedPath: project.directory,
         );
@@ -537,6 +547,17 @@ class SessionRepository {
           projectId: projectId,
           projectDirectory: project.directory,
         );
+        if (existing == null) {
+          final inserted = ProjectDto(
+            projectId: projectId,
+            path: project.directory,
+            createdAt: 0,
+            updatedAt: 0,
+            projectionUpdatedAt: 0,
+          );
+          projectsById[projectId] = inserted;
+          projectsByNormalizedPath[normalizeProjectDirectory(directory: project.directory)] = inserted;
+        }
       } on Object catch (error, stackTrace) {
         Log.w(
           "Could not hydrate active project ${summary.id}; omitting unresolved sessions",

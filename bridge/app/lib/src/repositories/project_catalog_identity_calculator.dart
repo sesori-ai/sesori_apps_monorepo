@@ -9,18 +9,12 @@ class ProjectCatalogIdentityCalculator {
   /// Prefers the stable plugin-supplied id, then the normalized observed path.
   /// Returns null when neither signal identifies an existing catalog row.
   ProjectDto? calculate({
-    required Iterable<ProjectDto> existingProjects,
+    required Map<String, ProjectDto> projectsById,
+    required Map<String, ProjectDto> projectsByNormalizedPath,
     required String preferredProjectId,
     required String observedPath,
   }) {
-    for (final project in existingProjects) {
-      if (project.projectId == preferredProjectId) return project;
-    }
-
-    final normalizedObservedPath = normalizeProjectDirectory(directory: observedPath);
-    for (final project in existingProjects) {
-      if (normalizeProjectDirectory(directory: project.path) == normalizedObservedPath) return project;
-    }
-    return null;
+    return projectsById[preferredProjectId] ??
+        projectsByNormalizedPath[normalizeProjectDirectory(directory: observedPath)];
   }
 }
