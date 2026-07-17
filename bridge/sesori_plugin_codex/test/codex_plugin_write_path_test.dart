@@ -273,6 +273,146 @@ void main() {
       await subscription.cancel();
     });
 
+    test("command notifications before turn response bind to the returned turn", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-command-race"},
+          },
+        ),
+        const _Response(result: {"turnId": "returned-race-turn"}),
+      ]);
+      fake.onRequest = (method) async {
+        if (method != "turn/start") return;
+        fake.pushNotification("turn/started", {
+          "threadId": "t-command-race",
+          "turn": {"id": "returned-race-turn"},
+        });
+        fake.pushNotification("item/completed", {
+          "threadId": "t-command-race",
+          "turnId": "returned-race-turn",
+          "item": {
+            "type": "userMessage",
+            "id": "pre-response-slash-user",
+            "content": [
+              {"type": "text", "text": "/plan auth"},
+            ],
+          },
+        });
+        fake.pushNotification("item/completed", {
+          "threadId": "t-command-race",
+          "turnId": "returned-race-turn",
+          "item": {
+            "type": "agentMessage",
+            "id": "pre-response-result",
+            "text": "the pre-response plan",
+          },
+        });
+        await Future<void>.delayed(Duration.zero);
+      };
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      await plugin.sendCommand(
+        sessionId: "t-command-race",
+        invocationId: "race-invocation",
+        command: "plan",
+        arguments: "auth",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final messages = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+      expect(messages.map((message) => message["role"]), ["command"]);
+      expect(messages.single["id"], "returned-race-turn");
+      expect(events.first, isA<BridgeSseMessageUpdated>());
+      final result = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .singleWhere((event) => event.part.id == "returned-race-turn-result")
+          .part;
+      expect(result.messageID, "returned-race-turn");
+      expect(result.text, "the pre-response plan");
+      await subscription.cancel();
+    });
+
+    test("a second command is rejected before turn/start and leaves the first intact", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-command-serialized"},
+          },
+        ),
+        const _Response(result: {"turnId": "first-turn"}),
+      ]);
+      final releaseTurnStart = Completer<void>();
+      final turnStartObserved = Completer<void>();
+      addTearDown(() {
+        if (!releaseTurnStart.isCompleted) releaseTurnStart.complete();
+      });
+      fake.onRequest = (method) async {
+        if (method != "turn/start") return;
+        fake.pushNotification("turn/started", {
+          "threadId": "t-command-serialized",
+          "turn": {"id": "first-turn"},
+        });
+        fake.pushNotification("item/completed", {
+          "threadId": "t-command-serialized",
+          "turnId": "first-turn",
+          "item": {
+            "type": "agentMessage",
+            "id": "first-result",
+            "text": "first remains intact",
+          },
+        });
+        await Future<void>.delayed(Duration.zero);
+        turnStartObserved.complete();
+        await releaseTurnStart.future;
+      };
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      final first = plugin.sendCommand(
+        sessionId: "t-command-serialized",
+        invocationId: "first-invocation",
+        command: "plan",
+        arguments: "first",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await turnStartObserved.future;
+
+      await expectLater(
+        plugin.sendCommand(
+          sessionId: "t-command-serialized",
+          invocationId: "second-invocation",
+          command: "review",
+          arguments: "second",
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(isA<CodexCommandAlreadyOutstandingException>()),
+      );
+
+      expect(fake.sentMethods.where((method) => method == "turn/start"), hasLength(1));
+      expect(events, isEmpty);
+      releaseTurnStart.complete();
+      final dispatch = await first;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(dispatch.backendMessageId, "first-turn");
+      final command = events.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(command["invocationId"], "first-invocation");
+      final result = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(result.messageID, "first-turn");
+      expect(result.text, "first remains intact");
+      await subscription.cancel();
+    });
+
     test("an unrelated turn/started cannot consume a pending command", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
@@ -283,12 +423,24 @@ void main() {
         ),
         const _Response(result: {"turnId": "returned-command-turn"}),
       ]);
-      fake.onRequest = (method) {
+      fake.onRequest = (method) async {
         if (method == "turn/start") {
           fake.pushNotification("turn/started", {
             "threadId": "t-command-order",
             "turn": {"id": "ordinary-turn"},
           });
+          fake.pushNotification("item/completed", {
+            "threadId": "t-command-order",
+            "turnId": "ordinary-turn",
+            "item": {
+              "type": "userMessage",
+              "id": "ordinary-user",
+              "content": [
+                {"type": "text", "text": "ordinary prompt"},
+              ],
+            },
+          });
+          await Future<void>.delayed(Duration.zero);
         }
       };
       final events = <BridgeSseEvent>[];
@@ -303,17 +455,6 @@ void main() {
         agent: null,
         model: null,
       );
-      fake.pushNotification("item/completed", {
-        "threadId": "t-command-order",
-        "turnId": "ordinary-turn",
-        "item": {
-          "type": "userMessage",
-          "id": "ordinary-user",
-          "content": [
-            {"type": "text", "text": "ordinary prompt"},
-          ],
-        },
-      });
       fake.pushNotification("turn/started", {
         "threadId": "t-command-order",
         "turn": {"id": "returned-command-turn"},
@@ -582,7 +723,7 @@ void main() {
       await subscription.cancel();
     });
 
-    test("a rejected command is canceled before later notifications", () async {
+    test("a rejected command flushes held notifications as ordinary events", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -594,6 +735,25 @@ void main() {
           error: {"code": -32602, "message": "command rejected"},
         ),
       ]);
+      fake.onRequest = (method) async {
+        if (method != "turn/start") return;
+        fake.pushNotification("turn/started", {
+          "threadId": "t-rejected",
+          "turn": {"id": "rejected-turn"},
+        });
+        fake.pushNotification("item/completed", {
+          "threadId": "t-rejected",
+          "turnId": "rejected-turn",
+          "item": {
+            "type": "userMessage",
+            "id": "rejected-user",
+            "content": [
+              {"type": "text", "text": "/plan"},
+            ],
+          },
+        });
+        await Future<void>.delayed(Duration.zero);
+      };
       final events = <BridgeSseEvent>[];
       final subscription = plugin.events.listen(events.add);
 
@@ -609,26 +769,14 @@ void main() {
         ),
         throwsA(isA<CodexRpcException>()),
       );
-      fake.pushNotification("turn/started", {
-        "threadId": "t-rejected",
-        "turn": {"id": "later-turn"},
-      });
-      fake.pushNotification("item/completed", {
-        "threadId": "t-rejected",
-        "turnId": "later-turn",
-        "item": {
-          "type": "userMessage",
-          "id": "ordinary-slash-user",
-          "content": [
-            {"type": "text", "text": "/plan"},
-          ],
-        },
-      });
       await Future<void>.delayed(Duration.zero);
 
       final messages = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
       expect(messages.where((message) => message["role"] == "command"), isEmpty);
-      expect(messages.where((message) => message["role"] == "user"), hasLength(1));
+      expect(
+        messages.singleWhere((message) => message["role"] == "user")["id"],
+        "rejected-user",
+      );
       await subscription.cancel();
     });
 
@@ -753,6 +901,56 @@ void main() {
           .singleWhere((info) => info["role"] == "assistant");
       expect(assistant["modelID"], "claude-sonnet");
       expect(assistant["providerID"], "anthropic");
+      await subscription.cancel();
+    });
+
+    test("empty model selections are absent and preserve resolved context", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "model": "gpt-default",
+            "modelProvider": "openai",
+            "thread": {"id": "t-empty-model"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-empty-provider"}),
+        const _Response(result: {"turnId": "u-empty-model"}),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      await plugin.sendPrompt(
+        sessionId: "t-empty-model",
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: (providerID: "", modelID: "gpt-selected"),
+      );
+      await plugin.sendPrompt(
+        sessionId: "t-empty-model",
+        parts: const [PluginPromptPart.text(text: "second")],
+        variant: null,
+        agent: null,
+        model: (providerID: "openai", modelID: ""),
+      );
+      expect(
+        fake.sentParamsForAll("turn/start").map((params) => params.containsKey("model")),
+        [false, false],
+      );
+
+      fake.pushNotification("item/completed", {
+        "threadId": "t-empty-model",
+        "turnId": "u-empty-model",
+        "item": {"type": "agentMessage", "id": "empty-model-answer", "text": "hello"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      final assistant = events
+          .whereType<BridgeSseMessageUpdated>()
+          .map((event) => event.info)
+          .singleWhere((info) => info["role"] == "assistant");
+      expect(assistant["modelID"], "gpt-default");
+      expect(assistant["providerID"], "openai");
       await subscription.cancel();
     });
 
@@ -1140,7 +1338,7 @@ class _FakeAppServer {
   /// Invoked with each request method BEFORE the canned response is sent —
   /// lets a test emit server notifications mid-request (e.g. codex pushing
   /// `thread/name/updated` while `turn/start` is still in flight).
-  void Function(String method)? onRequest;
+  FutureOr<void> Function(String method)? onRequest;
 
   List<String> get sentMethods => _sent.map((f) => f.method).toList(growable: false);
 
@@ -1148,6 +1346,11 @@ class _FakeAppServer {
     final frame = _sent.firstWhere((f) => f.method == method);
     return frame.params ?? const {};
   }
+
+  List<Map<String, dynamic>> sentParamsForAll(String method) => _sent
+      .where((frame) => frame.method == method)
+      .map((frame) => frame.params ?? const <String, dynamic>{})
+      .toList(growable: false);
 
   void respondInOrder(List<_Response> responses) {
     _pending
@@ -1161,7 +1364,7 @@ class _FakeAppServer {
     );
   }
 
-  void _onClientFrame(Object? frame) {
+  Future<void> _onClientFrame(Object? frame) async {
     final raw = frame as String;
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     _sent.add(
@@ -1170,7 +1373,7 @@ class _FakeAppServer {
         params: (decoded["params"] as Map?)?.cast<String, dynamic>(),
       ),
     );
-    onRequest?.call(decoded["method"] as String);
+    await onRequest?.call(decoded["method"] as String);
     final id = decoded["id"];
     if (id == null) return; // notification from client (none today)
     if (_pending.isEmpty) {

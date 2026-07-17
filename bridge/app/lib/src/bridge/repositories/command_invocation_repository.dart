@@ -28,6 +28,10 @@ class CommandInvocationRepository {
     );
   }
 
+  Future<void> deleteInvocation({required String invocationId}) {
+    return _dao.deleteInvocation(invocationId: invocationId);
+  }
+
   Future<List<AcceptedCommandInvocation>> getForSession({
     required String pluginId,
     required String sessionId,

@@ -1,4 +1,6 @@
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/command_invocation_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/command_invocation_tracker.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/accepted_command_invocation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/command_timeline.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -379,6 +381,124 @@ void main() {
     expect(latePart.handled, isFalse);
   });
 
+  test("direct accepted command message removal deletes its durable invocation", () async {
+    const invocation = AcceptedCommandInvocation(
+      invocationId: "invocation",
+      sessionId: "session",
+      pluginId: "plugin",
+      name: "review",
+      arguments: null,
+      acceptedAt: 20,
+      backendMessageId: "backend-command",
+    );
+    await stack.repository.save(invocation: invocation);
+    await timeline.canonicalizeDispatchOutcome(
+      outcome: AcceptedCommandDispatchOutcome(invocation: invocation),
+    );
+
+    final removed = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandMessageRemovedTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+      ),
+    );
+
+    expect(removed.mutations, contains(isA<CommandTimelineMessageRemoved>()));
+    expect(await stack.repository.getForSession(pluginId: "plugin", sessionId: "session"), isEmpty);
+  });
+
+  test("held accepted command message removal deletes its durable invocation", () async {
+    const invocation = AcceptedCommandInvocation(
+      invocationId: "invocation",
+      sessionId: "session",
+      pluginId: "plugin",
+      name: "review",
+      arguments: null,
+      acceptedAt: 20,
+      backendMessageId: null,
+    );
+    await stack.repository.save(invocation: invocation);
+    await timeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(invocationId: "invocation"),
+    );
+    final heldRemoval = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandMessageRemovedTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+      ),
+    );
+
+    final accepted = await timeline.canonicalizeDispatchOutcome(
+      outcome: AcceptedCommandDispatchOutcome(invocation: invocation),
+    );
+
+    expect(heldRemoval.mutations, isEmpty);
+    expect(accepted.mutations, contains(isA<CommandTimelineMessageRemoved>()));
+    expect(await stack.repository.getForSession(pluginId: "plugin", sessionId: "session"), isEmpty);
+  });
+
+  test("automatic backend-only command removal skips durable invocation deletion", () async {
+    final invocationRepository = _DeleteTrackingCommandInvocationRepository();
+    final backendTimeline = CommandTimelineService(
+      sessionRepository: sessionRepository,
+      invocationRepository: invocationRepository,
+      tracker: CommandInvocationTracker(),
+    );
+    await backendTimeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(
+        invocationId: null,
+        origin: CommandOrigin.automatic,
+      ),
+    );
+
+    final removed = await backendTimeline.canonicalizePluginCandidate(
+      candidate: const CommandMessageRemovedTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+      ),
+    );
+
+    expect(removed.mutations, contains(isA<CommandTimelineMessageRemoved>()));
+    expect(invocationRepository.deleteCalls, isZero);
+  });
+
+  test("durable invocation delete failure does not suppress live message removal", () async {
+    final invocationRepository = _DeleteTrackingCommandInvocationRepository(
+      deleteError: StateError("database unavailable"),
+    );
+    final failingTimeline = CommandTimelineService(
+      sessionRepository: sessionRepository,
+      invocationRepository: invocationRepository,
+      tracker: CommandInvocationTracker(),
+    );
+    const invocation = AcceptedCommandInvocation(
+      invocationId: "invocation",
+      sessionId: "session",
+      pluginId: "plugin",
+      name: "review",
+      arguments: null,
+      acceptedAt: 20,
+      backendMessageId: "backend-command",
+    );
+    await failingTimeline.canonicalizeDispatchOutcome(
+      outcome: AcceptedCommandDispatchOutcome(invocation: invocation),
+    );
+
+    final removed = await failingTimeline.canonicalizePluginCandidate(
+      candidate: const CommandMessageRemovedTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+      ),
+    );
+
+    expect(invocationRepository.deleteCalls, 1);
+    expect(removed.mutations, contains(isA<CommandTimelineMessageRemoved>()));
+  });
+
   test("unmatched command message removal is not consumed", () async {
     final removed = await timeline.canonicalizePluginCandidate(
       candidate: const CommandMessageRemovedTimelineCandidate(
@@ -417,6 +537,7 @@ String? _updatedDisplayText(CommandTimelineLiveResult result) {
 
 CommandMessageTimelineCandidate _commandCandidate({
   required String? invocationId,
+  CommandOrigin origin = CommandOrigin.manual,
   List<MessagePart> resultParts = const [],
 }) {
   return CommandMessageTimelineCandidate(
@@ -426,7 +547,7 @@ CommandMessageTimelineCandidate _commandCandidate({
     invocationId: invocationId,
     name: "review",
     arguments: null,
-    origin: CommandOrigin.manual,
+    origin: origin,
     time: const MessageTime(created: 10, completed: null),
     resultParts: resultParts,
   );
@@ -510,6 +631,23 @@ class _HistoryPlugin implements NativeProjectsPluginApi {
     String sessionId, {
     required List<PluginCommandInvocationContext> acceptedCommands,
   }) async => messages;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _DeleteTrackingCommandInvocationRepository implements CommandInvocationRepository {
+  final Object? deleteError;
+  int deleteCalls = 0;
+
+  _DeleteTrackingCommandInvocationRepository({this.deleteError});
+
+  @override
+  Future<void> deleteInvocation({required String invocationId}) async {
+    deleteCalls++;
+    final error = deleteError;
+    if (error != null) throw error;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

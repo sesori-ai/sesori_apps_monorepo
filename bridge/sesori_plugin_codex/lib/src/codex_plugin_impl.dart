@@ -285,6 +285,7 @@ class CodexPlugin implements CodexManagedApi {
       if (event is CodexThreadClosedEventRecord) {
         final threadId = event.threadId;
         if (threadId != null) {
+          _commandEventDispatcher.forgetThread(threadId: threadId);
           _contextTracker.forgetThread(threadId: threadId);
         }
       }
@@ -444,16 +445,24 @@ class CodexPlugin implements CodexManagedApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    final acceptance = await (await _connectedTurnService()).sendCommand(
-      sessionId: sessionId,
-      invocationId: invocationId,
-      command: command,
-      arguments: arguments,
-      model: _toCodexModel(model),
-      variant: variant,
-    );
-    _commandEventDispatcher.eventsForReturnedInvocation(invocation: acceptance.invocation).forEach(_eventBuffer.add);
-    return acceptance.dispatch;
+    final service = await _connectedTurnService();
+    try {
+      final acceptance = await service.sendCommand(
+        sessionId: sessionId,
+        invocationId: invocationId,
+        command: command,
+        arguments: arguments,
+        model: _toCodexModel(model),
+        variant: variant,
+      );
+      _commandEventDispatcher.eventsForReturnedInvocation(invocation: acceptance.invocation).forEach(_eventBuffer.add);
+      return acceptance.dispatch;
+    } on CodexCommandAlreadyOutstandingException {
+      rethrow;
+    } on Object {
+      _commandEventDispatcher.eventsForRejectedInvocation(threadId: sessionId).forEach(_eventBuffer.add);
+      rethrow;
+    }
   }
 
   @override
@@ -520,6 +529,7 @@ class CodexPlugin implements CodexManagedApi {
     }
     _rolloutReader.deleteSession(sessionId);
     turnService?.forgetThread(threadId: sessionId);
+    _commandEventDispatcher.forgetThread(threadId: sessionId);
     _contextTracker.forgetThread(threadId: sessionId);
   }
 
@@ -785,13 +795,16 @@ class CodexPlugin implements CodexManagedApi {
     _approvalRegistry = null;
     await _client?.dispose();
     _client = null;
+    _commandEventDispatcher.dispose();
     await _eventBuffer.close();
   }
 
   static CodexModelSelection? _toCodexModel(
     ({String providerID, String modelID})? model,
   ) {
-    if (model == null) return null;
+    if (model == null || model.providerID.isEmpty || model.modelID.isEmpty) {
+      return null;
+    }
     return CodexModelSelection(
       providerId: model.providerID,
       modelId: model.modelID,

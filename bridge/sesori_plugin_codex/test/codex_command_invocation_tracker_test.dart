@@ -63,7 +63,36 @@ void main() {
     );
   });
 
-  test("binds the returned turn to its exact pending invocation", () {
+  test("rejects a second pending command and preserves the first", () {
+    final tracker = CodexCommandInvocationTracker()
+      ..register(
+        threadId: "thread-1",
+        invocationId: "first",
+        command: "plan",
+        arguments: "first",
+      );
+
+    expect(
+      () => tracker.register(
+        threadId: "thread-1",
+        invocationId: "second",
+        command: "review",
+        arguments: "second",
+      ),
+      throwsA(isA<CodexCommandAlreadyOutstandingException>()),
+    );
+
+    expect(tracker.pendingForThread(threadId: "thread-1")?.invocationId, "first");
+    final bound = tracker.bindReturnedTurn(
+      threadId: "thread-1",
+      invocationId: "first",
+      turnId: "first-turn",
+    );
+    expect(bound?.invocationId, "first");
+    expect(bound?.turnId, "first-turn");
+  });
+
+  test("rejects a second command while the first is active", () {
     final tracker = CodexCommandInvocationTracker()
       ..register(
         threadId: "thread-1",
@@ -71,22 +100,26 @@ void main() {
         command: "plan",
         arguments: "first",
       )
-      ..register(
+      ..bindReturnedTurn(
         threadId: "thread-1",
-        invocationId: "second",
-        command: "plan",
-        arguments: "second",
+        invocationId: "first",
+        turnId: "first-turn",
       );
 
-    final bound = tracker.bindReturnedTurn(
-      threadId: "thread-1",
-      invocationId: "second",
-      turnId: "second-turn",
+    expect(
+      () => tracker.register(
+        threadId: "thread-1",
+        invocationId: "second",
+        command: "review",
+        arguments: "second",
+      ),
+      throwsA(isA<CodexCommandAlreadyOutstandingException>()),
     );
 
-    expect(bound?.invocationId, "second");
-    expect(bound?.turnId, "second-turn");
-    expect(tracker.pendingForThread(threadId: "thread-1")?.invocationId, "first");
+    expect(
+      tracker.activeFor(threadId: "thread-1", turnId: "first-turn")?.invocationId,
+      "first",
+    );
   });
 
   test("removing one result part keeps later item cleanup idempotent", () {

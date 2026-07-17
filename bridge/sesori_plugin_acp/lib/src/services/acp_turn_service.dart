@@ -96,7 +96,7 @@ class AcpTurnService {
     );
     final body = arguments.isEmpty ? "/$normalizedCommand" : "/$normalizedCommand $arguments";
     try {
-      _enqueueTurn(
+      final queuedBehindExistingWork = _enqueueTurn(
         sessionId: sessionId,
         blocks: [AcpTextContentBlock(text: body)],
         model: model,
@@ -104,6 +104,9 @@ class AcpTurnService {
         agent: agent,
         commandTurnId: registration.turnId,
       );
+      if (queuedBehindExistingWork) {
+        commandTurnTracker.accept(registration.turnId);
+      }
     } on Object catch (error, stackTrace) {
       commandTurnTracker.reject(
         turnId: registration.turnId,
@@ -161,7 +164,7 @@ class AcpTurnService {
     await eventDispatcher.dispose();
   }
 
-  void _enqueueTurn({
+  bool _enqueueTurn({
     required String sessionId,
     required List<AcpContentBlock> blocks,
     required ({String providerID, String modelID})? model,
@@ -170,9 +173,10 @@ class AcpTurnService {
     required String? commandTurnId,
   }) {
     if (_disposed) throw StateError("AcpTurnService is disposed");
-    if (blocks.isEmpty) return;
+    if (blocks.isEmpty) return false;
 
     final state = queueTracker.stateForEnqueue(sessionId);
+    final queuedBehindExistingWork = state.pending > 0;
     state.pending++;
     if (state.pending == 1) {
       queueTracker.setStatus(
@@ -199,6 +203,7 @@ class AcpTurnService {
         commandTurnId: commandTurnId,
       ),
     );
+    return queuedBehindExistingWork;
   }
 
   Future<void> _runTurn({
@@ -236,12 +241,12 @@ class AcpTurnService {
         Log.d("[$pluginId] queued turn on $sessionId aborted during reconnect: $error");
         return;
       }
-      _rejectBeforeDispatch(
+      final commandAccepted = _rejectBeforeDispatch(
         commandTurnId: commandTurnId,
         error: error,
         stackTrace: stackTrace,
       );
-      if (commandTurnId == null) {
+      if (commandTurnId == null || commandAccepted) {
         Log.w(
           "[$pluginId] could not reach the agent for a queued turn on $sessionId",
           error,
@@ -251,7 +256,7 @@ class AcpTurnService {
       _finishTurn(
         sessionId: sessionId,
         state: state,
-        failed: commandTurnId == null,
+        failed: commandTurnId == null || commandAccepted,
         refused: false,
       );
       return;
@@ -274,15 +279,22 @@ class AcpTurnService {
         failOnError: commandTurnId != null,
       );
     } on Object catch (error, stackTrace) {
-      _rejectBeforeDispatch(
+      final commandAccepted = _rejectBeforeDispatch(
         commandTurnId: commandTurnId,
         error: error,
         stackTrace: stackTrace,
       );
+      if (commandAccepted) {
+        Log.w(
+          "[$pluginId] could not resume queued command session $sessionId",
+          error,
+          stackTrace,
+        );
+      }
       _finishTurn(
         sessionId: sessionId,
         state: state,
-        failed: commandTurnId == null,
+        failed: commandTurnId == null || commandAccepted,
         refused: false,
       );
       return;
@@ -309,15 +321,22 @@ class AcpTurnService {
       );
     } on Object catch (error, stackTrace) {
       if (commandTurnId != null) {
-        _rejectBeforeDispatch(
+        final commandAccepted = _rejectBeforeDispatch(
           commandTurnId: commandTurnId,
           error: error,
           stackTrace: stackTrace,
         );
+        if (commandAccepted) {
+          Log.w(
+            "[$pluginId] queued command configuration for $sessionId failed",
+            error,
+            stackTrace,
+          );
+        }
         _finishTurn(
           sessionId: sessionId,
           state: state,
-          failed: false,
+          failed: commandAccepted,
           refused: false,
         );
         return;
@@ -566,11 +585,13 @@ class AcpTurnService {
             onTimeout: () {},
           );
     } on Object catch (error, stackTrace) {
-      commandTurnTracker.reject(
-        turnId: turnId,
-        error: error,
-        stackTrace: stackTrace,
-      );
+      if (!commandTurnTracker.isAccepted(turnId)) {
+        commandTurnTracker.reject(
+          turnId: turnId,
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
       rethrow;
     }
     if (!commandTurnTracker.containsState(turnId: turnId, state: state)) {
@@ -579,17 +600,19 @@ class AcpTurnService {
     eventDispatcher.flushCommand(turnId);
   }
 
-  void _rejectBeforeDispatch({
+  bool _rejectBeforeDispatch({
     required String? commandTurnId,
     required Object error,
     required StackTrace stackTrace,
   }) {
-    if (commandTurnId == null) return;
+    if (commandTurnId == null) return false;
+    final commandAccepted = commandTurnTracker.isAccepted(commandTurnId);
     commandTurnTracker.reject(
       turnId: commandTurnId,
       error: error,
       stackTrace: stackTrace,
     );
+    return commandAccepted;
   }
 
   void _finishTurn({

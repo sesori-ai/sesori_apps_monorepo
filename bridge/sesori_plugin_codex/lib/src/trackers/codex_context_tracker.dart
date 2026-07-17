@@ -43,7 +43,7 @@ class CodexContextTracker {
   }
 
   void setModel({required String threadId, required CodexModelSelection? model}) {
-    if (model == null) {
+    if (model == null || model.modelId.isEmpty || model.providerId.isEmpty) {
       _models.remove(threadId);
       _providers.remove(threadId);
       return;

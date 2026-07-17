@@ -10,14 +10,63 @@ class CodexCommandEventDispatcher {
   }) : _tracker = tracker;
 
   final CodexCommandInvocationTracker _tracker;
+  final Map<String, List<_HeldCommandEvent>> _heldEventsByThread = {};
 
   List<BridgeSseEvent> eventsForReturnedInvocation({
     required CodexCommandInvocationSnapshot? invocation,
   }) {
-    return invocation == null ? const [] : _commandEvent(invocation);
+    if (invocation == null) return const [];
+    final events = <BridgeSseEvent>[..._commandEvent(invocation)];
+    final turnId = invocation.turnId;
+    final heldEvents = _heldEventsByThread.remove(invocation.threadId);
+    if (turnId == null || heldEvents == null) return events;
+    for (final held in heldEvents) {
+      events.addAll(
+        held.event.turnId == turnId
+            ? _dispatchEvent(
+                event: held.event,
+                ordinaryEvents: held.ordinaryEvents,
+              )
+            : held.ordinaryEvents,
+      );
+    }
+    return events;
+  }
+
+  List<BridgeSseEvent> eventsForRejectedInvocation({required String threadId}) => [
+    for (final held in _heldEventsByThread.remove(threadId) ?? const <_HeldCommandEvent>[]) ...held.ordinaryEvents,
+  ];
+
+  void forgetThread({required String threadId}) {
+    _heldEventsByThread.remove(threadId);
+  }
+
+  void dispose() {
+    _heldEventsByThread.clear();
   }
 
   List<BridgeSseEvent> handleEvent({
+    required CodexEventRecord event,
+    required List<BridgeSseEvent> ordinaryEvents,
+  }) {
+    final threadId = event.threadId;
+    final turnId = event.turnId;
+    if (threadId != null &&
+        turnId != null &&
+        _tracker.pendingForThread(threadId: threadId) != null &&
+        _tracker.activeFor(threadId: threadId, turnId: event.turnId) == null) {
+      (_heldEventsByThread[threadId] ??= []).add(
+        _HeldCommandEvent(
+          event: event,
+          ordinaryEvents: List.unmodifiable(ordinaryEvents),
+        ),
+      );
+      return const [];
+    }
+    return _dispatchEvent(event: event, ordinaryEvents: ordinaryEvents);
+  }
+
+  List<BridgeSseEvent> _dispatchEvent({
     required CodexEventRecord event,
     required List<BridgeSseEvent> ordinaryEvents,
   }) {
@@ -271,4 +320,14 @@ class CodexCommandEventDispatcher {
   );
 
   static String _resultPartId(CodexCommandInvocationSnapshot invocation) => "${invocation.commandMessageId}-result";
+}
+
+class _HeldCommandEvent {
+  const _HeldCommandEvent({
+    required this.event,
+    required this.ordinaryEvents,
+  });
+
+  final CodexEventRecord event;
+  final List<BridgeSseEvent> ordinaryEvents;
 }

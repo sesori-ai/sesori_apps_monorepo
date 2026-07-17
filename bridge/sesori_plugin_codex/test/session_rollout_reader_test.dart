@@ -494,6 +494,107 @@ void main() {
       expect(messages.single.parts.single.text, "the plan\n\nnext steps");
     });
 
+    test("duplicate command bodies use the timestamp-nearest accepted context", () {
+      final repository = CodexMessageRepository(
+        rolloutReader: SessionRolloutReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+        configReader: CodexConfigReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+      );
+      final first = DateTime.utc(2026, 7, 17, 10);
+      final second = first.add(const Duration(minutes: 10));
+      final third = first.add(const Duration(minutes: 20));
+
+      final messages = repository.mapHistory(
+        sessionId: "duplicate-thread",
+        records: [
+          for (final (index, timestamp) in [first, second, third].indexed)
+            CodexRolloutMessageRecord(
+              id: "duplicate-$index",
+              role: CodexRolloutMessageRole.user,
+              timestamp: timestamp,
+              modelId: null,
+              providerId: null,
+              texts: const ["/plan auth"],
+              tool: null,
+            ),
+        ],
+        config: const CodexConfigDefaults.empty(),
+        acceptedCommands: [
+          PluginCommandInvocationContext(
+            invocationId: "nearest-invocation",
+            name: "plan",
+            arguments: "auth",
+            acceptedAt: second.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
+            backendMessageId: "nearest-turn",
+          ),
+        ],
+        knownCommandNames: const {"plan"},
+      );
+
+      final commands = messages.map((message) => message.info as PluginMessageCommand).toList();
+      expect(commands.map((command) => command.invocationId), [null, "nearest-invocation", null]);
+      expect(commands.map((command) => command.id), ["duplicate-0", "nearest-turn", "duplicate-2"]);
+    });
+
+    test("duplicate command bodies without timestamps match accepted contexts FIFO", () {
+      final repository = CodexMessageRepository(
+        rolloutReader: SessionRolloutReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+        configReader: CodexConfigReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+      );
+
+      final messages = repository.mapHistory(
+        sessionId: "fifo-thread",
+        records: const [
+          CodexRolloutMessageRecord(
+            id: "fifo-0",
+            role: CodexRolloutMessageRole.user,
+            timestamp: null,
+            modelId: null,
+            providerId: null,
+            texts: ["/plan auth"],
+            tool: null,
+          ),
+          CodexRolloutMessageRecord(
+            id: "fifo-1",
+            role: CodexRolloutMessageRole.user,
+            timestamp: null,
+            modelId: null,
+            providerId: null,
+            texts: ["/plan auth"],
+            tool: null,
+          ),
+        ],
+        config: const CodexConfigDefaults.empty(),
+        acceptedCommands: const [
+          PluginCommandInvocationContext(
+            invocationId: "later",
+            name: "plan",
+            arguments: "auth",
+            acceptedAt: 200,
+            backendMessageId: "later-turn",
+          ),
+          PluginCommandInvocationContext(
+            invocationId: "earlier",
+            name: "plan",
+            arguments: "auth",
+            acceptedAt: 100,
+            backendMessageId: "earlier-turn",
+          ),
+        ],
+        knownCommandNames: const {"plan"},
+      );
+
+      final commands = messages.map((message) => message.info as PluginMessageCommand);
+      expect(commands.map((command) => command.invocationId), ["earlier", "later"]);
+    });
+
     test("recognized external slash maps to a manual command", () {
       final repository = CodexMessageRepository(
         rolloutReader: SessionRolloutReader(

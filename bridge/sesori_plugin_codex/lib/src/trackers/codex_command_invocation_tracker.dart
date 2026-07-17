@@ -6,7 +6,7 @@ enum CodexCommandInvocationPhase { pending, active }
 ///
 /// The tracker deliberately creates no plugin messages or bridge events.
 class CodexCommandInvocationTracker {
-  final Map<String, List<_MutableInvocation>> _pendingByThread = {};
+  final Map<String, _MutableInvocation> _pendingByThread = {};
   final Map<String, _MutableInvocation> _activeByThread = {};
   final Map<String, _MutableInvocation> _activeByTurn = {};
   var _nextSyntheticId = 0;
@@ -17,6 +17,9 @@ class CodexCommandInvocationTracker {
     required String command,
     required String arguments,
   }) {
+    if (_pendingByThread.containsKey(threadId) || _activeByThread.containsKey(threadId)) {
+      throw CodexCommandAlreadyOutstandingException(threadId: threadId);
+    }
     final normalizedCommand = command.startsWith("/") ? command.substring(1) : command;
     final invocation = _MutableInvocation(
       threadId: threadId,
@@ -25,7 +28,7 @@ class CodexCommandInvocationTracker {
       arguments: arguments.isEmpty ? null : arguments,
       syntheticMessageId: "codex-command-${_nextSyntheticId++}",
     );
-    (_pendingByThread[threadId] ??= []).add(invocation);
+    _pendingByThread[threadId] = invocation;
     return invocation.snapshot(CodexCommandInvocationPhase.pending);
   }
 
@@ -46,11 +49,9 @@ class CodexCommandInvocationTracker {
     }
 
     final pending = _pendingByThread[threadId];
-    if (pending == null || pending.isEmpty) return null;
-    final pendingIndex = pending.indexWhere((invocation) => invocation.invocationId == invocationId);
-    if (pendingIndex < 0) return null;
-    final invocation = pending.removeAt(pendingIndex)..turnId = turnId;
-    if (pending.isEmpty) _pendingByThread.remove(threadId);
+    if (pending == null || pending.invocationId != invocationId) return null;
+    final invocation = pending..turnId = turnId;
+    _pendingByThread.remove(threadId);
     _activeByThread[threadId] = invocation;
     _activeByTurn[turnId] = invocation;
     return invocation.snapshot(CodexCommandInvocationPhase.active);
@@ -58,7 +59,7 @@ class CodexCommandInvocationTracker {
 
   CodexCommandInvocationSnapshot? pendingForThread({required String threadId}) {
     final pending = _pendingByThread[threadId];
-    return pending == null || pending.isEmpty ? null : pending.first.snapshot(CodexCommandInvocationPhase.pending);
+    return pending?.snapshot(CodexCommandInvocationPhase.pending);
   }
 
   CodexCommandInvocationSnapshot? activeFor({
@@ -164,8 +165,7 @@ class CodexCommandInvocationTracker {
 
   void reject({required String threadId, required String invocationId}) {
     final pending = _pendingByThread[threadId];
-    pending?.removeWhere((invocation) => invocation.invocationId == invocationId);
-    if (pending?.isEmpty ?? false) _pendingByThread.remove(threadId);
+    if (pending?.invocationId == invocationId) _pendingByThread.remove(threadId);
 
     final active = _activeByThread[threadId];
     if (active?.invocationId == invocationId) _removeActive(active!);
@@ -193,6 +193,15 @@ class CodexCommandInvocationTracker {
     final turnId = invocation.turnId;
     if (turnId != null) _activeByTurn.remove(turnId);
   }
+}
+
+class CodexCommandAlreadyOutstandingException implements Exception {
+  const CodexCommandAlreadyOutstandingException({required this.threadId});
+
+  final String threadId;
+
+  @override
+  String toString() => "Codex thread $threadId already has an outstanding command";
 }
 
 class CodexCommandInvocationSnapshot {

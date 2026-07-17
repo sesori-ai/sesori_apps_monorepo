@@ -23,6 +23,12 @@ class CommandInvocationDao extends DatabaseAccessor<AppDatabase> with _$CommandI
     );
   }
 
+  Future<void> deleteInvocation({required String invocationId}) async {
+    await (delete(
+      acceptedCommandInvocationsTable,
+    )..where((table) => table.invocationId.equals(invocationId))).go();
+  }
+
   Future<List<AcceptedCommandInvocationDto>> getInvocationsForSession({
     required String pluginId,
     required String sessionId,

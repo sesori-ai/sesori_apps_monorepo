@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -13,16 +14,18 @@ import "../../helpers/test_database.dart";
 void main() {
   group("SessionMutationDispatcher", () {
     late AppDatabase db;
+    late _ControllableSessionDao sessionDao;
     late SessionRepository repository;
     late SessionMutationDispatcher dispatcher;
     late _FakeDerivedPlugin plugin;
 
     setUp(() {
       db = createTestDatabase();
+      sessionDao = _ControllableSessionDao(db: db);
       plugin = _FakeDerivedPlugin();
       repository = SessionRepository(
         plugin: plugin,
-        sessionDao: db.sessionDao,
+        sessionDao: sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -109,6 +112,48 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, isNull);
     });
 
+    test("rollback publishes deletion when only backend cleanup fails", () async {
+      await insertSession();
+      plugin.deleteError = const PluginOperationException(
+        "deleteSession",
+        statusCode: 500,
+        message: "backend unavailable",
+      );
+      final deletionSnapshot = (await repository.getCatalogSession(sessionId: "s1"))!;
+      final deletedEvents = <Session>[];
+      final subscription = dispatcher.deletedSessions.listen(deletedEvents.add);
+      addTearDown(subscription.cancel);
+
+      await dispatcher.rollbackJustCreatedSession(
+        sessionId: "s1",
+        deletionSnapshot: deletionSnapshot,
+      );
+
+      expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
+      expect(deletedEvents, [same(deletionSnapshot)]);
+    });
+
+    test("rollback does not publish when local binding deletion fails", () async {
+      await insertSession();
+      final deleteError = StateError("database unavailable");
+      sessionDao.deleteError = deleteError;
+      final deletionSnapshot = (await repository.getCatalogSession(sessionId: "s1"))!;
+      final deletedEvents = <Session>[];
+      final subscription = dispatcher.deletedSessions.listen(deletedEvents.add);
+      addTearDown(subscription.cancel);
+
+      await expectLater(
+        dispatcher.rollbackJustCreatedSession(
+          sessionId: "s1",
+          deletionSnapshot: deletionSnapshot,
+        ),
+        throwsA(same(deleteError)),
+      );
+
+      expect(await db.sessionDao.getSession(sessionId: "s1"), isNotNull);
+      expect(deletedEvents, isEmpty);
+    });
+
     test("a rename waits for deletion and cannot reach the plugin afterward", () async {
       final deleteStarted = Completer<void>();
       final releaseDelete = Completer<void>();
@@ -167,6 +212,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   Completer<void>? deleteStarted;
   Future<void>? releaseDelete;
   int renameCalls = 0;
+  Object? deleteError;
   List<PluginSession> sessions = const [];
 
   @override
@@ -198,8 +244,23 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   Future<void> deleteSession(String sessionId) async {
     deleteStarted?.complete();
     if (releaseDelete case final release?) await release;
+    final error = deleteError;
+    if (error != null) throw error;
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ControllableSessionDao extends SessionDao {
+  Object? deleteError;
+
+  _ControllableSessionDao({required AppDatabase db}) : super(db);
+
+  @override
+  Future<void> deleteSession({required String sessionId}) async {
+    final error = deleteError;
+    if (error != null) throw error;
+    await super.deleteSession(sessionId: sessionId);
+  }
 }

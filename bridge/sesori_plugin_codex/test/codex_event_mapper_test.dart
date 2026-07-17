@@ -332,6 +332,24 @@ void main() {
               )
               as shared.MessageAssistant;
       expect(assistant2.modelID, equals("gpt-5.5"));
+
+      richMapper.setThreadModel("t-9", "", provider: "");
+      final events3 = richMapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-9",
+            "item": {"type": "agentMessage", "id": "i-3", "text": "once more"},
+          },
+        ),
+      );
+      final assistant3 =
+          shared.Message.fromJson(
+                (events3[0] as BridgeSseMessageUpdated).info,
+              )
+              as shared.MessageAssistant;
+      expect(assistant3.modelID, equals("gpt-5.5"));
+      expect(assistant3.providerID, equals("openai"));
     });
 
     test("selected model updates provider metadata with the model", () {

@@ -45,6 +45,10 @@ void main() {
     );
     final updated = await repository.getForSession(pluginId: "plugin", sessionId: "session");
     expect(updated.first.backendMessageId, "backend-message");
+
+    await repository.deleteInvocation(invocationId: "earlier");
+    final afterDelete = await repository.getForSession(pluginId: "plugin", sessionId: "session");
+    expect(afterDelete.map((row) => row.invocationId), ["later"]);
   });
 }
 

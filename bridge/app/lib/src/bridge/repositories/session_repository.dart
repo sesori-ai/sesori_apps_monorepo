@@ -956,26 +956,38 @@ class SessionRepository {
     if (binding == null) return;
     ensurePluginAvailable(pluginId: binding.pluginId, operation: SessionOperation.createSession);
 
-    Object? firstError;
-    StackTrace? firstStackTrace;
+    Object? backendDeleteError;
+    StackTrace? backendDeleteStackTrace;
     try {
       await _plugin.deleteSession(binding.backendSessionId);
     } on PluginOperationException catch (error, stackTrace) {
       if (!error.isNotFound) {
-        firstError = error;
-        firstStackTrace = stackTrace;
+        backendDeleteError = error;
+        backendDeleteStackTrace = stackTrace;
       }
     } catch (error, stackTrace) {
-      firstError = error;
-      firstStackTrace = stackTrace;
+      backendDeleteError = error;
+      backendDeleteStackTrace = stackTrace;
     }
     try {
       await _sessionDao.deleteSession(sessionId: binding.sessionId);
     } catch (error, stackTrace) {
-      firstError ??= error;
-      firstStackTrace ??= stackTrace;
+      if (backendDeleteError != null) {
+        Log.w(
+          "Backend session ${binding.backendSessionId} may remain after its rollback delete failed",
+          backendDeleteError,
+          backendDeleteStackTrace,
+        );
+      }
+      Error.throwWithStackTrace(error, stackTrace);
     }
-    if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
+    if (backendDeleteError != null) {
+      Log.w(
+        "Backend session ${binding.backendSessionId} remains after its local rollback binding was deleted",
+        backendDeleteError,
+        backendDeleteStackTrace,
+      );
+    }
   }
 
   Future<void> updatePromptDefaults({

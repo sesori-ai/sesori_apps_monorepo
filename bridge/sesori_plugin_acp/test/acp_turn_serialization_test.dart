@@ -7,6 +7,7 @@ import "package:test/test.dart";
 
 class _GatedTurnConfigurationDispatcher extends AcpTurnConfigurationDispatcher {
   Completer<void>? selectionGate;
+  Error? selectionError;
 
   @override
   Future<void> apply({
@@ -19,6 +20,8 @@ class _GatedTurnConfigurationDispatcher extends AcpTurnConfigurationDispatcher {
   }) async {
     final gate = selectionGate;
     if (gate != null) await gate.future;
+    final error = selectionError;
+    if (error != null) throw error;
   }
 }
 
@@ -135,6 +138,8 @@ class _GatedSelectionPlugin extends AcpPlugin {
 
   Completer<void>? get selectionGate => _dispatcher.selectionGate;
   set selectionGate(Completer<void>? value) => _dispatcher.selectionGate = value;
+  Error? get selectionError => _dispatcher.selectionError;
+  set selectionError(Error? value) => _dispatcher.selectionError = value;
 }
 
 /// Turn-lifecycle robustness:
@@ -196,6 +201,17 @@ void main() {
 
     void respondTo(Map<String, dynamic> frame, Map<String, dynamic> result) {
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
+    }
+
+    Future<void> waitForSessionErrorCount({
+      required List<BridgeSseEvent> events,
+      required int count,
+    }) async {
+      for (var i = 0; i < 400; i++) {
+        if (events.whereType<BridgeSseSessionError>().length >= count) return;
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      throw StateError("expected $count session error event(s)");
     }
 
     Future<void> connect({bool loadSession = false}) async {
@@ -391,7 +407,7 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
-    test("queued command rejects when aborted before dispatch", () async {
+    test("queued command is accepted before its serialized dispatch", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
@@ -407,10 +423,46 @@ void main() {
         agent: null,
         model: null,
       );
-      final rejection = expectLater(command, throwsA(isA<StateError>()));
+
+      final dispatch = await command.timeout(const Duration(seconds: 1));
+      expect(dispatch.backendMessageId, isNull);
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+      expect(
+        frames("session/prompt"),
+        hasLength(1),
+        reason: "the accepted command must remain queued behind the active turn",
+      );
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      final queuedPrompt = await waitForFrameCount("session/prompt", 2);
+      expect((queuedPrompt["params"] as Map)["sessionId"], sessionId);
+      respondTo(queuedPrompt, {"stopReason": "end_turn"});
+    });
+
+    test("abort drops an already-accepted queued command", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      final command = plugin.sendCommand(
+        sessionId: sessionId,
+        invocationId: "queued-invocation",
+        command: "review",
+        arguments: "queued",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(
+        await command.timeout(const Duration(seconds: 1)),
+        const PluginCommandDispatch(backendMessageId: null),
+      );
 
       await plugin.abortSession(sessionId: sessionId);
-      await rejection;
       respondTo(firstPrompt, {"stopReason": "cancelled"});
       for (var i = 0; i < 10; i++) {
         await pump();
@@ -418,6 +470,105 @@ void main() {
 
       expect(frames("session/prompt"), hasLength(1));
       expect(emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["role"] == "command"), isEmpty);
+      expect(emitted.whereType<BridgeSseSessionError>(), isEmpty);
+    });
+
+    test("accepted queued command reports a later reconnect failure", () async {
+      final firstProcess = FakeAcpProcess();
+      final reconnectProcess = Completer<AcpProcessHandle>();
+      var launches = 0;
+      final reconnecting = AcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        processFactory: (_) {
+          launches++;
+          if (launches == 1) return Future.value(firstProcess);
+          return reconnectProcess.future;
+        },
+      );
+      addTearDown(() async {
+        await reconnecting.dispose();
+        await firstProcess.close();
+      });
+      final events = <BridgeSseEvent>[];
+      reconnecting.events.listen(events.add);
+
+      List<Map<String, dynamic>> reconnectFrames(String method) =>
+          firstProcess.written.where((frame) => frame["method"] == method).toList(growable: false);
+      Future<Map<String, dynamic>> waitForReconnectFrame(String method) async {
+        for (var i = 0; i < 400; i++) {
+          final matches = reconnectFrames(method);
+          if (matches.isNotEmpty) return matches.last;
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+        throw StateError("agent never wrote '$method' frame");
+      }
+
+      void respondOnFirst(Map<String, dynamic> frame, Map<String, dynamic> result) {
+        firstProcess.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
+      }
+
+      final connecting = reconnecting.ensureConnected();
+      final initialize = await waitForReconnectFrame("initialize");
+      respondOnFirst(initialize, {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      expect(await connecting, isTrue);
+
+      final creating = reconnecting.createSession(
+        directory: cwd,
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      respondOnFirst(await waitForReconnectFrame("session/new"), {"sessionId": "s1"});
+      await creating;
+
+      await reconnecting.sendPrompt(
+        sessionId: "s1",
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await waitForReconnectFrame("session/prompt");
+      final command = reconnecting.sendCommand(
+        sessionId: "s1",
+        invocationId: "reconnect-failure-invocation",
+        command: "review",
+        arguments: "after reconnect",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(
+        await command.timeout(const Duration(seconds: 1)),
+        const PluginCommandDispatch(backendMessageId: null),
+      );
+
+      await reconnecting.resetConnectionAfterExit();
+      for (var i = 0; i < 400 && launches < 2; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      expect(launches, 2);
+      await waitForSessionErrorCount(events: events, count: 1);
+      events.clear();
+
+      reconnectProcess.completeError(
+        StateError("replacement agent failed to launch"),
+        StackTrace.current,
+      );
+      await waitForSessionErrorCount(events: events, count: 1);
+
+      expect(reconnectFrames("session/prompt"), hasLength(1));
+      expect(events.whereType<BridgeSseSessionError>().single.sessionID, "s1");
     });
 
     test("fast session/prompt rejection rejects command acceptance", () async {
@@ -443,6 +594,42 @@ void main() {
 
       await expectLater(command, throwsA(isA<AcpRpcException>()));
       expect(emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["role"] == "command"), isEmpty);
+      expect(emitted.whereType<BridgeSseSessionError>(), isEmpty);
+    });
+
+    test("accepted queued command reports a fast session/prompt rejection", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      final command = plugin.sendCommand(
+        sessionId: sessionId,
+        invocationId: "queued-fast-failure-invocation",
+        command: "review",
+        arguments: "bad",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(
+        await command.timeout(const Duration(seconds: 1)),
+        const PluginCommandDispatch(backendMessageId: null),
+      );
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      final queuedPrompt = await waitForFrameCount("session/prompt", 2);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": queuedPrompt["id"],
+        "error": {"code": -32602, "message": "Invalid command"},
+      });
+      await waitForSessionErrorCount(events: emitted, count: 1);
+
+      expect(emitted.whereType<BridgeSseSessionError>().single.sessionID, sessionId);
+      expect(idleCount(), 1);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
     });
 
     test("resume failure rejects a command before session/prompt", () async {
@@ -469,6 +656,109 @@ void main() {
       await expectLater(command, throwsA(isA<AcpRpcException>()));
       expect(frames("session/prompt"), isEmpty);
       expect(emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["role"] == "command"), isEmpty);
+      expect(emitted.whereType<BridgeSseSessionError>(), isEmpty);
+    });
+
+    test("accepted queued command reports a later resume failure", () async {
+      await connect(loadSession: true);
+      emitted.clear();
+
+      await sendPrompt("old-1", "first");
+      final firstLoad = await waitForFrame("session/load");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstLoad["id"],
+        "error": {"code": -32000, "message": "transient"},
+      });
+      final firstPrompt = await waitForFrame("session/prompt");
+      final command = plugin.sendCommand(
+        sessionId: "old-1",
+        invocationId: "queued-resume-failure-invocation",
+        command: "review",
+        arguments: "after resume",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(
+        await command.timeout(const Duration(seconds: 1)),
+        const PluginCommandDispatch(backendMessageId: null),
+      );
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      final queuedLoad = await waitForFrameCount("session/load", 2);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": queuedLoad["id"],
+        "error": {"code": -32602, "message": "Invalid session"},
+      });
+      await waitForSessionErrorCount(events: emitted, count: 1);
+
+      expect(frames("session/prompt"), hasLength(1));
+      expect(emitted.whereType<BridgeSseSessionError>().single.sessionID, "old-1");
+    });
+
+    test("accepted queued command reports a later configuration failure", () async {
+      final gated = _GatedSelectionPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        processFactory: (_) async => fake,
+      );
+      addTearDown(gated.dispose);
+      final gatedEvents = <BridgeSseEvent>[];
+      gated.events.listen(gatedEvents.add);
+
+      final connecting = gated.ensureConnected();
+      final init = await waitForFrame("initialize");
+      respondTo(init, {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      expect(await connecting, isTrue);
+
+      final creating = gated.createSession(
+        directory: cwd,
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      respondTo(await waitForFrame("session/new"), {"sessionId": "s1"});
+      await creating;
+
+      await gated.sendPrompt(
+        sessionId: "s1",
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final firstPrompt = await waitForFrame("session/prompt");
+      gated.selectionError = StateError("configuration failed");
+      final command = gated.sendCommand(
+        sessionId: "s1",
+        invocationId: "configuration-failure-invocation",
+        command: "review",
+        arguments: "after configuration",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(
+        await command.timeout(const Duration(seconds: 1)),
+        const PluginCommandDispatch(backendMessageId: null),
+      );
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      await waitForSessionErrorCount(events: gatedEvents, count: 1);
+
+      expect(frames("session/prompt"), hasLength(1));
+      expect(gatedEvents.whereType<BridgeSseSessionError>().single.sessionID, "s1");
     });
 
     test("a second prompt on one session dispatches only after the first turn completes", () async {

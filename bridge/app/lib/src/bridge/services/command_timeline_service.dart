@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart"
     show CommandOrigin, MessagePart, MessagePartType, MessageTime, MessageWithParts;
 
@@ -142,6 +143,7 @@ class CommandTimelineService {
               );
             case CommandMessageRemovedTimelineCandidate():
               commandRemoved = true;
+              await _deleteAcceptedInvocation(snapshot);
               trailingMutations.add(_messageRemovedMutation(snapshot));
             case final CommandResultPartTimelineCandidate part:
               if (part.part != null) {
@@ -209,6 +211,7 @@ class CommandTimelineService {
             _liveCards[snapshot.canonicalMessageId] = card;
             return CommandTimelineLiveResult(handled: true, mutations: _cardMutations(card));
           case CommandMessageRemovedTimelineCandidate():
+            await _deleteAcceptedInvocation(snapshot);
             _forgetLiveCommand(snapshot);
             return CommandTimelineLiveResult(
               handled: true,
@@ -279,6 +282,20 @@ class CommandTimelineService {
     return _tracker.updateAcceptedInvocation(
       invocation: accepted.withBackendMessageId(backendMessageId: backendMessageId),
     );
+  }
+
+  Future<void> _deleteAcceptedInvocation(CommandInvocationSnapshot snapshot) async {
+    final invocationId = snapshot.acceptedInvocation?.invocationId;
+    if (invocationId == null) return;
+    try {
+      await _invocationRepository.deleteInvocation(invocationId: invocationId);
+    } catch (error, stackTrace) {
+      Log.w(
+        "Failed to delete accepted command invocation $invocationId after its message was removed",
+        error,
+        stackTrace,
+      );
+    }
   }
 
   MessageWithParts _acceptedCard({
