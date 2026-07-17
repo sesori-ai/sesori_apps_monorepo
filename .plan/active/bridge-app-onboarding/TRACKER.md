@@ -2,17 +2,17 @@
 
 ## Plan State
 
-- **Status:** Reduced W02 plan approved; production implementation not started
+- **Status:** Reduced W02 plan PR open; production implementation not started
 - **Implementation base:** `main`
 - **Plan slug:** `bridge-app-onboarding`
-- **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/490
+- **Plan PRs:** original https://github.com/sesori-ai/sesori_apps_monorepo/pull/490; reduced-plan correction https://github.com/sesori-ai/sesori_apps_monorepo/pull/494
 - **Repositories:** `sesori-ai/sesori_apps_monorepo`, `sesori-ai/sesori_auth_server`
 
 ## Current Pointer
 
 - **Stage:** S01 — App Registration Checkpoint
 - **Wave:** W02
-- **Next action:** Await user confirmation before implementing the approved reduced W02 plan.
+- **Next action:** Monitor reduced-plan PR #494; await user confirmation before production implementation.
 
 ## Plan Review
 
@@ -87,6 +87,8 @@ pair after drift assessment and before branch creation.
 - **2026-07-17 — Reduced-plan approval:** `aristotle-plan-review` approved the
   corrected bounded design with no auth/token/terminal refactor and no remaining
   architecture violations.
+- **2026-07-17 — Reduced-plan PR:** Opened documentation-only correction PR
+  https://github.com/sesori-ai/sesori_apps_monorepo/pull/494 against `main`.
 - **2026-07-17 — Plan delivery:** Opened plan-only PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/490 against selected
   implementation base `main`; tracker state is optimistically post-merge on the
