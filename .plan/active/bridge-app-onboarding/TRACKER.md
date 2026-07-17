@@ -26,6 +26,7 @@
 | Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
 |---|---|---|---|---|---|
 | S01 | W01 | `sesori-ai/sesori_auth_server` | `master` | `b17a6e760b0c70c3dc3d1cd456ff93d814c75453` | No drift: current `master` matches the latest audited tip. |
+| S01 | W02 | `sesori-ai/sesori_apps_monorepo` | `main` | `4a156a78b3bf8572c280ce859b3b1370300a8105` | Proceed: catalog-import and database-backed catalog changes overlap runtime composition but preserve the planned runner/session ownership; adapt W02 to current APIs. |
 
 Workers add one authoritative row for each started stage/wave/repository/base
 pair after drift assessment and before branch creation.
@@ -46,8 +47,10 @@ pair after drift assessment and before branch creation.
 ## Blockers and Staleness
 
 - No implementation blocker is known.
-- The auth-server endpoint must merge and deploy before bridge release. Wave W02
-  does not start until S01-W01-P01 merges.
+- The auth-server endpoint must merge and deploy before bridge release. The user
+  explicitly authorized W02 implementation to overlap the still-open auth PR
+  because the implementations are in separate repositories; release ordering
+  remains auth server first.
 - Latest audited tips: monorepo `main`
   `5a76c0c420cd7db445f7fe2c8a2570265b4c84e0`
   (2026-07-17T06:57:01Z); auth-server `master`
@@ -59,6 +62,13 @@ pair after drift assessment and before branch creation.
 
 ## Findings and Plan Deltas
 
+- **2026-07-17 — User-authorized wave overlap:** The user explicitly directed
+  S01-W02-P01 to begin before S01-W01-P01 merges because the implementations are
+  in separate repositories. This overrides only the implementation-start merge
+  barrier; auth-server merge/deploy still precedes bridge release. Current
+  monorepo `main` at `4a156a78b3bf8572c280ce859b3b1370300a8105`
+  includes database-backed plugin catalog work that touches runtime composition
+  without changing the planned process-startup/session ownership boundary.
 - **2026-07-17 — Review-loop waiver and final corrections:** The user directed
   exactly one full plan review plus one finite fix pass, with no further plan
   re-review. Corrected the formatter contract to accept only repository-produced
