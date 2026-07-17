@@ -2,7 +2,7 @@
 
 ## Plan State
 
-- **Status:** Approved — plan PR merged (branch-relative optimistic state)
+- **Status:** Finalized by user-authorized one-review/fix process — plan PR merged (branch-relative optimistic state)
 - **Implementation base:** `main`
 - **Plan slug:** `bridge-app-onboarding`
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/490
@@ -16,10 +16,10 @@
 
 ## Plan Review
 
-- **Verdict:** Approved — no architectural violations
+- **Verdict:** Final by explicit user waiver — one full review completed and its two findings corrected; no further plan re-review
 - **Reviewer:** `aristotle-plan-review`
 - **Date:** 2026-07-17
-- **Reviewed commit:** `cbcd9ba3a750b8281ae0f702be0da5f75de45096` plus the complete uncommitted second-round plan-PR feedback edits in `.plan/active/bridge-app-onboarding/`; external auth baseline `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
+- **Reviewed commit:** review covered the uncommitted draft after `2d2e07adcf2e4d03ee46404ec268e0d1d3e5ebfd`; its formatter-contract and logout-graph findings are corrected in the final working tree without re-review by explicit user direction; external auth baseline `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
 
 ## Wave Baselines
 
@@ -59,6 +59,31 @@ creation.
 
 ## Findings and Plan Deltas
 
+- **2026-07-17 — Review-loop waiver and final corrections:** The user directed
+  exactly one full plan review plus one finite fix pass, with no further plan
+  re-review. Corrected the formatter contract to accept only repository-produced
+  `TerminalRenderingCapabilities`, and made logout executable end to end:
+  composition performs one typed token-repository read, conditionally constructs
+  token/registration services, injects migration/repository/optional registration
+  into the runner, and owns exact disposal.
+- **2026-07-17 — Fourth plan-PR architecture correction:** Mapped the server's
+  initial-read deadline through a service-local failure to route-owned 500;
+  inserted `TokenRepository`/`BridgeIdRepository` so services no longer consume
+  persistence APIs; moved terminal mode/capability mapping wholly into
+  `TerminalPromptRepository`; and added shared Freezed email-login/refresh
+  request DTOs so consolidated auth contains no inline request maps. At the
+  user's direction, composition now aligns with the active desktop and parallel-
+  plugin plans: `BridgeRuntimeRunner` remains process-startup composer and the
+  existing `Orchestrator` remains post-start session composer under an exact
+  B-B5 waiver; the proposed `BridgeStartupOrchestrator` is removed.
+- **2026-07-17 — Locked architecture exception:** The user explicitly retained
+  long polling and approved both it and existing authentication request/response
+  as narrow exceptions to the push-based default; SSE and generic polling
+  abstractions remain out of scope.
+- **2026-07-17 — Third plan-PR review hardening:** Prevented unconfirmed absence
+  when the server's initial read misses its deadline, required detachable auth
+  cancellation listeners, preserved initial-silent-check input, and defined the
+  cross-repository tracker handoff through the remote tracking branch.
 - **2026-07-17 — Second plan-PR review hardening:** Preserved the shipped
   post-refresh token-file corruption repair while retaining cleared-file logout
   safety, and made secret reads discard/re-request any line queued before echo
@@ -75,13 +100,12 @@ creation.
 - **2026-07-17 — Full-plan approval:** `aristotle-plan-review` approved the
   complete two-repository plan after all architecture, lifecycle, compatibility,
   command, wave, and tracker corrections; no violations remain.
-- **2026-07-17 — Review hardening:** Consolidated Sesori auth HTTP under one
-  provider API; added direct `TokenStorage`, renamed the standalone owner to
-  `TokenService`, defined typed cancellable token access across both authorities,
-  moved terminal/auth/onboarding classes to correct root layers, kept auth token
-  deletion out of the waiter service, injected logout registration directly,
-  and made root `BridgeStartupOrchestrator` the sole startup/session composer
-  while runner consumes only direct already-built collaborators.
+- **2026-07-17 — Review hardening (later revised):** Consolidated Sesori auth
+  HTTP under one provider API, renamed the standalone owner to `TokenService`,
+  defined typed cancellable token access across both authorities, moved terminal/
+  auth/onboarding classes to root layers, kept auth token deletion out of the
+  waiter service, and injected logout registration directly. The later fourth-
+  round delta supersedes this draft's direct-storage and startup-composer shape.
 - **2026-07-17 — Approved design:** The user approved standalone-interactive-only
   onboarding; current token existence across all app platforms; silent existing
   registration; success feedback; `s`/`skip` + Enter; no persisted skip; exact

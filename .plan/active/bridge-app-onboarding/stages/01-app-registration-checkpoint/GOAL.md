@@ -27,10 +27,13 @@ open. Supervised and noninteractive bridge paths remain unchanged.
   delivery mode.
 - Before W01, the worker fetches auth-server `master`, assesses drift from
   `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`, and records the exact assessed tip
-  as S01/W01's auth-server baseline in `TRACKER.md` before branch creation.
+  as S01/W01's auth-server baseline on remote plan-host branch
+  `plan/bridge-app-onboarding/tracking` before auth branch creation.
 - W02 starts only after S01-W01-P01 merges. Its worker fetches monorepo `main`,
   assesses drift from `5a76c0c420cd7db445f7fe2c8a2570265b4c84e0`
-  plus the now-merged auth contract, and records the exact monorepo baseline.
+  plus the now-merged auth contract, records the exact monorepo baseline on the
+  tracking branch, then creates W02 from that assessed `main` tip and imports
+  only this plan's `TRACKER.md` from the tracking branch.
 - The worker re-reads repository/workspace `AGENTS.md`, `docs/VISION.md`,
   `docs/ROADMAP.md`, the current bridge version, and touched tests after pinning
   each wave.
@@ -46,10 +49,15 @@ open. Supervised and noninteractive bridge paths remain unchanged.
   removes timers/listeners/map state.
 - The server's 30-second wait is one absolute deadline beginning before the
   initial repository read; reads and waiter time do not each receive a new cap.
+- If that deadline wins before the initial read establishes presence/absence,
+  the server returns a transient 500 rather than an unconfirmed false body.
 - The bridge uses its configurable auth backend and existing token authority.
 - No startup mutex, plugin runtime, relay, or backend process is held while the
   user waits.
 - Normal server long-poll expiry is not a failure and has no retry delay/log.
+- The user-approved push-default exception is limited to existing authentication
+  request/response and this server-held presence long poll; no SSE or reusable
+  polling abstraction is introduced.
 - Transient failures use exactly one cancellable 60-second delay and one warning
   per attempt; permanent failures warn once and fail open.
 - Terminal input has one asynchronous owner with FIFO pending-line preservation
@@ -57,10 +65,10 @@ open. Supervised and noninteractive bridge paths remain unchanged.
   mixed synchronous/asynchronous stdin are forbidden.
 - Secret input never consumes a line queued while echo was enabled; pre-switch
   lines are discarded and re-requested after echo is disabled.
-- `TerminalPromptApi` exposes raw terminal facts/I/O only.
-  `BridgeStartupOrchestrator` (and the independent logout composition) resolves
-  typed `TerminalInteractionMode` and injects it into
-  `TerminalPromptRepository`; runner owns no terminal policy.
+- `TerminalPromptApi` exposes raw terminal/environment facts and I/O only.
+  `TerminalPromptRepository` is the sole Layer-2 mapper to typed
+  `TerminalInteractionMode` and rendering capabilities; startup and logout
+  consumers never interpret raw terminal facts.
 - Access-token acquisition and one-refresh-on-401 coordination belong to
   `AppClientOnboardingService`; `AppClientPresenceRepository` only maps its API
   using the caller-supplied token.
@@ -72,15 +80,22 @@ open. Supervised and noninteractive bridge paths remain unchanged.
   `ControlChannelTokenService`, every production caller, and every fake implement
   it; typed refresh failures require no message parsing.
 - Onboarding skip actively aborts app-status and in-flight token-refresh
-  requests. No request or correlated control pull survives service completion.
-- Root Layer-5 `BridgeStartupOrchestrator` owns all auth/terminal/token/
-  onboarding construction and pre-plugin sequencing. `BridgeRuntimeRunner`
-  receives direct already-built runtime/failure/restart/supervised collaborators
-  and constructs no lower layer; existing session `Orchestrator` remains the
-  post-plugin control owner.
+  requests after guidance is shown. The initial silent check consumes no input,
+  and no request, listener, or correlated control pull survives settlement.
+- The user-approved B-B5 exception aligns this work with the active desktop and
+  parallel-plugin plans: `BridgeRuntimeRunner` remains the process-startup
+  composer, while the existing `Orchestrator` remains the post-plugin session/
+  event composer. `BridgeRuntime.create` gains no new policy and no third
+  composer is introduced.
+- Layer-1 `TokenStorage` and `BridgeIdStorage` are consumed only by their Layer-2
+  repositories; token, runtime-auth, registration, migration, and logout
+  services never access persistence APIs directly.
+- Shared Freezed email-login and refresh request DTOs preserve the existing JSON
+  bodies; migrated auth API code contains no inline request maps.
 - The URL is always present when onboarding is shown; QR requires proven ANSI+
   Unicode, explicit black/white polarity, and sufficient known width.
-- Generated files are regenerated from source and never hand-edited.
+- Shared and bridge generated files are regenerated from source and never
+  hand-edited.
 - No persistence migration, app/client UI, browser opening, live heartbeat,
   distributed waiter, analytics, or speculative abstraction is included.
 
@@ -117,8 +132,9 @@ open. Supervised and noninteractive bridge paths remain unchanged.
 - Compatibility marker date/version and cleanup text match the implementation
   and endpoint rollout.
 - No waiter/request/terminal subscription survives its owner lifecycle in tests.
-- `TRACKER.md` contains both pinned baselines, PR URLs, binary checked state on
-  implementation branches, and any advisory manual evidence.
+- `TRACKER.md` on merged monorepo `main` contains both pinned baselines, PR URLs,
+  binary checked state carried through the tracking/W02 branches, and any
+  advisory manual evidence. The remote tracking branch is cleanup-only.
 - The plan can close even if one or both manual checkboxes remain unexecuted for
   lack of representative terminals/devices.
 

@@ -7,7 +7,7 @@
 - **Worktree:** one dedicated auth-server worker worktree for this PR
 - **Base branch:** `master`
 - **Branch:** `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint`
-- **Wave baseline:** pin the assessed current `master` tip in `TRACKER.md` before branch creation
+- **Wave baseline:** pin the assessed current `master` tip in `TRACKER.md` on remote plan-host branch `plan/bridge-app-onboarding/tracking` before branch creation
 - **Audited reference:** `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
 - **Audited reference date:** 2026-07-16T14:14:09Z
 - **Contract-affecting:** Yes — additive authenticated HTTP endpoint
@@ -23,6 +23,9 @@ retain byte-compatible requests and responses.
 ## 2. Dependencies and Baseline
 
 - No implementation PR dependency beyond the approved plan.
+- The plan PR is merged to monorepo `main`. Create/fetch remote plan-host branch
+  `plan/bridge-app-onboarding/tracking` from that selected base; commit only the
+  S01/W01 pinned baseline before creating this auth implementation branch.
 - Fetch `master`, assess changed planned paths and auth middleware/device-token
   contracts from the audited reference, and pin the exact tip before branching.
 - Re-read root `AGENTS.md`, current package version, the activation-reminder
@@ -166,10 +169,16 @@ than hidden stateful collaborators.
 1. Capture one absolute deadline before starting the initial
    `hasAnyForUser` query. Race all reads/waiting through one completion gate so
    the advertised timeout includes initial-query time and late query completion
-   cannot send or mutate waiter state.
+   cannot send or mutate waiter state. If the deadline wins before that first
+   read establishes presence or absence, throw the service-local
+   `AppClientPresenceInitialReadTimeout` instead of returning false. The route
+   maps only that typed domain failure to the existing `InternalServerError` /
+   500 response; the service never imports or constructs an HTTP error, and the
+   bridge never presents unconfirmed absence.
 2. Return true when the initial query completes present before the deadline.
-3. If already aborted, the deadline has elapsed, or timeout is non-positive,
-   return false/cancel according to the route contract without storing state.
+3. After a completed false read, if already aborted, the deadline has elapsed,
+   or timeout is non-positive, return confirmed false/cancel according to the
+   route contract without storing state.
 4. Create waiter using only the remaining deadline budget plus a one-shot abort
    listener; store by user id.
 5. Requery `hasAnyForUser` after storage.
@@ -198,6 +207,10 @@ and error cannot resolve or clean one waiter twice.
 - After await, verify request/reply remains open. If closed, hijack/return as the
   OAuth route does rather than sending a late payload.
 - Return only `{ registered }` with status 200.
+- An absolute deadline reached before the initial read establishes true/false
+  surfaces from the service as `AppClientPresenceInitialReadTimeout`. The route
+  maps it to the existing 500 `internal_server_error` path; it is not serialized
+  as `{ registered: false }`.
 
 ### Error, lifecycle, concurrency
 
@@ -253,6 +266,9 @@ gains a field. There is no compatibility-only server fallback or source marker.
 - Timeout resolves false and clears timer/abort/map state; controlled slow
   initial-read and recheck tests prove their elapsed time consumes the same
   absolute 30-second budget and late completions emit no second result.
+- A stalled initial read that loses the deadline throws the service-local typed
+  failure; the route returns the existing 500 error form, never a false body,
+  and eventual read completion has no response/waiter effect.
 - Pre-aborted signal stores nothing.
 - Abort during wait resolves cancellation and clears everything.
 - Registration wakes all waiters for its user, not another user's waiters.
@@ -325,6 +341,8 @@ with mocks that cannot prove durable ordering.
 ## 10. Acceptance Criteria
 
 - Authenticated immediate and long-poll endpoint returns exact boolean contract.
+- Wait-mode initial-read deadline returns 500 so unconfirmed absence is never
+  represented as `registered: false`.
 - Any supported platform token counts.
 - Durable upsert precedes wake; failed upsert never wakes.
 - Waiter race, timeout, abort, error, and multi-user tests pass with no leaks.
@@ -341,7 +359,8 @@ with mocks that cannot prove durable ordering.
   review required by the worker before PR opening.
 - Only intended auth-server files are committed; branch is pushed and PR targets
   `master`.
-- `TRACKER.md` records S01/W01 baseline, branch, PR URL, and checked state on the
-  implementation branch.
+- The auth implementation branch remains auth-server-only. The remote plan-host
+  tracking branch records S01/W01 baseline before branch creation, then branch,
+  PR URL, and optimistic checked state after PR opening; it creates no tracker PR.
 - W02 does not start until this PR merges; deployment is confirmed before bridge
   release.

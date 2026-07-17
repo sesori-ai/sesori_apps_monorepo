@@ -2,7 +2,7 @@
 
 ## 0. Plan Metadata
 
-- **Status:** Approved — ready for delivery
+- **Status:** Finalized under user-authorized one-review/fix process — plan PR open
 - **Format version:** 1
 - **Generated:** 2026-07-17
 - **Plan slug:** `bridge-app-onboarding`
@@ -46,10 +46,11 @@ warnings.
 4. A token registration committed after the bridge begins waiting wakes all
    same-user long polls without a client-side polling interval; the bridge
    prints a brief success line and resumes startup.
-5. `s` or `skip`, case-insensitive after trimming and followed by Enter, cancels
-   any active token-refresh/status request or retry delay, waits for cancellation
-   settlement, and skips only the current run. A later bridge start prompts
-   again while no token exists.
+5. Once confirmed absence or a transient warning exposes onboarding/skip
+   guidance, `s` or `skip`, case-insensitive after trimming and followed by
+   Enter, cancels any active token-refresh/status request or retry delay, waits
+   for cancellation settlement, and skips only the current run. Input typed
+   during the initial silent check remains queued for the next real prompt.
 6. A normal 30-second server long-poll expiry returns `registered: false`, emits
    no warning, and is followed immediately by another long poll.
 7. Network failures, client-side request timeouts, HTTP 408/429, and HTTP 5xx
@@ -88,8 +89,9 @@ warnings.
 - One asynchronous bridge terminal-input owner reused by existing prompts.
 - A pure-Dart QR dependency and terminal formatter with capability/width
   fallbacks.
-- Additive generated Freezed/JSON output for a bridge-local typed response; no
-  generated file is hand-edited.
+- Additive shared Freezed email-login/refresh request DTOs plus a bridge-local
+  typed response, with all generated JSON output produced by tools rather than
+  hand-edited.
 - Focused unit, route, service, lifecycle, runner, formatting, and regression
   tests plus one advisory manual checkpoint.
 - Compatibility behavior and an exact cleanup marker for bridges talking to an
@@ -107,6 +109,8 @@ warnings.
 - Reusing lifetime `mobileSetupAt` activation history as current presence.
 - New database collections, indexes, migrations, Redis, change streams, leases,
   or horizontal-scaling abstractions.
+- A server-sent-event/WebSocket presence channel or importing/refactoring a
+  plugin SSE implementation into auth.
 - QR images/files, OSC hyperlinks, terminal probing commands, or unbounded
   support claims for every terminal/font/camera combination.
 - Auth, relay, plugin, shared wire, mobile, desktop, trust-posture, or
@@ -250,6 +254,7 @@ returned.
 bridge GET status?wait=true
   -> requireAuth identifies user
   -> AppClientPresenceService starts one absolute 30s deadline, then checks DeviceTokenRepository.hasAnyForUser
+  -> initial read misses deadline: service emits typed domain timeout; route maps it to existing 500
   -> absent before deadline: register per-user waiter for only the remaining budget + abort cleanup
   -> recheck repository after waiter registration
   -> return false on 30s timeout, or hijack/return nothing after disconnect
@@ -272,28 +277,41 @@ recheck paths remove listener/timer/map state.
 
 | Component | Layer / expected path | Ownership |
 |---|---|---|
+| `EmailLoginRequest` / `RefreshTokenRequest` | Shared API DTOs, `shared/sesori_shared/lib/src/models/auth/` | Freezed request bodies with exact existing `email`/`password` and `refreshToken` JSON keys. Export from `sesori_shared.dart`; bridge auth API serializes them instead of inline maps. No relay/mobile/desktop behavior changes. |
 | `AppClientPresenceResponse` | API DTO, `bridge/app/lib/src/auth/app_client_presence_response.dart` | Freezed/JSON transport shape with required non-null `registered`; generated output only through build_runner. |
 | `SesoriAuthApi` | Layer 1, `bridge/app/lib/src/auth/sesori_auth_api.dart` | Sole `Api` owner for the configurable Sesori auth server. Absorb existing email, OAuth, profile/me, refresh, bridge-registration and new app-status HTTP operations; own URI/header/body/typed decode plus abortable request/deadline mechanics. The PR deletes superseded use-case API classes and top-level HTTP functions rather than forwarding through them. |
 | `AuthRepository` | Layer 2, `bridge/app/lib/src/auth/auth_repository.dart` | Map profile/access-token validation and typed refresh results from `SesoriAuthApi`; distinguish transient, unavailable, and cancelled refresh failures without message parsing. |
-| `TokenStorage` | Layer 1 concrete auth storage boundary, `bridge/app/lib/src/auth/token_storage.dart` | Own token-file load/save/clear plus legacy bridge-id read over the existing path/permissions. Inject directly into `TokenService`, `BridgeRuntimeAuthService`, bridge-id migration, and logout; remove load/save/clear callback plumbing. |
+| `TokenStorage` | Layer 1 auth persistence API, `bridge/app/lib/src/auth/token_storage.dart` | Own raw token-file string read/write/clear over the existing path/permissions. It contains no JSON/provider/legacy mapping and only `TokenRepository` consumes it. |
+| `TokenRepository` | Layer 2 auth repository, `bridge/app/lib/src/auth/token_repository.dart` | Map `TokenStorage` missing/corrupt/persisted state into typed token-domain results and expose read/write/clear/legacy-id operations to services. `TokenService`, `BridgeRuntimeAuthService`, bridge-id migration, and logout depend on this repository rather than Layer 1 storage or callbacks. |
+| `BridgeIdStorage` / `BridgeIdRepository` | Layer 1/2 auth persistence seam, `bridge_id_storage.dart` and new `bridge_id_repository.dart` | Storage retains raw bridge-id file I/O. Repository owns typed read/write/clear mapping and is the only storage consumer; registration, migration, and logout services consume the repository. |
 | `LoginOAuthRepository` | Layer 2, `bridge/app/lib/src/auth/login_oauth_repository.dart` | Map OAuth init/status/ACK calls from the consolidated API for `LoginOAuthService`. |
 | Existing auth repositories | Layer 2, `login_email_repository.dart`, `bridge_registration_repository.dart` | Consume the same `SesoriAuthApi` directly and preserve their domain exception/result mapping; no forwarding API wrappers remain. |
 | `AppClientPresenceRepository` | Layer 2, `bridge/app/lib/src/auth/app_client_presence_repository.dart` | Accept an access token from its caller, delegate app status to `SesoriAuthApi`, normalize registered/absent/unauthorized/unavailable/transient/cancelled outcomes, and own the old-server compatibility seam. It has no token authority, retry, output, or delay policy. |
 | `TokenRefresher` / `TokenService` | Existing service contract and renamed `bridge/app/lib/src/auth/token_service.dart` implementation | Require both named `forceRefresh` and auth-local `AuthRequestCancellationSignal` on token acquisition, add typed access-failure kinds, and use abortable refresh via `AuthRepository`. Update both production implementors and every caller/fake. During onboarding the newly composed standalone service is the only token caller, so skip owns and terminates its refresh request. |
 | `AppOnboardingFormatter` | Foundation/pure formatter, `bridge/app/lib/src/foundation/app_onboarding_formatter.dart` | Convert URL + QR modules + width/ANSI/Unicode capabilities into bounded explicit black/white ANSI+Unicode text with a light quiet zone, or URL-only when polarity/capability/width safety is not proven. No I/O or lifecycle. |
-| `TerminalInteractionMode` | Foundation, `bridge/app/lib/src/foundation/terminal_interaction_mode.dart` | Typed `interactive` / `unavailable` / `legacyPostUpdate` result computed by composition roots from raw terminal facts and invocation environment. Existing terminal prompt decision/replace contracts move from `server/foundation` to root Foundation with it. |
-| `TerminalPromptApi` / `TerminalPromptRepository` | Root Layer 1/2, `bridge/app/lib/src/api/terminal_prompt_api.dart` and `lib/src/repositories/terminal_prompt_repository.dart` | Move the substantially changed terminal boundaries out of the minimal `server/` subsystem. API owns raw async terminal I/O/facts; repository receives interaction mode and maps provider/credentials/yes-no/onboarding outcomes. |
+| `TerminalInteractionMode` / `TerminalRenderingCapabilities` | Foundation typed models | `interactive` / `unavailable` / `legacyPostUpdate` and immutable ANSI/Unicode/width facts. Composition roots never derive these models from raw terminal/environment values. |
+| `TerminalPromptApi` / `TerminalPromptRepository` | Root Layer 1/2, `bridge/app/lib/src/api/terminal_prompt_api.dart` and `lib/src/repositories/terminal_prompt_repository.dart` | Move the substantially changed terminal boundaries out of the minimal `server/` subsystem. API owns raw async terminal I/O, attached-handle/environment facts, and capability reads. Repository is the sole mapper from those Layer-1 facts to typed mode/rendering capabilities and provider/credentials/yes-no/onboarding outcomes. |
 | `AppClientOnboardingService` | Layer 3, `bridge/app/lib/src/services/app_client_onboarding_service.dart` | Own access-token acquisition, exactly one forced refresh/retry after 401, checkpoint state, terminal subscription, cancellation, long-poll loop, internal retry timer, output, and exactly-once completion. It depends on root repositories/Foundation plus `TokenRefresher`, not on the `server/` subsystem. |
-| `BridgeRuntimeAuthService` | Root Layer 3, moved to `bridge/app/lib/src/services/bridge_runtime_auth_service.dart` | Delegate provider/credential input to root `TerminalPromptRepository`, use injected auth repositories/storage, preserve auth decisions/persistence, and import no runtime options/type. |
-| `BridgeStartupOrchestrator` | Root Layer 5, `bridge/app/lib/src/bridge_startup_orchestrator.dart` | Sole startup and session composition/lifecycle owner. Construct auth, terminal, token, onboarding and existing startup/session collaborators; authenticate, check availability, onboard, provision/start plugin, directly construct existing session `Orchestrator`, inject it into `BridgeRuntime`, invoke runner, and own disposal. |
-| `BridgeRuntime` change | Existing lifecycle holder | Delete static `BridgeRuntime.create`; retain the existing generative constructor over already-built session and lifecycle collaborators. |
-| `BridgeRuntimeRunner` | Injected consumer | Receive already-built `BridgeRuntime`, `PluginFailureLatch`, `BridgeRestartService`, and supervised flag as direct required constructor parameters; execute the ready runtime/session and map typed exit/failure outcomes. It constructs no lower layer. |
+| `BridgeRuntimeAuthService` | Root Layer 3, moved to `bridge/app/lib/src/services/bridge_runtime_auth_service.dart` | Delegate provider/credential input to root `TerminalPromptRepository`, use injected auth repositories, preserve auth decisions/persistence, and import no runtime options/type. |
+| `BridgeRuntimeRunner` | Existing process-startup composer | Retain the startup ownership locked by the active desktop and parallel-plugin plans: construct auth/terminal/token/onboarding and existing process-startup collaborators; authenticate, check availability, onboard, then continue mutex/provision/plugin startup and runtime handoff. |
+| Existing `Orchestrator` | Existing post-start session composer | Remain the room/session/event composer after plugin startup. `BridgeRuntime.create` stays the existing session-phase handoff factory and gains no onboarding, auth, terminal, or process-startup policy. |
 
-The startup orchestrator owns pre-plugin lifecycle; the existing session
-`Orchestrator` remains the sole relay/plugin/session-control owner after plugin
-start. Startup injects the completed runtime and typed outcome collaborators
-directly into runner, then retains teardown ownership around execution. The
-bridge remains headless and plugin-neutral.
+The user explicitly approves a narrow B-B5 exception for the established
+two-phase composition boundary required by the active desktop and parallel-
+plugin plans: `BridgeRuntimeRunner` is the process-startup composer and the
+existing `Orchestrator` is the post-start room/session/event composer.
+`BridgeRuntime.create` remains only the existing handoff inside the latter
+phase and gains no new startup ownership. No third startup orchestrator is
+introduced. This waiver does not authorize other cross-layer composers.
+
+The user explicitly approves a narrow exception to the repository's push-based
+default for the existing authentication request/response flow and this
+server-held app-presence long poll. `AppClientOnboardingService` may issue the
+next `wait=true` request immediately after a normal 30-second false response;
+the server still pushes registration through the currently held request after
+durable upsert, and there is no client timer between healthy rounds. This does
+not authorize pull loops elsewhere, an SSE abstraction, or moving retry/output
+policy below the service.
 
 Production constructor and lifecycle ownership is explicit:
 
@@ -306,6 +324,11 @@ SesoriAuthApi(
 AuthRepository(
   required SesoriAuthApi,
   required refreshRequestTimeout) # composition passes 15 seconds
+
+TokenStorage(required tokenFilePath)
+TokenRepository(required TokenStorage)
+BridgeIdStorage(required bridgeIdFilePath)
+BridgeIdRepository(required BridgeIdStorage)
 
 LoginEmailRepository(required SesoriAuthApi)
 LoginOAuthRepository(
@@ -320,7 +343,7 @@ AppClientPresenceRepository(
 TokenService(
   required initialToken,
   required AuthRepository,
-  required TokenStorage)
+  required TokenRepository)
 
 AppClientOnboardingService(
   required AppClientPresenceRepository,
@@ -331,28 +354,19 @@ AppClientOnboardingService(
   # owns AuthRequestCancellationController, terminal subscription, and cancellable Timer
 
 AppOnboardingFormatter(
-  required supportsAnsi,
-  required supportsUnicode,
-  required nullable terminalColumns)
-  # immutable rendering facts; no I/O or collaborator lifecycle
+  required TerminalRenderingCapabilities capabilities)
+  # repository-produced immutable model; no I/O or collaborator lifecycle
 
-TerminalPromptApi(required Stdin, required Stdout)
-  # owns/disposes its lazy input subscription plus FIFO pending-line buffer; no environment policy
+TerminalPromptApi(required Stdin, required Stdout, required environment)
+  # also receives invocation environment facts; owns/disposes lazy input + FIFO
 
-TerminalPromptRepository(
-  required TerminalPromptApi,
-  required TerminalInteractionMode)
-
-BridgeRuntimeRunner(
-  required BridgeRuntime,
-  required PluginFailureLatch,
-  required BridgeRestartService,
-  required isSupervised)
+TerminalPromptRepository(required TerminalPromptApi)
+  # maps raw API facts to typed interaction mode/rendering capabilities
 ```
 
 The duration comments describe production values, not optional constructor
-defaults: callers pass them explicitly. `BridgeStartupOrchestrator` owns the
-shared HTTP client's close lifecycle; `SesoriAuthApi` borrows it.
+defaults: callers pass them explicitly. `BridgeRuntimeRunner` retains ownership
+of the shared HTTP client's close lifecycle; `SesoriAuthApi` borrows it.
 `AppClientOnboardingService` creates/cancels its one-shot `Timer` internally and
 tests virtual time with `fake_async`; no delay callback or timer peer is added.
 
@@ -373,52 +387,50 @@ bootstrap preserves its existing auth-required exit for transient/unavailable.
 requiring message parsing. Every implementation, caller, and fake is updated.
 `AuthRequestCancellationSignal`/`AuthRequestCancellationController` live inside
 the self-contained `auth/` subsystem with `never`, `canCancel`, `isCancelled`,
-`whenCancelled`, and idempotent `cancel`; plugin-specific `StartAbortSignal`
+a broadcast cancellation stream, and idempotent `cancel`; plugin-specific `StartAbortSignal`
 remains untouched. When `canCancel` is true,
 `TokenService` awaits a near-expiry refresh instead of launching the legacy
 detached background-refresh branch, so onboarding completion can prove no
 refresh remains. Existing `never` callers retain background behavior.
 
-`TokenService` preserves the shipped distinction between initial token-file
-corruption and corruption observed only on the post-refresh re-read. Initial
-corruption is unavailable. A post-response `FormatException` retains only
-`lastProvider` from the valid pre-refresh snapshot and writes the newly issued
-tokens to repair the file; a missing/cleared post-refresh file still aborts
-persistence so logout cannot be resurrected.
+`TokenRepository` maps raw file/JSON state into typed available, missing,
+corrupt, and failure outcomes. `TokenService` preserves the shipped business
+distinction between initial corruption and corruption observed only on the
+post-refresh re-read. Initial corruption is unavailable. A post-response
+corrupt outcome retains only `lastProvider` from the valid pre-refresh snapshot
+and writes the newly issued tokens through the repository to repair the file; a
+missing/cleared post-refresh outcome still aborts persistence so logout cannot
+be resurrected.
 
-`runBridgeApp` moves from `bridge_runtime_runner.dart` into root
-`bridge_startup_orchestrator.dart`; `bin/bridge.dart` imports that root entrypoint.
-It creates `BridgeStartupOrchestrator` through its explicit composition factory
-from CLI/plugin inputs and invokes it. Runner never imports the startup
-orchestrator, eliminating a circular dependency. The startup
-orchestrator constructs every lower-layer collaborator, runs all pre-plugin
-phases, starts the plugin, directly constructs the existing session
-`Orchestrator`, injects that completed session plus lifecycle collaborators into
-plain `BridgeRuntime`, then directly injects `BridgeRuntime`, failure latch,
-restart service, and supervised flag into `BridgeRuntimeRunner`. It wraps runner
-execution in the existing shutdown coordinator/failure/exit lifecycle.
+`runBridgeApp` and `BridgeRuntimeRunner.run` remain in
+`bridge_runtime_runner.dart`, matching the active desktop and parallel-plugin
+plans. The runner replaces its touched inline/API/callback seams with the
+declared APIs, repositories, and services, runs onboarding at the locked point,
+then continues its existing mutex/provision/plugin-start flow and invokes
+`BridgeRuntime.create`. The existing session `Orchestrator` remains responsible
+for room/session/event composition after that handoff. The runner retains the
+existing shutdown coordinator/failure/exit lifecycle.
 
 ### Bridge state and cancellation flow
 
 ```text
-BridgeStartupOrchestrator composes graph
+BridgeRuntimeRunner composes startup graph
   -> standalone interactive + authenticated + plugin available
-  -> subscribe to typed terminal onboarding decisions
   -> AppClientOnboardingService gets current access token
   -> immediate AppClientPresenceRepository check(accessToken)
      -> unauthorized once: service forces token refresh and retries immediately
      -> unauthorized twice: unavailable/permanent
-     -> registered: cancel input subscription, continue silently
+      -> registered: continue silently; initial typed lines remain queued
      -> unavailable/permanent: warn once, cancel input, fail open
-     -> transient: warn once, race skip vs fixed 60s delay, retry immediate check
-     -> absent: render instructions + QR/fallback + exact URL
+      -> transient: show warning/skip guidance, arm input, race skip vs fixed 60s delay, retry immediate check
+      -> absent: render instructions + QR/fallback + exact URL, arm input
         -> long-poll status?wait=true
            -> registered: cancel input/request, print success, continue
            -> normal absent: immediately start next long poll, no warning
            -> transient: warn once, race skip vs fixed 60s delay
            -> unavailable/permanent: warn once and fail open
 
-terminal `s`/`skip` + Enter at any waiting point
+terminal `s`/`skip` + Enter at any guided waiting point
   -> typed skip event
   -> cancel owned AuthRequestCancellationController and retry timer
   -> cancel input subscription
@@ -427,9 +439,8 @@ terminal `s`/`skip` + Enter at any waiting point
 
 startup settles onboarding
   -> provision/start plugin
-  -> create existing session Orchestrator + BridgeRuntime
-  -> directly inject completed runtime + typed outcome collaborators
-  -> BridgeRuntimeRunner executes only the ready lifecycle
+  -> existing BridgeRuntime.create/session Orchestrator handoff
+  -> runner executes existing ready-runtime lifecycle
 ```
 
 If EOF or terminal loss makes the already-started prompt unanswerable, the
@@ -476,21 +487,36 @@ accepted aliases and continue waiting.
     transport and waits for settlement. Typed refresh failures are never
     classified by parsing messages.
 20. The substantially changed standalone token owner is `TokenService`, not a
-    manager, and receives concrete `TokenStorage`; touched token load/save/clear
-    callback plumbing is removed.
+    manager, and receives `TokenRepository`; only that repository consumes the
+    concrete `TokenStorage`. Touched token load/save/clear callback plumbing is
+    removed. Registration/migration/logout similarly consume
+    `BridgeIdRepository`, never `BridgeIdStorage` directly.
 21. The auth subsystem imports no `server/` or root core layer. Terminal API,
     repository, prompt contracts, and interaction mode move to root layer paths;
     the root onboarding service depends inward on auth repositories.
-22. `BridgeStartupOrchestrator` is the sole pre-plugin Layer-5 composer and
-    lifecycle owner. `BridgeRuntimeRunner` consumes direct already-built
-    collaborators and constructs no lower layer; the existing session
-    `Orchestrator` remains session-control owner after plugin start.
+22. To align with the active desktop and parallel-plugin plans, the user waives
+    strict B-B5 only for the established two-phase boundary:
+    `BridgeRuntimeRunner` remains the process-startup composer and the existing
+    `Orchestrator` remains the post-start session-control composer.
+    `BridgeRuntime.create` stays an unchanged handoff within the session phase;
+    no `BridgeStartupOrchestrator` or third composer is added. This exact waiver
+    also retains the existing `BridgeRuntimeRunner` name while it performs the
+    startup-composition role already locked by those active plans; it does not
+    authorize another misnamed composer.
 23. The bounded QR contract targets common interactive macOS/Linux/Windows
     terminals and renders only with explicit black/white ANSI plus Unicode when
     polarity, glyphs, and width are safe. URL-only is required for missing ANSI/
     Unicode, unknown polarity/width, or too-narrow rendering.
 24. No analytics, rollout telemetry, or post-release observation work is part
     of the plan.
+25. The user explicitly approves the existing authentication request/response
+    flow and this bounded server-held long poll as narrow exceptions to the
+    push-based default. Do not replace either with SSE or broaden the exception.
+26. For this PR-feedback round, the user explicitly directs one full plan review
+    followed by one finite correction pass, with no further Aristotle re-review.
+    The two findings from that review are corrected in the final plan; this is a
+    narrow process-gate waiver against an endless review/fix loop, not a waiver
+    of the findings or implementation review.
 
 ## 7. Backward Compatibility and Migration
 
@@ -532,18 +558,24 @@ moves in the same PR; old use-case API files/top-level HTTP functions are delete
 instead of retained as aliases. Existing auth wire requests/responses and
 user-visible failures remain regression contracts.
 
-The shipped `v1.3.0` legacy bridge-id reader/marker moves with its real file I/O
-into `TokenStorage`; it is not duplicated or removed. Its cleanup text is updated
-mechanically to remove `TokenStorage.readLegacyBridgeId` with
-`BridgeIdMigrationService` once pre-v1.3.0 installs are unsupported.
+The shipped `v1.3.0` legacy bridge-id reader/marker moves with its compatibility
+JSON mapping into `TokenRepository`; raw file access remains in `TokenStorage`.
+The repository exposes the typed legacy read to `BridgeIdMigrationService`. The
+marker is not duplicated or removed. Its cleanup text is updated mechanically to
+remove the repository method and migration service once pre-v1.3.0 installs are
+unsupported.
 
 ### Generated-code workflow
 
-S01-W02-P01 changes the source Freezed response model, adds `qr` to
-`bridge/app/pubspec.yaml`, runs `dart pub get` from `bridge/`, and runs the
-workspace `make codegen`. The worker reviews and commits generated
-`*.freezed.dart` / `*.g.dart` and `bridge/pubspec.lock` changes but never edits
-generated files by hand. There is no Drift work.
+S01-W02-P01 adds shared Freezed `EmailLoginRequest` and
+`RefreshTokenRequest` models under `shared/sesori_shared`, exports them from the
+barrel, and uses their `toJson()` output for the two migrated auth request
+bodies. It also changes the bridge-local Freezed response model and adds `qr` to
+`bridge/app/pubspec.yaml`. The worker runs the shared package's build_runner
+command and the bridge workspace `make codegen`, then reviews and commits only
+tool-produced `*.freezed.dart` / `*.g.dart`, relevant lockfiles, and declared
+source/export changes. Generated files are never hand-edited. There is no Drift
+work and no shared relay/protocol contract change.
 
 ## 8. Rollout and Verification
 
@@ -557,6 +589,26 @@ generated files by hand. There is no Drift work.
    required because old-server failure is explicitly compatible.
 5. Execute the advisory QR/platform checkpoint when representative terminals
    and a disposable same-account app registration are available.
+
+### Cross-repository tracker handoff
+
+S01-W01-P01's implementation branch lives only in the auth-server repository,
+so it cannot commit the plan-host `TRACKER.md`. After this plan PR merges and
+before creating the auth implementation branch, the worker creates/fetches the
+remote monorepo branch `plan/bridge-app-onboarding/tracking` from the selected
+`main` tip. It commits only the S01/W01 pinned auth baseline there, then updates
+that same branch with the auth implementation branch/PR URL and optimistic
+checked row after the auth PR opens. This administrative state branch adds no
+implementation PR and never mixes auth-server product files into the monorepo.
+
+After S01-W01-P01 merges, the W02 worker fetches the tracking branch, verifies
+its W01 state against the merged auth PR, records the assessed S01/W02 monorepo
+baseline there before branch creation, creates the W02 implementation branch
+from that exact assessed `main` tip, and copies only this plan's `TRACKER.md`
+from the tracking branch into the implementation branch. The W02 PR therefore
+carries both waves' tracker state back to `main`; after it merges, `main` is
+authoritative and the tracking branch is cleanup-only. No standalone tracker PR
+or third product PR is created.
 
 Rollback is stateless: the bridge PR can be reverted without server cleanup,
 and the auth PR can be reverted while new bridges fail open. No persisted skip,
@@ -575,7 +627,8 @@ waiter, or schema state survives a process.
 - Consolidated auth API tests prove every migrated existing operation plus
   configurable URL construction, bearer header, strict typed app-status parsing,
   30s/35s relationship, active app-status/refresh abort on skip/timeout, and
-  status exceptions.
+  status exceptions. Every settled request detaches its cancellation listener;
+  repeated long polls and successful `never` refreshes retain none.
 - Bridge repository tests prove unauthorized/status classification,
   permanent/old-server normalization, malformed response handling, caller-token
   forwarding, and no token-refresh/logging ownership.
@@ -584,7 +637,11 @@ waiter, or schema state survives a process.
   prompt ordering, exact URL equality, success, both skip
   aliases, invalid input, EOF, normal-timeout no-delay/no-warning behavior,
   fixed 60-second transient delay, indefinite retry, permanent fail-open, and
-  cancellation during request and delay.
+  cancellation during guided request/delay, plus preservation of lines typed
+  during the initial silent check.
+- Plan execution verifies the remote tracking branch records W01 before the
+  cross-repository barrier and that W02 imports only this plan's tracker file;
+  no product commit spans repositories.
 - Terminal tests prove one lazy async stdin subscription, FIFO type-ahead across
   gaps between sequential prompts, cancellation handoff without dropping queued
   lines, EOF, pre-echo password-line discard/re-entry, password echo restoration,
@@ -593,11 +650,15 @@ waiter, or schema state survives a process.
   white ANSI reset, width boundaries, required URL-only fallback without ANSI or
   Unicode and for unknown polarity/width, URL permanence, and deterministic
   output for the exact URL.
-- Startup-orchestrator tests prove sole lower-layer construction, mode gating,
-  checkpoint location before plugin startup, no held startup mutex,
+- Runner tests prove startup mode gating, checkpoint location before plugin
+  startup, no held startup mutex, typed terminal-repository mapping,
   early/shared `TokenService` reuse, existing session-Orchestrator creation only
-  after plugin start, direct runner injection/execution, and continuation for
-  success/skip/fail-open. Runner tests prove it constructs nothing.
+  after plugin start, and continuation for success/skip/fail-open. Session tests
+  prove the existing `Orchestrator` remains the post-start owner and
+  `BridgeRuntime.create` gains no onboarding/startup policy.
+- Shared-model tests prove `EmailLoginRequest` and `RefreshTokenRequest` emit the
+  exact legacy JSON keys and values; consolidated API fixtures prove byte-
+  compatible request bodies without inline JSON maps.
 - Token tests prove typed access classification, required non-null cancellation
   at every caller, both production implementors, post-refresh corruption repair
   without cleared-file resurrection, and no surviving refresh/control request
@@ -649,7 +710,7 @@ separate User/Worker evidence.
 | Warning spam during outage | One reporting owner and one warning per failed request, with no request for the following 60 seconds. |
 | Older/custom auth server lacks endpoint | Exact compatibility fallback for 404/405 warns once and fails open; auth deploys first. |
 | User signs in to a different account | Instructions say same account; only the authenticated bridge user's durable token wakes the waiter. |
-| Async stdin migration changes existing prompts | One terminal owner with a FIFO pending-line buffer, serialized/type-ahead prompt tests, pre-echo secret-line discard/re-entry, echo restoration, and startup-orchestrator/logout regressions; no raw-mode single-key handling. |
+| Async stdin migration changes existing prompts | One terminal owner with a FIFO pending-line buffer, serialized/type-ahead prompt tests, pre-echo secret-line discard/re-entry, echo restoration, and runner/logout regressions; no raw-mode single-key handling. |
 | Token file corrupts while refresh is in flight | Preserve the current post-response `FormatException` repair using only the valid pre-refresh provider plus new response tokens; missing/cleared state still blocks resurrection. |
 | App registration and skip complete together | One service completion gate cancels remaining request/subscription/delay and emits only one continuation/result message. |
 | QR scans poorly under a terminal theme/font | Render only with explicit black/white ANSI plus validated Unicode, a four-module light quiet zone, and known sufficient width; otherwise omit QR, retain the URL, and use advisory real scans. |
@@ -658,7 +719,7 @@ separate User/Worker evidence.
 | Plugin is unavailable | Preserve the quick availability probe before onboarding so users are not asked to install the app for a bridge that cannot start. |
 | Auth HTTP consolidation regresses existing flows | Migrate real methods into one `SesoriAuthApi`, delete wrappers only after callers move, and preserve email/OAuth/profile/refresh/bridge request fixtures plus user-visible mapping tests. |
 | Skip occurs during token refresh | Required `AuthRequestCancellationSignal` reaches both production token authorities and abortable auth transport; cancellable near-expiry refresh is awaited, and completion waits for settlement. |
-| Runner becomes a second composition root | `BridgeStartupOrchestrator` constructs/owns every startup layer and directly injects only the four required already-built runtime/outcome collaborators; runner has no constructors/factories for lower layers. Existing session `Orchestrator` is created only after plugin start. |
+| Startup ownership conflicts with desktop/parallel-plugin plans | User-approved narrow B-B5 waiver preserves `BridgeRuntimeRunner` as process-startup composer and existing `Orchestrator` as post-start session composer; `BridgeRuntime.create` gains no new policy and no third composer is introduced. |
 
 Deferred work includes live app liveness, distributed waiter signaling, richer
 deep links, browser opening, terminal QR files, persistent onboarding choices,
@@ -681,7 +742,8 @@ does not block merge or plan closure, and has separate User/Worker state.
 ```text
 created
   -> immediate registered true
-  -> waiting
+  -> initial read deadline: 500 transient failure, never false
+  -> confirmed absent: waiting
        -> registered true after durable upsert
        -> false after 30s timeout
        -> cancelled after client disconnect
@@ -699,6 +761,7 @@ waiter set before resolving it so mutation during iteration cannot skip peers.
 | 200 `registered: true` | Success; silent on initial check, confirmation after prompt. |
 | 200 `registered: false`, immediate | Render onboarding once, then long poll. |
 | 200 `registered: false`, long poll | Normal expiry; no warning/delay, immediately long poll again. |
+| 500 before server initial presence read completes | Unconfirmed/transient; no onboarding prompt, warn once, fixed cancellable 60-second delay, retry. |
 | Skip-triggered `RequestAbortedException` | Expected cancellation; no warning, continue current run. |
 | Repository returns unauthorized first occurrence | Service forces refresh once and retries immediately. |
 | Repository returns unauthorized after refresh | Service warns once and fails open. |
