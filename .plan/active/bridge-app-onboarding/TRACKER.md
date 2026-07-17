@@ -16,10 +16,10 @@
 
 ## Plan Review
 
-- **Verdict:** Approved for the reduced plan after one suffix correction
+- **Verdict:** Approved after the suffix correction and PR-review hardening
 - **Reviewer:** `aristotle-plan-review`
 - **Date:** 2026-07-17
-- **Reviewed commit:** current uncommitted reduced-plan documents over pinned base `4a156a78b3bf8572c280ce859b3b1370300a8105`
+- **Reviewed commit:** `e3dfb3f871f464be05629245d1777f2df637a76a` (follow-up review covered the architecture-bearing hardenings; later edits in that commit were editorial/manual evidence only)
 
 ## Wave Baselines
 
