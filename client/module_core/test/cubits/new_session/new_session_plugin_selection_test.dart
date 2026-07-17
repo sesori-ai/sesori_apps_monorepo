@@ -151,6 +151,51 @@ void main() {
       expect(cubit.state.agentModelData?.plugins, [refreshedDefault, unavailableB]);
     });
 
+    test("reconnect discovery cannot be superseded by a stale plugin selection", () async {
+      const unavailableB = PluginMetadata(
+        id: "plugin-b",
+        displayName: "Plugin B unavailable",
+        isDefault: false,
+        state: PluginLifecycleState.unavailable,
+        actionHint: "Start the plugin.",
+      );
+      final reconnectDiscovery = Completer<ApiResponse<PluginListResponse>>();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) {
+        discoveryCalls++;
+        if (discoveryCalls == 1) {
+          return Future.value(ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])));
+        }
+        return reconnectDiscovery.future;
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => discoveryCalls == 2);
+
+      expect(cubit.state.agentModelData?.isLoading, isTrue);
+      expect(cubit.state.agentModelData?.isPluginDiscoveryInFlight, isTrue);
+      cubit.selectPlugin(pluginId: "plugin-b");
+      expect(cubit.state.agentModelData?.plugin, pluginA);
+
+      reconnectDiscovery.complete(
+        ApiResponse.success(const PluginListResponse(plugins: [pluginA, unavailableB])),
+      );
+      await _waitUntil(() {
+        final data = cubit.state.agentModelData;
+        return data?.plugins.last == unavailableB && !(data?.isLoading ?? true);
+      });
+
+      expect(cubit.state.agentModelData?.plugin, pluginA);
+      expect(cubit.state.agentModelData?.isPluginDiscoveryInFlight, isFalse);
+      verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-b"));
+    });
+
     test("reconnect preserves and refreshes a staged command for the same plugin", () async {
       const refreshedA = PluginMetadata(
         id: "plugin-a",
@@ -314,6 +359,7 @@ void main() {
       expect(state.availablePlugins, isEmpty);
       expect(state.selectedPlugin, isNull);
       expect(state.isComposerDataLoading, isTrue);
+      expect(state.isPluginDiscoveryInFlight, isTrue);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
       expect(state.availableCommands, isEmpty);
@@ -333,6 +379,7 @@ void main() {
       expect(state.availablePlugins, isEmpty);
       expect(state.selectedPlugin, isNull);
       expect(state.isComposerDataLoading, isFalse);
+      expect(state.isPluginDiscoveryInFlight, isFalse);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
       expect(state.availableCommands, isEmpty);
@@ -522,6 +569,7 @@ void main() {
       final state = cubit.state as NewSessionIdle;
       expect(state.selectedPlugin?.id, "plugin-b");
       expect(state.isComposerDataLoading, isTrue);
+      expect(state.isPluginDiscoveryInFlight, isFalse);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
       expect(state.availableCommands, isEmpty);

@@ -43,6 +43,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
            availablePlugins: [],
            selectedPlugin: null,
            isComposerDataLoading: true,
+           isPluginDiscoveryInFlight: false,
            availableAgents: [],
            availableProviders: [],
            availableCommands: [],
@@ -68,6 +69,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   Future<void> _discoverPlugins() async {
     final generation = ++_loadGeneration;
+    _emitAgentModelUpdate(
+      availableAgents: null,
+      availableProviders: null,
+      availableCommands: null,
+      selectedAgent: null,
+      selectedAgentModel: null,
+      isComposerDataLoading: true,
+      isPluginDiscoveryInFlight: true,
+    );
     try {
       final response = await _pluginRepository.listPlugins();
       if (!_canApplyLoad(generation: generation, pluginId: null)) return;
@@ -90,6 +100,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
               availablePlugins: plugins,
               selectedPlugin: selectedPlugin,
               isComposerDataLoading: canLoad,
+              isPluginDiscoveryInFlight: false,
               availableAgents: const [],
               availableProviders: const [],
               availableCommands: const [],
@@ -120,6 +131,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availablePlugins: const [],
         selectedPlugin: null,
         isComposerDataLoading: false,
+        isPluginDiscoveryInFlight: false,
         availableAgents: const [],
         availableProviders: const [],
         availableCommands: const [],
@@ -133,9 +145,14 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   void selectPlugin({required String pluginId}) {
     final current = state;
-    if (current is NewSessionSending || current is NewSessionCreated) return;
     final data = current.agentModelData;
-    if (data == null || data.plugin?.id == pluginId) return;
+    if (current is NewSessionSending ||
+        current is NewSessionCreated ||
+        data == null ||
+        data.isPluginDiscoveryInFlight ||
+        data.plugin?.id == pluginId) {
+      return;
+    }
 
     final selectedPlugin = data.plugins.firstWhereOrNull((plugin) => plugin.id == pluginId);
     if (selectedPlugin == null || !selectedPlugin.isRoutable) return;
@@ -146,6 +163,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availablePlugins: data.plugins,
         selectedPlugin: selectedPlugin,
         isComposerDataLoading: true,
+        isPluginDiscoveryInFlight: false,
         availableAgents: const [],
         availableProviders: const [],
         availableCommands: const [],
@@ -199,6 +217,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       selectedAgent: selectedAgent,
       selectedAgentModel: selectedAgentModel,
       isComposerDataLoading: false,
+      isPluginDiscoveryInFlight: false,
     );
   }
 
@@ -268,6 +287,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String? selectedAgent,
     required AgentModel? selectedAgentModel,
     required bool? isComposerDataLoading,
+    required bool? isPluginDiscoveryInFlight,
   }) {
     if (isClosed) return;
     final current = state;
@@ -293,6 +313,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             stagedCommand: revalidatedStagedCommand,
             availableVariants: derivedVariants,
             isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
+            isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
           ),
         );
       case NewSessionSending():
@@ -306,6 +327,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             stagedCommand: revalidatedStagedCommand,
             availableVariants: derivedVariants,
             isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
+            isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
           ),
         );
       case NewSessionError():
@@ -319,6 +341,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             stagedCommand: revalidatedStagedCommand,
             availableVariants: derivedVariants,
             isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
+            isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
           ),
         );
       case NewSessionCreated():
@@ -376,6 +399,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }
 
   bool get _canEditComposer {
+    if (state is NewSessionSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
     return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
   }
@@ -408,6 +432,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableCommands: null,
       availableProviders: null,
       isComposerDataLoading: null,
+      isPluginDiscoveryInFlight: null,
     );
     _persistSelection();
   }
@@ -444,14 +469,17 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   }
 
   void clearStagedCommand() {
-    if (!_canEditComposer) return;
     final current = state;
     switch (current) {
       case NewSessionIdle():
+        if (!_canEditComposer) return;
         emit(current.copyWith(stagedCommand: null));
       case NewSessionError():
+        if (!_canEditComposer) return;
         emit(current.copyWith(stagedCommand: null));
-      case NewSessionSending() || NewSessionCreated():
+      case NewSessionSending():
+        emit(current.copyWith(stagedCommand: null));
+      case NewSessionCreated():
         break;
     }
   }
@@ -484,6 +512,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableCommands: null,
       availableProviders: null,
       isComposerDataLoading: null,
+      isPluginDiscoveryInFlight: null,
     );
     _persistSelection();
   }
@@ -525,6 +554,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         availablePlugins: config.plugins,
         selectedPlugin: selectedPlugin,
         isComposerDataLoading: false,
+        isPluginDiscoveryInFlight: false,
         availableAgents: config.agents,
         availableProviders: config.providers,
         availableCommands: config.commands,
@@ -562,20 +592,21 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         emit(NewSessionState.created(session: data));
       case ErrorResponse(:final error):
         loge("New session creation failed", error);
-        final latest = state.agentModelData;
+        final latest = state.agentModelData ?? config;
         emit(
           NewSessionState.error(
             reason: error.remoteFailureReason,
-            availablePlugins: latest?.plugins ?? config.plugins,
-            selectedPlugin: latest?.plugin ?? selectedPlugin,
-            isComposerDataLoading: latest?.isLoading ?? false,
-            availableAgents: latest?.agents ?? config.agents,
-            availableProviders: latest?.providers ?? config.providers,
-            availableCommands: latest?.commands ?? config.commands,
-            selectedAgent: latest?.agent ?? config.agent,
-            selectedAgentModel: latest?.agentModel ?? config.agentModel,
-            stagedCommand: latest?.stagedCommand ?? config.stagedCommand,
-            availableVariants: latest?.availableVariants ?? config.availableVariants,
+            availablePlugins: latest.plugins,
+            selectedPlugin: latest.plugin,
+            isComposerDataLoading: latest.isLoading,
+            isPluginDiscoveryInFlight: false,
+            availableAgents: latest.agents,
+            availableProviders: latest.providers,
+            availableCommands: latest.commands,
+            selectedAgent: latest.agent,
+            selectedAgentModel: latest.agentModel,
+            stagedCommand: latest.stagedCommand,
+            availableVariants: latest.availableVariants,
           ),
         );
     }

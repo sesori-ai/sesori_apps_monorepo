@@ -9,6 +9,7 @@ class NewSessionPluginChooser extends StatelessWidget {
   final List<PluginMetadata> plugins;
   final String? selectedPluginId;
   final bool isComposerDataLoading;
+  final bool isSelectionEnabled;
   final ValueChanged<String> onSelected;
 
   const NewSessionPluginChooser({
@@ -16,6 +17,7 @@ class NewSessionPluginChooser extends StatelessWidget {
     required this.plugins,
     required this.selectedPluginId,
     required this.isComposerDataLoading,
+    required this.isSelectionEnabled,
     required this.onSelected,
   });
 
@@ -53,6 +55,7 @@ class NewSessionPluginChooser extends StatelessWidget {
                     plugin: plugins[index],
                     isSelected: plugins[index].id == selectedPluginId,
                     isLoading: isComposerDataLoading && plugins[index].id == selectedPluginId,
+                    isSelectionEnabled: isSelectionEnabled,
                     onSelected: onSelected,
                   ),
                 ],
@@ -69,19 +72,21 @@ class _PluginChoice extends StatelessWidget {
   final PluginMetadata plugin;
   final bool isSelected;
   final bool isLoading;
+  final bool isSelectionEnabled;
   final ValueChanged<String> onSelected;
 
   const _PluginChoice({
     required this.plugin,
     required this.isSelected,
     required this.isLoading,
+    required this.isSelectionEnabled,
     required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final isEnabled = plugin.isRoutable;
+    final isEnabled = isSelectionEnabled && plugin.isRoutable;
     final primaryTextColor = isSelected
         ? prego.colors.textPrimaryOnBrand
         : isEnabled
