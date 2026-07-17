@@ -65,6 +65,9 @@ class CommandTimelineService {
       sessionId: stableSessionId,
     );
     _tracker.seed(invocations: acceptedInvocations);
+    final textResultPartsBeforeHistory = {
+      for (final entry in _liveTextResultParts.entries) entry.key: LinkedHashMap<String, MessagePart>.of(entry.value),
+    };
     final history = await _sessionRepository.getCommandHistory(
       sessionId: sessionId,
       acceptedInvocations: acceptedInvocations,
@@ -96,7 +99,11 @@ class CommandTimelineService {
             snapshot: tracked.snapshot!,
             backendMessageId: candidate.backendMessageId,
           );
-          _replaceTextResultParts(snapshot: snapshot, parts: candidate.resultParts);
+          _replaceTextResultPartsIfUnchanged(
+            snapshot: snapshot,
+            parts: candidate.resultParts,
+            previousParts: textResultPartsBeforeHistory[_liveKey(snapshot)],
+          );
           final next = _candidateCard(candidate: candidate, snapshot: snapshot);
           entries[snapshot.canonicalMessageId] = _TimelineEntry(
             message: _mergeCards(previous: entries[snapshot.canonicalMessageId]?.message, next: next),
@@ -441,6 +448,22 @@ class CommandTimelineService {
     _liveTextResultParts[_liveKey(snapshot)] = LinkedHashMap<String, MessagePart>.fromEntries(
       parts.where((part) => part.type == MessagePartType.text).map((part) => MapEntry(part.id, part)),
     );
+  }
+
+  void _replaceTextResultPartsIfUnchanged({
+    required CommandInvocationSnapshot snapshot,
+    required Iterable<MessagePart> parts,
+    required Map<String, MessagePart>? previousParts,
+  }) {
+    final currentParts = _liveTextResultParts[_liveKey(snapshot)];
+    if (!_sameParts(currentParts, previousParts)) return;
+    _replaceTextResultParts(snapshot: snapshot, parts: parts);
+  }
+
+  bool _sameParts(Map<String, MessagePart>? left, Map<String, MessagePart>? right) {
+    if (left == null || right == null) return left == null && right == null;
+    if (left.length != right.length) return false;
+    return left.entries.every((entry) => right[entry.key] == entry.value);
   }
 
   LinkedHashMap<String, MessagePart> _textResultParts(CommandInvocationSnapshot snapshot) {

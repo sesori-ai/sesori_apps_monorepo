@@ -180,10 +180,10 @@ void main() {
     expect(find.descendant(of: modal, matching: find.text("No result available.")), findsOneWidget);
   });
 
-  testWidgets("empty command arguments are absent from the card and sheet", (tester) async {
+  testWidgets("blank command arguments are absent from the card and sheet", (tester) async {
     final message = _commandMessage(
       origin: CommandOrigin.manual,
-      arguments: "",
+      arguments: "   ",
       result: "",
     );
     whenListen(

@@ -41,12 +41,14 @@ class OpenCodeCommandEventService {
           final command = _tracker.commandForResult(assistant.id);
           if (command != null) {
             if (_assistantMessageMapper.map(assistant) case final PluginMessageError error) {
+              final part = _commandMapper.mapErrorResult(
+                error: error,
+                commandMessageId: command.triggerMessageId,
+              );
+              _tracker.observePartDelta(messageId: assistant.id, partId: part.id);
               return [
                 BridgeSseMessagePartUpdated(
-                  part: _commandMapper.mapErrorResult(
-                    error: error,
-                    commandMessageId: command.triggerMessageId,
-                  ),
+                  part: part,
                 ),
               ];
             }

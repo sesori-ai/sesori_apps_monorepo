@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/command_invocation_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/command_invocation_tracker.dart";
@@ -364,6 +366,75 @@ void main() {
     expect(_updatedDisplayText(live), "currentlater");
   });
 
+  test("history refresh preserves text streamed during the fetch", () async {
+    await timeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(
+        invocationId: null,
+        resultParts: [_textPart(messageId: "backend-command", text: "initial")],
+      ),
+    );
+    plugin.messages = const [
+      PluginMessageWithParts(
+        info: PluginMessage.command(
+          id: "backend-command",
+          sessionID: "backend-session",
+          name: "review",
+          arguments: null,
+          origin: PluginCommandOrigin.automatic,
+          invocationId: null,
+          time: PluginMessageTime(created: 10, completed: null),
+        ),
+        parts: [
+          PluginMessagePart(
+            id: "result",
+            sessionID: "backend-session",
+            messageID: "backend-command",
+            type: PluginMessagePartType.text,
+            text: "initial",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
+        ],
+      ),
+    ];
+    plugin.historyRequested = Completer<void>();
+    plugin.historyRelease = Completer<void>();
+
+    final historyFuture = timeline.getSessionMessages(sessionId: "session");
+    await plugin.historyRequested!.future;
+    await timeline.canonicalizePluginCandidate(
+      candidate: const CommandResultPartDeltaTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+        backendPartId: "result",
+        field: "text",
+        delta: " live",
+      ),
+    );
+    plugin.historyRelease!.complete();
+    await historyFuture;
+
+    final next = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandResultPartDeltaTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+        backendPartId: "result",
+        field: "text",
+        delta: "+",
+      ),
+    );
+
+    expect(_updatedDisplayText(next), "initial live+");
+  });
+
   test("live text parts aggregate across updates, deltas, and removals", () async {
     await timeline.canonicalizePluginCandidate(
       candidate: _commandCandidate(invocationId: null),
@@ -695,6 +766,8 @@ Future<void> _insertSession({
 
 class _HistoryPlugin implements NativeProjectsPluginApi {
   List<PluginMessageWithParts> messages = const [];
+  Completer<void>? historyRequested;
+  Completer<void>? historyRelease;
 
   @override
   String get id => "plugin";
@@ -706,7 +779,12 @@ class _HistoryPlugin implements NativeProjectsPluginApi {
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId, {
     required List<PluginCommandInvocationContext> acceptedCommands,
-  }) async => messages;
+  }) async {
+    final result = List<PluginMessageWithParts>.of(messages);
+    historyRequested?.complete();
+    await historyRelease?.future;
+    return result;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -180,6 +180,44 @@ void main() {
     expect(part.text, "Model unavailable");
   });
 
+  test("removes synthetic error text when its correlated result is removed", () {
+    const triggerId = "msg_sesori_fedcba9876543210fedcba9876543210";
+    tracker.registerDispatch(
+      sessionId: "session",
+      invocationId: "error-invocation",
+      name: "review",
+      arguments: "",
+      backendMessageId: triggerId,
+    );
+    service.map(
+      SseEventData.messageUpdated(
+        info: Message.fromJson(
+          _assistantInfo(
+            id: "assistant-error",
+            parentId: triggerId,
+            summary: false,
+            mode: "primary",
+            errorMessage: "Model unavailable",
+          ),
+        ),
+      ),
+      displaySessionId: null,
+    );
+
+    final events = service.map(
+      const SseEventData.messageRemoved(
+        sessionID: "session",
+        messageID: "assistant-error",
+      ),
+      displaySessionId: null,
+    );
+
+    expect(events, hasLength(1));
+    final removed = events.single as BridgeSseMessagePartRemoved;
+    expect(removed.messageID, triggerId);
+    expect(removed.partID, "assistant-error");
+  });
+
   test("removes every tracked part when a correlated result is removed", () {
     const triggerId = "msg_sesori_00112233445566778899aabbccddeeff";
     tracker.registerDispatch(
