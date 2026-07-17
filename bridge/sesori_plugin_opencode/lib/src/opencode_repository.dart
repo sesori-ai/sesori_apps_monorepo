@@ -718,7 +718,6 @@ class OpenCodeRepository {
     for (final context in unmatchedContexts) {
       for (final trigger in unmatchedManualTriggers) {
         if (contextsByTrigger.containsKey(trigger.message.id)) continue;
-        if (trigger.message.time.created > context.acceptedAt) continue;
         contextsByTrigger[trigger.message.id] = context;
         break;
       }

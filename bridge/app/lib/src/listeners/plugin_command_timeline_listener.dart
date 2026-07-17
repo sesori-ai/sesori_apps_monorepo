@@ -47,7 +47,11 @@ class PluginCommandTimelineListener {
   Future<void> start() => _startFuture ??= _start();
 
   Future<void> _start() async {
-    await _timelineService.initialize();
+    try {
+      await _timelineService.initialize();
+    } on Object catch (error, stackTrace) {
+      Log.w("Command timeline hydration failed; continuing with live plugin events", error, stackTrace);
+    }
     _subscription = _sessionRepository.pluginEvents
         .asyncMap<void>(_process)
         .listen(

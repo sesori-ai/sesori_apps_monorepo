@@ -162,6 +162,19 @@ void main() {
       expect(repository.resetCount, 2);
     });
 
+    test("skips enumeration when initialize lacks catalog capabilities", () async {
+      repository.probeSupported = false;
+
+      await service.ensureCatalog(scope: "/project");
+
+      expect(repository.listedScopes, isEmpty);
+      expect(
+        tracker.outcomeForScope(scope: "/project"),
+        CursorCatalogProbeOutcome.exhausted,
+      );
+      expect(repository.resetCount, 1);
+    });
+
     test("short deadline completes and resets a timed-out repository", () async {
       service = CursorCatalogService(
         repository: repository,

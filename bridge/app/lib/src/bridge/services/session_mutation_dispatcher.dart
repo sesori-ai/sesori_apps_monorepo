@@ -50,6 +50,18 @@ class SessionMutationDispatcher {
     });
   }
 
+  Future<void> rollbackJustCreatedSession({
+    required String sessionId,
+    required Session deletionSnapshot,
+  }) {
+    if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
+    return _serialized(() async {
+      await _sessionRepository.rollbackJustCreatedSession(sessionId: sessionId);
+      _pendingTitles.remove(sessionId);
+      _deletedSessionsController.add(deletionSnapshot);
+    });
+  }
+
   Future<void> dispose() {
     if (_disposed) return Future.value();
     _disposed = true;

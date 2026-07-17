@@ -42,12 +42,14 @@ class CodexContextTracker {
     }
   }
 
-  void setModel({required String threadId, required String? model}) {
-    if (model == null || model.isEmpty) {
+  void setModel({required String threadId, required CodexModelSelection? model}) {
+    if (model == null) {
       _models.remove(threadId);
-    } else {
-      _models[threadId] = model;
+      _providers.remove(threadId);
+      return;
     }
+    _models[threadId] = model.modelId;
+    _providers[threadId] = model.providerId;
   }
 
   String? knownDirectory({required String threadId}) => _directories[threadId];

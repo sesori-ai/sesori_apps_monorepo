@@ -432,6 +432,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     final message = messages[index];
     final card = switch (message.info) {
       MessageUser(:final command?) => CommandMessageCard(
+        messageId: message.info.id,
         command: command,
         resultText: state.resolveCommandResultText(
           command: command,

@@ -310,7 +310,7 @@ class SessionRolloutReader {
   /// Reads typed `response_item` records out of a rollout.
   ///
   /// Assistant messages are stamped with the session's model metadata so the
-  /// The repository stamps assistant messages with model metadata: the provider
+  /// repository can render the model: the provider
   /// comes from the `session_meta` header, the model id from the most recent
   /// `turn_context` seen *before* the message (the model can change
   /// mid-session).

@@ -1181,4 +1181,7 @@ class _TrackingSessionMutationDispatcher implements SessionMutationDispatcher {
 
   @override
   Future<Session> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
+
+  @override
+  Future<void> rollbackJustCreatedSession({required String sessionId, required Session deletionSnapshot}) async {}
 }

@@ -476,7 +476,7 @@ void main() {
                 name: "plan",
                 arguments: "auth",
                 acceptedAt: 100,
-                backendMessageId: null,
+                backendMessageId: "command-turn",
               ),
             ],
             knownCommandNames: const {"plan"},
@@ -486,11 +486,11 @@ void main() {
       expect(
         messages.single.info,
         isA<PluginMessageCommand>()
-            .having((message) => message.id, "id", "command-user")
+            .having((message) => message.id, "id", "command-turn")
             .having((message) => message.invocationId, "invocationId", "opaque-codex-invocation"),
       );
-      expect(messages.single.parts.single.id, "command-user-result");
-      expect(messages.single.parts.single.messageID, "command-user");
+      expect(messages.single.parts.single.id, "command-turn-result");
+      expect(messages.single.parts.single.messageID, "command-turn");
       expect(messages.single.parts.single.text, "the plan\n\nnext steps");
     });
 

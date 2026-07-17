@@ -62,10 +62,12 @@ class SessionPromptService {
     // awaiting it here never holds the phone's relay request open for the
     // duration of the command's agent run.
     final rawArguments = textPart?.text;
+    final arguments = rawArguments == null || rawArguments.trim().isEmpty ? null : rawArguments;
     await _commandDispatcher.dispatch(
       sessionId: sessionId,
       name: normalizedCommand,
-      arguments: rawArguments == null || rawArguments.trim().isEmpty ? null : rawArguments,
+      arguments: arguments,
+      backendArguments: arguments,
       variant: variant,
       agent: agent,
       model: model,

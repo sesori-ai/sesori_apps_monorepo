@@ -254,6 +254,19 @@ final class CodexReasoningDeltaEventRecord extends CodexEventRecord {
   final String? delta;
 }
 
+final class CodexCommandExecutionOutputDeltaEventRecord extends CodexEventRecord {
+  const CodexCommandExecutionOutputDeltaEventRecord({
+    required super.threadId,
+    required super.turnId,
+    required this.itemId,
+    required this.delta,
+    required super.context,
+  });
+
+  final String? itemId;
+  final String? delta;
+}
+
 final class CodexItemRemovedEventRecord extends CodexEventRecord {
   const CodexItemRemovedEventRecord({
     required super.threadId,

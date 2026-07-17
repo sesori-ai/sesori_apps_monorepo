@@ -4,16 +4,19 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
+import "command_formatter.dart";
 import "command_modal.dart";
 
 class CommandMessageCard extends StatelessWidget {
   static const resultPreviewKey = Key("command-message-result-preview");
 
+  final String messageId;
   final CommandMessageInfo command;
   final String? resultText;
 
   const CommandMessageCard({
     super.key,
+    required this.messageId,
     required this.command,
     required this.resultText,
   });
@@ -22,7 +25,7 @@ class CommandMessageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final fullCommand = _fullCommand(command);
+    final fullCommand = CommandFormatter.format(command);
     final origin = _originLabel(context: context, origin: command.origin);
     final preview = resultText?.trim() ?? "";
 
@@ -37,8 +40,8 @@ class CommandMessageCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             onTap: () => CommandModal.show(
               context,
+              messageId: messageId,
               command: command,
-              resultText: resultText,
             ),
             child: Ink(
               decoration: BoxDecoration(
@@ -137,11 +140,6 @@ class _OriginLabel extends StatelessWidget {
       ),
     );
   }
-}
-
-String _fullCommand(CommandMessageInfo command) {
-  final arguments = command.arguments;
-  return "/${command.name}${arguments == null ? "" : " $arguments"}";
 }
 
 String _originLabel({required BuildContext context, required CommandOrigin origin}) => switch (origin) {

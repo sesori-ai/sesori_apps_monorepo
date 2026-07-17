@@ -8,9 +8,9 @@ import "package:sesori_bridge/src/listeners/command_dispatch_outcome_listener.da
 import "package:test/test.dart";
 
 void main() {
-  test("start is idempotent and outputs neutral command mutations", () async {
+  test("hydration failure still subscribes once and outputs neutral command mutations", () async {
     final dispatcher = _FakeCommandDispatcher();
-    final timeline = _FakeCommandTimelineService();
+    final timeline = _FakeCommandTimelineService()..initializationError = StateError("database unavailable");
     final listener = CommandDispatchOutcomeListener(
       dispatcher: dispatcher,
       timelineService: timeline,
@@ -58,10 +58,13 @@ class _FakeCommandDispatcher implements CommandDispatcher {
 class _FakeCommandTimelineService implements CommandTimelineService {
   int initializationCount = 0;
   int canonicalizationCount = 0;
+  Object? initializationError;
 
   @override
   Future<void> initialize() async {
     initializationCount++;
+    final error = initializationError;
+    if (error != null) throw error;
   }
 
   @override

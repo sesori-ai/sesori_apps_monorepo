@@ -72,6 +72,7 @@ class CodexEventMapper {
           itemId: itemId,
           delta: delta,
           partSuffix: "text",
+          field: "text",
         );
       case CodexReasoningDeltaEventRecord(:final itemId, :final delta):
         return _deltaEvent(
@@ -79,6 +80,15 @@ class CodexEventMapper {
           itemId: itemId,
           delta: delta,
           partSuffix: "reasoning",
+          field: "text",
+        );
+      case CodexCommandExecutionOutputDeltaEventRecord(:final itemId, :final delta):
+        return _deltaEvent(
+          threadId: event.threadId,
+          itemId: itemId,
+          delta: delta,
+          partSuffix: "tool",
+          field: "state.output",
         );
       case CodexItemRemovedEventRecord(:final itemId):
         final threadId = event.threadId;
@@ -120,6 +130,7 @@ class CodexEventMapper {
     required String? itemId,
     required String? delta,
     required String partSuffix,
+    required String field,
   }) {
     if (threadId == null || itemId == null || delta == null) return const [];
     return [
@@ -127,7 +138,7 @@ class CodexEventMapper {
         sessionID: threadId,
         messageID: itemId,
         partID: "$itemId-$partSuffix",
-        field: "text",
+        field: field,
         delta: delta,
       ),
     ];

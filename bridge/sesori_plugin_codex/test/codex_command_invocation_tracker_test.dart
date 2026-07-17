@@ -15,7 +15,11 @@ void main() {
     expect(pending.invocationId, "opaque-invocation");
     expect(pending.expectedUserText, "/plan auth");
 
-    tracker.bindTurn(threadId: "thread-1", turnId: "turn-1");
+    tracker.bindReturnedTurn(
+      threadId: "thread-1",
+      invocationId: "opaque-invocation",
+      turnId: "turn-1",
+    );
     tracker.replaceResultText(
       turnId: "turn-1",
       messageId: "result-1",
@@ -50,8 +54,75 @@ void main() {
 
     expect(tracker.pendingForThread(threadId: "thread-1"), isNull);
     expect(
-      tracker.bindTurn(threadId: "thread-1", turnId: "later-turn"),
+      tracker.bindReturnedTurn(
+        threadId: "thread-1",
+        invocationId: "rejected",
+        turnId: "later-turn",
+      ),
       isNull,
     );
+  });
+
+  test("binds the returned turn to its exact pending invocation", () {
+    final tracker = CodexCommandInvocationTracker()
+      ..register(
+        threadId: "thread-1",
+        invocationId: "first",
+        command: "plan",
+        arguments: "first",
+      )
+      ..register(
+        threadId: "thread-1",
+        invocationId: "second",
+        command: "plan",
+        arguments: "second",
+      );
+
+    final bound = tracker.bindReturnedTurn(
+      threadId: "thread-1",
+      invocationId: "second",
+      turnId: "second-turn",
+    );
+
+    expect(bound?.invocationId, "second");
+    expect(bound?.turnId, "second-turn");
+    expect(tracker.pendingForThread(threadId: "thread-1")?.invocationId, "first");
+  });
+
+  test("removing one result part keeps later item cleanup idempotent", () {
+    final tracker = CodexCommandInvocationTracker()
+      ..register(
+        threadId: "thread-1",
+        invocationId: "invocation",
+        command: "plan",
+        arguments: "",
+      )
+      ..bindReturnedTurn(
+        threadId: "thread-1",
+        invocationId: "invocation",
+        turnId: "turn-1",
+      )
+      ..recordResultPart(
+        turnId: "turn-1",
+        messageId: "result-1",
+        partId: "result-1-tool",
+      )
+      ..recordResultPart(
+        turnId: "turn-1",
+        messageId: "result-1",
+        partId: "result-1-reasoning",
+      );
+
+    tracker.removeResultPart(
+      turnId: "turn-1",
+      messageId: "result-1",
+      partId: "result-1-tool",
+    );
+    final removed = tracker.removeResult(
+      turnId: "turn-1",
+      messageId: "result-1",
+    );
+
+    expect(removed?.partIds, {"result-1-reasoning"});
   });
 }

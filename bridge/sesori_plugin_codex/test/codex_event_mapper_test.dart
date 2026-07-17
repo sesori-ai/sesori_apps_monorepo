@@ -161,34 +161,30 @@ void main() {
       expect((events.single as BridgeSseSessionIdle).sessionID, "t-1");
     });
 
-    test("thread/status/changed maps active→busy and idle→idle", () {
-      final active = mapper.map(
-        const CodexServerNotification(
-          method: "thread/status/changed",
-          params: {
-            "threadId": "t-1",
-            "status": {"type": "active", "activeFlags": <Object?>[]},
-          },
-        ),
-      );
-      final idle = mapper.map(
-        const CodexServerNotification(
-          method: "thread/status/changed",
-          params: {
-            "threadId": "t-1",
-            "status": {"type": "idle"},
-          },
-        ),
-      );
+    test("thread/status/changed maps only active to busy", () {
+      shared.SessionStatus mapStatus(String type) {
+        final events = mapper.map(
+          CodexServerNotification(
+            method: "thread/status/changed",
+            params: {
+              "threadId": "t-1",
+              "status": {"type": type},
+            },
+          ),
+        );
+        return shared.SessionStatus.fromJson(
+          (events.single as BridgeSseSessionStatus).status,
+        );
+      }
 
-      expect(
-        shared.SessionStatus.fromJson((active.single as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusBusy>(),
-      );
-      expect(
-        shared.SessionStatus.fromJson((idle.single as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusIdle>(),
-      );
+      expect(mapStatus("active"), isA<shared.SessionStatusBusy>());
+      for (final type in const ["idle", "notLoaded", "systemError", "unknown", "futureStatus"]) {
+        expect(
+          mapStatus(type),
+          isA<shared.SessionStatusIdle>(),
+          reason: "$type must not leave the session busy",
+        );
+      }
     });
 
     test("item userMessage → MessageUpdated + MessagePartUpdated", () {
@@ -338,6 +334,32 @@ void main() {
       expect(assistant2.modelID, equals("gpt-5.5"));
     });
 
+    test("selected model updates provider metadata with the model", () {
+      final richMapper = _ContextualMapper(
+        pluginId: CodexPlugin.pluginId,
+        projectCwd: projectCwd,
+        config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
+      )..setThreadModel("t-provider", "claude-sonnet", provider: "anthropic");
+
+      final events = richMapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-provider",
+            "item": {"type": "agentMessage", "id": "i-provider", "text": "hello"},
+          },
+        ),
+      );
+      final assistant =
+          shared.Message.fromJson(
+                (events.first as BridgeSseMessageUpdated).info,
+              )
+              as shared.MessageAssistant;
+
+      expect(assistant.modelID, "claude-sonnet");
+      expect(assistant.providerID, "anthropic");
+    });
+
     test("item reasoning → assistant message + reasoning part", () {
       final events = mapper.map(
         const CodexServerNotification(
@@ -413,6 +435,67 @@ void main() {
       expect(part.state?.status, PluginToolStatus.running);
       // Output is withheld until completion.
       expect(part.state?.output, isNull);
+    });
+
+    test("commandExecution output deltas target the live tool part before final replacement", () {
+      final started = mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "commandExecution",
+              "id": "i-cmd",
+              "command": "dart test",
+              "status": "inProgress",
+            },
+          },
+        ),
+      );
+      final streamed = mapper.map(
+        const CodexServerNotification(
+          method: "item/commandExecution/outputDelta",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "itemId": "i-cmd",
+            "delta": "00:01 +1",
+          },
+        ),
+      );
+      final completed = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "commandExecution",
+              "id": "i-cmd",
+              "command": "dart test",
+              "status": "completed",
+              "aggregatedOutput": "00:01 +1: All tests passed!",
+            },
+          },
+        ),
+      );
+
+      expect((started.last as BridgeSseMessagePartUpdated).part.id, "i-cmd-tool");
+      expect(
+        streamed.single,
+        isA<BridgeSseMessagePartDelta>()
+            .having((event) => event.messageID, "messageID", "i-cmd")
+            .having((event) => event.partID, "partID", "i-cmd-tool")
+            .having((event) => event.field, "field", "state.output")
+            .having((event) => event.delta, "delta", "00:01 +1"),
+      );
+      expect(
+        (completed.last as BridgeSseMessagePartUpdated).part,
+        isA<PluginMessagePart>()
+            .having((part) => part.id, "id", "i-cmd-tool")
+            .having((part) => part.state?.output, "output", "00:01 +1: All tests passed!"),
+      );
     });
 
     test("fileChange → edit tool part titled with the touched paths", () {
@@ -514,7 +597,6 @@ void main() {
         "account/rateLimits/updated",
         "thread/closed",
         "thread/tokenUsage/updated",
-        "item/commandExecution/outputDelta",
       ]) {
         expect(
           mapper.map(CodexServerNotification(method: method, params: const {})),
@@ -620,7 +702,15 @@ class _ContextualMapper {
     );
   }
 
-  void setThreadModel(String threadId, String? model) {
-    _tracker.setModel(threadId: threadId, model: model);
+  void setThreadModel(String threadId, String? model, {String provider = "openai"}) {
+    _tracker.setModel(
+      threadId: threadId,
+      model: model == null
+          ? null
+          : CodexModelSelection(
+              providerId: provider,
+              modelId: model,
+            ),
+    );
   }
 }

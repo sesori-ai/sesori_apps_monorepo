@@ -113,6 +113,7 @@ class CodexAppServerApi {
         "item/completed" => CodexNotificationMethod.itemCompleted,
         "item/agentMessage/delta" => CodexNotificationMethod.agentMessageDelta,
         "item/reasoning/textDelta" || "item/reasoning/summaryTextDelta" => CodexNotificationMethod.reasoningDelta,
+        "item/commandExecution/outputDelta" => CodexNotificationMethod.commandExecutionOutputDelta,
         "item/removed" => CodexNotificationMethod.itemRemoved,
         "item/part/removed" => CodexNotificationMethod.itemPartRemoved,
         "error" => CodexNotificationMethod.error,
@@ -222,6 +223,7 @@ enum CodexNotificationMethod {
   itemCompleted,
   agentMessageDelta,
   reasoningDelta,
+  commandExecutionOutputDelta,
   itemRemoved,
   itemPartRemoved,
   error,
@@ -264,11 +266,24 @@ sealed class CodexNotificationParamsDto with _$CodexNotificationParamsDto {
 @freezed
 sealed class CodexThreadStatusDto with _$CodexThreadStatusDto {
   const factory CodexThreadStatusDto({
-    required String? type,
+    @JsonKey(unknownEnumValue: CodexThreadStatusTypeDto.unknown) required CodexThreadStatusTypeDto? type,
     required CodexThreadStatusDto? status,
   }) = _CodexThreadStatusDto;
 
   factory CodexThreadStatusDto.fromJson(Map<String, dynamic> json) => _$CodexThreadStatusDtoFromJson(json);
+}
+
+enum CodexThreadStatusTypeDto {
+  @JsonValue("active")
+  active,
+  @JsonValue("idle")
+  idle,
+  @JsonValue("notLoaded")
+  notLoaded,
+  @JsonValue("systemError")
+  systemError,
+  @JsonValue("unknown")
+  unknown,
 }
 
 @freezed

@@ -11,12 +11,12 @@ import "codex_config_reader.dart";
 import "codex_event_mapper.dart";
 import "codex_metadata_repository.dart";
 import "codex_skill_reader.dart";
+import "dispatchers/codex_command_event_dispatcher.dart";
 import "listeners/codex_keepalive_listener.dart";
 import "repositories/codex_app_server_repository.dart";
 import "repositories/codex_message_repository.dart";
 import "repositories/models/codex_app_server_repository_models.dart";
 import "runtime/codex_managed_api.dart";
-import "services/codex_command_event_service.dart";
 import "services/codex_history_service.dart";
 import "services/codex_turn_service.dart";
 import "session_rollout_reader.dart";
@@ -58,7 +58,7 @@ class CodexPlugin implements CodexManagedApi {
   final CodexMetadataRepository _metadataRepository;
   final CodexContextTracker _contextTracker;
   final CodexCommandInvocationTracker _commandTracker;
-  final CodexCommandEventService _commandEventService;
+  final CodexCommandEventDispatcher _commandEventDispatcher;
   final CodexEventMapper _eventMapper;
   final CodexHistoryService _historyService;
   final String _projectCwd;
@@ -113,7 +113,7 @@ class CodexPlugin implements CodexManagedApi {
       defaults: resolvedConfigReader.readDefaults(),
     );
     final commandTracker = CodexCommandInvocationTracker();
-    final commandEventService = CodexCommandEventService(
+    final commandEventDispatcher = CodexCommandEventDispatcher(
       tracker: commandTracker,
     );
     final messageRepository = CodexMessageRepository(
@@ -131,7 +131,7 @@ class CodexPlugin implements CodexManagedApi {
       metadataRepository: resolvedMetadataRepository,
       contextTracker: contextTracker,
       commandTracker: commandTracker,
-      commandEventService: commandEventService,
+      commandEventDispatcher: commandEventDispatcher,
       eventMapper: resolvedEventMapper,
       historyService: CodexHistoryService(
         messageRepository: messageRepository,
@@ -153,7 +153,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexMetadataRepository metadataRepository,
     required CodexContextTracker contextTracker,
     required CodexCommandInvocationTracker commandTracker,
-    required CodexCommandEventService commandEventService,
+    required CodexCommandEventDispatcher commandEventDispatcher,
     required CodexEventMapper eventMapper,
     required CodexHistoryService historyService,
     required String projectCwd,
@@ -169,7 +169,7 @@ class CodexPlugin implements CodexManagedApi {
        _metadataRepository = metadataRepository,
        _contextTracker = contextTracker,
        _commandTracker = commandTracker,
-       _commandEventService = commandEventService,
+       _commandEventDispatcher = commandEventDispatcher,
        _eventMapper = eventMapper,
        _historyService = historyService,
        _projectCwd = projectCwd,
@@ -281,7 +281,7 @@ class CodexPlugin implements CodexManagedApi {
         notificationDirectory: contextFacts?.directory,
       );
       final ordinaryEvents = _eventMapper.map(event, context: context);
-      _commandEventService.handleEvent(event: event, ordinaryEvents: ordinaryEvents).forEach(_eventBuffer.add);
+      _commandEventDispatcher.handleEvent(event: event, ordinaryEvents: ordinaryEvents).forEach(_eventBuffer.add);
       if (event is CodexThreadClosedEventRecord) {
         final threadId = event.threadId;
         if (threadId != null) {
@@ -452,7 +452,7 @@ class CodexPlugin implements CodexManagedApi {
       model: _toCodexModel(model),
       variant: variant,
     );
-    _commandEventService.eventsForReturnedInvocation(invocation: acceptance.invocation).forEach(_eventBuffer.add);
+    _commandEventDispatcher.eventsForReturnedInvocation(invocation: acceptance.invocation).forEach(_eventBuffer.add);
     return acceptance.dispatch;
   }
 

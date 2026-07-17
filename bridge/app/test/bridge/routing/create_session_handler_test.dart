@@ -856,7 +856,7 @@ void main() {
       expect(plugin.lastSendCommandVariant, equals("low"));
     });
 
-    test("dedicated worktree command arguments contain only user text", () async {
+    test("dedicated worktree command receives backend context before user text", () async {
       plugin.createSessionResult = const PluginSession(
         id: "cmd-dedicated-1",
         projectID: "p1",
@@ -891,7 +891,10 @@ void main() {
 
       expect(plugin.lastCreateSessionParts, isEmpty);
       expect(plugin.lastSendCommandSessionId, equals("cmd-dedicated-1"));
-      expect(plugin.lastSendCommandArguments, "Review this code");
+      expect(
+        plugin.lastSendCommandArguments,
+        "${_expectedWorktreeSystemPrompt(branchName: "session-001", worktreePath: "/repo/.worktrees/session-001", baseBranch: "main")}Review this code",
+      );
     });
 
     test("persists stored session before sending command", () async {

@@ -278,4 +278,49 @@ void main() {
       expect(emitted.whereType<BridgeSseQuestionReplied>(), hasLength(1));
     });
   });
+
+  group("AcpApprovalListener", () {
+    test("reset cancels queued requests and allows a fresh attachment", () async {
+      final requests = StreamController<AcpServerRequest>.broadcast();
+      final emitted = <BridgeSseEvent>[];
+      final registry = AcpApprovalRegistry(
+        emit: emitted.add,
+        respond: (id, result) {},
+        respondError: (id, code, message) {},
+      );
+      final listener = AcpApprovalListener(
+        registry: registry,
+        requests: requests.stream,
+      )..attach();
+      addTearDown(() async {
+        await listener.dispose();
+        await requests.close();
+      });
+      const permission = AcpServerRequest(
+        id: 7,
+        method: "session/request_permission",
+        params: {
+          "sessionId": "s1",
+          "toolCall": {"kind": "execute"},
+          "options": [
+            {"optionId": "allow", "kind": "allow_once"},
+          ],
+        },
+      );
+
+      requests.add(permission);
+      await listener.reset();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(registry.pendingPermissionsForSession("s1"), isEmpty);
+      expect(emitted, isEmpty);
+
+      listener.attach();
+      requests.add(permission);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(registry.pendingPermissionsForSession("s1"), hasLength(1));
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), hasLength(1));
+    });
+  });
 }

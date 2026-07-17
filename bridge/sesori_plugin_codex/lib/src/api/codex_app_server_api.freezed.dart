@@ -281,7 +281,7 @@ $CodexItemDtoCopyWith<$Res>? get item {
 /// @nodoc
 mixin _$CodexThreadStatusDto {
 
- String? get type; CodexThreadStatusDto? get status;
+@JsonKey(unknownEnumValue: CodexThreadStatusTypeDto.unknown) CodexThreadStatusTypeDto? get type; CodexThreadStatusDto? get status;
 /// Create a copy of CodexThreadStatusDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -314,7 +314,7 @@ abstract mixin class $CodexThreadStatusDtoCopyWith<$Res>  {
   factory $CodexThreadStatusDtoCopyWith(CodexThreadStatusDto value, $Res Function(CodexThreadStatusDto) _then) = _$CodexThreadStatusDtoCopyWithImpl;
 @useResult
 $Res call({
- String? type, CodexThreadStatusDto? status
+@JsonKey(unknownEnumValue: CodexThreadStatusTypeDto.unknown) CodexThreadStatusTypeDto? type, CodexThreadStatusDto? status
 });
 
 
@@ -334,7 +334,7 @@ class _$CodexThreadStatusDtoCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? type = freezed,Object? status = freezed,}) {
   return _then(_self.copyWith(
 type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CodexThreadStatusTypeDto?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as CodexThreadStatusDto?,
   ));
 }
@@ -359,10 +359,10 @@ $CodexThreadStatusDtoCopyWith<$Res>? get status {
 @JsonSerializable()
 
 class _CodexThreadStatusDto implements CodexThreadStatusDto {
-  const _CodexThreadStatusDto({required this.type, required this.status});
+  const _CodexThreadStatusDto({@JsonKey(unknownEnumValue: CodexThreadStatusTypeDto.unknown) required this.type, required this.status});
   factory _CodexThreadStatusDto.fromJson(Map<String, dynamic> json) => _$CodexThreadStatusDtoFromJson(json);
 
-@override final  String? type;
+@override@JsonKey(unknownEnumValue: CodexThreadStatusTypeDto.unknown) final  CodexThreadStatusTypeDto? type;
 @override final  CodexThreadStatusDto? status;
 
 /// Create a copy of CodexThreadStatusDto
@@ -398,7 +398,7 @@ abstract mixin class _$CodexThreadStatusDtoCopyWith<$Res> implements $CodexThrea
   factory _$CodexThreadStatusDtoCopyWith(_CodexThreadStatusDto value, $Res Function(_CodexThreadStatusDto) _then) = __$CodexThreadStatusDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? type, CodexThreadStatusDto? status
+@JsonKey(unknownEnumValue: CodexThreadStatusTypeDto.unknown) CodexThreadStatusTypeDto? type, CodexThreadStatusDto? status
 });
 
 
@@ -418,7 +418,7 @@ class __$CodexThreadStatusDtoCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? type = freezed,Object? status = freezed,}) {
   return _then(_CodexThreadStatusDto(
 type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CodexThreadStatusTypeDto?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as CodexThreadStatusDto?,
   ));
 }

@@ -133,5 +133,24 @@ void main() {
       expect(mapped.parts.map((part) => part.text), ["/review carefully", "Review complete"]);
       expect(mapped.parts.every((part) => part.messageID == mapped.info.id), isTrue);
     });
+
+    test("command fallback treats empty arguments as absent", () {
+      const message = PluginMessageWithParts(
+        info: PluginMessage.command(
+          id: "command-1",
+          sessionID: "backend-session",
+          name: "review",
+          arguments: "",
+          origin: PluginCommandOrigin.manual,
+          invocationId: null,
+          time: null,
+        ),
+        parts: [],
+      );
+
+      final mapped = message.toSharedMessageWithParts(sessionId: "stable-session");
+
+      expect(mapped.parts.first.text, "/review");
+    });
   });
 }

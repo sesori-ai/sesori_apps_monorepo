@@ -160,6 +160,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
        _directoryTracker = directoryTracker,
        _turnService = turnService,
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
+    notificationListener.attach();
+    approvalListener.attach();
     _connectionCompositionSubscription = connectionService.connections.listen((_) {
       notificationListener.attach();
       approvalListener.attach();
@@ -275,8 +277,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     _commandTracker.clear();
     _turnService.resetConnection();
     try {
+      final connectionReset = _connectionService.reset();
       await _approvalListener.reset();
-      await _connectionService.reset();
+      await connectionReset;
     } on Object catch (e, st) {
       Log.w("[$id] failed to reset ACP connection", e, st);
     }

@@ -4,8 +4,8 @@ import "../repositories/models/codex_app_server_repository_models.dart";
 import "../trackers/codex_command_invocation_tracker.dart";
 
 /// Converts one accepted Codex slash turn into one live command timeline row.
-class CodexCommandEventService {
-  CodexCommandEventService({
+class CodexCommandEventDispatcher {
+  CodexCommandEventDispatcher({
     required CodexCommandInvocationTracker tracker,
   }) : _tracker = tracker;
 
@@ -25,7 +25,7 @@ class CodexCommandEventService {
     final turnId = event.turnId;
 
     if (event is CodexTurnStartedEventRecord && threadId != null && turnId != null) {
-      final invocation = _tracker.bindTurn(threadId: threadId, turnId: turnId);
+      final invocation = _tracker.activeFor(threadId: threadId, turnId: turnId);
       return [
         if (invocation != null) ..._commandEvent(invocation),
         ...ordinaryEvents,
@@ -108,6 +108,13 @@ class CodexCommandEventService {
           commandMessageId: invocation.commandMessageId,
         );
 
+      case CodexCommandExecutionOutputDeltaEventRecord():
+        return _reparentAssistantEvents(
+          events: ordinaryEvents,
+          turnId: activeTurnId,
+          commandMessageId: invocation.commandMessageId,
+        );
+
       case CodexItemRemovedEventRecord(:final itemId):
         if (itemId == null) return ordinaryEvents;
         final removed = _tracker.removeResult(turnId: activeTurnId, messageId: itemId);
@@ -136,7 +143,14 @@ class CodexCommandEventService {
         }
         return events;
 
-      case CodexItemPartRemovedEventRecord():
+      case CodexItemPartRemovedEventRecord(:final itemId, :final partId):
+        if (itemId != null && partId != null) {
+          _tracker.removeResultPart(
+            turnId: activeTurnId,
+            messageId: itemId,
+            partId: partId,
+          );
+        }
         return _reparentAssistantEvents(
           events: ordinaryEvents,
           turnId: activeTurnId,
@@ -201,10 +215,16 @@ class CodexCommandEventService {
           );
         case BridgeSseMessagePartDelta(
           :final sessionID,
+          :final messageID,
           :final partID,
           :final field,
           :final delta,
         ):
+          _tracker.recordResultPart(
+            turnId: turnId,
+            messageId: messageID,
+            partId: partID,
+          );
           out.add(
             BridgeSseMessagePartDelta(
               sessionID: sessionID,

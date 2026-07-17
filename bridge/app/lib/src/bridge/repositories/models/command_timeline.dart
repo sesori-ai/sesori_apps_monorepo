@@ -37,6 +37,17 @@ class CommandMessageTimelineCandidate extends CommandTimelineCandidate {
   }) : resultParts = List.unmodifiable(resultParts);
 }
 
+class CommandMessageRemovedTimelineCandidate extends CommandTimelineCandidate {
+  @override
+  final String backendMessageId;
+
+  const CommandMessageRemovedTimelineCandidate({
+    required super.pluginId,
+    required super.sessionId,
+    required this.backendMessageId,
+  });
+}
+
 class CommandResultPartTimelineCandidate extends CommandTimelineCandidate {
   @override
   final String backendMessageId;

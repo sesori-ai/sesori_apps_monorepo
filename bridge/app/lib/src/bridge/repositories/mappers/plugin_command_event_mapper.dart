@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show CommandOrigin, MessagePart, MessageTime;
 
 import "../models/command_timeline.dart";
+import "plugin_message_mapper.dart";
 
 class PluginCommandEventMapper {
   const PluginCommandEventMapper();
@@ -10,6 +11,7 @@ class PluginCommandEventMapper {
     required PluginMessageCommand command,
     required String pluginId,
     required String sessionId,
+    required Iterable<MessagePart> resultParts,
   }) {
     return mapValues(
       pluginId: pluginId,
@@ -18,11 +20,7 @@ class PluginCommandEventMapper {
       invocationId: command.invocationId,
       name: command.name,
       arguments: command.arguments,
-      origin: switch (command.origin) {
-        PluginCommandOrigin.manual => CommandOrigin.manual,
-        PluginCommandOrigin.automatic => CommandOrigin.automatic,
-        PluginCommandOrigin.unknown => CommandOrigin.unknown,
-      },
+      origin: command.origin.toSharedCommandOrigin(),
       time: switch (command.time) {
         PluginMessageTime(:final created, :final completed) => MessageTime(
           created: created,
@@ -30,7 +28,7 @@ class PluginCommandEventMapper {
         ),
         null => null,
       },
-      resultParts: const [],
+      resultParts: resultParts,
     );
   }
 

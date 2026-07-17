@@ -16,8 +16,6 @@ class CursorCatalogRepository {
   }) : _api = api,
        _launchScope = normalizeProjectDirectory(directory: launchScope);
 
-  static const int _maxPages = 50;
-
   final CursorCatalogApi _api;
   final String _launchScope;
 
@@ -135,8 +133,9 @@ class CursorCatalogRepository {
   }) async {
     final stopwatch = Stopwatch()..start();
     final sessions = <AcpSessionInfo>[];
+    final seenCursors = <String>{};
     String? cursor;
-    for (var page = 0; page < _maxPages; page++) {
+    while (true) {
       final result = await _api.listSessions(
         directory: directory,
         cursor: cursor,
@@ -145,9 +144,11 @@ class CursorCatalogRepository {
       sessions.addAll(result.sessions);
       final nextCursor = result.nextCursor;
       if (nextCursor == null || nextCursor.isEmpty) return sessions;
+      if (!seenCursors.add(nextCursor)) {
+        throw StateError("Cursor session/list repeated cursor '$nextCursor'");
+      }
       cursor = nextCursor;
     }
-    throw StateError("Cursor session/list exceeded $_maxPages pages");
   }
 
   Duration _remaining({required Duration timeout, required Stopwatch stopwatch}) {

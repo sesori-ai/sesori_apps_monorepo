@@ -104,6 +104,7 @@ class AcpNotificationRepository {
 
   String? _truncateOutput(String? output) {
     if (output == null || output.isEmpty) return null;
-    return output.length > maxToolOutputLength ? "${output.substring(0, maxToolOutputLength)}…" : output;
+    final runes = output.runes;
+    return runes.length > maxToolOutputLength ? "${String.fromCharCodes(runes.take(maxToolOutputLength))}…" : output;
   }
 }

@@ -73,20 +73,72 @@ void main() {
       [isA<CommandTimelineEnvelopeUpdated>()],
     );
   });
+
+  test("hydration failure still subscribes and passes through an unmatched command removal", () async {
+    final db = createTestDatabase();
+    final plugin = _EventPlugin();
+    final repository = SessionRepository(
+      plugin: plugin,
+      sessionDao: db.sessionDao,
+      projectsDao: db.projectsDao,
+      pullRequestDao: db.pullRequestDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+    );
+    final mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
+    final timeline = _CountingTimelineService()
+      ..initializationError = StateError("database unavailable")
+      ..handlesCandidates = false;
+    final listener = PluginCommandTimelineListener(
+      sessionRepository: repository,
+      enrichmentService: SessionEventEnrichmentService(
+        sessionRepository: repository,
+        sessionMutationDispatcher: mutationDispatcher,
+        failureReporter: FakeFailureReporter(),
+      ),
+      timelineService: timeline,
+    );
+    addTearDown(() async {
+      await listener.dispose();
+      await mutationDispatcher.dispose();
+      await plugin.close();
+      await db.close();
+    });
+    await listener.start();
+    final output = listener.outputs.first;
+    const removal = BridgeSseMessageRemoved(sessionID: "session", messageID: "backend-command");
+
+    plugin.add(removal);
+
+    expect(
+      await output,
+      isA<PluginCommandTimelinePassthrough>().having((value) => value.event, "event", same(removal)),
+    );
+    expect(timeline.initializationCount, 1);
+    expect(timeline.lastCandidate, isA<CommandMessageRemovedTimelineCandidate>());
+  });
 }
 
 class _CountingTimelineService implements CommandTimelineService {
   int initializationCount = 0;
   int canonicalizationCount = 0;
+  Object? initializationError;
+  bool handlesCandidates = true;
+  CommandTimelineCandidate? lastCandidate;
 
   @override
   Future<void> initialize() async {
     initializationCount++;
+    final error = initializationError;
+    if (error != null) throw error;
   }
 
   @override
   Future<CommandTimelineLiveResult> canonicalizePluginCandidate({required CommandTimelineCandidate candidate}) async {
     canonicalizationCount++;
+    lastCandidate = candidate;
+    if (!handlesCandidates) {
+      return CommandTimelineLiveResult(handled: false, mutations: const []);
+    }
     return CommandTimelineLiveResult(
       handled: true,
       mutations: [

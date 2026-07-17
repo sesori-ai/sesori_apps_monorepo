@@ -17,7 +17,6 @@ class AcpCommandInvocationSnapshot {
     required this.resultPartId,
     required this.phase,
     required this.resultPartCreated,
-    required this.resultText,
     required Set<String> assistantMessageIds,
     required Map<String, PluginMessagePartType> assistantPartTypes,
   }) : assistantMessageIds = Set.unmodifiable(assistantMessageIds),
@@ -32,14 +31,12 @@ class AcpCommandInvocationSnapshot {
   final String resultPartId;
   final AcpCommandInvocationPhase phase;
   final bool resultPartCreated;
-  final String resultText;
   final Set<String> assistantMessageIds;
   final Map<String, PluginMessagePartType> assistantPartTypes;
 
   AcpCommandInvocationSnapshot copyWith({
     AcpCommandInvocationPhase? phase,
     bool? resultPartCreated,
-    String? resultText,
     Set<String>? assistantMessageIds,
     Map<String, PluginMessagePartType>? assistantPartTypes,
   }) => AcpCommandInvocationSnapshot(
@@ -52,7 +49,6 @@ class AcpCommandInvocationSnapshot {
     resultPartId: resultPartId,
     phase: phase ?? this.phase,
     resultPartCreated: resultPartCreated ?? this.resultPartCreated,
-    resultText: resultText ?? this.resultText,
     assistantMessageIds: assistantMessageIds ?? this.assistantMessageIds,
     assistantPartTypes: assistantPartTypes ?? this.assistantPartTypes,
   );
@@ -104,7 +100,6 @@ class AcpCommandTurnTracker {
       ),
       phase: AcpCommandInvocationPhase.pending,
       resultPartCreated: false,
-      resultText: "",
       assistantMessageIds: const {},
       assistantPartTypes: const {},
     );
@@ -181,25 +176,14 @@ class AcpCommandTurnTracker {
     return updated;
   }
 
-  AcpCommandInvocationSnapshot appendResultText({
-    required String turnId,
-    required String text,
-  }) {
+  void markResultPartCreated({required String turnId}) {
     final state = _require(turnId);
-    final updated = state.invocation.copyWith(
-      resultPartCreated: true,
-      resultText: "${state.invocation.resultText}$text",
-    );
-    state.invocation = updated;
-    return updated;
+    state.invocation = state.invocation.copyWith(resultPartCreated: true);
   }
 
   AcpCommandInvocationSnapshot clearResult({required String turnId}) {
     final state = _require(turnId);
-    final updated = state.invocation.copyWith(
-      resultPartCreated: false,
-      resultText: "",
-    );
+    final updated = state.invocation.copyWith(resultPartCreated: false);
     state.invocation = updated;
     return updated;
   }

@@ -226,7 +226,7 @@ void main() {
       expect(fake.sentMethods, isNot(contains("thread/resume")));
     });
 
-    test("sendCommand returns an honest null message id and sends slash text", () async {
+    test("sendCommand returns its turn id and sends slash text", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -259,7 +259,7 @@ void main() {
         model: null,
       );
 
-      expect(dispatch.backendMessageId, isNull);
+      expect(dispatch.backendMessageId, "turn-command");
       expect(fake.sentMethods, equals(["initialize", "thread/resume", "turn/start"]));
       final input = fake.sentParamsFor("turn/start")["input"] as List;
       expect(input.single["text"], "/plan auth flow");
@@ -270,6 +270,70 @@ void main() {
       expect(command["role"], "command");
       expect(command["id"], "turn-command");
       expect(command["invocationId"], "opaque-codex-invocation");
+      await subscription.cancel();
+    });
+
+    test("an unrelated turn/started cannot consume a pending command", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-command-order"},
+          },
+        ),
+        const _Response(result: {"turnId": "returned-command-turn"}),
+      ]);
+      fake.onRequest = (method) {
+        if (method == "turn/start") {
+          fake.pushNotification("turn/started", {
+            "threadId": "t-command-order",
+            "turn": {"id": "ordinary-turn"},
+          });
+        }
+      };
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      final dispatch = await plugin.sendCommand(
+        sessionId: "t-command-order",
+        invocationId: "ordered-invocation",
+        command: "plan",
+        arguments: "ordering",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("item/completed", {
+        "threadId": "t-command-order",
+        "turnId": "ordinary-turn",
+        "item": {
+          "type": "userMessage",
+          "id": "ordinary-user",
+          "content": [
+            {"type": "text", "text": "ordinary prompt"},
+          ],
+        },
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "t-command-order",
+        "turn": {"id": "returned-command-turn"},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect(dispatch.backendMessageId, "returned-command-turn");
+      final messages = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+      expect(
+        messages.where((message) => message["role"] == "command"),
+        hasLength(1),
+      );
+      expect(
+        messages.singleWhere((message) => message["role"] == "command")["id"],
+        "returned-command-turn",
+      );
+      expect(
+        messages.singleWhere((message) => message["role"] == "user")["id"],
+        "ordinary-user",
+      );
       await subscription.cancel();
     });
 
@@ -349,6 +413,22 @@ void main() {
         "itemId": "reasoning-result",
         "delta": " more",
       });
+      fake.pushNotification("item/started", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "item": {
+          "type": "commandExecution",
+          "id": "tool-result",
+          "command": "dart test",
+          "status": "inProgress",
+        },
+      });
+      fake.pushNotification("item/commandExecution/outputDelta", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "itemId": "tool-result",
+        "delta": "running",
+      });
       fake.pushNotification("item/completed", {
         "threadId": "t-live-command",
         "turnId": "turn-live-command",
@@ -365,6 +445,11 @@ void main() {
         "turnId": "turn-live-command",
         "itemId": "tool-result",
         "partId": "tool-result-tool",
+      });
+      fake.pushNotification("item/removed", {
+        "threadId": "t-live-command",
+        "turnId": "turn-live-command",
+        "itemId": "tool-result",
       });
       fake.pushNotification("turn/completed", {
         "threadId": "t-live-command",
@@ -395,6 +480,16 @@ void main() {
         contains(
           isA<BridgeSseMessagePartDelta>()
               .having((event) => event.messageID, "messageID", "turn-live-command")
+              .having((event) => event.partID, "partID", "tool-result-tool")
+              .having((event) => event.field, "field", "state.output")
+              .having((event) => event.delta, "delta", "running"),
+        ),
+      );
+      expect(
+        deltas,
+        contains(
+          isA<BridgeSseMessagePartDelta>()
+              .having((event) => event.messageID, "messageID", "turn-live-command")
               .having((event) => event.partID, "partID", "reasoning-result-reasoning"),
         ),
       );
@@ -409,13 +504,13 @@ void main() {
             .having((part) => part.messageID, "messageID", "turn-live-command")
             .having((part) => part.tool, "tool", "shell"),
       );
+      final removedToolParts = events.whereType<BridgeSseMessagePartRemoved>().where(
+        (event) => event.messageID == "turn-live-command" && event.partID == "tool-result-tool",
+      );
       expect(
-        events.whereType<BridgeSseMessagePartRemoved>(),
-        contains(
-          isA<BridgeSseMessagePartRemoved>()
-              .having((event) => event.messageID, "messageID", "turn-live-command")
-              .having((event) => event.partID, "partID", "tool-result-tool"),
-        ),
+        removedToolParts,
+        hasLength(1),
+        reason: "item removal must not remove an already removed part twice",
       );
 
       final history =
@@ -469,7 +564,7 @@ void main() {
                 name: "plan",
                 arguments: "auth",
                 acceptedAt: 1,
-                backendMessageId: null,
+                backendMessageId: "turn-live-command",
               ),
             ],
             knownCommandNames: const {"plan"},
@@ -478,6 +573,7 @@ void main() {
       expect(historicalCommand.name, command["name"]);
       expect(historicalCommand.arguments, command["arguments"]);
       expect(historicalCommand.invocationId, command["invocationId"]);
+      expect(historicalCommand.id, command["id"]);
       expect(
         history.single.parts.map((part) => part.type).toList(),
         [PluginMessagePartType.text, PluginMessagePartType.tool],
@@ -586,6 +682,77 @@ void main() {
       expect(messages.map((message) => message["role"]), ["user", "assistant"]);
       final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
       expect(parts.map((part) => part.messageID), ["prompt-user", "prompt-agent"]);
+      await subscription.cancel();
+    });
+
+    test("prompt APIs reject inline file data before starting backend work", () async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      const inlineData = PluginPromptPart.fileData(
+        mime: "image/png",
+        base64: "aW1hZ2U=",
+        filename: "image.png",
+      );
+      final unsupportedInlineData = isA<PluginOperationException>()
+          .having((error) => error.statusCode, "statusCode", 400)
+          .having((error) => error.message, "message", contains("inline file data"));
+
+      await expectLater(
+        plugin.sendPrompt(
+          sessionId: "t-inline-data",
+          parts: const [inlineData],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(unsupportedInlineData),
+      );
+      await expectLater(
+        plugin.createSession(
+          directory: "/work/sample",
+          parentSessionId: null,
+          parts: const [inlineData],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(unsupportedInlineData),
+      );
+      expect(fake.sentMethods, ["initialize"]);
+    });
+
+    test("sendPrompt updates live provider and model metadata together", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-provider"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-provider"}),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      await plugin.sendPrompt(
+        sessionId: "t-provider",
+        parts: const [PluginPromptPart.text(text: "hello")],
+        variant: null,
+        agent: null,
+        model: (providerID: "anthropic", modelID: "claude-sonnet"),
+      );
+      fake.pushNotification("item/completed", {
+        "threadId": "t-provider",
+        "turnId": "u-provider",
+        "item": {"type": "agentMessage", "id": "provider-answer", "text": "hello"},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final assistant = events
+          .whereType<BridgeSseMessageUpdated>()
+          .map((event) => event.info)
+          .singleWhere((info) => info["role"] == "assistant");
+      expect(assistant["modelID"], "claude-sonnet");
+      expect(assistant["providerID"], "anthropic");
       await subscription.cancel();
     });
 

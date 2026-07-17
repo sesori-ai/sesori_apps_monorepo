@@ -141,6 +141,52 @@ void main() {
       expect(commands.single.hints, ["what to plan"]);
     });
 
+    test("attaches notification and approval listeners before initialize completes", () async {
+      final connecting = plugin.ensureConnected();
+      final init = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "early_command"},
+            ],
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 91,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": "s1",
+          "toolCall": {"kind": "execute"},
+          "options": [
+            {"optionId": "allow", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      await pump();
+
+      expect(await plugin.getCommands(projectId: cwd), hasLength(1));
+      expect(await plugin.getPendingPermissions(sessionId: "s1"), hasLength(1));
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": init["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": <Object?>[],
+        },
+      });
+      expect(await connecting, isTrue);
+    });
+
     test("clears commands when the ACP process connection resets", () async {
       final connecting = plugin.ensureConnected();
       final init = await waitForFrame("initialize");
@@ -362,7 +408,7 @@ void main() {
         ),
       ],
       acceptedCommands: const [],
-      knownCommandNames: const {"create_plan"},
+      knownCommandNames: const {"/create_plan"},
     );
 
     expect(

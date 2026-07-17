@@ -29,8 +29,9 @@ class CodexCommandInvocationTracker {
     return invocation.snapshot(CodexCommandInvocationPhase.pending);
   }
 
-  CodexCommandInvocationSnapshot? bindTurn({
+  CodexCommandInvocationSnapshot? bindReturnedTurn({
     required String threadId,
+    required String invocationId,
     required String turnId,
   }) {
     final byTurn = _activeByTurn[turnId];
@@ -46,7 +47,9 @@ class CodexCommandInvocationTracker {
 
     final pending = _pendingByThread[threadId];
     if (pending == null || pending.isEmpty) return null;
-    final invocation = pending.removeAt(0)..turnId = turnId;
+    final pendingIndex = pending.indexWhere((invocation) => invocation.invocationId == invocationId);
+    if (pendingIndex < 0) return null;
+    final invocation = pending.removeAt(pendingIndex)..turnId = turnId;
     if (pending.isEmpty) _pendingByThread.remove(threadId);
     _activeByThread[threadId] = invocation;
     _activeByTurn[turnId] = invocation;
@@ -104,6 +107,19 @@ class CodexCommandInvocationTracker {
     if (invocation == null) return null;
     invocation.resultMessageId ??= messageId;
     (invocation.resultPartIds[messageId] ??= <String>{}).add(partId);
+    return invocation.snapshot(CodexCommandInvocationPhase.active);
+  }
+
+  CodexCommandInvocationSnapshot? removeResultPart({
+    required String turnId,
+    required String messageId,
+    required String partId,
+  }) {
+    final invocation = _activeByTurn[turnId];
+    if (invocation == null) return null;
+    final partIds = invocation.resultPartIds[messageId];
+    partIds?.remove(partId);
+    if (partIds?.isEmpty ?? false) invocation.resultPartIds.remove(messageId);
     return invocation.snapshot(CodexCommandInvocationPhase.active);
   }
 

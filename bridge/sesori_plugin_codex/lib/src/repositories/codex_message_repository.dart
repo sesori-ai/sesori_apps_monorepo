@@ -73,7 +73,7 @@ class CodexMessageRepository {
         out.add(
           PluginMessageWithParts(
             info: PluginMessage.command(
-              id: message.info.id,
+              id: command.context?.backendMessageId ?? message.info.id,
               sessionID: sessionId,
               name: command.name,
               arguments: command.arguments,

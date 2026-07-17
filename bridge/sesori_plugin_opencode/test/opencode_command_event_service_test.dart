@@ -195,6 +195,22 @@ void main() {
     expect(part.messageID, "ordinary-user");
     expect(part.text, "hello");
   });
+
+  test("tracker ignores unknown parts without losing held user correlation", () {
+    tracker.observeMessage(Message.fromJson(_userInfo(id: "ordinary-user", created: 40)));
+
+    expect(
+      () => tracker.observePart(const PartUnknown(raw: "future-part")),
+      returnsNormally,
+    );
+    tracker.observePart(
+      Part.fromJson(
+        _textPart(id: "ordinary-part", messageId: "ordinary-user", text: "hello"),
+      ),
+    );
+
+    expect(tracker.takeReleasedUser("ordinary-user")?.id, "ordinary-user");
+  });
 }
 
 Map<String, dynamic> _userInfo({required String id, required int created}) => {

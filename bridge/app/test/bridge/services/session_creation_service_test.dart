@@ -27,6 +27,7 @@ void main() {
     late _FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
     late SessionMutationDispatcher mutationDispatcher;
+    late TestCommandStack commandStack;
     late CommandDispatcher commandDispatcher;
     late SessionCreationService service;
 
@@ -46,7 +47,7 @@ void main() {
           plugin: plugin,
         ),
       );
-      final commandStack = TestCommandStack(db);
+      commandStack = TestCommandStack(db);
       final repository = SessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -221,7 +222,38 @@ void main() {
       expect(worktreeService.deletedBranches, [
         (projectId: "/repo", branchName: "rejected", force: true),
       ]);
-      expect(deletedEvents, isEmpty);
+      expect(deletedEvents, [isA<Session>().having((session) => session.projectID, "projectID", "/repo")]);
+    });
+
+    test("initial worktree command hides backend context from durable arguments", () async {
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/review",
+        branchName: "review",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Review this")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+      );
+
+      expect(plugin.lastCommandArguments, contains("Branch: review"));
+      expect(plugin.lastCommandArguments, contains("Worktree path: /repo/.worktrees/review"));
+      expect(plugin.lastCommandArguments, endsWith("Review this"));
+      final invocation = (await commandStack.repository.getForSession(
+        pluginId: "fake",
+        sessionId: "backend-session",
+      )).single;
+      expect(invocation.arguments, "Review this");
     });
   });
 }
@@ -300,6 +332,7 @@ class _FakePlugin implements NativeProjectsPluginApi {
   int createCalls = 0;
   String? lastCreateDirectory;
   Object? dispatchError;
+  String? lastCommandArguments;
   final List<String> deletedSessionIds = [];
 
   @override
@@ -339,6 +372,7 @@ class _FakePlugin implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    lastCommandArguments = arguments;
     final error = dispatchError;
     if (error != null) throw error;
     return const PluginCommandDispatch(backendMessageId: null);

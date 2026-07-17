@@ -86,6 +86,7 @@ class SessionCreationService {
         session: created,
         command: normalizedCommand,
         arguments: firstText ?? "",
+        worktreeResult: worktreeResult,
         variant: request.variant,
         agent: request.agent,
         model: request.model,
@@ -94,6 +95,7 @@ class SessionCreationService {
       await _rollbackRejectedInitialCommand(
         sessionId: created.id,
         projectId: request.projectId,
+        deletionSnapshot: created.copyWith(projectID: request.projectId),
         worktreeResult: worktreeResult,
       );
       Error.throwWithStackTrace(error, stackTrace);
@@ -206,6 +208,7 @@ class SessionCreationService {
     required Session session,
     required String? command,
     required String arguments,
+    required WorktreeResult? worktreeResult,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -213,10 +216,15 @@ class SessionCreationService {
     if (command == null) {
       return;
     }
+    final displayArguments = arguments.trim().isEmpty ? null : arguments;
     await _commandDispatcher.dispatch(
       sessionId: session.id,
       name: command,
-      arguments: arguments.trim().isEmpty ? null : arguments,
+      arguments: displayArguments,
+      backendArguments: _buildCommandArguments(
+        userArguments: displayArguments,
+        worktreeResult: worktreeResult,
+      ),
       variant: variant,
       agent: agent,
       model: model,
@@ -226,10 +234,14 @@ class SessionCreationService {
   Future<void> _rollbackRejectedInitialCommand({
     required String sessionId,
     required String projectId,
+    required Session deletionSnapshot,
     required WorktreeResult? worktreeResult,
   }) async {
     try {
-      await _sessionRepository.rollbackJustCreatedSession(sessionId: sessionId);
+      await _sessionMutationDispatcher.rollbackJustCreatedSession(
+        sessionId: sessionId,
+        deletionSnapshot: deletionSnapshot,
+      );
     } catch (error, stackTrace) {
       Log.w("Failed to roll back rejected initial-command session $sessionId", error, stackTrace);
     }
@@ -307,5 +319,15 @@ IMPORTANT: Do NOT create new worktrees, branches, or working directories for thi
 
 ---
 ''';
+  }
+
+  String? _buildCommandArguments({
+    required String? userArguments,
+    required WorktreeResult? worktreeResult,
+  }) {
+    if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
+      return "${_buildWorktreeSystemPrompt(branchName: branchName, worktreePath: path, baseBranch: baseBranch)}${userArguments ?? ""}";
+    }
+    return userArguments;
   }
 }

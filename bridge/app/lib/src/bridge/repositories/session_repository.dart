@@ -7,16 +7,15 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         BridgeSseMessagePartDelta,
         BridgeSseMessagePartRemoved,
         BridgeSseMessagePartUpdated,
+        BridgeSseMessageRemoved,
         BridgeSseMessageUpdated,
         Log,
         NativeProjectsPluginApi,
         PluginActiveSession,
         PluginCommandInvocationContext,
-        PluginCommandOrigin,
         PluginMessage,
         PluginMessageCommand,
         PluginMessagePart,
-        PluginMessageTime,
         PluginOperationException,
         PluginSession,
         PluginSessionVariant;
@@ -24,8 +23,6 @@ import "package:sesori_shared/sesori_shared.dart"
     show
         AgentModel,
         CommandListResponse,
-        CommandOrigin,
-        MessageTime,
         PrState,
         ProjectActivitySummary,
         PromptModel,
@@ -417,6 +414,13 @@ class SessionRepository {
           command: parsed,
           pluginId: _plugin.id,
           sessionId: await resolveStableSessionId(backendSessionId: parsed.sessionID),
+          resultParts: const [],
+        );
+      case BridgeSseMessageRemoved(:final sessionID, :final messageID):
+        return CommandMessageRemovedTimelineCandidate(
+          pluginId: _plugin.id,
+          sessionId: await resolveStableSessionId(backendSessionId: sessionID),
+          backendMessageId: messageID,
         );
       case BridgeSseMessagePartUpdated(:final part):
         final sessionId = await resolveStableSessionId(backendSessionId: part.sessionID);
@@ -467,25 +471,10 @@ class SessionRepository {
     required Iterable<PluginMessagePart> parts,
     required String sessionId,
   }) {
-    return const PluginCommandEventMapper().mapValues(
+    return const PluginCommandEventMapper().map(
+      command: command,
       pluginId: _plugin.id,
       sessionId: sessionId,
-      backendMessageId: command.id,
-      invocationId: command.invocationId,
-      name: command.name,
-      arguments: command.arguments,
-      origin: switch (command.origin) {
-        PluginCommandOrigin.manual => CommandOrigin.manual,
-        PluginCommandOrigin.automatic => CommandOrigin.automatic,
-        PluginCommandOrigin.unknown => CommandOrigin.unknown,
-      },
-      time: switch (command.time) {
-        PluginMessageTime(:final created, :final completed) => MessageTime(
-          created: created,
-          completed: completed,
-        ),
-        null => null,
-      },
       resultParts: [
         for (final part in parts)
           if (part.type.isVisible) part.toShared(sessionId: sessionId),
@@ -960,7 +949,8 @@ class SessionRepository {
   }
 
   /// Rolls back only the freshly-created binding and backend session. Unlike a
-  /// user deletion, this writes no tombstone and emits no deletion event.
+  /// user deletion, this writes no tombstone; the caller decides whether to
+  /// publish a local deletion event.
   Future<void> rollbackJustCreatedSession({required String sessionId}) async {
     final binding = await _sessionDao.getSession(sessionId: sessionId);
     if (binding == null) return;

@@ -11,7 +11,12 @@ import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/bridge/services/command_timeline_mutation.dart";
+import "package:sesori_bridge/src/listeners/command_dispatch_outcome_listener.dart";
+import "package:sesori_bridge/src/listeners/plugin_command_timeline_listener.dart";
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
 import "package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart";
 import "package:sesori_bridge/src/server/foundation/bridge_restart_env.dart";
@@ -243,6 +248,48 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 10));
       }
     });
+  });
+
+  test("canonical plugin and dispatch mutation batches do not interleave", () async {
+    final pluginTimelineListener = _OutputPluginTimelineListener();
+    final dispatchTimelineListener = _OutputDispatchTimelineListener();
+    final debugServer = DebugServer(
+      router: _UnusedRequestRouter(),
+      port: 0,
+      failureReporter: FakeFailureReporter(),
+      sessionRepository: _UnusedSessionRepository(),
+      pluginCommandTimelineListener: pluginTimelineListener,
+      commandDispatchOutcomeListener: dispatchTimelineListener,
+      restartService: buildTestRestartService(),
+      restartHandoff: () async {},
+    );
+    await debugServer.start();
+    final client = await _SseTestClient.connect(debugServer.boundPort!);
+    addTearDown(() async {
+      await client.close();
+      await debugServer.stop();
+      await pluginTimelineListener.close();
+      await dispatchTimelineListener.close();
+    });
+
+    pluginTimelineListener.add(
+      PluginCommandTimelineCanonical(
+        mutations: const [
+          CommandTimelinePartRemoved(sessionId: "session", messageId: "plugin-first", partId: "part"),
+          CommandTimelinePartRemoved(sessionId: "session", messageId: "plugin-second", partId: "part"),
+        ],
+      ),
+    );
+    dispatchTimelineListener.add(const [
+      CommandTimelinePartRemoved(sessionId: "session", messageId: "dispatch", partId: "part"),
+    ]);
+
+    final events = [
+      jsonDecode(await client.nextEvent()) as Map<String, dynamic>,
+      jsonDecode(await client.nextEvent()) as Map<String, dynamic>,
+      jsonDecode(await client.nextEvent()) as Map<String, dynamic>,
+    ];
+    expect(events.map((event) => event["messageID"]), ["plugin-first", "plugin-second", "dispatch"]);
   });
 
   group("DebugServer HTTP requests", () {
@@ -607,6 +654,52 @@ class _DebugServerHarness {
 class _FakeTokenRefresher implements TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
+}
+
+class _OutputPluginTimelineListener implements PluginCommandTimelineListener {
+  final StreamController<PluginCommandTimelineOutput> _outputs =
+      StreamController<PluginCommandTimelineOutput>.broadcast(sync: true);
+
+  @override
+  Stream<PluginCommandTimelineOutput> get outputs => _outputs.stream;
+
+  @override
+  Future<void> start() async {}
+
+  void add(PluginCommandTimelineOutput output) => _outputs.add(output);
+
+  Future<void> close() => _outputs.close();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _OutputDispatchTimelineListener implements CommandDispatchOutcomeListener {
+  final StreamController<List<CommandTimelineMutation>> _mutations =
+      StreamController<List<CommandTimelineMutation>>.broadcast(sync: true);
+
+  @override
+  Stream<List<CommandTimelineMutation>> get mutations => _mutations.stream;
+
+  @override
+  Future<void> start() async {}
+
+  void add(List<CommandTimelineMutation> mutations) => _mutations.add(mutations);
+
+  Future<void> close() => _mutations.close();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedRequestRouter implements RequestRouter {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedSessionRepository implements SessionRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 // ---------------------------------------------------------------------------

@@ -586,6 +586,24 @@ void main() {
       expect(part.state?.error, "boom");
     });
 
+    test("malformed rawOutput streams fail soft to content", () {
+      final events = mapper.map(
+        update({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "tc-malformed-output",
+          "kind": "execute",
+          "status": "completed",
+          "rawOutput": {
+            "stdout": ["not", "text"],
+            "stderr": {"message": "not text"},
+            "content": "fallback output\n",
+          },
+        }),
+      );
+      final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(part.state?.output, "fallback output");
+    });
+
     test("oversized tool output is truncated", () {
       final big = "x" * (maxToolOutputLength + 50);
       final events = mapper.map(
@@ -600,6 +618,22 @@ void main() {
       final output = events.whereType<BridgeSseMessagePartUpdated>().single.part.state?.output;
       expect(output, hasLength(maxToolOutputLength + 1)); // 500 chars + ellipsis
       expect(output, endsWith("…"));
+    });
+
+    test("oversized tool output is clipped on a Unicode rune boundary", () {
+      final prefix = "x" * (maxToolOutputLength - 1);
+      final events = mapper.map(
+        update({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "tc-unicode-output",
+          "kind": "execute",
+          "status": "completed",
+          "rawOutput": {"stdout": "$prefix😀tail", "stderr": ""},
+        }),
+      );
+      final output = events.whereType<BridgeSseMessagePartUpdated>().single.part.state?.output;
+      expect(output, "$prefix😀…");
+      expect(output?.runes.length, maxToolOutputLength + 1);
     });
 
     test("session_info_update surfaces the title as a session update", () {

@@ -23,9 +23,17 @@ class AcpApprovalListener {
     _subscription = _requests.listen(_registry.handleRequest);
   }
 
-  Future<void> reset() => _registry.reset();
+  Future<void> reset() async {
+    await _cancelSubscription();
+    await _registry.reset();
+  }
 
   Future<void> dispose() async {
+    await _cancelSubscription();
+    await _registry.dispose();
+  }
+
+  Future<void> _cancelSubscription() async {
     final subscription = _subscription;
     _subscription = null;
     try {
@@ -33,6 +41,5 @@ class AcpApprovalListener {
     } on Object catch (error, stackTrace) {
       Log.w("[acp] failed to cancel approval listener", error, stackTrace);
     }
-    await _registry.dispose();
   }
 }

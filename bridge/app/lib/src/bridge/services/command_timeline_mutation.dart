@@ -10,6 +10,13 @@ class CommandTimelineEnvelopeUpdated extends CommandTimelineMutation {
   const CommandTimelineEnvelopeUpdated({required this.info});
 }
 
+class CommandTimelineMessageRemoved extends CommandTimelineMutation {
+  final String sessionId;
+  final String messageId;
+
+  const CommandTimelineMessageRemoved({required this.sessionId, required this.messageId});
+}
+
 class CommandTimelinePartUpdated extends CommandTimelineMutation {
   final MessagePart part;
 

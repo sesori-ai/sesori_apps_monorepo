@@ -1026,6 +1026,140 @@ void main() {
       expect(messages.map((message) => message.info.id), isNot(contains("manual-summary")));
     });
 
+    test("matches manual compaction when its trigger timestamp follows acceptance", () async {
+      final repository = OpenCodeRepository(
+        _FakeApi(
+          messages: [
+            _historyUser(
+              id: "guidance",
+              created: 900,
+              parts: [_historyTextPart(id: "guidance-part", messageId: "guidance", text: "Keep auth decisions")],
+            ),
+            _historyUser(
+              id: "manual-trigger",
+              created: 1300,
+              parts: [_historyCompactionPart(messageId: "manual-trigger", automatic: false)],
+            ),
+            _historyAssistant(
+              id: "manual-summary",
+              parentId: "manual-trigger",
+              created: 1400,
+              summary: true,
+              mode: "compaction",
+              parts: [_historyTextPart(id: "summary-part", messageId: "manual-summary", text: "summary")],
+            ),
+          ],
+        ),
+      );
+
+      final messages = await repository.getMessages(
+        sessionId: "session",
+        directory: "/repo",
+        acceptedCommands: const [
+          PluginCommandInvocationContext(
+            invocationId: "manual-invocation",
+            name: "compact",
+            arguments: "Keep auth decisions",
+            acceptedAt: 1200,
+            backendMessageId: null,
+          ),
+        ],
+      );
+
+      expect(messages, hasLength(1));
+      expect(
+        messages.single.info,
+        isA<PluginMessageCommand>()
+            .having((message) => message.id, "id", "manual-trigger")
+            .having((message) => message.arguments, "arguments", "Keep auth decisions")
+            .having((message) => message.invocationId, "invocationId", "manual-invocation"),
+      );
+      expect(messages.single.parts.single.text, "summary");
+      expect(messages.map((message) => message.info.id), isNot(contains("guidance")));
+    });
+
+    test("pairs multiple manual compactions newest-first", () async {
+      final repository = OpenCodeRepository(
+        _FakeApi(
+          messages: [
+            _historyUser(
+              id: "older-guidance",
+              created: 900,
+              parts: [_historyTextPart(id: "older-guidance-part", messageId: "older-guidance", text: "Keep auth")],
+            ),
+            _historyUser(
+              id: "older-trigger",
+              created: 1300,
+              parts: [_historyCompactionPart(messageId: "older-trigger", automatic: false)],
+            ),
+            _historyAssistant(
+              id: "older-summary",
+              parentId: "older-trigger",
+              created: 1400,
+              summary: true,
+              mode: "compaction",
+              parts: [_historyTextPart(id: "older-summary-part", messageId: "older-summary", text: "older summary")],
+            ),
+            _historyUser(
+              id: "newer-guidance",
+              created: 1900,
+              parts: [_historyTextPart(id: "newer-guidance-part", messageId: "newer-guidance", text: "Keep tests")],
+            ),
+            _historyUser(
+              id: "newer-trigger",
+              created: 2300,
+              parts: [_historyCompactionPart(messageId: "newer-trigger", automatic: false)],
+            ),
+            _historyAssistant(
+              id: "newer-summary",
+              parentId: "newer-trigger",
+              created: 2400,
+              summary: true,
+              mode: "compaction",
+              parts: [_historyTextPart(id: "newer-summary-part", messageId: "newer-summary", text: "newer summary")],
+            ),
+          ],
+        ),
+      );
+
+      final messages = await repository.getMessages(
+        sessionId: "session",
+        directory: "/repo",
+        acceptedCommands: const [
+          PluginCommandInvocationContext(
+            invocationId: "older-invocation",
+            name: "compact",
+            arguments: "Keep auth",
+            acceptedAt: 1500,
+            backendMessageId: null,
+          ),
+          PluginCommandInvocationContext(
+            invocationId: "newer-invocation",
+            name: "compact",
+            arguments: "Keep tests",
+            acceptedAt: 2500,
+            backendMessageId: null,
+          ),
+        ],
+      );
+
+      expect(messages, hasLength(2));
+      final older = messages.first.info as PluginMessageCommand;
+      final newer = messages.last.info as PluginMessageCommand;
+      expect(older.id, "older-trigger");
+      expect(older.arguments, "Keep auth");
+      expect(older.invocationId, "older-invocation");
+      expect(messages.first.parts.single.text, "older summary");
+      expect(newer.id, "newer-trigger");
+      expect(newer.arguments, "Keep tests");
+      expect(newer.invocationId, "newer-invocation");
+      expect(messages.last.parts.single.text, "newer summary");
+      expect(
+        messages.map((message) => message.info.id),
+        ["older-trigger", "newer-trigger"],
+      );
+    });
+
     test("folds automatic compaction without an accepted invocation", () async {
       final repository = OpenCodeRepository(
         _FakeApi(

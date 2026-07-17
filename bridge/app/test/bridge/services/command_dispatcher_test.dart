@@ -1,5 +1,10 @@
+import "dart:math";
+
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/foundation/uuid_v4_builder.dart";
+import "package:sesori_bridge/src/bridge/repositories/command_invocation_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/accepted_command_invocation.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/command_dispatch_outcome.dart";
@@ -65,6 +70,7 @@ void main() {
         sessionId: "session",
         name: "review",
         arguments: null,
+        backendArguments: null,
         variant: null,
         agent: null,
         model: null,
@@ -89,6 +95,7 @@ void main() {
       sessionId: "session",
       name: "review",
       arguments: null,
+      backendArguments: null,
       variant: const SessionVariant(id: "high"),
       agent: "planner",
       model: const PromptModel(providerID: "provider", modelID: "model"),
@@ -107,6 +114,44 @@ void main() {
       [accepted.invocation],
     );
   });
+
+  test("persistence failure does not turn backend acceptance into rejection", () async {
+    final degradedDispatcher = CommandDispatcher(
+      sessionRepository: sessionRepository,
+      invocationRepository: _FailingCommandInvocationRepository(),
+      uuidBuilder: UuidV4Builder(random: Random(1)),
+      clock: Clock.fixed(DateTime.fromMillisecondsSinceEpoch(1234)),
+    );
+    addTearDown(degradedDispatcher.dispose);
+    final emitted = <CommandDispatchOutcome>[];
+    final subscription = degradedDispatcher.outcomes.listen(emitted.add);
+    addTearDown(subscription.cancel);
+
+    final outcome = await degradedDispatcher.dispatch(
+      sessionId: "session",
+      name: "review",
+      arguments: "visible",
+      backendArguments: "backend context\nvisible",
+      variant: null,
+      agent: null,
+      model: null,
+    );
+
+    expect(outcome, isA<AcceptedCommandDispatchOutcome>());
+    expect(outcome.invocation.arguments, "visible");
+    expect(plugin.arguments, "backend context\nvisible");
+    expect(emitted, [same(outcome)]);
+  });
+}
+
+class _FailingCommandInvocationRepository implements CommandInvocationRepository {
+  @override
+  Future<void> save({required AcceptedCommandInvocation invocation}) async {
+    throw StateError("database unavailable");
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _CommandPlugin implements NativeProjectsPluginApi {

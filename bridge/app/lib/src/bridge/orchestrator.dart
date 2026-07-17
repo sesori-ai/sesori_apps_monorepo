@@ -299,6 +299,7 @@ class Orchestrator {
       permissionRepository: _permissionRepository,
       sessionAbortService: sessionAbortService,
       sessionMutationDispatcher: _sessionMutationDispatcher,
+      commandTimelineService: _commandTimelineService,
       pluginCommandTimelineListener: _pluginCommandTimelineListener,
       commandDispatchOutcomeListener: _commandDispatchOutcomeListener,
       restartService: _restartService,
@@ -342,6 +343,7 @@ class OrchestratorSession {
   final SessionRepository _sessionRepository;
   final PermissionRepository _permissionRepository;
   final SessionMutationDispatcher _sessionMutationDispatcher;
+  final CommandTimelineService _commandTimelineService;
   final PluginCommandTimelineListener _pluginCommandTimelineListener;
   final CommandDispatchOutcomeListener _commandDispatchOutcomeListener;
   final SessionAbortService _sessionAbortService;
@@ -353,6 +355,7 @@ class OrchestratorSession {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final Set<({String requestId, String sessionId})> _autoApprovedPermissions = {};
   final Random _backoffJitter = Random();
+  Future<void> _commandTimelineDeliveryTail = Future<void>.value();
 
   bool _cancelled = false;
 
@@ -399,6 +402,7 @@ class OrchestratorSession {
     required PermissionRepository permissionRepository,
     required SessionAbortService sessionAbortService,
     required SessionMutationDispatcher sessionMutationDispatcher,
+    required CommandTimelineService commandTimelineService,
     required PluginCommandTimelineListener pluginCommandTimelineListener,
     required CommandDispatchOutcomeListener commandDispatchOutcomeListener,
     required BridgeRestartService restartService,
@@ -424,6 +428,7 @@ class OrchestratorSession {
        _sessionRepository = sessionRepository,
        _permissionRepository = permissionRepository,
        _sessionMutationDispatcher = sessionMutationDispatcher,
+       _commandTimelineService = commandTimelineService,
        _pluginCommandTimelineListener = pluginCommandTimelineListener,
        _commandDispatchOutcomeListener = commandDispatchOutcomeListener,
        _sessionAbortService = sessionAbortService,
@@ -479,7 +484,7 @@ class OrchestratorSession {
           })
           .addTo(_subscriptions);
       _commandDispatchOutcomeListener.mutations
-          .asyncMap<void>(_deliverCommandTimelineMutations)
+          .asyncMap<void>(_serializeCommandTimelineDelivery)
           .listen(
             (_) {},
             onError: (Object error, StackTrace stackTrace) {
@@ -810,6 +815,9 @@ class OrchestratorSession {
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
       final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event);
       if (sesoriEvent != null) {
+        if (sesoriEvent is SesoriSessionDeleted) {
+          _commandTimelineService.forgetSession(sessionId: sesoriEvent.info.id);
+        }
         await _deliverSseEvent(event: sesoriEvent);
       } else if (!refreshProjectsSummary) {
         Log.v("[sse] mapping returned null — event dropped");
@@ -843,8 +851,22 @@ class OrchestratorSession {
       case PluginCommandTimelinePassthrough(:final event):
         await _processPluginEvent(event);
       case PluginCommandTimelineCanonical(:final mutations):
-        await _deliverCommandTimelineMutations(mutations);
+        await _serializeCommandTimelineDelivery(mutations);
     }
+  }
+
+  Future<void> _serializeCommandTimelineDelivery(List<CommandTimelineMutation> mutations) {
+    final previous = _commandTimelineDeliveryTail;
+    final release = Completer<void>();
+    _commandTimelineDeliveryTail = release.future;
+    return () async {
+      await previous;
+      try {
+        await _deliverCommandTimelineMutations(mutations);
+      } finally {
+        release.complete();
+      }
+    }();
   }
 
   Future<void> _deliverCommandTimelineMutations(List<CommandTimelineMutation> mutations) async {

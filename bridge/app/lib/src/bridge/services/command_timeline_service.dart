@@ -13,6 +13,8 @@ import "../repositories/session_repository.dart";
 import "command_dispatch_outcome.dart";
 import "command_timeline_mutation.dart";
 
+typedef _LiveCommandKey = ({String sessionId, String messageId});
+
 class CommandTimelineLiveResult {
   final bool handled;
   final List<CommandTimelineMutation> mutations;
@@ -28,6 +30,7 @@ class CommandTimelineService {
   final CommandInvocationRepository _invocationRepository;
   final CommandInvocationTracker _tracker;
   final Map<String, MessageWithParts> _liveCards = <String, MessageWithParts>{};
+  final Map<_LiveCommandKey, LinkedHashMap<String, MessagePart>> _liveTextResultParts = {};
   Future<void> _liveTail = Future<void>.value();
   Future<void>? _initialization;
 
@@ -41,6 +44,12 @@ class CommandTimelineService {
 
   Future<void> initialize() {
     return _initialization ??= _loadPersistedInvocations();
+  }
+
+  void forgetSession({required String sessionId}) {
+    _tracker.forgetSession(pluginId: _sessionRepository.pluginId, sessionId: sessionId);
+    _liveCards.removeWhere((_, card) => card.info.sessionID == sessionId);
+    _liveTextResultParts.removeWhere((key, _) => key.sessionId == sessionId);
   }
 
   Future<void> _loadPersistedInvocations() async {
@@ -86,6 +95,7 @@ class CommandTimelineService {
             snapshot: tracked.snapshot!,
             backendMessageId: candidate.backendMessageId,
           );
+          _recordTextResultParts(snapshot: snapshot, parts: candidate.resultParts);
           final next = _candidateCard(candidate: candidate, snapshot: snapshot);
           entries[snapshot.canonicalMessageId] = _TimelineEntry(
             message: _mergeCards(previous: entries[snapshot.canonicalMessageId]?.message, next: next),
@@ -116,33 +126,54 @@ class CommandTimelineService {
           next: _acceptedCard(invocation: invocation, snapshot: accepted.snapshot),
         );
         final trailingMutations = <CommandTimelineMutation>[];
+        var commandRemoved = false;
         for (final candidate in accepted.heldCandidates) {
           final tracked = _tracker.track(candidate: candidate);
           if (tracked.disposition != CommandInvocationTrackingDisposition.ready) continue;
-          final snapshot = await _snapshotWithPersistedCorrelation(candidate: candidate, tracked: tracked);
+          final snapshot = candidate is CommandMessageRemovedTimelineCandidate
+              ? tracked.snapshot!
+              : await _snapshotWithPersistedCorrelation(candidate: candidate, tracked: tracked);
           switch (candidate) {
             case final CommandMessageTimelineCandidate message:
+              _recordTextResultParts(snapshot: snapshot, parts: message.resultParts);
               card = _mergeCards(
                 previous: card,
                 next: _candidateCard(candidate: message, snapshot: snapshot),
               );
+            case CommandMessageRemovedTimelineCandidate():
+              commandRemoved = true;
+              trailingMutations.add(_messageRemovedMutation(snapshot));
             case final CommandResultPartTimelineCandidate part:
               if (part.part != null) {
+                final mapped = _mapLiveResultPart(candidate: part, snapshot: snapshot);
                 card = _mergePart(
                   card: card,
-                  part: _mapResultPart(candidate: part, snapshot: snapshot),
+                  part: mapped,
                 );
               }
             case final CommandResultPartDeltaTimelineCandidate delta:
-              trailingMutations.add(_deltaMutation(candidate: delta, snapshot: snapshot));
+              final mutation = _liveDeltaMutation(candidate: delta, snapshot: snapshot);
+              trailingMutations.add(mutation);
+              if (mutation case CommandTimelinePartUpdated(:final part)) {
+                card = _mergePart(card: card, part: part);
+              }
             case final CommandResultPartRemovedTimelineCandidate removed:
-              card = _removePart(
-                card: card,
-                partId: _resultPartId(candidate: removed, snapshot: snapshot),
-              );
+              final mutation = _liveRemovalMutation(candidate: removed, snapshot: snapshot);
+              switch (mutation) {
+                case CommandTimelinePartUpdated(:final part):
+                  card = _mergePart(card: card, part: part);
+                case CommandTimelinePartRemoved(:final partId):
+                  card = _removePart(card: card, partId: partId);
+                case CommandTimelineEnvelopeUpdated() || CommandTimelineMessageRemoved() || CommandTimelinePartDelta():
+                  throw StateError("Unexpected command removal mutation");
+              }
           }
         }
-        _liveCards[accepted.snapshot.canonicalMessageId] = card;
+        if (commandRemoved) {
+          _forgetLiveCommand(accepted.snapshot);
+        } else {
+          _liveCards[accepted.snapshot.canonicalMessageId] = card;
+        }
         return CommandTimelineLiveResult(
           handled: true,
           mutations: [..._cardMutations(card), ...trailingMutations],
@@ -165,20 +196,29 @@ class CommandTimelineService {
       case CommandInvocationTrackingDisposition.held || CommandInvocationTrackingDisposition.ignored:
         return CommandTimelineLiveResult(handled: true, mutations: const []);
       case CommandInvocationTrackingDisposition.ready:
-        final snapshot = await _snapshotWithPersistedCorrelation(candidate: candidate, tracked: tracked);
+        final snapshot = candidate is CommandMessageRemovedTimelineCandidate
+            ? tracked.snapshot!
+            : await _snapshotWithPersistedCorrelation(candidate: candidate, tracked: tracked);
         switch (candidate) {
           case final CommandMessageTimelineCandidate message:
+            _recordTextResultParts(snapshot: snapshot, parts: message.resultParts);
             final card = _mergeCards(
               previous: _liveCards[snapshot.canonicalMessageId],
               next: _candidateCard(candidate: message, snapshot: snapshot),
             );
             _liveCards[snapshot.canonicalMessageId] = card;
             return CommandTimelineLiveResult(handled: true, mutations: _cardMutations(card));
+          case CommandMessageRemovedTimelineCandidate():
+            _forgetLiveCommand(snapshot);
+            return CommandTimelineLiveResult(
+              handled: true,
+              mutations: [_messageRemovedMutation(snapshot)],
+            );
           case final CommandResultPartTimelineCandidate part:
             if (part.part == null) {
               return CommandTimelineLiveResult(handled: true, mutations: const []);
             }
-            final mapped = _mapResultPart(candidate: part, snapshot: snapshot);
+            final mapped = _mapLiveResultPart(candidate: part, snapshot: snapshot);
             final existing = _liveCards[snapshot.canonicalMessageId];
             if (existing != null) _liveCards[snapshot.canonicalMessageId] = _mergePart(card: existing, part: mapped);
             return CommandTimelineLiveResult(
@@ -186,23 +226,32 @@ class CommandTimelineService {
               mutations: [CommandTimelinePartUpdated(part: mapped)],
             );
           case final CommandResultPartDeltaTimelineCandidate delta:
+            final mutation = _liveDeltaMutation(candidate: delta, snapshot: snapshot);
+            if (mutation case CommandTimelinePartUpdated(:final part)) {
+              final existing = _liveCards[snapshot.canonicalMessageId];
+              if (existing != null) _liveCards[snapshot.canonicalMessageId] = _mergePart(card: existing, part: part);
+            }
             return CommandTimelineLiveResult(
               handled: true,
-              mutations: [_deltaMutation(candidate: delta, snapshot: snapshot)],
+              mutations: [mutation],
             );
           case final CommandResultPartRemovedTimelineCandidate removed:
-            final partId = _resultPartId(candidate: removed, snapshot: snapshot);
+            final mutation = _liveRemovalMutation(candidate: removed, snapshot: snapshot);
             final existing = _liveCards[snapshot.canonicalMessageId];
-            if (existing != null) _liveCards[snapshot.canonicalMessageId] = _removePart(card: existing, partId: partId);
+            if (existing != null) {
+              _liveCards[snapshot.canonicalMessageId] = switch (mutation) {
+                CommandTimelinePartUpdated(:final part) => _mergePart(card: existing, part: part),
+                CommandTimelinePartRemoved(:final partId) => _removePart(card: existing, partId: partId),
+                CommandTimelineEnvelopeUpdated() ||
+                CommandTimelineMessageRemoved() ||
+                CommandTimelinePartDelta() => throw StateError(
+                  "Unexpected command removal mutation",
+                ),
+              };
+            }
             return CommandTimelineLiveResult(
               handled: true,
-              mutations: [
-                CommandTimelinePartRemoved(
-                  sessionId: snapshot.sessionId,
-                  messageId: snapshot.canonicalMessageId,
-                  partId: partId,
-                ),
-              ],
+              mutations: [mutation],
             );
         }
     }
@@ -264,8 +313,24 @@ class CommandTimelineService {
               created: accepted.acceptedAt,
               completed: candidate.time?.completed,
             ),
-      resultParts: candidate.resultParts,
+      resultParts: [
+        ...?_liveTextResultParts[_liveKey(snapshot)]?.values,
+        for (final part in candidate.resultParts)
+          if (part.type != MessagePartType.text) part,
+      ],
     );
+  }
+
+  MessagePart _mapLiveResultPart({
+    required CommandResultPartTimelineCandidate candidate,
+    required CommandInvocationSnapshot snapshot,
+  }) {
+    final part = candidate.part!;
+    if (part.type != MessagePartType.text) {
+      return _mapResultPart(candidate: candidate, snapshot: snapshot);
+    }
+    _recordTextResultParts(snapshot: snapshot, parts: [part]);
+    return _displayPart(snapshot);
   }
 
   MessagePart _mapResultPart({
@@ -295,6 +360,95 @@ class CommandTimelineService {
       delta: candidate.delta,
     );
   }
+
+  CommandTimelineMutation _liveDeltaMutation({
+    required CommandResultPartDeltaTimelineCandidate candidate,
+    required CommandInvocationSnapshot snapshot,
+  }) {
+    final isText =
+        candidate.field == "text" || snapshot.backendPartTypes[candidate.backendPartId] == MessagePartType.text;
+    if (!isText) return _deltaMutation(candidate: candidate, snapshot: snapshot);
+
+    final parts = _textResultParts(snapshot);
+    final existing = parts[candidate.backendPartId];
+    parts[candidate.backendPartId] = (existing ?? _emptyBackendTextPart(candidate: candidate)).copyWith(
+      text: "${existing?.text ?? ""}${candidate.delta}",
+    );
+    return CommandTimelinePartUpdated(part: _displayPart(snapshot));
+  }
+
+  CommandTimelineMutation _liveRemovalMutation({
+    required CommandResultPartRemovedTimelineCandidate candidate,
+    required CommandInvocationSnapshot snapshot,
+  }) {
+    final wasText = snapshot.backendPartTypes[candidate.backendPartId] == MessagePartType.text;
+    if (!wasText) {
+      return CommandTimelinePartRemoved(
+        sessionId: snapshot.sessionId,
+        messageId: snapshot.canonicalMessageId,
+        partId: _resultPartId(candidate: candidate, snapshot: snapshot),
+      );
+    }
+    _textResultParts(snapshot).remove(candidate.backendPartId);
+    return CommandTimelinePartUpdated(part: _displayPart(snapshot));
+  }
+
+  CommandTimelineMessageRemoved _messageRemovedMutation(CommandInvocationSnapshot snapshot) {
+    return CommandTimelineMessageRemoved(
+      sessionId: snapshot.sessionId,
+      messageId: snapshot.canonicalMessageId,
+    );
+  }
+
+  void _forgetLiveCommand(CommandInvocationSnapshot snapshot) {
+    _liveCards.remove(snapshot.canonicalMessageId);
+    _liveTextResultParts.remove(_liveKey(snapshot));
+  }
+
+  void _recordTextResultParts({
+    required CommandInvocationSnapshot snapshot,
+    required Iterable<MessagePart> parts,
+  }) {
+    final textParts = _textResultParts(snapshot);
+    for (final part in parts) {
+      if (part.type == MessagePartType.text) textParts[part.id] = part;
+    }
+  }
+
+  LinkedHashMap<String, MessagePart> _textResultParts(CommandInvocationSnapshot snapshot) {
+    return _liveTextResultParts.putIfAbsent(_liveKey(snapshot), LinkedHashMap<String, MessagePart>.new);
+  }
+
+  MessagePart _displayPart(CommandInvocationSnapshot snapshot) {
+    return _commandMapper.mapDisplayPart(
+      messageId: snapshot.canonicalMessageId,
+      sessionId: snapshot.sessionId,
+      resultParts: _textResultParts(snapshot).values,
+    );
+  }
+
+  MessagePart _emptyBackendTextPart({required CommandResultPartDeltaTimelineCandidate candidate}) {
+    return MessagePart(
+      id: candidate.backendPartId,
+      sessionID: candidate.sessionId,
+      messageID: candidate.backendMessageId,
+      type: MessagePartType.text,
+      text: "",
+      tool: null,
+      state: null,
+      prompt: null,
+      description: null,
+      agent: null,
+      agentName: null,
+      attempt: null,
+      retryError: null,
+    );
+  }
+
+  _LiveCommandKey _liveKey(CommandInvocationSnapshot snapshot) => (
+    sessionId: snapshot.sessionId,
+    messageId: snapshot.canonicalMessageId,
+  );
 
   String _resultPartId({
     required CommandResultPartRemovedTimelineCandidate candidate,

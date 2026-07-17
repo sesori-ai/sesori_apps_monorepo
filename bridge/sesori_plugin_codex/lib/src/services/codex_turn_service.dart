@@ -46,6 +46,7 @@ class CodexTurnService {
     required PluginSessionVariant? variant,
     required CodexModelSelection? model,
   }) async {
+    _validatePromptParts(parts);
     final thread = await _repository.startThread(
       directory: directory,
       model: model,
@@ -86,7 +87,7 @@ class CodexTurnService {
     required PluginSessionVariant? variant,
     required CodexModelSelection? model,
   }) async {
-    final input = parts.map(_toUserInput).whereType<CodexTurnInput>().toList(growable: false);
+    final input = parts.map(_toUserInput).toList(growable: false);
     if (input.isEmpty) return;
     _applyModelContext(threadId: sessionId, model: model);
     final turn = await _startTurn(
@@ -126,9 +127,10 @@ class CodexTurnService {
       _activeTurnByThread[sessionId] = turn.id;
       _statuses[sessionId] = const PluginSessionStatus.busy();
       return CodexCommandAcceptance(
-        dispatch: const PluginCommandDispatch(backendMessageId: null),
-        invocation: _commandTracker.bindTurn(
+        dispatch: PluginCommandDispatch(backendMessageId: turn.id),
+        invocation: _commandTracker.bindReturnedTurn(
           threadId: sessionId,
+          invocationId: invocationId,
           turnId: turn.id,
         ),
       );
@@ -194,11 +196,17 @@ class CodexTurnService {
         _statuses.remove(threadId);
         _residencyTracker.recordUnloaded(threadId: threadId);
         _commandTracker.forgetThread(threadId: threadId);
+      case CodexThreadStatusChangedEventRecord(:final status):
+        if (threadId == null) return;
+        _statuses[threadId] = switch (status) {
+          CodexThreadStatus.idle => const PluginSessionStatus.idle(),
+          CodexThreadStatus.busy => const PluginSessionStatus.busy(),
+        };
       case CodexThreadNameUpdatedEventRecord():
-      case CodexThreadStatusChangedEventRecord():
       case CodexItemEventRecord():
       case CodexAgentMessageDeltaEventRecord():
       case CodexReasoningDeltaEventRecord():
+      case CodexCommandExecutionOutputDeltaEventRecord():
       case CodexItemRemovedEventRecord():
       case CodexItemPartRemovedEventRecord():
       case CodexTurnDiffUpdatedEventRecord():
@@ -268,17 +276,29 @@ class CodexTurnService {
     required CodexModelSelection? model,
   }) {
     if (model == null) return;
-    _contextTracker.setModel(threadId: threadId, model: model.modelId);
+    _contextTracker.setModel(threadId: threadId, model: model);
   }
 
-  static CodexTurnInput? _toUserInput(PluginPromptPart part) {
+  static CodexTurnInput _toUserInput(PluginPromptPart part) {
     return switch (part) {
       PluginPromptPartText(:final text) => CodexTurnTextInput(text: text),
       PluginPromptPartFilePath(:final path) => CodexTurnLocalImageInput(path: path),
       PluginPromptPartFileUrl(:final url) => CodexTurnImageUrlInput(url: url),
-      PluginPromptPartFileData() => null,
+      PluginPromptPartFileData() => _unsupportedInlineFileData(),
     };
   }
+
+  static void _validatePromptParts(List<PluginPromptPart> parts) {
+    for (final part in parts) {
+      if (part is PluginPromptPartFileData) _unsupportedInlineFileData();
+    }
+  }
+
+  static Never _unsupportedInlineFileData() => throw const PluginOperationException(
+    "send Codex prompt",
+    statusCode: 400,
+    message: "inline file data is not supported",
+  );
 }
 
 class CodexCommandAcceptance {

@@ -136,6 +136,50 @@ void main() {
       expect(result.candidates.single.sessionId, "launch");
     });
 
+    test("continues pagination beyond fifty pages until the cursor is absent", () async {
+      for (var page = 0; page < 51; page++) {
+        final cursor = page == 0 ? null : "page-$page";
+        api.pages[("/launch", cursor)] = AcpSessionListResult(
+          sessions: [_session("session-$page", cwd: "/launch", updatedAtMs: page)],
+          nextCursor: page == 50 ? null : "page-${page + 1}",
+        );
+      }
+
+      final result = await repository.listCandidates(
+        scope: "/launch",
+        timeout: const Duration(seconds: 1),
+      );
+
+      expect(result.exhaustive, isTrue);
+      expect(result.candidates, hasLength(51));
+      expect(
+        api.listedRequests.where((request) => request.directory == "/launch"),
+        hasLength(51),
+      );
+    });
+
+    test("stops pagination when the API repeats a cursor", () async {
+      api.pages[("/launch", null)] = const AcpSessionListResult(
+        sessions: [],
+        nextCursor: "same",
+      );
+      api.pages[("/launch", "same")] = const AcpSessionListResult(
+        sessions: [],
+        nextCursor: "same",
+      );
+
+      final result = await repository.listCandidates(
+        scope: "/launch",
+        timeout: const Duration(seconds: 1),
+      );
+
+      expect(result.exhaustive, isFalse);
+      expect(
+        api.listedRequests.where((request) => request.directory == "/launch"),
+        hasLength(2),
+      );
+    });
+
     test("maps grouped options and thought levels from typed ACP results", () {
       final snapshot = repository.mapSessionResult(
         result: _catalogResult(
@@ -217,7 +261,9 @@ AcpNewSessionResult _catalogResult({
 class _FakeCursorCatalogApi implements CursorCatalogApi {
   final Map<String?, List<AcpSessionInfo>> sessionsByScope = {};
   final Map<String?, Object> errorsByScope = {};
+  final Map<(String?, String?), AcpSessionListResult> pages = {};
   final List<String?> listedScopes = [];
+  final List<({String? directory, String? cursor})> listedRequests = [];
 
   @override
   Future<AcpInitializeResult> open({required Duration timeout}) async {
@@ -238,8 +284,11 @@ class _FakeCursorCatalogApi implements CursorCatalogApi {
     required Duration timeout,
   }) async {
     listedScopes.add(directory);
+    listedRequests.add((directory: directory, cursor: cursor));
     final error = errorsByScope[directory];
     if (error != null) throw error;
+    final page = pages[(directory, cursor)];
+    if (page != null) return page;
     return AcpSessionListResult(
       sessions: sessionsByScope[directory] ?? const [],
       nextCursor: null,

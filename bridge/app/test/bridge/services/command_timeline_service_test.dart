@@ -78,6 +78,21 @@ void main() {
             attempt: null,
             retryError: null,
           ),
+          PluginMessagePart(
+            id: "result-2",
+            sessionID: "backend-session",
+            messageID: "backend-command",
+            type: PluginMessagePartType.text,
+            text: " and persisted",
+            tool: null,
+            state: null,
+            prompt: null,
+            description: null,
+            agent: null,
+            agentName: null,
+            attempt: null,
+            retryError: null,
+          ),
         ],
       ),
     ];
@@ -90,7 +105,7 @@ void main() {
       "command-invocation:invocation:fallback",
       "command-invocation:invocation:display",
     ]);
-    expect(card.parts.map((part) => part.text), ["/review carefully", "Review complete"]);
+    expect(card.parts.map((part) => part.text), ["/review carefully", "Review complete and persisted"]);
     expect(
       (await stack.repository.getForSession(pluginId: "plugin", sessionId: "session")).single.backendMessageId,
       "backend-command",
@@ -146,6 +161,46 @@ void main() {
     expect(envelopeMutations, hasLength(1));
     expect(envelopeMutations.single.info.id, "command-invocation:invocation");
     expect(accepted.mutations.clear, throwsUnsupportedError);
+  });
+
+  test("acceptance promotes a backend-key card without changing its canonical id", () async {
+    final before = await timeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(invocationId: null),
+    );
+    expect(
+      before.mutations.whereType<CommandTimelineEnvelopeUpdated>().single.info.id,
+      "command-backend:backend-command",
+    );
+
+    final accepted = await timeline.canonicalizeDispatchOutcome(
+      outcome: AcceptedCommandDispatchOutcome(
+        invocation: const AcceptedCommandInvocation(
+          invocationId: "invocation",
+          sessionId: "session",
+          pluginId: "plugin",
+          name: "review",
+          arguments: null,
+          acceptedAt: 20,
+          backendMessageId: "backend-command",
+        ),
+      ),
+    );
+    final result = await timeline.canonicalizePluginCandidate(
+      candidate: _resultPartCandidate(partId: "result", text: "complete"),
+    );
+
+    expect(
+      accepted.mutations.whereType<CommandTimelineEnvelopeUpdated>().single.info.id,
+      "command-backend:backend-command",
+    );
+    expect(
+      accepted.mutations.whereType<CommandTimelinePartUpdated>().map((mutation) => mutation.part.messageID),
+      everyElement("command-backend:backend-command"),
+    );
+    expect(
+      result.mutations.whereType<CommandTimelinePartUpdated>().single.part.messageID,
+      "command-backend:backend-command",
+    );
   });
 
   test("plugin candidate before rejection and all late candidates emit no card", () async {
@@ -259,6 +314,105 @@ void main() {
     expect(firstDisplay.text, "complete");
     expect(repeatedDisplay.text, "complete");
   });
+
+  test("live text parts aggregate across updates, deltas, and removals", () async {
+    await timeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(invocationId: null),
+    );
+
+    final first = await timeline.canonicalizePluginCandidate(
+      candidate: _resultPartCandidate(partId: "first", text: "one"),
+    );
+    final second = await timeline.canonicalizePluginCandidate(
+      candidate: _resultPartCandidate(partId: "second", text: "two"),
+    );
+    final delta = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandResultPartDeltaTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+        backendPartId: "first",
+        field: "text",
+        delta: "+",
+      ),
+    );
+    final removed = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandResultPartRemovedTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+        backendPartId: "first",
+      ),
+    );
+
+    expect(_updatedDisplayText(first), "one");
+    expect(_updatedDisplayText(second), "onetwo");
+    expect(_updatedDisplayText(delta), "one+two");
+    expect(_updatedDisplayText(removed), "two");
+  });
+
+  test("command message removal targets the canonical card and clears correlation", () async {
+    await timeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(invocationId: null),
+    );
+
+    final removed = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandMessageRemovedTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "backend-command",
+      ),
+    );
+    final latePart = await timeline.canonicalizePluginCandidate(
+      candidate: _resultPartCandidate(partId: "late", text: "late"),
+    );
+
+    expect(removed.handled, isTrue);
+    expect(
+      removed.mutations,
+      [
+        isA<CommandTimelineMessageRemoved>()
+            .having((mutation) => mutation.sessionId, "session id", "session")
+            .having((mutation) => mutation.messageId, "message id", "command-backend:backend-command"),
+      ],
+    );
+    expect(latePart.handled, isFalse);
+  });
+
+  test("unmatched command message removal is not consumed", () async {
+    final removed = await timeline.canonicalizePluginCandidate(
+      candidate: const CommandMessageRemovedTimelineCandidate(
+        pluginId: "plugin",
+        sessionId: "session",
+        backendMessageId: "unknown-command",
+      ),
+    );
+
+    expect(removed.handled, isFalse);
+    expect(removed.mutations, isEmpty);
+  });
+
+  test("forgetting a session removes command correlation state", () async {
+    await timeline.canonicalizePluginCandidate(
+      candidate: _commandCandidate(invocationId: null),
+    );
+
+    timeline.forgetSession(sessionId: "session");
+    final result = await timeline.canonicalizePluginCandidate(
+      candidate: _resultPartCandidate(partId: "result", text: "late"),
+    );
+
+    expect(result.handled, isFalse);
+    expect(result.mutations, isEmpty);
+  });
+}
+
+String? _updatedDisplayText(CommandTimelineLiveResult result) {
+  return result.mutations
+      .whereType<CommandTimelinePartUpdated>()
+      .map((mutation) => mutation.part)
+      .singleWhere((part) => part.id.endsWith(":display"))
+      .text;
 }
 
 CommandMessageTimelineCandidate _commandCandidate({
@@ -288,13 +442,24 @@ CommandResultPartTimelineCandidate _resultCandidate({required String sessionId, 
   );
 }
 
+CommandResultPartTimelineCandidate _resultPartCandidate({required String partId, required String text}) {
+  return CommandResultPartTimelineCandidate(
+    pluginId: "plugin",
+    sessionId: "session",
+    backendMessageId: "backend-command",
+    backendPartId: partId,
+    part: _textPart(messageId: "backend-command", partId: partId, text: text),
+  );
+}
+
 MessagePart _textPart({
   required String messageId,
   required String text,
+  String partId = "result",
   String sessionId = "session",
 }) {
   return MessagePart(
-    id: "result",
+    id: partId,
     sessionID: sessionId,
     messageID: messageId,
     type: MessagePartType.text,

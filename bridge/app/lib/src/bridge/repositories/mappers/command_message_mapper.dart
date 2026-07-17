@@ -15,15 +15,20 @@ class CommandMessageMapper {
   }) {
     final fallbackPartId = "$messageId:fallback";
     final displayPartId = "$messageId:display";
-    final mappedResults = [
+    final mappedNonTextResults = [
       for (final part in resultParts)
-        mapResultPart(
-          part: part,
-          messageId: messageId,
-          sessionId: sessionId,
-        ),
+        if (part.type != MessagePartType.text)
+          mapResultPart(
+            part: part,
+            messageId: messageId,
+            sessionId: sessionId,
+          ),
     ];
-    final displayResult = mappedResults.where((part) => part.id == displayPartId).lastOrNull;
+    final displayResult = mapDisplayPart(
+      messageId: messageId,
+      sessionId: sessionId,
+      resultParts: resultParts,
+    );
     return MessageWithParts(
       info: Message.user(
         id: messageId,
@@ -44,16 +49,23 @@ class CommandMessageMapper {
           messageId: messageId,
           text: _fallbackLine(name: name, arguments: arguments),
         ),
-        displayResult ??
-            _textPart(
-              id: displayPartId,
-              sessionId: sessionId,
-              messageId: messageId,
-              text: "",
-            ),
-        for (final part in mappedResults)
-          if (part.id != displayPartId) part,
+        displayResult,
+        ...mappedNonTextResults,
       ],
+    );
+  }
+
+  MessagePart mapDisplayPart({
+    required String messageId,
+    required String sessionId,
+    required Iterable<MessagePart> resultParts,
+  }) {
+    final textParts = resultParts.where((part) => part.type == MessagePartType.text);
+    return _textPart(
+      id: "$messageId:display",
+      sessionId: sessionId,
+      messageId: messageId,
+      text: textParts.map((part) => part.text ?? "").join(),
     );
   }
 
@@ -105,6 +117,6 @@ class CommandMessageMapper {
   }
 
   String _fallbackLine({required String name, required String? arguments}) {
-    return arguments == null ? "/$name" : "/$name $arguments";
+    return arguments == null || arguments.isEmpty ? "/$name" : "/$name $arguments";
   }
 }

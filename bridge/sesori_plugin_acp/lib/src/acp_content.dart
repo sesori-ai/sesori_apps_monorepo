@@ -35,12 +35,9 @@ PluginToolStatus acpToolStatus(Object? raw) {
 /// command's stdout/stderr there, not in `content`). Truncated to
 /// [maxToolOutputLength] so the mobile tool renderer is not flooded.
 String? acpToolOutputText(Map<String, dynamic> update) {
-  final text =
-      acpContentText(update["content"]) ?? acpRawOutputText(update["rawOutput"]);
+  final text = acpContentText(update["content"]) ?? acpRawOutputText(update["rawOutput"]);
   if (text == null || text.isEmpty) return null;
-  return text.length > maxToolOutputLength
-      ? "${text.substring(0, maxToolOutputLength)}…"
-      : text;
+  return text.length > maxToolOutputLength ? "${text.substring(0, maxToolOutputLength)}…" : text;
 }
 
 /// Flattens a `rawOutput` block into displayable text. Exec-style tools report
@@ -49,9 +46,10 @@ String? acpToolOutputText(Map<String, dynamic> update) {
 String? acpRawOutputText(Object? raw) {
   if (raw is String) return raw.isEmpty ? null : raw;
   if (raw is! Map) return null;
-  final map = raw.cast<String, dynamic>();
-  final out = (map["stdout"] as String?)?.trimRight() ?? "";
-  final err = (map["stderr"] as String?)?.trimRight() ?? "";
+  final rawOut = raw["stdout"];
+  final rawErr = raw["stderr"];
+  final out = rawOut is String ? rawOut.trimRight() : "";
+  final err = rawErr is String ? rawErr.trimRight() : "";
   if (out.isNotEmpty || err.isNotEmpty) {
     final buffer = StringBuffer(out);
     if (err.isNotEmpty) {
@@ -60,12 +58,12 @@ String? acpRawOutputText(Object? raw) {
     }
     return buffer.toString();
   }
-  final content = acpContentText(map["content"])?.trimRight();
+  final content = acpContentText(raw["content"])?.trimRight();
   if (content != null && content.isNotEmpty) return content;
   // A command that exited non-zero with no stdout/stderr/content would otherwise
   // render as a failed tool card with no diagnostic text — surface the exit code
   // so the failure is at least legible.
-  final exitCode = map["exitCode"];
+  final exitCode = raw["exitCode"];
   if (exitCode is int && exitCode != 0) return "exited with code $exitCode";
   return null;
 }

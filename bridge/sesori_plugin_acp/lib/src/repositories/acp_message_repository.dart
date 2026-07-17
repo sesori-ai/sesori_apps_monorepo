@@ -17,6 +17,7 @@ class AcpMessageRepository {
     required Set<String> knownCommandNames,
   }) {
     final unusedContexts = [...acceptedCommands]..sort((a, b) => a.acceptedAt.compareTo(b.acceptedAt));
+    final normalizedKnownCommandNames = knownCommandNames.map(_normalizeCommandName).toSet();
     final output = <PluginMessageWithParts>[];
     _HistoryCommand? activeCommand;
 
@@ -26,7 +27,7 @@ class AcpMessageRepository {
         final correlation = _correlateCommand(
           text: record.text,
           contexts: unusedContexts,
-          knownCommandNames: knownCommandNames,
+          knownCommandNames: normalizedKnownCommandNames,
         );
         if (correlation != null) {
           final context = correlation.context;

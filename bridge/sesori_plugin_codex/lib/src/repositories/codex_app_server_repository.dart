@@ -160,10 +160,16 @@ class CodexAppServerRepository {
         );
       case api.CodexNotificationMethod.threadStatusChanged:
         final status = params.status;
-        final type = status?.type ?? status?.status?.type;
+        final type = status?.type ?? status?.status?.type ?? api.CodexThreadStatusTypeDto.unknown;
         return CodexThreadStatusChangedEventRecord(
           threadId: threadId,
-          status: type == "idle" ? CodexThreadStatus.idle : CodexThreadStatus.busy,
+          status: switch (type) {
+            api.CodexThreadStatusTypeDto.active => CodexThreadStatus.busy,
+            api.CodexThreadStatusTypeDto.idle ||
+            api.CodexThreadStatusTypeDto.notLoaded ||
+            api.CodexThreadStatusTypeDto.systemError ||
+            api.CodexThreadStatusTypeDto.unknown => CodexThreadStatus.idle,
+          },
           context: context,
         );
       case api.CodexNotificationMethod.threadClosed:
@@ -204,6 +210,14 @@ class CodexAppServerRepository {
         );
       case api.CodexNotificationMethod.reasoningDelta:
         return CodexReasoningDeltaEventRecord(
+          threadId: threadId,
+          turnId: turnId,
+          itemId: params.itemId,
+          delta: params.delta,
+          context: context,
+        );
+      case api.CodexNotificationMethod.commandExecutionOutputDelta:
+        return CodexCommandExecutionOutputDeltaEventRecord(
           threadId: threadId,
           turnId: turnId,
           itemId: params.itemId,

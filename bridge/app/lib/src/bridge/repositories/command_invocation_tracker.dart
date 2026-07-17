@@ -8,7 +8,7 @@ typedef _BackendCommandKey = ({String pluginId, String sessionId, String backend
 class _CommandInvocationState {
   final String pluginId;
   final String sessionId;
-  final String? invocationId;
+  String? invocationId;
   final String canonicalMessageId;
   final Set<String> backendMessageIds = <String>{};
   final Map<String, MessagePartType> backendPartTypes = <String, MessagePartType>{};
@@ -34,6 +34,15 @@ class CommandInvocationTracker {
   final Map<_BackendCommandKey, _CommandInvocationState> _byBackendMessageId =
       <_BackendCommandKey, _CommandInvocationState>{};
 
+  void forgetSession({required String pluginId, required String sessionId}) {
+    _byInvocationId.removeWhere(
+      (_, state) => state.pluginId == pluginId && state.sessionId == sessionId,
+    );
+    _byBackendMessageId.removeWhere(
+      (key, _) => key.pluginId == pluginId && key.sessionId == sessionId,
+    );
+  }
+
   void seed({required Iterable<AcceptedCommandInvocation> invocations}) {
     for (final invocation in invocations) {
       accept(invocation: invocation);
@@ -45,8 +54,17 @@ class CommandInvocationTracker {
     if (existing != null && (existing.pluginId != invocation.pluginId || existing.sessionId != invocation.sessionId)) {
       throw StateError("Command invocation ${invocation.invocationId} was registered for a different session");
     }
+    final backendMessageId = invocation.backendMessageId;
+    final backendState = backendMessageId == null
+        ? null
+        : _byBackendMessageId[(
+            pluginId: invocation.pluginId,
+            sessionId: invocation.sessionId,
+            backendMessageId: backendMessageId,
+          )];
     final state =
         existing ??
+        (backendState?.invocationId == null ? backendState : null) ??
         _CommandInvocationState(
           pluginId: invocation.pluginId,
           sessionId: invocation.sessionId,
@@ -55,10 +73,10 @@ class CommandInvocationTracker {
           acceptedInvocation: null,
           rejected: false,
         );
+    state.invocationId ??= invocation.invocationId;
     state.acceptedInvocation = invocation;
     state.rejected = false;
     _byInvocationId[invocation.invocationId] = state;
-    final backendMessageId = invocation.backendMessageId;
     if (backendMessageId != null) {
       _attachBackendMessageId(state: state, backendMessageId: backendMessageId);
     }
@@ -88,6 +106,7 @@ class CommandInvocationTracker {
   CommandCandidateTrackingResult track({required CommandTimelineCandidate candidate}) {
     return switch (candidate) {
       final CommandMessageTimelineCandidate message => _trackMessage(message),
+      final CommandMessageRemovedTimelineCandidate removed => _trackMessageRemoval(removed),
       final CommandResultPartTimelineCandidate part => _trackBackendCandidate(
         candidate: part,
         backendPartId: part.backendPartId,
@@ -188,6 +207,37 @@ class CommandInvocationTracker {
     );
   }
 
+  CommandCandidateTrackingResult _trackMessageRemoval(CommandMessageRemovedTimelineCandidate candidate) {
+    final state = _byBackendMessageId[_key(candidate)];
+    if (state == null) {
+      return const CommandCandidateTrackingResult(
+        disposition: CommandInvocationTrackingDisposition.unmatched,
+        snapshot: null,
+      );
+    }
+    if (state.rejected) {
+      final snapshot = _snapshot(state);
+      _removeState(state);
+      return CommandCandidateTrackingResult(
+        disposition: CommandInvocationTrackingDisposition.ignored,
+        snapshot: snapshot,
+      );
+    }
+    if (state.invocationId != null && state.acceptedInvocation == null) {
+      state.heldCandidates.add(candidate);
+      return CommandCandidateTrackingResult(
+        disposition: CommandInvocationTrackingDisposition.held,
+        snapshot: _snapshot(state),
+      );
+    }
+    final snapshot = _snapshot(state);
+    _removeState(state);
+    return CommandCandidateTrackingResult(
+      disposition: CommandInvocationTrackingDisposition.ready,
+      snapshot: snapshot,
+    );
+  }
+
   void _attachBackendMessageId({required _CommandInvocationState state, required String backendMessageId}) {
     state.backendMessageIds.add(backendMessageId);
     _byBackendMessageId[(
@@ -196,6 +246,11 @@ class CommandInvocationTracker {
           backendMessageId: backendMessageId,
         )] =
         state;
+  }
+
+  void _removeState(_CommandInvocationState state) {
+    _byInvocationId.removeWhere((_, candidate) => identical(candidate, state));
+    _byBackendMessageId.removeWhere((_, candidate) => identical(candidate, state));
   }
 
   CommandInvocationSnapshot _snapshot(_CommandInvocationState state) {

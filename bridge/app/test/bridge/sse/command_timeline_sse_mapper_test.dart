@@ -31,6 +31,7 @@ void main() {
           time: null,
         ),
       ),
+      CommandTimelineMessageRemoved(sessionId: "session", messageId: "message"),
       CommandTimelinePartUpdated(part: part),
       CommandTimelinePartDelta(
         sessionId: "session",
@@ -48,6 +49,9 @@ void main() {
 
     expect(events, [
       isA<SesoriMessageUpdated>().having((event) => event.info.id, "message id", "message"),
+      isA<SesoriMessageRemoved>()
+          .having((event) => event.sessionID, "session id", "session")
+          .having((event) => event.messageID, "message id", "message"),
       isA<SesoriMessagePartUpdated>().having((event) => event.part, "part", part),
       isA<SesoriMessagePartDelta>()
           .having((event) => event.sessionID, "session id", "session")

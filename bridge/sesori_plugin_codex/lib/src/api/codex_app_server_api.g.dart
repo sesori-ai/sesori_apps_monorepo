@@ -56,7 +56,11 @@ Map<String, dynamic> _$CodexNotificationParamsDtoToJson(
 
 _CodexThreadStatusDto _$CodexThreadStatusDtoFromJson(Map json) =>
     _CodexThreadStatusDto(
-      type: json['type'] as String?,
+      type: $enumDecodeNullable(
+        _$CodexThreadStatusTypeDtoEnumMap,
+        json['type'],
+        unknownValue: CodexThreadStatusTypeDto.unknown,
+      ),
       status: json['status'] == null
           ? null
           : CodexThreadStatusDto.fromJson(
@@ -67,8 +71,16 @@ _CodexThreadStatusDto _$CodexThreadStatusDtoFromJson(Map json) =>
 Map<String, dynamic> _$CodexThreadStatusDtoToJson(
   _CodexThreadStatusDto instance,
 ) => <String, dynamic>{
-  'type': instance.type,
+  'type': _$CodexThreadStatusTypeDtoEnumMap[instance.type],
   'status': instance.status?.toJson(),
+};
+
+const _$CodexThreadStatusTypeDtoEnumMap = {
+  CodexThreadStatusTypeDto.active: 'active',
+  CodexThreadStatusTypeDto.idle: 'idle',
+  CodexThreadStatusTypeDto.notLoaded: 'notLoaded',
+  CodexThreadStatusTypeDto.systemError: 'systemError',
+  CodexThreadStatusTypeDto.unknown: 'unknown',
 };
 
 _CodexItemDto _$CodexItemDtoFromJson(Map json) => _CodexItemDto(

@@ -1,10 +1,20 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "models/openapi/agent_part.g.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/compaction_part.g.dart";
+import "models/openapi/file_part.g.dart";
 import "models/openapi/message.g.dart";
 import "models/openapi/part.g.dart";
+import "models/openapi/patch_part.g.dart";
+import "models/openapi/reasoning_part.g.dart";
+import "models/openapi/retry_part.g.dart";
+import "models/openapi/snapshot_part.g.dart";
+import "models/openapi/step_finish_part.g.dart";
+import "models/openapi/step_start_part.g.dart";
+import "models/openapi/subtask_part.g.dart";
 import "models/openapi/text_part.g.dart";
+import "models/openapi/tool_part.g.dart";
 import "models/openapi/user_message.g.dart";
 
 /// Correlation state derived from OpenCode command dispatches and SSE events.
@@ -120,7 +130,9 @@ class OpenCodeCommandTracker {
       return;
     }
 
-    final user = _heldUsers[_partMessageId(part)];
+    final messageId = _partMessageId(part);
+    if (messageId == null) return;
+    final user = _heldUsers[messageId];
     if (user == null || _releasedUsers.contains(user.id)) return;
     final pending = _firstPendingCompact(user.sessionID);
     if (part case TextPart(
@@ -206,13 +218,22 @@ class OpenCodeCommandTracker {
 
   static bool _isCompact(String name) => name == "compact" || name == "/compact";
 
-  static String _partMessageId(Part part) {
-    final json = part.toJson();
-    if (json is! Map<String, dynamic>) {
-      throw const FormatException("OpenCode part did not encode to an object");
-    }
-    return json["messageID"] as String;
-  }
+  static String? _partMessageId(Part part) => switch (part) {
+    AgentPart(:final messageID) ||
+    CompactionPart(:final messageID) ||
+    FilePart(:final messageID) ||
+    PatchPart(:final messageID) ||
+    ReasoningPart(:final messageID) ||
+    RetryPart(:final messageID) ||
+    SnapshotPart(:final messageID) ||
+    StepFinishPart(:final messageID) ||
+    StepStartPart(:final messageID) ||
+    SubtaskPart(:final messageID) ||
+    TextPart(:final messageID) ||
+    ToolPart(:final messageID) => messageID,
+    PartUnknown() => null,
+    _ => null,
+  };
 }
 
 class OpenCodePendingCommand {

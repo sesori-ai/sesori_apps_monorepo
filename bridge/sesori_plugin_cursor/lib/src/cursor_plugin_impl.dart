@@ -37,10 +37,13 @@ class CursorPlugin extends AcpPlugin {
       launchSpec: launchSpec,
       processFactory: processFactory,
     );
+    final catalogClient = clientBuilder.build(logTag: "$pluginId-catalog");
+    final catalogApi = CursorCatalogApi(
+      client: catalogClient,
+      api: AcpApi(client: catalogClient),
+    );
     final catalogRepository = CursorCatalogRepository(
-      api: CursorCatalogApi(
-        client: clientBuilder.build(logTag: "$pluginId-catalog"),
-      ),
+      api: catalogApi,
       launchScope: cwd,
     );
     final catalogTracker = CursorCatalogTracker();

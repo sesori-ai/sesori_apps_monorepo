@@ -125,7 +125,10 @@ void main() {
       );
       turnCatalogService = CursorCatalogService(
         repository: CursorCatalogRepository(
-          api: CursorCatalogApi(client: turnCatalogClient),
+          api: CursorCatalogApi(
+            client: turnCatalogClient,
+            api: AcpApi(client: turnCatalogClient),
+          ),
           launchScope: "/repo",
         ),
         tracker: turnCatalogTracker,

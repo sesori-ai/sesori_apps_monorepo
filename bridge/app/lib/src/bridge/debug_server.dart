@@ -11,6 +11,7 @@ import "../listeners/plugin_command_timeline_listener.dart";
 import "../server/services/bridge_restart_service.dart";
 import "repositories/session_repository.dart";
 import "routing/request_router.dart";
+import "services/command_timeline_mutation.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/command_timeline_sse_mapper.dart";
 
@@ -32,6 +33,7 @@ class DebugServer {
   HttpServer? _server;
   StreamSubscription<void>? _pluginTimelineSub;
   StreamSubscription<void>? _dispatchTimelineSub;
+  Future<void> _commandTimelineDeliveryTail = Future<void>.value();
 
   int _nextRequestId = 1;
 
@@ -179,8 +181,7 @@ class DebugServer {
       _sseClients.add(response);
 
       _pluginTimelineSub ??= _pluginCommandTimelineListener.outputs
-          .asyncMap<List<SesoriSseEvent>>(_mapPluginTimelineOutput)
-          .asyncMap(_fanOutEvents)
+          .asyncMap<void>(_deliverPluginTimelineOutput)
           .listen(
             (_) {},
             onError: (Object e, StackTrace st) {
@@ -198,8 +199,7 @@ class DebugServer {
             },
           );
       _dispatchTimelineSub ??= _commandDispatchOutcomeListener.mutations
-          .map<List<SesoriSseEvent>>(_commandTimelineSseMapper.mapAll)
-          .asyncMap(_fanOutEvents)
+          .asyncMap<void>(_deliverDispatchTimelineMutations)
           .listen(
             (_) {},
             onError: (Object error, StackTrace stackTrace) {
@@ -283,14 +283,35 @@ class DebugServer {
     await _fanOutEvent(jsonEncode(mapped.toJson()));
   }
 
-  Future<List<SesoriSseEvent>> _mapPluginTimelineOutput(PluginCommandTimelineOutput output) async {
-    return switch (output) {
-      PluginCommandTimelineCanonical(:final mutations) => _commandTimelineSseMapper.mapAll(mutations),
-      PluginCommandTimelinePassthrough(:final event) => switch (event) {
-        BridgeSseProjectUpdated() => [await _buildProjectsSummary()].nonNulls.toList(growable: false),
-        _ => [_mapper.map(event)].nonNulls.toList(growable: false),
-      },
-    };
+  Future<void> _deliverPluginTimelineOutput(PluginCommandTimelineOutput output) async {
+    switch (output) {
+      case PluginCommandTimelineCanonical(:final mutations):
+        await _serializeCommandTimelineDelivery(_commandTimelineSseMapper.mapAll(mutations));
+      case PluginCommandTimelinePassthrough(:final event):
+        final events = switch (event) {
+          BridgeSseProjectUpdated() => [await _buildProjectsSummary()].nonNulls.toList(growable: false),
+          _ => [_mapper.map(event)].nonNulls.toList(growable: false),
+        };
+        await _fanOutEvents(events);
+    }
+  }
+
+  Future<void> _deliverDispatchTimelineMutations(List<CommandTimelineMutation> mutations) {
+    return _serializeCommandTimelineDelivery(_commandTimelineSseMapper.mapAll(mutations));
+  }
+
+  Future<void> _serializeCommandTimelineDelivery(List<SesoriSseEvent> events) {
+    final previous = _commandTimelineDeliveryTail;
+    final release = Completer<void>();
+    _commandTimelineDeliveryTail = release.future;
+    return () async {
+      await previous;
+      try {
+        await _fanOutEvents(events);
+      } finally {
+        release.complete();
+      }
+    }();
   }
 
   Future<void> _fanOutEvents(List<SesoriSseEvent> events) async {

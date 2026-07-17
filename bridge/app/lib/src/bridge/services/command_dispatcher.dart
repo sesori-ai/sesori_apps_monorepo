@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show PromptModel, SessionVariant;
 
 import "../foundation/uuid_v4_builder.dart";
@@ -34,6 +35,7 @@ class CommandDispatcher {
     required String sessionId,
     required String name,
     required String? arguments,
+    required String? backendArguments,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -45,7 +47,7 @@ class CommandDispatcher {
         sessionId: sessionId,
         invocationId: invocationId,
         name: name,
-        arguments: arguments,
+        arguments: backendArguments,
         variant: variant,
         agent: agent,
         model: model,
@@ -70,7 +72,11 @@ class CommandDispatcher {
       acceptedAt: _clock.now().millisecondsSinceEpoch,
       backendMessageId: receipt.backendMessageId,
     );
-    await _invocationRepository.save(invocation: invocation);
+    try {
+      await _invocationRepository.save(invocation: invocation);
+    } catch (error, stackTrace) {
+      Log.w("Failed to persist accepted command ${invocation.invocationId}", error, stackTrace);
+    }
     final outcome = AcceptedCommandDispatchOutcome(invocation: invocation);
     _outcomesController.add(outcome);
     return outcome;

@@ -90,6 +90,26 @@ void main() {
       );
       await pump();
       expect(connects, 2, reason: "onConnected fires again on reconnect");
+
+      fakes.last.emit({
+        "jsonrpc": "2.0",
+        "id": 17,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": "s1",
+          "toolCall": {"kind": "execute"},
+          "options": [
+            {"optionId": "allow", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      await pump();
+      expect(
+        await plugin.getPendingPermissions(sessionId: "s1"),
+        hasLength(1),
+        reason: "approval requests must be observed after reconnect",
+      );
     });
   });
 }

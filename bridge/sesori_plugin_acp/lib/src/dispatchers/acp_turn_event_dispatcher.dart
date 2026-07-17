@@ -204,7 +204,7 @@ class AcpTurnEventDispatcher {
     }
 
     final text = part.text ?? "";
-    _commandTurnTracker.appendResultText(turnId: turnId, text: text);
+    _commandTurnTracker.markResultPartCreated(turnId: turnId);
     if (before.resultPartCreated) {
       return _AcpCommandEventDecision(
         turnId: turnId,
@@ -248,7 +248,7 @@ class AcpTurnEventDispatcher {
     }
     final type = _commandTurnTracker.byTurnId(turnId)!.assistantPartTypes[partId];
     if (type == PluginMessagePartType.text) {
-      _commandTurnTracker.appendResultText(turnId: turnId, text: delta);
+      _commandTurnTracker.markResultPartCreated(turnId: turnId);
       return _AcpCommandEventDecision(
         turnId: turnId,
         events: [

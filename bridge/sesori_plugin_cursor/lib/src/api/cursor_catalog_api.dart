@@ -4,9 +4,22 @@ import "package:acp_plugin/acp_plugin.dart";
 
 /// Cursor's isolated catalog-probe capability over its own ACP transport.
 class CursorCatalogApi {
-  CursorCatalogApi({required AcpStdioClient client}) : _client = client;
+  CursorCatalogApi({
+    required AcpStdioClient client,
+    required AcpApi api,
+  }) : _client = client,
+       _api = api;
+
+  static const AcpInitializeRequest _initializeRequest = AcpInitializeRequest(
+    clientName: "sesori-bridge",
+    clientVersion: "0.0.0",
+    clientTitle: null,
+    capabilityMeta: {"parameterizedModelPicker": true},
+  );
+  static const String _authMethodId = "cursor_login";
 
   final AcpStdioClient _client;
+  final AcpApi _api;
   AcpInitializeResult? _initializeResult;
   bool _disposed = false;
 
@@ -23,24 +36,9 @@ class CursorCatalogApi {
 
     var result = _initializeResult;
     if (result == null) {
-      final response = await _client.request(
-        method: AcpMethods.initialize,
-        params: const {
-          "protocolVersion": acpProtocolVersion,
-          "clientCapabilities": {
-            "fs": {"readTextFile": false, "writeTextFile": false},
-            "terminal": false,
-            "_meta": {"parameterizedModelPicker": true},
-          },
-          "clientInfo": {
-            "name": "sesori-bridge",
-            "version": "0.0.0",
-          },
-        },
+      result = await _api.initialize(
+        request: _initializeRequest,
         timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
-      );
-      result = AcpInitializeResult.fromJson(
-        _responseMap(method: AcpMethods.initialize, response: response),
       );
       if (result.protocolVersion != acpProtocolVersion) {
         throw StateError(
@@ -49,9 +47,8 @@ class CursorCatalogApi {
         );
       }
       if (result.requiresAuth) {
-        await _client.request(
-          method: AcpMethods.authenticate,
-          params: const {"methodId": "cursor_login"},
+        await _api.authenticate(
+          methodId: _authMethodId,
           timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
         );
       }
@@ -64,18 +61,12 @@ class CursorCatalogApi {
     required String? directory,
     required String? cursor,
     required Duration timeout,
-  }) async {
+  }) {
     _requireOpen();
-    final response = await _client.request(
-      method: AcpMethods.sessionList,
-      params: {
-        "cwd": ?directory,
-        "cursor": ?cursor,
-      },
+    return _api.listSessions(
+      directory: directory,
+      cursor: cursor,
       timeout: timeout,
-    );
-    return AcpSessionListResult.fromJson(
-      _responseMap(method: AcpMethods.sessionList, response: response),
     );
   }
 
@@ -83,19 +74,12 @@ class CursorCatalogApi {
     required String sessionId,
     required String directory,
     required Duration timeout,
-  }) async {
+  }) {
     _requireOpen();
-    final response = await _client.request(
-      method: AcpMethods.sessionLoad,
-      params: {
-        "sessionId": sessionId,
-        "cwd": directory,
-        "mcpServers": const <Object?>[],
-      },
+    return _api.loadSession(
+      sessionId: sessionId,
+      directory: directory,
       timeout: timeout,
-    );
-    return AcpNewSessionResult.fromJson(
-      _responseMap(method: AcpMethods.sessionLoad, response: response),
     );
   }
 
@@ -116,14 +100,6 @@ class CursorCatalogApi {
     if (_initializeResult == null || !_client.isConnected) {
       throw StateError("Cursor catalog probe is not initialized");
     }
-  }
-
-  Map<String, dynamic> _responseMap({
-    required String method,
-    required Object? response,
-  }) {
-    if (response is Map) return response.cast<String, dynamic>();
-    throw FormatException("$method returned a non-object result");
   }
 
   Duration _remaining({

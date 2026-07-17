@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
 import "../bridge/services/command_dispatch_outcome.dart";
 import "../bridge/services/command_dispatcher.dart";
 import "../bridge/services/command_timeline_mutation.dart";
@@ -25,7 +27,11 @@ class CommandDispatchOutcomeListener {
   Future<void> start() => _startFuture ??= _start();
 
   Future<void> _start() async {
-    await _timelineService.initialize();
+    try {
+      await _timelineService.initialize();
+    } on Object catch (error, stackTrace) {
+      Log.w("Command timeline hydration failed; continuing with live dispatch outcomes", error, stackTrace);
+    }
     _subscription = _dispatcher.outcomes
         .asyncMap<void>(_process)
         .listen(

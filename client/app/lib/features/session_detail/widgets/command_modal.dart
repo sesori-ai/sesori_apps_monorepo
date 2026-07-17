@@ -1,45 +1,52 @@
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:go_router/go_router.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
+import "command_formatter.dart";
 import "follow_detach_scrollable.dart";
 import "scroll_follow_tracker.dart";
 
-/// Bottom sheet for a command and its already-resolved result content.
+/// Bottom sheet for a command and its live result content.
 class CommandModal extends StatefulWidget {
+  final String messageId;
   final CommandMessageInfo command;
-  final String? resultText;
   final double topInset;
 
   const CommandModal({
     super.key,
+    required this.messageId,
     required this.command,
-    required this.resultText,
     required this.topInset,
   });
 
   static Future<void> show(
     BuildContext context, {
+    required String messageId,
     required CommandMessageInfo command,
-    required String? resultText,
   }) {
+    final cubit = context.read<SessionDetailCubit>();
     final topInset = MediaQuery.paddingOf(context).top;
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: false,
-      builder: (_) => CommandModal(
-        command: command,
-        resultText: resultText,
-        topInset: topInset,
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: CommandModal(
+          messageId: messageId,
+          command: command,
+          topInset: topInset,
+        ),
       ),
     );
   }
@@ -67,13 +74,18 @@ class _CommandModalState extends State<CommandModal> {
 
   @override
   Widget build(BuildContext context) {
+    final resultText = context.select<SessionDetailCubit, String?>(
+      (cubit) => cubit.state.resolveCommandResultText(
+        command: widget.command,
+        messageId: widget.messageId,
+      ),
+    );
     final prego = context.prego;
     final loc = context.loc;
     final screenHeight = MediaQuery.heightOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final bottomSafe = MediaQuery.paddingOf(context).bottom;
     final maxBody = screenHeight - widget.topInset - PregoBottomSheet.contentTopInset - keyboard;
-    final hasResult = widget.resultText?.trim().isNotEmpty ?? false;
 
     return PregoBottomSheet(
       title: loc.sessionDetailCommand,
@@ -112,7 +124,7 @@ class _CommandModalState extends State<CommandModal> {
                     Expanded(
                       child: SelectionArea(
                         child: Text(
-                          _fullCommand(widget.command),
+                          CommandFormatter.format(widget.command),
                           style: prego.textTheme.textSm.bold.monospace.copyWith(
                             color: prego.colors.textPrimary,
                           ),
@@ -143,10 +155,10 @@ class _CommandModalState extends State<CommandModal> {
                 ],
               ),
               const SizedBox(height: 8),
-              if (hasResult)
+              if (resultText case final text? when text.trim().isNotEmpty)
                 SelectionArea(
                   child: MarkdownBody(
-                    data: widget.resultText!,
+                    data: text,
                     selectable: false,
                     onTapLink: handleMarkdownLinkTap,
                     styleSheet: buildSessionMarkdownStyleSheet(
@@ -170,11 +182,6 @@ class _CommandModalState extends State<CommandModal> {
       ),
     );
   }
-}
-
-String _fullCommand(CommandMessageInfo command) {
-  final arguments = command.arguments;
-  return "/${command.name}${arguments == null ? "" : " $arguments"}";
 }
 
 String _originLabel({required BuildContext context, required CommandOrigin origin}) => switch (origin) {

@@ -8,6 +8,10 @@ class CommandTimelineSseMapper {
   SesoriSseEvent map(CommandTimelineMutation mutation) {
     return switch (mutation) {
       CommandTimelineEnvelopeUpdated(:final info) => SesoriSseEvent.messageUpdated(info: info),
+      CommandTimelineMessageRemoved(:final sessionId, :final messageId) => SesoriSseEvent.messageRemoved(
+        sessionID: sessionId,
+        messageID: messageId,
+      ),
       CommandTimelinePartUpdated(:final part) => SesoriSseEvent.messagePartUpdated(part: part),
       CommandTimelinePartDelta(:final sessionId, :final messageId, :final partId, :final field, :final delta) =>
         SesoriSseEvent.messagePartDelta(
