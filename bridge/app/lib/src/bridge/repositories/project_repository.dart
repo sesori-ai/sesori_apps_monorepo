@@ -305,52 +305,54 @@ class ProjectRepository {
     switch (plugin) {
       case final NativeProjectsPluginApi plugin:
         final pluginProjects = await plugin.getProjects();
-        final storedProjects = (await _projectsDao.getAllProjects()).toList();
-        final projectsById = <String, ProjectDto>{
-          for (final project in storedProjects) project.projectId: project,
-        };
-        final projectsByNormalizedPath = <String, ProjectDto>{
-          for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
-        };
-        final missingProjects = <String, ({String path, int? createdAt, int? updatedAt})>{};
-        final evidence = <ProjectActivityEvidence>[];
-        for (final project in pluginProjects) {
-          final existing = _projectCatalogIdentityCalculator.calculate(
-            projectsById: projectsById,
-            projectsByNormalizedPath: projectsByNormalizedPath,
-            preferredProjectId: project.id,
-            observedPath: project.directory,
-          );
-          final projectId = existing?.projectId ?? project.id;
-          if (existing == null) {
-            missingProjects[projectId] = (
-              path: project.directory,
-              createdAt: project.activity?.createdAt,
-              updatedAt: project.activity?.updatedAt,
+        return _projectsDao.transaction(() async {
+          final storedProjects = (await _projectsDao.getAllProjects()).toList();
+          final projectsById = <String, ProjectDto>{
+            for (final project in storedProjects) project.projectId: project,
+          };
+          final projectsByNormalizedPath = <String, ProjectDto>{
+            for (final project in storedProjects) normalizeProjectDirectory(directory: project.path): project,
+          };
+          final missingProjects = <String, ({String path, int? createdAt, int? updatedAt})>{};
+          final evidence = <ProjectActivityEvidence>[];
+          for (final project in pluginProjects) {
+            final existing = _projectCatalogIdentityCalculator.calculate(
+              projectsById: projectsById,
+              projectsByNormalizedPath: projectsByNormalizedPath,
+              preferredProjectId: project.id,
+              observedPath: project.directory,
             );
-            final inserted = ProjectDto(
-              projectId: projectId,
-              path: project.directory,
-              createdAt: project.activity?.createdAt ?? 0,
-              updatedAt: project.activity?.updatedAt ?? 0,
-              projectionUpdatedAt: 0,
+            final projectId = existing?.projectId ?? project.id;
+            if (existing == null) {
+              missingProjects[projectId] = (
+                path: project.directory,
+                createdAt: project.activity?.createdAt,
+                updatedAt: project.activity?.updatedAt,
+              );
+              final inserted = ProjectDto(
+                projectId: projectId,
+                path: project.directory,
+                createdAt: project.activity?.createdAt ?? 0,
+                updatedAt: project.activity?.updatedAt ?? 0,
+                projectionUpdatedAt: 0,
+              );
+              projectsById[projectId] = inserted;
+              projectsByNormalizedPath[normalizeProjectDirectory(directory: project.directory)] = inserted;
+            }
+            evidence.add(
+              ProjectActivityEvidence(
+                pluginId: plugin.id,
+                projectId: projectId,
+                pluginActivity: project.activity,
+                sessionActivities: const [],
+              ),
             );
-            projectsById[projectId] = inserted;
-            projectsByNormalizedPath[normalizeProjectDirectory(directory: project.directory)] = inserted;
           }
-          evidence.add(
-            ProjectActivityEvidence(
-              pluginId: plugin.id,
-              projectId: projectId,
-              pluginActivity: project.activity,
-              sessionActivities: const [],
-            ),
+          await _projectsDao.insertProjectsWithPathsIfMissing(
+            projects: missingProjects,
           );
-        }
-        await _projectsDao.insertProjectsWithPathsIfMissing(
-          projects: missingProjects,
-        );
-        return evidence;
+          return evidence;
+        });
       case final BridgeDerivedProjectsPluginApi plugin:
         final (storedProjects, sessionProjectPaths, tombstoned) = await (
           _projectsDao.getAllProjects(),

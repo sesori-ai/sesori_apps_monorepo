@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_e
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -156,6 +157,62 @@ void main() {
 
       expect(evidence.single.projectId, directory);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
+    });
+
+    test("native activity atomically resolves identity against catalog import", () async {
+      const directory = "/projects/shared";
+      const nativeProjectId = "native-project-id";
+      const importedProjectId = "catalog-project-id";
+      plugin.projectsResult = const [
+        PluginProject(
+          id: nativeProjectId,
+          directory: directory,
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+      ];
+      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
+      final racingRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        plugin: plugin,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final reconciliation = racingRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      await projectsDao.snapshotTaken.future;
+      final catalogImport = db.transaction(() async {
+        final storedProjects = await db.projectsDao.getAllProjects();
+        final existing = const ProjectCatalogIdentityCalculator().calculate(
+          projectsById: {
+            for (final project in storedProjects) project.projectId: project,
+          },
+          projectsByNormalizedPath: {
+            for (final project in storedProjects) project.path: project,
+          },
+          preferredProjectId: importedProjectId,
+          observedPath: directory,
+        );
+        if (existing == null) {
+          await db.projectsDao.recordOpenedProject(
+            projectId: importedProjectId,
+            path: directory,
+            displayName: null,
+            createdAt: 1,
+            updatedAt: 2,
+          );
+        }
+      });
+      await Future<void>.delayed(Duration.zero);
+      projectsDao.releaseSnapshot.complete();
+
+      final evidence = await reconciliation;
+      await catalogImport;
+
+      final rows = await db.projectsDao.getAllProjects();
+      expect(rows, hasLength(1));
+      expect(evidence.single.projectId, rows.single.projectId);
     });
 
     test("getProjects completes from the catalog when plugin enumeration throws", () async {
@@ -1156,5 +1213,22 @@ class _CountingProjectsDao extends ProjectsDao {
   Future<ProjectDto?> getProject({required String projectId}) {
     getProjectCallCount++;
     return super.getProject(projectId: projectId);
+  }
+}
+
+class _BlockingSnapshotProjectsDao extends ProjectsDao {
+  _BlockingSnapshotProjectsDao({required AppDatabase database}) : super(database);
+
+  final Completer<void> snapshotTaken = Completer<void>();
+  final Completer<void> releaseSnapshot = Completer<void>();
+
+  @override
+  Future<List<ProjectDto>> getAllProjects() async {
+    final projects = await super.getAllProjects();
+    if (!snapshotTaken.isCompleted) {
+      snapshotTaken.complete();
+      await releaseSnapshot.future;
+    }
+    return projects;
   }
 }
