@@ -9,7 +9,8 @@
 ## Current Pointer
 
 - **Last completed stage:** Stage 8 - client plugin and model/agent selection
-- **Next up:** Stage 9 - performance gate and cleanup
+- **Current stage:** Stage 9 implementation and local verification complete; controlled fixed-host gate pending
+- **Next up:** Designate the fixed host, record the clean-commit matrix/soak artifact, and close Stage 9
 - **Runtime default:** OpenCode remains the one-plugin default; ordered multi-plugin selection is active
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
@@ -22,6 +23,7 @@
 - **Stage 8 planning base:** stacked Stage 7 at `2482e15d` (audited 2026-07-17)
 - **Stage 8 implementation base:** approved Stage 8 plan at `abd24c3e` (audited 2026-07-17)
 - **Stage 9 planning base:** stacked Stage 8 at `a0913639` (audited 2026-07-17)
+- **Stage 9 implementation checkpoint:** stacked Stage 8 at `3e2a3e51` (audited 2026-07-17)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -2137,6 +2139,25 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 9 (local checkpoint):** Implemented from the approved Stage 9 plan at
+  `1526ca4c`; production/tooling/docs landed at `3e2a3e51`. Catalog benchmarks
+  now accept deterministic 1/3/8-plugin fixtures and record visible-project and
+  root-pagination query plans. The new import/event soak uses production
+  repository, tracker, mapper, SSE, WAL, and held-writer seams; the Codex
+  baseline measures both synchronous and production isolate enumeration.
+  `DerivedProjectBuilder` and the obsolete authoritative-list vanished-session
+  deletion chain are removed, while `DerivedSessionBuilder`, committed deletion,
+  and unseen-event handling remain. Schema v11, projection v1, migrations,
+  indexes, and generated Drift files are unchanged. Full bridge app tests
+  passed (1,984) with fatal analysis; Codex tests passed (137) with fatal
+  analysis. Reduced AOT/product smoke passed for 1/3/8 catalog cases, the
+  import/event harness, and Codex sync/isolate modes: catalog reads made zero
+  plugin calls, query plans used `idx_projects_updated` and
+  `idx_sessions_roots`, every deterministic import/event invariant held, and
+  isolate enumeration returned every fixture session without main-isolate
+  blocking. These dirty-worktree M4 Pro results are directional only. No
+  versioned performance artifact is committed and Stage 9 remains open until a
+  human-designated controlled host runs the clean-commit matrix and soak.
 - **Stage 8:** Implemented from the approved Stage 8
   plan at `abd24c3e`. `module_core` now discovers ordered bridge-authored plugin
   metadata through `PluginApi`/`PluginRepository`, selects only the unique
