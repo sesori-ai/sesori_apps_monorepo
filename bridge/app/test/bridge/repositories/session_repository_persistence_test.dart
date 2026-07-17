@@ -42,9 +42,15 @@ void main() {
         start: 1,
         limit: null,
       );
+      final zeroLimit = await repository.getSessionsForProject(
+        projectId: "project-X",
+        start: 0,
+        limit: 0,
+      );
 
       expect(firstPage.map((session) => session.id), ["root-c", "root-b"]);
       expect(unboundedTail.map((session) => session.id), ["root-b", "root-a"]);
+      expect(zeroLimit.map((session) => session.id), ["root-c", "root-b", "root-a"]);
     });
 
     test("list and detail map durable metadata without an operational owning plugin", () async {

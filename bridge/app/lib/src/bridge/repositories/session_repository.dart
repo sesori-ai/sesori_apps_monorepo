@@ -87,11 +87,12 @@ class SessionRepository {
     if (await _projectsDao.getProject(projectId: projectId) == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
+    final effectiveLimit = limit == null || limit <= 0 ? null : limit;
     return _mapCatalogSessions(
       rows: await _sessionDao.getRootCatalogSessions(
         projectId: projectId,
         offset: start ?? 0,
-        limit: limit,
+        limit: effectiveLimit,
       ),
     );
   }
