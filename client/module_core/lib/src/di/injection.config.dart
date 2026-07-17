@@ -165,24 +165,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i80.ProjectRepository>(
-      () => _i80.ProjectRepository(
-        api: gh<_i733.ProjectApi>(),
-        filesystemApi: gh<_i1068.FilesystemApi>(),
-      ),
-    );
-    gh.lazySingleton<_i703.ProjectListService>(
-      () => _i703.ProjectListService(
-        repository: gh<_i80.ProjectRepository>(),
-        activityCalculator: gh<_i84.SessionActivityCalculator>(),
-      ),
-    );
-    gh.lazySingleton<_i763.SessionListService>(
-      () => _i763.SessionListService(
-        repository: gh<_i80.ProjectRepository>(),
-        activityCalculator: gh<_i84.SessionActivityCalculator>(),
-      ),
-    );
     gh.lazySingleton<_i471.NotificationRepository>(
       () => _i471.NotificationRepository(api: gh<_i400.NotificationApi>()),
     );
@@ -246,8 +228,27 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
     );
+    gh.lazySingleton<_i80.ProjectRepository>(
+      () => _i80.ProjectRepository(
+        api: gh<_i733.ProjectApi>(),
+        filesystemApi: gh<_i1068.FilesystemApi>(),
+        sessionApi: gh<_i603.SessionApi>(),
+      ),
+    );
     gh.lazySingleton<_i150.SessionViewRepository>(
       () => _i150.SessionViewRepository(api: gh<_i157.SessionViewApi>()),
+    );
+    gh.lazySingleton<_i703.ProjectListService>(
+      () => _i703.ProjectListService(
+        repository: gh<_i80.ProjectRepository>(),
+        activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
+    );
+    gh.lazySingleton<_i763.SessionListService>(
+      () => _i763.SessionListService(
+        repository: gh<_i80.ProjectRepository>(),
+        activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(

@@ -11,7 +11,11 @@ void main() {
   test("project operations delegate to ProjectApi", () async {
     final api = MockProjectApi();
     final filesystemApi = MockFilesystemApi();
-    final repository = ProjectRepository(api: api, filesystemApi: filesystemApi);
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: filesystemApi,
+      sessionApi: MockSessionApi(),
+    );
     const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
     const projects = Projects(data: [project]);
     const suggestions = FilesystemSuggestions(data: []);
@@ -63,7 +67,11 @@ void main() {
 
     setUp(() {
       api = MockProjectApi();
-      repository = ProjectRepository(api: api, filesystemApi: MockFilesystemApi());
+      repository = ProjectRepository(
+        api: api,
+        filesystemApi: MockFilesystemApi(),
+        sessionApi: MockSessionApi(),
+      );
     });
 
     void stubBaseBranch(BaseBranchResponse response) {
@@ -108,7 +116,11 @@ void main() {
 
   test("findSessionContext retains the catalog session plugin identity", () async {
     final api = MockProjectApi();
-    final repository = ProjectRepository(api: api, filesystemApi: MockFilesystemApi());
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: MockSessionApi(),
+    );
     const project = Project(id: "project-1", name: "Project", path: "/project", time: null);
     final session = testSession(id: "session-1", pluginId: "plugin-b", title: "Session");
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
@@ -121,5 +133,67 @@ void main() {
     expect(context?.projectId, "project-1");
     expect(context?.pluginId, "plugin-b");
     expect(context?.sessionTitle, "Session");
+  });
+
+  test("findSessionContext recovers child session plugin identity", () async {
+    final api = MockProjectApi();
+    final sessionApi = MockSessionApi();
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: sessionApi,
+    );
+    const project = Project(id: "project-1", name: "Project", path: "/project", time: null);
+    final root = testSession(id: "root", pluginId: "plugin-b", title: "Root");
+    final child = testSession(id: "child", pluginId: "plugin-b", title: "Child").copyWith(parentID: "root");
+    when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
+    when(
+      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [root])));
+    when(
+      () => sessionApi.getChildren(sessionId: "root"),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [child])));
+
+    final context = await repository.findSessionContext(sessionId: "child");
+
+    expect(context?.projectId, "project-1");
+    expect(context?.pluginId, "plugin-b");
+    expect(context?.sessionTitle, "Child");
+  });
+
+  test("findSessionContext searches nested children breadth-first without revisiting cycles", () async {
+    final api = MockProjectApi();
+    final sessionApi = MockSessionApi();
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: sessionApi,
+    );
+    const project = Project(id: "project-1", name: "Project", path: "/project", time: null);
+    final root = testSession(id: "root", pluginId: "plugin-b", title: "Root");
+    final child = testSession(id: "child", pluginId: "plugin-b", title: "Child").copyWith(parentID: "root");
+    final nested = testSession(
+      id: "nested",
+      pluginId: "plugin-b",
+      title: "Nested",
+    ).copyWith(parentID: "child");
+    when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
+    when(
+      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [root])));
+    when(
+      () => sessionApi.getChildren(sessionId: "root"),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [child])));
+    when(
+      () => sessionApi.getChildren(sessionId: "child"),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [root, nested])));
+
+    final context = await repository.findSessionContext(sessionId: "nested");
+
+    expect(context?.projectId, "project-1");
+    expect(context?.pluginId, "plugin-b");
+    expect(context?.sessionTitle, "Nested");
+    verify(() => sessionApi.getChildren(sessionId: "root")).called(1);
+    verify(() => sessionApi.getChildren(sessionId: "child")).called(1);
   });
 }

@@ -59,6 +59,52 @@ void main() {
       );
     });
 
+    test("conditional clear does not remove an equal selection from a newer write", () {
+      tracker.write(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        agent: "build",
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+      );
+      final revision = tracker.currentRevision(projectId: "project-1", pluginId: "plugin-1");
+
+      tracker.write(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        agent: "build",
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+      );
+      tracker.clearIfRevision(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        revision: revision,
+      );
+
+      expect(tracker.read(projectId: "project-1", pluginId: "plugin-1")?.agent, "build");
+      expect(
+        tracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
+      );
+    });
+
+    test("conditional clear removes the revision it owns", () {
+      tracker.write(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        agent: "build",
+        agentModel: null,
+      );
+      final revision = tracker.currentRevision(projectId: "project-1", pluginId: "plugin-1");
+
+      tracker.clearIfRevision(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        revision: revision,
+      );
+
+      expect(tracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+    });
+
     test("clear removes a saved selection", () {
       tracker.write(
         projectId: "project-1",

@@ -480,7 +480,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     if (trimmed.isEmpty && !hasCommand) return;
 
     final pluginId = selectedPlugin.id;
-    final selectionAtSend = _selectionTracker.read(projectId: _projectId, pluginId: pluginId);
+    final selectionRevisionAtSend = _selectionTracker.currentRevision(
+      projectId: _projectId,
+      pluginId: pluginId,
+    );
     emit(
       NewSessionState.sending(
         availablePlugins: config.plugins,
@@ -510,9 +513,11 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     );
 
     if (response case SuccessResponse()) {
-      if (_selectionTracker.read(projectId: _projectId, pluginId: pluginId) == selectionAtSend) {
-        _selectionTracker.clear(projectId: _projectId, pluginId: pluginId);
-      }
+      _selectionTracker.clearIfRevision(
+        projectId: _projectId,
+        pluginId: pluginId,
+        revision: selectionRevisionAtSend,
+      );
     }
 
     if (isClosed) return;

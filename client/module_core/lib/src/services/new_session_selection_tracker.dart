@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 /// A snapshot of the new-session composer's agent / model / variant selection.
 typedef NewSessionSelection = ({String? agent, AgentModel? agentModel});
+typedef _RevisionedSelection = ({NewSessionSelection selection, int revision});
 
 /// Tracks the new-session composer's deliberately chosen agent / model /
 /// variant (reasoning effort) per project and plugin, exposing the latest snapshot.
@@ -22,12 +23,17 @@ typedef NewSessionSelection = ({String? agent, AgentModel? agentModel});
 /// its draft).
 @lazySingleton
 class NewSessionSelectionTracker {
-  final Map<({String projectId, String pluginId}), NewSessionSelection> _selections =
-      <({String projectId, String pluginId}), NewSessionSelection>{};
+  final Map<({String projectId, String pluginId}), _RevisionedSelection> _selections =
+      <({String projectId, String pluginId}), _RevisionedSelection>{};
+  int _nextRevision = 0;
 
   /// The saved selection for [projectId] and [pluginId], or `null` if none.
   NewSessionSelection? read({required String projectId, required String pluginId}) =>
-      _selections[(projectId: projectId, pluginId: pluginId)];
+      _selections[(projectId: projectId, pluginId: pluginId)]?.selection;
+
+  /// The revision of the latest write for [projectId] and [pluginId].
+  int? currentRevision({required String projectId, required String pluginId}) =>
+      _selections[(projectId: projectId, pluginId: pluginId)]?.revision;
 
   /// Saves the composer [agent]/[agentModel] selection for [projectId] and [pluginId].
   void write({
@@ -36,7 +42,22 @@ class NewSessionSelectionTracker {
     required String? agent,
     required AgentModel? agentModel,
   }) {
-    _selections[(projectId: projectId, pluginId: pluginId)] = (agent: agent, agentModel: agentModel);
+    _selections[(projectId: projectId, pluginId: pluginId)] = (
+      selection: (agent: agent, agentModel: agentModel),
+      revision: ++_nextRevision,
+    );
+  }
+
+  /// Drops the saved selection only when it is still the write at [revision].
+  void clearIfRevision({
+    required String projectId,
+    required String pluginId,
+    required int? revision,
+  }) {
+    final key = (projectId: projectId, pluginId: pluginId);
+    if (_selections[key]?.revision == revision) {
+      _selections.remove(key);
+    }
   }
 
   /// Drops the saved selection for [projectId] and [pluginId].

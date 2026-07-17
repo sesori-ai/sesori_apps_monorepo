@@ -1078,5 +1078,45 @@ void main() {
         const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
       );
     });
+
+    test("a late background success preserves an equal selection from a newer write", () async {
+      final completer = Completer<ApiResponse<Session>>();
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) => completer.future);
+
+      const model = AgentModel(providerID: "openai", modelID: "gpt-4", variant: "low");
+      selectionTracker.write(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        agent: "build",
+        agentModel: model,
+      );
+      final cubit = buildCubit();
+      await waitForComposer(cubit);
+      final pending = cubit.createSession(text: "hi", dedicatedWorktree: true, command: null);
+      await cubit.close();
+
+      selectionTracker.write(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        agent: "build",
+        agentModel: model,
+      );
+      completer.complete(ApiResponse.success(testSession(id: "s-late-equal")));
+      await pending;
+
+      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.agentModel, model);
+    });
   });
 }

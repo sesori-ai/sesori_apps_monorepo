@@ -107,7 +107,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   Widget? _buildComposerHeader(NewSessionState state) {
     final data = state.agentModelData;
     final selectedAgent = data?.agent;
-    if (data == null || data.agents.isEmpty || selectedAgent == null) return null;
+    if (data == null || (data.agents.isEmpty && data.providers.isEmpty)) return null;
 
     final cubit = context.read<NewSessionCubit>();
     return AgentModelButtons(
@@ -159,6 +159,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       },
       child: PregoGlassScaffold(
         title: loc.sessionListNewSession,
+        scrollable: false,
         banner: ConnectionBanner.maybeFor(context),
         // The loading scrim must dim the body while the glass back button
         // stays tappable (the user can abort while creation is in flight),
@@ -175,10 +176,10 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
               )
             : null,
         slivers: [
-          // The screen doesn't scroll: a single fill-remaining sliver holds
-          // the worktree toggle at the top and pins the composer to the
-          // bottom. With the scaffold's keyboard resize (Scaffold default),
-          // the composer rides above the keyboard when the field is focused.
+          // A single fill-remaining sliver pins the composer to the bottom while
+          // the variable-height plugin and worktree options scroll above it.
+          // With the scaffold's keyboard resize (Scaffold default), the
+          // composer rides above the keyboard when the field is focused.
           SliverFillRemaining(
             hasScrollBody: false,
             child: AbsorbPointer(
@@ -186,7 +187,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
               child: Column(
                 children: [
                   Expanded(
-                    child: Padding(
+                    child: SingleChildScrollView(
+                      key: const Key("new_session_options_scroll"),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

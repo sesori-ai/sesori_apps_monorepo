@@ -2040,8 +2040,8 @@ affected locked decision and updates the owning section in the same PR.
   `git diff --check` was clean. Full mobile verification exposed one shared
   adaptive-router test harness that also constructs `NewSessionScreen`; adding
   its required plugin repository fixture resolved all six downstream failures.
-  No locked design or risk-register delta was required. The environment exposes
-  Stage 7's reviewed lifecycle-decoder follow-up was then merged forward;
+  No locked design or risk-register delta was required. The environment exposed
+  Stage 7's reviewed lifecycle-decoder follow-up, which was then merged forward;
   combined-base fatal analysis passed for core/mobile, and focused core/mobile
   discovery, selection, routing, and widget tests passed. Aristotle implementation
   review `ses_08f1d58bfffeOQfHeu6yR5XkGH` approved the final architecture.

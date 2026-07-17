@@ -1,3 +1,5 @@
+import "dart:collection";
+
 import "package:collection/collection.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -5,18 +7,22 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/filesystem_api.dart";
 import "../api/project_api.dart";
+import "../api/session_api.dart";
 import "models/repo_provider.dart";
 
 @lazySingleton
 class ProjectRepository {
   final ProjectApi _api;
   final FilesystemApi _filesystemApi;
+  final SessionApi _sessionApi;
 
   ProjectRepository({
     required ProjectApi api,
     required FilesystemApi filesystemApi,
+    required SessionApi sessionApi,
   }) : _api = api,
-       _filesystemApi = filesystemApi;
+       _filesystemApi = filesystemApi,
+       _sessionApi = sessionApi;
 
   Future<ApiResponse<Projects>> listProjects() {
     return _api.listProjects();
@@ -87,25 +93,48 @@ class ProjectRepository {
               projectId: project.id,
               waitForPrData: false,
             );
-            final session = switch (sessionsResponse) {
-              SuccessResponse(:final data) => data.items.firstWhereOrNull((item) => item.id == sessionId),
-              ErrorResponse() => null,
+            final roots = switch (sessionsResponse) {
+              SuccessResponse(:final data) => data.items,
+              ErrorResponse() => const <Session>[],
             };
-
-            if (session != null) {
-              return ProjectSessionContext(
-                projectId: project.id,
-                pluginId: session.pluginId,
-                sessionTitle: session.title,
-              );
-            }
-
-            return null;
+            return _findSessionContext(
+              projectId: project.id,
+              sessionId: sessionId,
+              roots: roots,
+            );
           }),
         );
 
         return sessionContexts.nonNulls.firstOrNull;
     }
+  }
+
+  Future<ProjectSessionContext?> _findSessionContext({
+    required String projectId,
+    required String sessionId,
+    required List<Session> roots,
+  }) async {
+    final pending = Queue<Session>.of(roots);
+    final visited = <String>{};
+
+    while (pending.isNotEmpty) {
+      final session = pending.removeFirst();
+      if (!visited.add(session.id)) continue;
+      if (session.id == sessionId) {
+        return ProjectSessionContext(
+          projectId: projectId,
+          pluginId: session.pluginId,
+          sessionTitle: session.title,
+        );
+      }
+
+      final childrenResponse = await _sessionApi.getChildren(sessionId: session.id);
+      if (childrenResponse case SuccessResponse(:final data)) {
+        pending.addAll(data.items);
+      }
+    }
+
+    return null;
   }
 }
 

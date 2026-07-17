@@ -31,7 +31,7 @@ AgentInfo _testAgent({required String name, required String description, require
   );
 }
 
-Widget _buildApp() {
+Widget _buildApp({ThemeMode themeMode = ThemeMode.light}) {
   final router = GoRouter(
     initialLocation: "/new",
     routes: [
@@ -68,6 +68,7 @@ Widget _buildApp() {
       routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+      themeMode: themeMode,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
     ),
@@ -227,6 +228,94 @@ void main() {
     );
     expect(find.text("failed-id"), findsNothing);
     expect(find.text("degraded-id"), findsNothing);
+  });
+
+  testWidgets("uses on-brand foreground tokens for a selected plugin in dark mode", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        const PluginListResponse(
+          plugins: [
+            PluginMetadata(
+              id: "degraded-id",
+              displayName: "Selected Tool",
+              isDefault: true,
+              state: PluginLifecycleState.degraded,
+              actionHint: "Check the bridge console.",
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp(themeMode: ThemeMode.dark));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Text>(find.text("Selected Tool")).style?.color, PregoColorsDark.textPrimaryOnBrand);
+    expect(tester.widget<Text>(find.text("Needs attention")).style?.color, PregoColorsDark.textSecondaryOnBrand);
+    expect(
+      tester.widget<Text>(find.text("Check the bridge console.")).style?.color,
+      PregoColorsDark.textSecondaryOnBrand,
+    );
+    final selectedRow = find.byKey(const Key("new_session_plugin_degraded-id"));
+    final radio = find.descendant(of: selectedRow, matching: find.byIcon(Icons.radio_button_checked));
+    expect(tester.widget<Icon>(radio).color, PregoColorsDark.iconFgBrandOnBrand);
+  });
+
+  testWidgets("keeps model and variant controls available when no agents load", (tester) async {
+    when(
+      () => sessionService.listAgents(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: [])));
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.smart_toy_outlined), findsNothing);
+    expect(find.widgetWithText(GlassButton, "Claude 3.5 Sonnet"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
+  });
+
+  testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(700, 400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginListResponse(
+          plugins: [
+            for (var index = 0; index < 8; index++)
+              PluginMetadata(
+                id: "plugin-$index",
+                displayName: "Plugin $index",
+                isDefault: index == 0,
+                state: PluginLifecycleState.ready,
+                actionHint: "Plugin $index action hint",
+              ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
+    expect(optionsScroll, findsOneWidget);
+    expect(
+      find.descendant(of: optionsScroll, matching: find.byType(NewSessionPluginChooser)),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: optionsScroll, matching: find.byType(SwitchListTile)), findsOneWidget);
+    expect(find.descendant(of: optionsScroll, matching: find.byType(PromptInput)), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    final composerTop = tester.getTopLeft(find.byType(PromptInput)).dy;
+    await tester.drag(optionsScroll, const Offset(0, -250));
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(find.byType(PromptInput)).dy, closeTo(composerTop, 0.01));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("keeps chooser usable while clearing and reloading composer data", (tester) async {

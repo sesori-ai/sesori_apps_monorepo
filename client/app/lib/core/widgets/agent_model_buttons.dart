@@ -8,8 +8,8 @@ import "package:theme_prego/module_prego.dart";
 import "../extensions/build_context_x.dart";
 import "model_picker_sheet.dart";
 
-/// Composer header exposing the agent / model / variant selection as three
-/// glass pill buttons ([PregoButtonsGlass]). Tapping a pill opens its
+/// Composer header exposing the available agent / model / variant selections
+/// as glass pill buttons ([PregoButtonsGlass]). Tapping a pill opens its
 /// [PregoAnchorMenu] popup listing the pickable values (instead of a modal
 /// bottom sheet).
 ///
@@ -17,7 +17,7 @@ import "model_picker_sheet.dart";
 /// the selection callbacks directly rather than a "open picker" callback.
 class AgentModelButtons extends StatefulWidget {
   final List<AgentInfo> agents;
-  final String selectedAgent;
+  final String? selectedAgent;
   final ValueChanged<String> onAgentSelected;
 
   final List<ProviderInfo> providers;
@@ -80,18 +80,22 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selectedAgentModel;
+    final selectedAgent = widget.selectedAgent;
+    final hasAgentSelection = widget.agents.isNotEmpty && selectedAgent != null;
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
       child: Row(
         children: [
-          Expanded(
-            child: _AgentMenu(
-              agents: widget.agents,
-              selectedAgent: widget.selectedAgent,
-              onAgentSelected: widget.onAgentSelected,
+          if (hasAgentSelection) ...[
+            Expanded(
+              child: _AgentMenu(
+                agents: widget.agents,
+                selectedAgent: selectedAgent,
+                onAgentSelected: widget.onAgentSelected,
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
           Expanded(
             child: _ModelMenu(
               sections: _modelSections,

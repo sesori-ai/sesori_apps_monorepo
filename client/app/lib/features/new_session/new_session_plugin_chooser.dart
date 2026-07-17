@@ -82,6 +82,17 @@ class _PluginChoice extends StatelessWidget {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final isEnabled = plugin.isRoutable;
+    final primaryTextColor = isSelected
+        ? prego.colors.textPrimaryOnBrand
+        : isEnabled
+        ? prego.colors.textPrimary
+        : prego.colors.textTertiary;
+    final secondaryTextColor = isSelected ? prego.colors.textSecondaryOnBrand : prego.colors.textSecondary;
+    final iconColor = isSelected
+        ? prego.colors.iconFgBrandOnBrand
+        : isEnabled
+        ? prego.colors.bgBrandSolid
+        : prego.colors.textTertiary;
     final status = switch (plugin.state) {
       PluginLifecycleState.ready => null,
       PluginLifecycleState.degraded => context.loc.newSessionPluginDegraded,
@@ -109,7 +120,7 @@ class _PluginChoice extends StatelessWidget {
                 Icon(
                   isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
                   size: 20,
-                  color: isEnabled ? prego.colors.bgBrandSolid : prego.colors.textTertiary,
+                  color: iconColor,
                 ),
                 SizedBox(width: prego.spacing.sm),
                 Expanded(
@@ -122,7 +133,7 @@ class _PluginChoice extends StatelessWidget {
                             child: Text(
                               plugin.displayName,
                               style: prego.textTheme.textSm.medium.copyWith(
-                                color: isEnabled ? prego.colors.textPrimary : prego.colors.textTertiary,
+                                color: primaryTextColor,
                               ),
                             ),
                           ),
@@ -132,7 +143,7 @@ class _PluginChoice extends StatelessWidget {
                               dimension: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: prego.colors.bgBrandSolid,
+                                color: iconColor,
                                 semanticsLabel: context.loc.newSessionPluginLoading,
                               ),
                             ),
@@ -140,7 +151,9 @@ class _PluginChoice extends StatelessWidget {
                             Text(
                               status,
                               style: prego.textTheme.textXs.medium.copyWith(
-                                color: plugin.state == PluginLifecycleState.degraded
+                                color: isSelected
+                                    ? prego.colors.textSecondaryOnBrand
+                                    : plugin.state == PluginLifecycleState.degraded
                                     ? prego.colors.textBrandPrimary
                                     : prego.colors.textTertiary,
                               ),
@@ -152,7 +165,7 @@ class _PluginChoice extends StatelessWidget {
                         Text(
                           hint,
                           style: prego.textTheme.textXs.regular.copyWith(
-                            color: prego.colors.textSecondary,
+                            color: secondaryTextColor,
                           ),
                         ),
                       ],
