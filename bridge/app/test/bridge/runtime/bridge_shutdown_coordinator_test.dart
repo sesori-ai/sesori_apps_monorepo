@@ -152,6 +152,33 @@ void main() {
       });
     });
 
+    test("backstop sums the longest budget from each sequential phase", () {
+      fakeAsync((async) {
+        final exitCalls = <int>[];
+        final coordinator = BridgeShutdownCoordinator(
+          startAbortSignal: StartAbortSignal.never,
+          exitProcess: exitCalls.add,
+        );
+        coordinator.addPhase(
+          phase: BridgeShutdownPhase.earlyPluginDispose,
+          action: () => Completer<void>().future,
+          budget: const Duration(seconds: 10),
+        );
+        coordinator.addPhase(
+          phase: BridgeShutdownPhase.lifecycle,
+          action: () => Completer<void>().future,
+          budget: const Duration(seconds: 10),
+        );
+
+        unawaited(coordinator.shutdown());
+        async.elapse(const Duration(seconds: 21));
+        expect(exitCalls, isEmpty, reason: "both serial phase budgets must precede the 10 second slack");
+
+        async.elapse(const Duration(seconds: 10));
+        expect(exitCalls, [0]);
+      });
+    });
+
     test("backstop never fires when shutdown completes in time", () {
       fakeAsync((async) {
         final exitCalls = <int>[];

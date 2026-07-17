@@ -127,7 +127,8 @@ class PluginLifecycleService {
     } on PluginStartAbortedException {
       _publishState(id: id, state: PluginLifecycleState.failed);
       rethrow;
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      Log.w('Plugin "$id" failed to start', error, stackTrace);
       _publishState(id: id, state: PluginLifecycleState.failed);
       return;
     }

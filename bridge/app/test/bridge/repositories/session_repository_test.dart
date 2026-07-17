@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -349,6 +350,80 @@ void main() {
       expect(result[1].time?.updated, equals(4));
       expect(result[1].time?.archived, isNull);
       expect(result[1].pullRequest, isNull);
+    });
+
+    test("enrichSessions adopts stored project identity only for each derived owner", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final derivedPlugin = _FakeDerivedPlugin(launchDirectory: "/derived", allSessions: const []);
+      final repository = SessionRepository(
+        operationalPlugins: {plugin.id: plugin, derivedPlugin.id: derivedPlugin},
+        enabledPluginIds: [plugin.id, derivedPlugin.id],
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 1),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["stored-native", "stored-derived"]);
+      await db.sessionDao.insertSession(
+        pluginId: plugin.id,
+        sessionId: "native-session",
+        backendSessionId: "native-session",
+        projectId: "stored-native",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await db.sessionDao.insertSession(
+        pluginId: derivedPlugin.id,
+        sessionId: "derived-session",
+        backendSessionId: "derived-session",
+        projectId: "stored-derived",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/derived/.worktrees/session",
+        branchName: "session",
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      final result = await repository.enrichSessions(
+        sessions: const [
+          Session(
+            id: "native-session",
+            pluginId: "fake",
+            projectID: "native-reported-project",
+            directory: "/native",
+            parentID: null,
+            title: null,
+            time: null,
+            pullRequest: null,
+            promptDefaults: null,
+          ),
+          Session(
+            id: "derived-session",
+            pluginId: "codex",
+            projectID: "/derived/.worktrees/session",
+            directory: "/derived/.worktrees/session",
+            parentID: null,
+            title: null,
+            time: null,
+            pullRequest: null,
+            promptDefaults: null,
+          ),
+        ],
+      );
+
+      expect(result[0].projectID, "native-reported-project");
+      expect(result[1].projectID, "stored-derived");
     });
 
     test("insertStoredSession ensures project and stores prompt defaults transactionally", () async {

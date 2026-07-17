@@ -51,11 +51,15 @@ class BridgeShutdownCoordinator {
   Future<void> shutdown() => _activeShutdown ??= _shutdownInternal();
 
   Future<void> _shutdownInternal() async {
-    final longestBudget = _actions.values
-        .expand((actions) => actions)
-        .fold(Duration.zero, (longest, action) => action.budget > longest ? action.budget : longest);
+    final shutdownBudget = _actions.values.fold(Duration.zero, (total, actions) {
+      final phaseBudget = actions.fold(
+        Duration.zero,
+        (longest, action) => action.budget > longest ? action.budget : longest,
+      );
+      return total + phaseBudget;
+    });
     final totalSw = Stopwatch()..start();
-    final backstop = Timer(longestBudget + _backstopSlack, () {
+    final backstop = Timer(shutdownBudget + _backstopSlack, () {
       Log.e("Failed to finish gracefully after ${totalSw.elapsedMilliseconds}ms - forcing exit");
       _exitProcess(_backstopExitCode());
     });

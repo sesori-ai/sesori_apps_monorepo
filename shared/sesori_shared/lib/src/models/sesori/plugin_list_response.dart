@@ -16,7 +16,7 @@ sealed class PluginMetadata with _$PluginMetadata {
     required String id,
     required String displayName,
     required bool isDefault,
-    required PluginLifecycleState state,
+    @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required PluginLifecycleState state,
     required String? actionHint,
   }) = _PluginMetadata;
 

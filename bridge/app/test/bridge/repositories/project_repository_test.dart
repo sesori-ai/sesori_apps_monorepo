@@ -130,7 +130,32 @@ void main() {
       expect(newProject?.path, "/projects/new");
       expect(newProject?.createdAt, 10);
       expect(newProject?.updatedAt, 20);
-      expect((await db.projectsDao.getProject(projectId: "moved-project"))?.path, "/projects/moved");
+      final movedProject = await db.projectsDao.getProject(projectId: "moved-project");
+      expect(movedProject?.path, "/projects/moved");
+      expect(movedProject?.updatedAt, 60, reason: "stable native identity must retain activity after a move");
+    });
+
+    test("native activity reuses an existing path-canonical project row", () async {
+      const directory = "/projects/shared";
+      plugin.projectsResult = const [
+        PluginProject(
+          id: "native-project-id",
+          directory: directory,
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+      ];
+      await db.projectsDao.recordOpenedProject(
+        projectId: directory,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+
+      final evidence = await repo.listProjectActivityEvidence(pluginId: plugin.id);
+
+      expect(evidence.single.projectId, directory);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
     });
 
     test("getProjects completes from the catalog when plugin enumeration throws", () async {
@@ -590,6 +615,27 @@ void main() {
       final result = await repo.listProjectActivityEvidence(pluginId: plugin.id);
 
       expect(result.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
+    });
+
+    test("derived activity uses the stored native project identity for the same directory", () async {
+      const directory = "/tmp/proj/shared";
+      const nativeProjectId = "native-project-id";
+      await db.projectsDao.recordOpenedProject(
+        projectId: nativeProjectId,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      plugin.sessions = [_session(directory, id: "derived-session", created: 10, updated: 20)];
+
+      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
+      addTearDown(service.dispose);
+      await service.reconcile(pluginId: plugin.id);
+
+      final rows = await db.projectsDao.getAllProjects();
+      expect(rows.map((project) => project.projectId), [nativeProjectId]);
+      expect(rows.single.updatedAt, 20);
     });
 
     test("openProject records an opened folder so an empty project survives the listing", () async {

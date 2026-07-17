@@ -219,8 +219,8 @@ class Orchestrator {
     );
     final worktreeService = WorktreeService(worktreeRepository: worktreeRepository);
     final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final pushTracker = PushSessionStateTracker(now: DateTime.now);
-    final pushRateLimiter = PushRateLimiter(now: DateTime.now);
+    final pushTracker = PushSessionStateTracker(now: clock.now);
+    final pushRateLimiter = PushRateLimiter(now: clock.now);
     final completionNotifier = CompletionNotifier(
       tracker: pushTracker,
       debounceDuration: const Duration(milliseconds: 500),

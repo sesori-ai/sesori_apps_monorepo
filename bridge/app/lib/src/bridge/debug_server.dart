@@ -60,7 +60,11 @@ class DebugServer {
           late final Future<void> operation;
           operation = _handleRequest(request).whenComplete(() => _inFlightRequests.remove(operation));
           _inFlightRequests.add(operation);
-          unawaited(operation);
+          unawaited(
+            operation.catchError((Object error, StackTrace stackTrace) {
+              Log.w("debug server request failed", error, stackTrace);
+            }),
+          );
         })
         .addTo(_compositeSubscription);
   }

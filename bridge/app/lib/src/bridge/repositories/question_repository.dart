@@ -116,7 +116,7 @@ class QuestionRepository {
         ).wait;
         final allSessions = await plugin.listAllSessions(
           knownDirectories: {
-            projectId,
+            directory,
             for (final row in sessionProjectPaths) ...[
               row.projectPath,
               ?row.worktreePath,
@@ -130,7 +130,7 @@ class QuestionRepository {
         // own query) still surfaces here. Tombstoned (deleted) sessions are
         // excluded — a backend without session deletion still enumerates them.
         final sessionIds = _derivedSessionBuilder.buildSessionIds(
-          projectId: projectId,
+          projectId: directory,
           sessions: allSessions.where((s) => !tombstoned.contains(s.id)).toList(growable: false),
           projectPathBySessionId: {
             for (final row in sessionProjectPaths) row.backendSessionId: row.projectPath,

@@ -26,6 +26,17 @@ void main() {
     expect(response.toJson()["plugins"], hasLength(2));
   });
 
+  test("plugin discovery maps a future lifecycle state to unavailable", () {
+    final metadata = PluginMetadata.fromJson(const {
+      "id": "future-plugin",
+      "displayName": "Future Plugin",
+      "isDefault": false,
+      "state": "starting_up",
+    });
+
+    expect(metadata.state, PluginLifecycleState.unavailable);
+  });
+
   test("health round-trips per-plugin state and decodes the legacy default", () {
     const response = HealthResponse(
       healthy: true,
