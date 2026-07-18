@@ -614,10 +614,11 @@ class _LiveListBenchmark {
     const visibleProjectsSql =
         "SELECT * FROM projects_table WHERE hidden = 0 "
         "ORDER BY updated_at DESC, project_id DESC";
-    const rootPaginationSql =
+    final pageSize = min(100, _configuration.sessionCount);
+    final rootPaginationSql =
         "SELECT * FROM sessions_table WHERE project_id = '/benchmark/project-0000' "
         "AND parent_session_id IS NULL ORDER BY updated_at DESC, session_id DESC "
-        "LIMIT 100 OFFSET 25";
+        "LIMIT $pageSize OFFSET 0";
 
     Future<Map<String, Object?>> explain({
       required String sql,
