@@ -1,6 +1,8 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:fake_async/fake_async.dart";
+import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/foundation/app_onboarding_formatter.dart";
 import "package:sesori_bridge/src/repositories/app_client_status_repository.dart";
 import "package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart";
@@ -13,16 +15,19 @@ void main() {
     late _FakeAppClientStatusRepository statusRepository;
     late _FakeAppOnboardingStateRepository stateRepository;
     late AppClientOnboardingService service;
+    late _FakeTokenRefresher tokenRefresher;
     late _CapturingStdout stdoutCapture;
     late _CapturingStdout stderrCapture;
 
     setUp(() {
       statusRepository = _FakeAppClientStatusRepository();
       stateRepository = _FakeAppOnboardingStateRepository();
+      tokenRefresher = _FakeTokenRefresher(accessToken: _token(userId: "user-a"));
       service = AppClientOnboardingService(
         statusRepository: statusRepository,
         stateRepository: stateRepository,
         formatter: _StubAppOnboardingFormatter(),
+        tokenRefresher: tokenRefresher,
       );
       stdoutCapture = _CapturingStdout();
       stderrCapture = _CapturingStdout();
@@ -83,8 +88,11 @@ void main() {
       expect(stderrCapture.lines, isEmpty);
     });
 
-    test("confirmed absence shows guidance and performs exactly one long poll", () async {
+    test("confirmed absence shows guidance and polls until registration", () async {
+      tokenRefresher.accessToken = "refreshed-token";
       statusRepository.results
+        ..add(const AppClientAbsent())
+        ..add(const AppClientAbsent())
         ..add(const AppClientAbsent())
         ..add(const AppClientRegistered());
 
@@ -97,34 +105,63 @@ void main() {
         err: stderrCapture,
       );
 
-      expect(statusRepository.waitValues, equals([false, true]));
+      expect(statusRepository.waitValues, equals([false, true, true, true]));
+      expect(statusRepository.accessTokens, [
+        _token(userId: "user-a"),
+        "refreshed-token",
+        "refreshed-token",
+        "refreshed-token",
+      ]);
       expect(stateRepository.markCalls, equals(1));
       expect(stdoutCapture.lines, [
-        "Open the Sesori app and sign in with this same account:",
+        "",
+        "Connect the Sesori mobile app to continue",
+        "",
+        "Use the QR code or link below to install or open Sesori, then sign in with this same account.",
+        "",
         AppOnboardingFormatter.appUrl,
-        "Waiting up to 35 seconds for the app to connect...",
-        "Sesori app connected. Continuing bridge startup.",
+        "",
+        "Waiting for the Sesori mobile app to connect...",
+        "Bridge startup is paused and will continue automatically once connected.",
+        "",
+        "Sesori mobile app connected. Continuing bridge startup.",
       ]);
     });
 
-    test("false long poll prints one continuation line and does not mark", () async {
+    test("wait failure keeps startup paused and retries", () {
       statusRepository.results
         ..add(const AppClientAbsent())
-        ..add(const AppClientAbsent());
+        ..add(
+          const AppClientStatusUnavailable(
+            error: FormatException("offline"),
+            stackTrace: StackTrace.empty,
+          ),
+        )
+        ..add(const AppClientRegistered());
 
-      await _runCaptured(
-        () => service.run(
-          accessToken: _token(userId: "user-a"),
-          authBackendUrl: "https://auth.test",
-        ),
-        out: stdoutCapture,
-        err: stderrCapture,
-      );
+      fakeAsync((async) {
+        var completed = false;
+        _runCaptured(
+          () => service.run(
+            accessToken: _token(userId: "user-a"),
+            authBackendUrl: "https://auth.test",
+          ),
+          out: stdoutCapture,
+          err: stderrCapture,
+        ).then((_) => completed = true);
 
-      expect(statusRepository.waitValues, equals([false, true]));
-      expect(stateRepository.markCalls, equals(0));
-      expect(stdoutCapture.lines.last, equals("No Sesori app connected yet; continuing bridge startup."));
-      expect(stderrCapture.lines, isEmpty);
+        async.flushMicrotasks();
+        expect(statusRepository.waitValues, equals([false, true]));
+        expect(completed, isFalse);
+
+        async.elapse(const Duration(seconds: 5));
+        async.flushMicrotasks();
+        expect(statusRepository.waitValues, equals([false, true, true]));
+        expect(completed, isTrue);
+      });
+
+      expect(stateRepository.markCalls, equals(1));
+      expect(stderrCapture.lines, hasLength(1));
     });
 
     test("marker read failure warns but a confirmed status still attempts the write", () async {
@@ -202,12 +239,23 @@ String _token({required String? userId}) {
 class _FakeAppClientStatusRepository implements AppClientStatusRepository {
   final List<AppClientStatusResult> results = [];
   final List<bool> waitValues = [];
+  final List<String> accessTokens = [];
 
   @override
   Future<AppClientStatusResult> getStatus({required String accessToken, required bool wait}) async {
+    accessTokens.add(accessToken);
     waitValues.add(wait);
     return results.removeAt(0);
   }
+}
+
+class _FakeTokenRefresher implements TokenRefresher {
+  _FakeTokenRefresher({required this.accessToken});
+
+  String accessToken;
+
+  @override
+  Future<String> getAccessToken({bool forceRefresh = false}) async => accessToken;
 }
 
 class _FakeAppOnboardingStateRepository implements AppOnboardingStateRepository {

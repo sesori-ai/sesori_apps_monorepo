@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console, Log;
 import "package:sesori_shared/sesori_shared.dart" show parseJwtUserId;
 
+import "../auth/token_refresher.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../repositories/app_client_status_repository.dart";
 import "../repositories/app_onboarding_state_repository.dart";
@@ -10,13 +11,18 @@ class AppClientOnboardingService {
     required AppClientStatusRepository statusRepository,
     required AppOnboardingStateRepository stateRepository,
     required AppOnboardingFormatter formatter,
+    required TokenRefresher tokenRefresher,
   }) : _statusRepository = statusRepository,
        _stateRepository = stateRepository,
-       _formatter = formatter;
+       _formatter = formatter,
+       _tokenRefresher = tokenRefresher;
+
+  static const Duration _failureRetryDelay = Duration(seconds: 5);
 
   final AppClientStatusRepository _statusRepository;
   final AppOnboardingStateRepository _stateRepository;
   final AppOnboardingFormatter _formatter;
+  final TokenRefresher _tokenRefresher;
 
   Future<void> run({required String accessToken, required String authBackendUrl}) async {
     final userId = parseJwtUserId(accessToken);
@@ -47,19 +53,56 @@ class AppClientOnboardingService {
         break;
     }
 
-    Console.message("Open the Sesori app and sign in with this same account:");
+    Console.message("");
+    Console.message("Connect the Sesori mobile app to continue");
+    Console.message("");
+    Console.message(
+      "Use the QR code or link below to install or open Sesori, then sign in with this same account.",
+    );
+    Console.message("");
     Console.message(_formatter.formatDestination());
-    Console.message("Waiting up to 35 seconds for the app to connect...");
+    Console.message("");
+    Console.message("Waiting for the Sesori mobile app to connect...");
+    Console.message("Bridge startup is paused and will continue automatically once connected.");
 
-    final waited = await _statusRepository.getStatus(accessToken: accessToken, wait: true);
-    switch (waited) {
-      case AppClientRegistered():
-        await _markCompleted(authBackendUrl: authBackendUrl, userId: userId);
-        Console.message("Sesori app connected. Continuing bridge startup.");
-      case AppClientAbsent():
-        Console.message("No Sesori app connected yet; continuing bridge startup.");
-      case AppClientStatusUnavailable(:final error, :final stackTrace):
-        Log.w("Could not finish the Sesori app registration check; continuing bridge startup", error, stackTrace);
+    var waitFailureReported = false;
+    while (true) {
+      final String pollingAccessToken;
+      try {
+        pollingAccessToken = await _tokenRefresher.getAccessToken();
+      } on Object catch (error, stackTrace) {
+        if (!waitFailureReported) {
+          Log.w(
+            "Could not refresh authentication while waiting for the Sesori app; retrying",
+            error,
+            stackTrace,
+          );
+          waitFailureReported = true;
+        }
+        await Future<void>.delayed(_failureRetryDelay);
+        continue;
+      }
+
+      final waited = await _statusRepository.getStatus(accessToken: pollingAccessToken, wait: true);
+      switch (waited) {
+        case AppClientRegistered():
+          await _markCompleted(authBackendUrl: authBackendUrl, userId: userId);
+          Console.message("");
+          Console.message("Sesori mobile app connected. Continuing bridge startup.");
+          return;
+        case AppClientAbsent():
+          waitFailureReported = false;
+        case AppClientStatusUnavailable(:final error, :final stackTrace):
+          if (!waitFailureReported) {
+            Log.w(
+              "Could not check Sesori app registration; bridge startup remains paused and the check will retry",
+              error,
+              stackTrace,
+            );
+            waitFailureReported = true;
+          }
+          await Future<void>.delayed(_failureRetryDelay);
+      }
     }
   }
 
