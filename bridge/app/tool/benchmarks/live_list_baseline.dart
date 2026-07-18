@@ -619,17 +619,33 @@ class _LiveListBenchmark {
         "AND parent_session_id IS NULL ORDER BY updated_at DESC, session_id DESC "
         "LIMIT 100 OFFSET 25";
 
-    Future<Map<String, Object?>> explain({required String sql}) async {
+    Future<Map<String, Object?>> explain({
+      required String sql,
+      required String expectedIndex,
+    }) async {
       final rows = await database.customSelect("EXPLAIN QUERY PLAN $sql").get();
+      final details = rows.map((row) => row.read<String>("detail")).toList(growable: false);
+      if (!details.any((detail) => detail.contains(expectedIndex))) {
+        throw StateError("Query plan does not use $expectedIndex: $details");
+      }
+      if (details.any((detail) => detail.contains("USE TEMP B-TREE"))) {
+        throw StateError("Query plan uses temporary sorting: $details");
+      }
       return {
         "sql": sql,
-        "details": rows.map((row) => row.read<String>("detail")).toList(growable: false),
+        "details": details,
       };
     }
 
     return {
-      "visibleProjectOrdering": await explain(sql: visibleProjectsSql),
-      "rootPagination": await explain(sql: rootPaginationSql),
+      "visibleProjectOrdering": await explain(
+        sql: visibleProjectsSql,
+        expectedIndex: "idx_projects_updated",
+      ),
+      "rootPagination": await explain(
+        sql: rootPaginationSql,
+        expectedIndex: "idx_sessions_roots",
+      ),
     };
   }
 

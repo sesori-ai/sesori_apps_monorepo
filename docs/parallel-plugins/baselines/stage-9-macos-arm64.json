@@ -102,6 +102,12 @@
       "p99BudgetMicros": 100000,
       "passed": true
     },
+    "queryPlanCoverage": {
+      "visibleProjectIndex": "idx_projects_updated",
+      "rootPaginationIndex": "idx_sessions_roots",
+      "temporarySorting": false,
+      "passed": true
+    },
     "pluginCountOneToEightCanonical": {
       "budgetPercentExclusive": 10,
       "initialMatrixMaximumP95RegressionPercent": 12.437810945273633,

@@ -191,7 +191,7 @@ Codex rollout enumeration used by import runs in a plugin-owned worker isolate.
 Known-event projection and per-plugin event ordering remain independent while an
 import is active.
 
-Stage 9 benchmark tooling and reduced local smoke exercise:
+Stage 9 benchmark tooling and the controlled fixed-host run exercise:
 
 - project and session list p50, p95, and p99 latency;
 - import duration for realistic backend histories;
@@ -199,10 +199,9 @@ Stage 9 benchmark tooling and reduced local smoke exercise:
 - concurrent import, event, and client-read behavior; and
 - bridge responsiveness while a large import is running.
 
-Those local results are directional only and this document intentionally makes
-no numerical performance claim. The release gate remains open until the
-designated controlled host produces the versioned fixed-host matrix and soak
-artifact required by `PLAN.md`.
+The controlled fixed-host matrix and soak passed every release budget. The raw
+measurements, query plans, host metadata, and evaluated gates are retained in
+`baselines/stage-9-macos-arm64.json`.
 
 ## 8. Implemented Migration And Cutover
 
@@ -291,12 +290,10 @@ The production behavior now satisfies these architecture principles:
 - plugin outages preserve catalog browsing and clearly degrade controls; and
 - no backend-specific field or behavior leaks past `BridgePluginApi`.
 
-## 13. Remaining Stage 9 Gate
+## 13. Stage 9 Completion Evidence
 
-Stage 9 documentation, benchmark tooling, dead-path cleanup, and reduced local
-smoke can land before final performance evidence. They do not complete the
-workstream. Completion still requires a clean final commit to be measured on a
-designated fixed host under the controlled protocol in `PLAN.md`, retention of
-the raw versioned JSON matrix/soak artifact, and review of the measured results.
-No local smoke result justifies inventing performance numbers, revising budgets,
-or removing compatibility markers.
+The clean `ac56f05b` production/tooling commit was measured on the
+human-designated fixed host under the controlled protocol in `PLAN.md`. The raw
+versioned JSON matrix/soak artifact is retained, its measured results passed all
+release gates, and no budget revision or compatibility-marker removal was
+needed.

@@ -116,8 +116,8 @@
 
 ## Notes on ordering
 
-- **B (multi-plugin)** implemented its production path in parallel with A; its
-  fixed-host completion gate remains open.
+- **B (multi-plugin)** implemented its production path in parallel with A and
+  passed all fixed-host release gates.
 - **C (multi-bridge)** can follow or overlap B; the two are independent.
 - **F** should not start before **C** is real (it depends on the bridge being
   "one of many" and fully headless).
