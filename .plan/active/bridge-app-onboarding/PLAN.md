@@ -4,11 +4,13 @@
 
 - **Plan slug:** `bridge-app-onboarding`
 - **Implementation base:** monorepo `main`
-- **Pinned W02 base:** `4a156a78b3bf8572c280ce859b3b1370300a8105`
+- **Pinned W02 base:** `120a6f41329e64a4908907b6a318bb1f31bd805d`
 - **Auth dependency:** Satisfied — `sesori-ai/sesori_auth_server` PR #44 merged
   and its endpoint is deployed (user-confirmed 2026-07-18).
-- **Current state:** W01 merged and deployed; W02 redesigned after the user
-  rejected an over-broad first implementation.
+- **Current state:** W01 merged and deployed; the reduced W02 implementation is
+  complete and verified locally, and architecture implementation review approved
+  it. Implementation PR #504 is open and monitored; advisory checkpoint M01 is
+  still pending.
 
 ## Goal
 
@@ -31,8 +33,9 @@ checks again.
 ## Locked Behavior
 
 1. Run only for standalone interactive startup.
-2. Run after authentication and the selected plugin's quick availability check,
-   but before provisioning, startup mutex acquisition, or plugin startup.
+2. Run after authentication and the enabled plugins' concurrent availability
+   checks leave at least one plugin available, but before provisioning, startup
+   mutex acquisition, or plugin startup.
 3. Parse the account id with existing `parseJwtUserId` and normalize the
    configured auth base without changing profile, login, validation, refresh,
    `TokenManager`, or token persistence.

@@ -1,0 +1,143 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
+// ignore_for_file: type=lint
+// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+
+part of 'app_client_status_response.dart';
+
+// **************************************************************************
+// FreezedGenerator
+// **************************************************************************
+
+// dart format off
+T _$identity<T>(T value) => value;
+
+/// @nodoc
+mixin _$AppClientStatusResponse {
+
+ bool get registered;
+/// Create a copy of AppClientStatusResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$AppClientStatusResponseCopyWith<AppClientStatusResponse> get copyWith => _$AppClientStatusResponseCopyWithImpl<AppClientStatusResponse>(this as AppClientStatusResponse, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppClientStatusResponse&&(identical(other.registered, registered) || other.registered == registered));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,registered);
+
+@override
+String toString() {
+  return 'AppClientStatusResponse(registered: $registered)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $AppClientStatusResponseCopyWith<$Res>  {
+  factory $AppClientStatusResponseCopyWith(AppClientStatusResponse value, $Res Function(AppClientStatusResponse) _then) = _$AppClientStatusResponseCopyWithImpl;
+@useResult
+$Res call({
+ bool registered
+});
+
+
+
+
+}
+/// @nodoc
+class _$AppClientStatusResponseCopyWithImpl<$Res>
+    implements $AppClientStatusResponseCopyWith<$Res> {
+  _$AppClientStatusResponseCopyWithImpl(this._self, this._then);
+
+  final AppClientStatusResponse _self;
+  final $Res Function(AppClientStatusResponse) _then;
+
+/// Create a copy of AppClientStatusResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? registered = null,}) {
+  return _then(_self.copyWith(
+registered: null == registered ? _self.registered : registered // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _AppClientStatusResponse implements AppClientStatusResponse {
+  const _AppClientStatusResponse({required this.registered});
+  factory _AppClientStatusResponse.fromJson(Map<String, dynamic> json) => _$AppClientStatusResponseFromJson(json);
+
+@override final  bool registered;
+
+/// Create a copy of AppClientStatusResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$AppClientStatusResponseCopyWith<_AppClientStatusResponse> get copyWith => __$AppClientStatusResponseCopyWithImpl<_AppClientStatusResponse>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppClientStatusResponse&&(identical(other.registered, registered) || other.registered == registered));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,registered);
+
+@override
+String toString() {
+  return 'AppClientStatusResponse(registered: $registered)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$AppClientStatusResponseCopyWith<$Res> implements $AppClientStatusResponseCopyWith<$Res> {
+  factory _$AppClientStatusResponseCopyWith(_AppClientStatusResponse value, $Res Function(_AppClientStatusResponse) _then) = __$AppClientStatusResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ bool registered
+});
+
+
+
+
+}
+/// @nodoc
+class __$AppClientStatusResponseCopyWithImpl<$Res>
+    implements _$AppClientStatusResponseCopyWith<$Res> {
+  __$AppClientStatusResponseCopyWithImpl(this._self, this._then);
+
+  final _AppClientStatusResponse _self;
+  final $Res Function(_AppClientStatusResponse) _then;
+
+/// Create a copy of AppClientStatusResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? registered = null,}) {
+  return _then(_AppClientStatusResponse(
+registered: null == registered ? _self.registered : registered // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+// dart format on

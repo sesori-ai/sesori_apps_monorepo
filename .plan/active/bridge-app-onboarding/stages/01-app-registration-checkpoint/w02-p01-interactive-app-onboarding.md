@@ -4,8 +4,8 @@
 
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Base:** `main`
-- **Pinned SHA:** `4a156a78b3bf8572c280ce859b3b1370300a8105`
-- **Branch:** existing `bridge-onboarding-plan` worktree branch
+- **Pinned SHA:** `120a6f41329e64a4908907b6a318bb1f31bd805d`
+- **Branch:** `bridge-onboarding-plan-c317b6`
 - **Dependency:** Satisfied — auth-server PR #44 merged and is deployed
 
 ## Goal
@@ -45,8 +45,9 @@ showing a bounded terminal QR and exact URL.
    immediate request, optionally prints guidance and runs one long poll, and
    fails open on every failure. It has no retry, skip, stdin, or token refresh.
 8. In `BridgeRuntimeRunner`, compose and invoke the service only when standalone
-   and `TerminalPromptApi.isInteractive`, after plugin availability and before
-   plugin startup/mutex/provisioning. Pass the already authenticated token.
+   and `TerminalPromptApi.isInteractive`, after concurrent availability checks
+   leave at least one enabled plugin available and before plugin startup/mutex/
+   provisioning. Pass the already authenticated token.
 9. Inject `AppOnboardingStateRepository` into `BridgeLogoutRunner`. After logout
    is accepted, clear all onboarding markers and then tokens. If state deletion
    fails, return the existing failed result and leave tokens intact. Cancelled
@@ -78,7 +79,8 @@ showing a bounded terminal QR and exact URL.
   response still attempts the marker write.
 - Remote or marker-write failure: one warning for that failed operation, no new
   marker from that operation, and startup continues.
-- Supervised/noninteractive/plugin-unavailable paths never call the endpoint.
+- Supervised/noninteractive/all-enabled-plugins-unavailable paths never call the
+  endpoint.
 - Accepted logout clears all markers before tokens; state-clear failure is
   observable and leaves tokens intact; cancelled logout preserves both.
 - Strict analyzer, focused tests, host build, and architecture implementation

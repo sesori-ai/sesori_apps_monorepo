@@ -32,8 +32,8 @@ until logout clears all markers.
 - Accepted CLI logout clears all markers before tokens; state-clear failure keeps
   tokens and reports failure. Cancelled logout preserves both.
 - All bridge-side failures warn once and fail open.
-- Supervised, noninteractive, and plugin-unavailable starts do not run the
-  checkpoint.
+- Supervised, noninteractive, and all-enabled-plugins-unavailable starts do not
+  run the checkpoint.
 
 ## Scope Boundary
 

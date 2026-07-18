@@ -2,7 +2,7 @@
 
 ## Plan State
 
-- **Status:** Reduced W02 plan PR open; production implementation not started
+- **Status:** Reduced W02 implementation PR #504 open and monitored
 - **Implementation base:** `main`
 - **Plan slug:** `bridge-app-onboarding`
 - **Plan PRs:** original https://github.com/sesori-ai/sesori_apps_monorepo/pull/490; reduced-plan correction https://github.com/sesori-ai/sesori_apps_monorepo/pull/494
@@ -12,7 +12,7 @@
 
 - **Stage:** S01 — App Registration Checkpoint
 - **Wave:** W02
-- **Next action:** Monitor reduced-plan PR #494; await user confirmation before production implementation.
+- **Next action:** Monitor PR #504 and address CI/review findings; then run the advisory M01 checkpoint.
 
 ## Plan Review
 
@@ -26,7 +26,7 @@
 | Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
 |---|---|---|---|---|---|
 | S01 | W01 | `sesori-ai/sesori_auth_server` | `master` | `b17a6e760b0c70c3dc3d1cd456ff93d814c75453` | Historical W01 implementation baseline. PR #44 later merged to `master` at `8f7dd3b9d56d1797da4480c8806f0ac6033b9555` and was deployed. |
-| S01 | W02 | `sesori-ai/sesori_apps_monorepo` | `main` | `4a156a78b3bf8572c280ce859b3b1370300a8105` | Selected W02 implementation baseline; future implementation reassesses drift before coding. |
+| S01 | W02 | `sesori-ai/sesori_apps_monorepo` | `main` | `120a6f41329e64a4908907b6a318bb1f31bd805d` | Reassessed before implementation. Parallel-plugin work changed runner composition but not onboarding contracts or intent; W02 now gates after concurrent availability checks leave at least one plugin available. |
 
 Workers add one authoritative row for each started stage/wave/repository/base
 pair after drift assessment and before branch creation.
@@ -36,7 +36,7 @@ pair after drift assessment and before branch creation.
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
 | [x] | S01-W01-P01 | S01 | W01 | https://github.com/sesori-ai/sesori_auth_server/pull/44 | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Merged and deployed. Delivers the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. Format, lint, build, 422 tests (1 skipped), circular-dependency check, and implementation review passed. |
-| [ ] | S01-W02-P01 | S01 | W02 | — | existing `bridge-onboarding-plan` worktree branch | Add a bounded one-time-per-backend/account checkpoint with no auth/token/terminal refactor. |
+| [ ] | S01-W02-P01 | S01 | W02 | https://github.com/sesori-ai/sesori_apps_monorepo/pull/504 | `bridge-onboarding-plan-c317b6` | Implementation, focused/full verification, host build, and architecture review complete. PR is open and monitored; row remains unchecked until merge. |
 
 ## Manual Checkpoints
 
@@ -49,9 +49,8 @@ pair after drift assessment and before branch creation.
 - No implementation blocker is known.
 - The auth-server prerequisite is complete: PR #44 merged and the endpoint was
   deployed (user-confirmed 2026-07-18).
-- The pinned monorepo W02 implementation baseline remains
-  `4a156a78b3bf8572c280ce859b3b1370300a8105`
-  (2026-07-17T18:02:33+03:00). The latest audited auth-server `master` tip is
+- The pinned monorepo W02 implementation baseline is
+  `120a6f41329e64a4908907b6a318bb1f31bd805d`. The latest audited auth-server `master` tip is
   PR #44's merge commit `8f7dd3b9d56d1797da4480c8806f0ac6033b9555`
   (2026-07-18T13:30:06Z), whose endpoint is deployed. Each future worker
   assesses and pins current drift.
@@ -60,6 +59,26 @@ pair after drift assessment and before branch creation.
   plan's touched paths, contracts, architecture, or product intent.
 
 ## Findings and Plan Deltas
+
+- **2026-07-18 — W02 baseline reassessed:** Current `main` at `120a6f413` includes
+  the parallel-plugin runtime merged after the original pinned baseline. The
+  touched runner and CLI composition changed, but the approved API, persistence,
+  logout, and bounded-checkpoint contracts remain valid. The singular
+  plugin-availability gate is now the current equivalent: run only after the
+  concurrent enabled-plugin checks leave at least one plugin available.
+- **2026-07-18 — Reduced W02 implemented:** Added the provider-level app-client
+  status operation with active per-request deadlines, opaque pair-marker storage,
+  status/state repositories, bounded ANSI+Unicode QR formatting, the standalone
+  interactive startup checkpoint, and accepted-logout marker clearing. Existing
+  auth, token, prompt, plugin, relay, client, and shared contracts were not
+  refactored.
+- **2026-07-18 — W02 verification complete:** `dart pub get`, bridge codegen,
+  41 focused onboarding/logout/runner tests, app `dart analyze --fatal-infos`,
+  workspace `make analyze`, workspace `make test`, and `make build-host` passed.
+- **2026-07-18 — W02 implementation review approved:**
+  `aristotle-impl-review` approved the uncommitted implementation scope with no
+  architecture findings. Implementation PR #504 was opened and monitoring
+  started immediately.
 
 - **2026-07-17 — W02 implementation discarded for excessive scope:** The first
   W02 implementation followed an over-broad plan that combined onboarding with
@@ -71,9 +90,10 @@ pair after drift assessment and before branch creation.
 - **2026-07-17 — User-authorized wave overlap:** The user explicitly directed
   S01-W02-P01 to begin before S01-W01-P01 merges because the implementations are
   in separate repositories. This overrides only the implementation-start merge
-  barrier; auth-server merge/deploy still precedes bridge release. Current
-  monorepo `main` at `4a156a78b3bf8572c280ce859b3b1370300a8105`
-  remains the pinned W02 baseline.
+  barrier; auth-server merge/deploy still precedes bridge release. Monorepo
+  `main` at `4a156a78b3bf8572c280ce859b3b1370300a8105` was the preliminary
+  implementation baseline at that time; the reassessed implementation baseline
+  is recorded above.
 - **2026-07-17 — Reduced behavior selected:** The user selected one immediate
   check plus at most one 30-second server-held wait. The reduced design has no
   skip input, retry loop, token refresh, or asynchronous terminal ownership.

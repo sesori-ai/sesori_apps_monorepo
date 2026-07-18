@@ -27,9 +27,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart"
     show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo, legacyMissingPluginId;
 
+import "../../api/app_onboarding_state_storage.dart";
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
 import "../../api/database/database.dart";
+import "../../api/sesori_server_api.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_id_migration_service.dart";
 import "../../auth/bridge_id_storage.dart";
@@ -47,8 +49,11 @@ import "../../control/bridge_control_message_dispatcher.dart";
 import "../../control/control_channel_loss_listener.dart";
 import "../../control/control_provision_notifier.dart";
 import "../../control/control_status_notifier.dart";
+import "../../foundation/app_onboarding_formatter.dart";
 import "../../foundation/control_channel_client.dart";
 import "../../listeners/catalog_import_console_listener.dart";
+import "../../repositories/app_client_status_repository.dart";
+import "../../repositories/app_onboarding_state_repository.dart";
 import "../../repositories/bridge_settings.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
@@ -71,6 +76,7 @@ import "../../server/repositories/startup_mutex_repository.dart";
 import "../../server/repositories/terminal_prompt_repository.dart";
 import "../../server/services/bridge_instance_service.dart";
 import "../../server/services/bridge_restart_service.dart";
+import "../../services/app_client_onboarding_service.dart";
 import "../../services/catalog_import_service.dart";
 import "../../services/control_channel_token_service.dart";
 import "../../services/control_prompt_service.dart";
@@ -589,8 +595,28 @@ class BridgeRuntimeRunner {
             availableDescriptors.add(result.descriptor);
         }
       }
+      final runAppOnboarding = shouldRunAppOnboarding(
+        isSupervised: options.isSupervised,
+        isInteractive: terminalPromptApi.isInteractive,
+        hasAvailablePlugins: availableDescriptors.isNotEmpty,
+      );
       if (availableDescriptors.isEmpty) {
         return 1;
+      }
+      if (runAppOnboarding) {
+        await AppClientOnboardingService(
+          statusRepository: AppClientStatusRepository(
+            api: SesoriServerApi(
+              authBackendUrl: options.authBackendUrl,
+              client: httpClient,
+              requestDeadline: SesoriServerApi.defaultRequestDeadline,
+            ),
+          ),
+          stateRepository: AppOnboardingStateRepository(
+            storage: AppOnboardingStateStorage(directoryPath: appOnboardingStateDirectoryPath()),
+          ),
+          formatter: AppOnboardingFormatter(out: io.stdout, environment: environment),
+        ).run(accessToken: authAccessToken, authBackendUrl: options.authBackendUrl);
       }
       // If this bridge was spawned by a restart, wait for the predecessor to
       // exit before single-live-bridge enforcement so the handoff is clean.
@@ -871,6 +897,13 @@ class BridgeRuntimeRunner {
       }
     }
   }
+
+  @visibleForTesting
+  static bool shouldRunAppOnboarding({
+    required bool isSupervised,
+    required bool isInteractive,
+    required bool hasAvailablePlugins,
+  }) => !isSupervised && isInteractive && hasAvailablePlugins;
 
   @visibleForTesting
   static void startCatalogImports({
