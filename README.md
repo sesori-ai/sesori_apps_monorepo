@@ -1,234 +1,200 @@
-# Sesori Apps Monorepo
+<p align="center">
+  <a href="https://sesori.com" target="_blank" rel="noopener">
+    <strong>Sesori</strong>
+  </a>
+</p>
 
-## What is Sesori?
+<h1 align="center">Run your AI coding sessions from anywhere.</h1>
 
-AI coding assistants like [OpenCode](https://github.com/opencode-ai/opencode) run as local processes on your development machine. That means you need to be at your desk to see what they're doing, review their output, or answer their questions.
+<p align="center">
+  Sesori is the mobile cockpit for <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, and other AI coding assistants.<br/>
+  Leave your laptop. Take the session.
+</p>
 
-Sesori removes that constraint. It lets you **monitor and interact with AI coding sessions from your phone** — browse projects, read conversation history, respond to questions, and watch progress in real time.
+<p align="center">
+  <img src=".github/assets/banner.png" width="800" alt="Sesori banner" />
+</p>
 
-### How it works
+<p align="center">
+  <a href="https://apps.apple.com/app/sesori/id6760642500">
+    <img src="https://img.shields.io/badge/Download-App%20Store-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the App Store" />
+  </a>
+  <a href="https://play.google.com/store/apps/details?id=com.sesori.app">
+    <img src="https://img.shields.io/badge/Install-Google%20Play-414141?style=for-the-badge&logo=google-play&logoColor=white" alt="Get it on Google Play" />
+  </a>
+  <a href="https://github.com/sesori-ai/sesori_apps_monorepo/releases">
+    <img src="https://img.shields.io/github/v/release/sesori-ai/sesori_apps_monorepo?style=for-the-badge" alt="GitHub release" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-FSL--1.1--ALv2-blue?style=for-the-badge" alt="License" />
+  </a>
+</p>
 
-A lightweight **bridge CLI** runs on your laptop alongside the AI assistant. It connects to a **relay server** over WebSocket. Your **mobile app** connects to the same relay. The relay routes encrypted traffic between them — it sees connection metadata (auth tokens, public keys) but never application data.
+<p align="center">
+  <a href="https://discord.gg/5KBC8dV9uR">
+    <img src="https://img.shields.io/badge/Discord-Join-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord" />
+  </a>
+  <a href="https://x.com/sesori_ai">
+    <img src="https://img.shields.io/badge/Follow-%40sesori__ai-000000?style=for-the-badge&logo=x&logoColor=white" alt="Follow on X" />
+  </a>
+</p>
 
-```
-AI Assistant        Bridge CLI         Relay Server         Mobile App
-(localhost)    <--- HTTP/SSE --->   <--- WSS (E2E) --->   <--- WSS (E2E) --->
-                    on your             in the               on your
-                    machine             cloud                phone
-```
+<p align="center">
+  <a href="#install">Get started</a> ·
+  <a href="https://docs.sesori.com" target="_blank" rel="noopener">Docs</a> ·
+  <a href="docs/HOW_IT_WORKS.md">How it works</a> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+  <a href="docs/SECURITY.md">Security</a> ·
+  <a href="docs/CONTRIBUTING.md">Contribute</a>
+</p>
 
-The bridge talks to the AI assistant over localhost HTTP and SSE, wraps everything in end-to-end encryption, and forwards it through the relay to your phone. The phone can send requests back the same way — ask questions, trigger actions, browse sessions — all encrypted end-to-end.
+---
 
-## Repository Structure
+<a id="install"></a>
 
-```
-bridge/                     # Dart workspace — Bridge CLI + plugin system
-  app/                      # Bridge CLI and plugin-agnostic orchestration
-  sesori_bridge_foundation/ # Bridge-wide runtime acquisition primitives
-  sesori_plugin_interface/  # Abstract plugin contract
-  sesori_plugin_runtime/    # Managed backend runtime supervision
-  sesori_plugin_opencode/   # OpenCode backend plugin
-  sesori_plugin_codex/      # Codex backend plugin
-  sesori_plugin_acp/        # Agent Client Protocol backend plugin
-  sesori_plugin_cursor/     # Cursor ACP backend plugin
-client/                     # Flutter workspace — mobile + in-development desktop shells
-  app/                      # Mobile Flutter UI shell
-  desktop/                  # Desktop Flutter product shell
-  module_core/              # Pure Dart business logic
-  module_desktop_core/      # Pure Dart desktop supervision and state
-  module_auth/              # Auth & token lifecycle
-  module_prego/             # Prego design system — theme, fonts, icons, UI components
-shared/
-  sesori_shared/            # Shared crypto & protocol types
-  no_slop_linter/           # Custom Dart lint rules (dev tooling)
-```
+## Install in 3 steps
 
-`bridge/` and `client/` are independent Dart pub workspaces with separate dependency resolution. The packages under `shared/` are referenced via path by both: `sesori_shared` carries the crypto and protocol types, while `no_slop_linter` is a custom analyzer plugin pulled in as a dev dependency to enforce the repo's lint rules.
+### 1. Download the Sesori app
 
-## Dependency Graph
+<a href="https://apps.apple.com/app/sesori/id6760642500">
+  <img src="https://img.shields.io/badge/App_Store-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the App Store" />
+</a>
+<a href="https://play.google.com/store/apps/details?id=com.sesori.app">
+  <img src="https://img.shields.io/badge/Google_Play-414141?style=for-the-badge&logo=google-play&logoColor=white" alt="Get it on Google Play" />
+</a>
 
-```mermaid
-graph TD
-  bridge_app[bridge/app] --> sesori_plugin_interface[bridge/sesori_plugin_interface]
-  bridge_app --> sesori_bridge_foundation[bridge/sesori_bridge_foundation]
-  bridge_app --> sesori_plugin_opencode[bridge/sesori_plugin_opencode]
-  bridge_app --> sesori_plugin_codex[bridge/sesori_plugin_codex]
-  bridge_app --> sesori_plugin_acp[bridge/sesori_plugin_acp]
-  bridge_app --> sesori_plugin_cursor[bridge/sesori_plugin_cursor]
-  bridge_app --> sesori_shared[shared/sesori_shared]
-  sesori_bridge_foundation --> sesori_plugin_interface
-  sesori_plugin_runtime[bridge/sesori_plugin_runtime] --> sesori_plugin_interface
-  sesori_plugin_opencode --> sesori_plugin_interface
-  sesori_plugin_opencode --> sesori_bridge_foundation
-  sesori_plugin_opencode --> sesori_plugin_runtime
-  sesori_plugin_opencode --> sesori_shared
-  sesori_plugin_codex --> sesori_plugin_interface
-  sesori_plugin_codex --> sesori_bridge_foundation
-  sesori_plugin_codex --> sesori_plugin_runtime
-  sesori_plugin_codex --> sesori_shared
-  sesori_plugin_acp --> sesori_plugin_interface
-  sesori_plugin_acp --> sesori_bridge_foundation
-  sesori_plugin_acp --> sesori_shared
-  sesori_plugin_cursor --> sesori_plugin_interface
-  sesori_plugin_cursor --> sesori_bridge_foundation
-  sesori_plugin_cursor --> sesori_plugin_acp
+Requires iOS 15 or later, or Android 8.0 or later.
 
-  mobile_app[client/app] --> module_core[client/module_core]
-  mobile_app --> module_prego[client/module_prego]
-  mobile_app -. "Phase 4" .-> module_app_ui[client/module_app_ui planned]
-  desktop_app[client/desktop] --> module_core
-  desktop_app --> module_desktop_core[client/module_desktop_core]
-  desktop_app --> module_prego
-  desktop_app -. "Phase 4" .-> module_app_ui
-  module_app_ui -. "Phase 4" .-> module_core
-  module_desktop_core --> module_core
-  module_desktop_core --> sesori_shared
-  module_core --> module_auth
-  module_auth --> sesori_shared
+### 2. Install the Bridge CLI on your machine
+
+The Bridge is a small source-available command-line tool that connects the app to OpenCode, Cursor, Codex, and other AI coding assistants.
+
+**macOS / Linux:**
+
+```bash
+curl -fsSL https://sesori.com/install.sh | bash
 ```
 
-`shared/no_slop_linter` is omitted above — it is a dev-only analyzer plugin, not a runtime dependency.
+**Windows (PowerShell):**
 
-## Data Flow
+```powershell
+irm https://sesori.com/install.ps1 | iex
+```
 
-### Runtime topology
+Prefer npm or bun? You can also bootstrap the Bridge with `npx @sesori/bridge` or `bunx @sesori/bridge`. It installs the same managed runtime under the hood.
 
-At runtime, four components form a pipeline:
+### 3. Start the Bridge
+
+```bash
+sesori-bridge
+```
+
+Sign in with the **same account** on your phone and your machine. The two pair automatically over the encrypted relay, even on different networks.
+
+> **Full walkthrough:** prerequisites, OpenCode setup, headless VM instructions, and troubleshooting are in [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
+
+---
+
+## What you can do
+
+| Feature | What it means |
+|---|---|
+| **Browse projects & sessions** | See your OpenCode, Cursor, Codex, and other AI coding projects and every active session from your phone. |
+| **Keep agents moving** | Answer questions, approve steps, and stop or restart tasks without returning to your desk. |
+| **Review code and PR status** | Read diffs and keep tabs on pull requests without opening your laptop. |
+| **Voice or type** | Talk to your assistant naturally or use the keyboard — whatever works in the moment. |
+| **Real-time notifications** | Get pinged the moment your AI needs you back or a long-running task finishes. |
+| **End-to-end encrypted** | Your code, prompts, and responses stay between your phone and your machine. |
+
+---
+
+## How it works
+
+A lightweight Bridge runs on your laptop alongside OpenCode. It connects to a relay server over WebSocket, and your phone connects to the same relay. The relay routes encrypted traffic between them — it never sees your application data.
 
 ```mermaid
 graph LR
-  OC["AI Assistant<br/>(localhost)"] -- "HTTP + SSE" --> B["Bridge CLI<br/>(your machine)"]
-  B -- "WSS · E2E encrypted" --> R["Relay Server<br/>(cloud)"]
-  R -- "WSS · E2E encrypted" --> M["Mobile App<br/>(your phone)"]
+  OC["AI Assistant<br/>on your machine"] -- "HTTP + SSE" --> B["Bridge CLI<br/>your laptop"]
+  B -- "WSS · E2E encrypted" --> R["Relay Server<br/>cloud router"]
+  R -- "WSS · E2E encrypted" --> M["Sesori App<br/>your phone"]
 ```
 
-### How each hop works
+Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt every message with XChaCha20-Poly1305. The relay only routes opaque binary frames.
 
-**Bridge ↔ AI Assistant (localhost)**
-The bridge talks to the AI assistant over plain HTTP on `127.0.0.1`. It fetches projects and sessions via REST, and subscribes to a Server-Sent Events (SSE) stream for real-time updates (new messages, status changes, questions). A random 256-bit password protects the local connection.
+> **Dive deeper:** [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)
 
-**Bridge ↔ Relay (WebSocket)**
-The bridge opens a persistent WebSocket to the relay server and authenticates with an OAuth access token. All application data sent over this connection is encrypted — the relay only sees opaque binary frames and routes them by user identity.
+---
 
-**Phone ↔ Relay (WebSocket)**
-The mobile app opens its own WebSocket to the same relay, authenticates the same way, and receives binary frames destined for it. The relay is a stateless router.
+## Why you can trust it
 
-**Phone ↔ Bridge (end-to-end, through the relay)**
-When a phone connects, it performs an **X25519 Diffie-Hellman key exchange** with the bridge. Both sides derive a shared secret via HKDF-SHA256, and the bridge sends a random **room key** encrypted with that secret. From that point on, every message — HTTP requests, responses, SSE events — is encrypted with **XChaCha20-Poly1305** using the room key. The relay never has access to the key material.
+- **End-to-end encryption.** All application data between your phone and laptop is encrypted with XChaCha20-Poly1305.
+- **Ephemeral key exchange.** Each connection uses a fresh X25519 Diffie-Hellman keypair; the relay never holds the room key.
+- **Local-first.** Your source code, prompts, and AI responses stay on your machine. We only store the account and routing metadata needed to pair your devices. Push notification previews may include a short snippet of an event; see [docs/SECURITY.md](docs/SECURITY.md) for details.
+- **Source-available bridge.** The Bridge and the client protocol are in this repo. You can audit the code that runs on your machine.
+- **Source-available license.** Released under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`).
 
-### Message types
+> **Security details:** [docs/SECURITY.md](docs/SECURITY.md)
 
-| Direction | What travels | Example |
+---
+
+## Supported AI assistants
+
+| Assistant | Status | Notes |
 |---|---|---|
-| Phone → Bridge | HTTP requests (encrypted) | `GET /project`, `GET /session/:id/message` |
-| Bridge → Phone | HTTP responses (encrypted) | Project list, session messages |
-| Bridge → Phone | SSE events (encrypted) | New message, session status change, question asked |
-| Phone → Bridge | SSE subscribe/unsubscribe | Start/stop receiving events for a session |
-| Both | Key exchange, resume, rekey | Connection lifecycle |
+| [OpenCode](https://opencode.ai) | Available | Deep native integration. |
+| Claude Code | Coming soon | Plugin architecture already supports multi-assistant backends. |
+| OpenAI Codex CLI | Beta | Enabled by default in an upcoming release. |
+| Cursor | Beta | ACP-based Cursor plugin; enabled by default in an upcoming release. |
+| Windsurf | Coming soon | Planned. |
 
-## Security
+---
 
-- **End-to-end encryption** — All application data (projects, sessions, messages, events) is encrypted with XChaCha20-Poly1305 between phone and bridge. The relay routes ciphertext and connection metadata but cannot read user content.
-- **Ephemeral key exchange** — Each connection uses ephemeral X25519 keypairs. The DH-derived secret protects room key delivery, and the ephemeral keys are discarded afterward.
-- **Session resume** — The room key is persisted on the phone so reconnects skip the key exchange. A `rekey_required` signal forces a fresh exchange when needed.
-- **Local protection** — The bridge protects its localhost connection to the AI assistant with a random 256-bit password, never transmitted over the network.
+## Repository overview
 
-## Prerequisites
-
-- **Flutter** — mobile and desktop client workspace; the exact version is pinned in [`.tool-versions`](.tool-versions)
-- **Dart SDK** — bridge workspace (a pure Dart workspace); ships with the pinned Flutter version, so no separate install is needed
-- **asdf** — recommended for version management; reads [`.tool-versions`](.tool-versions) automatically
-
-## Getting Started
-
-```sh
-git clone <repo-url>
-cd sesori_apps_monorepo
-
-# Install bridge dependencies
-cd bridge && dart pub get
-
-# Install client dependencies
-cd ../client && flutter pub get
+```
+sesori_apps_monorepo/
+├── bridge/     # Pure Dart workspace — Bridge CLI + backend plugins
+├── client/     # Flutter workspace — mobile & desktop shells
+├── shared/     # Cross-product crypto & protocol primitives
+└── docs/       # Deep-dive guides
 ```
 
-## Common Tasks
+- `bridge/app` is the headless CLI that runs on your laptop.
+- `bridge/sesori_plugin_*` packages implement support for each AI assistant backend.
+- `client/app` is the Flutter mobile shell.
+- `client/desktop` is the in-development desktop companion.
+- `shared/sesori_shared` holds the encryption primitives and wire types used by both sides.
 
-Each directory (bridge/, client/, or shared/) ships a Makefile with the same core targets — run them from that directory. They resolve the Flutter-bundled Dart SDK via the version pinned in .tool-versions and the default asdf install path (`~/.asdf/installs/flutter/<version>`), so they bypass whatever is on your PATH — provided you've run `asdf install`.
+> **Full architecture:** repo structure, dependency graph, and layered design are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-| Target | What it does |
-|---|---|
-| `make pub-get` | Resolve dependencies for the workspace |
-| `make codegen` | Run `build_runner` across modules (freezed, json_serializable, …) |
-| `make analyze` | Static analysis across modules |
-| `make test` | Run unit tests across modules |
+---
 
-`client/` adds design-system helpers for the Prego module:
+## Built for developers
 
-| Target | What it does |
-|---|---|
-| `make generate-assets` | Regenerate the Tabler/VESPR icon-font Dart bindings |
-| `make generate-tokens` | Sync Figma design tokens into `module_prego` |
+- **Plugin system.** New AI assistant backends live in their own plugin package without touching the mobile app or core bridge.
+- **Headless bridge.** The Bridge is usable without a GUI, ideal for remote machines, VMs, and server setups.
+- **Cross-platform.** Mobile apps run on iOS and Android. Bridge CLI runs on macOS, Linux, and Windows.
+- **Encrypted by default.** No optional VPN, no tunnel setup, no exposed ports on your laptop.
 
-The root `Makefile` manages cross-workspace versioning:
+For where the project is headed, see [docs/VISION.md](docs/VISION.md) and [docs/ROADMAP.md](docs/ROADMAP.md).
 
-| Target | What it does |
-|---|---|
-| `make bump-version TYPE=patch\|minor\|major` | Bump bridge + mobile versions in lockstep (or pass `VERSION=X.Y.Z`) |
-| `make bump-version-check` | Preview the version bump without writing changes |
+> **Want to hack on it?** See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
-## Bridge Install
+---
 
-If you want the packaged bridge CLI instead of building from source, use the bridge-specific install docs:
+## License & support
 
-- [bridge/INSTALL.md](bridge/INSTALL.md) — shell installers, `npx @sesori/bridge`, update behavior, and uninstall steps
-- [bridge/RELEASING.md](bridge/RELEASING.md) — release verification and manual release-test flow
+This repository is source-available under the [Functional Source License, Version 1.1, Apache 2.0 Future License](LICENSE) (`FSL-1.1-ALv2`).
 
-Quick options:
+- **Docs:** [docs.sesori.com](https://docs.sesori.com)
+- **Discord:** [discord.gg/5KBC8dV9uR](https://discord.gg/5KBC8dV9uR)
+- **Email:** [hello@sesori.com](mailto:hello@sesori.com)
+- **Issues:** [GitHub Issues](https://github.com/sesori-ai/sesori_apps_monorepo/issues)
 
-```bash
-# npm bootstrap (macOS / Linux / Windows)
-npx @sesori/bridge --version
+---
 
-# If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.local/share/sesori/bin/sesori-bridge directly on macOS/Linux.
-sesori-bridge
-
-# shell installer (macOS / Linux)
-curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.sh | bash
-```
-
-On Windows, use:
-
-```powershell
-irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.ps1 | iex
-```
-
-The installers and npm bootstrap both create the same managed runtime under `~/.local/share/sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows.
-On macOS/Linux, a symlink is created at `~/.local/bin/sesori-bridge`. If `~/.local/bin` is already in your PATH, the command is available immediately. Otherwise, the installer adds it to your shell config and you may need to open a new terminal.
-
-## Bridge Uninstall
-
-To fully remove the packaged bridge runtime, delete the managed install directory:
-
-- macOS / Linux: `~/.local/share/sesori/` and `~/.local/bin/sesori-bridge`
-- Windows: `%LOCALAPPDATA%\sesori\`
-
-If you used the npm bootstrap path, `npm uninstall @sesori/bridge` only removes the npm package. It does not remove the managed Sesori install.
-
-## Workspace Docs
-
-- [bridge/README.md](bridge/README.md) — bridge CLI, plugin system, codegen, and testing
-- [bridge/ARCHITECTURE.md](bridge/ARCHITECTURE.md) — bridge layered architecture (Foundation → API → Repository → Service)
-- [client/README.md](client/README.md) — Flutter client, module structure, and testing
-- [shared/no_slop_linter/README.md](shared/no_slop_linter/README.md) — custom lint rules and how they're wired in
-
-## License
-
-This repository is source-available under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`).
-
-That means you may use, modify, and redistribute the software for permitted purposes, but you may not use it to launch a competing product or service.
-
-On the second anniversary of the date each version is made available, that version automatically becomes available under Apache License 2.0.
-
-See [LICENSE](LICENSE) for the full terms.
+<p align="center">
+  <a href="https://apps.apple.com/app/sesori/id6760642500">Download for iOS</a> ·
+  <a href="https://play.google.com/store/apps/details?id=com.sesori.app">Download for Android</a> ·
+  <a href="https://docs.sesori.com/get-started/quickstart">Read the Quickstart</a>
+</p>
