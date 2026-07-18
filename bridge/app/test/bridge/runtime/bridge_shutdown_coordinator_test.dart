@@ -2,11 +2,46 @@ import "dart:async";
 
 import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show StartAbortSignal;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show PluginStartAbortedException, StartAbortController, StartAbortSignal;
 import "package:test/test.dart";
 
 void main() {
   group("BridgeShutdownCoordinator", () {
+    test("runs signal, drain, plugin disposal, lifecycle, and shared phases in order", () async {
+      final coordinator = BridgeShutdownCoordinator(
+        startAbortSignal: StartAbortSignal.never,
+        exitProcess: (_) {},
+      );
+      final operations = <String>[];
+
+      coordinator
+        ..addPhase(
+          phase: BridgeShutdownPhase.shared,
+          action: () => operations.add("shared"),
+        )
+        ..addPhase(
+          phase: BridgeShutdownPhase.pluginDispose,
+          action: () => operations.add("pluginDispose"),
+        )
+        ..addPhase(
+          phase: BridgeShutdownPhase.signal,
+          action: () => operations.add("signal"),
+        )
+        ..addPhase(
+          phase: BridgeShutdownPhase.lifecycle,
+          action: () => operations.add("lifecycle"),
+        )
+        ..addPhase(
+          phase: BridgeShutdownPhase.drain,
+          action: () => operations.add("drain"),
+        );
+
+      await coordinator.shutdown();
+
+      expect(operations, ["signal", "drain", "pluginDispose", "lifecycle", "shared"]);
+    });
+
     test("runs ordered steps in order, before the parallel phase", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
@@ -97,6 +132,40 @@ void main() {
       await shutdown;
     });
 
+    test("an aborted plugin start does not block phases after plugin disposal", () async {
+      final startAbortController = StartAbortController();
+      final coordinator = BridgeShutdownCoordinator(
+        startAbortSignal: startAbortController.signal,
+        exitProcess: (_) {},
+      );
+      final operations = <String>[];
+
+      coordinator
+        ..addPhase(
+          phase: BridgeShutdownPhase.signal,
+          action: startAbortController.abort,
+        )
+        ..addPhase(
+          phase: BridgeShutdownPhase.pluginDispose,
+          action: () async {
+            operations.add("pluginDispose");
+            throw const PluginStartAbortedException();
+          },
+        )
+        ..addPhase(
+          phase: BridgeShutdownPhase.lifecycle,
+          action: () => operations.add("lifecycle"),
+        )
+        ..addPhase(
+          phase: BridgeShutdownPhase.shared,
+          action: () => operations.add("shared"),
+        );
+
+      await coordinator.shutdown();
+
+      expect(operations, ["pluginDispose", "lifecycle", "shared"]);
+    });
+
     test("repeated shutdown calls share one run", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
@@ -160,7 +229,7 @@ void main() {
           exitProcess: exitCalls.add,
         );
         coordinator.addPhase(
-          phase: BridgeShutdownPhase.earlyPluginDispose,
+          phase: BridgeShutdownPhase.pluginDispose,
           action: () => Completer<void>().future,
           budget: const Duration(seconds: 10),
         );

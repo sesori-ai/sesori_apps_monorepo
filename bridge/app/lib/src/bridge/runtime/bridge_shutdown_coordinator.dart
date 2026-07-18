@@ -6,8 +6,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 
 enum BridgeShutdownPhase {
   signal,
-  earlyPluginDispose,
   drain,
+  pluginDispose,
   lifecycle,
   shared,
 }
