@@ -326,8 +326,8 @@ class ConnectionService {
 
       // A resume_ack already proves the bridge is reachable; only fresh-DH
       // connects need the extra health round-trip. A non-error status code is
-      // sufficient proof of liveness — the bridge only returns 200 when the
-      // underlying backend is healthy.
+      // sufficient proof that the bridge request path is live. Plugin
+      // lifecycle and diagnostics are discovered through plugin-scoped APIs.
       //
       // On a RESUMED connect we reuse the last fetched health so a previously
       // reported degraded-filesystem warning stays stable across reconnects

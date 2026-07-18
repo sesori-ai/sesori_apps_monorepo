@@ -20,6 +20,7 @@ void main() {
     late MockPluginRepository mockPluginRepository;
     late MockConnectionService mockConnectionService;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
+    late MockProjectRepository mockProjectRepository;
     late NewSessionSelectionTracker selectionTracker;
 
     const defaultPlugin = PluginMetadata(
@@ -40,6 +41,7 @@ void main() {
           health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
         ),
       );
+      mockProjectRepository = MockProjectRepository();
       selectionTracker = NewSessionSelectionTracker();
 
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus.stream);
@@ -73,6 +75,19 @@ void main() {
       ).thenAnswer(
         (_) async => ApiResponse<CommandListResponse>.success(const CommandListResponse(items: <CommandInfo>[])),
       );
+      when(
+        () => mockProjectRepository.getProject(projectId: any(named: "projectId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const Project(
+            id: "project-1",
+            name: "Project",
+            path: "/project",
+            time: null,
+            supportsDedicatedWorktrees: true,
+          ),
+        ),
+      );
     });
 
     tearDown(() => connectionStatus.close());
@@ -81,8 +96,10 @@ void main() {
       connectionService: mockConnectionService,
       sessionService: mockSessionService,
       pluginRepository: mockPluginRepository,
+      projectRepository: mockProjectRepository,
       selectionTracker: selectionTracker,
       projectId: "project-1",
+      initialSupportsDedicatedWorktrees: true,
     );
 
     Future<void> waitForComposer(NewSessionCubit cubit) async {
@@ -98,6 +115,28 @@ void main() {
       expect(
         cubit.state,
         isA<NewSessionIdle>().having((state) => state.selectedAgentModel, "selectedAgentModel", isNull),
+      );
+    });
+
+    test("uses a known unsupported capability in the initial state", () {
+      final cubit = NewSessionCubit(
+        connectionService: mockConnectionService,
+        sessionService: mockSessionService,
+        pluginRepository: mockPluginRepository,
+        projectRepository: mockProjectRepository,
+        selectionTracker: selectionTracker,
+        projectId: "project-1",
+        initialSupportsDedicatedWorktrees: false,
+      );
+      addTearDown(cubit.close);
+
+      expect(
+        cubit.state,
+        isA<NewSessionIdle>().having(
+          (state) => state.supportsDedicatedWorktrees,
+          "supportsDedicatedWorktrees",
+          isFalse,
+        ),
       );
     });
 
@@ -208,8 +247,10 @@ void main() {
           connectionService: mockConnectionService,
           sessionService: mockSessionService,
           pluginRepository: mockPluginRepository,
+          projectRepository: mockProjectRepository,
           selectionTracker: selectionTracker,
           projectId: "project-1",
+          initialSupportsDedicatedWorktrees: true,
         );
       },
       act: (cubit) async {
@@ -319,6 +360,113 @@ void main() {
           variant: any(named: "variant"),
           command: null,
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).called(1);
+    });
+
+    test("createSession preserves a worktree request while project capability loads", () async {
+      final projectResponse = Completer<ApiResponse<Project>>();
+      when(
+        () => mockProjectRepository.getProject(projectId: any(named: "projectId")),
+      ).thenAnswer((_) => projectResponse.future);
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-loading")));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+      );
+
+      verify(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          text: "hello",
+          agent: null,
+          providerID: null,
+          modelID: null,
+          variant: null,
+          command: null,
+          dedicatedWorktree: true,
+        ),
+      ).called(1);
+      projectResponse.complete(
+        ApiResponse.success(
+          const Project(
+            id: "project-1",
+            name: "Project",
+            path: "/project",
+            time: null,
+            supportsDedicatedWorktrees: true,
+          ),
+        ),
+      );
+    });
+
+    test("createSession disables a requested worktree when the project does not support it", () async {
+      when(
+        () => mockProjectRepository.getProject(projectId: any(named: "projectId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const Project(
+            id: "project-1",
+            name: "Plain folder",
+            path: "/plain-folder",
+            time: null,
+            supportsDedicatedWorktrees: false,
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-no-worktree")));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+      expect(cubit.state.agentModelData?.supportsDedicatedWorktrees, isFalse);
+
+      await cubit.createSession(
+        text: "hello",
+        dedicatedWorktree: true,
+        command: null,
+      );
+
+      verify(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          text: "hello",
+          agent: null,
+          providerID: null,
+          modelID: null,
+          variant: null,
+          command: null,
+          dedicatedWorktree: false,
         ),
       ).called(1);
     });

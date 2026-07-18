@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:collection";
 
 import "package:injectable/injectable.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -29,12 +30,28 @@ class ProjectRepository {
     return _api.listProjects();
   }
 
-  Future<ApiResponse<Project>> createProject({required String path}) {
+  Future<ApiResponse<Project>> createProject({
+    required String parentPath,
+    required String name,
+  }) {
+    final path = _hostPathContext(parentPath).join(parentPath, name);
     return _api.createProject(path: path);
   }
 
-  Future<ApiResponse<Project>> discoverProject({required String path}) {
-    return _api.discoverProject(path: path);
+  String? parentHostPath({required String path}) {
+    final parent = _hostPathContext(path).dirname(path);
+    return parent == path ? null : parent;
+  }
+
+  Future<ApiResponse<Project>> discoverProject({
+    required String path,
+    required OpenProjectGitAction gitAction,
+  }) {
+    return _api.discoverProject(path: path, gitAction: gitAction);
+  }
+
+  Future<ApiResponse<Project>> getProject({required String projectId}) {
+    return _api.getProject(projectId: projectId);
   }
 
   Future<ApiResponse<void>> hideProject({required String projectId}) {
@@ -166,6 +183,11 @@ class ProjectRepository {
           throw error;
       }
     }
+  }
+
+  p.Context _hostPathContext(String path) {
+    final isWindowsPath = RegExp(r"^(?:[A-Za-z]:[\\/]|\\\\)").hasMatch(path);
+    return isWindowsPath ? p.windows : p.posix;
   }
 }
 

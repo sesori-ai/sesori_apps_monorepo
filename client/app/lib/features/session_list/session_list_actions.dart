@@ -228,6 +228,11 @@ void _closeDeletedSessionRoute({required BuildContext context, required String s
     AppRoute.sessions(
       projectId: projectId,
       projectName: routeState.uri.queryParameters[projectNameQueryParam],
+      supportsDedicatedWorktrees: switch (routeState.uri.queryParameters[supportsDedicatedWorktreesQueryParam]) {
+        "true" => true,
+        "false" => false,
+        _ => null,
+      },
     ),
   );
 }

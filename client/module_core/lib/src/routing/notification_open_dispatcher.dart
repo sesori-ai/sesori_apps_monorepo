@@ -113,7 +113,11 @@ class NotificationOpenDispatcher {
       stack: RouteStack(
         paths: [
           const AppRoute.projects(),
-          AppRoute.sessions(projectId: request.projectId, projectName: null),
+          AppRoute.sessions(
+            projectId: request.projectId,
+            projectName: null,
+            supportsDedicatedWorktrees: null,
+          ),
           AppRoute.sessionDetail(
             projectId: request.projectId,
             projectName: null,

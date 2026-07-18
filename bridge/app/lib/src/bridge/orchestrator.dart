@@ -282,11 +282,8 @@ class Orchestrator {
       sessionDao: _database.sessionDao,
     );
     final healthRepository = HealthRepository(
-      enabledPluginIds: pluginComposition.enabledPluginIds,
-      operationalPlugins: pluginComposition.operationalPlugins,
       bridgeVersion: appVersion,
       filesystemAccessOk: _filesystemAccessOk,
-      aggregateSourceDeadline: aggregateSourceDeadline,
     );
     final providerRepository = ProviderRepository(
       operationalPlugins: pluginComposition.operationalPlugins,
@@ -445,6 +442,7 @@ class Orchestrator {
         ),
         OpenProjectHandler(
           filesystemRepository: filesystemRepository,
+          projectInitializationService: projectInitializationService,
           projectActivityService: projectActivityService,
         ),
         HideProjectHandler(projectRepository: projectRepository),

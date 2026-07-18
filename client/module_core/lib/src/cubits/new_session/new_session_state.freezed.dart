@@ -46,7 +46,7 @@ $NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
 
 
 class NewSessionIdle implements NewSessionState {
-  const NewSessionIdle({required final  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.isComposerDataLoading, required this.isPluginDiscoveryInFlight, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const []}): _availablePlugins = availablePlugins,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const NewSessionIdle({required final  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.isComposerDataLoading, required this.isPluginDiscoveryInFlight, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const [], required this.supportsDedicatedWorktrees}): _availablePlugins = availablePlugins,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  List<PluginMetadata> _availablePlugins;
@@ -90,6 +90,7 @@ class NewSessionIdle implements NewSessionState {
   return EqualUnmodifiableListView(_availableVariants);
 }
 
+ final  bool supportsDedicatedWorktrees;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -101,16 +102,16 @@ $NewSessionIdleCopyWith<NewSessionIdle> get copyWith => _$NewSessionIdleCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionIdle&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.isComposerDataLoading, isComposerDataLoading) || other.isComposerDataLoading == isComposerDataLoading)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other._availableVariants, _availableVariants));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionIdle&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.isComposerDataLoading, isComposerDataLoading) || other.isComposerDataLoading == isComposerDataLoading)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other._availableVariants, _availableVariants)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,isComposerDataLoading,isPluginDiscoveryInFlight,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,stagedCommand,const DeepCollectionEquality().hash(_availableVariants));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,isComposerDataLoading,isPluginDiscoveryInFlight,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,stagedCommand,const DeepCollectionEquality().hash(_availableVariants),supportsDedicatedWorktrees);
 
 @override
 String toString() {
-  return 'NewSessionState.idle(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, isComposerDataLoading: $isComposerDataLoading, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, availableVariants: $availableVariants)';
+  return 'NewSessionState.idle(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, isComposerDataLoading: $isComposerDataLoading, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, availableVariants: $availableVariants, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
 }
 
 
@@ -121,7 +122,7 @@ abstract mixin class $NewSessionIdleCopyWith<$Res> implements $NewSessionStateCo
   factory $NewSessionIdleCopyWith(NewSessionIdle value, $Res Function(NewSessionIdle) _then) = _$NewSessionIdleCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, bool isComposerDataLoading, bool isPluginDiscoveryInFlight, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, List<SessionVariant> availableVariants
+ List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, bool isComposerDataLoading, bool isPluginDiscoveryInFlight, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, List<SessionVariant> availableVariants, bool supportsDedicatedWorktrees
 });
 
 
@@ -138,7 +139,7 @@ class _$NewSessionIdleCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? isComposerDataLoading = null,Object? isPluginDiscoveryInFlight = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? availableVariants = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? isComposerDataLoading = null,Object? isPluginDiscoveryInFlight = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? availableVariants = null,Object? supportsDedicatedWorktrees = null,}) {
   return _then(NewSessionIdle(
 availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
@@ -151,7 +152,8 @@ as List<CommandInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAge
 as String?,selectedAgentModel: freezed == selectedAgentModel ? _self.selectedAgentModel : selectedAgentModel // ignore: cast_nullable_to_non_nullable
 as AgentModel?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
 as CommandInfo?,availableVariants: null == availableVariants ? _self._availableVariants : availableVariants // ignore: cast_nullable_to_non_nullable
-as List<SessionVariant>,
+as List<SessionVariant>,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -198,7 +200,7 @@ $CommandInfoCopyWith<$Res>? get stagedCommand {
 
 
 class NewSessionSending implements NewSessionState {
-  const NewSessionSending({required final  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.isComposerDataLoading, required this.isPluginDiscoveryInFlight, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const []}): _availablePlugins = availablePlugins,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const NewSessionSending({required final  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.isComposerDataLoading, required this.isPluginDiscoveryInFlight, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const [], required this.supportsDedicatedWorktrees}): _availablePlugins = availablePlugins,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  List<PluginMetadata> _availablePlugins;
@@ -242,6 +244,7 @@ class NewSessionSending implements NewSessionState {
   return EqualUnmodifiableListView(_availableVariants);
 }
 
+ final  bool supportsDedicatedWorktrees;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -253,16 +256,16 @@ $NewSessionSendingCopyWith<NewSessionSending> get copyWith => _$NewSessionSendin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSending&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.isComposerDataLoading, isComposerDataLoading) || other.isComposerDataLoading == isComposerDataLoading)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other._availableVariants, _availableVariants));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSending&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.isComposerDataLoading, isComposerDataLoading) || other.isComposerDataLoading == isComposerDataLoading)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other._availableVariants, _availableVariants)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,isComposerDataLoading,isPluginDiscoveryInFlight,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,stagedCommand,const DeepCollectionEquality().hash(_availableVariants));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,isComposerDataLoading,isPluginDiscoveryInFlight,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,stagedCommand,const DeepCollectionEquality().hash(_availableVariants),supportsDedicatedWorktrees);
 
 @override
 String toString() {
-  return 'NewSessionState.sending(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, isComposerDataLoading: $isComposerDataLoading, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, availableVariants: $availableVariants)';
+  return 'NewSessionState.sending(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, isComposerDataLoading: $isComposerDataLoading, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, availableVariants: $availableVariants, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
 }
 
 
@@ -273,7 +276,7 @@ abstract mixin class $NewSessionSendingCopyWith<$Res> implements $NewSessionStat
   factory $NewSessionSendingCopyWith(NewSessionSending value, $Res Function(NewSessionSending) _then) = _$NewSessionSendingCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, bool isComposerDataLoading, bool isPluginDiscoveryInFlight, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, List<SessionVariant> availableVariants
+ List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, bool isComposerDataLoading, bool isPluginDiscoveryInFlight, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, List<SessionVariant> availableVariants, bool supportsDedicatedWorktrees
 });
 
 
@@ -290,7 +293,7 @@ class _$NewSessionSendingCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? isComposerDataLoading = null,Object? isPluginDiscoveryInFlight = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? availableVariants = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? isComposerDataLoading = null,Object? isPluginDiscoveryInFlight = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? availableVariants = null,Object? supportsDedicatedWorktrees = null,}) {
   return _then(NewSessionSending(
 availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
@@ -303,7 +306,8 @@ as List<CommandInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAge
 as String?,selectedAgentModel: freezed == selectedAgentModel ? _self.selectedAgentModel : selectedAgentModel // ignore: cast_nullable_to_non_nullable
 as AgentModel?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
 as CommandInfo?,availableVariants: null == availableVariants ? _self._availableVariants : availableVariants // ignore: cast_nullable_to_non_nullable
-as List<SessionVariant>,
+as List<SessionVariant>,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -350,7 +354,7 @@ $CommandInfoCopyWith<$Res>? get stagedCommand {
 
 
 class NewSessionError implements NewSessionState {
-  const NewSessionError({required this.reason, required final  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.isComposerDataLoading, required this.isPluginDiscoveryInFlight, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const []}): _availablePlugins = availablePlugins,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const NewSessionError({required this.reason, required final  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.isComposerDataLoading, required this.isPluginDiscoveryInFlight, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const [], required this.supportsDedicatedWorktrees}): _availablePlugins = availablePlugins,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  RemoteFailureReason reason;
@@ -395,6 +399,7 @@ class NewSessionError implements NewSessionState {
   return EqualUnmodifiableListView(_availableVariants);
 }
 
+ final  bool supportsDedicatedWorktrees;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -406,16 +411,16 @@ $NewSessionErrorCopyWith<NewSessionError> get copyWith => _$NewSessionErrorCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionError&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.isComposerDataLoading, isComposerDataLoading) || other.isComposerDataLoading == isComposerDataLoading)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other._availableVariants, _availableVariants));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionError&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.isComposerDataLoading, isComposerDataLoading) || other.isComposerDataLoading == isComposerDataLoading)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&const DeepCollectionEquality().equals(other._availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other._availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other._availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other._availableVariants, _availableVariants)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,isComposerDataLoading,isPluginDiscoveryInFlight,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,stagedCommand,const DeepCollectionEquality().hash(_availableVariants));
+int get hashCode => Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,isComposerDataLoading,isPluginDiscoveryInFlight,const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,stagedCommand,const DeepCollectionEquality().hash(_availableVariants),supportsDedicatedWorktrees);
 
 @override
 String toString() {
-  return 'NewSessionState.error(reason: $reason, availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, isComposerDataLoading: $isComposerDataLoading, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, availableVariants: $availableVariants)';
+  return 'NewSessionState.error(reason: $reason, availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, isComposerDataLoading: $isComposerDataLoading, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, availableVariants: $availableVariants, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
 }
 
 
@@ -426,7 +431,7 @@ abstract mixin class $NewSessionErrorCopyWith<$Res> implements $NewSessionStateC
   factory $NewSessionErrorCopyWith(NewSessionError value, $Res Function(NewSessionError) _then) = _$NewSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- RemoteFailureReason reason, List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, bool isComposerDataLoading, bool isPluginDiscoveryInFlight, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, List<SessionVariant> availableVariants
+ RemoteFailureReason reason, List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, bool isComposerDataLoading, bool isPluginDiscoveryInFlight, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, List<SessionVariant> availableVariants, bool supportsDedicatedWorktrees
 });
 
 
@@ -443,7 +448,7 @@ class _$NewSessionErrorCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? isComposerDataLoading = null,Object? isPluginDiscoveryInFlight = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? availableVariants = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? isComposerDataLoading = null,Object? isPluginDiscoveryInFlight = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? availableVariants = null,Object? supportsDedicatedWorktrees = null,}) {
   return _then(NewSessionError(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as RemoteFailureReason,availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
@@ -457,7 +462,8 @@ as List<CommandInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAge
 as String?,selectedAgentModel: freezed == selectedAgentModel ? _self.selectedAgentModel : selectedAgentModel // ignore: cast_nullable_to_non_nullable
 as AgentModel?,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
 as CommandInfo?,availableVariants: null == availableVariants ? _self._availableVariants : availableVariants // ignore: cast_nullable_to_non_nullable
-as List<SessionVariant>,
+as List<SessionVariant>,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

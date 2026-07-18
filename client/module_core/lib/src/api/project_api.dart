@@ -22,10 +22,21 @@ class ProjectApi {
     );
   }
 
-  Future<ApiResponse<Project>> discoverProject({required String path}) {
+  Future<ApiResponse<Project>> discoverProject({
+    required String path,
+    required OpenProjectGitAction gitAction,
+  }) {
     return _client.post(
       "/project/open",
-      body: ProjectPathRequest(path: path),
+      body: OpenProjectRequest(path: path, gitAction: gitAction),
+      fromJson: Project.fromJson,
+    );
+  }
+
+  Future<ApiResponse<Project>> getProject({required String projectId}) {
+    return _client.post(
+      "/project/current",
+      body: ProjectIdRequest(projectId: projectId),
       fromJson: Project.fromJson,
     );
   }

@@ -5,7 +5,6 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
@@ -25,20 +24,6 @@ AgentRepository singlePluginAgentRepository({
     operationalPlugins: {plugin.id: plugin},
     projectsDao: projectsDao,
     legacyPluginId: plugin.id,
-  );
-}
-
-HealthRepository singlePluginHealthRepository({
-  required BridgePluginApi plugin,
-  required String bridgeVersion,
-  required bool filesystemAccessOk,
-}) {
-  return HealthRepository(
-    enabledPluginIds: [plugin.id],
-    operationalPlugins: {plugin.id: plugin},
-    bridgeVersion: bridgeVersion,
-    filesystemAccessOk: filesystemAccessOk,
-    aggregateSourceDeadline: const Duration(seconds: 5),
   );
 }
 

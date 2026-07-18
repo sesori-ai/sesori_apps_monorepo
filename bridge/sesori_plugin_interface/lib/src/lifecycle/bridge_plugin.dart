@@ -22,7 +22,7 @@ abstract class BridgePlugin {
   ///
   /// This is the *debounced* lifecycle signal used for orchestration
   /// decisions — distinct from [BridgePluginApi.healthCheck], which is an
-  /// instantaneous, mobile-facing probe.
+  /// instantaneous plugin-scoped probe.
   ///
   /// Transitions follow the state machine documented on [PluginStatus];
   /// in particular `Failed` can never follow `Stopping`.

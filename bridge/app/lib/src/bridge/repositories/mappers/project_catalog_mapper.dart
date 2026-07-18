@@ -10,6 +10,7 @@ class ProjectCatalogMapper {
     required ProjectDto row,
     required bool hasUnseenChanges,
     required bool directoryMissing,
+    required bool supportsDedicatedWorktrees,
   }) {
     final fallbackName = p.basename(row.path);
     return Project(
@@ -19,6 +20,7 @@ class ProjectCatalogMapper {
       time: ProjectTime(created: row.createdAt, updated: row.updatedAt),
       hasUnseenChanges: hasUnseenChanges,
       directoryMissing: directoryMissing,
+      supportsDedicatedWorktrees: supportsDedicatedWorktrees,
     );
   }
 }

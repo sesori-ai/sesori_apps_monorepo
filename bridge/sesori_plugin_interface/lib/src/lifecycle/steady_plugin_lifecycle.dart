@@ -35,7 +35,7 @@ import "plugin_status_controller.dart";
 /// [markReady]. Recovery is immediate: [markReady] cancels any pending
 /// degradation and restores `Ready` at once. This is what makes `status` the
 /// debounced lifecycle signal, distinct from the instantaneous
-/// `BridgePluginApi.healthCheck` probe.
+/// plugin-scoped `BridgePluginApi.healthCheck` probe.
 ///
 /// All transitions go through the legal-transition machine: after
 /// [shutdown] starts, late [markFailed] / [markDegraded] calls are silently

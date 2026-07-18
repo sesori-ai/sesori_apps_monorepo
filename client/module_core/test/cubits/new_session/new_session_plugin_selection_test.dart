@@ -37,6 +37,7 @@ void main() {
   group("NewSessionCubit plugin selection", () {
     late MockSessionService sessionService;
     late MockPluginRepository pluginRepository;
+    late MockProjectRepository projectRepository;
     late MockConnectionService connectionService;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
     late NewSessionSelectionTracker selectionTracker;
@@ -44,11 +45,25 @@ void main() {
     setUp(() {
       sessionService = MockSessionService();
       pluginRepository = MockPluginRepository();
+      projectRepository = MockProjectRepository();
       connectionService = MockConnectionService();
       connectionStatus = BehaviorSubject.seeded(connectedStatus);
       selectionTracker = NewSessionSelectionTracker();
       when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
       when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+      when(
+        () => projectRepository.getProject(projectId: any(named: "projectId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const Project(
+            id: "project-1",
+            name: "Project",
+            path: "/project",
+            time: null,
+            supportsDedicatedWorktrees: true,
+          ),
+        ),
+      );
       _stubEmptyResources(sessionService);
     });
 
@@ -58,8 +73,10 @@ void main() {
       connectionService: connectionService,
       sessionService: sessionService,
       pluginRepository: pluginRepository,
+      projectRepository: projectRepository,
       selectionTracker: selectionTracker,
       projectId: "project-1",
+      initialSupportsDedicatedWorktrees: true,
     );
 
     test("discovery error recovers after a reconnect", () async {
