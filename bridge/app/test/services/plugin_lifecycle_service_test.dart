@@ -106,7 +106,7 @@ void main() {
     await service.dispose();
   });
 
-  test("early disposal catches an API returned after shutdown begins", () async {
+  test("API disposal catches a late API returned after the plugin-dispose phase begins", () async {
     final service = createService();
     final start = Completer<BridgePlugin>();
     final plugin = _FakeLifecyclePlugin(id: "one", status: const PluginReady());
@@ -124,7 +124,7 @@ void main() {
     await service.dispose();
   });
 
-  test("early disposal does not wait for a blocked start before disposing returned APIs", () async {
+  test("API disposal does not wait for a blocked start before disposing returned APIs", () async {
     final service = createService();
     final one = _FakeLifecyclePlugin(id: "one", status: const PluginReady());
     final twoStart = Completer<BridgePlugin>();
