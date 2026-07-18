@@ -87,7 +87,11 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
       when(() => mockProjectRepository.findSessionContext(sessionId: sessionId)).thenAnswer(
-        (_) async => const ProjectSessionContext(projectId: "test-project", sessionTitle: null),
+        (_) async => const ProjectSessionContext(
+          projectId: "test-project",
+          pluginId: "plugin-1",
+          sessionTitle: null,
+        ),
       );
       when(
         () => mockSessionService.listCommands(

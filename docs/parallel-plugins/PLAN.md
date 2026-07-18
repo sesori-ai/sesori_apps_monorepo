@@ -8,8 +8,8 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 7 - multi-plugin routing, lifecycle, and events
-- **Next up:** Stage 8 - client plugin and model/agent selection
+- **Last completed stage:** Stage 8 - client plugin and model/agent selection
+- **Next up:** Stage 9 - performance gate and cleanup
 - **Runtime default:** OpenCode remains the one-plugin default; ordered multi-plugin selection is active
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
@@ -19,6 +19,8 @@
 - **Stage 5 implementation base:** `main` at `5a76c0c4` (audited 2026-07-17)
 - **Stage 6 implementation base:** stacked Stage 5 at `b8d6dd5f` (audited 2026-07-17)
 - **Stage 7 implementation base:** stacked Stage 6 at `297fecc3` (audited 2026-07-17)
+- **Stage 8 planning base:** stacked Stage 7 at `2482e15d` (audited 2026-07-17)
+- **Stage 8 implementation base:** approved Stage 8 plan at `abd24c3e` (audited 2026-07-17)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -688,7 +690,7 @@ selection.
 | ☑ | 5 | Explicit import and automatic hydration | Atomicity, cancellation, progress, Codex isolate tests |
 | ☑ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
 | ☑ | 7 | Multi-plugin routing, lifecycle, and event streams | Mixed-id routing, independent failure, startup/shutdown |
-| ☐ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
+| ☑ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
 | ☐ | 9 | Performance gate and cleanup | Fixed-host matrix, soak, dead-path removal, docs |
 
 ### Stage 1A - Pre-Change Baseline Harness
@@ -1796,6 +1798,147 @@ Acceptance: switching plugins cannot retain backend-local selections; new
 clients always send a plugin id; old bridge/session payloads use only the
 documented compatibility fallback; module dependency direction is unchanged.
 
+PR-level implementation plan:
+
+1. Keep Stage 8 client-only. Add no bridge, shared-contract, database,
+   `module_desktop_core`, desktop presentation, or shared design-system change.
+   The Stage 7 `PluginListResponse`, `PluginMetadata`, and
+   `PluginLifecycleState` contract is sufficient. Preserve the dependency path
+   `RelayHttpApiClient -> PluginApi -> PluginRepository -> NewSessionCubit ->
+   mobile UI`; the cubit never imports an API and no product shell performs
+   business or transport work.
+2. Add `client/module_core/lib/src/api/plugin_api.dart` as the Layer-1
+   `@lazySingleton` boundary with exactly
+   `Future<ApiResponse<PluginListResponse>> listPlugins()`, implemented as
+   `GET /plugin` through the existing `RelayHttpApiClient`. Add
+   `client/module_core/lib/src/repositories/plugin_repository.dart` as the
+   Layer-2 `@lazySingleton` with the same operation. Return the shared DTO
+   directly because it is already backend-neutral and no meaningful mapping
+   exists. Export only `PluginRepository` to shell consumers and regenerate
+   core DI; do not hand-edit `injection.config.dart`.
+3. Treat plugin discovery failure as an explicit unavailable composer, not as
+   permission to invent a plugin. In particular, a 404 from a pre-Stage-7
+   bridge remains the returned API failure: do not synthesize an OpenCode
+   `PluginMetadata`, display name, lifecycle state, or client-owned default.
+   The documented legacy fallback remains only at additive wire-decoding
+   boundaries where an old `Session` or request omitted `pluginId`; synchronized
+   app/bridge releases provide discovery for the new-session chooser.
+4. Extend every non-created variant in
+   `client/module_core/lib/src/cubits/new_session/new_session_state.dart` with
+   required ordered `List<PluginMetadata> availablePlugins`, required
+   `PluginMetadata? selectedPlugin`, and required
+   `bool isComposerDataLoading`; keep `NewSessionCreated` minimal. Initial state
+   has an empty plugin/resource set, no selection, and loading true. Preserve
+   bridge order without sorting and select the unique server-authored
+   `isDefault` item, regardless of its list index or lifecycle state. A
+   `ready` or `degraded` plugin is selectable/routable; `unavailable` or
+   `failed` remains visible but cannot load resources or create a session.
+   Never silently replace an unavailable default with the first operational
+   item, because that would establish a second default authority.
+   `NewSessionError` remains the explicit failure variant for both discovery and
+   creation: a discovery failure carries its mapped `RemoteFailureReason`, empty
+   plugin/resource lists, null selection, and `isComposerDataLoading: false`.
+5. Inject `PluginRepository` into `NewSessionCubit`. Initialization first
+   discovers plugins, publishes the complete ordered list/default selection,
+   and only then loads agents, providers, and commands concurrently with the
+   selected plugin id and project id. A discovery error, absent default, or
+   unavailable/failed default performs zero composer-resource calls and cannot
+   create. Before applying either discovery success or failure after the await,
+   return when the cubit is closed and reject any completion whose captured
+   load generation is no longer current. Initialization launches one discovery
+   operation; Stage 8 adds no retry or concurrent rediscovery path, so the
+   generation guard also keeps a future retry from making stale completion
+   semantics implicit. On repository failure, emit the exact discovery-error
+   state from item 4 and set loading false. Continue logging each independently recovered composer-resource
+   error and degrading only that picker to empty; plugin discovery itself is
+   not silently recovered.
+6. Add `selectPlugin({required String pluginId})` to `NewSessionCubit`. Reject
+   unknown, unavailable, failed, sending, and created transitions. For a valid
+   switch, increment one monotonically increasing load generation, select the
+   plugin immediately, clear agents/providers/commands, agent/model/variant,
+   and staged command synchronously, and set composer loading true before
+   starting the three requests. Apply results only when both plugin id and
+   generation still match, covering A -> B and A -> B -> A late completions
+   without cancellation machinery. Keep the chooser usable while the selected
+   plugin's composer data reloads.
+7. Change `NewSessionSelectionTracker` from a project-only map to the exact key
+   `({String projectId, String pluginId})`. Require both values on `read`,
+   `write`, and `clear`; retain only explicit agent and
+   `AgentModel(providerID, modelID, variant)` choices in memory for the current
+   app run. Restore a choice only after the selected plugin's fresh data has
+   settled and validate every id/variant as today. Snapshot and clear only the
+   matching project-plugin entry after successful creation so a late success
+   cannot erase a newer or different-plugin choice. Keep unsent prompt text's
+   existing project-only draft key: text is not a backend-local identifier.
+8. Gate `createSession` on a selected ready/degraded plugin and completed
+   composer load, snapshot that plugin plus the scoped saved selection, and
+   always send `selectedPlugin.id` through the existing `SessionService` ->
+   `SessionRepository` -> `SessionApi` flow. Preserve current blank-prompt,
+   command, worktree, background completion, retry, and navigation behavior.
+   Do not change session-id-scoped prompt/abort/question/permission requests;
+   the bridge's durable session binding remains their routing authority.
+9. Add required `pluginId` to `ProjectSessionContext` and populate it from the
+   matched catalog `Session` in `ProjectRepository.findSessionContext`.
+   `SessionDetailLoadService` resolves composer identity as
+   `session?.pluginId ?? fallbackContext?.pluginId`; if neither detail nor
+   catalog context recovers the session, return empty agents/providers/commands
+   without issuing plugin-scoped calls. Remove its direct
+   `legacyMissingPluginId` substitution. Old session JSON still decodes missing
+   identity to OpenCode in the shared `Session.fromJson` boundary, so released
+   payload compatibility remains concrete and centralized.
+10. Add a product-owned `new_session_plugin_chooser.dart` under
+    `client/app/lib/features/new_session/` and wire it above the worktree toggle
+    in `NewSessionScreen`. Render bridge order and `displayName`, identify the
+    current selection, disable unavailable/failed rows, keep degraded rows
+    selectable, and display bridge-authored `actionHint` generically without id,
+    name, or payload-shape checks. Keep the chooser interactive during composer
+    reload while disabling the prompt/model/agent/command composer until a
+    routable selection is fully loaded. For discovery failure, render the
+    existing localized `RemoteFailureReason` error presentation with no chooser,
+    leave the composer visible but disabled, and provide no creation path; do
+    not turn an empty plugin list into an empty-but-usable composer. Reuse Prego tokens and existing menu or
+    modal primitives; do not broaden `module_prego` solely to add disabled menu
+    behavior.
+11. Add only localized shell-owned labels/status copy in `app_en.arb` and run
+    Flutter localization generation. Dynamic `displayName` and `actionHint`
+    remain contract content and are not translated or reinterpreted. Do not add
+    desktop UI: the current desktop shell has no new-session surface. Validate
+    desktop and desktop-core downstream against regenerated core DI/exports.
+12. Add focused API/repository tests for `GET /plugin`, DTO parsing, preserved
+    order, and surfaced discovery errors. Add cubit/tracker tests proving a
+    non-first server default, ready/degraded selection, unavailable/failed
+    blocking, explicit plugin ids on all resource/create calls, synchronous
+    reset, project-plugin restoration, matching-snapshot clear, and A-B/A-B-A
+    stale-response rejection. Add project/session-detail tests for direct and
+    catalog-fallback identity and zero plugin calls when identity is unknown.
+    Add mobile widget tests for ordered generic presentation, disabled and
+    degraded choices, loading/creation gates, stale visual-state removal, and
+    preservation of the existing send/background/navigation behavior.
+13. Regenerate only owned artifacts: core Injectable/Freezed outputs and mobile
+    localization outputs. Run focused tests, then full fatal analysis and tests
+    for `module_core` and `app`; run downstream fatal analysis/tests for
+    `module_desktop_core` and `desktop`; run the shared old-session compatibility
+    round trip, `git diff --check`, and `aristotle-impl-review`.
+14. In the same PR, mark Stage 8 complete, advance Current Pointer to Stage 9,
+    record the implementation base/results/findings and any real plan/risk
+    delta. Stage 9 retains fixed-host performance, soak, compatibility cleanup,
+    and broad architecture-documentation ownership.
+
+Stage 8 workspace and file matrix:
+
+| Workspace | Production changes | Verification |
+|---|---|---|
+| `client/module_core` | Plugin API/repository/DI; plugin-aware new-session state, selection, creation, and existing-session fallback identity | codegen; focused/full pure-Dart tests; fatal analysis |
+| `client/app` | Mobile chooser, composer gating, localized presentation | localization generation; focused/full Flutter tests; fatal analysis |
+| `client/module_desktop_core`, `client/desktop` | No planned source changes; downstream consumers only | full package tests and fatal analysis |
+| `docs/parallel-plugins` | Stage pointer, findings/results, plan/risk deltas | plan consistency; `git diff --check` |
+
+Stage 8 does not persist the selected plugin, add a client-side plugin registry,
+change prompt draft identity, alter bridge/session wire contracts, or duplicate
+plugin-specific presentation knowledge. Enabled/default/runtime metadata remains
+bridge-authored; backend-local provider/model/agent/command identities exist
+only under the selected or stored plugin identity.
+
 ### Stage 9 - Performance Gate and Cleanup
 
 - Run the fixed-host matrix and large-history import/event soak tests.
@@ -1876,6 +2019,30 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 8:** Implemented from the approved Stage 8
+  plan at `abd24c3e`. `module_core` now discovers ordered bridge-authored plugin
+  metadata through `PluginApi`/`PluginRepository`, selects only the unique
+  server default, treats ready/degraded plugins as routable, and keeps
+  unavailable/failed plugins visible but blocked. New-session resource loads,
+  saved agent/model/variant choices, and creation are explicitly plugin-scoped;
+  synchronous resets plus one generation guard reject A-B and A-B-A stale
+  completions. Discovery failures expose their mapped reason without synthetic
+  OpenCode metadata. Existing-session composer loads use detail identity first,
+  catalog identity second, and make no plugin-scoped calls when neither exists.
+  Mobile owns the generic ordered chooser, bridge action-hint rendering, and
+  composer gates; no desktop, `module_desktop_core`, `module_prego`, bridge, or
+  shared production source changed. Core Injectable/Freezed and mobile
+  localization generation completed. Fatal analysis and full tests passed for
+  `module_core` (548), mobile (659), `module_desktop_core` (52), and desktop
+  (15); the shared legacy-plugin compatibility test passed (8), and
+  `git diff --check` was clean. Full mobile verification exposed one shared
+  adaptive-router test harness that also constructs `NewSessionScreen`; adding
+  its required plugin repository fixture resolved all six downstream failures.
+  No locked design or risk-register delta was required. The environment exposed
+  Stage 7's reviewed lifecycle-decoder follow-up, which was then merged forward;
+  combined-base fatal analysis passed for core/mobile, and focused core/mobile
+  discovery, selection, routing, and widget tests passed. Aristotle implementation
+  review `ses_08f1d58bfffeOQfHeu6yR5XkGH` approved the final architecture.
 - **Stage 7:** Implemented from stacked Stage 6 base `297fecc3`. Ordered
   repeatable selection now starts available plugins under one takeover/mutex,
   provisions in configured order while overlapping starts, and composes one

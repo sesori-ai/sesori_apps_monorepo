@@ -1465,6 +1465,36 @@ abstract class AppLocalizations {
   /// **'Creates a dedicated git worktree and branch for this session'**
   String get newSessionDedicatedWorktreeDescription;
 
+  /// No description provided for @newSessionPluginChooserLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Coding tool'**
+  String get newSessionPluginChooserLabel;
+
+  /// No description provided for @newSessionPluginDegraded.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention'**
+  String get newSessionPluginDegraded;
+
+  /// No description provided for @newSessionPluginUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get newSessionPluginUnavailable;
+
+  /// No description provided for @newSessionPluginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get newSessionPluginFailed;
+
+  /// No description provided for @newSessionPluginLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading coding tool options'**
+  String get newSessionPluginLoading;
+
   /// No description provided for @sessionListDeleteWorktreeCheckbox.
   ///
   /// In en, this message translates to:

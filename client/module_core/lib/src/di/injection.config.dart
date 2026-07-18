@@ -20,6 +20,7 @@ import 'package:sesori_dart_core/src/api/notification_api.dart' as _i400;
 import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
     as _i396;
 import 'package:sesori_dart_core/src/api/permission_api.dart' as _i231;
+import 'package:sesori_dart_core/src/api/plugin_api.dart' as _i546;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
@@ -45,6 +46,8 @@ import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
     as _i471;
 import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
     as _i679;
+import 'package:sesori_dart_core/src/repositories/plugin_repository.dart'
+    as _i337;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
@@ -153,29 +156,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i231.PermissionApi>(
       () => _i231.PermissionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
+    gh.lazySingleton<_i546.PluginApi>(
+      () => _i546.PluginApi(client: gh<_i857.RelayHttpApiClient>()),
+    );
     gh.lazySingleton<_i733.ProjectApi>(
       () => _i733.ProjectApi(client: gh<_i857.RelayHttpApiClient>()),
     );
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
-    );
-    gh.lazySingleton<_i80.ProjectRepository>(
-      () => _i80.ProjectRepository(
-        api: gh<_i733.ProjectApi>(),
-        filesystemApi: gh<_i1068.FilesystemApi>(),
-      ),
-    );
-    gh.lazySingleton<_i703.ProjectListService>(
-      () => _i703.ProjectListService(
-        repository: gh<_i80.ProjectRepository>(),
-        activityCalculator: gh<_i84.SessionActivityCalculator>(),
-      ),
-    );
-    gh.lazySingleton<_i763.SessionListService>(
-      () => _i763.SessionListService(
-        repository: gh<_i80.ProjectRepository>(),
-        activityCalculator: gh<_i84.SessionActivityCalculator>(),
-      ),
     );
     gh.lazySingleton<_i471.NotificationRepository>(
       () => _i471.NotificationRepository(api: gh<_i400.NotificationApi>()),
@@ -231,14 +219,36 @@ extension GetItInjectableX on _i174.GetIt {
         failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
+    gh.lazySingleton<_i337.PluginRepository>(
+      () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
+    );
     gh.lazySingleton<_i12.SessionService>(
       () => _i12.SessionService(repository: gh<_i7.SessionRepository>()),
     );
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
     );
+    gh.lazySingleton<_i80.ProjectRepository>(
+      () => _i80.ProjectRepository(
+        api: gh<_i733.ProjectApi>(),
+        filesystemApi: gh<_i1068.FilesystemApi>(),
+        sessionApi: gh<_i603.SessionApi>(),
+      ),
+    );
     gh.lazySingleton<_i150.SessionViewRepository>(
       () => _i150.SessionViewRepository(api: gh<_i157.SessionViewApi>()),
+    );
+    gh.lazySingleton<_i703.ProjectListService>(
+      () => _i703.ProjectListService(
+        repository: gh<_i80.ProjectRepository>(),
+        activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
+    );
+    gh.lazySingleton<_i763.SessionListService>(
+      () => _i763.SessionListService(
+        repository: gh<_i80.ProjectRepository>(),
+        activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(

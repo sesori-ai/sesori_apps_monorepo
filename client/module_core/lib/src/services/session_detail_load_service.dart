@@ -52,8 +52,7 @@ class SessionDetailLoadService {
       };
       final fallbackContext = session == null ? await _loadProjectSessionContext(sessionId: sessionId) : null;
       final effectiveProjectId = routeProjectId ?? session?.projectID.normalize() ?? fallbackContext?.projectId;
-      // COMPATIBILITY 2026-07-13 (v1.5.0): A failed legacy session lookup has no plugin identity. Remove this fallback when every load path supplies concrete identity.
-      final pluginId = session?.pluginId ?? legacyMissingPluginId;
+      final pluginId = session?.pluginId ?? fallbackContext?.pluginId;
       final commandsFuture = _listCommands(projectId: effectiveProjectId, pluginId: pluginId);
       final agentsFuture = _listAgents(projectId: effectiveProjectId, pluginId: pluginId);
       final providersFuture = _listProviders(projectId: effectiveProjectId, pluginId: pluginId);
@@ -146,9 +145,9 @@ class SessionDetailLoadService {
     }
   }
 
-  Future<ApiResponse<Agents>> _listAgents({required String? projectId, required String pluginId}) {
+  Future<ApiResponse<Agents>> _listAgents({required String? projectId, required String? pluginId}) {
     final normalizedProjectId = projectId?.normalize();
-    if (normalizedProjectId == null) {
+    if (normalizedProjectId == null || pluginId == null) {
       // Without any project context there is no way to scope the agent list;
       // an empty list keeps the UI consistent instead of guessing a project.
       return Future<ApiResponse<Agents>>.value(
@@ -159,9 +158,9 @@ class SessionDetailLoadService {
     return _repository.listAgents(projectId: normalizedProjectId, pluginId: pluginId);
   }
 
-  Future<ApiResponse<CommandListResponse>> _listCommands({required String? projectId, required String pluginId}) {
+  Future<ApiResponse<CommandListResponse>> _listCommands({required String? projectId, required String? pluginId}) {
     final normalizedProjectId = projectId?.normalize();
-    if (normalizedProjectId == null) {
+    if (normalizedProjectId == null || pluginId == null) {
       return Future<ApiResponse<CommandListResponse>>.value(
         ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
       );
@@ -170,9 +169,9 @@ class SessionDetailLoadService {
     return _repository.listCommands(projectId: normalizedProjectId, pluginId: pluginId);
   }
 
-  Future<ApiResponse<ProviderListResponse>> _listProviders({required String? projectId, required String pluginId}) {
+  Future<ApiResponse<ProviderListResponse>> _listProviders({required String? projectId, required String? pluginId}) {
     final normalizedProjectId = projectId?.normalize();
-    if (normalizedProjectId == null) {
+    if (normalizedProjectId == null || pluginId == null) {
       // Without any project context there is no project to scope providers to;
       // an empty list keeps the UI consistent instead of guessing a project.
       return Future<ApiResponse<ProviderListResponse>>.value(
