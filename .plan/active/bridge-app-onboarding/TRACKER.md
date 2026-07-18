@@ -2,7 +2,7 @@
 
 ## Plan State
 
-- **Status:** Reduced W02 implementation complete and verified locally; implementation PR not opened
+- **Status:** Reduced W02 implementation PR #504 open and monitored
 - **Implementation base:** `main`
 - **Plan slug:** `bridge-app-onboarding`
 - **Plan PRs:** original https://github.com/sesori-ai/sesori_apps_monorepo/pull/490; reduced-plan correction https://github.com/sesori-ai/sesori_apps_monorepo/pull/494
@@ -12,7 +12,7 @@
 
 - **Stage:** S01 — App Registration Checkpoint
 - **Wave:** W02
-- **Next action:** Open the S01-W02-P01 implementation PR when explicitly requested, then run the advisory M01 checkpoint.
+- **Next action:** Monitor PR #504 and address CI/review findings; then run the advisory M01 checkpoint.
 
 ## Plan Review
 
@@ -36,7 +36,7 @@ pair after drift assessment and before branch creation.
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
 | [x] | S01-W01-P01 | S01 | W01 | https://github.com/sesori-ai/sesori_auth_server/pull/44 | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Merged and deployed. Delivers the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. Format, lint, build, 422 tests (1 skipped), circular-dependency check, and implementation review passed. |
-| [ ] | S01-W02-P01 | S01 | W02 | — | `bridge-onboarding-plan-c317b6` | Implementation, focused/full verification, host build, and architecture review complete locally. PR remains unchecked until opened/merged. |
+| [ ] | S01-W02-P01 | S01 | W02 | https://github.com/sesori-ai/sesori_apps_monorepo/pull/504 | `bridge-onboarding-plan-c317b6` | Implementation, focused/full verification, host build, and architecture review complete. PR is open and monitored; row remains unchecked until merge. |
 
 ## Manual Checkpoints
 
@@ -77,7 +77,8 @@ pair after drift assessment and before branch creation.
   workspace `make analyze`, workspace `make test`, and `make build-host` passed.
 - **2026-07-18 — W02 implementation review approved:**
   `aristotle-impl-review` approved the uncommitted implementation scope with no
-  architecture findings. No implementation PR was opened.
+  architecture findings. Implementation PR #504 was opened and monitoring
+  started immediately.
 
 - **2026-07-17 — W02 implementation discarded for excessive scope:** The first
   W02 implementation followed an over-broad plan that combined onboarding with

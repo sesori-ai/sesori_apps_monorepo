@@ -9,7 +9,8 @@
   and its endpoint is deployed (user-confirmed 2026-07-18).
 - **Current state:** W01 merged and deployed; the reduced W02 implementation is
   complete and verified locally, and architecture implementation review approved
-  it. No implementation PR has been opened.
+  it. Implementation PR #504 is open and monitored; advisory checkpoint M01 is
+  still pending.
 
 ## Goal
 
