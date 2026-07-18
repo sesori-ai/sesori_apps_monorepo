@@ -1,12 +1,11 @@
 # Bridge-Owned Project and Session Catalog Architecture
 
-> Status: **direction approved; Stages 0-8 implemented; Stage 9 in progress**.
+> Status: **direction approved; Stages 0-9 implemented**.
 > This document records durable product and architecture decisions for parallel
 > plugin support. It is intentionally not an execution plan. The concrete data
 > flow, migration, rollout, verification, and staged PR sequence live in
-> [`PLAN.md`](PLAN.md). Stage 9 tooling and reduced local smoke are directional
-> only; the controlled fixed-host matrix artifact is still pending, so neither
-> Stage 9 nor the plan is complete.
+> [`PLAN.md`](PLAN.md). The controlled Stage 9 fixed-host matrix and soak results
+> are recorded in `baselines/stage-9-macos-arm64.json`; all release gates passed.
 
 ## 1. Decision
 

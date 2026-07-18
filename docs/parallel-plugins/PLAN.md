@@ -1,6 +1,6 @@
 # Parallel Plugins - Implementation Plan
 
-> Status: **implementation in progress**.
+> Status: **complete**.
 > [`ARCHITECTURE.md`](ARCHITECTURE.md) owns the durable product direction. This
 > document owns the implementation sequence, current pointer, concrete design, rollout, and
 > verification. Keep both documents consistent when implementation findings
@@ -8,9 +8,9 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 8 - client plugin and model/agent selection
-- **Current stage:** Stage 9 implementation and local verification complete; controlled fixed-host gate pending
-- **Next up:** Designate the fixed host, record the clean-commit matrix/soak artifact, and close Stage 9
+- **Last completed stage:** Stage 9 - performance gate and cleanup
+- **Current stage:** Parallel-plugin implementation plan complete
+- **Next up:** Merge the stacked Stage 7-9 PRs in order
 - **Runtime default:** OpenCode remains the one-plugin default; ordered multi-plugin selection is active
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
@@ -673,6 +673,15 @@ output with commit, schema, OS, CPU, fixture, p50/p95/p99/max, RSS, database
 bytes, and query plans. Wall-clock budgets run on fixed hosts; normal CI uses
 deterministic zero-call, concurrency, index, and isolate-responsiveness tests.
 
+The final Apple M4 Pro battery-mode results at `ac56f05b` are recorded in
+`baselines/stage-9-macos-arm64.json`. Every gate passed: the worst accepted
+1-to-8-plugin p95 regression was 3.97% with zero plugin calls; 10,000-session
+publication p95 was 211.659 ms; import scheduling lag p99/max was 4.129/23.760
+ms; idle/import event p95 was 0.424/0.403 ms; 50,000-session peak RSS growth was
+62,013,440 bytes; and database growth was 35,221,504 bytes. The artifact retains
+the complete raw matrix and the repeated identical-fixture run that reduced one
+initial 12.44% microsecond-scale outlier to 0.88%.
+
 ## 10. Stages and PR Status
 
 Stages are strictly ordered. Every row is one reviewable PR and must leave
@@ -693,7 +702,7 @@ selection.
 | ☑ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
 | ☑ | 7 | Multi-plugin routing, lifecycle, and event streams | Mixed-id routing, independent failure, startup/shutdown |
 | ☑ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
-| ☐ | 9 | Performance gate and cleanup | Fixed-host matrix, soak, dead-path removal, docs |
+| ☑ | 9 | Performance gate and cleanup | Fixed-host matrix, soak, dead-path removal, docs |
 
 ### Stage 1A - Pre-Change Baseline Harness
 
@@ -2067,10 +2076,10 @@ Stage 9 workspace and file matrix:
 | `docs` and bridge READMEs/AGENTS | Implemented architecture, operations, compatibility debt, measured evidence | factual consistency; `git diff --check` |
 | `shared`, `client`, other plugins | No planned production changes | unchanged CI matrix |
 
-Stage 9 is blocked from final completion, but not from implementation, until a
-human designates the controlled fixed host and supplies the final matrix/soak
-run. No compatibility deletion or performance-budget revision is allowed merely
-because the local directional measurements pass.
+Stage 9 completed on the human-designated controlled host at `ac56f05b`. The
+versioned artifact retains the final matrix, repeated publication samples,
+import/event and Codex soaks, startup runs, host metadata, and gate evaluation.
+No compatibility deletion or performance-budget revision was needed.
 
 ## 11. Verification Matrix
 

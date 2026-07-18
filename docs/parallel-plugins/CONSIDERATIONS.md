@@ -1,11 +1,12 @@
 # Parallel Plugin Support - Historical Considerations And Current State
 
-> Status: **historical audit reconciled through Stage 8; Stage 9 in progress**.
+> Status: **historical audit reconciled through completed Stage 9**.
 > The durable ownership model is recorded in
 > [`ARCHITECTURE.md`](ARCHITECTURE.md), and staged execution remains in
 > [`PLAN.md`](PLAN.md). The original pre-scoping audit assumed one running plugin
 > and request-time backend lists. Those assumptions are historical, not current
-> architecture. Stage 9's controlled fixed-host artifact remains pending.
+> architecture. Stage 9's controlled fixed-host artifact passed all gates and is
+> recorded in `baselines/stage-9-macos-arm64.json`.
 
 ## 1. Implemented Outcome
 

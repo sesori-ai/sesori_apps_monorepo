@@ -35,7 +35,7 @@
   `module_app_ui` shared-UI split.
 - **Invariants:** I3 (shared brain / thin shells), I4 (headless-first).
 
-## Stage B — Multi-plugin parallelism + per-session model control — *final gate pending*
+## Stage B — Multi-plugin parallelism + per-session model control — *complete*
 
 - **Implemented outcome:** run ordered enabled plugins concurrently with
   independent lifecycle/failure; browse one database-backed catalog; import each
@@ -43,9 +43,9 @@
   client. Existing-session composer requests use the stored plugin identity.
 - **Compatibility:** the bridge's enabled/default marker is separate from the
   fixed OpenCode identity used only when released peers omit `pluginId`.
-- **Remaining gate:** Stage 9's tooling and reduced local smoke are directional.
-  The controlled fixed-host matrix/soak artifact is pending, so this stage and
-  the parallel-plugin plan are not complete.
+- **Final evidence:** Stage 9's controlled fixed-host matrix, publication runs,
+  import/event soak, Codex soak, and startup runs passed all release gates. The
+  raw results are retained in the versioned parallel-plugin baseline artifact.
 - **Capability policy:** current backends satisfy the declared plugin API shape;
   no speculative all-true capability descriptor was added. Introduce an
   optional capability only for a demonstrated backend difference.
