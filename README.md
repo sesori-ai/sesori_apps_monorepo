@@ -67,7 +67,7 @@ Requires iOS 15 or later, or Android 8.0 or later.
 
 ### 2. Install the Bridge CLI on your machine
 
-The Bridge is a small open-source command-line tool that connects the app to OpenCode.
+The Bridge is a small source-available command-line tool that connects the app to OpenCode, Cursor, Codex, and other AI coding assistants.
 
 **macOS / Linux:**
 
@@ -101,7 +101,7 @@ Sign in with the **same account** on your phone and your machine. The two pair a
 |---|---|
 | **Browse projects & sessions** | See your OpenCode, Cursor, Codex, and other AI coding projects and every active session from your phone. |
 | **Keep agents moving** | Answer questions, approve steps, and stop or restart tasks without returning to your desk. |
-| **Review and ship** | Read diffs, merge pull requests, and commit work straight to GitHub when it's done. |
+| **Review code and PR status** | Read diffs and keep tabs on pull requests without opening your laptop. |
 | **Voice or type** | Talk to your assistant naturally or use the keyboard — whatever works in the moment. |
 | **Real-time notifications** | Get pinged the moment your AI needs you back or a long-running task finishes. |
 | **End-to-end encrypted** | Your code, prompts, and responses stay between your phone and your machine. |
@@ -129,8 +129,8 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 
 - **End-to-end encryption.** All application data between your phone and laptop is encrypted with XChaCha20-Poly1305.
 - **Ephemeral key exchange.** Each connection uses a fresh X25519 Diffie-Hellman keypair; the relay never holds the room key.
-- **Local-first.** Your source code, prompts, and AI responses stay on your machine. We only store the account and routing metadata needed to pair your devices.
-- **Open source bridge.** The Bridge and the client protocol are in this repo. You can audit the code that runs on your machine.
+- **Local-first.** Your source code, prompts, and AI responses stay on your machine. We only store the account and routing metadata needed to pair your devices. Push notification previews may include a short snippet of an event; see [docs/SECURITY.md](docs/SECURITY.md) for details.
+- **Source-available bridge.** The Bridge and the client protocol are in this repo. You can audit the code that runs on your machine.
 - **Source-available license.** Released under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`).
 
 > **Security details:** [docs/SECURITY.md](docs/SECURITY.md)

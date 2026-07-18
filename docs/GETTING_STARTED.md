@@ -15,9 +15,15 @@ If you are setting up a headless VM or server, see the [headless VM guide](SETUP
 
 OpenCode is the AI coding engine that runs on your machine. Sesori is the remote cockpit that talks to it.
 
+**macOS / Linux:**
+
 ```bash
 curl -fsSL https://opencode.ai/install | bash
 ```
+
+**Windows:**
+
+Install OpenCode in the same environment where you plan to run the Bridge (WSL, or a native installer from [OpenCode's docs](https://opencode.ai/docs/)). Then run `opencode` to confirm it is available.
 
 Then open it once to confirm it works and connect an AI provider:
 
@@ -36,7 +42,7 @@ Requires iOS 15 or later, or Android 8.0 or later.
 
 ## 3. Install the Sesori Bridge on your machine
 
-The Bridge is a small open-source command-line tool that links the app to OpenCode.
+The Bridge is a small source-available command-line tool that links the app to OpenCode.
 
 **macOS / Linux:**
 
@@ -53,7 +59,7 @@ irm https://sesori.com/install.ps1 | iex
 The installer puts a `sesori-bridge` command on your PATH. If PATH has not refreshed yet, you can run the binary directly:
 
 - macOS / Linux: `~/.local/share/sesori/bin/sesori-bridge`
-- Windows: `%LOCALAPPDATA%\sesori\bin\sesori-bridge.exe`
+- Windows (PowerShell): `& "$env:LOCALAPPDATA\sesori\bin\sesori-bridge.exe"`
 
 **Prefer npm or bun?** You can also bootstrap the Bridge with `npx @sesori/bridge` or `bunx @sesori/bridge`. It installs the same managed runtime as the shell installer.
 
@@ -67,7 +73,7 @@ sesori-bridge
 
 The first run will:
 
-1. Open your browser to sign in with GitHub, Google, Apple, or email.
+1. Prompt you to choose GitHub, Google, Apple, or email. GitHub, Google, and Apple open or print a browser URL; email asks for your credentials in the terminal.
 2. Start or connect to the local OpenCode server.
 3. Register the Bridge with the Sesori relay.
 4. Start listening for connections from the Sesori app.
@@ -75,10 +81,9 @@ The first run will:
 You will see something like:
 
 ```
-Signed in as you@example.com
-opencode server started
-Registered with relay
-Bridge is online — waiting for connections
+Login successful! Welcome, <username>
+Relay:  https://relay.sesori.com
+Waiting for relay events...
 ```
 
 ## 5. Connect the app

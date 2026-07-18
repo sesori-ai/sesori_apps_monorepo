@@ -85,7 +85,7 @@ Before submitting a PR, run the relevant tests and analysis for the workspaces y
 
 ```sh
 cd bridge && make analyze && make test
-cd client && make analyze && make test
+cd ../client && make analyze && make test
 ```
 
 Bridge CI is stricter than `make analyze` and uses `dart analyze --fatal-infos`. Consider running that from each changed module if you touched Bridge code.
@@ -96,6 +96,14 @@ Bridge CI is stricter than `make analyze` and uses `dart analyze --fatal-infos`.
 - For security issues, please email [hello@sesori.com](mailto:hello@sesori.com) first.
 - Keep pull requests focused. If you are unsure about a large change, open an issue to discuss it first.
 
-## License
+### Contributor License Agreement
+
+This repository requires a Contributor License Agreement (CLA). Before your first pull request can be merged, please read [CLA.md](../CLA.md) and comment on the pull request with:
+
+```text
+I have read the CLA Document and I hereby sign the CLA
+```
+
+The CLA Assistant bot will then record your agreement. This is a one-time requirement.
 
 By contributing, you agree that your contributions will be licensed under the same [Functional Source License, Version 1.1, Apache 2.0 Future License](../LICENSE) that covers this project.

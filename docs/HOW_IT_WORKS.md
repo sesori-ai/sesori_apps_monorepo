@@ -27,11 +27,11 @@ graph LR
 
 ### Bridge ↔ AI Assistant (localhost)
 
-The Bridge talks to the AI assistant over plain HTTP on `127.0.0.1`. It fetches projects and sessions via REST, and subscribes to a Server-Sent Events (SSE) stream for real-time updates (new messages, status changes, questions). A random 256-bit password protects the local connection.
+The Bridge talks to the AI assistant over plain HTTP on `127.0.0.1`. It fetches projects and sessions via REST, and subscribes to a Server-Sent Events (SSE) stream for real-time updates (new messages, status changes, questions). By default, a locally generated random 256-bit password protects the local connection. You can override this with `--opencode-password <value>` or disable it with `--opencode-no-password` (loopback only in managed mode).
 
 ### Bridge ↔ Relay (WebSocket)
 
-The Bridge opens a persistent WebSocket to the relay server and authenticates with an OAuth access token. All application data sent over this connection is encrypted. The relay only sees opaque binary frames and routes them by user identity.
+The Bridge opens a persistent WebSocket to the relay server and authenticates with an OAuth access token. All application data sent over this connection is encrypted. The relay sees routing and auth metadata (auth tokens, public keys, device identifiers) and opaque binary application frames, and routes them by user identity.
 
 ### Phone ↔ Relay (WebSocket)
 
@@ -53,7 +53,7 @@ When a phone connects, it performs an **X25519 Diffie-Hellman key exchange** wit
 
 ## Session resume and rekeying
 
-The room key is persisted on the phone so reconnects can skip the key exchange. A `rekey_required` signal forces a fresh exchange when needed, for example after a long disconnect or a security event.
+The room key is persisted on the phone so reconnects can skip the key exchange while the same Bridge session is still running. A Bridge restart, a `rekey_required` signal, or a failed resume forces a fresh exchange.
 
 ## Why a Bridge is needed
 
@@ -62,6 +62,6 @@ The app on your phone cannot talk directly to OpenCode for a few reasons:
 - **Any network.** The Bridge registers with the relay, so your phone can connect from anywhere, not just the same Wi-Fi as your laptop.
 - **Push notifications.** The Bridge knows when a session needs input or finishes, and triggers the push that wakes your phone.
 - **Plugin updates.** New assistants and compatibility fixes ship in the Bridge, outside Apple or Google review cycles.
-- **Open source.** You can audit exactly what is running on your machine.
+- **Source-available.** You can audit exactly what is running on your machine.
 
 For the cryptography details, see [SECURITY.md](SECURITY.md). For the repository layout, see [ARCHITECTURE.md](ARCHITECTURE.md).

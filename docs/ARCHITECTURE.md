@@ -28,7 +28,7 @@ sesori_apps_monorepo/
 └── docs/                       # Deep-dive guides
 ```
 
-`bridge/` and `client/` are independent Dart pub workspaces with separate dependency resolution. The packages under `shared/` are referenced via path by both: `sesori_shared` carries the crypto and protocol types, while `no_slop_linter` is a custom analyzer plugin pulled in as a dev dependency.
+`bridge/` and `client/` are independent Dart pub workspaces with separate dependency resolution. `sesori_shared` is referenced via path by both and carries the crypto and protocol types. `no_slop_linter` is a custom analyzer plugin pulled in as a dev dependency by client packages.
 
 ## Dependency graph
 
@@ -43,6 +43,7 @@ graph TD
   bridge_app --> sesori_shared[shared/sesori_shared]
   sesori_bridge_foundation --> sesori_plugin_interface
   sesori_plugin_runtime[bridge/sesori_plugin_runtime] --> sesori_plugin_interface
+  sesori_plugin_runtime --> sesori_bridge_foundation
   sesori_plugin_opencode --> sesori_plugin_interface
   sesori_plugin_opencode --> sesori_bridge_foundation
   sesori_plugin_opencode --> sesori_plugin_runtime
@@ -60,9 +61,12 @@ graph TD
 
   mobile_app[client/app] --> module_core[client/module_core]
   mobile_app --> module_prego[client/module_prego]
+  mobile_app --> module_auth[client/module_auth]
+  mobile_app --> sesori_shared
   desktop_app[client/desktop] --> module_core
   desktop_app --> module_desktop_core[client/module_desktop_core]
-  desktop_app --> module_prego
+  desktop_app --> module_auth
+  desktop_app --> sesori_shared
   module_desktop_core --> module_core
   module_desktop_core --> sesori_shared
   module_core --> module_auth

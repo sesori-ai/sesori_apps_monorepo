@@ -4,7 +4,7 @@ Sesori is designed around the idea that your source code, prompts, and AI respon
 
 ## End-to-end encryption
 
-All application data between your phone and the Bridge is encrypted with **XChaCha20-Poly1305**. The relay routes ciphertext but cannot read user content.
+All application data between your phone and the Bridge is encrypted with **XChaCha20-Poly1305**. The relay sees only opaque binary frames for application data and cannot decrypt them. The X25519 public keys used for the initial key exchange are delivered through the relay unauthenticated, so the design treats the relay as a trusted routing and key-delivery endpoint. A compromised relay could replace both public keys and mount a man-in-the-middle attack; we do not harden against a malicious relay.
 
 ## Ephemeral key exchange
 
@@ -12,7 +12,14 @@ Each phone-to-Bridge connection uses an **X25519 Diffie-Hellman** key exchange. 
 
 ## Local protection
 
-The Bridge protects its localhost connection to the AI assistant with a random 256-bit password. That password is generated locally and is never transmitted over the network.
+By default, the Bridge protects its localhost connection to the AI assistant with a locally generated random 256-bit password. In the default loopback configuration, that password is injected into local HTTP requests and is not sent over the network.
+
+You can change this behavior:
+
+- `--opencode-password <value>` replaces the generated password with your own.
+- `--opencode-no-password` disables authentication entirely (allowed only on loopback in managed mode).
+
+If you configure a non-loopback `--opencode-host`, the password crosses the network as Basic auth headers, and `--opencode-no-password` is rejected in managed mode because it would expose an unauthenticated server.
 
 ## What the relay sees
 
@@ -31,6 +38,10 @@ It does **not** see:
 ## What Sesori stores
 
 Sesori retains the minimum account-level data needed to make the service work while your account is active: your sign-in identity, a small amount of routing metadata, and push notification tokens. We do not store your code, prompts, or AI responses.
+
+## Push notifications
+
+If you enable push notifications, our backend builds a notification payload that may contain a short preview of the event (for example, a question summary or the latest assistant message). That payload is sent to Apple or Google push services, so it leaves the end-to-end encrypted channel between your phone and the Bridge. The full code, prompts, and responses stay on your machine; only the preview needed for the notification travels through the push provider.
 
 ## Account deletion
 
