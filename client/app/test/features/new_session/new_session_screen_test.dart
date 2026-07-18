@@ -487,6 +487,58 @@ void main() {
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
   });
 
+  testWidgets("refresh discovery failure keeps the chooser and composer usable", (tester) async {
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) async {
+      discoveryCalls++;
+      if (discoveryCalls == 1) {
+        return ApiResponse.success(
+          const PluginListResponse(
+            plugins: [
+              PluginMetadata(
+                id: "plugin-1",
+                displayName: "Plugin One",
+                isDefault: true,
+                state: PluginLifecycleState.ready,
+                actionHint: null,
+              ),
+            ],
+          ),
+        );
+      }
+      return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    connectionStatus
+      ..add(const ConnectionStatus.disconnected())
+      ..add(
+        const ConnectionStatus.connected(
+          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          health: HealthResponse(
+            healthy: true,
+            version: "test",
+            filesystemAccessDegraded: null,
+          ),
+        ),
+      );
+    await tester.pumpAndSettle();
+
+    final context = tester.element(find.byType(NewSessionScreen));
+    final loc = AppLocalizations.of(context)!;
+    expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
+    expect(find.byKey(const Key("new_session_plugin_plugin-1")), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.byType(PromptInput),
+        matching: find.byWidgetPredicate((widget) => widget is IgnorePointer && widget.ignoring),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets("discovery failure shows localized error with no chooser or creation path", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),

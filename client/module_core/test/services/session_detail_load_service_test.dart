@@ -244,6 +244,33 @@ void main() {
       );
     });
 
+    test("catalog recovery failure is logged before loading without plugin context", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      final error = ApiError.generic();
+      final logs = <String>[];
+      when(
+        () => repository.getSession(sessionId: "session-1"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenThrow(error);
+
+      final result = await runZoned(
+        () => service.load(sessionId: "session-1", projectId: ""),
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) => logs.add(line),
+        ),
+      );
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      expect(logs, contains(allOf(contains("Failed to load project session context"), contains(error.toString()))));
+      verifyNever(
+        () => repository.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      );
+    });
+
     test("failed session metadata recovers project context for a blank route", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);

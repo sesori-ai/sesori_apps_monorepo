@@ -89,6 +89,60 @@ void main() {
       expect(cubit.state.agentModelData?.plugin, pluginA);
     });
 
+    test("reconnect discovery failure preserves usable composer data in the error state", () async {
+      final command = testCommandInfo();
+      var discoveryCalls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) async {
+        discoveryCalls++;
+        if (discoveryCalls == 1) {
+          return ApiResponse.success(const PluginListResponse(plugins: [pluginA]));
+        }
+        return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
+      });
+      when(
+        () => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [_agent("agent-a")])));
+      when(
+        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async => ApiResponse.success(_providerResponse()));
+      when(
+        () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.selectVariant(const SessionVariant(id: "high"));
+      cubit.stageCommand(command);
+      final beforeRefresh = cubit.state.agentModelData!;
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() {
+        final data = cubit.state.agentModelData;
+        return cubit.state is NewSessionError && !(data?.isLoading ?? true);
+      });
+
+      final state = cubit.state as NewSessionError;
+      final afterRefresh = state.agentModelData!;
+      expect(state.reason, RemoteFailureReason.serverRejected);
+      expect(afterRefresh.plugins, beforeRefresh.plugins);
+      expect(afterRefresh.plugin, beforeRefresh.plugin);
+      expect(afterRefresh.agents, beforeRefresh.agents);
+      expect(afterRefresh.providers, beforeRefresh.providers);
+      expect(afterRefresh.commands, beforeRefresh.commands);
+      expect(afterRefresh.agent, beforeRefresh.agent);
+      expect(afterRefresh.agentModel, beforeRefresh.agentModel);
+      expect(afterRefresh.availableVariants, beforeRefresh.availableVariants);
+      expect(afterRefresh.stagedCommand, beforeRefresh.stagedCommand);
+      expect(afterRefresh.isLoading, isFalse);
+      expect(afterRefresh.isPluginDiscoveryInFlight, isFalse);
+
+      cubit.clearStagedCommand();
+      expect(cubit.state.agentModelData?.stagedCommand, isNull);
+    });
+
     test("reconnect refreshes metadata, preserving a routable selection before falling back to default", () async {
       const refreshedDefault = PluginMetadata(
         id: "plugin-c",
@@ -277,6 +331,36 @@ void main() {
       await _waitForComposer(cubit);
 
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
+    });
+
+    test("failed command refresh preserves the staged command and prior catalog", () async {
+      final command = testCommandInfo();
+      final error = ApiError.generic();
+      var commandCalls = 0;
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      when(
+        () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async {
+        commandCalls++;
+        return commandCalls == 1
+            ? ApiResponse.success(CommandListResponse(items: [command]))
+            : ApiResponse.error(error);
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.stageCommand(command);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => commandCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      expect(cubit.state.agentModelData?.commands, [command]);
+      expect(cubit.state.agentModelData?.stagedCommand, command);
     });
 
     test("reconnect clears a staged command immediately when the plugin falls back", () async {

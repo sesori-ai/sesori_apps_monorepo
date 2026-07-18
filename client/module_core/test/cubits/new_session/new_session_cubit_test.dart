@@ -458,6 +458,65 @@ void main() {
       ],
     );
 
+    for (final invalidSelection in [
+      (name: "a provider from a stale picker", providerID: "stale-provider", modelID: "stale-model"),
+      (name: "a model absent from the current provider", providerID: "active", modelID: "missing"),
+      (name: "an unavailable model", providerID: "active", modelID: "offline"),
+    ]) {
+      test("selectModel ignores ${invalidSelection.name}", () async {
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const ProviderListResponse(
+              connectedOnly: false,
+              items: [
+                ProviderInfo(
+                  id: "active",
+                  name: "Active",
+                  defaultModelID: "current",
+                  models: {
+                    "current": ProviderModel(
+                      id: "current",
+                      providerID: "active",
+                      name: "Current",
+                      variants: [],
+                      family: null,
+                      releaseDate: null,
+                    ),
+                    "offline": ProviderModel(
+                      id: "offline",
+                      providerID: "active",
+                      name: "Offline",
+                      variants: [],
+                      family: null,
+                      isAvailable: false,
+                      releaseDate: null,
+                    ),
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        final selectionBefore = cubit.state.agentModelData?.agentModel;
+
+        cubit.selectModel(
+          providerID: invalidSelection.providerID,
+          modelID: invalidSelection.modelID,
+        );
+
+        expect(cubit.state.agentModelData?.agentModel, selectionBefore);
+        expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+      });
+    }
+
     blocTest<NewSessionCubit, NewSessionState>(
       "selectModel updates selectedAgentModel to the chosen model variant",
       skip: 1,
@@ -487,6 +546,12 @@ void main() {
             ),
           ),
         );
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
         return buildCubit();
       },
       act: (cubit) async {
@@ -788,6 +853,12 @@ void main() {
             ),
           ),
         );
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(_modelSelectionProviders));
         return buildCubit();
       },
       act: (cubit) async {
@@ -1220,3 +1291,39 @@ void main() {
     });
   });
 }
+
+const _modelSelectionProviders = ProviderListResponse(
+  connectedOnly: false,
+  items: [
+    ProviderInfo(
+      id: "openai",
+      name: "OpenAI",
+      defaultModelID: "gpt-4",
+      models: {
+        "gpt-4": ProviderModel(
+          id: "gpt-4",
+          providerID: "openai",
+          name: "GPT-4",
+          variants: ["fast"],
+          family: null,
+          releaseDate: null,
+        ),
+      },
+    ),
+    ProviderInfo(
+      id: "anthropic",
+      name: "Anthropic",
+      defaultModelID: "claude-3",
+      models: {
+        "claude-3": ProviderModel(
+          id: "claude-3",
+          providerID: "anthropic",
+          name: "Claude 3",
+          variants: ["deep"],
+          family: null,
+          releaseDate: null,
+        ),
+      },
+    ),
+  ],
+);

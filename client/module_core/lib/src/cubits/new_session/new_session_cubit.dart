@@ -92,9 +92,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
               : plugins.firstWhereOrNull((plugin) => plugin.id == currentPluginId && plugin.isRoutable);
           final selectedPlugin = currentPlugin ?? plugins.where((plugin) => plugin.isDefault).singleOrNull;
           final canLoad = selectedPlugin?.isRoutable ?? false;
-          final stagedCommand = currentPluginId != null && selectedPlugin?.id == currentPluginId
-              ? currentData?.stagedCommand
-              : null;
+          final isSamePlugin = currentPluginId != null && selectedPlugin?.id == currentPluginId;
+          final stagedCommand = isSamePlugin ? currentData?.stagedCommand : null;
           emit(
             NewSessionState.idle(
               availablePlugins: plugins,
@@ -103,7 +102,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
               isPluginDiscoveryInFlight: false,
               availableAgents: const [],
               availableProviders: const [],
-              availableCommands: const [],
+              availableCommands: isSamePlugin ? currentData?.commands ?? const [] : const [],
               selectedAgent: null,
               selectedAgentModel: null,
               stagedCommand: stagedCommand,
@@ -125,20 +124,21 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
   void _emitDiscoveryError({required RemoteFailureReason reason}) {
     if (isClosed) return;
+    final data = state.agentModelData;
     emit(
       NewSessionState.error(
         reason: reason,
-        availablePlugins: const [],
-        selectedPlugin: null,
+        availablePlugins: data?.plugins ?? const [],
+        selectedPlugin: data?.plugin,
         isComposerDataLoading: false,
         isPluginDiscoveryInFlight: false,
-        availableAgents: const [],
-        availableProviders: const [],
-        availableCommands: const [],
-        selectedAgent: null,
-        selectedAgentModel: null,
-        stagedCommand: null,
-        availableVariants: const [],
+        availableAgents: data?.agents ?? const [],
+        availableProviders: data?.providers ?? const [],
+        availableCommands: data?.commands ?? const [],
+        selectedAgent: data?.agent,
+        selectedAgentModel: data?.agentModel,
+        stagedCommand: data?.stagedCommand,
+        availableVariants: data?.availableVariants ?? const [],
       ),
     );
   }
@@ -250,17 +250,17 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
   }
 
-  Future<List<CommandInfo>> _loadCommands({required String pluginId}) async {
+  Future<List<CommandInfo>?> _loadCommands({required String pluginId}) async {
     try {
       final response = await _sessionService.listCommands(projectId: _projectId, pluginId: pluginId);
       _logComposerDataError(resource: "commands", pluginId: pluginId, response: response);
       return switch (response) {
         SuccessResponse(:final data) => data.items,
-        ErrorResponse() => <CommandInfo>[],
+        ErrorResponse() => null,
       };
     } on Object catch (error, stackTrace) {
       loge("New session: failed to load commands for project $_projectId and plugin $pluginId", error, stackTrace);
-      return <CommandInfo>[];
+      return null;
     }
   }
 
@@ -488,10 +488,12 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     if (!_canEditComposer) return;
     final current = state.agentModelData;
     if (current == null) return;
+    final selectedModel = AgentModel(providerID: providerID, modelID: modelID, variant: null);
+    if (!_modelIsAvailable(providers: current.providers, model: selectedModel)) return;
 
     final availableVariants = _deriveAvailableVariants(
       providers: current.providers,
-      model: AgentModel(providerID: providerID, modelID: modelID, variant: null),
+      model: selectedModel,
     );
     final agentModel = _resolveAgentModel(
       agents: current.agents,
