@@ -108,7 +108,6 @@ class _CatalogImportEventSoak {
   final _BenchmarkConfiguration _configuration;
 
   Future<Map<String, Object?>> run() async {
-    final rssBefore = ProcessInfo.currentRss;
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-catalog-import-event-soak-");
     final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
     final releaseEnumeration = Completer<void>();
@@ -120,6 +119,7 @@ class _CatalogImportEventSoak {
     StreamSubscription<CatalogImportProgress>? importSubscription;
     Future<void>? heldWriter;
     _SchedulingLagProbe? schedulingProbe;
+    _PeakRssSampler? rssSampler;
 
     try {
       database = AppDatabase.openFile(file: databaseFile);
@@ -187,6 +187,9 @@ class _CatalogImportEventSoak {
         throw StateError("benchmark relay replay queue was not created");
       }
 
+      final rssBefore = ProcessInfo.currentRss;
+      final importRssSampler = _PeakRssSampler(initialRss: rssBefore)..start();
+      rssSampler = importRssSampler;
       final importProgress = <CatalogImportProgress>[];
       final importCompleted = Completer<CatalogImportCompleted>();
       final importStopwatch = Stopwatch()..start();
@@ -202,6 +205,7 @@ class _CatalogImportEventSoak {
           .listen(
             (progress) {
               importProgress.add(progress);
+              importRssSampler.sample();
               if (progress is CatalogImportCommitting) publicationStopwatch.start();
               if (progress is CatalogImportCompleted && !importCompleted.isCompleted) {
                 publicationStopwatch.stop();
@@ -300,6 +304,10 @@ class _CatalogImportEventSoak {
 
       releaseEnumeration.complete();
       final completion = await importCompleted.future;
+      final rssAfter = importRssSampler.sample();
+      importRssSampler.stop();
+      rssSampler = null;
+      final rssPeak = importRssSampler.peakRss;
       schedulingProbe.stop();
       await importSubscription.cancel();
       importSubscription = null;
@@ -320,10 +328,9 @@ class _CatalogImportEventSoak {
       final schedulingSamples = schedulingProbe.samples..sort();
       await _checkpoint(database: database);
       final databaseBytesAfterImport = databaseFile.lengthSync();
-      final rssAfter = ProcessInfo.currentRss;
       final databaseSchemaVersion = database.schemaVersion;
       final report = <String, Object?>{
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "benchmark": "catalog_import_event_soak",
         "generatedAt": DateTime.now().toUtc().toIso8601String(),
         "host": _hostMetadata(),
@@ -364,8 +371,10 @@ class _CatalogImportEventSoak {
         },
         "rssBytes": {
           "before": rssBefore,
+          "peak": rssPeak,
           "after": rssAfter,
-          "growth": rssAfter - rssBefore,
+          "growth": rssPeak - rssBefore,
+          "finalGrowth": rssAfter - rssBefore,
         },
         "import": {
           "completedCount": importProgress.whereType<CatalogImportCompleted>().length,
@@ -404,6 +413,7 @@ class _CatalogImportEventSoak {
       if (!releaseWriter.isCompleted) releaseWriter.complete();
       if (!releaseEnumeration.isCompleted) releaseEnumeration.complete();
       schedulingProbe?.stop();
+      rssSampler?.stop();
       if (heldWriter case final writer?) {
         try {
           await writer;
@@ -723,6 +733,30 @@ class _CatalogImportEventSoak {
     }
     if (Platform.isWindows) return Platform.environment["PROCESSOR_IDENTIFIER"];
     return null;
+  }
+}
+
+class _PeakRssSampler {
+  _PeakRssSampler({required int initialRss}) : _peakRss = initialRss;
+
+  int _peakRss;
+  Timer? _timer;
+
+  int get peakRss => _peakRss;
+
+  void start() {
+    _timer ??= Timer.periodic(const Duration(milliseconds: 1), (_) => sample());
+  }
+
+  int sample() {
+    final rss = ProcessInfo.currentRss;
+    if (rss > _peakRss) _peakRss = rss;
+    return rss;
+  }
+
+  void stop() {
+    _timer?.cancel();
+    _timer = null;
   }
 }
 
