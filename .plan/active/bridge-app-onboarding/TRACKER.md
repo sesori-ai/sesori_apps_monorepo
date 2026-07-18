@@ -25,8 +25,8 @@
 
 | Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
 |---|---|---|---|---|---|
-| S01 | W01 | `sesori-ai/sesori_auth_server` | `master` | `b17a6e760b0c70c3dc3d1cd456ff93d814c75453` | No drift: current `master` matches the latest audited tip. |
-| S01 | W02 | `sesori-ai/sesori_apps_monorepo` | `main` | `4a156a78b3bf8572c280ce859b3b1370300a8105` | Proceed after reducing scope: current `main` remains the pinned implementation baseline. |
+| S01 | W01 | `sesori-ai/sesori_auth_server` | `master` | `b17a6e760b0c70c3dc3d1cd456ff93d814c75453` | Historical W01 implementation baseline. PR #44 later merged to `master` at `8f7dd3b9d56d1797da4480c8806f0ac6033b9555` and was deployed. |
+| S01 | W02 | `sesori-ai/sesori_apps_monorepo` | `main` | `4a156a78b3bf8572c280ce859b3b1370300a8105` | Selected W02 implementation baseline; future implementation reassesses drift before coding. |
 
 Workers add one authoritative row for each started stage/wave/repository/base
 pair after drift assessment and before branch creation.
@@ -49,11 +49,12 @@ pair after drift assessment and before branch creation.
 - No implementation blocker is known.
 - The auth-server prerequisite is complete: PR #44 merged and the endpoint was
   deployed (user-confirmed 2026-07-18).
-- Latest audited tips: monorepo `main`
+- The pinned monorepo W02 implementation baseline remains
   `4a156a78b3bf8572c280ce859b3b1370300a8105`
-  (2026-07-17T18:02:33+03:00); auth-server `master`
-  `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
-  (2026-07-16T14:14:09Z). Each worker assesses and pins current drift.
+  (2026-07-17T18:02:33+03:00). The latest audited auth-server `master` tip is
+  PR #44's merge commit `8f7dd3b9d56d1797da4480c8806f0ac6033b9555`
+  (2026-07-18T13:30:06Z), whose endpoint is deployed. Each future worker
+  assesses and pins current drift.
 - The independent active `session-pull-request-monitoring` plan may proceed; a
   worker stops and requests stale-plan re-review only if drift changes this
   plan's touched paths, contracts, architecture, or product intent.
