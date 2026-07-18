@@ -20,10 +20,11 @@
 
 Sesori is becoming an **ambient dev cockpit**: monitor and drive AI coding work
 from any device, across multiple assistant backends, with a powerful local
-**bridge** as the core — one that can *also* be run for you as a managed cloud
-service. Today you watch and answer one assistant from your phone. The
-destination is many surfaces (phone, desktop, later web), many bridges (your
-laptop, your desktop, managed VMs), many plugins (OpenCode, Codex, our own
+**bridge** as the core - one that can *also* be run for you as a managed cloud
+service. The bridge now runs ordered enabled plugins concurrently, and the
+client can choose a plugin plus its scoped agent/model resources when creating a
+session. The destination is many surfaces (phone, desktop, later web), many
+bridges (your laptop, your desktop, managed VMs), more plugins (including our own
 harness), opt-in autonomy over CI/review, and eventually a master agent that
 coordinates work across sessions.
 
@@ -51,8 +52,8 @@ The bridge is, and will remain, the heavy part. It runs as a **headless daemon**
 (terminal / VM, unchanged) *and*, on desktop, under a **Flutter supervisor app**
 (tray/menu-bar popup + a main window that is the client UI with desktop-specific
 changes) — the Tailscale model (`Tailscale.app` supervises `tailscaled`; the same
-daemon also runs headless on a server). It will run **multiple plugins in
-parallel** and is the **system of record for now (bridge-owned)**.
+daemon also runs headless on a server). It runs **multiple plugins in parallel**
+and owns the durable project/session catalog used for normal list reads.
 
 - *Door to keep open:* the bridge must always be runnable headless; the desktop
   GUI supervises the *same* daemon and is never the only way to run it (this is
@@ -60,11 +61,13 @@ parallel** and is the **system of record for now (bridge-owned)**.
 
 ### 3. The plugin interface is a platform contract
 
-Backends are truly pluggable. OpenCode and Codex already ship; **our own harness
-will be just another plugin** behind `BridgePluginApi`, with no privileged
-backdoor. The interface may grow **optional, discoverable capabilities** (e.g.
-model switching) that not every plugin implements — capability differences are
-*declared*, not special-cased into the bridge or client.
+Backends are truly pluggable. OpenCode, Codex, and Cursor descriptors can run
+together; **our own harness will be just another plugin** behind
+`BridgePluginApi`, with no privileged backdoor. Current capability differences
+use the plugin interface's declared type shape, and composer data remains scoped
+to the selected or stored plugin. Add an optional discoverable capability only
+when a concrete backend cannot implement an existing operation; capability
+differences are declared, not special-cased into the bridge or client.
 
 - *Door to keep open:* nothing assistant-specific (OpenCode / Codex / own
   harness) leaks past the plugin boundary into `shared/`, the relay protocol, or
@@ -103,8 +106,8 @@ always-on; it is a **paid** tier and **not currently in play**.
 ## Directional invariants (the doors we must not weld shut)
 
 1. **Plugin boundary is sacred** — no backend specifics past `BridgePluginApi`;
-   our own harness is *just a plugin*; differing abilities are optional, declared
-   capabilities.
+   our own harness is *just a plugin*; differing abilities are declared by the
+   plugin contract rather than inferred by shared code or clients.
 2. **The bridge is one of many** — per-bridge addressing across client / relay /
    auth (multi-client per bridge already works; multi-bridge is the new axis).
 3. **Shared brain, thin shells** — `module_core` stays Flutter-free and

@@ -1,6 +1,6 @@
 # Parallel Plugins - Implementation Plan
 
-> Status: **implementation in progress**.
+> Status: **complete**.
 > [`ARCHITECTURE.md`](ARCHITECTURE.md) owns the durable product direction. This
 > document owns the implementation sequence, current pointer, concrete design, rollout, and
 > verification. Keep both documents consistent when implementation findings
@@ -8,8 +8,9 @@
 
 ## Current Pointer
 
-- **Last completed stage:** Stage 8 - client plugin and model/agent selection
-- **Next up:** Stage 9 - performance gate and cleanup
+- **Last completed stage:** Stage 9 - performance gate and cleanup
+- **Current stage:** Parallel-plugin implementation plan complete
+- **Next up:** Merge the Stage 9 PR
 - **Runtime default:** OpenCode remains the one-plugin default; ordered multi-plugin selection is active
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
@@ -21,6 +22,8 @@
 - **Stage 7 implementation base:** stacked Stage 6 at `297fecc3` (audited 2026-07-17)
 - **Stage 8 planning base:** stacked Stage 7 at `2482e15d` (audited 2026-07-17)
 - **Stage 8 implementation base:** approved Stage 8 plan at `abd24c3e` (audited 2026-07-17)
+- **Stage 9 planning base:** stacked Stage 8 at `a0913639` (audited 2026-07-17)
+- **Stage 9 implementation checkpoint:** stacked Stage 8 at `3e2a3e51` (audited 2026-07-17)
 
 Resume from the first unchecked row in the status index whose prerequisites are
 complete. Before starting that row, reconcile the index against merged PRs on
@@ -671,6 +674,15 @@ output with commit, schema, OS, CPU, fixture, p50/p95/p99/max, RSS, database
 bytes, and query plans. Wall-clock budgets run on fixed hosts; normal CI uses
 deterministic zero-call, concurrency, index, and isolate-responsiveness tests.
 
+The final Apple M4 Pro battery-mode results at `ac56f05b` are recorded in
+`baselines/stage-9-macos-arm64.json`. Every gate passed: the worst accepted
+1-to-8-plugin p95 regression was 3.97% with zero plugin calls; 10,000-session
+publication p95 was 211.659 ms; import scheduling lag p99/max was 4.129/23.760
+ms; idle/import event p95 was 0.424/0.403 ms; 50,000-session peak RSS growth was
+62,013,440 bytes; and database growth was 35,221,504 bytes. The artifact retains
+the complete raw matrix and the repeated identical-fixture run that reduced one
+initial 12.44% microsecond-scale outlier to 0.88%.
+
 ## 10. Stages and PR Status
 
 Stages are strictly ordered. Every row is one reviewable PR and must leave
@@ -691,7 +703,7 @@ selection.
 | ☑ | 6 | Database-only list cutover | Zero plugin calls; degraded-plugin browsing; budgets |
 | ☑ | 7 | Multi-plugin routing, lifecycle, and event streams | Mixed-id routing, independent failure, startup/shutdown |
 | ☑ | 8 | Client plugin and model/agent selection | Cubit, API/repository, mobile and desktop tests |
-| ☐ | 9 | Performance gate and cleanup | Fixed-host matrix, soak, dead-path removal, docs |
+| ☑ | 9 | Performance gate and cleanup | Fixed-host matrix, soak, dead-path removal, docs |
 
 ### Stage 1A - Pre-Change Baseline Harness
 
@@ -1370,12 +1382,13 @@ PR-level implementation plan:
    retry that whole scope, never one plugin). Call
    `BridgeInstanceService.enforceSingleLiveBridge` exactly once after lock
    acquisition. Build one `BridgePluginHostImpl` per available descriptor with
-   `pluginStateDirectoryPath(paths:, pluginId:)`: OpenCode keeps its frozen
-   `<cacheDirectory>/runtime` directory and reuses the runner's existing
-   `RuntimeFileApi` plus one `BridgeHostJsonStore`; each non-OpenCode
-   `<installRoot>/plugins/<id>` directory gets exactly one new `RuntimeFileApi`
-   and one `BridgeHostJsonStore`. Never construct two `RuntimeFileApi` instances
-   for the same state directory. Lifecycle receives no host/process/store input.
+   `pluginStateDirectoryPath(paths:, pluginId:, stateStorage:)`. Descriptors
+   declare backend-neutral storage policy: OpenCode and Codex keep their shipped
+   shared `<cacheDirectory>/runtime` root, while isolated plugins use
+   `<installRoot>/plugins/<id>`. Reuse one `RuntimeFileApi` and
+   `BridgeHostJsonStore` for descriptors that resolve to the same root; managed
+   runtime subdirectories and ownership/intent filenames remain plugin-specific.
+   Lifecycle receives no host/process/store input.
 9. Under that one mutex, call `_ensurePluginRuntime` sequentially in configured
    order. Immediately after one descriptor's provisioning settles, the runner
    invokes `Future.sync(() => descriptor.start(host))`, passes that future to
@@ -1952,6 +1965,120 @@ only under the selected or stored plugin identity.
 Acceptance: all future-execution principles in `ARCHITECTURE.md` are demonstrated by
 tests/results; bridge, shared, client, mobile, and desktop verification is green.
 
+PR-level implementation plan:
+
+1. Keep Stage 9 limited to bridge benchmark tooling, proven-dead bridge cleanup,
+   query-plan evidence, and documentation. Add no schema/index/migration,
+   projection-version, wire/shared/client contract, plugin lifecycle, import
+   semantics, client import UI, capability abstraction, shadow mode, or runtime
+   lock/provisioning change. The only production deletions are paths whose
+   callers and original authoritative-list assumptions are both gone.
+2. Extend `bridge/app/tool/benchmarks/live_list_baseline.dart` with validated
+   `--plugins` (`1`, `3`, or `8`), `--projects`, `--sessions`, and
+   `--unpaginated-sessions` flags. Construct that many distinct throwing plugin
+   APIs and assert aggregate zero calls for project/root/detail/child reads.
+   Preserve fresh file-backed WAL databases, AOT/product execution, existing
+   percentile/RSS/database metadata, and deterministic row assertions. Add the
+   production-shaped `EXPLAIN QUERY PLAN` details for visible project ordering
+   and root pagination to versioned JSON; do not add an index unless the plan
+   evidence demonstrates a scan or temporary-sort regression.
+3. Add `bridge/app/tool/benchmarks/catalog_import_event_soak.dart` using the
+   existing production `CatalogImportRepository`, database-backed session/event
+   repositories and services, `SessionEventTracker`, mapper, and `SSEManager`
+   seams. Defaults are 2,000 projects, 50,000 sessions, 2,000 known-session
+   events, 25 warmup events, and 2,000 catalog-read samples, with validated
+   size flags for local smoke runs. Do not introduce a benchmark framework or
+   production abstraction for the harness.
+4. Make the import/event soak self-assert only deterministic correctness and
+   bounded-domain invariants: one completed import with expected counts; exact
+   plugin bindings and no duplicate `(plugin_id, backend_session_id)`; one v1
+   hydration marker; clean `PRAGMA foreign_key_check`; catalog reads completing
+   during blocked enumeration and over a held writer; exactly one translated
+   shared event per known input with no backend-id leak; a post-import-start
+   sentinel event surviving publication; final sentinel title/time winning over
+   imported data; zero pending tracker entries; zero list-read plugin calls; and
+   non-empty event/read/scheduling samples. Report latency, RSS, and database
+   growth without asserting host-dependent thresholds in ordinary tests.
+5. Extend
+   `bridge/sesori_plugin_codex/tool/benchmarks/rollout_enumeration_baseline.dart`
+   with a validated `--implementation=sync|isolate` selection. Preserve the
+   historical synchronous baseline and add the production
+   `SessionRolloutReader.listSessionsInIsolate()` measurement for 50,000-session
+   soak evidence; do not change Codex runtime behavior.
+6. Remove the now-unreferenced `DerivedProjectBuilder` and its test. Remove
+   `SessionUnseenService.reconcileVanishedSessions`,
+   `SessionUnseenRepository.deleteSessionsNotIn`, and
+   `SessionDao.deleteSessionsForProjectNotIn`, plus their tests, stale complete-
+   backend-list comments, and imports. Stage 6 made list reads database-only and
+   Stage 5 import absence explicitly non-destructive, so authoritative-list
+   deletion is both unused and no longer valid. Retain `DerivedSessionBuilder`
+   for derived-plugin project questions, startup/reconnect project activity
+   reconciliation, targeted native active-root hydration, and live committed
+   deletion/unseen handling.
+7. Extend `bridge/app/test/bridge/persistence/catalog_queries_test.dart` with
+   production-shaped visible-project and root `LIMIT/OFFSET` query plans. Keep
+   schema v11, projection v1, WAL, the four-reader pool, all current indexes,
+   migrations, and generated Drift artifacts unchanged when the evidence
+   remains clean. Re-run the existing v10-to-v11 migration/FK suite and record
+   the final schema/index/query-plan facts rather than generating a new schema.
+8. Audit every `COMPATIBILITY` marker touched by the parallel-plugin work. Do
+   not remove any: no minimum supported bridge/client/install policy proves a
+   removal window has arrived, v1.5.0 identity defaults still serve released
+   peers, old rollout files remain durable history, and the Stage 7 health/
+   status fields have not yet shipped under a new stable version. Record the
+   marker, rationale, exact future removal criterion, and release-version
+   uncertainty in a compatibility-debt table; do not create a compatibility
+   registry subsystem.
+9. Define the fixed-host protocol before recording results: final clean commit,
+   workspace-pinned Dart SDK, AOT/product mode, same plugged-in host/power mode,
+   no concurrent builds, fresh process/database per case, and raw versioned JSON
+   retained. Run 1/3/8 plugin catalog cases across 50/500/2,000 projects and
+   1,000/10,000/50,000 sessions, repeated 10,000-session publication samples,
+   the 50,000 import/event soak, the Codex isolate soak, and 1/3/8 startup runs.
+   Compare identical fixtures and apply the documented `<10%` plugin-count,
+   `<100 MiB` RSS-growth, `<50 MiB` database-growth, list/event latency, and
+   scheduling-lag targets only on the designated controlled host. Local runs in
+   this worktree are directional smoke evidence, not a fixed-host release pass.
+10. Update `docs/parallel-plugins/ARCHITECTURE.md`,
+    `docs/parallel-plugins/CONSIDERATIONS.md`, `docs/VISION.md`,
+    `docs/ROADMAP.md`, `bridge/README.md`, `bridge/app/README.md`,
+    `bridge/AGENTS.md`, `bridge/app/AGENTS.md`, and the stale parallel-plugin/
+    singular-status references in `docs/desktop/PLAN.md`. Convert historical
+    one-plugin/live-list assumptions to implemented facts without redesigning
+    product direction. Document repeatable selection, enabled/default versus
+    legacy identity, independent failure/lifecycle, non-destructive per-plugin
+    import/start/cancel/status/SSE behavior, last-committed catalog reads during
+    import, and current build requirements. Do not choose a future desktop stage
+    that still requires human reassessment.
+11. Verify local production cleanup with bridge fatal analysis, focused unseen/
+    catalog query/migration tests, and the full bridge app suite; verify Codex
+    benchmark changes with Codex fatal analysis/tests. Compile every Stage 9
+    benchmark AOT and run reduced smoke fixtures. Require the no-match audit for
+    `reconcileVanishedSessions|deleteSessionsNotIn|deleteSessionsForProjectNotIn|DerivedProjectBuilder`,
+    manually classify remaining `shadow|live-list|list-triggered` matches, run
+    `git diff --check`, and run `aristotle-impl-review`. Rely on CI for unchanged
+    shared/client package matrices rather than repeating them locally.
+12. Commit one versioned Stage 9 baseline JSON only after the designated
+    fixed-host run supplies raw host/commit metadata. Mark Stage 9 and this plan
+    complete only after that artifact, measured findings, operational guidance,
+    compatibility debt, CI, and implementation review all land. Tooling,
+    deterministic cleanup, local smoke evidence, and documentation may be
+    prepared beforehand, but they do not by themselves satisfy the release gate.
+
+Stage 9 workspace and file matrix:
+
+| Workspace | Production changes | Verification |
+|---|---|---|
+| `bridge/app` | Delete dead project-list derivation and vanished-list reconciliation only; no runtime behavior additions | fatal analysis; focused/full tests; query/migration evidence; AOT benchmark smoke |
+| `bridge/sesori_plugin_codex` | Benchmark-only isolate measurement | fatal analysis; full tests; AOT smoke |
+| `docs` and bridge READMEs/AGENTS | Implemented architecture, operations, compatibility debt, measured evidence | factual consistency; `git diff --check` |
+| `shared`, `client`, other plugins | No planned production changes | unchanged CI matrix |
+
+Stage 9 completed on the human-designated controlled host at `ac56f05b`. The
+versioned artifact retains the final matrix, repeated publication samples,
+import/event and Codex soaks, startup runs, host metadata, and gate evaluation.
+No compatibility deletion or performance-budget revision was needed.
+
 ## 11. Verification Matrix
 
 Every affected stage runs generated-code checks, fatal-info analysis, and tests
@@ -2019,6 +2146,25 @@ release notes must identify that minimum rollback version.
 Record implementation discoveries here, newest first. A delta names the
 affected locked decision and updates the owning section in the same PR.
 
+- **Stage 9 (local checkpoint):** Implemented from the approved Stage 9 plan at
+  `1526ca4c`; production/tooling/docs landed at `3e2a3e51`. Catalog benchmarks
+  now accept deterministic 1/3/8-plugin fixtures and record visible-project and
+  root-pagination query plans. The new import/event soak uses production
+  repository, tracker, mapper, SSE, WAL, and held-writer seams; the Codex
+  baseline measures both synchronous and production isolate enumeration.
+  `DerivedProjectBuilder` and the obsolete authoritative-list vanished-session
+  deletion chain are removed, while `DerivedSessionBuilder`, committed deletion,
+  and unseen-event handling remain. Schema v11, projection v1, migrations,
+  indexes, and generated Drift files are unchanged. Full bridge app tests
+  passed (1,984) with fatal analysis; Codex tests passed (137) with fatal
+  analysis. Reduced AOT/product smoke passed for 1/3/8 catalog cases, the
+  import/event harness, and Codex sync/isolate modes: catalog reads made zero
+  plugin calls, query plans used `idx_projects_updated` and
+  `idx_sessions_roots`, every deterministic import/event invariant held, and
+  isolate enumeration returned every fixture session without main-isolate
+  blocking. These dirty-worktree M4 Pro results are directional only. No
+  versioned performance artifact is committed and Stage 9 remains open until a
+  human-designated controlled host runs the clean-commit matrix and soak.
 - **Stage 8:** Implemented from the approved Stage 8
   plan at `abd24c3e`. `module_core` now discovers ordered bridge-authored plugin
   metadata through `PluginApi`/`PluginRepository`, selects only the unique

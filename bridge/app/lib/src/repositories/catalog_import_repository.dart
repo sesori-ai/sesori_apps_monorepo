@@ -319,14 +319,16 @@ class CatalogImportRepository {
         importedProjectIdByPath[observation.path] = row.projectId;
       }
 
+      await _projectsDao.upsertProjectRows(rows: projectRows);
       final reservedIds = await _sessionDao.getAllSessionIds();
 
-      final sessionRows = <SessionDto>[];
-      final finalRowsByBackendId = <String, SessionDto>{};
+      var sessionRows = <SessionDto>[];
+      final finalBindingsByBackendId = <String, ({String sessionId, String projectId})>{};
+      var sessionsImported = 0;
       for (final observation in orderedSessions) {
         final session = observation.session;
         final existing = currentBindings[session.id];
-        final parent = session.parentID == null ? null : finalRowsByBackendId[session.parentID];
+        final parent = session.parentID == null ? null : finalBindingsByBackendId[session.parentID];
         final rootProjectPath = observation.rootProjectPath;
         final projectId =
             parent?.projectId ??
@@ -344,13 +346,18 @@ class CatalogImportRepository {
           importStartedAt: importStartedAt,
         );
         sessionRows.add(row);
-        finalRowsByBackendId[session.id] = row;
-        if (sessionRows.length % _responsivenessBatchSize == 0) {
+        finalBindingsByBackendId[session.id] = (
+          sessionId: row.sessionId,
+          projectId: row.projectId,
+        );
+        sessionsImported++;
+        if (sessionRows.length == _responsivenessBatchSize) {
+          await _sessionDao.upsertSessionRows(rows: sessionRows);
+          sessionRows = <SessionDto>[];
           await Future<void>.delayed(Duration.zero);
         }
       }
 
-      await _projectsDao.upsertProjectRows(rows: projectRows);
       await _sessionDao.upsertSessionRows(rows: sessionRows);
       final completedAt = DateTime.now().millisecondsSinceEpoch;
       if (control.hydrationMarkerRequested) {
@@ -364,7 +371,7 @@ class CatalogImportRepository {
       }
       return (
         projectsImported: projectRows.length,
-        sessionsImported: sessionRows.length,
+        sessionsImported: sessionsImported,
         completedAt: completedAt,
       );
     });
@@ -454,6 +461,13 @@ class CatalogImportRepository {
     required Map<String, _ObservedSession> observedSessions,
     required Set<String> omittedBackendIds,
   }) {
+    if (observedSessions.values.every((observation) => observation.session.parentID == null)) {
+      return [
+        for (final entry in observedSessions.entries)
+          if (!omittedBackendIds.contains(entry.key)) entry.value,
+      ];
+    }
+
     final validity = <String, bool>{};
     final depths = <String, int>{};
 

@@ -19,8 +19,10 @@ abstract class PluginHost {
   /// Parsed values of the options this plugin declared.
   PluginConfig get config;
 
-  /// Absolute path of this plugin's private state directory. Created by the
-  /// bridge before `start()` runs. Files managed through [store] live here.
+  /// Absolute path of this plugin's descriptor-selected state root. Created by
+  /// the bridge before `start()` runs. Storage is isolated by default; legacy
+  /// descriptors can share a frozen root and therefore keep their filenames
+  /// and managed-runtime subdirectories plugin-specific.
   String get stateDirectory;
 
   /// The runtime launch path resolved by `BridgePluginDescriptor.ensureRuntime`

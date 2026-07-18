@@ -110,23 +110,6 @@ class SessionRepository {
     );
   }
 
-  /// Legacy reconciliation capability retained until Stage 9 removes the
-  /// vanished-session reconciliation path.
-  ///
-  /// A native plugin owns its session list, so the fetched list is complete.
-  /// A bridge-derived plugin's enumeration is only eventually-complete: a
-  /// freshly-created session can exist solely as a stored row until the
-  /// backend flushes it to disk (codex rollouts), so treating that list as
-  /// complete would reconcile away the fresh row — and with it a worktree
-  /// session's parent-project attribution.
-  bool sessionListIsAuthoritative({required String pluginId}) => switch (_requirePlugin(
-    pluginId: pluginId,
-    operation: SessionOperation.getSession,
-  )) {
-    NativeProjectsPluginApi() => true,
-    BridgeDerivedProjectsPluginApi() => false,
-  };
-
   Future<Session> enrichSession({required Session session}) async {
     final enrichedSessions = await enrichSessions(sessions: [session]);
     return enrichedSessions.single;

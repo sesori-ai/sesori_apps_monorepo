@@ -493,9 +493,6 @@ class _FakeSessionRepository implements SessionRepository {
   Future<void> dispose() async {}
 
   @override
-  bool sessionListIsAuthoritative({required String pluginId}) => true;
-
-  @override
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override

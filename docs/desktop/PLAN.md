@@ -89,11 +89,13 @@ the terminal/npm install for desktop users. The same app eventually bakes in the
 accessory UI (projects/sessions/chat). The headless/VM path (standalone CLI +
 systemd) is preserved unchanged.
 
-**v1 non-goal (explicit):** the supervised bridge runs with **default
-configuration** — default relay, default plugin selection, default ports/log
-level. Custom bridge flags (`--relay`, plugin choice, `--opencode-port`, …) stay
-CLI-only until Phase 5.3 (richer settings). Power users who need custom config
-keep the terminal path in v1; that is a decision, not an oversight.
+**v1 non-goal (explicit):** the supervised bridge runs with its existing
+persisted/default configuration - default relay, ordered `enabledPlugins` (or
+the sole OpenCode fallback), and default ports/log level. The desktop UI does
+not edit custom bridge flags or plugin selection until Phase 5.3 (richer
+settings); power users can still use `sesori-bridge config edit` or the
+standalone CLI. This plan does not select a post-parallel-plugin desktop PR;
+that remains a human reassessment at the current pointer.
 
 ## 2. Architecture
 
@@ -282,7 +284,7 @@ mobile release.**
 | `ControlPromptService` | Layer 3 `services/` | supervised-mode user prompts over the injected `ControlChannelClient` (same blessed seam as the token service): owns prompt-class correlation state + ALL prompt-class outbound sends (`prompt_request`); implements the `server/foundation/` `BridgeReplacePrompt` interface so `BridgeInstanceService` asks the GUI instead of a terminal; `announceLoginNeeded()` is the best-effort advisory before the exit-87 sentinel (ADR A23). Unanswerable asks (channel down / timeout / teardown) degrade to `nonInteractive`. |
 | `ControlUnregisterService` | Layer 3 `services/` | supervised logout `unregister_and_exit` handler (created in PR 1.11): the dispatcher's third typed delegate. Owns the logout ordering boundary — unregisters the `bridgeId` via the injected `BridgeRegistrationService`, then runs the injected `terminate` (composition-root-wired to the graceful `_shutdownThenExit(code: 0)`). Still terminates if unregister throws (logged) so a stuck bridge can't hang the GUI's logout; the GUI's offline-unregister fallback (ADR A13) cleans up any leak. |
 | `BridgeReplacePrompt` | interface in `server/foundation/` | the replace-bridge ask contract with two production implementations: `TerminalPromptRepository` (standalone) and `ControlPromptService` (supervised); keeps the `server/` subsystem free of core-layer imports (mirrors the auth-interface precedent from PR 1.4). |
-| `ControlStatusNotifier` | Layer 4 `control/` | owns **all outbound** status-class control sends (created in PR 1.10): observes Layer-0 state streams (relay connection state incl. close code via `RelayClient.connectionState`, plugin health via `BridgePlugin.status`, registration events via the auth seam's `registrations` stream, plus the control channel's own state for a reconnect re-sync) and receives the **active-session summary as a typed delegate feed** from the Orchestrator's SSE pipeline (`handleProjectsSummary` — same shape as `CompletionPushListener.handleSseEvent`; avoids a second Layer-4→Layer-1 derivation path into the plugin). Maps them to `status`/`registered`/takeover pushes over the injected `ControlChannelClient`, deduped. Higher layers (Orchestrator) never call `ControlChannelClient.send` directly. |
+| `ControlStatusNotifier` | Layer 4 `control/` | owns **all outbound** status-class control sends (created in PR 1.10): observes Layer-0 relay state (incl. close code via `RelayClient.connectionState`), the lifecycle service's ordered per-plugin metadata snapshots, registration events via the auth seam's `registrations` stream, and the control channel's own state for reconnect re-sync. It reduces plugin metadata to the existing aggregate control health state and receives the **active-session summary as a typed delegate feed** from the Orchestrator's SSE pipeline (`handleProjectsSummary` - same shape as `CompletionPushListener.handleSseEvent`; avoids another derivation path into plugin APIs). Maps them to deduplicated `status`/`registered`/takeover pushes over the injected `ControlChannelClient`. Higher layers never call `ControlChannelClient.send` directly. |
 | `BridgeIdStorage` (file API + reader) | **inside the `auth/` subsystem** | persist `bridgeId` separately from `token.json`; kept within `auth/` (which is self-contained, outside the core layer hierarchy) so auth code doesn't depend back on top-level `repositories/`. Injected from the composition root. |
 | supervised auth bootstrap | composition root | short-circuit `BridgeRuntimeAuthService.ensureAuthenticated` (no stdin); keep an equivalent `logAuthenticatedUser` |
 | restart change | `orchestrator`/runner seam | `handleRestartHandoff()` → `exit(86)` instead of `spawnSuccessor()` |
