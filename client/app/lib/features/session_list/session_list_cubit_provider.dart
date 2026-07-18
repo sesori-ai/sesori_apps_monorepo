@@ -7,11 +7,13 @@ import "../../core/di/injection.dart";
 
 class SessionListCubitProvider extends StatelessWidget {
   final String projectId;
+  final bool? initialSupportsDedicatedWorktrees;
   final Widget child;
 
   const SessionListCubitProvider({
     super.key,
     required this.projectId,
+    required this.initialSupportsDedicatedWorktrees,
     required this.child,
   });
 
@@ -27,6 +29,7 @@ class SessionListCubitProvider extends StatelessWidget {
         sessionUnseenTracker: getIt<SessionUnseenTracker>(),
         routeSource: getIt<RouteSource>(),
         projectId: projectId,
+        initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
         failureReporter: getIt<FailureReporter>(),
       ),
       child: child,

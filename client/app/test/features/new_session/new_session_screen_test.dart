@@ -27,7 +27,7 @@ AgentInfo _testAgent({required String name, required String description, require
   );
 }
 
-Widget _buildApp() {
+Widget _buildApp({required bool? initialSupportsDedicatedWorktrees}) {
   final router = GoRouter(
     initialLocation: "/new",
     routes: [
@@ -37,7 +37,11 @@ Widget _buildApp() {
         routes: [
           GoRoute(
             path: "new",
-            builder: (context, state) => const NewSessionScreen(projectId: "project-1", projectName: "Project One"),
+            builder: (context, state) => NewSessionScreen(
+              projectId: "project-1",
+              projectName: "Project One",
+              initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
+            ),
           ),
         ],
       ),
@@ -143,8 +147,33 @@ void main() {
     await GetIt.instance.reset();
   });
 
+  testWidgets("known unsupported project never shows the worktree toggle while composer data loads", (tester) async {
+    final projectResponse = Completer<ApiResponse<Project>>();
+    when(
+      () => projectRepository.getProject(projectId: any(named: "projectId")),
+    ).thenAnswer((_) => projectResponse.future);
+
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: false));
+    await tester.pump();
+
+    expect(find.byType(SwitchListTile), findsNothing);
+
+    projectResponse.complete(
+      ApiResponse.success(
+        const Project(
+          id: "project-1",
+          name: "Project One",
+          path: "/project-one",
+          time: null,
+          supportsDedicatedWorktrees: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("shows variant picker when selected agent has a variant", (tester) async {
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
@@ -178,7 +207,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -216,7 +245,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
@@ -266,7 +295,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
@@ -286,7 +315,7 @@ void main() {
   });
 
   testWidgets("preserves selectedAgentModel variant when changing agent", (tester) async {
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
@@ -325,7 +354,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -356,7 +385,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "test message");
@@ -403,7 +432,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -446,7 +475,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -494,7 +523,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "test message");
@@ -531,7 +560,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -566,7 +595,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "test message");
@@ -594,7 +623,7 @@ void main() {
     final draftStore = DraftStore();
     GetIt.instance.registerSingleton<DraftStore>(draftStore);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "half-written idea");
@@ -607,7 +636,7 @@ void main() {
     expect(draftStore.read("new-session:project-1"), "half-written idea");
 
     // Re-open the new-session screen — the per-project draft is restored.
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
     expect(find.text("half-written idea"), findsOneWidget);
   });

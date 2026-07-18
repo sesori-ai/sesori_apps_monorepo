@@ -3,6 +3,37 @@ import "package:test/test.dart";
 
 void main() {
   group("AppRoute", () {
+    test("sessions round-trips the known worktree capability", () {
+      const route = AppRoute.sessions(
+        projectId: "project-1",
+        projectName: "Project One",
+        supportsDedicatedWorktrees: false,
+      );
+
+      final uri = Uri.parse(route.buildPath());
+      final decoded =
+          AppRoute.fromDef(
+                def: AppRouteDef.sessions,
+                pathParams: {"projectId": uri.pathSegments[1]},
+                queryParams: uri.queryParameters,
+              )
+              as AppRouteSessions;
+
+      expect(decoded.supportsDedicatedWorktrees, isFalse);
+    });
+
+    test("sessions keeps an omitted worktree capability unknown", () {
+      final decoded =
+          AppRoute.fromDef(
+                def: AppRouteDef.sessions,
+                pathParams: const {"projectId": "project-1"},
+                queryParams: const {},
+              )
+              as AppRouteSessions;
+
+      expect(decoded.supportsDedicatedWorktrees, isNull);
+    });
+
     test("session detail with name encodes path params exactly once and round-trips", () {
       const route = AppRoute.sessionDetail(
         projectId: "project/with?special&chars",

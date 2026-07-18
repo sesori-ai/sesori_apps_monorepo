@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -72,6 +73,7 @@ extension AppRouteToGoRoute on AppRouteDef {
       AppRouteNewSession(:final projectId, :final projectName) => NewSessionScreen(
         projectId: projectId,
         projectName: projectName,
+        initialSupportsDedicatedWorktrees: null,
       ),
       AppRouteSessionDetail(
         :final projectId,
@@ -214,11 +216,18 @@ List<RouteBase> _buildAppRoutes({
           builder: (context, state, child) {
             final projectId = state.pathParameters[projectIdPathParam] ?? "";
             final projectName = state.uri.queryParameters[projectNameQueryParam];
+            final supportsDedicatedWorktrees =
+                switch (state.uri.queryParameters[supportsDedicatedWorktreesQueryParam]) {
+                  "true" => true,
+                  "false" => false,
+                  _ => null,
+                };
             final selectedSessionId = state.pathParameters[sessionIdPathParam];
 
             return SessionListCubitProvider(
               key: ValueKey("session-list-cubit-$projectId"),
               projectId: projectId,
+              initialSupportsDedicatedWorktrees: supportsDedicatedWorktrees,
               child: SessionSplitShell(
                 list: _SessionListPane(
                   projectId: projectId,
@@ -268,7 +277,13 @@ List<RouteBase> _buildAppRoutes({
                       context: context,
                       state: state,
                       pageKey: state.pageKey,
-                      child: NewSessionScreen(projectId: route.projectId, projectName: route.projectName),
+                      child: NewSessionScreen(
+                        projectId: route.projectId,
+                        projectName: route.projectName,
+                        initialSupportsDedicatedWorktrees: context
+                            .read<SessionListCubit>()
+                            .initialSupportsDedicatedWorktrees,
+                      ),
                     );
                   },
                 ),

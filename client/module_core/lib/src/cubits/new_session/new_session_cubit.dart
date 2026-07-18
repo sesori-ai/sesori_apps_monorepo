@@ -23,12 +23,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required ProjectRepository projectRepository,
     required NewSessionSelectionTracker selectionTracker,
     required String projectId,
+    required bool? initialSupportsDedicatedWorktrees,
   }) : _sessionService = sessionService,
        _projectRepository = projectRepository,
        _selectionTracker = selectionTracker,
        _projectId = projectId,
        super(
-         const NewSessionState.idle(
+         NewSessionState.idle(
            availableAgents: [],
            availableProviders: [],
            availableCommands: [],
@@ -36,6 +37,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
            selectedAgentModel: null,
            stagedCommand: null,
            availableVariants: [],
+           // Notification/deep-link entry lacks project-list context; retain
+           // the prior visible behavior until the project fetch completes.
+           supportsDedicatedWorktrees: initialSupportsDedicatedWorktrees ?? true,
          ),
        ) {
     _loadComposerData();

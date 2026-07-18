@@ -16,11 +16,13 @@ import "new_session_loading_overlay.dart";
 class NewSessionScreen extends StatelessWidget {
   final String projectId;
   final String? projectName;
+  final bool? initialSupportsDedicatedWorktrees;
 
   const NewSessionScreen({
     super.key,
     required this.projectId,
     required this.projectName,
+    required this.initialSupportsDedicatedWorktrees,
   });
 
   @override
@@ -31,6 +33,7 @@ class NewSessionScreen extends StatelessWidget {
         projectRepository: getIt<ProjectRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
         projectId: projectId,
+        initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
       ),
       child: _NewSessionBody(projectId: projectId, projectName: projectName),
     );

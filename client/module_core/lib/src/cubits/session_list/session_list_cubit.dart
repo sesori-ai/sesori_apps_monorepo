@@ -33,6 +33,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final SessionUnseenTracker _sessionUnseenTracker;
   final RouteSource _routeSource;
   final String _projectId;
+  final bool? initialSupportsDedicatedWorktrees;
   final FailureReporter _failureReporter;
 
   /// Tracks the session state before the last archive/unarchive action
@@ -55,6 +56,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     required SessionUnseenTracker sessionUnseenTracker,
     required RouteSource routeSource,
     required String projectId,
+    required this.initialSupportsDedicatedWorktrees,
     required FailureReporter failureReporter,
   }) : _sessionService = sessionService,
        _sessionListService = sessionListService,

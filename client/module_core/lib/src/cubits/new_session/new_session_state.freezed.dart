@@ -46,7 +46,7 @@ $NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
 
 
 class NewSessionIdle implements NewSessionState {
-  const NewSessionIdle({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const [], this.supportsDedicatedWorktrees = true}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const NewSessionIdle({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const [], required this.supportsDedicatedWorktrees}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  List<AgentInfo> _availableAgents;
@@ -80,7 +80,7 @@ class NewSessionIdle implements NewSessionState {
   return EqualUnmodifiableListView(_availableVariants);
 }
 
-@JsonKey() final  bool supportsDedicatedWorktrees;
+ final  bool supportsDedicatedWorktrees;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -174,7 +174,7 @@ $CommandInfoCopyWith<$Res>? get stagedCommand {
 
 
 class NewSessionSending implements NewSessionState {
-  const NewSessionSending({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const [], this.supportsDedicatedWorktrees = true}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const NewSessionSending({required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const [], required this.supportsDedicatedWorktrees}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  List<AgentInfo> _availableAgents;
@@ -208,7 +208,7 @@ class NewSessionSending implements NewSessionState {
   return EqualUnmodifiableListView(_availableVariants);
 }
 
-@JsonKey() final  bool supportsDedicatedWorktrees;
+ final  bool supportsDedicatedWorktrees;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -302,7 +302,7 @@ $CommandInfoCopyWith<$Res>? get stagedCommand {
 
 
 class NewSessionError implements NewSessionState {
-  const NewSessionError({required this.reason, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const [], this.supportsDedicatedWorktrees = true}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const NewSessionError({required this.reason, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const [], required this.supportsDedicatedWorktrees}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  RemoteFailureReason reason;
@@ -337,7 +337,7 @@ class NewSessionError implements NewSessionState {
   return EqualUnmodifiableListView(_availableVariants);
 }
 
-@JsonKey() final  bool supportsDedicatedWorktrees;
+ final  bool supportsDedicatedWorktrees;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.

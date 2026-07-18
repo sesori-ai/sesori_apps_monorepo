@@ -15,7 +15,7 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
-    @Default(true) bool supportsDedicatedWorktrees,
+    required bool supportsDedicatedWorktrees,
   }) = NewSessionIdle;
 
   const factory NewSessionState.sending({
@@ -26,7 +26,7 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
-    @Default(true) bool supportsDedicatedWorktrees,
+    required bool supportsDedicatedWorktrees,
   }) = NewSessionSending;
 
   const factory NewSessionState.error({
@@ -38,7 +38,7 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
-    @Default(true) bool supportsDedicatedWorktrees,
+    required bool supportsDedicatedWorktrees,
   }) = NewSessionError;
 
   const factory NewSessionState.created({required Session session}) = NewSessionCreated;

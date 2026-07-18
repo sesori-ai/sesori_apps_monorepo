@@ -66,6 +66,7 @@ void main() {
       projectRepository: mockProjectRepository,
       selectionTracker: selectionTracker,
       projectId: "project-1",
+      initialSupportsDedicatedWorktrees: true,
     );
 
     test("defaults selectedAgentModel to null", () {
@@ -75,6 +76,26 @@ void main() {
       expect(
         cubit.state,
         isA<NewSessionIdle>().having((state) => state.selectedAgentModel, "selectedAgentModel", isNull),
+      );
+    });
+
+    test("uses a known unsupported capability in the initial state", () {
+      final cubit = NewSessionCubit(
+        sessionService: mockSessionService,
+        projectRepository: mockProjectRepository,
+        selectionTracker: selectionTracker,
+        projectId: "project-1",
+        initialSupportsDedicatedWorktrees: false,
+      );
+      addTearDown(cubit.close);
+
+      expect(
+        cubit.state,
+        isA<NewSessionIdle>().having(
+          (state) => state.supportsDedicatedWorktrees,
+          "supportsDedicatedWorktrees",
+          isFalse,
+        ),
       );
     });
 
@@ -182,6 +203,7 @@ void main() {
           projectRepository: mockProjectRepository,
           selectionTracker: selectionTracker,
           projectId: "project-1",
+          initialSupportsDedicatedWorktrees: true,
         );
       },
       act: (cubit) async {
