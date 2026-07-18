@@ -63,6 +63,8 @@ The installer puts a `sesori-bridge` command on your PATH. If PATH has not refre
 
 **Prefer npm or bun?** You can also bootstrap the Bridge with `npx @sesori/bridge` or `bunx @sesori/bridge`. It installs the same managed runtime as the shell installer.
 
+> If `sesori-bridge` is not found right after install, open a new terminal so the PATH update takes effect, or run the binary directly using the paths above.
+
 ## 4. Run the Bridge
 
 Open a terminal and run:
