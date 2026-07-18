@@ -5,6 +5,7 @@ import 'package:args/args.dart' show ArgParserException;
 import 'package:args/command_runner.dart' as cli;
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
+import 'package:sesori_bridge/src/api/app_onboarding_state_storage.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
@@ -24,6 +25,7 @@ import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_cli_options_mapper.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_registry.dart';
+import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
@@ -285,6 +287,9 @@ class LogoutCommand extends cli.Command<void> {
       ),
       terminalPromptRepository: terminalPromptRepository,
       unregisterBridge: () => _unregisterBridgeRegistration(authBackendUrl: authBackendUrl),
+      appOnboardingStateRepository: AppOnboardingStateRepository(
+        storage: AppOnboardingStateStorage(directoryPath: appOnboardingStateDirectoryPath()),
+      ),
     );
 
     final result = await logoutRunner.logout(currentPid: pid);
@@ -301,7 +306,7 @@ class LogoutCommand extends cli.Command<void> {
         Console.message('Logout cancelled; stored tokens were not cleared.');
         exitCode = 1;
       case BridgeLogoutStatus.failed:
-        Console.error('Error: Failed to clear authentication tokens: ${result.error}');
+        Console.error('Error: Failed to clear authentication state: ${result.error}');
         exitCode = 1;
     }
   }

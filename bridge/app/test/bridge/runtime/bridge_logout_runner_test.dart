@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
+import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
 import 'package:sesori_bridge/src/server/models/bridge_startup_lock.dart';
@@ -17,6 +18,8 @@ void main() {
     late _FakeTerminalPromptRepository terminalPromptRepository;
     late int unregisterBridgeCalls;
     late Object? unregisterBridgeError;
+    late _FakeAppOnboardingStateRepository appOnboardingStateRepository;
+    late List<String> operations;
     late int clearTokensCalls;
     late int clearTokensCallsAtLastUnregister;
     late Object? clearTokensError;
@@ -28,6 +31,9 @@ void main() {
       terminalPromptRepository = _FakeTerminalPromptRepository();
       unregisterBridgeCalls = 0;
       unregisterBridgeError = null;
+      appOnboardingStateRepository = _FakeAppOnboardingStateRepository();
+      operations = [];
+      appOnboardingStateRepository.onClear = () => operations.add('onboarding-state');
       clearTokensCalls = 0;
       clearTokensCallsAtLastUnregister = -1;
       clearTokensError = null;
@@ -37,13 +43,16 @@ void main() {
         terminalPromptRepository: terminalPromptRepository,
         unregisterBridge: () async {
           unregisterBridgeCalls += 1;
+          operations.add('unregister');
           clearTokensCallsAtLastUnregister = clearTokensCalls;
           if (unregisterBridgeError != null) {
             throw unregisterBridgeError!;
           }
         },
+        appOnboardingStateRepository: appOnboardingStateRepository,
         clearTokens: () async {
           clearTokensCalls += 1;
+          operations.add('tokens');
           if (clearTokensError != null) {
             throw clearTokensError!;
           }
@@ -57,6 +66,7 @@ void main() {
       expect(result.status, equals(BridgeLogoutStatus.loggedOut));
       expect(result.runningBridgeCount, equals(0));
       expect(clearTokensCalls, equals(1));
+      expect(appOnboardingStateRepository.clearCalls, equals(1));
       expect(terminalPromptRepository.askCount, equals(0));
       expect(bridgeInstanceService.terminateRequests, isEmpty);
     });
@@ -70,6 +80,7 @@ void main() {
       expect(result.status, equals(BridgeLogoutStatus.cancelled));
       expect(result.runningBridgeCount, equals(1));
       expect(clearTokensCalls, equals(0));
+      expect(appOnboardingStateRepository.clearCalls, equals(0));
       expect(bridgeInstanceService.terminateRequests, isEmpty);
     });
 
@@ -85,6 +96,7 @@ void main() {
       expect(result.status, equals(BridgeLogoutStatus.loggedOutWithRunningBridges));
       expect(result.runningBridgeCount, equals(2));
       expect(clearTokensCalls, equals(1));
+      expect(appOnboardingStateRepository.clearCalls, equals(1));
       expect(bridgeInstanceService.terminateRequests, isEmpty);
     });
 
@@ -99,6 +111,7 @@ void main() {
       expect(result.status, equals(BridgeLogoutStatus.loggedOut));
       expect(result.runningBridgeCount, equals(0));
       expect(clearTokensCalls, equals(1));
+      expect(appOnboardingStateRepository.clearCalls, equals(1));
       expect(bridgeInstanceService.terminateRequests.single.map((b) => b.pid), equals(<int>[200]));
       expect(terminalPromptRepository.bridgeCounts, equals(<int>[1]));
     });
@@ -126,13 +139,28 @@ void main() {
       expect(result.error, equals(clearTokensError));
     });
 
+    test('reports failure and keeps tokens when clearing onboarding state throws', () async {
+      const error = FileSystemException('cannot delete onboarding state');
+      appOnboardingStateRepository.clearError = error;
+
+      final result = await service.logout(currentPid: 100);
+
+      expect(result.status, equals(BridgeLogoutStatus.failed));
+      expect(result.error, same(error));
+      expect(appOnboardingStateRepository.clearCalls, equals(1));
+      expect(unregisterBridgeCalls, equals(0));
+      expect(clearTokensCalls, equals(0));
+    });
+
     test('unregisters the bridge before clearing tokens', () async {
       final result = await service.logout(currentPid: 100);
 
       expect(result.status, equals(BridgeLogoutStatus.loggedOut));
       expect(unregisterBridgeCalls, equals(1));
+      expect(appOnboardingStateRepository.clearCalls, equals(1));
       expect(clearTokensCallsAtLastUnregister, equals(0));
       expect(clearTokensCalls, equals(1));
+      expect(operations, equals(['onboarding-state', 'unregister', 'tokens']));
     });
 
     test('still clears tokens when unregistering the bridge fails', () async {
@@ -153,9 +181,33 @@ void main() {
 
       expect(result.status, equals(BridgeLogoutStatus.cancelled));
       expect(unregisterBridgeCalls, equals(0));
+      expect(appOnboardingStateRepository.clearCalls, equals(0));
       expect(clearTokensCalls, equals(0));
     });
   });
+}
+
+class _FakeAppOnboardingStateRepository implements AppOnboardingStateRepository {
+  int clearCalls = 0;
+  Object? clearError;
+  void Function()? onClear;
+
+  @override
+  Future<void> clearAll() async {
+    clearCalls += 1;
+    onClear?.call();
+    if (clearError != null) throw clearError!;
+  }
+
+  @override
+  Future<AppOnboardingStateLookup> lookup({required String authBackendUrl, required String userId}) {
+    throw UnimplementedError('not used by logout');
+  }
+
+  @override
+  Future<void> markCompleted({required String authBackendUrl, required String userId}) {
+    throw UnimplementedError('not used by logout');
+  }
 }
 
 ProcessIdentity _candidate({required int pid}) {

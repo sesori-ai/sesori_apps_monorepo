@@ -14,6 +14,7 @@ dependencies:
   http: ^1.6.0
   crypto: ^3.0.7
   path: ^1.9.1
+  qr: ^4.0.0
   sesori_shared:
     path: ../../shared/sesori_shared
   clock: ^1.1.2
