@@ -189,7 +189,6 @@ class BridgeRuntimeRunner {
     DebugServer? debugServer;
     CatalogImportConsoleListener? catalogImportConsoleListener;
     Future<void>? sessionRun;
-    Future<void>? earlyPluginDispose;
     // The single typed slot for a deliberate supervised exit (restart /
     // auth-required / contention / logout / control-channel loss). Set at the
     // moment an outcome is decided — BEFORE any shutdown runs — so both the
@@ -229,17 +228,6 @@ class BridgeRuntimeRunner {
         action: () => catalogImportConsoleListener?.dispose(),
       )
       ..addPhase(
-        phase: BridgeShutdownPhase.earlyPluginDispose,
-        action: () {
-          earlyPluginDispose = pluginLifecycleService.disposeStartedApis();
-        },
-        budget: _pluginShutdownBudget,
-      )
-      ..addPhase(
-        phase: BridgeShutdownPhase.drain,
-        action: () => earlyPluginDispose ?? Future<void>.value(),
-      )
-      ..addPhase(
         phase: BridgeShutdownPhase.drain,
         action: () => runtime?.catalogImportService.drain() ?? Future<void>.value(),
       )
@@ -250,6 +238,11 @@ class BridgeRuntimeRunner {
       ..addPhase(
         phase: BridgeShutdownPhase.drain,
         action: () => debugServer?.drain() ?? Future<void>.value(),
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.pluginDispose,
+        action: pluginLifecycleService.disposeStartedApis,
+        budget: _pluginShutdownBudget,
       )
       ..addPhase(
         phase: BridgeShutdownPhase.lifecycle,

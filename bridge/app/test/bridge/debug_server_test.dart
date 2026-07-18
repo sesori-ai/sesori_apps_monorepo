@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
 import "package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart";
 import "package:sesori_bridge/src/server/foundation/bridge_restart_env.dart";
@@ -448,9 +449,14 @@ void main() {
   });
 
   group("DebugServer shutdown", () {
-    test("drain waits for a routed mutation after closing its response", () async {
-      final plugin = _BlockingMutationPlugin();
+    test("drains and persists a routed mutation before disposing its plugin API", () async {
       final db = createTestDatabase();
+      String? persistedTitleAtDispose;
+      final plugin = _BlockingMutationPlugin(
+        onDispose: () async {
+          persistedTitleAtDispose = (await db.sessionDao.getSession(sessionId: "s1"))?.title;
+        },
+      );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
@@ -476,6 +482,23 @@ void main() {
       addTearDown(harness.close);
       addTearDown(plugin.releaseMutation);
       final debugServer = harness.debugServer;
+      final shutdownCoordinator =
+          BridgeShutdownCoordinator(
+              startAbortSignal: StartAbortSignal.never,
+              exitProcess: (_) {},
+            )
+            ..addPhase(
+              phase: BridgeShutdownPhase.signal,
+              action: debugServer.beginShutdown,
+            )
+            ..addPhase(
+              phase: BridgeShutdownPhase.drain,
+              action: debugServer.drain,
+            )
+            ..addPhase(
+              phase: BridgeShutdownPhase.pluginDispose,
+              action: harness.lifecycleService.disposeStartedApis,
+            );
       await debugServer.start();
 
       final client = HttpClient();
@@ -490,23 +513,19 @@ void main() {
       final responseFuture = request.close();
       await plugin.mutationStarted.timeout(const Duration(seconds: 2));
 
-      debugServer.beginShutdown();
+      final shutdown = shutdownCoordinator.shutdown();
       final response = await responseFuture.timeout(const Duration(seconds: 2));
       await utf8.decoder.bind(response).join().timeout(const Duration(seconds: 2));
 
-      final drain = debugServer.drain();
-      var drainCompleted = false;
-      unawaited(
-        drain.whenComplete(() {
-          drainCompleted = true;
-        }),
-      );
       await Future<void>.delayed(Duration.zero);
-      expect(drainCompleted, isFalse);
+      expect(plugin.disposeCalls, 0);
+      expect(persistedTitleAtDispose, isNull);
 
       plugin.releaseMutation();
-      await drain.timeout(const Duration(seconds: 2));
+      await shutdown.timeout(const Duration(seconds: 2));
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Renamed");
+      expect(persistedTitleAtDispose, "Renamed");
+      expect(plugin.disposeCalls, 1);
     });
   });
 
@@ -916,8 +935,12 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePl
 }
 
 class _BlockingMutationPlugin extends _FakeBridgePlugin {
+  _BlockingMutationPlugin({required this.onDispose});
+
+  final Future<void> Function() onDispose;
   final Completer<void> _mutationStarted = Completer<void>();
   final Completer<void> _mutationRelease = Completer<void>();
+  int disposeCalls = 0;
 
   Future<void> get mutationStarted => _mutationStarted.future;
 
@@ -937,6 +960,12 @@ class _BlockingMutationPlugin extends _FakeBridgePlugin {
       title: title,
       time: null,
     );
+  }
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
+    await onDispose();
   }
 }
 
