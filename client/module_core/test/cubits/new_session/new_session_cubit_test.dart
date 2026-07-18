@@ -286,6 +286,13 @@ void main() {
     test("send-owned command clear survives an error and retry", () async {
       final firstCreate = Completer<ApiResponse<Session>>();
       var createCalls = 0;
+      final command = testCommandInfo();
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
       when(
         () => mockSessionService.createSessionWithMessage(
           projectId: any(named: "projectId"),
@@ -306,7 +313,6 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await waitForComposer(cubit);
-      final command = testCommandInfo();
       cubit.stageCommand(command);
       final modelBeforeSend = cubit.state.agentModelData?.agentModel;
 
@@ -495,6 +501,12 @@ void main() {
           ),
         );
         when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["xhigh"])));
+        when(
           () => mockSessionService.createSessionWithMessage(
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
@@ -557,6 +569,12 @@ void main() {
       "selectAgent preserves the model variant when the agent has no model preference",
       skip: 1,
       build: () {
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["xhigh"])));
         when(
           () => mockSessionService.listAgents(
             projectId: any(named: "projectId"),
@@ -931,12 +949,58 @@ void main() {
       ],
     );
 
+    test("selectVariant ignores a variant absent from the current catalog", () async {
+      when(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["fast"])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+      final selectionBefore = cubit.state.agentModelData?.agentModel;
+
+      cubit.selectVariant(const SessionVariant(id: "stale"));
+
+      expect(cubit.state.agentModelData?.agentModel, selectionBefore);
+      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
+    });
+
+    test("stageCommand accepts an equivalent current command and rejects a stale one", () async {
+      final availableCommand = testCommandInfo();
+      final equivalentCommand = testCommandInfo();
+      final staleCommand = testCommandInfo(template: "/review {{stalePath}}");
+      expect(identical(availableCommand, equivalentCommand), isFalse);
+      when(
+        () => mockSessionService.listCommands(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [availableCommand])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      cubit.stageCommand(equivalentCommand);
+      expect(cubit.state.agentModelData?.stagedCommand, equivalentCommand);
+
+      cubit.stageCommand(staleCommand);
+      expect(cubit.state.agentModelData?.stagedCommand, equivalentCommand);
+    });
+
     // --- Selection persistence across navigation (NewSessionSelectionTracker) ---
 
     blocTest<NewSessionCubit, NewSessionState>(
       "persists the chosen variant to the selection store",
       skip: 1,
       build: () {
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["xhigh"])));
         when(
           () => mockSessionService.listAgents(
             projectId: any(named: "projectId"),
@@ -1475,3 +1539,26 @@ const _modelSelectionProviders = ProviderListResponse(
     ),
   ],
 );
+
+ProviderListResponse _providerResponseWithVariants(List<String> variants) {
+  return ProviderListResponse(
+    connectedOnly: false,
+    items: [
+      ProviderInfo(
+        id: "openai",
+        name: "OpenAI",
+        defaultModelID: "gpt-4",
+        models: {
+          "gpt-4": ProviderModel(
+            id: "gpt-4",
+            providerID: "openai",
+            name: "GPT-4",
+            variants: variants,
+            family: null,
+            releaseDate: null,
+          ),
+        },
+      ),
+    ],
+  );
+}

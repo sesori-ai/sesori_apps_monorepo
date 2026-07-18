@@ -160,6 +160,47 @@ void main() {
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
     });
 
+    test("failed project capability refresh preserves the prior capability", () async {
+      final refresh = Completer<ApiResponse<Project>>();
+      var projectCalls = 0;
+      when(
+        () => projectRepository.getProject(projectId: "project-1"),
+      ).thenAnswer((_) {
+        projectCalls++;
+        if (projectCalls == 1) {
+          return Future.value(
+            ApiResponse.success(
+              const Project(
+                id: "project-1",
+                name: "Project",
+                path: "/project",
+                time: null,
+                supportsDedicatedWorktrees: true,
+              ),
+            ),
+          );
+        }
+        return refresh.future;
+      });
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      expect(cubit.state.agentModelData?.supportsDedicatedWorktrees, isTrue);
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => projectCalls == 2);
+      refresh.complete(ApiResponse.error(ApiError.generic()));
+      await _waitForComposer(cubit);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cubit.state.agentModelData?.supportsDedicatedWorktrees, isTrue);
+    });
+
     test("reconnect refreshes metadata, preserving a routable selection before falling back to default", () async {
       const refreshedDefault = PluginMetadata(
         id: "plugin-c",
@@ -378,6 +419,89 @@ void main() {
 
       expect(cubit.state.agentModelData?.commands, [command]);
       expect(cubit.state.agentModelData?.stagedCommand, command);
+    });
+
+    test("failed provider refresh preserves the same plugin catalog and model variant", () async {
+      var providerCalls = 0;
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      when(
+        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async {
+        providerCalls++;
+        return providerCalls == 1 ? ApiResponse.success(_providerResponse()) : ApiResponse.error(ApiError.generic());
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.selectVariant(const SessionVariant(id: "high"));
+      final beforeRefresh = cubit.state.agentModelData!;
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => providerCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      final afterRefresh = cubit.state.agentModelData!;
+      expect(afterRefresh.providers, beforeRefresh.providers);
+      expect(afterRefresh.agentModel, beforeRefresh.agentModel);
+      expect(afterRefresh.availableVariants, beforeRefresh.availableVariants);
+    });
+
+    test("failed provider load after a plugin switch does not restore the prior plugin catalog", () async {
+      when(pluginRepository.listPlugins).thenAnswer(
+        (_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])),
+      );
+      when(
+        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async => ApiResponse.success(_providerResponse()));
+      when(
+        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-b"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      expect(cubit.state.agentModelData?.providers, isNotEmpty);
+
+      cubit.selectPlugin(pluginId: "plugin-b");
+      await _waitForComposer(cubit);
+
+      expect(cubit.state.agentModelData?.plugin, pluginB);
+      expect(cubit.state.agentModelData?.providers, isEmpty);
+      expect(cubit.state.agentModelData?.agentModel, isNull);
+      expect(cubit.state.agentModelData?.availableVariants, isEmpty);
+    });
+
+    test("successful provider refresh authoritatively removes missing selections", () async {
+      var providerCalls = 0;
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      when(
+        () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
+      ).thenAnswer((_) async {
+        providerCalls++;
+        return ApiResponse.success(
+          providerCalls == 1 ? _providerResponse() : const ProviderListResponse(items: [], connectedOnly: false),
+        );
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.selectVariant(const SessionVariant(id: "high"));
+
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(connectedStatus);
+      await _waitUntil(() => providerCalls == 2 && cubit.state.agentModelData?.isLoading == false);
+
+      expect(cubit.state.agentModelData?.providers, isEmpty);
+      expect(cubit.state.agentModelData?.agentModel, isNull);
+      expect(cubit.state.agentModelData?.availableVariants, isEmpty);
     });
 
     test("reconnect clears a staged command immediately when the plugin falls back", () async {
