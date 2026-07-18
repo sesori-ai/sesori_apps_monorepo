@@ -123,8 +123,8 @@ Test helpers in `test/helpers/test_helpers.dart`: `makeRoomKey()`, `startTestRel
 
 ## RELEASE
 
-The workspace requires Dart `^3.12.2`; Makefiles use the Flutter SDK pinned in
-the root `.tool-versions`. `make build` builds only the host-native CLI bundle
-because sqlite build hooks require native target compilation. GitHub Actions
-builds release artifacts on the matching platform runners, creates the GitHub
-Release, and publishes the npm bootstrap packages via trusted publishing.
+Makefiles use the Flutter SDK pinned in the root `.tool-versions`. `make build`
+builds only the host-native CLI bundle because sqlite build hooks require native
+target compilation. GitHub Actions builds release artifacts on the matching
+platform runners, creates the GitHub Release, and publishes the npm bootstrap
+packages via trusted publishing.

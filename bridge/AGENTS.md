@@ -20,11 +20,11 @@ From `bridge/app/`:
 - `make build` — build the host-native CLI bundle
 - `make build-host` — native binary only
 
-The workspace requires Dart `^3.12.2`. The Makefiles resolve Dart from the
-Flutter SDK pinned in the repository's `.tool-versions`; install that asdf
-Flutter version before using the Make targets. `sqlite3` build hooks require
-native target compilation, so cross-platform release artifacts are built on the
-matching CI OS/architecture rather than cross-compiled locally.
+The Makefiles resolve Dart from the Flutter SDK pinned in the repository's
+`.tool-versions`; install that asdf Flutter version before using the Make
+targets. `sqlite3` build hooks require native target compilation, so
+cross-platform release artifacts are built on the matching CI OS/architecture
+rather than cross-compiled locally.
 
 ## Module Order
 

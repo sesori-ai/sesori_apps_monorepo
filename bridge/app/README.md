@@ -249,9 +249,9 @@ See the plugin package (e.g. `sesori_plugin_opencode`) for backend-specific deta
 
 ## Build
 
-Requires Dart `^3.12.2`. The Makefile uses Dart from the Flutter SDK pinned in
-the repository's `.tool-versions`; install that asdf Flutter version first. Run
-from `bridge/app/`.
+The Makefile uses Dart from the Flutter SDK pinned in the repository's
+`.tool-versions`; install that asdf Flutter version first. Run from
+`bridge/app/`.
 
 | Command | Description |
 |---------|-------------|

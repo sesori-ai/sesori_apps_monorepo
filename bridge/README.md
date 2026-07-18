@@ -31,10 +31,9 @@ dart pub get
 make build
 ```
 
-Source builds require Dart `^3.12.2`. The Makefiles use Dart from the Flutter
-SDK pinned in the repository's `.tool-versions`; install that asdf Flutter
-version first. Packaged installs remain the simplest way to run the bridge
-headlessly without a source checkout.
+The Makefiles use Dart from the Flutter SDK pinned in the repository's
+`.tool-versions`; install that asdf Flutter version first. Packaged installs
+remain the simplest way to run the bridge headlessly without a source checkout.
 
 ## Install
 
