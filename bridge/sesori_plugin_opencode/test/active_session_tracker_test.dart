@@ -2346,6 +2346,43 @@ void main() {
         expect(tracker.buildSummary().first.id, equals("/old-repo"));
       });
     });
+
+    group("registerProjectWorktree", () {
+      test("a later status resolves a directory learned before the project", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.handleEvent(_sessionCreated("s1", "/repo/sub"), null);
+
+        tracker.registerProjectWorktree(worktree: "/repo");
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        final summary = tracker.buildSummary();
+        expect(summary, hasLength(1));
+        expect(summary.single.id, "/repo");
+      });
+
+      test("preserves an explicitly opened folder across project refreshes", () async {
+        final tracker = await _coldStartedTracker(projects: []);
+        tracker.registerProjectWorktree(worktree: "/plain-folder");
+
+        tracker.updateProjectWorktrees(worktrees: {"/real-repo"});
+        tracker.handleEvent(_sessionCreated("s1", "/plain-folder"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        expect(tracker.buildSummary().single.id, "/plain-folder");
+      });
+
+      test("preserves an explicitly opened folder across reconnect hydration", () async {
+        final tracker = await _coldStartedTracker(projects: []);
+        tracker.registerProjectWorktree(worktree: "/plain-folder");
+
+        tracker.reset();
+        await tracker.coldStart();
+        tracker.handleEvent(_sessionCreated("s1", "/plain-folder"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+
+        expect(tracker.buildSummary().single.id, "/plain-folder");
+      });
+    });
   });
 
   group("resolveDisplaySessionId", () {
@@ -2743,7 +2780,7 @@ class _FakeApi implements OpenCodeApi {
   Future<Project> updateProject({
     required String projectId,
     required String directory,
-    required Map<String, dynamic> body,
+    required UpdateProjectBody body,
   }) async => throw UnimplementedError();
 
   @override

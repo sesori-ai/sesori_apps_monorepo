@@ -40,6 +40,11 @@ sealed class Project with _$Project {
     // deserialize as "present".
     // COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
     @Default(false) bool directoryMissing,
+    // Whether this project can create dedicated Git worktrees. This is a
+    // capability rather than a raw Git-state field so clients render the
+    // behavior the bridge can actually provide.
+    // COMPATIBILITY 2026-07-17 (v1.5.2): Old bridges omit this capability. Default to the prior visible-toggle behavior; require the field once those bridges are unsupported.
+    @Default(true) bool supportsDedicatedWorktrees,
   }) = _Project;
 
   factory Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
@@ -71,4 +76,22 @@ sealed class ProjectPathRequest with _$ProjectPathRequest {
   }) = _ProjectPathRequest;
 
   factory ProjectPathRequest.fromJson(Map<String, dynamic> json) => _$ProjectPathRequestFromJson(json);
+}
+
+@JsonEnum(fieldRename: FieldRename.snake)
+enum OpenProjectGitAction {
+  promptIfNeeded,
+  initializeGit,
+  openWithoutGit,
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class OpenProjectRequest with _$OpenProjectRequest {
+  const factory OpenProjectRequest({
+    required String path,
+    // COMPATIBILITY 2026-07-17 (v1.5.2): Old apps send only path. Keep opening without Git until those apps are unsupported.
+    @Default(OpenProjectGitAction.openWithoutGit) OpenProjectGitAction gitAction,
+  }) = _OpenProjectRequest;
+
+  factory OpenProjectRequest.fromJson(Map<String, dynamic> json) => _$OpenProjectRequestFromJson(json);
 }

@@ -54,6 +54,36 @@ void main() {
     });
   });
 
+  group("OpenCodeService.getProject", () {
+    test("registers a targeted project without replacing tracker knowledge", () async {
+      final repository = FakeOpenCodeRepository(
+        currentProject: const PluginProject(
+          id: "/projects/plain-folder",
+          directory: "/projects/plain-folder",
+          name: "plain-folder",
+        ),
+      );
+      final tracker = FakeActiveSessionTracker()..registerProjectWorktreeReturns = true;
+      final service = OpenCodeService(repository, tracker);
+      final invalidations = <void>[];
+      final subscription = service.summaryInvalidations.listen(invalidations.add);
+      addTearDown(subscription.cancel);
+      addTearDown(service.dispose);
+
+      final project = await service.getProject(directory: "/projects/plain-folder");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(project.id, "/projects/plain-folder");
+      expect(repository.lastGetProjectDirectory, "/projects/plain-folder");
+      expect(tracker.registeredProjectWorktrees, ["/projects/plain-folder"]);
+      expect(
+        tracker.registeredAliases,
+        [(directory: "/projects/plain-folder", worktree: "/projects/plain-folder")],
+      );
+      expect(invalidations, hasLength(1));
+    });
+  });
+
   group("OpenCodeService.getCommands", () {
     test("returns upstream commands alongside the synthetic compact command", () async {
       final repository = FakeOpenCodeRepository(
@@ -1862,7 +1892,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<Project> updateProject({
     required String projectId,
     required String directory,
-    required Map<String, dynamic> body,
+    required UpdateProjectBody body,
   }) async => throw UnimplementedError();
 
   @override
@@ -1903,6 +1933,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   final List<Session> _sessions;
   final List<PluginCommand> _commands;
   final PluginSession? _createdSession;
+  final PluginProject? _currentProject;
   final Map<String, List<QuestionRequest>> _pendingQuestionsByDirectory;
   final Map<String, List<PermissionRequest>> _pendingPermissionsByDirectory;
   int getProjectsCalls = 0;
@@ -1910,6 +1941,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastWorktree;
   String? lastCommandsProjectId;
   String? lastAgentsDirectory;
+  String? lastGetProjectDirectory;
   String? lastCreateDirectory;
   String? lastCreateParentSessionId;
   String? lastPromptSessionId;
@@ -1960,6 +1992,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     List<Session> sessions = const [],
     List<PluginCommand> commands = const [],
     PluginSession? createdSession,
+    PluginProject? currentProject,
     List<SessionMessagesResponseItem> messages = const [],
     Object? messagesError,
     Object? replyToQuestionError,
@@ -1975,6 +2008,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
       sessions: sessions,
       commands: commands,
       createdSession: createdSession,
+      currentProject: currentProject,
       replyToQuestionError: replyToQuestionError,
       rejectQuestionError: rejectQuestionError,
       replyToPermissionError: replyToPermissionError,
@@ -1989,6 +2023,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required List<Session> sessions,
     required List<PluginCommand> commands,
     required PluginSession? createdSession,
+    required PluginProject? currentProject,
     this.replyToQuestionError,
     this.rejectQuestionError,
     this.replyToPermissionError,
@@ -1998,6 +2033,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
        _sessions = sessions,
        _commands = commands,
        _createdSession = createdSession,
+       _currentProject = currentProject,
        _pendingQuestionsByDirectory = pendingQuestionsByDirectory,
        _pendingPermissionsByDirectory = pendingPermissionsByDirectory,
        super(api);
@@ -2017,6 +2053,12 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
           ),
         )
         .toList();
+  }
+
+  @override
+  Future<PluginProject> getProject({required String directory}) async {
+    lastGetProjectDirectory = directory;
+    return _currentProject ?? (throw StateError("No current project configured"));
   }
 
   @override
@@ -2234,6 +2276,8 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   String? lastGetSessionIdForQuestionQuestionId;
   Set<String>? lastProjectWorktrees;
   bool updateProjectWorktreesReturns = false;
+  final List<String> registeredProjectWorktrees = [];
+  bool registerProjectWorktreeReturns = false;
   final List<({String directory, String worktree})> registeredAliases = [];
   bool registerWorktreeAliasReturns = false;
 
@@ -2263,6 +2307,12 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   bool updateProjectWorktrees({required Set<String> worktrees}) {
     lastProjectWorktrees = worktrees;
     return updateProjectWorktreesReturns;
+  }
+
+  @override
+  bool registerProjectWorktree({required String worktree}) {
+    registeredProjectWorktrees.add(worktree);
+    return registerProjectWorktreeReturns;
   }
 
   @override

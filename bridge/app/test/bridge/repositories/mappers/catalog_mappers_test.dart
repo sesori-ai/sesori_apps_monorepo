@@ -19,7 +19,14 @@ void main() {
     );
 
     expect(
-      mapper.map(row: base, hasUnseenChanges: true, directoryMissing: false).name,
+      mapper
+          .map(
+            row: base,
+            hasUnseenChanges: true,
+            directoryMissing: false,
+            supportsDedicatedWorktrees: true,
+          )
+          .name,
       "repository",
     );
     expect(
@@ -28,6 +35,7 @@ void main() {
             row: base.copyWith(displayName: "Renamed"),
             hasUnseenChanges: false,
             directoryMissing: true,
+            supportsDedicatedWorktrees: false,
           )
           .name,
       "Renamed",
@@ -38,6 +46,7 @@ void main() {
             row: base,
             hasUnseenChanges: false,
             directoryMissing: false,
+            supportsDedicatedWorktrees: true,
           )
           .name,
       "repository",

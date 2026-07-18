@@ -71,13 +71,57 @@ void main() {
       Directory("${tempDir.path}/plain").createSync();
       final repo = Directory("${tempDir.path}/with_git")..createSync();
       Directory("${repo.path}/.git").createSync();
+      final worktree = Directory("${tempDir.path}/worktree")..createSync();
+      File("${worktree.path}/.git").writeAsStringSync("gitdir: ../.git/worktrees/worktree");
 
       final result = repository.listSuggestions(prefix: tempDir.path, maxResults: 10);
 
-      expect(result.data, hasLength(2));
+      expect(result.data, hasLength(3));
       final byName = {for (final s in result.data) s.name: s};
       expect(byName["plain"]!.isGitRepo, isFalse);
       expect(byName["with_git"]!.isGitRepo, isTrue);
+      expect(byName["worktree"]!.isGitRepo, isTrue);
+    });
+
+    test("defaultBrowsePath skips empty environment values", () {
+      final repo = FilesystemRepository(
+        filesystemApi: _EnvironmentFilesystemApi(
+          environment: {"HOME": "", "USERPROFILE": r"C:\Users\dev"},
+          currentDirectory: "/fallback",
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      expect(repo.defaultBrowsePath, r"C:\Users\dev");
+    });
+
+    for (final existingContent in ["build/", "# .worktrees/", "!.worktrees/"]) {
+      test("ensureGitignoreEntry appends an exact rule after '$existingContent'", () {
+        final gitignore = File("${tempDir.path}/.gitignore")..writeAsStringSync(existingContent);
+
+        repository.ensureGitignoreEntry(projectPath: tempDir.path, entry: ".worktrees/");
+
+        expect(gitignore.readAsStringSync(), "$existingContent\n.worktrees/\n");
+      });
+    }
+
+    test("listSuggestions ignores a dangling .git symlink", () {
+      final directory = Directory("${tempDir.path}/dangling")..createSync();
+      Link("${directory.path}/.git").createSync("${tempDir.path}/missing-git-target");
+
+      final result = repository.listSuggestions(prefix: tempDir.path, maxResults: 10);
+
+      expect(result.data.singleWhere((entry) => entry.name == "dangling").isGitRepo, isFalse);
+    });
+
+    test("listSuggestions follows a valid .git symlink", () {
+      final gitTarget = Directory("${tempDir.path}/git-target")..createSync();
+      final directory = Directory("${tempDir.path}/linked")..createSync();
+      Link("${directory.path}/.git").createSync(gitTarget.path);
+
+      final result = repository.listSuggestions(prefix: tempDir.path, maxResults: 10);
+
+      expect(result.data.singleWhere((entry) => entry.name == "linked").isGitRepo, isTrue);
     });
 
     test("listSuggestions throws not-found for a missing prefix", () {
@@ -138,6 +182,12 @@ void main() {
 /// Fake that reports the directory exists but raises an EACCES on listing.
 class _PermissionDeniedFilesystemApi implements FilesystemApi {
   @override
+  String currentDirectoryPath() => "/";
+
+  @override
+  void deleteDirectoryRecursively(String path) {}
+
+  @override
   bool directoryExists(String path) => true;
 
   @override
@@ -156,6 +206,12 @@ class _PermissionDeniedFilesystemApi implements FilesystemApi {
 
   @override
   bool gitDirectoryExists(String directoryPath) => false;
+
+  @override
+  String? environmentValue(String name) => null;
+
+  @override
+  List<String> listEntryNames(String path) => throw UnimplementedError();
 
   @override
   String? readFileIfExists(String path) => null;
@@ -185,6 +241,22 @@ class _GrowingFilesystemApi implements FilesystemApi {
 
   @override
   String resolveFilePath(String path) => path;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _EnvironmentFilesystemApi implements FilesystemApi {
+  final Map<String, String> environment;
+  final String currentDirectory;
+
+  _EnvironmentFilesystemApi({required this.environment, required this.currentDirectory});
+
+  @override
+  String currentDirectoryPath() => currentDirectory;
+
+  @override
+  String? environmentValue(String name) => environment[name];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

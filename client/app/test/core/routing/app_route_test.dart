@@ -35,7 +35,11 @@ void main() {
     });
 
     test("substitutes projectId for sessions", () {
-      final result = const AppRoute.sessions(projectId: "proj-123", projectName: null).buildPath();
+      final result = const AppRoute.sessions(
+        projectId: "proj-123",
+        projectName: null,
+        supportsDedicatedWorktrees: null,
+      ).buildPath();
       expect(result, "/projects/proj-123/sessions");
     });
 
@@ -51,13 +55,21 @@ void main() {
     });
 
     test("includes projectName as query param for sessions", () {
-      final result = const AppRoute.sessions(projectId: "proj-123", projectName: "My Project").buildPath();
+      final result = const AppRoute.sessions(
+        projectId: "proj-123",
+        projectName: "My Project",
+        supportsDedicatedWorktrees: null,
+      ).buildPath();
       expect(result, contains("/projects/proj-123/sessions?"));
       expect(result, contains("name=My+Project"));
     });
 
     test("omits query string when no query params set", () {
-      final result = const AppRoute.sessions(projectId: "proj-123", projectName: null).buildPath();
+      final result = const AppRoute.sessions(
+        projectId: "proj-123",
+        projectName: null,
+        supportsDedicatedWorktrees: null,
+      ).buildPath();
       expect(result, "/projects/proj-123/sessions");
       expect(result, isNot(contains("?")));
     });
@@ -353,7 +365,11 @@ void main() {
         stack: RouteStack(
           paths: [
             const AppRoute.projects().buildPath(),
-            const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
+            const AppRoute.sessions(
+              projectId: "proj_1",
+              projectName: null,
+              supportsDedicatedWorktrees: null,
+            ).buildPath(),
             const AppRoute.sessionDetail(
               projectId: "proj_1",
               projectName: null,
@@ -370,7 +386,11 @@ void main() {
       expect(
         pushCalls,
         equals([
-          const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
+          const AppRoute.sessions(
+            projectId: "proj_1",
+            projectName: null,
+            supportsDedicatedWorktrees: null,
+          ).buildPath(),
           const AppRoute.sessionDetail(
             projectId: "proj_1",
             projectName: null,

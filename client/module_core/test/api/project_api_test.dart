@@ -100,14 +100,20 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success(project));
 
-      final response = await api.discoverProject(path: "/project-1");
+      final response = await api.discoverProject(
+        path: "/project-1",
+        gitAction: OpenProjectGitAction.initializeGit,
+      );
 
       expect(response, ApiResponse<Project>.success(project));
       verify(
         () => client.post<Project>(
           "/project/open",
           fromJson: any(named: "fromJson"),
-          body: const ProjectPathRequest(path: "/project-1"),
+          body: const OpenProjectRequest(
+            path: "/project-1",
+            gitAction: OpenProjectGitAction.initializeGit,
+          ),
         ),
       ).called(1);
     });
@@ -122,9 +128,36 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.error(error));
 
-      final response = await api.discoverProject(path: "/project-1");
+      final response = await api.discoverProject(
+        path: "/project-1",
+        gitAction: OpenProjectGitAction.openWithoutGit,
+      );
 
       expect(response, ApiResponse<Project>.error(error));
+    });
+  });
+
+  group("getProject", () {
+    test("posts the project ID and returns the project", () async {
+      const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
+      when(
+        () => client.post<Project>(
+          "/project/current",
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(project));
+
+      final response = await api.getProject(projectId: "project-1");
+
+      expect(response, ApiResponse<Project>.success(project));
+      verify(
+        () => client.post<Project>(
+          "/project/current",
+          fromJson: any(named: "fromJson"),
+          body: const ProjectIdRequest(projectId: "project-1"),
+        ),
+      ).called(1);
     });
   });
 

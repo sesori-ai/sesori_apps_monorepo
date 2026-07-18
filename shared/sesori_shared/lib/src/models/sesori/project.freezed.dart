@@ -173,7 +173,11 @@ mixin _$Project {
 // instead of driving into a dead path. Defaults to false so older payloads
 // deserialize as "present".
 // COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
- bool get directoryMissing;
+ bool get directoryMissing;// Whether this project can create dedicated Git worktrees. This is a
+// capability rather than a raw Git-state field so clients render the
+// behavior the bridge can actually provide.
+// COMPATIBILITY 2026-07-17 (v1.5.2): Old bridges omit this capability. Default to the prior visible-toggle behavior; require the field once those bridges are unsupported.
+ bool get supportsDedicatedWorktrees;
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -186,16 +190,16 @@ $ProjectCopyWith<Project> get copyWith => _$ProjectCopyWithImpl<Project>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing,supportsDedicatedWorktrees);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
+  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
 }
 
 
@@ -206,7 +210,7 @@ abstract mixin class $ProjectCopyWith<$Res>  {
   factory $ProjectCopyWith(Project value, $Res Function(Project) _then) = _$ProjectCopyWithImpl;
 @useResult
 $Res call({
- String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing, bool supportsDedicatedWorktrees
 });
 
 
@@ -223,7 +227,7 @@ class _$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,Object? supportsDedicatedWorktrees = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -231,6 +235,7 @@ as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_no
 as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
 as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
+as bool,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -255,7 +260,7 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _Project implements Project {
-  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false});
+  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false, this.supportsDedicatedWorktrees = true});
   factory _Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 
 @override final  String id;
@@ -282,6 +287,11 @@ class _Project implements Project {
 // deserialize as "present".
 // COMPATIBILITY 2026-07-08 (v1.4.0): Old bridges omit directory-missing state. Require the field once those bridges are unsupported.
 @override@JsonKey() final  bool directoryMissing;
+// Whether this project can create dedicated Git worktrees. This is a
+// capability rather than a raw Git-state field so clients render the
+// behavior the bridge can actually provide.
+// COMPATIBILITY 2026-07-17 (v1.5.2): Old bridges omit this capability. Default to the prior visible-toggle behavior; require the field once those bridges are unsupported.
+@override@JsonKey() final  bool supportsDedicatedWorktrees;
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
@@ -296,16 +306,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing,supportsDedicatedWorktrees);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing)';
+  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
 }
 
 
@@ -316,7 +326,7 @@ abstract mixin class _$ProjectCopyWith<$Res> implements $ProjectCopyWith<$Res> {
   factory _$ProjectCopyWith(_Project value, $Res Function(_Project) _then) = __$ProjectCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing, bool supportsDedicatedWorktrees
 });
 
 
@@ -333,7 +343,7 @@ class __$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,Object? supportsDedicatedWorktrees = null,}) {
   return _then(_Project(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -341,6 +351,7 @@ as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_no
 as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
 as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
+as bool,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -759,6 +770,145 @@ class __$ProjectPathRequestCopyWithImpl<$Res>
   return _then(_ProjectPathRequest(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$OpenProjectRequest {
+
+ String get path;// COMPATIBILITY 2026-07-17 (v1.5.2): Old apps send only path. Keep opening without Git until those apps are unsupported.
+ OpenProjectGitAction get gitAction;
+/// Create a copy of OpenProjectRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$OpenProjectRequestCopyWith<OpenProjectRequest> get copyWith => _$OpenProjectRequestCopyWithImpl<OpenProjectRequest>(this as OpenProjectRequest, _$identity);
+
+  /// Serializes this OpenProjectRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OpenProjectRequest&&(identical(other.path, path) || other.path == path)&&(identical(other.gitAction, gitAction) || other.gitAction == gitAction));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,path,gitAction);
+
+@override
+String toString() {
+  return 'OpenProjectRequest(path: $path, gitAction: $gitAction)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $OpenProjectRequestCopyWith<$Res>  {
+  factory $OpenProjectRequestCopyWith(OpenProjectRequest value, $Res Function(OpenProjectRequest) _then) = _$OpenProjectRequestCopyWithImpl;
+@useResult
+$Res call({
+ String path, OpenProjectGitAction gitAction
+});
+
+
+
+
+}
+/// @nodoc
+class _$OpenProjectRequestCopyWithImpl<$Res>
+    implements $OpenProjectRequestCopyWith<$Res> {
+  _$OpenProjectRequestCopyWithImpl(this._self, this._then);
+
+  final OpenProjectRequest _self;
+  final $Res Function(OpenProjectRequest) _then;
+
+/// Create a copy of OpenProjectRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? gitAction = null,}) {
+  return _then(_self.copyWith(
+path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,gitAction: null == gitAction ? _self.gitAction : gitAction // ignore: cast_nullable_to_non_nullable
+as OpenProjectGitAction,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _OpenProjectRequest implements OpenProjectRequest {
+  const _OpenProjectRequest({required this.path, this.gitAction = OpenProjectGitAction.openWithoutGit});
+  factory _OpenProjectRequest.fromJson(Map<String, dynamic> json) => _$OpenProjectRequestFromJson(json);
+
+@override final  String path;
+// COMPATIBILITY 2026-07-17 (v1.5.2): Old apps send only path. Keep opening without Git until those apps are unsupported.
+@override@JsonKey() final  OpenProjectGitAction gitAction;
+
+/// Create a copy of OpenProjectRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$OpenProjectRequestCopyWith<_OpenProjectRequest> get copyWith => __$OpenProjectRequestCopyWithImpl<_OpenProjectRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$OpenProjectRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OpenProjectRequest&&(identical(other.path, path) || other.path == path)&&(identical(other.gitAction, gitAction) || other.gitAction == gitAction));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,path,gitAction);
+
+@override
+String toString() {
+  return 'OpenProjectRequest(path: $path, gitAction: $gitAction)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$OpenProjectRequestCopyWith<$Res> implements $OpenProjectRequestCopyWith<$Res> {
+  factory _$OpenProjectRequestCopyWith(_OpenProjectRequest value, $Res Function(_OpenProjectRequest) _then) = __$OpenProjectRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String path, OpenProjectGitAction gitAction
+});
+
+
+
+
+}
+/// @nodoc
+class __$OpenProjectRequestCopyWithImpl<$Res>
+    implements _$OpenProjectRequestCopyWith<$Res> {
+  __$OpenProjectRequestCopyWithImpl(this._self, this._then);
+
+  final _OpenProjectRequest _self;
+  final $Res Function(_OpenProjectRequest) _then;
+
+/// Create a copy of OpenProjectRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? path = null,Object? gitAction = null,}) {
+  return _then(_OpenProjectRequest(
+path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,gitAction: null == gitAction ? _self.gitAction : gitAction // ignore: cast_nullable_to_non_nullable
+as OpenProjectGitAction,
   ));
 }
 

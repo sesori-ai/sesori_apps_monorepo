@@ -1285,6 +1285,48 @@ abstract class AppLocalizations {
   /// **'Project discovered'**
   String get projectDiscovered;
 
+  /// No description provided for @addProjectEnableGitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Git tracking?'**
+  String get addProjectEnableGitTitle;
+
+  /// No description provided for @addProjectEnableGitBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori will commit all non-ignored files to enable history and parallel sessions with dedicated worktrees.'**
+  String get addProjectEnableGitBody;
+
+  /// No description provided for @addProjectContinueWithoutGit.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Without Git'**
+  String get addProjectContinueWithoutGit;
+
+  /// No description provided for @addProjectEnableGit.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Git'**
+  String get addProjectEnableGit;
+
+  /// No description provided for @addProjectGitSetupIncompleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project opened, Git setup incomplete'**
+  String get addProjectGitSetupIncompleteTitle;
+
+  /// No description provided for @addProjectGitSetupIncompleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The folder is open and ready for sessions, but Sesori could not finish Git setup. Git files may have been created. Dedicated worktrees stay unavailable until the repository has an initial commit.'**
+  String get addProjectGitSetupIncompleteBody;
+
+  /// No description provided for @addProjectGitSetupIncompleteAcknowledge.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand'**
+  String get addProjectGitSetupIncompleteAcknowledge;
+
   /// No description provided for @projectCreateFailed.
   ///
   /// In en, this message translates to:

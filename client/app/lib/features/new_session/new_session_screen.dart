@@ -16,11 +16,13 @@ import "new_session_loading_overlay.dart";
 class NewSessionScreen extends StatelessWidget {
   final String projectId;
   final String? projectName;
+  final bool? initialSupportsDedicatedWorktrees;
 
   const NewSessionScreen({
     super.key,
     required this.projectId,
     required this.projectName,
+    required this.initialSupportsDedicatedWorktrees,
   });
 
   @override
@@ -28,8 +30,10 @@ class NewSessionScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NewSessionCubit(
         sessionService: getIt<SessionService>(),
+        projectRepository: getIt<ProjectRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
         projectId: projectId,
+        initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
       ),
       child: _NewSessionBody(projectId: projectId, projectName: projectName),
     );
@@ -186,17 +190,18 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SwitchListTile(
-                            title: Text(loc.newSessionDedicatedWorktree),
-                            subtitle: Text(
-                              loc.newSessionDedicatedWorktreeDescription,
-                              style: prego.textTheme.textXs.regular.copyWith(
-                                color: prego.colors.textSecondary,
+                          if (state.agentModelData?.supportsDedicatedWorktrees ?? false)
+                            SwitchListTile(
+                              title: Text(loc.newSessionDedicatedWorktree),
+                              subtitle: Text(
+                                loc.newSessionDedicatedWorktreeDescription,
+                                style: prego.textTheme.textXs.regular.copyWith(
+                                  color: prego.colors.textSecondary,
+                                ),
                               ),
+                              value: _dedicatedWorktree,
+                              onChanged: (value) => setState(() => _dedicatedWorktree = value),
                             ),
-                            value: _dedicatedWorktree,
-                            onChanged: (value) => setState(() => _dedicatedWorktree = value),
-                          ),
                         ],
                       ),
                     ),
