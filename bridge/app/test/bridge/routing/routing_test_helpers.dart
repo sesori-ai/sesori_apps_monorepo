@@ -18,7 +18,6 @@ import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_map
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -31,19 +30,17 @@ import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
+import "../../helpers/single_plugin_repository_test_support.dart";
 
 /// Builds a real [SessionUnseenService] backed by [db] for handler/router tests.
 SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginApi plugin) {
   const calculator = SessionUnseenCalculator();
   return SessionUnseenService(
     unseenRepository: SessionUnseenRepository(
-      plugin: plugin,
       sessionDao: db.sessionDao,
-      projectsDao: db.projectsDao,
-      db: db,
       calculator: calculator,
     ),
-    projectRepository: ProjectRepository(
+    projectRepository: singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(),
       plugin: plugin,
       projectsDao: db.projectsDao,
@@ -145,6 +142,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 
   bool throwOnHealthCheck = false;
   bool healthCheckResult = true;
+  int healthCheckCallCount = 0;
   bool throwOnGetProjects = false;
   Object? throwOnGetProjectsError;
   Object? throwOnGetProjectError;
@@ -164,8 +162,13 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   @override
   Stream<BridgeSseEvent> get events => _controller.stream;
 
+  void emitEvent(BridgeSseEvent event) => _controller.add(event);
+
+  Future<void> closeEvents() => _controller.close();
+
   @override
   Future<bool> healthCheck() async {
+    healthCheckCallCount++;
     if (throwOnHealthCheck) throw Exception("healthCheck error");
     return healthCheckResult;
   }
@@ -730,7 +733,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> dispose() async {}
 
   @override
-  bool get sessionListIsAuthoritative => true;
+  bool sessionListIsAuthoritative({required String pluginId}) => true;
 
   @override
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
@@ -784,8 +787,8 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<Session> enrichSession({required Session session}) async => session;
   @override
-  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
-      pluginSession.toSharedSession(pluginId: "fake");
+  Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async =>
+      pluginSession.toSharedSession(pluginId: pluginId);
   @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;
   @override
@@ -962,8 +965,10 @@ class FakeSessionRepository implements SessionRepository {
 
   /// Settable so handler tests can exercise the non-authoritative
   /// (bridge-derived) reconcile gating.
+  bool sessionListIsAuthoritativeResult = true;
+
   @override
-  bool sessionListIsAuthoritative = true;
+  bool sessionListIsAuthoritative({required String pluginId}) => sessionListIsAuthoritativeResult;
 
   FakeSessionRepository({
     required FakeBridgePlugin plugin,
@@ -1111,8 +1116,8 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async {
-    return enrichSession(session: pluginSession.toSharedSession(pluginId: _plugin.id));
+  Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async {
+    return enrichSession(session: pluginSession.toSharedSession(pluginId: pluginId));
   }
 
   @override

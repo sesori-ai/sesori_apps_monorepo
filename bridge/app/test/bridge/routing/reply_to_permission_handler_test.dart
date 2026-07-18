@@ -26,7 +26,7 @@ void main() {
         projectId: "/repo",
         parentSessionId: null,
       );
-      permissionRepository = PermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
+      permissionRepository = singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao);
       handler = ReplyToPermissionHandler(permissionRepository: permissionRepository);
     });
 

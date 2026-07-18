@@ -6,14 +6,15 @@ import "bridge_plugin.dart";
 import "plugin_availability.dart";
 import "plugin_config.dart";
 import "plugin_option.dart";
+import "plugin_state_storage.dart";
 import "runtime_provision_progress.dart";
 
 /// The registration unit for a bridge plugin.
 ///
 /// Descriptors are const and inert: constructing or registering one has no
 /// side effects. **Registered is not started** — the bridge starts only the
-/// selected/enabled subset of registered descriptors, and registers only the
-/// selected descriptor's [options] into its CLI parser.
+/// selected/enabled subset of registered descriptors, and every enabled
+/// descriptor contributes its [options] to the CLI parser.
 @immutable
 abstract class BridgePluginDescriptor {
   const BridgePluginDescriptor();
@@ -24,6 +25,12 @@ abstract class BridgePluginDescriptor {
 
   /// Human-readable name for logs and help output.
   String get displayName;
+
+  /// Layout used for the plugin's private host state.
+  ///
+  /// New plugins are isolated by default. Plugins with shipped state in the
+  /// legacy shared runtime directory can preserve that location explicitly.
+  PluginStateStorage get stateStorage => PluginStateStorage.isolated;
 
   /// CLI options this plugin contributes when selected.
   List<PluginOption> get options;
@@ -47,8 +54,9 @@ abstract class BridgePluginDescriptor {
   ///
   /// Return [PluginUnavailable] with a user-facing [PluginUnavailable.message]
   /// (install guidance plus a verification command) when the backend cannot be
-  /// used; the bridge core prints that message via `Console.error` and exits
-  /// non-zero. Return [PluginAvailable] to let startup proceed.
+  /// used; the bridge core prints that message via `Console.error` and skips
+  /// this descriptor. Startup fails only when no enabled descriptor is
+  /// available. Return [PluginAvailable] to let this descriptor proceed.
   ///
   /// [config] carries the parsed CLI options, [processes] lets a plugin probe a
   /// local binary (e.g. run `--version`), and [environment] is the process
@@ -84,7 +92,7 @@ abstract class BridgePluginDescriptor {
   /// Contract:
   ///
   /// - Runs under the bridge's cross-instance startup mutex; the mutex is
-  ///   held until this future settles. The bridge never abandons a start
+  ///   held until every enabled descriptor's start settles. The bridge never abandons a start
   ///   with `Future.timeout` — long-running phases must observe
   ///   [PluginHost.startAborted] at every phase boundary and roll back when
   ///   aborted. An aborted start settles by throwing

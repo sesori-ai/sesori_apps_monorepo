@@ -6,7 +6,6 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_project_handler.dart";
@@ -37,7 +36,7 @@ void main() {
         permissionValidator: const FilesystemPermissionValidator(),
       );
       projectActivityService = ProjectActivityService(
-        projectRepository: ProjectRepository(
+        projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: db.projectsDao,
@@ -49,7 +48,7 @@ void main() {
       );
       handler = CreateProjectHandler(
         projectInitializationService: ProjectInitializationService(
-          worktreeRepository: WorktreeRepository(
+          worktreeRepository: singlePluginWorktreeRepository(
             projectsDao: db.projectsDao,
             sessionDao: db.sessionDao,
             plugin: plugin,

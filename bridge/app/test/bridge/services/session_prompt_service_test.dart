@@ -20,7 +20,7 @@ void main() {
     setUp(() async {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      sessionRepository = SessionRepository(
+      sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,

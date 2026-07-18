@@ -12,37 +12,46 @@ import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
 import "models/catalog_import_control.dart";
+import "project_catalog_identity_calculator.dart";
 
 class CatalogImportRepository {
   CatalogImportRepository({
-    required BridgePluginApi plugin,
+    required Map<String, BridgePluginApi> operationalPlugins,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required CatalogHydrationsDao catalogHydrationsDao,
-  }) : _plugin = plugin,
+    required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
+  }) : _operationalPlugins = operationalPlugins,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
-       _catalogHydrationsDao = catalogHydrationsDao;
+       _catalogHydrationsDao = catalogHydrationsDao,
+       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator;
 
   static const int projectionVersion = 1;
   static const int _responsivenessBatchSize = 512;
   static final Random _secureRandom = Random.secure();
 
-  final BridgePluginApi _plugin;
+  final Map<String, BridgePluginApi> _operationalPlugins;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final CatalogHydrationsDao _catalogHydrationsDao;
+  final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
 
-  String get pluginId => _plugin.id;
+  Set<String> get operationalPluginIds => Set<String>.unmodifiable(_operationalPlugins.keys);
 
-  Future<CatalogHydrationDto?> getHydrationCompletion() {
+  Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) {
     return _catalogHydrationsDao.getCompletion(
       pluginId: pluginId,
       projectionVersion: projectionVersion,
     );
   }
 
-  Stream<CatalogImportProgress> importCatalog({required CatalogImportControl control}) async* {
+  Stream<CatalogImportProgress> importCatalog({
+    required String pluginId,
+    required CatalogImportControl control,
+  }) async* {
+    final plugin = _operationalPlugins[pluginId];
+    if (plugin == null) throw StateError("plugin $pluginId is unavailable");
     final importStartedAt = DateTime.now().millisecondsSinceEpoch;
     final observedProjects = <String, _ObservedProject>{};
     final observedSessions = <String, _ObservedSession>{};
@@ -59,9 +68,9 @@ class CatalogImportRepository {
       return;
     }
 
-    switch (_plugin) {
+    switch (plugin) {
       case NativeProjectsPluginApi():
-        final projects = await _plugin.getProjects();
+        final projects = await plugin.getProjects();
         if (control.cancellationRequested) {
           yield CatalogImportProgress.cancelled(pluginId: pluginId);
           return;
@@ -91,7 +100,7 @@ class CatalogImportRepository {
             return;
           }
           final projectPath = _normalizeRequiredPath(project.directory);
-          final roots = await _plugin.getSessions(projectPath);
+          final roots = await plugin.getSessions(projectPath);
           if (control.cancellationRequested) {
             yield CatalogImportProgress.cancelled(pluginId: pluginId);
             return;
@@ -121,7 +130,7 @@ class CatalogImportRepository {
               yield CatalogImportProgress.cancelled(pluginId: pluginId);
               return;
             }
-            final children = await _plugin.getChildSessions(parent.id);
+            final children = await plugin.getChildSessions(parent.id);
             if (control.cancellationRequested) {
               yield CatalogImportProgress.cancelled(pluginId: pluginId);
               return;
@@ -152,7 +161,7 @@ class CatalogImportRepository {
           yield CatalogImportProgress.cancelled(pluginId: pluginId);
           return;
         }
-        final launchDirectory = _normalizeRequiredPath(_plugin.launchDirectory);
+        final launchDirectory = _normalizeRequiredPath(plugin.launchDirectory);
         derivedLaunchDirectory = launchDirectory;
         derivedProjectPathsByBackendId = {
           for (final row in storedSessionPaths) row.backendSessionId: _normalizeRequiredPath(row.projectPath),
@@ -174,7 +183,7 @@ class CatalogImportRepository {
             updatedAt: null,
           ),
         );
-        final sessions = await _plugin.listAllSessions(knownDirectories: knownDirectories);
+        final sessions = await plugin.listAllSessions(knownDirectories: knownDirectories);
         if (control.cancellationRequested) {
           yield CatalogImportProgress.cancelled(pluginId: pluginId);
           return;
@@ -204,7 +213,7 @@ class CatalogImportRepository {
       observedSessions: observedSessions,
       omittedBackendIds: const {},
     );
-    if (_plugin is BridgeDerivedProjectsPluginApi) {
+    if (plugin is BridgeDerivedProjectsPluginApi) {
       for (final observation in ancestryValidated) {
         if (observation.session.parentID != null) continue;
         final projectPath =
@@ -252,13 +261,11 @@ class CatalogImportRepository {
       final projectsById = <String, ProjectDto>{
         for (final project in currentProjects) project.projectId: project,
       };
-      final projectsByPath = <String, ProjectDto>{};
-      for (final project in currentProjects) {
-        projectsByPath.putIfAbsent(_normalizeRequiredPath(project.path), () => project);
-      }
-
+      final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+        projects: currentProjects,
+      );
       final publicationProjects = <String, _ObservedProject>{};
-      if (_plugin is BridgeDerivedProjectsPluginApi) {
+      if (plugin is BridgeDerivedProjectsPluginApi) {
         final launchDirectory = derivedLaunchDirectory!;
         _mergeObservedProject(publicationProjects, observedProjects[launchDirectory]!);
         for (final observation in orderedSessions) {
@@ -288,15 +295,27 @@ class CatalogImportRepository {
       final projectRows = <ProjectDto>[];
       final importedProjectIdByPath = <String, String>{};
       for (final observation in publicationProjects.values) {
-        final existing = projectsByPath[observation.path] ?? projectsById[observation.preferredId];
+        final existing = _projectCatalogIdentityCalculator.calculate(
+          projectsById: projectsById,
+          projectsByNormalizedPath: projectsByNormalizedPath,
+          preferredProjectId: observation.preferredId,
+          observedPath: observation.path,
+        );
         final row = _mergeProjectRow(
           observation: observation,
           existing: existing,
           importStartedAt: importStartedAt,
         );
         projectRows.add(row);
+        final previousPath = existing == null ? null : _normalizeRequiredPath(existing.path);
+        final nextPath = _normalizeRequiredPath(row.path);
+        if (previousPath != null &&
+            previousPath != nextPath &&
+            projectsByNormalizedPath[previousPath]?.projectId == existing?.projectId) {
+          projectsByNormalizedPath.remove(previousPath);
+        }
         projectsById[row.projectId] = row;
-        projectsByPath[observation.path] = row;
+        projectsByNormalizedPath[nextPath] = row;
         importedProjectIdByPath[observation.path] = row.projectId;
       }
 
@@ -316,6 +335,7 @@ class CatalogImportRepository {
           throw StateError("plugin $pluginId returned session ${session.id} without a publishable project");
         }
         final row = _mergeSessionRow(
+          pluginId: pluginId,
           observation: observation,
           existing: existing,
           sessionId: existing?.sessionId ?? _allocateSessionId(reservedIds: reservedIds),
@@ -381,6 +401,7 @@ class CatalogImportRepository {
   }
 
   SessionDto _mergeSessionRow({
+    required String pluginId,
     required _ObservedSession observation,
     required SessionDto? existing,
     required String sessionId,
@@ -488,7 +509,7 @@ class CatalogImportRepository {
       return;
     }
     if (existing.session != observation.session) {
-      throw StateError("plugin $pluginId returned conflicting session ${observation.session.id}");
+      throw StateError("plugin returned conflicting session ${observation.session.id}");
     }
     existing.rootProjectPath ??= observation.rootProjectPath;
   }
@@ -513,7 +534,7 @@ class CatalogImportRepository {
 
   String _normalizeRequiredPath(String path) {
     final trimmed = path.trim();
-    if (trimmed.isEmpty) throw StateError("plugin $pluginId returned an empty catalog path");
+    if (trimmed.isEmpty) throw StateError("plugin returned an empty catalog path");
     return normalizeProjectDirectory(directory: trimmed);
   }
 

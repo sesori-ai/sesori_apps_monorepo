@@ -40,7 +40,7 @@ void main() {
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
       );
-      projectRepository = ProjectRepository(
+      projectRepository = singlePluginProjectRepository(
         gitCliApi: gitCliApi,
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -59,7 +59,7 @@ void main() {
             projectsDao: db.projectsDao,
             sessionDao: db.sessionDao,
             gitApi: gitCliApi,
-            plugin: plugin,
+            operationalPlugins: {plugin.id: plugin},
           ),
           filesystemRepository: filesystemRepository,
         ),

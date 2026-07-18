@@ -1,6 +1,5 @@
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
@@ -26,7 +25,7 @@ void main() {
       db = createTestDatabase();
       projectsDao = db.projectsDao;
       projectActivityService = ProjectActivityService(
-        projectRepository: ProjectRepository(
+        projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: projectsDao,

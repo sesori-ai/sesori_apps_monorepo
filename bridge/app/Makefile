@@ -1,7 +1,8 @@
-# Using direct path instead of `asdf exec dart` — asdf exec doesn't reliably pick up
-# the version from .tool-versions and has a race condition when flutter plugin is also active.
-DART_VERSION := $(shell grep '^dart' ../.tool-versions | awk '{print $$2}')
-DART := $(HOME)/.asdf/installs/dart/$(DART_VERSION)/bin/dart
+# Using a direct path instead of `asdf exec dart` avoids asdf's Flutter/Dart
+# plugin race while still honoring the workspace's pinned Flutter SDK.
+TOOL_VERSIONS := $(shell git rev-parse --show-toplevel)/.tool-versions
+FLUTTER_VERSION := $(shell grep '^flutter' $(TOOL_VERSIONS) | awk '{print $$2}')
+DART := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/cache/dart-sdk/bin/dart
 BUILD_DIR := dist
 HOST_OS_RAW := $(shell uname -s)
 HOST_ARCH_RAW := $(shell uname -m)

@@ -98,5 +98,6 @@ BridgeCliOptions _parseOptions({required List<String> args}) {
     results: results,
     environment: const {},
     defaultAuthUrl: "https://api.sesori.com",
+    enabledPluginIds: const ["opencode"],
   );
 }

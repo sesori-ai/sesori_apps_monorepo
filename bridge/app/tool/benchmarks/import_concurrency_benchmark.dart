@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -103,7 +104,7 @@ class _ImportConcurrencyBenchmark {
         releaseEnumeration: releaseEnumeration,
       );
       final repository = CatalogImportRepository(
-        plugin: plugin,
+        operationalPlugins: {plugin.id: plugin},
         projectsDao: _BenchmarkProjectsDao(
           database,
           publicationStarted: publicationTransactionStarted,
@@ -111,11 +112,13 @@ class _ImportConcurrencyBenchmark {
         ),
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
       );
       final importDone = Completer<void>();
       final publicationStopwatch = Stopwatch();
       final importSubscription = repository
           .importCatalog(
+            pluginId: plugin.id,
             control: CatalogImportControl(
               explicitImportRequested: false,
               hydrationMarkerRequested: true,
@@ -162,7 +165,7 @@ class _ImportConcurrencyBenchmark {
       if (publicationRows.length != _configuration.projectCount) {
         throw StateError("publication read returned ${publicationRows.length} projects");
       }
-      final hydration = await repository.getHydrationCompletion();
+      final hydration = await repository.getHydrationCompletion(pluginId: plugin.id);
       if (hydration == null) throw StateError("import did not atomically record hydration completion");
 
       final rssAfter = ProcessInfo.currentRss;

@@ -4,12 +4,13 @@ import "package:test/test.dart";
 
 void main() {
   test("runner starts automatic import before ordered headless triggers", () {
-    final service = _RecordingCatalogImportService();
+    final service = _RecordingCatalogImportService(operationalPluginIds: const {"selected"});
 
     BridgeRuntimeRunner.startCatalogImports(
       service: service,
-      pluginId: "selected",
+      pluginIds: const ["selected"],
       headlessPluginIds: const ["selected", "selected"],
+      operationalPluginIds: const {"selected"},
     );
 
     expect(service.starts, const [
@@ -18,13 +19,35 @@ void main() {
       (pluginId: "selected", trigger: CatalogImportTrigger.headless),
     ]);
   });
+
+  test("runner skips an unavailable headless import and starts healthy imports", () {
+    final service = _RecordingCatalogImportService(operationalPluginIds: const {"healthy"});
+
+    BridgeRuntimeRunner.startCatalogImports(
+      service: service,
+      pluginIds: const ["healthy"],
+      headlessPluginIds: const ["unavailable", "healthy"],
+      operationalPluginIds: const {"healthy"},
+    );
+
+    expect(service.starts, const [
+      (pluginId: "healthy", trigger: CatalogImportTrigger.automatic),
+      (pluginId: "healthy", trigger: CatalogImportTrigger.headless),
+    ]);
+  });
 }
 
 class _RecordingCatalogImportService implements CatalogImportService {
+  _RecordingCatalogImportService({required this.operationalPluginIds});
+
+  final Set<String> operationalPluginIds;
   final List<({String pluginId, CatalogImportTrigger trigger})> starts = [];
 
   @override
   void start({required String pluginId, required CatalogImportTrigger trigger}) {
+    if (!operationalPluginIds.contains(pluginId)) {
+      throw CatalogImportPluginUnavailableException(pluginId: pluginId);
+    }
     starts.add((pluginId: pluginId, trigger: trigger));
   }
 

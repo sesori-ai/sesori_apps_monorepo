@@ -12,7 +12,7 @@ abstract class BridgePlugin {
   /// The request surface the bridge routes traffic through.
   ///
   /// Must be the *same object* for the plugin's entire lifetime: the bridge
-  /// constructor-injects it into many components at startup. A plugin whose
+  /// publishes it in its operational plugin map. A plugin whose
   /// transport can be replaced (e.g. a restarted runtime) must put a stable
   /// facade here and swap the transport behind it.
   BridgePluginApi get api;
@@ -22,7 +22,7 @@ abstract class BridgePlugin {
   ///
   /// This is the *debounced* lifecycle signal used for orchestration
   /// decisions — distinct from [BridgePluginApi.healthCheck], which is an
-  /// instantaneous, mobile-facing probe.
+  /// instantaneous plugin-scoped probe.
   ///
   /// Transitions follow the state machine documented on [PluginStatus];
   /// in particular `Failed` can never follow `Stopping`.

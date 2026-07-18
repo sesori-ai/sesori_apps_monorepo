@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -80,11 +81,15 @@ class _EventProjectionBenchmark {
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
       repository = SessionRepository(
-        plugin: plugin,
+        operationalPlugins: {plugin.id: plugin},
+        bridgeDerivedProjectPluginIds: const {},
+        enabledPluginIds: [plugin.id],
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
       );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
       final failureReporter = _BenchmarkFailureReporter();
@@ -93,7 +98,7 @@ class _EventProjectionBenchmark {
         sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: SessionEventTracker(
-          maxPendingEntries: SessionEventTracker.defaultMaxPendingEntries,
+          maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
         ),
         failureReporter: failureReporter,
       );

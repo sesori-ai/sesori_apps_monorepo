@@ -25,7 +25,7 @@ void main() {
     setUp(() async {
       database = createTestDatabase();
       plugin = _NeverCompletingPlugin();
-      repository = SessionRepository(
+      repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,

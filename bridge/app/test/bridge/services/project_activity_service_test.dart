@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_activity.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -24,7 +23,7 @@ void main() {
     database = createTestDatabase();
     plugin = FakeBridgePlugin();
     service = ProjectActivityService(
-      projectRepository: ProjectRepository(
+      projectRepository: singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: database.projectsDao,
@@ -187,7 +186,7 @@ void main() {
   test("a hanging reconciliation does not block a project list", () async {
     final hangingPlugin = _HangingProjectsPlugin();
     final localService = ProjectActivityService(
-      projectRepository: ProjectRepository(
+      projectRepository: singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: hangingPlugin,
         projectsDao: database.projectsDao,
@@ -198,7 +197,7 @@ void main() {
       now: () => now,
     );
     await database.projectsDao.setActivity(projectId: "stored", createdAt: 10, updatedAt: 20);
-    final reconcile = localService.reconcile();
+    final reconcile = localService.reconcile(pluginId: null);
     await hangingPlugin.reconciliationStarted.future;
 
     final projects = await localService.getProjects().timeout(const Duration(seconds: 1));
@@ -361,7 +360,7 @@ void main() {
     final changes = <ProjectActivityChange>[];
     final subscription = service.changes.listen(changes.add);
 
-    await service.reconcile();
+    await service.reconcile(pluginId: null);
     await Future<void>.delayed(Duration.zero);
 
     expect(plugin.getProjectsCallCount, 1, reason: "native reconciliation must fetch projects once, not per project");

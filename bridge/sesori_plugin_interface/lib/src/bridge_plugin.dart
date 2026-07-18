@@ -166,9 +166,10 @@ sealed class BridgePluginApi {
   /// Health check — returns `true` when the backend is healthy, `false`
   /// otherwise.
   ///
-  /// This is an *instantaneous*, mobile-facing probe: it reflects backend
-  /// reachability right now and is not debounced. The debounced lifecycle
-  /// signal used for orchestration decisions is `BridgePlugin.status`.
+  /// This is an *instantaneous*, plugin-scoped probe: it reflects backend
+  /// reachability right now and is not debounced. It is not part of the
+  /// bridge-level `/global/health` response. The debounced lifecycle signal
+  /// used for orchestration decisions is `BridgePlugin.status`.
   Future<bool> healthCheck();
 
   /// Get connected providers and their models from the backend.

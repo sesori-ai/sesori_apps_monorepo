@@ -3,7 +3,6 @@ import "dart:convert";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
@@ -76,7 +75,7 @@ void main() {
     });
 
     test("returns 404 for an unknown project without creating state or calling the plugin", () async {
-      final realRepository = SessionRepository(
+      final realRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -238,7 +237,7 @@ void main() {
       // freshly-created session can exist solely as a stored row until the
       // backend flushes it to disk. The row must survive an unpaginated
       // refresh that cannot see the session yet.
-      sessionRepository.sessionListIsAuthoritative = false;
+      sessionRepository.sessionListIsAuthoritativeResult = false;
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       await db.sessionDao.insertSession(
         pluginId: "fake",
@@ -843,7 +842,7 @@ void main() {
     });
 
     test("reads catalog fields while preserving stored worktree and pull request metadata", () async {
-      final realRepository = SessionRepository(
+      final realRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,

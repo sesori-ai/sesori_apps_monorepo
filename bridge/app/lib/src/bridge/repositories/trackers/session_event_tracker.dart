@@ -44,19 +44,19 @@ final class PendingTranslationEvent extends PendingTrackedEvent {
 class SessionEventTracker {
   static const defaultMaxPendingEntries = 1024;
 
-  final int maxPendingEntries;
-  final List<PendingTrackedEvent> _insertionOrder = [];
+  final int maxPendingEntriesPerPlugin;
+  final Map<String, List<PendingTrackedEvent>> _insertionOrderByPlugin = {};
   final Map<({String pluginId, String backendSessionId}), PendingSessionEvent> _sessions = {};
   final Map<({String pluginId, String backendParentId}), List<PendingSessionEvent>> _children = {};
   final Map<({String pluginId, String backendSessionId}), List<PendingTranslationEvent>> _translations = {};
 
-  SessionEventTracker({required this.maxPendingEntries}) {
-    if (maxPendingEntries < 1) {
-      throw ArgumentError.value(maxPendingEntries, "maxPendingEntries", "must be positive");
+  SessionEventTracker({required this.maxPendingEntriesPerPlugin}) {
+    if (maxPendingEntriesPerPlugin < 1) {
+      throw ArgumentError.value(maxPendingEntriesPerPlugin, "maxPendingEntriesPerPlugin", "must be positive");
     }
   }
 
-  int get length => _insertionOrder.length;
+  int get length => _insertionOrderByPlugin.values.fold(0, (total, entries) => total + entries.length);
 
   PendingTrackedEvent? addRoot({required PendingSessionEvent event}) {
     if (event.session.parentID != null) {
@@ -96,7 +96,7 @@ class SessionEventTracker {
     final event = _sessions[key];
     if (event == null || event.session.parentID != null) return null;
     _sessions.remove(key);
-    _insertionOrder.remove(event);
+    _insertionOrder(event.pluginId).remove(event);
     return event;
   }
 
@@ -109,7 +109,7 @@ class SessionEventTracker {
     for (final child in children) {
       final key = (pluginId: child.pluginId, backendSessionId: child.session.id);
       if (identical(_sessions[key], child)) _sessions.remove(key);
-      _insertionOrder.remove(child);
+      _insertionOrder(child.pluginId).remove(child);
     }
     return children;
   }
@@ -133,7 +133,9 @@ class SessionEventTracker {
   }) {
     final translations = _translations.remove((pluginId: pluginId, backendSessionId: backendSessionId));
     if (translations == null) return const [];
-    translations.forEach(_insertionOrder.remove);
+    for (final event in translations) {
+      _insertionOrder(event.pluginId).remove(event);
+    }
     return translations;
   }
 
@@ -156,7 +158,8 @@ class SessionEventTracker {
   PendingTrackedEvent? takeNextReady({
     required Set<({String pluginId, String backendSessionId})> readyBindings,
   }) {
-    for (final event in _insertionOrder) {
+    final pluginIds = {for (final binding in readyBindings) binding.pluginId};
+    for (final event in [for (final pluginId in pluginIds) ..._insertionOrder(pluginId)]) {
       final bindingKey = switch (event) {
         PendingSessionEvent(:final pluginId, session: Session(:final parentID?)) => (
           pluginId: pluginId,
@@ -187,10 +190,10 @@ class SessionEventTracker {
   }
 
   PendingTrackedEvent? _append({required PendingTrackedEvent event}) {
-    _insertionOrder.add(event);
-    if (_insertionOrder.length <= maxPendingEntries) return null;
+    final insertionOrder = _insertionOrder(event.pluginId)..add(event);
+    if (insertionOrder.length <= maxPendingEntriesPerPlugin) return null;
 
-    final evicted = _insertionOrder.removeAt(0);
+    final evicted = insertionOrder.removeAt(0);
     switch (evicted) {
       case final PendingSessionEvent sessionEvent:
         _removeSession(event: sessionEvent, dropTranslations: true);
@@ -201,7 +204,7 @@ class SessionEventTracker {
   }
 
   void _removeSession({required PendingSessionEvent event, required bool dropTranslations}) {
-    _insertionOrder.remove(event);
+    _insertionOrder(event.pluginId).remove(event);
     final bindingKey = (pluginId: event.pluginId, backendSessionId: event.session.id);
     if (identical(_sessions[bindingKey], event)) _sessions.remove(bindingKey);
     if (event.session.parentID case final parentId?) {
@@ -212,15 +215,19 @@ class SessionEventTracker {
     }
     if (dropTranslations) {
       final translations = _translations.remove(bindingKey);
-      translations?.forEach(_insertionOrder.remove);
+      translations?.forEach((translation) => _insertionOrder(translation.pluginId).remove(translation));
     }
   }
 
   void _removeTranslation({required PendingTranslationEvent event}) {
-    _insertionOrder.remove(event);
+    _insertionOrder(event.pluginId).remove(event);
     final key = (pluginId: event.pluginId, backendSessionId: event.backendSessionId);
     final translations = _translations[key];
     translations?.remove(event);
     if (translations?.isEmpty ?? false) _translations.remove(key);
+  }
+
+  List<PendingTrackedEvent> _insertionOrder(String pluginId) {
+    return _insertionOrderByPlugin.putIfAbsent(pluginId, () => <PendingTrackedEvent>[]);
   }
 }

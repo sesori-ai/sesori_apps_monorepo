@@ -1,4 +1,3 @@
-import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/reply_to_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -24,7 +23,11 @@ void main() {
         parentSessionId: null,
       );
       handler = ReplyToQuestionHandler(
-        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
+        questionRepository: singlePluginQuestionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+        ),
       );
     });
 

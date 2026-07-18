@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 const _defaultWarmupCount = 25;
@@ -131,11 +132,14 @@ class _LiveListBenchmark {
 
     final projectRepository = ProjectRepository(
       gitCliApi: gitCliApi,
-      plugin: plugin,
+      operationalPlugins: {plugin.id: plugin},
+      defaultEnabledPluginId: plugin.id,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,
       filesystemApi: filesystemApi,
+      projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      aggregateSourceDeadline: const Duration(seconds: 5),
     );
     final results = <Map<String, Object?>>[];
     results.add(
@@ -234,11 +238,17 @@ class _LiveListBenchmark {
 
   SessionRepository _sessionRepository({required AppDatabase database, required BridgePluginApi plugin}) {
     return SessionRepository(
-      plugin: plugin,
+      operationalPlugins: {plugin.id: plugin},
+      bridgeDerivedProjectPluginIds: {
+        if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
+      },
+      enabledPluginIds: [plugin.id],
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      aggregateSourceDeadline: const Duration(seconds: 5),
     );
   }
 

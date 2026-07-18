@@ -18,10 +18,6 @@ class HealthCheckHandler extends GetRequestHandler<HealthResponse> {
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    try {
-      return await _healthRepository.getHealth();
-    } on BackendUnhealthyException {
-      throw buildErrorResponse(request, 503, "backend unhealthy");
-    }
+    return _healthRepository.getHealth();
   }
 }

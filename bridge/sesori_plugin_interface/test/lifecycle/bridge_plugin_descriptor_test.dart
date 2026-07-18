@@ -7,6 +7,7 @@ void main() {
       const descriptor = _MinimalDescriptor();
       expect(descriptor.id, 'noop');
       expect(descriptor.options, isEmpty);
+      expect(descriptor.stateStorage, PluginStateStorage.isolated);
     });
 
     test('validateConfig accepts everything by default', () {

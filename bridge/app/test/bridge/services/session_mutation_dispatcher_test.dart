@@ -20,7 +20,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeDerivedPlugin();
-      repository = SessionRepository(
+      repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,

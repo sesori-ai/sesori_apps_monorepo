@@ -10,60 +10,83 @@ import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
+import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
 import "package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart";
 import "package:sesori_bridge/src/server/foundation/bridge_restart_env.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
+import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 
-_DebugServerHarness _createDebugServerHarness({
+Future<_DebugServerHarness> _createDebugServerHarness({
   required BridgePluginApi plugin,
   required AppDatabase db,
   required int port,
   required FailureReporter failureReporter,
   BridgeRestartService? restartService,
-}) {
+}) async {
   final httpClient = http.Client();
-  final runtime = BridgeRuntime.create(
-    config: const BridgeConfig(
-      relayURL: "ws://127.0.0.1:9999",
-      pluginEndpoint: "http://127.0.0.1:4096",
+  final relayServer = await TestRelayServer.start();
+  final relayUrl = "ws://127.0.0.1:${relayServer.port}";
+  final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
+  final effectiveRestartService = restartService ?? buildTestRestartService();
+  final composition = Orchestrator(
+    config: BridgeConfig(
+      relayURL: relayUrl,
       authBackendURL: "https://api.sesori.test",
-      sseReplayWindow: Duration(minutes: 5),
+      sseReplayWindow: const Duration(minutes: 5),
       yolo: false,
     ),
-    plugin: plugin,
-    pluginId: plugin.id,
-    relayClient: RelayClient(
-      relayURL: "ws://127.0.0.1:9999",
+    client: RelayClient(
+      relayURL: relayUrl,
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     ),
+    legacyMissingPluginId: plugin.id,
+    pluginLifecycleService: lifecycleService,
+    database: db,
     httpClient: httpClient,
+    processRunner: ProcessRunner(),
     accessTokenProvider: FakeAccessTokenProvider(),
     tokenRefresher: _FakeTokenRefresher(),
     bridgeRegistrationService: createFakeBridgeRegistrationService(),
-    database: db,
-    processRunner: ProcessRunner(),
     failureReporter: failureReporter,
-    restartService: restartService ?? buildTestRestartService(),
+    restartService: effectiveRestartService,
     filesystemAccessOk: true,
     statusNotifier: null,
+  ).create();
+  final runtime = BridgeRuntime(
+    database: db,
+    failureReporter: failureReporter,
+    restartService: effectiveRestartService,
+    composition: composition,
   );
+  final runFuture = composition.session.run();
+  unawaited(runFuture.catchError((_) {}));
+  await relayServer.nextClient();
+  if (plugin case final _SubscriptionAwarePlugin subscriptionAware) {
+    await subscriptionAware.eventsSubscribed.timeout(const Duration(seconds: 2));
+    await subscriptionAware.activityRead.timeout(const Duration(seconds: 2));
+  }
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(
     runtime: runtime,
     debugServer: debugServer,
     httpClient: httpClient,
+    lifecycleService: lifecycleService,
+    relayServer: relayServer,
+    runFuture: runFuture,
   );
 }
 
@@ -77,7 +100,7 @@ void main() {
     setUp(() async {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
-      harness = _createDebugServerHarness(
+      harness = await _createDebugServerHarness(
         plugin: plugin,
         db: db,
         port: 0,
@@ -175,8 +198,15 @@ void main() {
       );
       plugin.add(const BridgeSseSessionDiff(sessionID: "s1"));
 
-      final firstEvent = jsonDecode(await client.nextEvent()) as Map<String, dynamic>;
-      final secondEvent = jsonDecode(await client.nextEvent()) as Map<String, dynamic>;
+      final mappedEvents = <Map<String, dynamic>>[];
+      while (mappedEvents.length < 2) {
+        final event = jsonDecode(await client.nextEvent()) as Map<String, dynamic>;
+        if (event["type"] == "session.created" || event["type"] == "session.diff") {
+          mappedEvents.add(event);
+        }
+      }
+      final firstEvent = mappedEvents.first;
+      final secondEvent = mappedEvents.last;
 
       expect(firstEvent["type"], equals("session.created"));
       expect(secondEvent["type"], equals("session.diff"));
@@ -189,7 +219,7 @@ void main() {
     test("debug client disconnect does not tear down the shared plugin listener", () async {
       final trackingPlugin = _TrackingBridgePlugin();
       final trackingDb = createTestDatabase();
-      final trackingHarness = _createDebugServerHarness(
+      final trackingHarness = await _createDebugServerHarness(
         plugin: trackingPlugin,
         db: trackingDb,
         port: 0,
@@ -215,15 +245,14 @@ void main() {
       expect(trackingPlugin.unsubscribeCount, equals(0));
     });
 
-    test("a failed projects summary is reported and later events still flow", () async {
-      final failureReporter = CapturingFailureReporter();
+    test("a failed projects summary is isolated and later events still flow", () async {
       final failingPlugin = _FakeBridgePlugin()..throwOnActiveSummary = true;
       final failingDb = createTestDatabase();
-      final failingHarness = _createDebugServerHarness(
+      final failingHarness = await _createDebugServerHarness(
         plugin: failingPlugin,
         db: failingDb,
         port: 0,
-        failureReporter: failureReporter,
+        failureReporter: FakeFailureReporter(),
       );
       final failingServer = failingHarness.debugServer;
       await failingServer.start();
@@ -235,14 +264,11 @@ void main() {
       failingPlugin.add(const BridgeSseProjectUpdated());
       failingPlugin.add(const BridgeSseVcsBranchUpdated());
 
-      expect(await client.nextEvent(), contains("vcs.branch.updated"));
-      final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
-      while (!failureReporter.recordedIdentifiers.contains("bridge.debug_server.projects_summary")) {
-        if (DateTime.now().isAfter(timeoutAt)) {
-          fail("Timed out waiting for projects-summary failure reporting");
-        }
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
+      String event;
+      do {
+        event = await client.nextEvent();
+      } while (!event.contains("vcs.branch.updated"));
+      expect(event, contains("vcs.branch.updated"));
     });
   });
 
@@ -256,7 +282,7 @@ void main() {
       plugin = _FakeBridgePlugin();
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
-      harness = _createDebugServerHarness(
+      harness = await _createDebugServerHarness(
         plugin: plugin,
         db: db,
         port: 0,
@@ -422,6 +448,87 @@ void main() {
     });
   });
 
+  group("DebugServer shutdown", () {
+    test("drains and persists a routed mutation before disposing its plugin API", () async {
+      final db = createTestDatabase();
+      String? persistedTitleAtDispose;
+      final plugin = _BlockingMutationPlugin(
+        onDispose: () async {
+          persistedTitleAtDispose = (await db.sessionDao.getSession(sessionId: "s1"))?.title;
+        },
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
+      await db.sessionDao.insertSession(
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "/tmp/test",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      final harness = await _createDebugServerHarness(
+        plugin: plugin,
+        db: db,
+        port: 0,
+        failureReporter: FakeFailureReporter(),
+      );
+      addTearDown(plugin.close);
+      addTearDown(harness.close);
+      addTearDown(plugin.releaseMutation);
+      final debugServer = harness.debugServer;
+      final shutdownCoordinator =
+          BridgeShutdownCoordinator(
+              startAbortSignal: StartAbortSignal.never,
+              exitProcess: (_) {},
+            )
+            ..addPhase(
+              phase: BridgeShutdownPhase.signal,
+              action: debugServer.beginShutdown,
+            )
+            ..addPhase(
+              phase: BridgeShutdownPhase.drain,
+              action: debugServer.drain,
+            )
+            ..addPhase(
+              phase: BridgeShutdownPhase.pluginDispose,
+              action: harness.lifecycleService.disposeStartedApis,
+            );
+      await debugServer.start();
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.patchUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/session/title"),
+      );
+      request.headers.contentType = ContentType.json;
+      request.write(
+        jsonEncode(const RenameSessionRequest(sessionId: "s1", title: "Renamed").toJson()),
+      );
+      final responseFuture = request.close();
+      await plugin.mutationStarted.timeout(const Duration(seconds: 2));
+
+      final shutdown = shutdownCoordinator.shutdown();
+      final response = await responseFuture.timeout(const Duration(seconds: 2));
+      await utf8.decoder.bind(response).join().timeout(const Duration(seconds: 2));
+
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.disposeCalls, 0);
+      expect(persistedTitleAtDispose, isNull);
+
+      plugin.releaseMutation();
+      await shutdown.timeout(const Duration(seconds: 2));
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Renamed");
+      expect(persistedTitleAtDispose, "Renamed");
+      expect(plugin.disposeCalls, 1);
+    });
+  });
+
   group("DebugServer restart", () {
     test("POST /global/restart replies and spawns a successor", () async {
       final plugin = _FakeBridgePlugin();
@@ -441,7 +548,7 @@ void main() {
       }
 
       final processRunner = _RecordingProcessRunner();
-      final harness = _createDebugServerHarness(
+      final harness = await _createDebugServerHarness(
         plugin: plugin,
         db: db,
         port: 0,
@@ -492,7 +599,7 @@ void main() {
       }
 
       final processRunner = _RecordingProcessRunner();
-      final harness = _createDebugServerHarness(
+      final harness = await _createDebugServerHarness(
         plugin: plugin,
         db: db,
         port: 0,
@@ -527,7 +634,7 @@ void main() {
       });
 
       final processRunner = _RecordingProcessRunner();
-      final harness = _createDebugServerHarness(
+      final harness = await _createDebugServerHarness(
         plugin: plugin,
         db: db,
         port: 0,
@@ -613,17 +720,27 @@ class _DebugServerHarness {
   final BridgeRuntime runtime;
   final DebugServer debugServer;
   final http.Client httpClient;
+  final PluginLifecycleService lifecycleService;
+  final TestRelayServer relayServer;
+  final Future<void> runFuture;
 
   const _DebugServerHarness({
     required this.runtime,
     required this.debugServer,
     required this.httpClient,
+    required this.lifecycleService,
+    required this.relayServer,
+    required this.runFuture,
   });
 
   Future<void> close() async {
     await debugServer.stop();
+    await runtime.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
     await runtime.close();
+    await lifecycleService.dispose();
     httpClient.close();
+    await relayServer.close();
   }
 }
 
@@ -636,8 +753,16 @@ class _FakeTokenRefresher implements TokenRefresher {
 // Fake plugin implementations
 // ---------------------------------------------------------------------------
 
-class _FakeBridgePlugin implements NativeProjectsPluginApi {
+abstract interface class _SubscriptionAwarePlugin {
+  Future<void> get eventsSubscribed;
+
+  Future<void> get activityRead;
+}
+
+class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
+  final Completer<void> _eventsSubscribed = Completer<void>();
+  final Completer<void> _activityRead = Completer<void>();
 
   List<PluginProject> projectsResult = [];
   List<PluginSession> sessionsResult = [];
@@ -650,10 +775,20 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String get id => "fake";
 
   @override
-  Stream<BridgeSseEvent> get events => _controller.stream;
+  Stream<BridgeSseEvent> get events {
+    if (!_eventsSubscribed.isCompleted) _eventsSubscribed.complete();
+    return _controller.stream;
+  }
+
+  @override
+  Future<void> get eventsSubscribed => _eventsSubscribed.future;
+
+  @override
+  Future<void> get activityRead => _activityRead.future;
 
   @override
   Future<List<PluginProject>> getProjects() async {
+    if (!_activityRead.isCompleted) _activityRead.complete();
     if (throwOnGetProjects) throw Exception("fake error");
     return projectsResult;
   }
@@ -799,9 +934,46 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<void> close() => _controller.close();
 }
 
+class _BlockingMutationPlugin extends _FakeBridgePlugin {
+  _BlockingMutationPlugin({required this.onDispose});
+
+  final Future<void> Function() onDispose;
+  final Completer<void> _mutationStarted = Completer<void>();
+  final Completer<void> _mutationRelease = Completer<void>();
+  int disposeCalls = 0;
+
+  Future<void> get mutationStarted => _mutationStarted.future;
+
+  void releaseMutation() {
+    if (!_mutationRelease.isCompleted) _mutationRelease.complete();
+  }
+
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    _mutationStarted.complete();
+    await _mutationRelease.future;
+    return PluginSession(
+      id: sessionId,
+      projectID: "/tmp/test",
+      directory: "/tmp/test",
+      parentID: null,
+      title: title,
+      time: null,
+    );
+  }
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
+    await onDispose();
+  }
+}
+
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
-class _TrackingBridgePlugin implements NativeProjectsPluginApi {
+class _TrackingBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
   final _eventController = StreamController<BridgeSseEvent>.broadcast();
+  final Completer<void> _eventsSubscribed = Completer<void>();
+  final Completer<void> _activityRead = Completer<void>();
   int subscribeCount = 0;
   int unsubscribeCount = 0;
 
@@ -812,6 +984,7 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
   Stream<BridgeSseEvent> get events {
     return Stream<BridgeSseEvent>.multi((controller) {
       subscribeCount++;
+      if (!_eventsSubscribed.isCompleted) _eventsSubscribed.complete();
       final sub = _eventController.stream.listen(
         controller.add,
         onError: controller.addError,
@@ -825,7 +998,16 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginProject>> getProjects() async => [];
+  Future<void> get eventsSubscribed => _eventsSubscribed.future;
+
+  @override
+  Future<void> get activityRead => _activityRead.future;
+
+  @override
+  Future<List<PluginProject>> getProjects() async {
+    if (!_activityRead.isCompleted) _activityRead.complete();
+    return [];
+  }
 
   @override
   Future<List<PluginSession>> getSessions(

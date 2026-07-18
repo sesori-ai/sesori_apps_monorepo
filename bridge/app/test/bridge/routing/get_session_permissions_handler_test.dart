@@ -1,5 +1,4 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_permissions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -34,7 +33,7 @@ void main() {
         parentSessionId: "root",
       );
       handler = GetSessionPermissionsHandler(
-        permissionRepository: PermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
+        permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
       );
     });
 
@@ -99,7 +98,7 @@ void main() {
         pluginId: derivedPlugin.id,
         deletedAt: 1,
       );
-      final repository = PermissionRepository(
+      final repository = singlePluginPermissionRepository(
         plugin: derivedPlugin,
         sessionDao: db.sessionDao,
       );
@@ -178,7 +177,7 @@ void main() {
         );
       }
       final derivedHandler = GetSessionPermissionsHandler(
-        permissionRepository: PermissionRepository(
+        permissionRepository: singlePluginPermissionRepository(
           plugin: derivedPlugin,
           sessionDao: db.sessionDao,
         ),
@@ -213,7 +212,7 @@ void main() {
         pluginId: derivedPlugin.id,
         deletedAt: 1,
       );
-      final repository = PermissionRepository(
+      final repository = singlePluginPermissionRepository(
         plugin: derivedPlugin,
         sessionDao: db.sessionDao,
       );
@@ -253,7 +252,7 @@ void main() {
         pluginId: derivedPlugin.id,
         deletedAt: 1,
       );
-      final repository = PermissionRepository(
+      final repository = singlePluginPermissionRepository(
         plugin: derivedPlugin,
         sessionDao: db.sessionDao,
       );

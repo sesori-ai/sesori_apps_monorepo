@@ -6,6 +6,8 @@ import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -94,7 +96,7 @@ void main() {
         hydrationMarkerRequested: true,
       );
 
-      final statuses = await repository.importCatalog(control: control).toList();
+      final statuses = await repository.importCatalog(pluginId: plugin.id, control: control).toList();
 
       expect(statuses.last, isA<CatalogImportCompleted>());
       final project = await database.projectsDao.getProject(projectId: "stored-project");
@@ -128,10 +130,11 @@ void main() {
           isNull,
         );
       }
-      expect(await repository.getHydrationCompletion(), isNotNull);
+      expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNotNull);
 
       await repository
           .importCatalog(
+            pluginId: plugin.id,
             control: CatalogImportControl(
               explicitImportRequested: true,
               hydrationMarkerRequested: false,
@@ -142,6 +145,123 @@ void main() {
         (await database.sessionDao.getSessionByBinding(pluginId: "native", backendSessionId: "child"))?.sessionId,
         child?.sessionId,
       );
+    });
+
+    test("native import gives an exact project id precedence during a move", () async {
+      final oldPath = "${directory.path}/old";
+      final movedPath = "${directory.path}/moved";
+      await database.projectsDao.upsertProjectRows(
+        rows: [
+          _projectRow(id: "backend-project", path: oldPath),
+          _projectRow(id: "path-owner", path: movedPath),
+        ],
+      );
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "backend-project", directory: movedPath)],
+        rootsByProject: {
+          movedPath: [_pluginSession(id: "moved-root", directory: movedPath)],
+        },
+        childrenByParent: const {},
+      );
+
+      await _repository(database: database, plugin: plugin)
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      expect((await database.projectsDao.getProject(projectId: "backend-project"))?.path, movedPath);
+      expect(
+        (await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "moved-root",
+        ))?.projectId,
+        "backend-project",
+      );
+    });
+
+    test("native import reuses a derived project in the same directory without duplicates", () async {
+      final sharedPath = "${directory.path}/shared";
+      final derived = _DerivedImportPlugin(launchDirectory: sharedPath, sessions: const []);
+      await _repository(database: database, plugin: derived)
+          .importCatalog(
+            pluginId: derived.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+      final native = _NativeImportPlugin(
+        projects: [PluginProject(id: "native-project", directory: "$sharedPath/.")],
+        rootsByProject: {
+          sharedPath: [_pluginSession(id: "native-root", directory: sharedPath)],
+        },
+        childrenByParent: const {},
+      );
+
+      await _repository(database: database, plugin: native)
+          .importCatalog(
+            pluginId: native.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      final projects = await database.projectsDao.getAllProjects();
+      expect(projects, hasLength(1));
+      expect(projects.single.projectId, sharedPath);
+      expect(
+        (await database.sessionDao.getSessionByBinding(
+          pluginId: native.id,
+          backendSessionId: "native-root",
+        ))?.projectId,
+        sharedPath,
+      );
+    });
+
+    test("project identity indexes are reused and updated throughout an import batch", () async {
+      final firstPath = "${directory.path}/first";
+      final secondPath = "${directory.path}/second";
+      final calculator = _TrackingProjectCatalogIdentityCalculator(
+        firstProjectId: "first",
+        firstPath: firstPath,
+      );
+      final plugin = _NativeImportPlugin(
+        projects: [
+          PluginProject(id: "first", directory: firstPath),
+          PluginProject(id: "second", directory: secondPath),
+        ],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+      final repository = CatalogImportRepository(
+        operationalPlugins: {plugin.id: plugin},
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: calculator,
+      );
+
+      await repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      expect(calculator.callCount, 2);
+      expect(calculator.reusedIndexes, isTrue);
+      expect(calculator.sawFirstRowOnSecondLookup, isTrue);
     });
 
     test("derived import sends complete normalized hints and retains owning-project attribution", () async {
@@ -196,6 +316,7 @@ void main() {
 
       final statuses = await repository
           .importCatalog(
+            pluginId: plugin.id,
             control: CatalogImportControl(
               explicitImportRequested: true,
               hydrationMarkerRequested: false,
@@ -271,6 +392,7 @@ void main() {
 
       await repository
           .importCatalog(
+            pluginId: plugin.id,
             control: CatalogImportControl(
               explicitImportRequested: true,
               hydrationMarkerRequested: false,
@@ -305,6 +427,7 @@ void main() {
 
       await repository
           .importCatalog(
+            pluginId: "native",
             control: CatalogImportControl(
               explicitImportRequested: true,
               hydrationMarkerRequested: false,
@@ -329,7 +452,7 @@ void main() {
         explicitImportRequested: true,
         hydrationMarkerRequested: false,
       );
-      final result = repository.importCatalog(control: control).toList();
+      final result = repository.importCatalog(pluginId: plugin.id, control: control).toList();
       await plugin.getProjectsStarted.future;
 
       control.cancellationRequested = true;
@@ -358,6 +481,7 @@ void main() {
       await expectLater(
         repository
             .importCatalog(
+              pluginId: plugin.id,
               control: CatalogImportControl(
                 explicitImportRequested: true,
                 hydrationMarkerRequested: false,
@@ -372,8 +496,47 @@ void main() {
   });
 }
 
+class _TrackingProjectCatalogIdentityCalculator extends ProjectCatalogIdentityCalculator {
+  _TrackingProjectCatalogIdentityCalculator({required this.firstProjectId, required this.firstPath});
+
+  final String firstProjectId;
+  final String firstPath;
+  Map<String, ProjectDto>? _firstProjectsById;
+  Map<String, ProjectDto>? _firstProjectsByNormalizedPath;
+  int callCount = 0;
+  bool reusedIndexes = false;
+  bool sawFirstRowOnSecondLookup = false;
+
+  @override
+  ProjectDto? calculate({
+    required Map<String, ProjectDto> projectsById,
+    required Map<String, ProjectDto> projectsByNormalizedPath,
+    required String preferredProjectId,
+    required String observedPath,
+  }) {
+    if (callCount == 0) {
+      _firstProjectsById = projectsById;
+      _firstProjectsByNormalizedPath = projectsByNormalizedPath;
+    } else if (callCount == 1) {
+      reusedIndexes =
+          identical(_firstProjectsById, projectsById) &&
+          identical(_firstProjectsByNormalizedPath, projectsByNormalizedPath);
+      sawFirstRowOnSecondLookup =
+          projectsById[firstProjectId]?.projectId == firstProjectId &&
+          projectsByNormalizedPath[normalizeProjectDirectory(directory: firstPath)]?.projectId == firstProjectId;
+    }
+    callCount++;
+    return super.calculate(
+      projectsById: projectsById,
+      projectsByNormalizedPath: projectsByNormalizedPath,
+      preferredProjectId: preferredProjectId,
+      observedPath: observedPath,
+    );
+  }
+}
+
 CatalogImportRepository _repository({required AppDatabase database, required BridgePluginApi plugin}) {
-  return CatalogImportRepository(
+  return singlePluginCatalogImportRepository(
     plugin: plugin,
     projectsDao: database.projectsDao,
     sessionDao: database.sessionDao,

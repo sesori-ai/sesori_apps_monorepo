@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -22,7 +23,7 @@ void main() {
     setUp(() async {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      sessionRepository = SessionRepository(
+      sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -360,7 +361,7 @@ void main() {
         ),
       );
       final failingPlugin = _ThrowingSendPromptPlugin();
-      final localRepository = SessionRepository(
+      final localRepository = singlePluginSessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -412,7 +413,7 @@ void main() {
         ),
       );
       final failingPlugin = _ThrowingSendCommandPlugin();
-      final localRepository = SessionRepository(
+      final localRepository = singlePluginSessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
@@ -453,9 +454,7 @@ void main() {
     test("prompt defaults update failure after plugin success still returns success", () async {
       final throwingRepository = _ThrowingUpdateSessionRepository(
         plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
+        database: db,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final promptService = SessionPromptService(sessionRepository: throwingRepository);
@@ -649,12 +648,21 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
   int updatePromptDefaultsCallCount = 0;
 
   _ThrowingUpdateSessionRepository({
-    required super.plugin,
-    required super.sessionDao,
-    required super.projectsDao,
-    required super.pullRequestDao,
+    required BridgePluginApi plugin,
+    required AppDatabase database,
     required super.unseenCalculator,
-  });
+  }) : super(
+         operationalPlugins: {plugin.id: plugin},
+         bridgeDerivedProjectPluginIds: {
+           if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
+         },
+         enabledPluginIds: [plugin.id],
+         sessionDao: database.sessionDao,
+         projectsDao: database.projectsDao,
+         pullRequestDao: database.pullRequestDao,
+         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+         aggregateSourceDeadline: const Duration(seconds: 5),
+       );
 
   @override
   Future<void> updatePromptDefaults({

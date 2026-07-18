@@ -90,6 +90,12 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   /// [ensureRuntime] from the host's process service and an HTTP client.
   final ManagedRuntimeProvisionService? _provisionService;
 
+  /// Frozen ownership filename in the legacy shared runtime directory.
+  static const String ownershipFileName = "opencode-processes.json";
+
+  /// Backend-namespaced start intent filename in shared runtime storage.
+  static const String startIntentFileName = "opencode-start-intent.json";
+
   /// The OpenCode CLI options the bridge declares for this plugin.
   ///
   /// Names are bare; the bridge namespaces them to `--opencode-<name>`. The
@@ -228,6 +234,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   String get displayName => "OpenCode";
 
   @override
+  PluginStateStorage get stateStorage => PluginStateStorage.legacySharedRuntime;
+
+  @override
   List<PluginOption> get options => cliOptions;
 
   @override
@@ -364,7 +373,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       ownershipRepository: HostJsonRuntimeOwnershipRepository<OpenCodeOwnershipRecord>(
         store: host.store,
         mapper: mapper,
-        fileName: "opencode-processes.json",
+        fileName: ownershipFileName,
         clock: host.clock,
       ),
       mapper: mapper,
@@ -377,7 +386,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       // here before spawn and resolved after. The bridge-private side file
       // never touches the frozen ownership file, and a leftover intent from a
       // crashed start is simply overwritten (then cleared) by the next one.
-      intentStore: RuntimeStartIntentStore(store: host.store, fileName: "opencode-start-intent.json"),
+      intentStore: RuntimeStartIntentStore(store: host.store, fileName: startIntentFileName),
     );
 
     late final ManagedRuntimeSpec<OpenCodeOwnershipRecord> spec;

@@ -3,8 +3,6 @@ import "package:cursor_plugin/cursor_plugin.dart" show CursorPluginDescriptor;
 import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginDescriptor;
 
-import "../../server/host/plugin_state_directory.dart" show openCodePluginId;
-
 /// Every plugin this bridge build knows how to run.
 ///
 /// Descriptors are const and side-effect free — registered is *not* started.
@@ -19,7 +17,7 @@ const List<BridgePluginDescriptor> knownPlugins = [
 
 /// The plugin used when neither `--plugin` nor `enabledPlugins` selects one,
 /// so existing installs see zero change.
-const String defaultPluginId = openCodePluginId;
+const String defaultPluginId = "opencode";
 
 /// Selection cannot be resolved from the bridge settings — the user must fix
 /// `enabledPlugins`. Command-line problems are never reported through this:
@@ -33,7 +31,7 @@ class PluginSelectionException implements Exception {
   String toString() => message;
 }
 
-/// Resolves which plugin's CLI surface the bridge registers into its
+/// Resolves which plugins' CLI surfaces the bridge registers into its
 /// argument parser — the first pass of the two-pass parse: `--plugin` is
 /// scanned out of the raw argv, the full parser is then built from the
 /// winning descriptor and parses everything (including `--plugin` itself,
@@ -58,7 +56,7 @@ class PluginSelector {
   /// must not create files — selection also runs for `--help` and `logout`.
   final Future<List<String>?> Function() _loadEnabledPlugins;
 
-  /// Resolves the descriptor for raw process [args] (pre `run`-insertion;
+  /// Resolves the descriptors for raw process [args] (pre `run`-insertion;
   /// the scan is insensitive to the implicit-command rewrite, which only
   /// ever prepends a token).
   ///
@@ -66,33 +64,47 @@ class PluginSelector {
   /// `--plugin` value resolves to a fallback descriptor so the parser still
   /// gets built, and the full parse then reports it (`allowed:` violation or
   /// missing argument).
-  Future<BridgePluginDescriptor> resolve({required List<String> args}) async {
-    final cliSelection = _scanPluginFlag(args);
-    if (cliSelection != null) {
-      return _descriptorById(cliSelection) ?? _fallback;
+  Future<List<BridgePluginDescriptor>> resolve({required List<String> args}) async {
+    final cliSelection = _scanPluginFlags(args);
+    if (cliSelection.isNotEmpty) {
+      final selected = <BridgePluginDescriptor>[];
+      final addedIds = <String>{};
+      for (final id in cliSelection) {
+        final descriptor = _descriptorById(id);
+        if (descriptor != null && addedIds.add(id)) {
+          selected.add(descriptor);
+        }
+      }
+      return selected.isEmpty ? [_fallback] : List<BridgePluginDescriptor>.unmodifiable(selected);
     }
 
     final enabledPlugins = await _loadEnabledPlugins();
-    if (enabledPlugins == null || enabledPlugins.isEmpty) {
-      return _fallback;
+    if (enabledPlugins == null) {
+      return [_fallback];
     }
-    if (enabledPlugins.length > 1) {
-      throw PluginSelectionException(
-        "Bridge settings enable ${enabledPlugins.length} plugins "
-        '(${enabledPlugins.join(", ")}), but the bridge supports exactly one '
-        'active plugin. Set "enabledPlugins" to a single entry.',
+    if (enabledPlugins.isEmpty) {
+      throw const PluginSelectionException(
+        'Bridge settings explicitly set "enabledPlugins" to an empty list. Enable at least one plugin.',
       );
     }
-    final enabled = enabledPlugins.single;
-    final descriptor = _descriptorById(enabled);
-    if (descriptor == null) {
+    if (enabledPlugins.toSet().length != enabledPlugins.length) {
       throw PluginSelectionException(
-        'Bridge settings enable unknown plugin "$enabled". Known plugins: '
-        '${_knownPlugins.map((plugin) => plugin.id).join(", ")}. Update '
-        '"enabledPlugins" in the bridge config (sesori-bridge config).',
+        'Bridge settings "enabledPlugins" contains duplicate ids: ${enabledPlugins.join(", ")}.',
       );
     }
-    return descriptor;
+    final selected = <BridgePluginDescriptor>[];
+    for (final enabled in enabledPlugins) {
+      final descriptor = _descriptorById(enabled);
+      if (descriptor == null) {
+        throw PluginSelectionException(
+          'Bridge settings enable unknown plugin "$enabled". Known plugins: '
+          '${_knownPlugins.map((plugin) => plugin.id).join(", ")}. Update '
+          '"enabledPlugins" in the bridge config (sesori-bridge config).',
+        );
+      }
+      selected.add(descriptor);
+    }
+    return List<BridgePluginDescriptor>.unmodifiable(selected);
   }
 
   BridgePluginDescriptor get _fallback {
@@ -117,18 +129,17 @@ class PluginSelector {
     return null;
   }
 
-  /// The value of the last `--plugin` occurrence before a standalone `--`
-  /// terminator, or null when the command line selects nothing.
+  /// Every `--plugin` value before a standalone `--` terminator, in order.
   ///
   /// Mirrors `package:args` long-option mechanics so both passes agree:
   /// `--plugin=<id>` and `--plugin <id>` forms, exact name match (args never
-  /// abbreviates long names), last occurrence wins, and the space form
+  /// abbreviates long names), and the space form
   /// consumes the next token unconditionally. Not mirrored: a `--plugin`
   /// token that the parser would swallow as a *preceding* value option's
   /// argument (e.g. `--password --plugin`) is read as a selection here —
   /// pathological input; the full parse still has the last word on errors.
-  static String? _scanPluginFlag(List<String> args) {
-    String? value;
+  static List<String> _scanPluginFlags(List<String> args) {
+    final values = <String>[];
     for (var i = 0; i < args.length; i++) {
       final token = args[i];
       if (token == "--") {
@@ -136,13 +147,13 @@ class PluginSelector {
       }
       if (token == "--plugin") {
         if (i + 1 < args.length) {
-          value = args[i + 1];
+          values.add(args[i + 1]);
           i++;
         }
       } else if (token.startsWith("--plugin=")) {
-        value = token.substring("--plugin=".length);
+        values.add(token.substring("--plugin=".length));
       }
     }
-    return value;
+    return values;
   }
 }

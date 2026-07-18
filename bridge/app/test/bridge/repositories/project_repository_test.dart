@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_e
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -25,7 +26,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeBridgePlugin();
-      repo = ProjectRepository(
+      repo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -124,13 +125,94 @@ void main() {
       final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
       addTearDown(service.dispose);
 
-      await service.reconcile();
+      await service.reconcile(pluginId: null);
 
       final newProject = await db.projectsDao.getProject(projectId: "new-project");
       expect(newProject?.path, "/projects/new");
       expect(newProject?.createdAt, 10);
       expect(newProject?.updatedAt, 20);
-      expect((await db.projectsDao.getProject(projectId: "moved-project"))?.path, "/projects/moved");
+      final movedProject = await db.projectsDao.getProject(projectId: "moved-project");
+      expect(movedProject?.path, "/projects/moved");
+      expect(movedProject?.updatedAt, 60, reason: "stable native identity must retain activity after a move");
+    });
+
+    test("native activity reuses an existing path-canonical project row", () async {
+      const directory = "/projects/shared";
+      plugin.projectsResult = const [
+        PluginProject(
+          id: "native-project-id",
+          directory: directory,
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+      ];
+      await db.projectsDao.recordOpenedProject(
+        projectId: directory,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+
+      final evidence = await repo.listProjectActivityEvidence(pluginId: plugin.id);
+
+      expect(evidence.single.projectId, directory);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
+    });
+
+    test("native activity atomically resolves identity against catalog import", () async {
+      const directory = "/projects/shared";
+      const nativeProjectId = "native-project-id";
+      const importedProjectId = "catalog-project-id";
+      plugin.projectsResult = const [
+        PluginProject(
+          id: nativeProjectId,
+          directory: directory,
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+      ];
+      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
+      final racingRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        plugin: plugin,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final reconciliation = racingRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      await projectsDao.snapshotTaken.future;
+      final catalogImport = db.transaction(() async {
+        final storedProjects = await db.projectsDao.getAllProjects();
+        final existing = const ProjectCatalogIdentityCalculator().calculate(
+          projectsById: {
+            for (final project in storedProjects) project.projectId: project,
+          },
+          projectsByNormalizedPath: {
+            for (final project in storedProjects) project.path: project,
+          },
+          preferredProjectId: importedProjectId,
+          observedPath: directory,
+        );
+        if (existing == null) {
+          await db.projectsDao.recordOpenedProject(
+            projectId: importedProjectId,
+            path: directory,
+            displayName: null,
+            createdAt: 1,
+            updatedAt: 2,
+          );
+        }
+      });
+      await Future<void>.delayed(Duration.zero);
+      projectsDao.releaseSnapshot.complete();
+
+      final evidence = await reconciliation;
+      await catalogImport;
+
+      final rows = await db.projectsDao.getAllProjects();
+      expect(rows, hasLength(1));
+      expect(evidence.single.projectId, rows.single.projectId);
     });
 
     test("getProjects completes from the catalog when plugin enumeration throws", () async {
@@ -201,7 +283,7 @@ void main() {
         ),
       ];
       final projectsDao = _CountingProjectsDao(database: db);
-      final countingRepo = ProjectRepository(
+      final countingRepo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: projectsDao,
@@ -241,11 +323,14 @@ void main() {
       await db.projectsDao.hideProject(projectId: "p-open");
 
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-open");
-      await repo.persistOpenedProject(
+      final commit = await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        observedAt: 2,
       );
-      final result = await repo.mapOpenedProject(target: target);
+      final result = await repo.mapOpenedProject(
+        target: commit.committedTarget,
+        committedActivity: commit.committedActivity,
+      );
 
       expect(plugin.lastGetProjectId, equals("/tmp/p-open"));
       expect(result.id, equals("p-open"));
@@ -264,10 +349,87 @@ void main() {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-new");
       await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        observedAt: 2,
       );
 
       expect((await repo.getProjects()).single.name, "Backend project name");
+    });
+
+    test("opening a native project reuses the normalized-path catalog row", () async {
+      const directory = "/tmp/projects/shared";
+      plugin.projectResult = const PluginProject(
+        id: "native-project-id",
+        directory: directory,
+        name: "Native project",
+      );
+      await db.projectsDao.recordOpenedProject(
+        projectId: directory,
+        path: "$directory/.",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: directory);
+      final commit = await repo.persistOpenedProject(
+        target: target,
+        observedAt: 2,
+      );
+      final opened = await repo.mapOpenedProject(
+        target: commit.committedTarget,
+        committedActivity: commit.committedActivity,
+      );
+
+      expect(opened.id, directory);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
+    });
+
+    test("openProject atomically rechecks identity after a concurrent catalog import", () async {
+      const directory = "/tmp/projects/racing-open";
+      const nativeProjectId = "native-project-id";
+      const importedProjectId = "catalog-project-id";
+      plugin.projectResult = const PluginProject(
+        id: nativeProjectId,
+        directory: directory,
+        name: "Native project",
+      );
+      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
+      final racingRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        plugin: plugin,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+      final service = ProjectActivityService(projectRepository: racingRepo, now: () => 10);
+      addTearDown(service.dispose);
+      final changes = <ProjectActivityChange>[];
+      final subscription = service.changes.listen(changes.add);
+      addTearDown(subscription.cancel);
+
+      final opening = service.openProject(path: directory);
+      await projectsDao.snapshotTaken.future;
+      await db.projectsDao.recordOpenedProject(
+        projectId: importedProjectId,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      projectsDao.releaseSnapshot.complete();
+
+      final opened = await opening;
+      await Future<void>.delayed(Duration.zero);
+      final rows = await db.projectsDao.getAllProjects();
+
+      expect(rows, hasLength(1));
+      expect(rows.single.projectId, importedProjectId);
+      expect(rows.single.createdAt, 1, reason: "opening must preserve the imported row's creation time");
+      expect(rows.single.updatedAt, 10, reason: "opening must advance activity monotonically to observed now");
+      expect(opened.id, importedProjectId);
+      expect(opened.time, const ProjectTime(created: 1, updated: 10));
+      expect(changes, [const ProjectActivityChange(projectId: importedProjectId, updatedAt: 10)]);
     });
 
     test("reopening a native project preserves its user display name", () async {
@@ -292,7 +454,7 @@ void main() {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-renamed");
       await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        observedAt: 2,
       );
 
       expect((await repo.getProjects()).single.name, "User project name");
@@ -308,11 +470,14 @@ void main() {
         await db.projectsDao.setBaseBranch(projectId: "/projects/a", baseBranch: "develop");
 
         final target = await repo.resolveProjectOpenTarget(path: "/moved/a");
-        await repo.persistOpenedProject(
+        final commit = await repo.persistOpenedProject(
           target: target,
-          activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+          observedAt: 2,
         );
-        final result = await repo.mapOpenedProject(target: target);
+        final result = await repo.mapOpenedProject(
+          target: commit.committedTarget,
+          committedActivity: commit.committedActivity,
+        );
 
         expect(result.id, equals("/projects/a"));
         expect(result.path, equals("/moved/a"));
@@ -343,7 +508,7 @@ void main() {
         final target = await repo.resolveProjectOpenTarget(path: "/moved/a");
         await repo.persistOpenedProject(
           target: target,
-          activity: const ProjectActivity(createdAt: 0, updatedAt: 1),
+          observedAt: 1,
         );
 
         final result = await repo.getProjects();
@@ -358,7 +523,7 @@ void main() {
         plugin.projectsResult = const [
           PluginProject(id: "/projects/a", directory: "/projects/a", name: "A"),
         ];
-        final repoWithMissing = ProjectRepository(
+        final repoWithMissing = singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: db.projectsDao,
@@ -370,7 +535,7 @@ void main() {
         final target = await repoWithMissing.resolveProjectOpenTarget(path: "/moved/a");
         await repoWithMissing.persistOpenedProject(
           target: target,
-          activity: const ProjectActivity(createdAt: 0, updatedAt: 1),
+          observedAt: 1,
         );
 
         final result = await repoWithMissing.getProjects();
@@ -395,6 +560,42 @@ void main() {
         final renamed = await repo.renameProject(projectId: "/projects/a", name: "Renamed");
         expect(plugin.lastRenameProjectId, equals("/moved/a"));
         expect(renamed.path, equals("/moved/a"));
+      });
+
+      test("native rename retains the requested durable catalog identity and unseen state", () async {
+        const directory = "/moved/shared";
+        plugin.projectResult = const PluginProject(
+          id: "native-project-id",
+          directory: directory,
+          name: "Renamed",
+        );
+        await db.projectsDao.recordOpenedProject(
+          projectId: directory,
+          path: directory,
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 2,
+        );
+        await db.sessionDao.insertSession(
+          pluginId: plugin.id,
+          sessionId: "shared-session",
+          backendSessionId: "shared-session",
+          projectId: directory,
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+        );
+        await db.sessionDao.forceUnseen(sessionId: "shared-session", activityAt: 10);
+
+        final renamed = await repo.renameProject(projectId: directory, name: "Renamed");
+
+        expect(renamed.id, directory);
+        expect(renamed.hasUnseenChanges, isTrue);
       });
     });
 
@@ -425,7 +626,7 @@ void main() {
         PluginProject(id: "/present", directory: "/present", name: "Present"),
         PluginProject(id: "/moved", directory: "/moved", name: "Moved"),
       ];
-      final repoWithMissing = ProjectRepository(
+      final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -453,7 +654,7 @@ void main() {
     test("getProject leaves directoryMissing false without a filesystem probe", () async {
       plugin.projectResult = const PluginProject(id: "/gone", directory: "/gone", name: "Gone");
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/gone"]);
-      final repoWithMissing = ProjectRepository(
+      final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -470,7 +671,7 @@ void main() {
 
     test("a directory whose existence probe throws is treated as present, not missing", () async {
       await db.projectsDao.setActivity(projectId: "/denied", createdAt: 1, updatedAt: 2);
-      final repoWithThrow = ProjectRepository(
+      final repoWithThrow = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -493,7 +694,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeDerivedPlugin([]);
-      repo = ProjectRepository(
+      repo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -587,18 +788,42 @@ void main() {
         deletedAt: 1,
       );
 
-      final result = await repo.listProjectActivityEvidence();
+      final result = await repo.listProjectActivityEvidence(pluginId: plugin.id);
 
-      expect(result.evidence.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
+      expect(result.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
+    });
+
+    test("derived activity uses the stored native project identity for the same directory", () async {
+      const directory = "/tmp/proj/shared";
+      const nativeProjectId = "native-project-id";
+      await db.projectsDao.recordOpenedProject(
+        projectId: nativeProjectId,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      plugin.sessions = [_session(directory, id: "derived-session", created: 10, updated: 20)];
+
+      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
+      addTearDown(service.dispose);
+      await service.reconcile(pluginId: plugin.id);
+
+      final rows = await db.projectsDao.getAllProjects();
+      expect(rows.map((project) => project.projectId), [nativeProjectId]);
+      expect(rows.single.updatedAt, 20);
     });
 
     test("openProject records an opened folder so an empty project survives the listing", () async {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/proj/empty");
-      await repo.persistOpenedProject(
+      final commit = await repo.persistOpenedProject(
         target: target,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        observedAt: 2,
       );
-      final opened = await repo.mapOpenedProject(target: target);
+      final opened = await repo.mapOpenedProject(
+        target: commit.committedTarget,
+        committedActivity: commit.committedActivity,
+      );
 
       expect(opened.id, "/tmp/proj/empty");
       expect(opened.name, "empty");
@@ -607,9 +832,30 @@ void main() {
         contains("/tmp/proj/empty"),
       );
       final row = (await db.select(db.projectsTable).get()).firstWhere((r) => r.projectId == "/tmp/proj/empty");
-      expect(row.createdAt, equals(1));
+      expect(row.createdAt, equals(2));
       expect(row.updatedAt, equals(2));
       expect(plugin.receivedKnownDirectories, isNull);
+    });
+
+    test("derived open reuses a native catalog row for the normalized directory", () async {
+      const directory = "/tmp/proj/shared-open";
+      const nativeProjectId = "native-project-id";
+      await db.projectsDao.recordOpenedProject(
+        projectId: nativeProjectId,
+        path: "$directory/.",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: directory);
+      await repo.persistOpenedProject(
+        target: target,
+        observedAt: 3,
+      );
+
+      expect(target.projectId, nativeProjectId);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [nativeProjectId]);
     });
 
     test("renameProject persists a display-name override applied on the next listing", () async {
@@ -645,7 +891,7 @@ void main() {
       plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
       await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 30, updatedAt: 40);
       final projectsDao = _CountingProjectsDao(database: db);
-      final countingRepo = ProjectRepository(
+      final countingRepo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: projectsDao,
@@ -714,7 +960,7 @@ void main() {
         _session("/tmp/proj/alpha", id: "a1", created: 1, updated: 2),
         _session("/tmp/proj/beta", id: "b1", created: 1, updated: 1),
       ];
-      final repoWithMissing = ProjectRepository(
+      final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -753,7 +999,7 @@ void main() {
       await db.close();
     });
 
-    ProjectRepository repoWith({required String? remoteUrl}) => ProjectRepository(
+    ProjectRepository repoWith({required String? remoteUrl}) => singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(remoteUrl: remoteUrl),
       plugin: plugin,
       projectsDao: db.projectsDao,
@@ -849,7 +1095,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  String get id => throw UnimplementedError();
+  String get id => "fake";
 
   @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();
@@ -1027,5 +1273,22 @@ class _CountingProjectsDao extends ProjectsDao {
   Future<ProjectDto?> getProject({required String projectId}) {
     getProjectCallCount++;
     return super.getProject(projectId: projectId);
+  }
+}
+
+class _BlockingSnapshotProjectsDao extends ProjectsDao {
+  _BlockingSnapshotProjectsDao({required AppDatabase database}) : super(database);
+
+  final Completer<void> snapshotTaken = Completer<void>();
+  final Completer<void> releaseSnapshot = Completer<void>();
+
+  @override
+  Future<List<ProjectDto>> getAllProjects() async {
+    final projects = await super.getAllProjects();
+    if (!snapshotTaken.isCompleted) {
+      snapshotTaken.complete();
+      await releaseSnapshot.future;
+    }
+    return projects;
   }
 }

@@ -1,3 +1,4 @@
+import "package:opencode_plugin/src/runtime/open_code_plugin_descriptor.dart";
 import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -7,6 +8,10 @@ void main() {
   const manifest = OpenCodeRuntimeManifest();
 
   group("OpenCodeRuntimeManifest", () {
+    test("uses the plugin id as its shared managed-runtime subdirectory", () {
+      expect(manifest.runtimeId, const OpenCodePluginDescriptor().id);
+    });
+
     test("pins a sha256 asset for every supported platform target", () {
       for (final os in PlatformOs.values) {
         for (final arch in PlatformArch.values) {

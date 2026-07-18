@@ -1,5 +1,4 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_providers_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -19,7 +18,7 @@ void main() {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       addTearDown(db.close);
-      handler = GetProvidersHandler(ProviderRepository(plugin: plugin, projectsDao: db.projectsDao));
+      handler = GetProvidersHandler(singlePluginProviderRepository(plugin: plugin, projectsDao: db.projectsDao));
     });
 
     tearDown(() => plugin.close());

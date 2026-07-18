@@ -24,7 +24,7 @@ void main() {
     setUp(() {
       database = createTestDatabase();
       plugin = _EventPlugin();
-      repository = SessionRepository(
+      repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
@@ -32,7 +32,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
-      eventTracker = SessionEventTracker(maxPendingEntries: 1024);
+      eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
       service = SessionEventService(
         sessionRepository: repository,
         sessionMutationDispatcher: mutationDispatcher,

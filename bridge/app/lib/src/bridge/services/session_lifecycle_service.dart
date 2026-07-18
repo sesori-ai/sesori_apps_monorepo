@@ -120,6 +120,7 @@ class SessionLifecycleService {
 
     if (deleteWorktree) {
       final removed = await _worktreeService.removeWorktree(
+        pluginId: storedSession.pluginId,
         projectId: projectId,
         worktreePath: worktreePath,
         force: force,

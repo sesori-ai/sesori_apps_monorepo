@@ -1,7 +1,6 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_current_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -25,7 +24,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/project"]);
       await db.projectsDao.setActivity(projectId: "/tmp/project", createdAt: 101, updatedAt: 202);
       handler = GetCurrentProjectHandler(
-        projectRepository: ProjectRepository(
+        projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: db.projectsDao,

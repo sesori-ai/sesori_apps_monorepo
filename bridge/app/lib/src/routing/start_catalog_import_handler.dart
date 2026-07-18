@@ -24,8 +24,12 @@ class StartCatalogImportHandler extends BodyRequestHandler<CatalogImportRequest,
   }) async {
     try {
       _service.start(pluginId: body.pluginId, trigger: CatalogImportTrigger.explicit);
-    } on CatalogImportPluginNotSelectedException {
+    } on CatalogImportPluginUnknownException {
+      throw buildErrorResponse(request, 404, "plugin not found");
+    } on CatalogImportPluginNotEnabledException {
       throw buildErrorResponse(request, 404, "plugin not selected");
+    } on CatalogImportPluginUnavailableException {
+      throw buildErrorResponse(request, 503, "plugin unavailable");
     }
     return const SuccessEmptyResponse();
   }
