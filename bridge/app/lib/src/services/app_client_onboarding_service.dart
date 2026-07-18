@@ -49,7 +49,7 @@ class AppClientOnboardingService {
 
     Console.message("Open the Sesori app and sign in with this same account:");
     Console.message(_formatter.formatDestination());
-    Console.message("Waiting up to 30 seconds for the app to connect...");
+    Console.message("Waiting up to 35 seconds for the app to connect...");
 
     final waited = await _statusRepository.getStatus(accessToken: accessToken, wait: true);
     switch (waited) {

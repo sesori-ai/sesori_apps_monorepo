@@ -102,7 +102,7 @@ void main() {
       expect(stdoutCapture.lines, [
         "Open the Sesori app and sign in with this same account:",
         AppOnboardingFormatter.appUrl,
-        "Waiting up to 30 seconds for the app to connect...",
+        "Waiting up to 35 seconds for the app to connect...",
         "Sesori app connected. Continuing bridge startup.",
       ]);
     });
