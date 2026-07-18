@@ -10,7 +10,7 @@
 
 - **Last completed stage:** Stage 9 - performance gate and cleanup
 - **Current stage:** Parallel-plugin implementation plan complete
-- **Next up:** Merge the stacked Stage 7-9 PRs in order
+- **Next up:** Merge the Stage 9 PR
 - **Runtime default:** OpenCode remains the one-plugin default; ordered multi-plugin selection is active
 - **Catalog projection version:** 1
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)

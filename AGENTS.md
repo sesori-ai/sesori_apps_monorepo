@@ -63,6 +63,9 @@ eagerly "just in case."
   an honest backfill and a non-null column. Keep the field nullable when absence
   is genuinely meaningful or no valid backfill exists.
 - Never hand-edit generated files. Change their source and run the generator.
+- Create and update GitHub PR bodies with real multiline Markdown through
+  `--body-file` or stdin; never pass escaped `\n` text. Read the body back with
+  `gh pr view` and verify that it has no literal newline escapes or wrapping quote.
 - App/bridge public and wire changes must consider compatibility in both
   directions: older app -> newer bridge and newer app -> older bridge. Preserve
   existing behavior with honest defaults or graceful degradation where
