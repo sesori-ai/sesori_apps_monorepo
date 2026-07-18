@@ -3,6 +3,9 @@
 ## 0. Metadata
 
 - **ID:** S01-W01-P01
+- **Status:** Complete — PR #44 merged and the endpoint is deployed
+  (user-confirmed 2026-07-18)
+- **PR:** https://github.com/sesori-ai/sesori_auth_server/pull/44
 - **Repository:** `sesori-ai/sesori_auth_server`
 - **Worktree:** one dedicated auth-server worker worktree for this PR
 - **Base branch:** `master`

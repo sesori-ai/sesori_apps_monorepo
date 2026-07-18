@@ -5,8 +5,10 @@
 - **Plan slug:** `bridge-app-onboarding`
 - **Implementation base:** monorepo `main`
 - **Pinned W02 base:** `4a156a78b3bf8572c280ce859b3b1370300a8105`
-- **Auth dependency:** `sesori-ai/sesori_auth_server` PR #44 must merge and deploy before bridge release.
-- **Current state:** W01 implemented; W02 redesigned after the user rejected an over-broad first implementation.
+- **Auth dependency:** Satisfied — `sesori-ai/sesori_auth_server` PR #44 merged
+  and its endpoint is deployed (user-confirmed 2026-07-18).
+- **Current state:** W01 merged and deployed; W02 redesigned after the user
+  rejected an over-broad first implementation.
 
 ## Goal
 
@@ -227,7 +229,7 @@ or client contract.
 
 ## Release Order
 
-1. Merge and deploy auth PR #44.
+1. Completed: auth PR #44 merged and its endpoint was deployed.
 2. Merge W02 after focused verification and implementation review.
 3. Release through the existing bridge process.
 4. Run S01-W02-M01 against a disposable same-account app registration.

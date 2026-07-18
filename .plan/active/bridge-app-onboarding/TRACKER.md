@@ -35,7 +35,7 @@ pair after drift assessment and before branch creation.
 
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
-| [x] | S01-W01-P01 | S01 | W01 | https://github.com/sesori-ai/sesori_auth_server/pull/44 | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Delivers the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. Format, lint, build, 422 tests (1 skipped), circular-dependency check, and implementation review passed. |
+| [x] | S01-W01-P01 | S01 | W01 | https://github.com/sesori-ai/sesori_auth_server/pull/44 | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Merged and deployed. Delivers the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. Format, lint, build, 422 tests (1 skipped), circular-dependency check, and implementation review passed. |
 | [ ] | S01-W02-P01 | S01 | W02 | — | existing `bridge-onboarding-plan` worktree branch | Add a bounded one-time-per-backend/account checkpoint with no auth/token/terminal refactor. |
 
 ## Manual Checkpoints
@@ -47,10 +47,8 @@ pair after drift assessment and before branch creation.
 ## Blockers and Staleness
 
 - No implementation blocker is known.
-- The auth-server endpoint must merge and deploy before bridge release. The user
-  explicitly authorized W02 planning and implementation to overlap the still-open
-  auth PR because the repositories are separate; release ordering remains auth
-  server first.
+- The auth-server prerequisite is complete: PR #44 merged and the endpoint was
+  deployed (user-confirmed 2026-07-18).
 - Latest audited tips: monorepo `main`
   `4a156a78b3bf8572c280ce859b3b1370300a8105`
   (2026-07-17T18:02:33+03:00); auth-server `master`
@@ -101,6 +99,8 @@ pair after drift assessment and before branch creation.
   does not suppress a later confirmed write, and replaced the endpoint-specific
   status API with provider-level `SesoriServerApi` without migrating legacy auth
   operations. `aristotle-plan-review` approved exact commit `7e26a27b`.
+- **2026-07-18 — Auth dependency complete:** Auth PR #44 merged with passing CI
+  and no unresolved threads; the user confirmed its endpoint is deployed.
 - **2026-07-17 — Plan delivery:** Opened plan-only PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/490 against selected
   implementation base `main`; tracker state is optimistically post-merge on the

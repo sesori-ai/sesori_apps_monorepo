@@ -6,7 +6,7 @@
 - **Base:** `main`
 - **Pinned SHA:** `4a156a78b3bf8572c280ce859b3b1370300a8105`
 - **Branch:** existing `bridge-onboarding-plan` worktree branch
-- **Dependency:** auth-server PR #44 must deploy before bridge release
+- **Dependency:** Satisfied — auth-server PR #44 merged and is deployed
 
 ## Goal
 
