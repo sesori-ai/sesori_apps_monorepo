@@ -40,8 +40,31 @@ void main() {
     expect(await repository.listPlugins(), ApiResponse<PluginListResponse>.success(response));
   });
 
-  test("surfaces API errors", () async {
-    final error = ApiError.generic();
+  test("maps an unsupported discovery route to the legacy OpenCode plugin", () async {
+    when(api.listPlugins).thenAnswer(
+      (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),
+    );
+
+    expect(
+      await repository.listPlugins(),
+      ApiResponse<PluginListResponse>.success(
+        const PluginListResponse(
+          plugins: [
+            PluginMetadata(
+              id: legacyMissingPluginId,
+              displayName: "OpenCode",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+          ],
+        ),
+      ),
+    );
+  });
+
+  test("surfaces errors other than an unsupported discovery route", () async {
+    final error = ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null);
     when(api.listPlugins).thenAnswer((_) async => ApiResponse.error(error));
 
     expect(await repository.listPlugins(), ApiResponse<PluginListResponse>.error(error));
