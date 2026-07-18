@@ -503,7 +503,15 @@ class BridgeRuntimeRunner {
       // provider menu, no email/password prompt — the access token comes from
       // the GUI over the control channel. Standalone runs the unchanged
       // interactive flow. logAuthenticatedUser is identical on both paths.
+      // In supervised mode the GUI is the token authority: the control-channel
+      // token service is the access-token provider + refresher, pulling tokens
+      // from the GUI over the loopback channel. Standalone keeps the
+      // TokenManager, which refreshes against the auth server with the locally
+      // stored refresh token (no GUI exists to ask). Build it before interactive
+      // app onboarding so an unbounded wait can refresh its access token.
       final String authAccessToken;
+      final AccessTokenProvider accessTokenProvider;
+      final TokenRefresher tokenRefresher;
       final supervisedTokenService = controlChannelTokenService;
       if (supervisedTokenService != null) {
         try {
@@ -518,9 +526,20 @@ class BridgeRuntimeRunner {
           requestedSupervisedExit = SupervisedExitCode.authRequired;
           return SupervisedExitCode.authRequired.code;
         }
+        accessTokenProvider = supervisedTokenService;
+        tokenRefresher = supervisedTokenService;
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
         authAccessToken = authTokens.accessToken;
+        final tokenManager = TokenManager(
+          initialToken: authAccessToken,
+          authBackendUrl: options.authBackendUrl,
+          loadTokens: loadTokens,
+          saveTokens: saveTokens,
+        );
+        shutdownCoordinator.add(disposable: tokenManager.dispose);
+        accessTokenProvider = tokenManager;
+        tokenRefresher = tokenManager;
       }
       await runtimeAuthService.logAuthenticatedUser(
         authBackendUrl: options.authBackendUrl,
@@ -616,6 +635,7 @@ class BridgeRuntimeRunner {
             storage: AppOnboardingStateStorage(directoryPath: appOnboardingStateDirectoryPath()),
           ),
           formatter: AppOnboardingFormatter(out: io.stdout, environment: environment),
+          tokenRefresher: tokenRefresher,
         ).run(accessToken: authAccessToken, authBackendUrl: options.authBackendUrl);
       }
       // If this bridge was spawned by a restart, wait for the predecessor to
@@ -668,29 +688,6 @@ class BridgeRuntimeRunner {
       for (final pluginId in options.enabledPluginIds) {
         final plugin = startedPlugins[pluginId];
         if (plugin != null) Console.message("Target [$pluginId]: ${plugin.describe().endpoint ?? pluginId}");
-      }
-
-      // In supervised mode the GUI is the token authority: the control-channel
-      // token service is the access-token provider + refresher, pulling tokens
-      // from the GUI over the loopback channel. Standalone keeps the
-      // TokenManager, which refreshes against the auth server with the locally
-      // stored refresh token (no GUI exists to ask). The control service's
-      // dispose is already registered with the shutdown coordinator above.
-      final AccessTokenProvider accessTokenProvider;
-      final TokenRefresher tokenRefresher;
-      if (supervisedTokenService != null) {
-        accessTokenProvider = supervisedTokenService;
-        tokenRefresher = supervisedTokenService;
-      } else {
-        final tokenManager = TokenManager(
-          initialToken: authAccessToken,
-          authBackendUrl: options.authBackendUrl,
-          loadTokens: loadTokens,
-          saveTokens: saveTokens,
-        );
-        shutdownCoordinator.add(disposable: tokenManager.dispose);
-        accessTokenProvider = tokenManager;
-        tokenRefresher = tokenManager;
       }
 
       // Supervised mode already built this early (so the dispatcher could route
