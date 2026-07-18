@@ -10,7 +10,7 @@ Sesori connects the AI coding assistant on your laptop or desktop to a mobile ap
 | **Sesori Bridge CLI** | Sits between the relay and the assistant, handles auth, and forwards encrypted requests. | Your laptop or desktop |
 | **Sesori relay server** | Routes encrypted traffic between app and Bridge. | Cloud |
 
-The AI coding assistant itself is a separate project. Today Sesori connects to [OpenCode](https://opencode.ai); support for more assistants is on the roadmap and lives in the plugin system.
+The AI coding assistant itself is a separate project. Today Sesori connects to [OpenCode](https://opencode.ai), and **OpenAI Codex CLI** and **Cursor** are available in beta; support for more assistants lives in the plugin system.
 
 ## Runtime topology
 

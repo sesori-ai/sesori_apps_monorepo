@@ -139,8 +139,8 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 |---|---|---|
 | [OpenCode](https://opencode.ai) | Available | Deep native integration. |
 | Claude Code | Coming soon | Plugin architecture already supports multi-assistant backends. |
-| OpenAI Codex CLI | Coming soon | In progress via the ACP plugin backend. |
-| Cursor | Coming soon | Via the ACP-based Cursor plugin. |
+| OpenAI Codex CLI | Beta | Enabled by default in an upcoming release. |
+| Cursor | Beta | ACP-based Cursor plugin; enabled by default in an upcoming release. |
 | Windsurf | Coming soon | Planned. |
 
 ---
