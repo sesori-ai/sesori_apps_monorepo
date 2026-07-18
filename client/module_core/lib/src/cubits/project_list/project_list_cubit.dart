@@ -510,12 +510,18 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     return true;
   }
 
-  /// Creates a new project at [path].
+  /// Creates a new project named [name] below [parentPath].
   ///
   /// On success the project list is refreshed. A permission denial from the
   /// bridge is reported distinctly so the UI can show an actionable message.
-  Future<AddProjectOutcome> createProject({required String path}) async {
-    final response = await _projectRepository.createProject(path: path);
+  Future<AddProjectOutcome> createProject({
+    required String parentPath,
+    required String name,
+  }) async {
+    final response = await _projectRepository.createProject(
+      parentPath: parentPath,
+      name: name,
+    );
     if (isClosed) return AddProjectOutcome.otherError;
     switch (response) {
       case SuccessResponse():
@@ -524,6 +530,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       case ErrorResponse(:final error):
         return _addProjectFailureOutcome(error);
     }
+  }
+
+  String? parentHostPath({required String path}) {
+    return _projectRepository.parentHostPath(path: path);
   }
 
   /// Renames the project with [projectId] to [name].
@@ -544,15 +554,30 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   ///
   /// On success the project list is refreshed. A permission denial from the
   /// bridge is reported distinctly so the UI can show an actionable message.
-  Future<AddProjectOutcome> discoverProject({required String path}) async {
-    final response = await _projectRepository.discoverProject(path: path);
-    if (isClosed) return AddProjectOutcome.otherError;
+  Future<OpenProjectOutcome> discoverProject({
+    required String path,
+    required OpenProjectGitAction gitAction,
+  }) async {
+    final response = await _projectRepository.discoverProject(
+      path: path,
+      gitAction: gitAction,
+    );
+    if (isClosed) return OpenProjectOutcome.otherError;
     switch (response) {
-      case SuccessResponse():
+      case SuccessResponse(:final data):
         await refreshProjects();
-        return AddProjectOutcome.success;
+        if (gitAction == OpenProjectGitAction.initializeGit && !data.supportsDedicatedWorktrees) {
+          return OpenProjectOutcome.gitSetupIncomplete;
+        }
+        return OpenProjectOutcome.success;
       case ErrorResponse(:final error):
-        return _addProjectFailureOutcome(error);
+        if (error is NonSuccessCodeError && error.errorCode == 428) {
+          return OpenProjectOutcome.gitChoiceRequired;
+        }
+        if (_isPermissionDenied(error)) {
+          return OpenProjectOutcome.permissionDenied;
+        }
+        return OpenProjectOutcome.otherError;
     }
   }
 

@@ -165,8 +165,9 @@ by a same-layer aggregate repository.
   import rows, and applies a complete snapshot through DAOs. It does not depend
   on `ProjectRepository` or `SessionRepository`.
 - `ProviderRepository`, `AgentRepository`, `QuestionRepository`,
-  `PermissionRepository`, `HealthRepository`, and `WorktreeRepository` receive
-  the enabled plugin API map where needed. Session-scoped operations first
+  `PermissionRepository`, and `WorktreeRepository` receive the enabled plugin
+  API map where needed. `HealthRepository` remains bridge-only and never calls
+  plugins. Session-scoped operations first
   resolve the row through `SessionDao`; project-scoped composer operations take
   an explicit/default plugin id and the persisted project path.
 
@@ -1214,9 +1215,10 @@ and schema/migration artifacts remain unchanged.
 - Keep `DebugServer` on the orchestrator's shared router and already-mapped
   local wire stream; Stage 7 introduces no debug-specific plugin listener,
   mapper, repository aggregation, or routing authority.
-- Add plugin-scoped providers/agents/commands, aggregated translated statuses/
-  activity, and per-plugin health. Route `GetSessionStatusesHandler` only
-  through `SessionRepository.getSessionStatuses`.
+- Add plugin-scoped providers/agents/commands and aggregated translated
+  statuses/activity. Keep `/global/health` bridge-only and route
+  `GetSessionStatusesHandler` only through
+  `SessionRepository.getSessionStatuses`.
 - Add `GetPluginsHandler` over `PluginLifecycleService` for enabled order,
   default marker, display metadata, and lifecycle state.
 - Start one raw event listener per operational plugin, one unfiltered global
@@ -1241,17 +1243,15 @@ PR-level implementation plan:
    `PluginMetadata({required String id, required String displayName, required
    bool isDefault, required PluginLifecycleState state, required String?
    actionHint})`, and
-   `PluginListResponse({plugins})`. Add `PluginHealth({pluginId, healthy})` and
-   an additive `@Default(<PluginHealth>[]) plugins` field in
-   `health_response.dart`; add additive
+   `PluginListResponse({plugins})`. Keep `HealthResponse` bridge-only; plugin
+   lifecycle is exposed by `PluginListResponse`, and a future instantaneous
+   plugin probe belongs on a separate plugin-scoped request. Add additive
    `@Default(<String>[]) unavailablePluginIds` to `SessionStatusResponse` in
    `session_status.dart`. Export the new source from
    `lib/sesori_shared.dart` and generate the corresponding `.freezed.dart` and
-   `.g.dart` parts. Put these exact source comments immediately above the two
-   defaults:
+   `.g.dart` parts. Put this exact source comment immediately above the default:
 
    ```dart
-   // COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before per-plugin health omit plugins. Remove @Default and require plugins once pre-v1.5.1 bridges are unsupported.
    // COMPATIBILITY 2026-07-17 (v1.5.1): Bridges before aggregate plugin statuses omit unavailablePluginIds. Remove @Default and require unavailablePluginIds once pre-v1.5.1 bridges are unsupported.
    ```
 
@@ -1456,12 +1456,12 @@ PR-level implementation plan:
     list.
 12. Convert the direct single-plugin fields in `SessionRepository`,
     `ProjectRepository`, `SessionUnseenRepository`, `AgentRepository`,
-    `ProviderRepository`, `QuestionRepository`, `PermissionRepository`,
-    `WorktreeRepository`, and `HealthRepository` to the shared live operational
-    map only where those repositories perform plugin I/O. Pass enabled order,
-    configured default, or legacy OpenCode id only to repositories that consume
-    that value; do not thread lifecycle or the map through handlers/services
-    with no plugin selection. Keep
+    `ProviderRepository`, `QuestionRepository`, `PermissionRepository`, and
+    `WorktreeRepository` to the shared live operational map only where those
+    repositories perform plugin I/O. Keep `HealthRepository` bridge-only. Pass
+    enabled order, configured default, or legacy OpenCode id only to
+    repositories that consume that value; do not thread lifecycle or the map
+    through handlers/services with no plugin selection. Keep
     `RequestRouter({required List<RequestHandlerBase> handlers})` unchanged: it
     receives ordered handlers only and never a plugin map.
     Keep `ProjectRepository.getProjects/getProject` and
@@ -1514,9 +1514,9 @@ PR-level implementation plan:
     Provider/model/agent/command ids are never merged across plugins.
 15. Implement aggregate semantics and finite per-source deadlines in the owning
     repositories, not handlers. Add required `Duration aggregateSourceDeadline`
-    constructor parameters to `SessionRepository`, `ProjectRepository`,
-    `HealthRepository`, and `QuestionRepository`; `Orchestrator` passes the same
-    `Duration(seconds: 5)` to all four, and each repository applies it around
+    constructor parameters to `SessionRepository`, `ProjectRepository`, and
+    `QuestionRepository`; `Orchestrator` passes the same
+    `Duration(seconds: 5)` to all three, and each repository applies it around
     each aggregate-source plugin call before awaiting the calls concurrently.
     `SessionRepository.getSessionStatuses` concurrently queries every
     operational API, translates with same-plugin DAO bindings, merges successful
@@ -1532,11 +1532,9 @@ PR-level implementation plan:
     deadline per source. It remains all-or-nothing: any throw or timeout fails
     the whole request because no partial-question contract exists; an empty
     operational map returns 503 rather than a misleading empty result.
-    `HealthRepository` concurrently probes operational APIs and emits `healthy:
-    false` for enabled unavailable/throwing/timed-out plugins in enabled order.
-    Top-level `HealthResponse.healthy` remains bridge-level, so
-    `HealthCheckHandler` no longer maps one backend outage to a bridge-global
-    503.
+    `HealthRepository` returns only bridge version, bridge health, and host
+    filesystem-access state. It never probes plugins, so a backend outage cannot
+    delay or fail the bridge-global health request.
     Define `ProjectActivityService.reconcile({required String? pluginId})`
     exactly: `pluginId: null` is the startup aggregate and snapshots every
     currently operational id from `ProjectRepository.operationalPluginIds`; a
@@ -2247,10 +2245,10 @@ affected locked decision and updates the owning section in the same PR.
   `ensureRootSessionActivity` for Stage 7 removal, reordered shutdown around
   immediate API disposal, classified only controller-caused start abort as
   expected, retained empty-map composition after all starts fail, and prohibited
-  raw descriptor/status guidance on shared DTOs. `/plugin`, per-plugin health,
-  and unavailable status sources require additive shared DTO fields;
-  plugin-interface edits are documentation-only, and plugin implementations,
-  client layers, schema, and migrations remain unchanged.
+  raw descriptor/status guidance on shared DTOs. `/plugin` and unavailable
+  status sources require additive shared DTO fields; `/global/health` remains
+  plugin-neutral. Plugin-interface edits are documentation-only, and plugin
+  implementations, client layers, schema, and migrations remain unchanged.
 - **Stage 6:** Project, project-detail, root-session, session-detail, child,
   and project-path reads now map only durable catalog rows and never require an
   operational plugin. Project lists batch unseen state once and leave directory

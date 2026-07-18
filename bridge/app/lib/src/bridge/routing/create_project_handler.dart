@@ -1,3 +1,4 @@
+import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
@@ -34,10 +35,10 @@ class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Projec
     if (path.isEmpty) {
       throw buildErrorResponse(request, 400, "path must not be empty");
     }
-    if (!path.startsWith("/")) {
+    if (!p.isAbsolute(path)) {
       throw buildErrorResponse(request, 400, "path must be absolute");
     }
-    if (path.contains("..")) {
+    if (p.split(path).contains("..")) {
       throw buildErrorResponse(request, 400, "path traversal not allowed");
     }
 
@@ -49,8 +50,8 @@ class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Projec
       throw buildErrorResponse(request, 400, "parent directory does not exist");
     } on ProjectDirectoryExistsException {
       throw buildErrorResponse(request, 409, "directory already exists");
-    } on ProjectGitInitException {
-      throw buildErrorResponse(request, 500, "git init failed");
+    } on ProjectGitSetupException {
+      throw buildErrorResponse(request, 500, "Git setup failed");
     }
 
     return _projectActivityService.openProject(path: path);

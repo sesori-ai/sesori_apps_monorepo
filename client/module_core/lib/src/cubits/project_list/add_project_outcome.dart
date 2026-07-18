@@ -6,6 +6,14 @@ import "package:sesori_shared/sesori_shared.dart";
 /// Full Disk Access message) from other failures.
 enum AddProjectOutcome { success, permissionDenied, otherError }
 
+enum OpenProjectOutcome {
+  success,
+  gitChoiceRequired,
+  gitSetupIncomplete,
+  permissionDenied,
+  otherError,
+}
+
 /// Outcome of fetching filesystem suggestions for the directory browser.
 sealed class FilesystemSuggestionsOutcome {
   const FilesystemSuggestionsOutcome();

@@ -21,6 +21,7 @@ void main() {
       data: [
         FilesystemSuggestion(path: "/project-1", name: "project-1", isGitRepo: true),
       ],
+      path: "/projects",
     );
     when(
       () => client.post<FilesystemSuggestions>(

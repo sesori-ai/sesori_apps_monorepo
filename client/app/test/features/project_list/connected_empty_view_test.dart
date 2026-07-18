@@ -154,7 +154,7 @@ void main() {
 
   testWidgets("tapping the CTA opens the Add Project sheet", (tester) async {
     when(() => mockProjectRepository.getFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
-      (_) async => ApiResponse.success(const FilesystemSuggestions(data: [])),
+      (_) async => ApiResponse.success(const FilesystemSuggestions(data: [], path: null)),
     );
     await pumpConnectedEmpty(tester);
 

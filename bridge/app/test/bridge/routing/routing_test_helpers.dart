@@ -142,6 +142,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 
   bool throwOnHealthCheck = false;
   bool healthCheckResult = true;
+  int healthCheckCallCount = 0;
   bool throwOnGetProjects = false;
   Object? throwOnGetProjectsError;
   Object? throwOnGetProjectError;
@@ -167,6 +168,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   Future<bool> healthCheck() async {
+    healthCheckCallCount++;
     if (throwOnHealthCheck) throw Exception("healthCheck error");
     return healthCheckResult;
   }

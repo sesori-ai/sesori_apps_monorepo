@@ -32,7 +32,10 @@ AgentInfo _testAgent({required String name, required String description, require
   );
 }
 
-Widget _buildApp({ThemeMode themeMode = ThemeMode.light}) {
+Widget _buildApp({
+  ThemeMode themeMode = ThemeMode.light,
+  bool? initialSupportsDedicatedWorktrees = true,
+}) {
   final router = GoRouter(
     initialLocation: "/new",
     routes: [
@@ -42,7 +45,11 @@ Widget _buildApp({ThemeMode themeMode = ThemeMode.light}) {
         routes: [
           GoRoute(
             path: "new",
-            builder: (context, state) => const NewSessionScreen(projectId: "project-1", projectName: "Project One"),
+            builder: (context, state) => NewSessionScreen(
+              projectId: "project-1",
+              projectName: "Project One",
+              initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
+            ),
           ),
         ],
       ),
@@ -81,6 +88,7 @@ void main() {
   late MockPluginRepository pluginRepository;
   late MockConnectionService connectionService;
   late BehaviorSubject<ConnectionStatus> connectionStatus;
+  late MockProjectRepository projectRepository;
   late MockVoiceTranscriptionService voiceTranscriptionService;
 
   // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
@@ -97,6 +105,7 @@ void main() {
         health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
       ),
     );
+    projectRepository = MockProjectRepository();
     voiceTranscriptionService = MockVoiceTranscriptionService();
 
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
@@ -149,6 +158,19 @@ void main() {
     ).thenAnswer(
       (_) async => ApiResponse.success(const CommandListResponse(items: [])),
     );
+    when(
+      () => projectRepository.getProject(projectId: any(named: "projectId")),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const Project(
+          id: "project-1",
+          name: "Project One",
+          path: "/project-one",
+          time: null,
+          supportsDedicatedWorktrees: true,
+        ),
+      ),
+    );
 
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
@@ -157,6 +179,7 @@ void main() {
     GetIt.instance.registerSingleton<SessionService>(sessionService);
     GetIt.instance.registerSingleton<PluginRepository>(pluginRepository);
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
+    GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
   });
@@ -166,8 +189,33 @@ void main() {
     await connectionStatus.close();
   });
 
+  testWidgets("known unsupported project never shows the worktree toggle while composer data loads", (tester) async {
+    final projectResponse = Completer<ApiResponse<Project>>();
+    when(
+      () => projectRepository.getProject(projectId: any(named: "projectId")),
+    ).thenAnswer((_) => projectResponse.future);
+
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: false));
+    await tester.pump();
+
+    expect(find.byType(SwitchListTile), findsNothing);
+
+    projectResponse.complete(
+      ApiResponse.success(
+        const Project(
+          id: "project-1",
+          name: "Project One",
+          path: "/project-one",
+          time: null,
+          supportsDedicatedWorktrees: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("shows variant picker when selected agent has a variant", (tester) async {
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
@@ -331,6 +379,28 @@ void main() {
 
     expect(tester.getTopLeft(find.byType(PromptInput)).dy, closeTo(composerTop, 0.01));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("hides the dedicated worktree toggle when the project does not support it", (tester) async {
+    when(
+      () => projectRepository.getProject(projectId: any(named: "projectId")),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const Project(
+          id: "project-1",
+          name: "Plain folder",
+          path: "/plain-folder",
+          time: null,
+          supportsDedicatedWorktrees: false,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpAndSettle();
+
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.text(loc.newSessionDedicatedWorktree), findsNothing);
   });
 
   testWidgets("keeps chooser usable while clearing and reloading composer data", (tester) async {
@@ -609,7 +679,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
@@ -659,7 +729,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
@@ -679,7 +749,7 @@ void main() {
   });
 
   testWidgets("preserves selectedAgentModel variant when changing agent", (tester) async {
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
@@ -718,7 +788,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -749,7 +819,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "test message");
@@ -796,7 +866,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -839,7 +909,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -887,7 +957,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "test message");
@@ -924,7 +994,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -959,7 +1029,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "test message");
@@ -987,7 +1057,7 @@ void main() {
     final draftStore = DraftStore();
     GetIt.instance.registerSingleton<DraftStore>(draftStore);
 
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "half-written idea");
@@ -1000,7 +1070,7 @@ void main() {
     expect(draftStore.read("new-session:project-1"), "half-written idea");
 
     // Re-open the new-session screen — the per-project draft is restored.
-    await tester.pumpWidget(_buildApp());
+    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
     await tester.pumpAndSettle();
     expect(find.text("half-written idea"), findsOneWidget);
   });

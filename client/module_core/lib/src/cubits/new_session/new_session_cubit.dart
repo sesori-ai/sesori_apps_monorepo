@@ -11,6 +11,7 @@ import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../repositories/plugin_repository.dart";
+import "../../repositories/project_repository.dart";
 import "../../services/new_session_selection_tracker.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
@@ -19,11 +20,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   final ConnectionService _connectionService;
   final SessionService _sessionService;
   final PluginRepository _pluginRepository;
+  final ProjectRepository _projectRepository;
   final NewSessionSelectionTracker _selectionTracker;
   final String _projectId;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late bool _wasConnected;
   int _loadGeneration = 0;
+  int _projectLoadGeneration = 0;
 
   static const _defaultModelSelector = DefaultModelSelector();
 
@@ -31,16 +34,19 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required ConnectionService connectionService,
     required SessionService sessionService,
     required PluginRepository pluginRepository,
+    required ProjectRepository projectRepository,
     required NewSessionSelectionTracker selectionTracker,
     required String projectId,
+    required bool? initialSupportsDedicatedWorktrees,
   }) : _connectionService = connectionService,
        _sessionService = sessionService,
        _pluginRepository = pluginRepository,
+       _projectRepository = projectRepository,
        _selectionTracker = selectionTracker,
        _projectId = projectId,
        super(
-         const NewSessionState.idle(
-           availablePlugins: [],
+         NewSessionState.idle(
+           availablePlugins: const [],
            selectedPlugin: null,
            isComposerDataLoading: true,
            isPluginDiscoveryInFlight: false,
@@ -51,11 +57,15 @@ class NewSessionCubit extends Cubit<NewSessionState> {
            selectedAgentModel: null,
            stagedCommand: null,
            availableVariants: [],
+           // Notification/deep-link entry lacks project-list context; retain
+           // the prior visible behavior until the project fetch completes.
+           supportsDedicatedWorktrees: initialSupportsDedicatedWorktrees ?? true,
          ),
        ) {
     _wasConnected = _connectionService.currentStatus is ConnectionConnected;
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
     unawaited(_discoverPlugins());
+    unawaited(_loadProjectCapability());
   }
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
@@ -65,6 +75,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     _wasConnected = isConnected;
     if (!reconnected || state is NewSessionSending || state is NewSessionCreated) return;
     unawaited(_discoverPlugins());
+    unawaited(_loadProjectCapability());
   }
 
   Future<void> _discoverPlugins() async {
@@ -77,6 +88,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       selectedAgentModel: null,
       isComposerDataLoading: true,
       isPluginDiscoveryInFlight: true,
+      supportsDedicatedWorktrees: null,
     );
     try {
       final response = await _pluginRepository.listPlugins();
@@ -107,10 +119,16 @@ class NewSessionCubit extends Cubit<NewSessionState> {
               selectedAgentModel: null,
               stagedCommand: stagedCommand,
               availableVariants: const [],
+              supportsDedicatedWorktrees: currentData?.supportsDedicatedWorktrees ?? false,
             ),
           );
           if (selectedPlugin != null && canLoad) {
-            await _loadComposerData(pluginId: selectedPlugin.id, generation: generation);
+            await _loadComposerData(
+              pluginId: selectedPlugin.id,
+              generation: generation,
+              providerFailureFallback: isSamePlugin ? currentData?.providers ?? const [] : const [],
+              modelFailureFallback: isSamePlugin ? currentData?.agentModel : null,
+            );
           }
         case ErrorResponse(:final error):
           _emitDiscoveryError(reason: error.remoteFailureReason);
@@ -139,8 +157,39 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         selectedAgentModel: data?.agentModel,
         stagedCommand: data?.stagedCommand,
         availableVariants: data?.availableVariants ?? const [],
+        supportsDedicatedWorktrees: data?.supportsDedicatedWorktrees ?? false,
       ),
     );
+  }
+
+  Future<void> _loadProjectCapability() async {
+    final generation = ++_projectLoadGeneration;
+    try {
+      final response = await _projectRepository.getProject(projectId: _projectId);
+      if (isClosed || generation != _projectLoadGeneration || state is NewSessionCreated) return;
+      final bool supportsDedicatedWorktrees;
+      switch (response) {
+        case SuccessResponse(:final data):
+          supportsDedicatedWorktrees = data.supportsDedicatedWorktrees;
+        case ErrorResponse(:final error):
+          loge("New session: failed to load project $_projectId", error);
+          return;
+      }
+      if (state.agentModelData?.supportsDedicatedWorktrees == supportsDedicatedWorktrees) return;
+      _emitAgentModelUpdate(
+        availableAgents: null,
+        availableProviders: null,
+        availableCommands: null,
+        selectedAgent: null,
+        selectedAgentModel: null,
+        isComposerDataLoading: null,
+        isPluginDiscoveryInFlight: null,
+        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
+      );
+    } on Object catch (error, stackTrace) {
+      if (isClosed || generation != _projectLoadGeneration) return;
+      loge("New session: failed to load project $_projectId", error, stackTrace);
+    }
   }
 
   void selectPlugin({required String pluginId}) {
@@ -171,19 +220,31 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         selectedAgentModel: null,
         stagedCommand: null,
         availableVariants: const [],
+        supportsDedicatedWorktrees: data.supportsDedicatedWorktrees,
       ),
     );
-    _loadComposerData(pluginId: pluginId, generation: generation);
+    _loadComposerData(
+      pluginId: pluginId,
+      generation: generation,
+      providerFailureFallback: const [],
+      modelFailureFallback: null,
+    );
   }
 
-  Future<void> _loadComposerData({required String pluginId, required int generation}) async {
-    final (agents, providers, commands) = await (
+  Future<void> _loadComposerData({
+    required String pluginId,
+    required int generation,
+    required List<ProviderInfo> providerFailureFallback,
+    required AgentModel? modelFailureFallback,
+  }) async {
+    final (agents, loadedProviders, commands) = await (
       _loadAgents(pluginId: pluginId),
       _loadProviders(pluginId: pluginId),
       _loadCommands(pluginId: pluginId),
     ).wait;
 
     if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
+    final providers = loadedProviders ?? providerFailureFallback;
 
     final defaultAgent = agents.firstOrNull?.name;
     final agentModel = agents.firstOrNull?.model;
@@ -202,13 +263,14 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       defaultAgentModel = pickedModel;
     }
 
-    final (:selectedAgent, :selectedAgentModel) = _resolveInitialSelection(
+    final (:selectedAgent, selectedAgentModel: resolvedAgentModel) = _resolveInitialSelection(
       pluginId: pluginId,
       defaultAgent: defaultAgent,
       defaultAgentModel: defaultAgentModel,
       agents: agents,
       providers: providers,
     );
+    final selectedAgentModel = loadedProviders == null ? modelFailureFallback : resolvedAgentModel;
 
     _emitAgentModelUpdate(
       availableAgents: agents,
@@ -218,6 +280,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       selectedAgentModel: selectedAgentModel,
       isComposerDataLoading: false,
       isPluginDiscoveryInFlight: false,
+      supportsDedicatedWorktrees: null,
     );
   }
 
@@ -236,17 +299,17 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
   }
 
-  Future<List<ProviderInfo>> _loadProviders({required String pluginId}) async {
+  Future<List<ProviderInfo>?> _loadProviders({required String pluginId}) async {
     try {
       final response = await _sessionService.listProviders(projectId: _projectId, pluginId: pluginId);
       _logComposerDataError(resource: "providers", pluginId: pluginId, response: response);
       return switch (response) {
         SuccessResponse(:final data) => data.items,
-        ErrorResponse() => <ProviderInfo>[],
+        ErrorResponse() => null,
       };
     } on Object catch (error, stackTrace) {
       loge("New session: failed to load providers for project $_projectId and plugin $pluginId", error, stackTrace);
-      return <ProviderInfo>[];
+      return null;
     }
   }
 
@@ -288,6 +351,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required AgentModel? selectedAgentModel,
     required bool? isComposerDataLoading,
     required bool? isPluginDiscoveryInFlight,
+    required bool? supportsDedicatedWorktrees,
   }) {
     if (isClosed) return;
     final current = state;
@@ -314,6 +378,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableVariants: derivedVariants,
             isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
             isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
+            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
           ),
         );
       case NewSessionSending():
@@ -328,6 +393,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableVariants: derivedVariants,
             isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
             isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
+            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
           ),
         );
       case NewSessionError():
@@ -342,6 +408,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             availableVariants: derivedVariants,
             isComposerDataLoading: isComposerDataLoading ?? current.isComposerDataLoading,
             isPluginDiscoveryInFlight: isPluginDiscoveryInFlight ?? current.isPluginDiscoveryInFlight,
+            supportsDedicatedWorktrees: supportsDedicatedWorktrees ?? current.supportsDedicatedWorktrees,
           ),
         );
       case NewSessionCreated():
@@ -433,6 +500,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableProviders: null,
       isComposerDataLoading: null,
       isPluginDiscoveryInFlight: null,
+      supportsDedicatedWorktrees: null, // no change
     );
     _persistSelection();
   }
@@ -440,6 +508,8 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   void selectVariant(SessionVariant? variant) {
     if (!_canEditComposer) return;
     final current = state;
+    final availableVariants = current.agentModelData?.availableVariants ?? const [];
+    if (variant != null && !availableVariants.any((available) => available.id == variant.id)) return;
     switch (current) {
       case NewSessionIdle():
         final agentModel = current.selectedAgentModel;
@@ -458,11 +528,13 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   void stageCommand(CommandInfo command) {
     if (!_canEditComposer) return;
     final current = state;
+    final currentCommand = current.agentModelData?.commands.firstWhereOrNull((available) => available == command);
+    if (currentCommand == null) return;
     switch (current) {
       case NewSessionIdle():
-        emit(current.copyWith(stagedCommand: command));
+        emit(current.copyWith(stagedCommand: currentCommand));
       case NewSessionError():
-        emit(current.copyWith(stagedCommand: command));
+        emit(current.copyWith(stagedCommand: currentCommand));
       case NewSessionSending() || NewSessionCreated():
         break;
     }
@@ -515,6 +587,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableProviders: null,
       isComposerDataLoading: null,
       isPluginDiscoveryInFlight: null,
+      supportsDedicatedWorktrees: null, // no change
     );
     _persistSelection();
   }
@@ -564,6 +637,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         selectedAgentModel: config.agentModel,
         stagedCommand: config.stagedCommand,
         availableVariants: config.availableVariants,
+        supportsDedicatedWorktrees: config.supportsDedicatedWorktrees,
       ),
     );
 
@@ -577,7 +651,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       modelID: config.agentModel?.modelID,
       variant: variantId == null ? null : SessionVariant(id: variantId),
       command: normalizedCommand,
-      dedicatedWorktree: dedicatedWorktree,
+      dedicatedWorktree: dedicatedWorktree && config.supportsDedicatedWorktrees,
     );
 
     if (response case SuccessResponse()) {
@@ -609,6 +683,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
             selectedAgentModel: latest.agentModel,
             stagedCommand: latest.stagedCommand,
             availableVariants: latest.availableVariants,
+            supportsDedicatedWorktrees: latest.supportsDedicatedWorktrees,
           ),
         );
     }
@@ -617,6 +692,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   @override
   Future<void> close() async {
     ++_loadGeneration;
+    ++_projectLoadGeneration;
     await _connectionStatusSubscription.cancel();
     await super.close();
   }

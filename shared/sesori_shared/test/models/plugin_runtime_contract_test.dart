@@ -37,23 +37,15 @@ void main() {
     expect(metadata.state, PluginLifecycleState.unavailable);
   });
 
-  test("health round-trips per-plugin state and decodes the legacy default", () {
+  test("bridge health remains plugin-neutral", () {
     const response = HealthResponse(
       healthy: true,
       version: "1.5.1",
       filesystemAccessDegraded: false,
-      plugins: [PluginHealth(pluginId: "opencode", healthy: true)],
     );
 
     expect(HealthResponse.fromJson(response.toJson()), response);
-    expect(
-      HealthResponse.fromJson({
-        "healthy": true,
-        "version": "1.5.0",
-        "filesystemAccessDegraded": false,
-      }).plugins,
-      isEmpty,
-    );
+    expect(response.toJson(), isNot(contains("plugins")));
   });
 
   test("statuses round-trip unavailable sources and decode the legacy default", () {

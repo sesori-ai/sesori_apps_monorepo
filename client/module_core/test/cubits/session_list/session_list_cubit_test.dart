@@ -90,6 +90,7 @@ void main() {
       sessionUnseenTracker: fakeSessionUnseenTracker,
       routeSource: mockRouteSource,
       projectId: projectId,
+      initialSupportsDedicatedWorktrees: null,
       failureReporter: mockFailureReporter,
     );
 
@@ -1740,6 +1741,7 @@ void main() {
           sessionUnseenTracker: fakeSessionUnseenTracker,
           routeSource: mockRouteSource,
           projectId: "global",
+          initialSupportsDedicatedWorktrees: null,
           failureReporter: mockFailureReporter,
         );
       },
