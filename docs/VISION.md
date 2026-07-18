@@ -24,9 +24,11 @@ from any device, across multiple assistant backends, with a powerful local
 service. The bridge now runs ordered enabled plugins concurrently, and the
 client can choose a plugin plus its scoped agent/model resources when creating a
 session. The destination is many surfaces (phone, desktop, later web), many
-bridges (your laptop, your desktop, managed VMs), more plugins (including our own
-harness), opt-in autonomy over CI/review, and eventually a master agent that
-coordinates work across sessions.
+bridges (your laptop, your desktop, managed VMs), and many setup-aware plugins
+(including our own harness) that wake only when needed instead of permanently
+consuming resources. The phone will manage plugin lifecycle and, later, install
+backend runtimes and complete plugin-owned login flows. Opt-in autonomy over
+CI/review and eventually a master agent coordinate work across sessions.
 
 ## Where this is going (the pillars)
 
@@ -52,8 +54,12 @@ The bridge is, and will remain, the heavy part. It runs as a **headless daemon**
 (terminal / VM, unchanged) *and*, on desktop, under a **Flutter supervisor app**
 (tray/menu-bar popup + a main window that is the client UI with desktop-specific
 changes) — the Tailscale model (`Tailscale.app` supervises `tailscaled`; the same
-daemon also runs headless on a server). It runs **multiple plugins in parallel**
-and owns the durable project/session catalog used for normal list reads.
+daemon also runs headless on a server). It owns the durable project/session
+catalog used for normal list reads and a **transient multi-plugin runtime**:
+enabled plugins are eligible, not necessarily resident; they start for concrete
+work, stop after idle, and can be controlled independently without restarting
+the bridge. The bridge remains useful and remotely manageable with zero active
+plugins.
 
 - *Door to keep open:* the bridge must always be runnable headless; the desktop
   GUI supervises the *same* daemon and is never the only way to run it (this is
@@ -63,11 +69,23 @@ and owns the durable project/session catalog used for normal list reads.
 
 Backends are truly pluggable. OpenCode, Codex, and Cursor descriptors can run
 together; **our own harness will be just another plugin** behind
-`BridgePluginApi`, with no privileged backdoor. Current capability differences
-use the plugin interface's declared type shape, and composer data remains scoped
-to the selected or stored plugin. Add an optional discoverable capability only
-when a concrete backend cannot implement an existing operation; capability
-differences are declared, not special-cased into the bridge or client.
+`BridgePluginApi`, with no privileged backdoor. Registered descriptors declare
+generic setup readiness and lifecycle facts while keeping installation,
+authentication, busy/idle interpretation, and backend commands inside the
+plugin package. Current capability differences use the plugin interface's
+declared type shape, and composer data remains scoped to the selected or stored
+plugin. Add an optional discoverable capability only when a concrete backend
+cannot implement an existing operation; capability differences are declared,
+not special-cased into the bridge or client.
+
+The product is expected to support many plugins. Sesori therefore treats
+**registered**, **setup-ready**, **enabled**, **active**, and **operational** as
+different states. Setup-ready plugins may be auto-enabled; enabled plugins may
+remain dormant; active generations may start, stop, fail, and restart
+independently. Phone and headless callers use the same bridge API seam to manage
+that lifecycle. A later workstream will let the phone initiate installation of a
+registered plugin's backend runtime and complete plugin-owned authentication; it
+will not download arbitrary plugin implementation code into the bridge.
 
 - *Door to keep open:* nothing assistant-specific (OpenCode / Codex / own
   harness) leaks past the plugin boundary into `shared/`, the relay protocol, or
@@ -124,6 +142,10 @@ always-on; it is a **paid** tier and **not currently in play**.
 8. **Autonomy at the bridge seam** — auto-handle / future auto-approve are
    opt-in, observable, and intercepted at the bridge, not scattered into clients
    or plugins.
+9. **Eligibility is not residency** — supporting many plugins must not require
+   keeping every backend process, connection, event stream, or catalog reader
+   alive. Setup, enablement, active runtime, and operability remain distinct;
+   catalog browsing and bridge control survive zero active plugins.
 
 ## Explicitly NOT building (now, maybe ever)
 
@@ -140,6 +162,10 @@ Listed so nobody designs for them prematurely:
 - **Teams / multi-user implementation.** Later; only invariant 7 applies today.
 - **Offline / local-first client caching.** Intentionally not pursued; the client
   stays online-first.
+- **Downloading arbitrary plugin implementation code from the phone.** Future
+  phone installation means provisioning the backend runtime for a plugin already
+  registered in the trusted bridge build. A third-party plugin distribution and
+  code-trust model is a separate, uncommitted problem.
 
 ## Horizon
 
@@ -152,4 +178,6 @@ line here as intent, not commitment.
 
 - `ROADMAP.md` — dependency-ordered implementation suggestion.
 - `docs/desktop/PLAN.md` — the active desktop-app workstream (pillar 2).
+- `.plan/active/setup-aware-plugin-lifecycle/PLAN.md` — setup-aware automatic
+  selection, transient activation, hot lifecycle control, and mobile management.
 - `AGENTS.md` — the *how* (layer architecture). This doc is the *where*.
