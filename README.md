@@ -77,7 +77,7 @@ curl -fsSL https://sesori.com/install.sh | bash
 irm https://sesori.com/install.ps1 | iex
 ```
 
-Prefer not to install globally? Use `npx @sesori/bridge` or `bunx @sesori/bridge` instead.
+Prefer npm or bun? You can also bootstrap the Bridge with `npx @sesori/bridge` or `bunx @sesori/bridge`. It installs the same managed runtime under the hood.
 
 ### 3. Start the Bridge
 

@@ -55,7 +55,7 @@ The installer puts a `sesori-bridge` command on your PATH. If PATH has not refre
 - macOS / Linux: `~/.local/share/sesori/bin/sesori-bridge`
 - Windows: `%LOCALAPPDATA%\sesori\bin\sesori-bridge.exe`
 
-**Prefer not to install globally?** You can also run `npx @sesori/bridge` or `bunx @sesori/bridge`. You will need to run that exact command every time.
+**Prefer npm or bun?** You can also bootstrap the Bridge with `npx @sesori/bridge` or `bunx @sesori/bridge`. It installs the same managed runtime as the shell installer.
 
 ## 4. Run the Bridge
 
