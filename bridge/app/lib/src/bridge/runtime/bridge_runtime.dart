@@ -112,17 +112,16 @@ class BridgeRuntime {
       projectsDao: database.projectsDao,
     );
     const unseenCalculator = SessionUnseenCalculator();
-    final gitCliApi = GitCliApi(
-      processRunner: processRunner,
-      gitPathExists: _gitPathExists,
-    );
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: gitCliApi,
       unseenCalculator: unseenCalculator,
+    );
+    final gitCliApi = GitCliApi(
+      processRunner: processRunner,
+      gitPathExists: _gitPathExists,
     );
     final projectRepository = ProjectRepository(
       plugin: plugin,

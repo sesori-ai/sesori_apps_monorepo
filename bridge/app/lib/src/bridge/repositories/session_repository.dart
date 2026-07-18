@@ -33,7 +33,6 @@ import "../../api/database/daos/pull_request_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/tables/pull_requests_table.dart";
 import "../../api/database/tables/session_table.dart" show SessionDto;
-import "../api/git_cli_api.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
@@ -59,7 +58,6 @@ class SessionRepository {
   final SessionDao _sessionDao;
   final ProjectsDao _projectsDao;
   final PullRequestDao _pullRequestDao;
-  final GitCliApi _gitCliApi;
   final SessionUnseenCalculator _unseenCalculator;
   final Set<String> _tombstonedBackendSessionIds = <String>{};
   final Set<String> _deletedSessionIds = <String>{};
@@ -74,13 +72,11 @@ class SessionRepository {
     required SessionDao sessionDao,
     required ProjectsDao projectsDao,
     required PullRequestDao pullRequestDao,
-    required GitCliApi gitCliApi,
     required SessionUnseenCalculator unseenCalculator,
   }) : _plugin = plugin,
        _sessionDao = sessionDao,
        _projectsDao = projectsDao,
        _pullRequestDao = pullRequestDao,
-       _gitCliApi = gitCliApi,
        _unseenCalculator = unseenCalculator;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
@@ -692,24 +688,11 @@ class SessionRepository {
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async {
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
 
-    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
+    final (dbSessions, prsBySessionId) = await (
+      _sessionDao.getSessionsByIds(sessionIds: sessionIds),
+      _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds),
+    ).wait;
 
-    // Ask git only for sessions that still have no branch: the list path and
-    // catalog reads already resolve+store before handing a Session here, and
-    // GetSessionsHandler calls this again for PR/archive merge — re-spawning
-    // git for those would only repeat the same answer. Plugin-mapped sessions
-    // arrive with a null branch, so they still get resolved. Resolved before
-    // PRs are queried: the PR join reads the stored branch_name in SQL, so it
-    // must see the branch this response is about to show.
-    final branchesByDirectory = await _resolveBranches(
-      directories: {
-        for (final session in sessions)
-          if (session.branchName == null && dbSessions[session.id]?.worktreePath == null) session.directory,
-      },
-      rows: dbSessions.values,
-    );
-
-    final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
     final pullRequestsBySessionId = <String, PullRequestInfo>{};
     for (final session in sessions) {
       final selectedPr = _selectBestPr(prsBySessionId[session.id]);
@@ -722,16 +705,6 @@ class SessionRepository {
       sessions: sessions,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
-      branchNamesBySessionId: {
-        for (final session in sessions)
-          session.id:
-              session.branchName ??
-              _branchFor(
-                row: dbSessions[session.id],
-                directory: session.directory,
-                branchesByDirectory: branchesByDirectory,
-              ),
-      },
       unseenCalculator: _unseenCalculator,
       // Only a bridge-derived plugin cedes project attribution to the stored
       // row; a native backend's reported projectID is authoritative.
@@ -739,88 +712,13 @@ class SessionRepository {
     );
   }
 
-  /// The branch each directory in [directories] is checked out on, keyed by
-  /// directory and omitting the ones git has no branch for, written back onto
-  /// whichever of [rows] it applies to.
-  ///
-  /// Only a session the bridge cut in a worktree is given a branch at creation.
-  /// A plain checkout's branch lives in the working copy and changes under the
-  /// bridge whenever the user checks something else out, so it is re-read here
-  /// on every listing rather than trusted from the row. Sessions in a plain
-  /// checkout all share the project's one directory, so resolving per distinct
-  /// directory rather than per session keeps a list of them to a single git
-  /// call.
-  ///
-  /// Resolving and storing are bundled here because a branch only this process
-  /// knows is a branch pull requests cannot be matched against: `PrSyncService`
-  /// decides a PR is worth keeping by looking for its head branch among the
-  /// stored rows, and the PR-to-session join runs in SQL over `branch_name`.
-  /// Both read the column, so resolving without storing names the branch in the
-  /// list and still leaves the PR dark.
-  Future<Map<String, String>> _resolveBranches({
-    required Set<String> directories,
-    required Iterable<SessionDto> rows,
-  }) async {
-    if (directories.isEmpty) return const {};
-
-    final resolved = await Future.wait<(String, String?)>([
-      for (final directory in directories)
-        _gitCliApi.getCurrentBranch(projectPath: directory).then((branch) => (directory, branch)),
-    ]);
-    final branchesByDirectory = {
-      for (final (directory, branch) in resolved) directory: ?branch,
-    };
-
-    final sessionIdsByBranch = <String, List<String>>{};
-    for (final row in rows) {
-      final branch = _branchFor(row: row, directory: row.directory, branchesByDirectory: branchesByDirectory);
-      if (branch == null || branch == row.branchName) continue;
-      sessionIdsByBranch.putIfAbsent(branch, () => <String>[]).add(row.sessionId);
-    }
-    for (final MapEntry(key: branch, value: sessionIds) in sessionIdsByBranch.entries) {
-      await _sessionDao.setBranchName(sessionIds: sessionIds, branchName: branch);
-    }
-
-    return branchesByDirectory;
-  }
-
-  /// The branch to show for the session [row] describes in [directory], and to
-  /// store back on it.
-  ///
-  /// A worktree session's branch was cut by the bridge and written to its row
-  /// at creation, so it is authoritative and git would only echo it back. A
-  /// plain checkout's branch is whatever git reports right now; the stored
-  /// value is only the last answer git gave, which we keep rather than drop
-  /// when it has no answer today — a detached HEAD and a project folder that
-  /// has moved away are indistinguishable here, and the second must not erase
-  /// a branch the checkout is still on.
-  static String? _branchFor({
-    required SessionDto? row,
-    required String directory,
-    required Map<String, String> branchesByDirectory,
-  }) {
-    if (row?.worktreePath != null) return row?.branchName;
-    return branchesByDirectory[directory] ?? row?.branchName;
-  }
-
   Future<List<Session>> _mapCatalogSessions({required List<SessionDto> rows}) async {
     final sessionIds = [for (final row in rows) row.sessionId];
-    // Branches before PRs, not concurrently: the PR join reads the stored
-    // branch_name in SQL, so it must run after _resolveBranches has written
-    // the branch this response is about to show.
-    final branchesByDirectory = await _resolveBranches(
-      directories: {
-        for (final row in rows)
-          if (row.worktreePath == null) row.directory,
-      },
-      rows: rows,
-    );
     final prsBySessionId = await _pullRequestDao.getPrsBySessionIds(sessionIds: sessionIds);
     return [
       for (final row in rows)
         _sessionCatalogMapper.map(
           row: row,
-          branchName: _branchFor(row: row, directory: row.directory, branchesByDirectory: branchesByDirectory),
           pullRequest: switch (_selectBestPr(prsBySessionId[row.sessionId])) {
             final pullRequest? => pullRequestInfoFromDto(pullRequest),
             null => null,

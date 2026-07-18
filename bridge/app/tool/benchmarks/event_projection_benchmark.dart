@@ -6,8 +6,6 @@ import "package:args/args.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -87,10 +85,6 @@ class _EventProjectionBenchmark {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
-        gitCliApi: GitCliApi(
-          processRunner: _AnsweringProcessRunner(),
-          gitPathExists: ({required String gitPath}) => false,
-        ),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
@@ -420,29 +414,4 @@ class _BenchmarkFailureReporter implements FailureReporter {
 
   @override
   void setGlobalKey({required String key, required Object value}) {}
-}
-
-/// Answers every git invocation the way a non-repository would, without paying
-/// for a process. Keeps the measured cost of an event projection to the
-/// projection itself.
-class _AnsweringProcessRunner implements ProcessRunner {
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    return ProcessResult(0, 128, "", "not a git repository");
-  }
-
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnsupportedError("the benchmark never starts processes");
-  }
 }

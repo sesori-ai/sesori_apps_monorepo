@@ -71,7 +71,7 @@ void main() {
       catalogTitle: "Observed title",
     );
 
-    final session = mapper.map(row: row, branchName: row.branchName, pullRequest: null, unseen: true);
+    final session = mapper.map(row: row, pullRequest: null, unseen: true);
 
     expect(session.id, "sesori-id");
     expect(session.pluginId, "codex");

@@ -96,7 +96,6 @@ void main() {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
@@ -503,7 +502,6 @@ void main() {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final relayClient = RelayClient(
@@ -689,7 +687,6 @@ void main() {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
@@ -890,7 +887,6 @@ void main() {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final enrichGate = Completer<void>();
@@ -1157,7 +1153,6 @@ void main() {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
@@ -1322,7 +1317,6 @@ void main() {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
@@ -1512,7 +1506,6 @@ void main() {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(

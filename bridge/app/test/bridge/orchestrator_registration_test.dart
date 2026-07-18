@@ -285,7 +285,6 @@ class _RegistrationHarness {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);

@@ -5,19 +5,13 @@ import "../../../api/database/tables/session_table.dart";
 class SessionCatalogMapper {
   const SessionCatalogMapper();
 
-  /// Maps [row] to a shared session.
-  ///
-  /// [branchName] is passed in rather than read off [row]: a plain checkout's
-  /// stored branch is only the last answer git gave, so whether it still holds
-  /// is the caller's call to make.
   Session map({
     required SessionDto row,
-    required String? branchName,
     required PullRequestInfo? pullRequest,
     required bool unseen,
   }) {
     return Session(
-      branchName: branchName,
+      branchName: row.branchName,
       id: row.sessionId,
       pluginId: row.pluginId,
       projectID: row.projectId,

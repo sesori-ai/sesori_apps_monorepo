@@ -9,7 +9,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -28,7 +27,6 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = SendPromptHandler(
@@ -367,7 +365,6 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
@@ -420,7 +417,6 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
@@ -460,7 +456,6 @@ void main() {
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final promptService = SessionPromptService(sessionRepository: throwingRepository);
@@ -658,7 +653,6 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
     required super.sessionDao,
     required super.projectsDao,
     required super.pullRequestDao,
-    required super.gitCliApi,
     required super.unseenCalculator,
   });
 

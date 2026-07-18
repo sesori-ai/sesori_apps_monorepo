@@ -300,10 +300,10 @@ mixin _$Session {
 
  String get id;// COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove default; require pluginId.
  String get pluginId; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; PullRequestInfo? get pullRequest;// COMPATIBILITY 2026-07-15 (v1.5.0): Bridges before PR-history support omit pullRequestHistory, which means no legacy history beyond pullRequest. Remove @Default and make the field required after the minimum supported bridge always sends pullRequestHistory.
- List<PullRequestInfo> get pullRequestHistory; SessionPromptDefaults? get promptDefaults;// The git branch the session's workspace is checked out on, when the
-// bridge knows one (it records the branch for sessions it creates in a
-// worktree). Null means no branch is known: plain-checkout sessions, and
-// payloads from bridges that predate branch reporting.
+ List<PullRequestInfo> get pullRequestHistory; SessionPromptDefaults? get promptDefaults;// The git branch the session's workspace was on when the bridge recorded
+// it — for a worktree session, the branch cut at creation. Null means the
+// bridge never recorded one, e.g. a session in a plain checkout or a
+// payload from a bridge that predates branch reporting.
  String? get branchName; bool get hasWorktree;// Whether this session has unseen activity (new changes the user has not
 // viewed). Backend-computed; advances on activity and is cleared by viewing
 // the session or an explicit mark-as-read. Defaults to false so older
@@ -443,10 +443,10 @@ class _Session implements Session {
 }
 
 @override final  SessionPromptDefaults? promptDefaults;
-// The git branch the session's workspace is checked out on, when the
-// bridge knows one (it records the branch for sessions it creates in a
-// worktree). Null means no branch is known: plain-checkout sessions, and
-// payloads from bridges that predate branch reporting.
+// The git branch the session's workspace was on when the bridge recorded
+// it — for a worktree session, the branch cut at creation. Null means the
+// bridge never recorded one, e.g. a session in a plain checkout or a
+// payload from a bridge that predates branch reporting.
 @override final  String? branchName;
 @override@JsonKey() final  bool hasWorktree;
 // Whether this session has unseen activity (new changes the user has not

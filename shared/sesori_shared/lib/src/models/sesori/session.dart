@@ -46,11 +46,10 @@ sealed class Session with _$Session {
     // COMPATIBILITY 2026-07-15 (v1.5.0): Bridges before PR-history support omit pullRequestHistory, which means no legacy history beyond pullRequest. Remove @Default and make the field required after the minimum supported bridge always sends pullRequestHistory.
     @Default(<PullRequestInfo>[]) List<PullRequestInfo> pullRequestHistory,
     required SessionPromptDefaults? promptDefaults,
-    // The git branch the session's workspace is checked out on, when the
-    // bridge knows one. Worktree sessions carry the branch recorded at
-    // creation; plain checkouts carry whatever git currently reports (or last
-    // reported). Null means no branch is known — typically a payload from a
-    // bridge that predates branch reporting, or a checkout git cannot name.
+    // The git branch the session's workspace was on when the bridge recorded
+    // it — for a worktree session, the branch cut at creation. Null means the
+    // bridge never recorded one, e.g. a session in a plain checkout or a
+    // payload from a bridge that predates branch reporting.
     required String? branchName,
     @Default(false) bool hasWorktree,
     // Whether this session has unseen activity (new changes the user has not

@@ -66,7 +66,6 @@ void main() {
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final sessionTitleService = SessionMutationDispatcher(sessionRepository: sessionRepository);
@@ -321,7 +320,6 @@ class _TestHarness {
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
       unseenCalculator: const SessionUnseenCalculator(),
     );
     final prSyncService = PrSyncService(

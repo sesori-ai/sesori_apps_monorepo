@@ -390,19 +390,6 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
-  /// Records the branch every session in [sessionIds] is checked out on.
-  ///
-  /// Unlike the setters above, this deliberately leaves `updatedAt` and
-  /// `projectionUpdatedAt` alone. The branch is re-read from git on ordinary
-  /// list reads, so it lands whenever someone switches branches — but switching
-  /// branches is not session activity and not a projection observation, and
-  /// bumping either column would reorder the user's list underneath them.
-  Future<void> setBranchName({required List<String> sessionIds, required String branchName}) async {
-    await (update(sessionTable)..where((t) => t.sessionId.isIn(sessionIds))).write(
-      SessionTableCompanion(branchName: Value(branchName)),
-    );
-  }
-
   /// The stored project path for every session recorded for [pluginId], via a
   /// join from each session's projectId to its project row. This is how the
   /// bridge attributes a derive-style plugin's sessions to projects: the row

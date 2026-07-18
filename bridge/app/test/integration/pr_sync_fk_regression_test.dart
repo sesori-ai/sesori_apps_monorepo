@@ -169,7 +169,6 @@ void main() {
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           pullRequestDao: db.pullRequestDao,
-          gitCliApi: FakeGitCliApi(),
           unseenCalculator: const SessionUnseenCalculator(),
         );
 

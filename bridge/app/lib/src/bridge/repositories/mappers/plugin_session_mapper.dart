@@ -39,21 +39,16 @@ extension PluginSessionsMapper on Iterable<PluginSession> {
   }
 }
 
-/// [branchName] is the branch the session sits on, decided by the caller —
-/// a worktree session's is recorded on its row, while a plain checkout's is
-/// only knowable by asking git (see `SessionRepository`).
 Session enrichSharedSession({
   required Session session,
   required SessionDto? storedSession,
   required PullRequestInfo? pullRequest,
-  required String? branchName,
   required SessionUnseenCalculator unseenCalculator,
   required bool adoptStoredProjectId,
 }) {
-  // The plugin never reports a branch of its own. Applied outside the block
-  // below so a session the catalog has no row for yet still names the branch
-  // its directory is on.
-  var result = session.copyWith(branchName: branchName);
+  // The plugin never reports a branch of its own; the stored row is the only
+  // source, recorded when the bridge cut the session's worktree.
+  var result = session.copyWith(branchName: session.branchName ?? storedSession?.branchName);
 
   if (storedSession != null) {
     final currentTime = session.time;
@@ -108,7 +103,6 @@ List<Session> enrichSharedSessions({
   required List<Session> sessions,
   required Map<String, SessionDto> storedSessionsById,
   required Map<String, PullRequestInfo> pullRequestsBySessionId,
-  required Map<String, String?> branchNamesBySessionId,
   required SessionUnseenCalculator unseenCalculator,
   required bool adoptStoredProjectId,
 }) {
@@ -118,7 +112,6 @@ List<Session> enrichSharedSessions({
           session: session,
           storedSession: storedSessionsById[session.id],
           pullRequest: pullRequestsBySessionId[session.id],
-          branchName: branchNamesBySessionId[session.id],
           unseenCalculator: unseenCalculator,
           adoptStoredProjectId: adoptStoredProjectId,
         ),
