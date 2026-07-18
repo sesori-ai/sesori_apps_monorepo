@@ -2,55 +2,56 @@
 
 ## Plan State
 
-- **Status:** Finalized by user-authorized one-review/fix process — plan PR merged (branch-relative optimistic state)
+- **Status:** Reduced W02 plan PR open; production implementation not started
 - **Implementation base:** `main`
 - **Plan slug:** `bridge-app-onboarding`
-- **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/490
+- **Plan PRs:** original https://github.com/sesori-ai/sesori_apps_monorepo/pull/490; reduced-plan correction https://github.com/sesori-ai/sesori_apps_monorepo/pull/494
 - **Repositories:** `sesori-ai/sesori_apps_monorepo`, `sesori-ai/sesori_auth_server`
 
 ## Current Pointer
 
 - **Stage:** S01 — App Registration Checkpoint
-- **Wave:** W01
-- **Next action:** Use `sesori-plan-worker` with slug `bridge-app-onboarding` to pin the current auth-server `master` baseline for S01/W01 and implement S01-W01-P01.
+- **Wave:** W02
+- **Next action:** Monitor reduced-plan PR #494; await user confirmation before production implementation.
 
 ## Plan Review
 
-- **Verdict:** Final by explicit user waiver — one full review completed and its two findings corrected; no further plan re-review
+- **Verdict:** Approved after the provider-boundary and marker-read corrections
 - **Reviewer:** `aristotle-plan-review`
-- **Date:** 2026-07-17
-- **Reviewed commit:** review covered the uncommitted draft after `2d2e07adcf2e4d03ee46404ec268e0d1d3e5ebfd`; its formatter-contract and logout-graph findings are corrected in the final working tree without re-review by explicit user direction; external auth baseline `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
+- **Date:** 2026-07-18
+- **Reviewed commit:** `7e26a27bab24276ad6d7da4e9407fff8f1edf91b`
 
 ## Wave Baselines
 
 | Stage | Wave | Repository | Base | Pinned SHA | Drift Decision |
 |---|---|---|---|---|---|
+| S01 | W01 | `sesori-ai/sesori_auth_server` | `master` | `b17a6e760b0c70c3dc3d1cd456ff93d814c75453` | No drift: current `master` matches the latest audited tip. |
+| S01 | W02 | `sesori-ai/sesori_apps_monorepo` | `main` | `4a156a78b3bf8572c280ce859b3b1370300a8105` | Proceed after reducing scope: current `main` remains the pinned implementation baseline. |
 
-No implementation wave has started. Workers add one authoritative row for each
-started stage/wave/repository/base pair after drift assessment and before branch
-creation.
+Workers add one authoritative row for each started stage/wave/repository/base
+pair after drift assessment and before branch creation.
 
 ## PR Steps
 
 | Done | ID | Stage | Wave | PR | Branch | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | S01-W01-P01 | S01 | W01 | — | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Add auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. |
-| [ ] | S01-W02-P01 | S01 | W02 | — | `plan/bridge-app-onboarding/s01-w02-p01-interactive-app-onboarding` | Add standalone bridge checkpoint, async terminal ownership, retry/cancellation, and bounded QR output. |
+| [x] | S01-W01-P01 | S01 | W01 | https://github.com/sesori-ai/sesori_auth_server/pull/44 | `plan/bridge-app-onboarding/s01-w01-p01-app-client-presence-endpoint` | Merged and deployed. Delivers the auth-server immediate/long-poll current app-registration endpoint and durable post-upsert wake. Format, lint, build, 422 tests (1 skipped), circular-dependency check, and implementation review passed. |
+| [ ] | S01-W02-P01 | S01 | W02 | — | existing `bridge-onboarding-plan` worktree branch | Add a bounded one-time-per-backend/account checkpoint with no auth/token/terminal refactor. |
 
 ## Manual Checkpoints
 
 | User | Worker | ID | Check | Evidence |
 |---|---|---|---|---|
-| [ ] | [ ] | S01-W02-M01 | Scan and exercise terminal app onboarding across representative terminal capabilities | — |
+| [ ] | [ ] | S01-W02-M01 | Scan QR/URL output and exercise immediate/30-second same-account registration | — |
 
 ## Blockers and Staleness
 
 - No implementation blocker is known.
-- The auth-server endpoint must merge and deploy before bridge release. Wave W02
-  does not start until S01-W01-P01 merges.
+- The auth-server prerequisite is complete: PR #44 merged and the endpoint was
+  deployed (user-confirmed 2026-07-18).
 - Latest audited tips: monorepo `main`
-  `5a76c0c420cd7db445f7fe2c8a2570265b4c84e0`
-  (2026-07-17T06:57:01Z); auth-server `master`
+  `4a156a78b3bf8572c280ce859b3b1370300a8105`
+  (2026-07-17T18:02:33+03:00); auth-server `master`
   `b17a6e760b0c70c3dc3d1cd456ff93d814c75453`
   (2026-07-16T14:14:09Z). Each worker assesses and pins current drift.
 - The independent active `session-pull-request-monitoring` plan may proceed; a
@@ -59,59 +60,52 @@ creation.
 
 ## Findings and Plan Deltas
 
-- **2026-07-17 — Review-loop waiver and final corrections:** The user directed
-  exactly one full plan review plus one finite fix pass, with no further plan
-  re-review. Corrected the formatter contract to accept only repository-produced
-  `TerminalRenderingCapabilities`, and made logout executable end to end:
-  composition performs one typed token-repository read, conditionally constructs
-  token/registration services, injects migration/repository/optional registration
-  into the runner, and owns exact disposal.
-- **2026-07-17 — Fourth plan-PR architecture correction:** Mapped the server's
-  initial-read deadline through a service-local failure to route-owned 500;
-  inserted `TokenRepository`/`BridgeIdRepository` so services no longer consume
-  persistence APIs; moved terminal mode/capability mapping wholly into
-  `TerminalPromptRepository`; and added shared Freezed email-login/refresh
-  request DTOs so consolidated auth contains no inline request maps. At the
-  user's direction, composition now aligns with the active desktop and parallel-
-  plugin plans: `BridgeRuntimeRunner` remains process-startup composer and the
-  existing `Orchestrator` remains post-start session composer under an exact
-  B-B5 waiver; the proposed `BridgeStartupOrchestrator` is removed.
-- **2026-07-17 — Locked architecture exception:** The user explicitly retained
-  long polling and approved both it and existing authentication request/response
-  as narrow exceptions to the push-based default; SSE and generic polling
-  abstractions remain out of scope.
-- **2026-07-17 — Third plan-PR review hardening:** Prevented unconfirmed absence
-  when the server's initial read misses its deadline, required detachable auth
-  cancellation listeners, preserved initial-silent-check input, and defined the
-  cross-repository tracker handoff through the remote tracking branch.
-- **2026-07-17 — Second plan-PR review hardening:** Preserved the shipped
-  post-refresh token-file corruption repair while retaining cleared-file logout
-  safety, and made secret reads discard/re-request any line queued before echo
-  is disabled.
-- **2026-07-17 — Plan-PR review hardening:** Made the auth wait deadline absolute
-  from before its initial read, required explicit `forceRefresh` at every token
-  caller, replaced lossy stdin broadcast handoff with FIFO pending-line
-  preservation, and restricted QR rendering to polarity-safe ANSI+Unicode with
-  URL-only fallback.
+- **2026-07-17 — W02 implementation discarded for excessive scope:** The first
+  W02 implementation followed an over-broad plan that combined onboarding with
+  auth-provider consolidation, token-persistence layering, a token-owner rename,
+  and global terminal migration. The user rejected that scope. All uncommitted
+  W02 production and test changes were discarded; redesign must keep existing
+  auth, token, persistence, and unrelated prompt architecture intact unless the
+  onboarding behavior strictly requires a local change.
+- **2026-07-17 — User-authorized wave overlap:** The user explicitly directed
+  S01-W02-P01 to begin before S01-W01-P01 merges because the implementations are
+  in separate repositories. This overrides only the implementation-start merge
+  barrier; auth-server merge/deploy still precedes bridge release. Current
+  monorepo `main` at `4a156a78b3bf8572c280ce859b3b1370300a8105`
+  remains the pinned W02 baseline.
+- **2026-07-17 — Reduced behavior selected:** The user selected one immediate
+  check plus at most one 30-second server-held wait. The reduced design has no
+  skip input, retry loop, token refresh, or asynchronous terminal ownership.
+- **2026-07-17 — One-time account markers:** Once registration is confirmed, W02
+  stores an opaque flag for that normalized backend/JWT-user pair. Flags coexist
+  across pairs, so A -> B -> A checks each once; accepted CLI logout clears all.
+- **2026-07-17 — Reduced-plan review correction:** Renamed the marker's dumb
+  Layer-1 file boundary from `AppOnboardingStateApi` to
+  `AppOnboardingStateStorage`; no broader design change was required.
+- **2026-07-17 — Reduced-plan approval:** `aristotle-plan-review` approved the
+  corrected bounded design with no auth/token/terminal refactor and no remaining
+  architecture violations.
+- **2026-07-17 — Reduced-plan PR:** Opened documentation-only correction PR
+  https://github.com/sesori-ai/sesori_apps_monorepo/pull/494 against `main`.
+- **2026-07-17 — PR review hardening:** Required request-local active deadline
+  abort, backend-scoped account markers, Unix marker permissions, current audited
+  main metadata, and marker-first logout so deletion failure leaves tokens intact.
+  Follow-up `aristotle-plan-review` approved the corrected minimal architecture.
+- **2026-07-18 — Multi-pair retention:** Replaced the single-record marker with
+  independent opaque SHA-256-named pair flags so confirming another backend or
+  account cannot forget a previously completed pair. Follow-up
+  `aristotle-plan-review` approved the revised architecture.
+- **2026-07-18 — Final review hardening:** Clarified that a marker-read failure
+  does not suppress a later confirmed write, and replaced the endpoint-specific
+  status API with provider-level `SesoriServerApi` without migrating legacy auth
+  operations. `aristotle-plan-review` approved exact commit `7e26a27b`.
+- **2026-07-18 — Auth dependency complete:** Auth PR #44 merged with passing CI
+  and no unresolved threads; the user confirmed its endpoint is deployed.
 - **2026-07-17 — Plan delivery:** Opened plan-only PR
   https://github.com/sesori-ai/sesori_apps_monorepo/pull/490 against selected
   implementation base `main`; tracker state is optimistically post-merge on the
-  plan branch.
-- **2026-07-17 — Full-plan approval:** `aristotle-plan-review` approved the
-  complete two-repository plan after all architecture, lifecycle, compatibility,
-  command, wave, and tracker corrections; no violations remain.
-- **2026-07-17 — Review hardening (later revised):** Consolidated Sesori auth
-  HTTP under one provider API, renamed the standalone owner to `TokenService`,
-  defined typed cancellable token access across both authorities, moved terminal/
-  auth/onboarding classes to root layers, kept auth token deletion out of the
-  waiter service, and injected logout registration directly. The later fourth-
-  round delta supersedes this draft's direct-storage and startup-composer shape.
-- **2026-07-17 — Approved design:** The user approved standalone-interactive-only
-  onboarding; current token existence across all app platforms; silent existing
-  registration; success feedback; `s`/`skip` + Enter; no persisted skip; exact
-  app URL; bounded terminal QR; server long polling; fixed 60-second transient
-  retry; indefinite interactive waiting; permanent fail-open compatibility;
-  unified asynchronous terminal input; and no analytics.
+  plan branch. Its original W02 design is superseded by the reduced plan in this
+  worktree; the auth-server W01 endpoint remains valid and unchanged.
 - **2026-07-17 — Baseline audit:** Selected monorepo `main` rather than invocation
   branch `bridge-onboarding-optimization`; independently audited auth-server
   `master`. Current code has durable app tokens and OAuth waiter precedents but

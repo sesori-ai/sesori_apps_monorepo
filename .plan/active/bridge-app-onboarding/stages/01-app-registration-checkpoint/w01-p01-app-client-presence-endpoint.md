@@ -3,6 +3,9 @@
 ## 0. Metadata
 
 - **ID:** S01-W01-P01
+- **Status:** Complete — PR #44 merged and the endpoint is deployed
+  (user-confirmed 2026-07-18)
+- **PR:** https://github.com/sesori-ai/sesori_auth_server/pull/44
 - **Repository:** `sesori-ai/sesori_auth_server`
 - **Worktree:** one dedicated auth-server worker worktree for this PR
 - **Base branch:** `master`
@@ -362,5 +365,5 @@ with mocks that cannot prove durable ordering.
 - The auth implementation branch remains auth-server-only. The remote plan-host
   tracking branch records S01/W01 baseline before branch creation, then branch,
   PR URL, and optimistic checked state after PR opening; it creates no tracker PR.
-- W02 does not start until this PR merges; deployment is confirmed before bridge
-  release.
+- By explicit user authorization, W02 planning/implementation may overlap this
+  separate-repository PR; deployment is still confirmed before bridge release.
