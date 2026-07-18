@@ -137,6 +137,25 @@ void main() {
     expect(context?.sessionTitle, "Session");
   });
 
+  test("findSessionContext throws the listProjects ApiError", () async {
+    final api = MockProjectApi();
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: MockSessionApi(),
+    );
+    final error = ApiError.generic();
+    when(api.listProjects).thenAnswer((_) async => ApiResponse.error(error));
+
+    await expectLater(repository.findSessionContext(sessionId: "session-1"), throwsA(same(error)));
+    verifyNever(
+      () => api.listSessions(
+        projectId: any(named: "projectId"),
+        waitForPrData: any(named: "waitForPrData"),
+      ),
+    );
+  });
+
   test("findSessionContext recovers child session plugin identity", () async {
     final api = MockProjectApi();
     final sessionApi = MockSessionApi();

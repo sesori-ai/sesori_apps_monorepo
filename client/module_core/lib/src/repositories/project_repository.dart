@@ -84,8 +84,8 @@ class ProjectRepository {
   Future<ProjectSessionContext?> findSessionContext({required String sessionId}) async {
     final projectsResponse = await _api.listProjects();
     switch (projectsResponse) {
-      case ErrorResponse<Projects>():
-        return null;
+      case ErrorResponse<Projects>(:final error):
+        throw error;
       case final SuccessResponse<Projects> success:
         final projects = success.data.data;
         final projectRoots = await Future.wait(
