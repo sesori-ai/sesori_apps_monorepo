@@ -12,6 +12,10 @@
 </p>
 
 <p align="center">
+  <img src=".github/assets/banner.png" width="800" alt="Sesori banner" />
+</p>
+
+<p align="center">
   <a href="https://apps.apple.com/app/sesori/id6760642500">
     <img src="https://img.shields.io/badge/Download-App%20Store-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the App Store" />
   </a>
