@@ -18,6 +18,7 @@ sealed class FilesystemSuggestionsRequest with _$FilesystemSuggestionsRequest {
 sealed class FilesystemSuggestions with _$FilesystemSuggestions {
   const factory FilesystemSuggestions({
     required List<FilesystemSuggestion> data,
+    required String? path,
   }) = _FilesystemSuggestions;
 
   factory FilesystemSuggestions.fromJson(Map<String, dynamic> json) => _$FilesystemSuggestionsFromJson(json);

@@ -29,11 +29,15 @@ _FilesystemSuggestions _$FilesystemSuggestionsFromJson(Map json) =>
             ),
           )
           .toList(),
+      path: json['path'] as String?,
     );
 
 Map<String, dynamic> _$FilesystemSuggestionsToJson(
   _FilesystemSuggestions instance,
-) => <String, dynamic>{'data': instance.data.map((e) => e.toJson()).toList()};
+) => <String, dynamic>{
+  'data': instance.data.map((e) => e.toJson()).toList(),
+  'path': ?instance.path,
+};
 
 _FilesystemSuggestion _$FilesystemSuggestionFromJson(Map json) =>
     _FilesystemSuggestion(

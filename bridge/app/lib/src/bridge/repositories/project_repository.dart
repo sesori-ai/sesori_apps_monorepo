@@ -69,12 +69,16 @@ class ProjectRepository {
     final unseenById = await unseenByProjectId(
       projectIds: [for (final row in rows) row.projectId],
     );
+    final worktreeCapabilities = await Future.wait([
+      for (final row in rows) _supportsDedicatedWorktrees(path: row.path),
+    ]);
     return [
-      for (final row in rows)
+      for (final (index, row) in rows.indexed)
         _projectCatalogMapper.map(
           row: row,
           hasUnseenChanges: unseenById[row.projectId] ?? false,
           directoryMissing: false,
+          supportsDedicatedWorktrees: worktreeCapabilities[index],
         ),
     ];
   }
@@ -120,6 +124,7 @@ class ProjectRepository {
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
       directoryMissing: false,
+      supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: row.path),
     );
   }
 
@@ -150,6 +155,7 @@ class ProjectRepository {
             name: stored?.displayName ?? (base.isEmpty ? canonical : base),
             path: canonical,
             time: null,
+            supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: canonical),
           ),
           path: canonical,
         );
@@ -173,6 +179,7 @@ class ProjectRepository {
                 path: openedPath,
                 hasUnseenChanges: false,
                 directoryMissing: false,
+                supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: openedPath),
                 time: null,
               )
               .copyWith(id: existing?.projectId ?? pluginProject.id),
@@ -268,6 +275,7 @@ class ProjectRepository {
           row: row,
           hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
           directoryMissing: _directoryMissing(canonical),
+          supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: canonical),
         );
 
       case final NativeProjectsPluginApi plugin:
@@ -285,6 +293,7 @@ class ProjectRepository {
               path: path,
               hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
               directoryMissing: _directoryMissing(path),
+              supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: path),
               time: _activityToTime(activity!),
             )
             .copyWith(id: projectId);
@@ -476,6 +485,16 @@ class ProjectRepository {
       return !_filesystemApi.directoryExists(path);
     } on FileSystemException catch (error, stackTrace) {
       Log.w("ProjectRepository: could not determine whether $path exists; treating as present", error, stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> _supportsDedicatedWorktrees({required String path}) async {
+    try {
+      if (!await _gitCliApi.isGitInitialized(projectPath: path)) return false;
+      return await _gitCliApi.hasAtLeastOneCommit(projectPath: path);
+    } on Object catch (error, stackTrace) {
+      Log.w("ProjectRepository: failed to inspect Git worktree support for $path", error, stackTrace);
       return false;
     }
   }

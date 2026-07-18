@@ -25,6 +25,8 @@ _Project _$ProjectFromJson(Map json) => _Project(
       : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
   hasUnseenChanges: json['hasUnseenChanges'] as bool? ?? false,
   directoryMissing: json['directoryMissing'] as bool? ?? false,
+  supportsDedicatedWorktrees:
+      json['supportsDedicatedWorktrees'] as bool? ?? true,
 );
 
 Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
@@ -34,6 +36,7 @@ Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
   'time': ?instance.time?.toJson(),
   'hasUnseenChanges': instance.hasUnseenChanges,
   'directoryMissing': instance.directoryMissing,
+  'supportsDedicatedWorktrees': instance.supportsDedicatedWorktrees,
 };
 
 _ProjectTime _$ProjectTimeFromJson(Map json) => _ProjectTime(
@@ -55,3 +58,26 @@ _ProjectPathRequest _$ProjectPathRequestFromJson(Map json) =>
 
 Map<String, dynamic> _$ProjectPathRequestToJson(_ProjectPathRequest instance) =>
     <String, dynamic>{'path': instance.path};
+
+_OpenProjectRequest _$OpenProjectRequestFromJson(Map json) =>
+    _OpenProjectRequest(
+      path: json['path'] as String,
+      gitAction:
+          $enumDecodeNullable(
+            _$OpenProjectGitActionEnumMap,
+            json['gitAction'],
+          ) ??
+          OpenProjectGitAction.openWithoutGit,
+    );
+
+Map<String, dynamic> _$OpenProjectRequestToJson(_OpenProjectRequest instance) =>
+    <String, dynamic>{
+      'path': instance.path,
+      'gitAction': _$OpenProjectGitActionEnumMap[instance.gitAction]!,
+    };
+
+const _$OpenProjectGitActionEnumMap = {
+  OpenProjectGitAction.promptIfNeeded: 'prompt_if_needed',
+  OpenProjectGitAction.initializeGit: 'initialize_git',
+  OpenProjectGitAction.openWithoutGit: 'open_without_git',
+};

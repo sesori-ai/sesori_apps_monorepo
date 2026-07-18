@@ -15,6 +15,7 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
+    required bool supportsDedicatedWorktrees,
   }) = NewSessionIdle;
 
   const factory NewSessionState.sending({
@@ -25,6 +26,7 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
+    required bool supportsDedicatedWorktrees,
   }) = NewSessionSending;
 
   const factory NewSessionState.error({
@@ -36,6 +38,7 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
+    required bool supportsDedicatedWorktrees,
   }) = NewSessionError;
 
   const factory NewSessionState.created({required Session session}) = NewSessionCreated;
@@ -52,6 +55,7 @@ typedef AgentModelData = ({
   AgentModel? agentModel,
   CommandInfo? stagedCommand,
   List<SessionVariant> availableVariants,
+  bool supportsDedicatedWorktrees,
 });
 
 extension NewSessionStateAgentModel on NewSessionState {
@@ -64,6 +68,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgentModel,
       :final stagedCommand,
       :final availableVariants,
+      :final supportsDedicatedWorktrees,
     ) =>
       (
         agents: availableAgents,
@@ -73,6 +78,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         agentModel: selectedAgentModel,
         stagedCommand: stagedCommand,
         availableVariants: availableVariants,
+        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
     NewSessionSending(
       :final availableAgents,
@@ -82,6 +88,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgentModel,
       :final stagedCommand,
       :final availableVariants,
+      :final supportsDedicatedWorktrees,
     ) =>
       (
         agents: availableAgents,
@@ -91,6 +98,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         agentModel: selectedAgentModel,
         stagedCommand: stagedCommand,
         availableVariants: availableVariants,
+        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
     NewSessionError(
       :final availableAgents,
@@ -100,6 +108,7 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgentModel,
       :final stagedCommand,
       :final availableVariants,
+      :final supportsDedicatedWorktrees,
     ) =>
       (
         agents: availableAgents,
@@ -109,6 +118,7 @@ extension NewSessionStateAgentModel on NewSessionState {
         agentModel: selectedAgentModel,
         stagedCommand: stagedCommand,
         availableVariants: availableVariants,
+        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
     NewSessionCreated() => null,
   };

@@ -18,6 +18,7 @@ import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/summarize_body.dart";
+import "models/update_project_body.dart";
 import "open_code_raw_http_client.dart";
 
 const _directoryOpenCodeHeader = "x-opencode-directory";
@@ -150,7 +151,7 @@ class OpenCodeApi {
   Future<Project> updateProject({
     required String projectId,
     required String directory,
-    required Map<String, dynamic> body,
+    required UpdateProjectBody body,
   }) async {
     final response = await _client.patch(
       path: "/project/$projectId",
@@ -158,7 +159,7 @@ class OpenCodeApi {
         "content-type": "application/json",
         _directoryOpenCodeHeader: directory,
       },
-      body: jsonEncode(body),
+      body: jsonEncode(body.toJson()),
     );
     return Project.fromJson(jsonDecodeMap(response.body));
   }

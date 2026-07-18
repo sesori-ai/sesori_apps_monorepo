@@ -1,6 +1,7 @@
 const bundleId = "com.sesori.app";
 const redirectUri = "$bundleId://auth/callback";
 const projectNameQueryParam = "name";
+const supportsDedicatedWorktreesQueryParam = "supportsDedicatedWorktrees";
 const projectIdPathParam = "projectId";
 const sessionIdPathParam = "sessionId";
 
@@ -62,6 +63,7 @@ sealed class AppRoute {
   const factory AppRoute.sessions({
     required String projectId,
     required String? projectName,
+    required bool? supportsDedicatedWorktrees,
   }) = AppRouteSessions;
   const factory AppRoute.newSession({
     required String projectId,
@@ -151,11 +153,17 @@ class AppRouteSettings extends AppRoute {
 class AppRouteSessions extends AppRoute {
   static const _projectIdPathParam = projectIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
+  static const _supportsDedicatedWorktreesQueryParam = supportsDedicatedWorktreesQueryParam;
 
   final String projectId;
   final String? projectName;
+  final bool? supportsDedicatedWorktrees;
 
-  const AppRouteSessions({required this.projectId, required this.projectName});
+  const AppRouteSessions({
+    required this.projectId,
+    required this.projectName,
+    required this.supportsDedicatedWorktrees,
+  });
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory AppRouteSessions.fromParams({
@@ -165,6 +173,11 @@ class AppRouteSessions extends AppRoute {
     return AppRouteSessions(
       projectId: pathParams[_projectIdPathParam] ?? "",
       projectName: queryParams[_nameQueryParam],
+      supportsDedicatedWorktrees: switch (queryParams[_supportsDedicatedWorktreesQueryParam]) {
+        "true" => true,
+        "false" => false,
+        _ => null,
+      },
     );
   }
 
@@ -176,6 +189,7 @@ class AppRouteSessions extends AppRoute {
     final base = "/projects/${Uri.encodeComponent(projectId)}/sessions";
     final queryParams = <String, String>{
       _nameQueryParam: ?projectName,
+      _supportsDedicatedWorktreesQueryParam: ?supportsDedicatedWorktrees?.toString(),
     };
     return _appendQuery(path: base, queryParameters: queryParams);
   }

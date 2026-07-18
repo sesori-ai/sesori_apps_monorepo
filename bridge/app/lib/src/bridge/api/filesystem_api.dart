@@ -1,5 +1,7 @@
 import "dart:io";
 
+import "package:path/path.dart" as p;
+
 /// Layer 1 data access over the host filesystem (`dart:io`).
 ///
 /// Each method is a thin wrapper around a single `dart:io` operation. They
@@ -36,7 +38,27 @@ class FilesystemApi {
 
   /// Whether [directoryPath] contains a `.git` entry (a git working copy).
   bool gitDirectoryExists(String directoryPath) {
-    return Directory("$directoryPath/.git").existsSync();
+    final type = FileSystemEntity.typeSync(
+      p.join(directoryPath, ".git"),
+      followLinks: true,
+    );
+    return type == FileSystemEntityType.directory || type == FileSystemEntityType.file;
+  }
+
+  /// Raw process-environment lookup for repository-level fallback policy.
+  String? environmentValue(String name) => Platform.environment[name];
+
+  /// Raw process working directory for repository-level fallback policy.
+  String currentDirectoryPath() => Directory.current.path;
+
+  /// Immediate entry names in [path].
+  List<String> listEntryNames(String path) {
+    return Directory(path).listSync(followLinks: false).map((entry) => p.basename(entry.path)).toList();
+  }
+
+  /// Deletes [path] and all descendants.
+  void deleteDirectoryRecursively(String path) {
+    Directory(path).deleteSync(recursive: true);
   }
 
   /// Reads the file at [path], or `null` if it does not exist.

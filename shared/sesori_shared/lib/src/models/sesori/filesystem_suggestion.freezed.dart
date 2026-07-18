@@ -152,7 +152,7 @@ as String?,
 /// @nodoc
 mixin _$FilesystemSuggestions {
 
- List<FilesystemSuggestion> get data;
+ List<FilesystemSuggestion> get data; String? get path;
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -165,16 +165,16 @@ $FilesystemSuggestionsCopyWith<FilesystemSuggestions> get copyWith => _$Filesyst
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestions&&const DeepCollectionEquality().equals(other.data, data));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestions&&const DeepCollectionEquality().equals(other.data, data)&&(identical(other.path, path) || other.path == path));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data),path);
 
 @override
 String toString() {
-  return 'FilesystemSuggestions(data: $data)';
+  return 'FilesystemSuggestions(data: $data, path: $path)';
 }
 
 
@@ -185,7 +185,7 @@ abstract mixin class $FilesystemSuggestionsCopyWith<$Res>  {
   factory $FilesystemSuggestionsCopyWith(FilesystemSuggestions value, $Res Function(FilesystemSuggestions) _then) = _$FilesystemSuggestionsCopyWithImpl;
 @useResult
 $Res call({
- List<FilesystemSuggestion> data
+ List<FilesystemSuggestion> data, String? path
 });
 
 
@@ -202,10 +202,11 @@ class _$FilesystemSuggestionsCopyWithImpl<$Res>
 
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? data = null,Object? path = freezed,}) {
   return _then(_self.copyWith(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
-as List<FilesystemSuggestion>,
+as List<FilesystemSuggestion>,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -217,7 +218,7 @@ as List<FilesystemSuggestion>,
 @JsonSerializable()
 
 class _FilesystemSuggestions implements FilesystemSuggestions {
-  const _FilesystemSuggestions({required final  List<FilesystemSuggestion> data}): _data = data;
+  const _FilesystemSuggestions({required final  List<FilesystemSuggestion> data, required this.path}): _data = data;
   factory _FilesystemSuggestions.fromJson(Map<String, dynamic> json) => _$FilesystemSuggestionsFromJson(json);
 
  final  List<FilesystemSuggestion> _data;
@@ -227,6 +228,7 @@ class _FilesystemSuggestions implements FilesystemSuggestions {
   return EqualUnmodifiableListView(_data);
 }
 
+@override final  String? path;
 
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
@@ -241,16 +243,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestions&&const DeepCollectionEquality().equals(other._data, _data));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestions&&const DeepCollectionEquality().equals(other._data, _data)&&(identical(other.path, path) || other.path == path));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data),path);
 
 @override
 String toString() {
-  return 'FilesystemSuggestions(data: $data)';
+  return 'FilesystemSuggestions(data: $data, path: $path)';
 }
 
 
@@ -261,7 +263,7 @@ abstract mixin class _$FilesystemSuggestionsCopyWith<$Res> implements $Filesyste
   factory _$FilesystemSuggestionsCopyWith(_FilesystemSuggestions value, $Res Function(_FilesystemSuggestions) _then) = __$FilesystemSuggestionsCopyWithImpl;
 @override @useResult
 $Res call({
- List<FilesystemSuggestion> data
+ List<FilesystemSuggestion> data, String? path
 });
 
 
@@ -278,10 +280,11 @@ class __$FilesystemSuggestionsCopyWithImpl<$Res>
 
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? data = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? data = null,Object? path = freezed,}) {
   return _then(_FilesystemSuggestions(
 data: null == data ? _self._data : data // ignore: cast_nullable_to_non_nullable
-as List<FilesystemSuggestion>,
+as List<FilesystemSuggestion>,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
