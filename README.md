@@ -7,7 +7,7 @@
 <h1 align="center">Run your AI coding sessions from anywhere.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>.<br/>
+  Sesori is the mobile cockpit for <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, and other AI coding assistants.<br/>
   Leave your laptop. Take the session.
 </p>
 
@@ -99,7 +99,7 @@ Sign in with the **same account** on your phone and your machine. The two pair a
 
 | Feature | What it means |
 |---|---|
-| **Browse projects & sessions** | See your local OpenCode projects and every active session from your phone. |
+| **Browse projects & sessions** | See your OpenCode, Cursor, Codex, and other AI coding projects and every active session from your phone. |
 | **Keep agents moving** | Answer questions, approve steps, and stop or restart tasks without returning to your desk. |
 | **Review and ship** | Read diffs, merge pull requests, and commit work straight to GitHub when it's done. |
 | **Voice or type** | Talk to your assistant naturally or use the keyboard — whatever works in the moment. |
