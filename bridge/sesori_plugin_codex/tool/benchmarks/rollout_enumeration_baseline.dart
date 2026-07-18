@@ -7,6 +7,7 @@ import "package:codex_plugin/codex_plugin.dart";
 import "package:path/path.dart" as p;
 
 typedef _BenchmarkOptions = ({
+  _Implementation implementation,
   int projects,
   int samples,
   int sessions,
@@ -23,12 +24,15 @@ typedef _FixtureSummary = ({
 });
 
 const _defaultOptions = (
+  implementation: _Implementation.sync,
   projects: 50,
   samples: 20,
   sessions: 1000,
   transcriptBytes: 4096,
   warmup: 2,
 );
+
+enum _Implementation { sync, isolate }
 
 Future<void> main(List<String> arguments) async {
   Directory? codexHome;
@@ -54,6 +58,10 @@ Future<void> main(List<String> arguments) async {
     final reader = SessionRolloutReader(
       environment: {"CODEX_HOME": codexHome.path},
     );
+    final sessionOperation = switch (options.implementation) {
+      _Implementation.sync => "listSessions",
+      _Implementation.isolate => "listSessionsInIsolate",
+    };
 
     stderr.writeln("Running ${options.warmup} warmup iteration(s).");
     for (var i = 0; i < options.warmup; i++) {
@@ -68,8 +76,11 @@ Future<void> main(List<String> arguments) async {
         expected: options.sessions,
       );
       _validateCount(
-        operation: "listSessions",
-        actual: reader.listSessions().length,
+        operation: sessionOperation,
+        actual: switch (options.implementation) {
+          _Implementation.sync => reader.listSessions().length,
+          _Implementation.isolate => (await reader.listSessionsInIsolate()).length,
+        },
         expected: options.sessions,
       );
     }
@@ -111,12 +122,15 @@ Future<void> main(List<String> arguments) async {
       });
 
       watch = Stopwatch()..start();
-      final sessions = reader.listSessions();
+      final sessions = switch (options.implementation) {
+        _Implementation.sync => reader.listSessions(),
+        _Implementation.isolate => await reader.listSessionsInIsolate(),
+      };
       watch.stop();
       listSessionsMicros.add(watch.elapsedMicroseconds);
       sessionsReturned = sessions.length;
       _validateCount(
-        operation: "listSessions",
+        operation: sessionOperation,
         actual: sessionsReturned,
         expected: options.sessions,
       );
@@ -141,6 +155,7 @@ Future<void> main(List<String> arguments) async {
         "productMode": const bool.fromEnvironment("dart.vm.product"),
       },
       "parameters": {
+        "implementation": options.implementation.name,
         "sessions": options.sessions,
         "projects": options.projects,
         "transcriptBytesPerSession": options.transcriptBytes,
@@ -162,10 +177,10 @@ Future<void> main(List<String> arguments) async {
         "durationMicros": {
           "listRolloutFiles": _statistics(values: listRolloutFilesMicros),
           "readIndex": _statistics(values: readIndexMicros),
-          "listSessions": _statistics(values: listSessionsMicros),
+          sessionOperation: _statistics(values: listSessionsMicros),
         },
         "eventLoopSchedulingLagMicros": {
-          "blockedBy": "listSessions",
+          "blockedBy": sessionOperation,
           ..._statistics(values: schedulingLagMicros),
         },
         "sessionsReturned": sessionsReturned,
@@ -198,6 +213,7 @@ Future<void> main(List<String> arguments) async {
 }
 
 _BenchmarkOptions _parseOptions({required List<String> arguments}) {
+  var implementation = _defaultOptions.implementation;
   final values = <String, int>{
     "projects": _defaultOptions.projects,
     "samples": _defaultOptions.samples,
@@ -214,7 +230,7 @@ _BenchmarkOptions _parseOptions({required List<String> arguments}) {
 
     final separator = argument.indexOf("=");
     final name = separator == -1 ? argument.substring(2) : argument.substring(2, separator);
-    if (!values.containsKey(name)) {
+    if (name != "implementation" && !values.containsKey(name)) {
       throw FormatException("Unknown option: --$name");
     }
 
@@ -229,6 +245,17 @@ _BenchmarkOptions _parseOptions({required List<String> arguments}) {
       rawValue = arguments[i];
     }
 
+    if (name == "implementation") {
+      implementation = switch (rawValue) {
+        "sync" => _Implementation.sync,
+        "isolate" => _Implementation.isolate,
+        _ => throw FormatException(
+          "--implementation must be sync or isolate, got: $rawValue",
+        ),
+      };
+      continue;
+    }
+
     final parsed = int.tryParse(rawValue);
     if (parsed == null) {
       throw FormatException("--$name must be an integer, got: $rawValue");
@@ -237,6 +264,7 @@ _BenchmarkOptions _parseOptions({required List<String> arguments}) {
   }
 
   final options = (
+    implementation: implementation,
     projects: values["projects"]!,
     samples: values["samples"]!,
     sessions: values["sessions"]!,

@@ -1979,32 +1979,6 @@ void main() {
       expect(plugin.listAllSessionsCalls, 0);
     });
 
-    test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-      final derivedPlugin = _FakeDerivedPlugin(launchDirectory: "/tmp/proj/alpha", allSessions: const []);
-      final derived = singlePluginSessionRepository(
-        plugin: derivedPlugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-      final nativePlugin = _FakeBridgePlugin();
-      final native = singlePluginSessionRepository(
-        plugin: nativePlugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      // A derived enumeration is eventually-complete (rollout flush window),
-      // so it must never be used to reconcile stored rows away.
-      expect(derived.sessionListIsAuthoritative(pluginId: derivedPlugin.id), isFalse);
-      expect(native.sessionListIsAuthoritative(pluginId: nativePlugin.id), isTrue);
-    });
-
     test("getSessionsForProject rejects a worktree path without a durable project row", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

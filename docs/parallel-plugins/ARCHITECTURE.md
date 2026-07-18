@@ -1,11 +1,11 @@
 # Bridge-Owned Project and Session Catalog Architecture
 
-> Status: **direction and execution plan approved; implementation in progress**.
+> Status: **direction approved; Stages 0-9 implemented**.
 > This document records durable product and architecture decisions for parallel
 > plugin support. It is intentionally not an execution plan. The concrete data
-> flow, migration, rollout, verification, and staged PR sequence now live in
-> [`PLAN.md`](PLAN.md) and must pass `aristotle-plan-review`
-> before implementation starts.
+> flow, migration, rollout, verification, and staged PR sequence live in
+> [`PLAN.md`](PLAN.md). The controlled Stage 9 fixed-host matrix and soak results
+> are recorded in `baselines/stage-9-macos-arm64.json`; all release gates passed.
 
 ## 1. Decision
 
@@ -146,17 +146,21 @@ Actual inability to use a session is learned when a targeted operation returns a
 typed not-found or equivalent domain result. A transient transport or plugin
 failure must not become durable evidence that the session no longer exists.
 
-## 6. Identity Direction
+## 6. Identity
 
-If Sesori owns durable sessions, the preferred long-term model separates a
-Sesori-owned session identity from the plugin id and backend session handle. That
-keeps backend identifiers behind the plugin boundary, avoids cross-plugin
-collisions, and gives child relationships and client routes stable Sesori
-references.
+The implemented session model separates a Sesori-owned session id, the owning
+plugin id, and the opaque backend session handle. Existing session ids were
+preserved during migration and backfilled as their backend handles. New created,
+imported, and event-discovered bindings receive random Sesori ids, with
+uniqueness enforced for each `(plugin_id, backend_session_id)` pair. Session
+controls resolve the durable binding and pass only the backend handle to the
+owning operational plugin.
 
-This is a directional preference, not an approved migration design. The future
-implementation plan must evaluate compatibility, persisted data, client routes,
-and transition cost before selecting the identity shape.
+Released peers that omit plugin identity decode to OpenCode because OpenCode was
+the only backend those peers could target. That legacy identity is distinct from
+the bridge's enabled order and default marker: it must never mean "first enabled
+plugin." Current clients send the selected plugin for creation and use the
+stored session plugin for existing-session operations.
 
 Projects remain one cross-plugin entity per directory with shared hide, name,
 and base-branch metadata. The existing separation between project identity and
@@ -170,22 +174,24 @@ model.
 The catalog remains per-bridge. It does not collapse or replace the separate
 multi-bridge addressing axis.
 
-## 7. Performance Direction
+## 7. Performance Direction And Current Gate
 
 Indexed catalog reads replace plugin enumeration in normal project and session
 list paths. List cost should depend primarily on the returned page or project set,
 not on the slowest enabled plugin.
 
 An explicit import still pays the backend's enumeration cost, but it is outside
-the normal read path. The existing catalog remains readable while import runs,
-and a failed import must leave the previous catalog intact.
+the normal read path. Enumeration occurs before the short atomic publication
+transaction. File-backed catalog readers use WAL and a bounded reader pool, so
+reads during enumeration or publication observe the last committed catalog
+rather than an uncommitted partial import. A failed or cancelled pre-commit
+import leaves the previous catalog intact.
 
-The future implementation must ensure that heavy import work does not block the
-bridge request and event isolate. Codex rollout discovery is a known example of
-work that currently uses synchronous filesystem operations and needs particular
-attention at planning time.
+Codex rollout enumeration used by import runs in a plugin-owned worker isolate.
+Known-event projection and per-plugin event ordering remain independent while an
+import is active.
 
-Before rollout, benchmark:
+Stage 9 benchmark tooling and the controlled fixed-host run exercise:
 
 - project and session list p50, p95, and p99 latency;
 - import duration for realistic backend histories;
@@ -193,42 +199,57 @@ Before rollout, benchmark:
 - concurrent import, event, and client-read behavior; and
 - bridge responsiveness while a large import is running.
 
-This direction document intentionally makes no numerical performance promise.
+The controlled fixed-host matrix and soak passed every release budget. The raw
+measurements, query plans, host metadata, and evaluated gates are retained in
+`baselines/stage-9-macos-arm64.json`.
 
-## 8. Migration and Cutover Direction
+## 8. Implemented Migration And Cutover
 
-The current database rows do not contain the full generic projection needed to
-render every project and session list without plugin data. A future migration
-will persist only the generic list and hierarchy fields Sesori needs. It must not
-turn the catalog into a backend-specific transcript store.
+Schema v11 contains the generic project, root-session, and child-session
+projection needed for catalog reads, stable plugin/backend bindings, projection
+timestamps, tombstones, and per-plugin projection-v1 hydration completion. It
+does not store backend-specific transcripts.
 
-After that migration, run one automatic import per enabled plugin and catalog
-projection version. Subsequent imports are explicit.
+Startup requests one automatic import for each operational plugin that lacks the
+current projection-version completion. Subsequent imports are explicit and
+per-plugin.
 
-After cutover, list reads must not fall back to live plugin enumeration. If the
-automatic import fails, preserve all known or safely migrated rows, surface an
-import-required or degraded state, and keep list reads database-only.
+After the Stage 6 cutover, project, root-session, session-detail, and child reads
+do not fall back to plugin enumeration. If automatic import fails, the bridge
+preserves known rows, reports per-plugin failure/progress, and keeps those reads
+database-only.
 
-The exact schema, compatibility window, atomic import strategy, progress model,
-and rollout sequencing belong in the implementation plan written immediately
-before the work starts.
+`POST /plugin/import`, `DELETE /plugin/import`, and `GET /plugin/import` start,
+cancel, and report per-plugin operations. Progress is also emitted as
+plugin-attributed SSE. Repeated `--import-plugin <id>` flags provide the same
+start trigger for headless operation. Import absence is non-destructive.
 
-## 9. Relationship to Parallel Plugins
+## 9. Parallel Runtime And Client Behavior
 
 This decision replaces the earlier assumption that project and session list
 endpoints should aggregate every live plugin on every request.
 
-Parallel-plugin runtime work still needs to:
+The implemented runtime:
 
-- start, monitor, degrade, and stop plugins independently;
-- route session controls through each stored plugin binding;
-- expose plugin capabilities and support explicit plugin choice at session
-  creation; and
-- preserve one shared project space across plugins.
+- resolves repeated `--plugin <id>` flags in order, otherwise ordered persisted
+  `enabledPlugins`, otherwise the sole OpenCode default;
+- marks the first enabled plugin as the current default while keeping the fixed
+  OpenCode legacy identity separate;
+- starts, monitors, degrades, and stops plugins independently;
+- routes session controls through each stored plugin binding;
+- exposes ordered lifecycle metadata and supports explicit plugin choice at
+  session creation; and
+- preserves one shared project space across plugins.
 
 The difference is that mixed project and session lists are assembled from the
 bridge catalog rather than live fan-out. Plugin failure degrades execution for
 its bound sessions without removing their durable records.
+
+The client discovers the bridge-authored ordered plugin list, selects its
+default when routable, lets the user choose another routable plugin, and reloads
+agents, providers/models, and commands for that plugin. Saved agent/model/
+variant choices are scoped by project and plugin. Existing-session composer
+resources use the session's stored plugin identity.
 
 ## 10. Tradeoffs
 
@@ -254,9 +275,9 @@ surface.
 - Detailed schema, classes, endpoints, PR sequencing, or compatibility code in
   this direction document.
 
-## 12. Acceptance Principles for Future Execution
+## 12. Implemented Acceptance Principles
 
-A future implementation is complete only when:
+The production behavior now satisfies these architecture principles:
 
 - project and session list requests perform no plugin I/O;
 - Sesori-initiated mutations appear in the catalog immediately;
@@ -269,17 +290,10 @@ A future implementation is complete only when:
 - plugin outages preserve catalog browsing and clearly degrade controls; and
 - no backend-specific field or behavior leaks past `BridgePluginApi`.
 
-## 13. Planning Gates Before Implementation
+## 13. Stage 9 Completion Evidence
 
-Immediately before implementation:
-
-1. Re-verify this document and `CONSIDERATIONS.md` against current code.
-2. Decide durable identity migration and compatibility behavior.
-3. Design the smallest generic catalog projection and required Drift migration.
-4. Define child ancestry, event-ordering, and targeted-recovery behavior.
-5. Define import completeness, non-destructive observation, atomicity,
-   cancellation, and user-facing progress semantics.
-6. Define import trigger surfaces for headless and client use without polling.
-7. Benchmark current paths and set explicit performance budgets.
-8. Produce a file-, class-, data-flow-, rollout-, and verification-level plan.
-9. Run `aristotle-plan-review` on that execution plan before writing code.
+The clean `ac56f05b` production/tooling commit was measured on the
+human-designated fixed host under the controlled protocol in `PLAN.md`. The raw
+versioned JSON matrix/soak artifact is retained, its measured results passed all
+release gates, and no budget revision or compatibility-marker removal was
+needed.

@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
@@ -264,6 +265,66 @@ void main() {
       expect(calculator.sawFirstRowOnSecondLookup, isTrue);
     });
 
+    test("publishes projects before ancestry-ordered session batches of at most 512", () async {
+      final projectPath = "${directory.path}/batched";
+      final roots = [
+        for (var index = 0; index < 512; index++)
+          _pluginSession(
+            id: "root-$index",
+            directory: projectPath,
+          ),
+      ];
+      final parentBackendId = roots.last.id;
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "batched", directory: projectPath)],
+        rootsByProject: {projectPath: roots},
+        childrenByParent: {
+          parentBackendId: [
+            _pluginSession(
+              id: "boundary-child",
+              parentId: parentBackendId,
+              directory: projectPath,
+            ),
+          ],
+        },
+      );
+      final sessionDao = _RecordingSessionDao(
+        database: database,
+        failOnWriteCall: null,
+      );
+      final repository = CatalogImportRepository(
+        operationalPlugins: {plugin.id: plugin},
+        projectsDao: database.projectsDao,
+        sessionDao: sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+
+      await repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .drain<void>();
+
+      expect(sessionDao.writeBatchSizes, [512, 1]);
+      expect(sessionDao.projectsExistedAtWrite, everyElement(isTrue));
+      expect(sessionDao.backendIdsByWrite.last, ["boundary-child"]);
+      final parent = await database.sessionDao.getSessionByBinding(
+        pluginId: plugin.id,
+        backendSessionId: parentBackendId,
+      );
+      final child = await database.sessionDao.getSessionByBinding(
+        pluginId: plugin.id,
+        backendSessionId: "boundary-child",
+      );
+      expect(child?.parentSessionId, parent?.sessionId);
+      expect(await database.customSelect("PRAGMA foreign_key_check").get(), isEmpty);
+    });
+
     test("derived import sends complete normalized hints and retains owning-project attribution", () async {
       final projectOne = "${directory.path}/one";
       final projectTwo = "${directory.path}/two";
@@ -439,6 +500,48 @@ void main() {
       expect((await database.projectsDao.getProject(projectId: "persisted"))?.updatedAt, 200);
     });
 
+    test("root-only import filters tombstones", () async {
+      final projectPath = "${directory.path}/root-only";
+      await database.sessionDao.insertSessionTombstone(
+        backendSessionId: "deleted-root",
+        pluginId: "derived",
+        deletedAt: 30,
+      );
+      final plugin = _DerivedImportPlugin(
+        launchDirectory: projectPath,
+        sessions: [
+          _pluginSession(id: "live-root", directory: projectPath),
+          _pluginSession(id: "deleted-root", directory: projectPath),
+        ],
+      );
+
+      final statuses = await _repository(database: database, plugin: plugin)
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .toList();
+
+      expect(statuses.whereType<CatalogImportCompleted>().single.sessionsImported, 1);
+      expect(
+        await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "live-root",
+        ),
+        isNotNull,
+      );
+      expect(
+        await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "deleted-root",
+        ),
+        isNull,
+      );
+    });
+
     test("cancellation after a backend call publishes no rows", () async {
       final gate = Completer<void>();
       final plugin = _NativeImportPlugin(
@@ -463,37 +566,83 @@ void main() {
       expect(await database.projectsDao.getAllProjects(), isEmpty);
     });
 
-    test("session write failure rolls the project batch back", () async {
+    test("a later session batch failure rolls the entire publication back", () async {
       final projectPath = "${directory.path}/rollback";
       final plugin = _NativeImportPlugin(
         projects: [PluginProject(id: "rollback", directory: projectPath)],
         rootsByProject: {
-          projectPath: [_pluginSession(id: "root", directory: projectPath)],
+          projectPath: [
+            for (var index = 0; index < 513; index++)
+              _pluginSession(
+                id: "root-$index",
+                directory: projectPath,
+              ),
+          ],
         },
         childrenByParent: const {},
       );
-      await database.customStatement(
-        "CREATE TRIGGER reject_import BEFORE INSERT ON sessions_table "
-        "BEGIN SELECT RAISE(ABORT, 'reject import'); END",
+      final sessionDao = _RecordingSessionDao(
+        database: database,
+        failOnWriteCall: 2,
       );
-      final repository = _repository(database: database, plugin: plugin);
+      final repository = CatalogImportRepository(
+        operationalPlugins: {plugin.id: plugin},
+        projectsDao: database.projectsDao,
+        sessionDao: sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
 
       await expectLater(
         repository
             .importCatalog(
               pluginId: plugin.id,
               control: CatalogImportControl(
-                explicitImportRequested: true,
-                hydrationMarkerRequested: false,
+                explicitImportRequested: false,
+                hydrationMarkerRequested: true,
               ),
             )
             .drain<void>(),
         throwsA(anything),
       );
 
+      expect(sessionDao.writeBatchSizes, [512, 1]);
       expect(await database.projectsDao.getProject(projectId: "rollback"), isNull);
+      expect(await database.sessionDao.getSessionsForPlugin(pluginId: plugin.id), isEmpty);
+      expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNull);
     });
   });
+}
+
+class _RecordingSessionDao extends SessionDao {
+  _RecordingSessionDao({
+    required AppDatabase database,
+    required this.failOnWriteCall,
+  }) : super(database);
+
+  final int? failOnWriteCall;
+  final List<int> writeBatchSizes = [];
+  final List<List<String>> backendIdsByWrite = [];
+  final List<bool> projectsExistedAtWrite = [];
+
+  @override
+  Future<void> upsertSessionRows({required List<SessionDto> rows}) async {
+    writeBatchSizes.add(rows.length);
+    backendIdsByWrite.add([
+      for (final row in rows) row.backendSessionId,
+    ]);
+    final projectIds = {
+      for (final row in rows) row.projectId,
+    };
+    final projects = await Future.wait([
+      for (final projectId in projectIds) attachedDatabase.projectsDao.getProject(projectId: projectId),
+    ]);
+    projectsExistedAtWrite.add(projects.every((project) => project != null));
+    if (writeBatchSizes.length == failOnWriteCall) {
+      throw StateError("injected session batch failure");
+    }
+    await super.upsertSessionRows(rows: rows);
+  }
 }
 
 class _TrackingProjectCatalogIdentityCalculator extends ProjectCatalogIdentityCalculator {

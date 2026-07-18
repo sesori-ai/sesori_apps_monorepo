@@ -31,10 +31,8 @@ typedef UnseenChange = ({
 /// per-session flag and the project aggregate; and emits [unseenChanges] for
 /// the orchestrator to forward as SSE.
 ///
-/// It is also the single owner of unseen-row deletion: both delete triggers —
-/// a live `session.deleted` event ([recordSessionDeleted]) and the `/sessions`
-/// complete-list reconcile ([reconcileVanishedSessions]) — funnel through the
-/// same delete-and-emit pipeline.
+/// It also owns unseen-row deletion for live `session.deleted` events via
+/// [recordSessionDeleted].
 class SessionUnseenService {
   final SessionUnseenRepository _unseenRepository;
   final ProjectRepository _projectRepository;
@@ -233,33 +231,6 @@ class SessionUnseenService {
     return _serialize(sessionId, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       await _deleteRowAndEmit(sessionId: sessionId, projectId: row?.projectId ?? projectId);
-    });
-  }
-
-  /// Reconciles rows for sessions that vanished from the authoritative
-  /// complete `/sessions` list of [projectId] — deleted while the bridge was
-  /// offline, or backend-side without a `session.deleted` event. Shares the
-  /// delete-and-emit pipeline with [recordSessionDeleted] so other connected
-  /// clients settle their bold state without a manual refresh.
-  ///
-  /// [fetchStartedAt] is the wall-clock time the fetch began; rows created
-  /// after it are kept (they are legitimately absent from the older snapshot).
-  Future<void> reconcileVanishedSessions({
-    required String pluginId,
-    required String projectId,
-    required List<String> keepSessionIds,
-    required int fetchStartedAt,
-  }) {
-    return _serialize(projectId, () async {
-      final deletedIds = await _unseenRepository.deleteSessionsNotIn(
-        pluginId: pluginId,
-        projectId: projectId,
-        keepSessionIds: keepSessionIds,
-        createdBefore: fetchStartedAt,
-      );
-      for (final sessionId in deletedIds) {
-        await _emitDeleted(sessionId: sessionId, projectId: projectId);
-      }
     });
   }
 
