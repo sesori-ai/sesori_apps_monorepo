@@ -11,12 +11,17 @@ void main() {
   CatalogImportService createService({
     required CatalogImportRepository repository,
     required CatalogEmptyHydrationPolicy policy,
+    Set<String>? eligiblePluginIds,
   }) {
+    final eligibleIds = eligiblePluginIds ?? <String>{"selected"};
     return CatalogImportService(
       repository: repository,
       knownPluginIds: const {"selected", "other"},
-      enabledPluginIds: const ["selected"],
-      emptyHydrationPolicies: {"selected": policy},
+      readEligiblePluginIds: () => [
+        for (final pluginId in ["selected", "other"])
+          if (eligibleIds.contains(pluginId)) pluginId,
+      ],
+      readEmptyHydrationPolicy: (pluginId) => policy,
     );
   }
 
@@ -61,6 +66,28 @@ void main() {
       );
       expect(repository.importCalls, 0);
       expect(service.latestStatuses.single, isA<CatalogImportCompleted>());
+    });
+
+    test("newly enabled plugins use live eligibility and hydration policy", () async {
+      final eligiblePluginIds = <String>{"selected"};
+      final repository = _FakeCatalogImportRepository(eligiblePluginIds: <String>{"selected", "other"});
+      final service = createService(
+        repository: repository,
+        policy: CatalogEmptyHydrationPolicy.retry,
+        eligiblePluginIds: eligiblePluginIds,
+      );
+      addTearDown(service.dispose);
+
+      expect(
+        () => service.start(pluginId: "other", trigger: CatalogImportTrigger.automatic),
+        throwsA(isA<CatalogImportPluginNotEnabledException>()),
+      );
+      eligiblePluginIds.add("other");
+      service.start(pluginId: "other", trigger: CatalogImportTrigger.automatic);
+      await service.progress.firstWhere((status) => status.pluginId == "other" && status is CatalogImportCompleted);
+
+      expect(service.latestStatuses.map((status) => status.pluginId), contains("other"));
+      expect(repository.lastControl?.hydrationMarkerRequested, isFalse);
     });
 
     test("overlapping automatic and headless starts join and combine control", () async {
@@ -229,24 +256,24 @@ class _FakeCatalogImportRepository implements CatalogImportRepository {
     importCalls++;
     lastControl = control;
     if (!importStarted.isCompleted) importStarted.complete();
-    yield const CatalogImportProgress.enumerating(
-      pluginId: "selected",
+    yield CatalogImportProgress.enumerating(
+      pluginId: pluginId,
       projectsSeen: 0,
       sessionsSeen: 0,
     );
     await releaseImport?.future;
     if (importError case final error?) throw error;
     if (control.cancellationRequested) {
-      yield const CatalogImportProgress.cancelled(pluginId: "selected");
+      yield CatalogImportProgress.cancelled(pluginId: pluginId);
       return;
     }
-    yield const CatalogImportProgress.committing(
-      pluginId: "selected",
+    yield CatalogImportProgress.committing(
+      pluginId: pluginId,
       projectsSeen: 1,
       sessionsSeen: 0,
     );
-    yield const CatalogImportProgress.completed(
-      pluginId: "selected",
+    yield CatalogImportProgress.completed(
+      pluginId: pluginId,
       projectsImported: 1,
       sessionsImported: 2,
       completedAt: 200,

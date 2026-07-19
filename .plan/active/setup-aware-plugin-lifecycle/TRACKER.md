@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** Stage 11-P02 delivered; replacement stack rebuilding
+- **Status:** Stage 12 implemented and verified; delivery pending
 - **Base:** `origin/main` at `5a91f582`
-- **Current branch:** `setup-aware-plugin-lifecycle-s11-p02`
-- **Current stage:** Stage 12 rebuild
-- **Next action:** rebuild Stage 12 from rewritten Stage 11-P02, verify it,
-  rewrite its branch, reopen #510, and start its monitor
+- **Current branch:** `setup-aware-plugin-lifecycle-s12-p01`
+- **Current stage:** Stage 12 delivery
+- **Next action:** commit and force-push the verified Stage 12 replacement,
+  reopen #510, and start its monitor
 
 ## Closed First Implementation
 
@@ -155,6 +155,36 @@ run their focused verification again.
 - Follow-up runtime-safety commits `8d4fc41e` and `f69f24dc` add cancellable
   idle timers and provisional work evidence for every accepted OpenCode/Codex
   turn before its request lease is released.
+- Follow-up race fix `d4b3f1c1` prevents late accepted-turn responses and
+  detached failures from corrupting provisional work evidence.
+
+### 2026-07-20 — replacement Stage 12
+
+- Added simplified shared management, command, conflict, numeric timeout, and
+  `plugin.management.changed` contracts; regenerated Freezed/JSON outputs from
+  source and updated only minimum client exhaustive SSE switches.
+- Added explicit enabled/draining/disabled runtime access gates. Disable fences
+  acquisitions before safe/force stop, commits the denylist only after teardown,
+  and restores enabled+dormant without restart on persistence failure.
+- Added Layer-3 command joining, serialized settings mutations, setup-inspection
+  currency, replay-latest management snapshots, monotonic revisions, live
+  enable/disable/restart/refresh, and numeric timeout updates.
+- Added the three headless routes only: `GET /plugin/management`,
+  `POST /plugin/:id/command`, and `PATCH /plugin/idle-timeout`. Relay and debug
+  share the same router, and Orchestrator alone maps revisions to SSE.
+- Kept one catalog hydration listener and made import eligibility live so newly
+  enabled/ready plugins hydrate through the existing marker-before-acquisition
+  path.
+- Correctness audit findings were fixed: eligible enable retries inspect/start,
+  routability requires start access, negative integer timeouts remain valid,
+  apply-all preserves unknown plugin overrides, and fractional JSON timeouts
+  are rejected rather than truncated.
+- Sequential `dart analyze --fatal-infos` passed in `sesori_shared`,
+  `bridge/app`, and `client/module_core`.
+- Focused shared contract tests passed (9 tests); focused bridge runtime,
+  lifecycle, handlers, catalog, hydration, Orchestrator, and debug tests passed
+  (83 tests); affected module-core SSE tests and compilation passed.
+- `git diff --check` passed.
 
 ## Delivery Rules
 

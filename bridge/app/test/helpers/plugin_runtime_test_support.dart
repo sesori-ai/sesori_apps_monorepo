@@ -142,7 +142,7 @@ class TestPluginRuntime extends PluginRuntime {
           ? PluginProjectOwnership.native
           : PluginProjectOwnership.bridgeDerived,
       setup: const PluginSetupReady(),
-      eligible: true,
+      accessGate: PluginRuntimeAccessGate.enabled,
       startAllowed: true,
       generation: 1,
       state: PluginRuntimeState.active,

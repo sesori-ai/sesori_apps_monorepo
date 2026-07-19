@@ -181,6 +181,96 @@ void main() {
     expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
   });
 
+  test("disable drains before teardown and remains fenced until committed", () async {
+    final shutdownGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(api: _FakeApi(), shutdownGate: shutdownGate.future),
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+
+    final disabling = runtime.disable(pluginId: "one", intent: PluginStopIntent.force);
+    await _waitUntil(() => runtime.snapshot.single.accessGate == PluginRuntimeAccessGate.draining);
+
+    await expectLater(
+      runtime.use(pluginId: "one", operation: "duringDisable", body: (_) async {}),
+      throwsA(isA<PluginOperationException>()),
+    );
+    shutdownGate.complete();
+    expect(await disabling, isA<PluginRuntimeCommandApplied>());
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.draining);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.stopping);
+
+    runtime.commitDisabled(pluginId: "one");
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.disabled);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.disabled);
+  });
+
+  test("disable conflicts restore enabled access without stopping", () async {
+    final operationGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+    final operation = runtime.use<void>(
+      pluginId: "one",
+      operation: "leasedRead",
+      body: (_) => operationGate.future,
+    );
+    await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
+
+    final result = await runtime.disable(pluginId: "one", intent: PluginStopIntent.safe);
+
+    expect(result, isA<PluginRuntimeCommandConflict>());
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.enabled);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    operationGate.complete();
+    await operation;
+  });
+
+  test("disable rollback restores an enabled dormant plugin without restarting", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+
+    expect(
+      await runtime.disable(pluginId: "one", intent: PluginStopIntent.force),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+    runtime.restoreEnabledAfterDisable(pluginId: "one");
+
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.enabled);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(factory.startCount, 1);
+  });
+
+  test("policy reapplication cannot overwrite a runtime-owned drain", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+    expect(
+      await runtime.disable(pluginId: "one", intent: PluginStopIntent.force),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+
+    runtime.applyAccess(
+      entries: const [
+        PluginRuntimeAccess(
+          pluginId: "one",
+          gate: PluginRuntimeAccessGate.enabled,
+          startAllowed: true,
+        ),
+      ],
+    );
+
+    expect(runtime.snapshot.single.accessGate, PluginRuntimeAccessGate.draining);
+    runtime.restoreEnabledAfterDisable(pluginId: "one");
+  });
+
   test("a command-owned stop rejects force takeover until teardown finishes", () async {
     final shutdownGate = Completer<void>();
     final factory = _FakeGenerationFactory(
@@ -725,14 +815,82 @@ void main() {
     expect(sourced.generation, 1);
     expect(sourced.event, isA<BridgeSseProjectUpdated>());
   });
+
+  test("a non-ready live generation is not active, current, event-routable, or usable", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    final routedEvents = <SourcedPluginRuntimeEvent>[];
+    final eventSubscription = runtime.backendEvents.listen(routedEvents.add);
+    addTearDown(eventSubscription.cancel);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+
+    runtime.applyAccess(
+      entries: const [
+        PluginRuntimeAccess(
+          pluginId: "one",
+          gate: PluginRuntimeAccessGate.enabled,
+          startAllowed: false,
+        ),
+      ],
+    );
+
+    var bodyCalled = false;
+    final result = await runtime.useIfActive<bool>(
+      pluginId: "one",
+      body: (_, _) async {
+        bodyCalled = true;
+        return true;
+      },
+    );
+    factory.api.eventsController.add(const BridgeSseProjectUpdated());
+    await Future<void>.delayed(Duration.zero);
+
+    expect(runtime.snapshot.single.state, PluginRuntimeState.blocked);
+    expect(runtime.activePluginIds, isEmpty);
+    expect(runtime.isCurrentGeneration(pluginId: "one", generation: 1), isFalse);
+    expect(result, isNull);
+    expect(bodyCalled, isFalse);
+    expect(routedEvents, isEmpty);
+    expect(factory.plugins.single.shutdownCount, 0, reason: "the hidden generation remains owned for cleanup");
+
+    await runtime.dispose();
+    expect(factory.plugins.single.shutdownCount, 1);
+  });
+
+  test("setup inspection cannot overwrite a superseding generation", () async {
+    final inspectionGate = Completer<void>();
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(
+        inspect: () async {
+          await inspectionGate.future;
+          return const PluginSetupRuntimeMissing(actionHint: "Install it.");
+        },
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    final inspection = runtime.inspectSetup(pluginIds: const {"one"}, markUnselectedNotInspected: false);
+    await Future<void>.delayed(Duration.zero);
+    await runtime.start(pluginId: "one");
+    inspectionGate.complete();
+    final result = await inspection;
+
+    expect(result["one"], isNot(isA<PluginSetupRuntimeMissing>()));
+    expect(runtime.snapshot.single.setup, isNot(isA<PluginSetupRuntimeMissing>()));
+  });
 }
 
-PluginRuntime _runtime({required _FakeGenerationFactory factory}) {
+PluginRuntime _runtime({
+  required _FakeGenerationFactory factory,
+  _FakeDescriptor descriptor = const _FakeDescriptor(),
+}) {
   final runtime = PluginRuntime(
-    registrations: const [
+    registrations: [
       PluginRuntimeRegistration(
-        descriptor: _FakeDescriptor(),
-        config: PluginConfig(values: {}),
+        descriptor: descriptor,
+        config: const PluginConfig(values: {}),
         stateDirectory: ".",
       ),
     ],
@@ -746,7 +904,7 @@ PluginRuntime _runtime({required _FakeGenerationFactory factory}) {
     entries: const [
       PluginRuntimeAccess(
         pluginId: "one",
-        eligible: true,
+        gate: PluginRuntimeAccessGate.enabled,
         startAllowed: true,
       ),
     ],
@@ -798,7 +956,9 @@ class _FakeGenerationFactory implements PluginGenerationFactory {
 }
 
 class _FakeDescriptor extends BridgePluginDescriptor {
-  const _FakeDescriptor();
+  const _FakeDescriptor({this.inspect});
+
+  final Future<PluginSetupStatus> Function()? inspect;
 
   @override
   String get id => "one";
@@ -811,6 +971,14 @@ class _FakeDescriptor extends BridgePluginDescriptor {
 
   @override
   List<PluginOption> get options => const [];
+
+  @override
+  Future<PluginSetupStatus> inspectSetup({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async => inspect?.call() ?? const PluginSetupReady();
 
   @override
   Future<BridgePlugin> start(PluginHost host) => throw UnsupportedError("fake factory owns construction");

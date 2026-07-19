@@ -8,14 +8,16 @@ import "plugin_generation_factory.dart";
 class PluginRuntimeAccess {
   const PluginRuntimeAccess({
     required this.pluginId,
-    required this.eligible,
+    required this.gate,
     required this.startAllowed,
   });
 
   final String pluginId;
-  final bool eligible;
+  final PluginRuntimeAccessGate gate;
   final bool startAllowed;
 }
+
+enum PluginRuntimeAccessGate { enabled, draining, disabled }
 
 enum PluginRuntimeState { disabled, blocked, dormant, starting, active, degraded, stopping, failed }
 
@@ -30,7 +32,7 @@ class PluginRuntimeSnapshot {
     required this.pluginId,
     required this.projectOwnership,
     required this.setup,
-    required this.eligible,
+    required this.accessGate,
     required this.startAllowed,
     required this.generation,
     required this.state,
@@ -42,7 +44,8 @@ class PluginRuntimeSnapshot {
   final String pluginId;
   final PluginProjectOwnership projectOwnership;
   final PluginSetupStatus setup;
-  final bool eligible;
+  final PluginRuntimeAccessGate accessGate;
+  bool get eligible => accessGate != PluginRuntimeAccessGate.disabled;
   final bool startAllowed;
   final int? generation;
   final PluginRuntimeState state;
@@ -131,7 +134,7 @@ class PluginRuntime {
 
   Set<String> get startAllowedPluginIds => {
     for (final slot in _slots.values)
-      if (slot.eligible && slot.startAllowed) slot.registration.descriptor.id,
+      if (slot.accessGate == PluginRuntimeAccessGate.enabled && slot.startAllowed) slot.registration.descriptor.id,
   };
 
   PluginDiagnostics? describe({required String pluginId}) => _requireSlot(pluginId).plugin?.describe();
@@ -148,10 +151,21 @@ class PluginRuntime {
     if (markUnselectedNotInspected) {
       for (final slot in _slots.values) {
         if (!selectedIds.contains(slot.registration.descriptor.id)) {
+          slot.setupInspectionRevision++;
           slot.setup = const PluginSetupNotInspected();
         }
       }
     }
+    final inspections = {
+      for (final pluginId in selectedIds)
+        pluginId: () {
+          final slot = _slots[pluginId]!;
+          return (
+            revision: ++slot.setupInspectionRevision,
+            generation: slot.generation,
+          );
+        }(),
+    };
     final results = await Future.wait(
       selectedIds.map((pluginId) async {
         final slot = _slots[pluginId]!;
@@ -178,7 +192,11 @@ class PluginRuntime {
       }),
     );
     for (final result in results) {
-      _slots[result.pluginId]!.setup = result.setup;
+      final slot = _slots[result.pluginId]!;
+      final inspection = inspections[result.pluginId]!;
+      if (slot.setupInspectionRevision == inspection.revision && slot.generation == inspection.generation) {
+        slot.setup = result.setup;
+      }
     }
     _publishSnapshots();
     return Map<String, PluginSetupStatus>.unmodifiable({
@@ -193,8 +211,9 @@ class PluginRuntime {
     }
     for (final slot in _slots.values) {
       final entry = byId[slot.registration.descriptor.id];
+      if (slot.accessGate == PluginRuntimeAccessGate.draining) continue;
       slot
-        ..eligible = entry?.eligible ?? false
+        ..accessGate = entry?.gate ?? PluginRuntimeAccessGate.disabled
         ..startAllowed = entry?.startAllowed ?? false;
     }
     _publishSnapshots();
@@ -357,7 +376,7 @@ class PluginRuntime {
 
   Future<PluginRuntimeCommandResult> start({required String pluginId}) async {
     final slot = _requireSlot(pluginId);
-    if (!slot.eligible) {
+    if (slot.accessGate != PluginRuntimeAccessGate.enabled) {
       return PluginRuntimeCommandConflict(
         snapshot: _snapshotFor(slot),
         reasons: const [PluginRuntimeConflictReason.notEligible],
@@ -380,7 +399,39 @@ class PluginRuntime {
   Future<PluginRuntimeCommandResult> stop({
     required String pluginId,
     required PluginStopIntent intent,
-  }) => _stop(pluginId: pluginId, intent: intent);
+  }) => _stop(pluginId: pluginId, intent: intent, disable: false);
+
+  Future<PluginRuntimeCommandResult> disable({
+    required String pluginId,
+    required PluginStopIntent intent,
+  }) => _stop(pluginId: pluginId, intent: intent, disable: true);
+
+  void commitDisabled({required String pluginId}) {
+    final slot = _requireSlot(pluginId);
+    if (slot.accessGate != PluginRuntimeAccessGate.draining || slot.commandTransitionOwner == null) {
+      throw StateError('Plugin "$pluginId" has no prepared disable to commit.');
+    }
+    slot
+      ..accessGate = PluginRuntimeAccessGate.disabled
+      ..startAllowed = false
+      ..commandTransitionOwner = null
+      ..transition = PluginRuntimeTransition.none;
+    _publishSnapshots();
+  }
+
+  void restoreEnabledAfterDisable({required String pluginId}) {
+    final slot = _requireSlot(pluginId);
+    if (slot.accessGate != PluginRuntimeAccessGate.draining || slot.commandTransitionOwner == null) {
+      throw StateError('Plugin "$pluginId" has no prepared disable to restore.');
+    }
+    slot
+      ..accessGate = PluginRuntimeAccessGate.enabled
+      ..state = PluginRuntimeState.dormant
+      ..workState = PluginWorkState.unknown
+      ..commandTransitionOwner = null
+      ..transition = PluginRuntimeTransition.none;
+    _publishSnapshots();
+  }
 
   Future<PluginRuntimeCommandResult> restart({
     required String pluginId,
@@ -469,14 +520,30 @@ class PluginRuntime {
   Future<PluginRuntimeCommandResult> _stop({
     required String pluginId,
     required PluginStopIntent intent,
+    required bool disable,
   }) async {
     final slot = _requireSlot(pluginId);
-    if (!slot.eligible) {
+    if (disable && slot.accessGate == PluginRuntimeAccessGate.disabled) {
+      return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
+    }
+    if (slot.accessGate != PluginRuntimeAccessGate.enabled) {
       return PluginRuntimeCommandConflict(
         snapshot: _snapshotFor(slot),
         reasons: const [PluginRuntimeConflictReason.notEligible],
       );
     }
+    if (disable) {
+      slot.accessGate = PluginRuntimeAccessGate.draining;
+      slot.setupInspectionRevision++;
+      _publishSnapshots();
+    }
+
+    PluginRuntimeCommandResult conflict(List<PluginRuntimeConflictReason> reasons) {
+      if (disable) slot.accessGate = PluginRuntimeAccessGate.enabled;
+      _publishSnapshots();
+      return PluginRuntimeCommandConflict(snapshot: _snapshotFor(slot), reasons: reasons);
+    }
+
     final forceCanTakeOverTransition =
         intent == PluginStopIntent.force &&
         slot.commandTransitionOwner == null &&
@@ -485,38 +552,27 @@ class PluginRuntime {
             (slot.transition == PluginRuntimeTransition.stopping && slot.plugin != null));
     if (slot.commandTransitionOwner != null ||
         (slot.transition != PluginRuntimeTransition.none && !forceCanTakeOverTransition)) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.transitioning],
-      );
+      return conflict(const [PluginRuntimeConflictReason.transitioning]);
     }
     final hadPlugin = slot.plugin != null || slot.startFuture != null;
     final hasLiveGeneration = slot.plugin != null;
     if (intent == PluginStopIntent.safe && hadPlugin && slot.leaseCount > 0) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.inFlight],
-      );
+      return conflict(const [PluginRuntimeConflictReason.inFlight]);
     }
     if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.busy) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.busy],
-      );
+      return conflict(const [PluginRuntimeConflictReason.busy]);
     }
     if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.unknown) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.workStateUnknown],
-      );
+      return conflict(const [PluginRuntimeConflictReason.workStateUnknown]);
     }
-    if (!hadPlugin) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
+    if (!hadPlugin && !disable) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
     final transitionOwner = Object();
     slot
       ..commandTransitionOwner = transitionOwner
       ..transition = PluginRuntimeTransition.stopping;
     _publishSnapshots();
     String? failureMessage;
+    var preparedDisable = false;
     try {
       await _stopCurrentGeneration(slot: slot, intent: intent);
       if (!identical(slot.commandTransitionOwner, transitionOwner)) {
@@ -526,6 +582,7 @@ class PluginRuntime {
         );
       }
       slot.state = PluginRuntimeState.dormant;
+      preparedDisable = disable;
     } on Object catch (error) {
       if (!identical(slot.commandTransitionOwner, transitionOwner)) {
         return PluginRuntimeCommandConflict(
@@ -534,9 +591,10 @@ class PluginRuntime {
         );
       }
       slot.state = PluginRuntimeState.failed;
+      if (disable) slot.accessGate = PluginRuntimeAccessGate.enabled;
       failureMessage = "$error";
     } finally {
-      if (identical(slot.commandTransitionOwner, transitionOwner)) {
+      if (identical(slot.commandTransitionOwner, transitionOwner) && !preparedDisable) {
         slot
           ..commandTransitionOwner = null
           ..transition = PluginRuntimeTransition.none;
@@ -546,7 +604,7 @@ class PluginRuntime {
     if (failureMessage != null) {
       return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: failureMessage);
     }
-    return hadPlugin
+    return hadPlugin || disable
         ? PluginRuntimeCommandApplied(snapshot: _snapshotFor(slot))
         : PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
   }
@@ -556,7 +614,7 @@ class PluginRuntime {
     required PluginStopIntent intent,
   }) async {
     final slot = _requireSlot(pluginId);
-    if (!slot.eligible) {
+    if (slot.accessGate != PluginRuntimeAccessGate.enabled) {
       return PluginRuntimeCommandConflict(
         snapshot: _snapshotFor(slot),
         reasons: const [PluginRuntimeConflictReason.notEligible],
@@ -702,7 +760,7 @@ class PluginRuntime {
       throw PluginOperationException(operation, statusCode: 503, message: "bridge is shutting down");
     }
     final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
-    if (!slot.eligible || !slot.startAllowed) {
+    if (slot.accessGate != PluginRuntimeAccessGate.enabled || !slot.startAllowed) {
       throw PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is unavailable");
     }
     if (_blocksAcquisition(slot)) {
@@ -748,7 +806,10 @@ class PluginRuntime {
     if (_isRoutable(slot)) return Future<BridgePlugin?>.value(slot.plugin);
     final existing = slot.startFuture;
     if (existing != null) return existing;
-    if (_shuttingDown || !slot.eligible || !slot.startAllowed || slot.transition != PluginRuntimeTransition.none) {
+    if (_shuttingDown ||
+        slot.accessGate != PluginRuntimeAccessGate.enabled ||
+        !slot.startAllowed ||
+        slot.transition != PluginRuntimeTransition.none) {
       return Future<BridgePlugin?>.value();
     }
     return _beginStart(
@@ -864,7 +925,7 @@ class PluginRuntime {
       // ignore: cancel_subscriptions - retained by the slot and cancelled when this generation stops.
       slot.eventSubscription = started.api.events.listen(
         (event) {
-          if (slot.generation == generation && !_backendEventsSubject.isClosed) {
+          if (slot.generation == generation && _isRoutable(slot) && !_backendEventsSubject.isClosed) {
             _backendEventsSubject.add((pluginId: pluginId, generation: generation, event: event));
           }
         },
@@ -879,7 +940,7 @@ class PluginRuntime {
             );
             return;
           }
-          if (slot.generation == generation && !_backendEventsSubject.isClosed) {
+          if (slot.generation == generation && _isRoutable(slot) && !_backendEventsSubject.isClosed) {
             _backendEventsSubject.addError(error, stackTrace);
           }
           if (slot.generation == generation) {
@@ -1055,6 +1116,7 @@ class PluginRuntime {
     required PluginAuthenticationRequiredException failure,
   }) {
     if (slot.generation != generation || !identical(slot.plugin?.api, api)) return;
+    slot.setupInspectionRevision++;
     slot
       ..setup = PluginSetupAuthenticationRequired(actionHint: failure.actionHint)
       ..startAllowed = false
@@ -1132,7 +1194,10 @@ class PluginRuntime {
   }
 
   bool _isRoutable(_PluginRuntimeSlot slot) {
-    return slot.eligible && !_blocksAcquisition(slot) && _hasOperationalGeneration(slot);
+    return slot.accessGate == PluginRuntimeAccessGate.enabled &&
+        slot.startAllowed &&
+        !_blocksAcquisition(slot) &&
+        _hasOperationalGeneration(slot);
   }
 
   bool _hasOperationalGeneration(_PluginRuntimeSlot slot) {
@@ -1141,6 +1206,7 @@ class PluginRuntime {
   }
 
   bool _blocksAcquisition(_PluginRuntimeSlot slot) {
+    if (slot.accessGate != PluginRuntimeAccessGate.enabled) return true;
     return switch (slot.transition) {
       PluginRuntimeTransition.none || PluginRuntimeTransition.starting => false,
       PluginRuntimeTransition.stopping || PluginRuntimeTransition.restarting => true,
@@ -1168,8 +1234,10 @@ class PluginRuntime {
   List<PluginRuntimeSnapshot> _buildSnapshots() => [for (final slot in _slots.values) _snapshotFor(slot)];
 
   PluginRuntimeSnapshot _snapshotFor(_PluginRuntimeSlot slot) {
-    final state = !slot.eligible
+    final state = slot.accessGate == PluginRuntimeAccessGate.disabled
         ? PluginRuntimeState.disabled
+        : slot.accessGate == PluginRuntimeAccessGate.draining
+        ? PluginRuntimeState.stopping
         : !slot.startAllowed
         ? PluginRuntimeState.blocked
         : slot.plugin == null && slot.startFuture == null && slot.state != PluginRuntimeState.failed
@@ -1179,7 +1247,7 @@ class PluginRuntime {
       pluginId: slot.registration.descriptor.id,
       projectOwnership: slot.registration.descriptor.projectOwnership,
       setup: slot.setup,
-      eligible: slot.eligible,
+      accessGate: slot.accessGate,
       startAllowed: slot.startAllowed,
       generation: slot.generation,
       state: state,
@@ -1199,8 +1267,9 @@ class _PluginRuntimeSlot {
 
   final PluginRuntimeRegistration registration;
   PluginSetupStatus setup = const PluginSetupUnknown(actionHint: null);
-  bool eligible = false;
+  PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.disabled;
   bool startAllowed = false;
+  int setupInspectionRevision = 0;
   int? generation;
   PluginRuntimeState state = PluginRuntimeState.disabled;
   PluginWorkState workState = PluginWorkState.unknown;

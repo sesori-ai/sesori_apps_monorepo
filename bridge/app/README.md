@@ -196,6 +196,13 @@ objects and disabled IDs are preserved for forward compatibility. The current
 default is derived from setup-ready plugins in display-name order; missing
 legacy `pluginId` still always means OpenCode.
 
+Connected clients and headless callers can inspect and mutate the same live
+lifecycle through `GET /plugin/management`, `POST /plugin/:id/command`, and
+`PATCH /plugin/idle-timeout`. Commands require explicit safe or force intent;
+timeout updates use integer minutes and preserve the same `<= 0` semantics.
+Management changes emit `plugin.management.changed` so clients can refresh the
+queryable snapshot without polling.
+
 ## Examples
 
 ```bash

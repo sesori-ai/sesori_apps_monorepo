@@ -59,8 +59,10 @@ bridge/ workspace modules (siblings of app/):
 - **Independent lifecycle** — concrete `PluginRuntime` owns generations,
   acquisitions, leases, fencing, backend events, and bounded shutdown.
   `PluginLifecycleService` owns eligibility, setup, derived default metadata,
-  hydration readiness, and idle-stop policy through
-  `PluginLifecycleRepository`. Dormant setup-ready plugins remain selectable
+  hydration readiness, idle-stop policy, and headless management through
+  `PluginLifecycleRepository`. Disable drains through an explicit runtime
+  access gate before the service commits the denylist; lower layers never
+  receive persistence callbacks. Dormant setup-ready plugins remain selectable
   and start on demand. A terminal plugin failure removes only that plugin's
   routes and new-session choice; it does not stop catalog browsing, the relay,
   or another plugin.
