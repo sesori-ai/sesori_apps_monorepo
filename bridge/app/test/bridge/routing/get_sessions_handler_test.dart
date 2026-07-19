@@ -1082,7 +1082,12 @@ class _TrackingSessionMutationDispatcher implements SessionMutationDispatcher {
   }
 
   @override
-  Future<void> captureTitle({required String sessionId, required String? title}) async {}
+  Future<void> captureTitle({
+    required String sessionId,
+    required String? title,
+    required String pluginId,
+    required int generation,
+  }) async {}
 
   @override
   Future<void> deleteSession({required String sessionId}) async {}

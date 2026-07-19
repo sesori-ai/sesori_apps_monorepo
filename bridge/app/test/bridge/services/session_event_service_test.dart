@@ -694,6 +694,78 @@ void main() {
       expect(after?.projectionUpdatedAt, before?.projectionUpdatedAt);
     });
 
+    test("rolls back a title override when its generation retires at the title write", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      sessionDao.gateNextTitleWrite();
+
+      final normalization = service.normalize(
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 100,
+          event: BridgeSseSessionUpdated(
+            info: Session.fromJson(
+              _sessionInfo(
+                sessionId: "backend-root",
+                parentId: null,
+                projectId: "backend-project",
+                directory: "/repo",
+              ),
+            ).copyWith(title: "Retired title override").toJson(),
+            titleChanged: true,
+          ),
+        ),
+      );
+      await sessionDao.titleWriteEntered;
+      pluginRuntime.generationCurrent = false;
+      sessionDao.releaseTitleWrite();
+
+      expect(await normalization, isEmpty);
+      expect((await database.sessionDao.getSession(sessionId: "stable-root"))?.title, isNull);
+    });
+
+    test("commits a title override when its generation stays current through the write", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      sessionDao.gateNextTitleWrite();
+
+      final normalization = service.normalize(
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 100,
+          event: BridgeSseSessionUpdated(
+            info: Session.fromJson(
+              _sessionInfo(
+                sessionId: "backend-root",
+                parentId: null,
+                projectId: "backend-project",
+                directory: "/repo",
+              ),
+            ).copyWith(title: "Current title override").toJson(),
+            titleChanged: true,
+          ),
+        ),
+      );
+      await sessionDao.titleWriteEntered;
+      sessionDao.releaseTitleWrite();
+
+      expect(await normalization, hasLength(1));
+      expect(
+        (await database.sessionDao.getSession(sessionId: "stable-root"))?.title,
+        "Current title override",
+      );
+    });
+
     test("does not commit a retired-generation child after transaction entry", () async {
       await _insertRoot(
         database: database,
@@ -863,8 +935,11 @@ class _TransactionGatedSessionDao extends SessionDao {
 
   Completer<void>? _transactionEntered;
   Completer<void>? _releaseTransaction;
+  Completer<void>? _titleWriteEntered;
+  Completer<void>? _releaseTitleWrite;
 
   Future<void> get projectionTransactionEntered => _transactionEntered!.future;
+  Future<void> get titleWriteEntered => _titleWriteEntered!.future;
 
   void gateNextProjectionTransaction() {
     _transactionEntered = Completer<void>();
@@ -873,6 +948,38 @@ class _TransactionGatedSessionDao extends SessionDao {
 
   void releaseProjectionTransaction() {
     _releaseTransaction!.complete();
+  }
+
+  void gateNextTitleWrite() {
+    _titleWriteEntered = Completer<void>();
+    _releaseTitleWrite = Completer<void>();
+  }
+
+  void releaseTitleWrite() {
+    _releaseTitleWrite!.complete();
+  }
+
+  @override
+  Future<void> setTitle({
+    required String sessionId,
+    required String? title,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
+    final titleWriteEntered = _titleWriteEntered;
+    final releaseTitleWrite = _releaseTitleWrite;
+    if (titleWriteEntered != null && releaseTitleWrite != null) {
+      titleWriteEntered.complete();
+      await releaseTitleWrite.future;
+      _titleWriteEntered = null;
+      _releaseTitleWrite = null;
+    }
+    await super.setTitle(
+      sessionId: sessionId,
+      title: title,
+      updatedAt: updatedAt,
+      projectionUpdatedAt: projectionUpdatedAt,
+    );
   }
 
   @override

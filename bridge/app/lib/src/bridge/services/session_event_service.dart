@@ -377,6 +377,8 @@ class SessionEventService {
       await _sessionMutationDispatcher.captureTitle(
         sessionId: session.id,
         title: session.title,
+        pluginId: source.pluginId,
+        generation: source.generation,
       );
       if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     }

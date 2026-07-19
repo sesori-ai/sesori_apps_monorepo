@@ -1856,8 +1856,13 @@ void main() {
       );
 
       expect(
-        await repository.setSessionTitleIfStored(sessionId: "s1", title: "My rename"),
-        isTrue,
+        await repository.setSessionTitleIfStored(
+          sessionId: "s1",
+          title: "My rename",
+          sourcePluginId: null,
+          sourceGeneration: null,
+        ),
+        SessionTitleWriteResult.stored,
       );
 
       // The next enumeration keeps serving the rename, not the backend's

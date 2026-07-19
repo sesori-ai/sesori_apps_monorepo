@@ -51,6 +51,8 @@ import "session_unseen_calculator.dart";
 
 typedef SessionBindingsCommitted = ({String pluginId, List<String> backendSessionIds});
 
+enum SessionTitleWriteResult { stored, sessionMissing, sourceRetired }
+
 class SessionRepository {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
@@ -311,16 +313,58 @@ class SessionRepository {
   }
 
   /// Persists the bridge-owned title override. Null removes the override so
-  /// later reads fall back to the latest observed catalog title.
-  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
-    if (await _sessionDao.getSession(sessionId: sessionId) == null) return false;
-    await _sessionDao.setTitle(
-      sessionId: sessionId,
-      title: title,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
-      projectionUpdatedAt: captureProjectionTimestamp(),
-    );
-    return true;
+  /// later reads fall back to the latest observed catalog title. Plugin event
+  /// sources are generation-fenced; null source fields identify local intent.
+  Future<SessionTitleWriteResult> setSessionTitleIfStored({
+    required String sessionId,
+    required String? title,
+    required String? sourcePluginId,
+    required int? sourceGeneration,
+  }) async {
+    if ((sourcePluginId == null) != (sourceGeneration == null)) {
+      throw ArgumentError("sourcePluginId and sourceGeneration must either both be set or both be null");
+    }
+    try {
+      return await _sessionDao.attachedDatabase.transaction(() async {
+        final session = await _sessionDao.getSession(sessionId: sessionId);
+        if (session == null) return SessionTitleWriteResult.sessionMissing;
+        if (sourcePluginId != null && session.pluginId != sourcePluginId) {
+          return SessionTitleWriteResult.sourceRetired;
+        }
+        final updatedAt = DateTime.now().millisecondsSinceEpoch;
+        final projectionUpdatedAt = captureProjectionTimestamp();
+        if (sourcePluginId != null) {
+          _runtime.requireCurrentGeneration(
+            pluginId: sourcePluginId,
+            generation: sourceGeneration!,
+            operation: "setSessionTitleIfStored",
+          );
+        }
+        await _sessionDao.setTitle(
+          sessionId: sessionId,
+          title: title,
+          updatedAt: updatedAt,
+          projectionUpdatedAt: projectionUpdatedAt,
+        );
+        if (sourcePluginId != null) {
+          _runtime.requireCurrentGeneration(
+            pluginId: sourcePluginId,
+            generation: sourceGeneration!,
+            operation: "setSessionTitleIfStored",
+          );
+        }
+        return SessionTitleWriteResult.stored;
+      });
+    } on PluginOperationException {
+      if (sourcePluginId != null &&
+          !_runtime.isCurrentGeneration(
+            pluginId: sourcePluginId,
+            generation: sourceGeneration!,
+          )) {
+        return SessionTitleWriteResult.sourceRetired;
+      }
+      rethrow;
+    }
   }
 
   Future<bool> isSessionTombstoned({required String sessionId}) async {

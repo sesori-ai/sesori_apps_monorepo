@@ -395,21 +395,31 @@ class ProjectRepository {
     final source = await _runtime
         .useIfActive<_ProjectActivitySource>(
           pluginId: pluginId,
-          body: (plugin, _) => _loadProjectActivitySource(plugin),
+          body: (plugin, generation) => _loadProjectActivitySource(
+            plugin: plugin,
+            generation: generation,
+          ),
         )
         .timeout(_aggregateSourceDeadline);
     if (source == null) return const <ProjectActivityEvidence>[];
-    return switch (source) {
-      _NativeProjectActivitySource() => _persistNativeProjectActivityEvidence(source: source),
-      _ResolvedProjectActivitySource(:final evidence) => evidence,
-    };
+    switch (source) {
+      case _NativeProjectActivitySource():
+        return _persistNativeProjectActivityEvidence(source: source);
+      case _ResolvedProjectActivitySource(:final evidence):
+        _requireCurrentProjectActivitySource(source);
+        return evidence;
+    }
   }
 
-  Future<_ProjectActivitySource> _loadProjectActivitySource(BridgePluginApi plugin) async {
+  Future<_ProjectActivitySource> _loadProjectActivitySource({
+    required BridgePluginApi plugin,
+    required int generation,
+  }) async {
     switch (plugin) {
       case final NativeProjectsPluginApi plugin:
         return _NativeProjectActivitySource(
           pluginId: plugin.id,
+          generation: generation,
           projects: await plugin.getProjects(),
         );
       case final BridgeDerivedProjectsPluginApi plugin:
@@ -460,7 +470,11 @@ class ProjectRepository {
             ),
           );
         }
-        return _ResolvedProjectActivitySource(evidence: evidence);
+        return _ResolvedProjectActivitySource(
+          pluginId: plugin.id,
+          generation: generation,
+          evidence: evidence,
+        );
     }
   }
 
@@ -510,11 +524,21 @@ class ProjectRepository {
           ),
         );
       }
+      _requireCurrentProjectActivitySource(source);
       await _projectsDao.insertProjectsWithPathsIfMissing(
         projects: missingProjects,
       );
+      _requireCurrentProjectActivitySource(source);
       return evidence;
     });
+  }
+
+  void _requireCurrentProjectActivitySource(_ProjectActivitySource source) {
+    _runtime.requireCurrentGeneration(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      operation: "listProjectActivityEvidence",
+    );
   }
 
   Future<Map<String, ProjectActivity>> getActivities({required Set<String> projectIds}) async {
@@ -582,18 +606,28 @@ class ProjectRepository {
 }
 
 sealed class _ProjectActivitySource {
-  const _ProjectActivitySource();
+  const _ProjectActivitySource({required this.pluginId, required this.generation});
+
+  final String pluginId;
+  final int generation;
 }
 
 final class _NativeProjectActivitySource extends _ProjectActivitySource {
-  const _NativeProjectActivitySource({required this.pluginId, required this.projects});
+  const _NativeProjectActivitySource({
+    required super.pluginId,
+    required super.generation,
+    required this.projects,
+  });
 
-  final String pluginId;
   final List<PluginProject> projects;
 }
 
 final class _ResolvedProjectActivitySource extends _ProjectActivitySource {
-  const _ResolvedProjectActivitySource({required this.evidence});
+  const _ResolvedProjectActivitySource({
+    required super.pluginId,
+    required super.generation,
+    required this.evidence,
+  });
 
   final List<ProjectActivityEvidence> evidence;
 }

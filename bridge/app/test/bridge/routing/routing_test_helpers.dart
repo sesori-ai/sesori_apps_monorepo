@@ -734,7 +734,12 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> dispose() async {}
 
   @override
-  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
+  Future<SessionTitleWriteResult> setSessionTitleIfStored({
+    required String sessionId,
+    required String? title,
+    required String? sourcePluginId,
+    required int? sourceGeneration,
+  }) async => SessionTitleWriteResult.stored;
 
   @override
   Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
@@ -985,9 +990,14 @@ class FakeSessionRepository implements SessionRepository {
   final List<({String sessionId, String? title})> recordedTitles = [];
 
   @override
-  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
+  Future<SessionTitleWriteResult> setSessionTitleIfStored({
+    required String sessionId,
+    required String? title,
+    required String? sourcePluginId,
+    required int? sourceGeneration,
+  }) async {
     recordedTitles.add((sessionId: sessionId, title: title));
-    return true;
+    return SessionTitleWriteResult.stored;
   }
 
   @override

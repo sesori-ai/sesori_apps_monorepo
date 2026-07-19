@@ -278,6 +278,46 @@ void main() {
       expect(evidence.single.projectId, rows.single.projectId);
     });
 
+    test("native activity drops evidence and project insertion when its generation is replaced", () async {
+      plugin.projectsResult = const [
+        PluginProject(
+          id: "retired-project",
+          directory: "/projects/retired",
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+      ];
+      final runtime = createTestPluginRuntime(plugins: [plugin]);
+      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
+      final generationAwareRepo = ProjectRepository(
+        runtime: runtime,
+        readDefaultEnabledPluginId: () => plugin.id,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+        gitCliApi: FakeGitCliApi(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+      );
+
+      final reconciliation = generationAwareRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      await projectsDao.snapshotTaken.future;
+      runtime.generationCurrent = false;
+      projectsDao.releaseSnapshot.complete();
+
+      await expectLater(
+        reconciliation,
+        throwsA(
+          isA<PluginOperationException>().having(
+            (error) => error.message,
+            "message",
+            contains("generation changed"),
+          ),
+        ),
+      );
+      expect(await db.projectsDao.getProject(projectId: "retired-project"), isNull);
+    });
+
     test("getProjects completes from the catalog when plugin enumeration throws", () async {
       plugin.getProjectsError = PluginApiException("/project", 500);
       await db.projectsDao.setActivity(projectId: "stored", createdAt: 1, updatedAt: 2);

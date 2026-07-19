@@ -493,7 +493,12 @@ class _FakeSessionRepository implements SessionRepository {
   Future<void> dispose() async {}
 
   @override
-  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
+  Future<SessionTitleWriteResult> setSessionTitleIfStored({
+    required String sessionId,
+    required String? title,
+    required String? sourcePluginId,
+    required int? sourceGeneration,
+  }) async => SessionTitleWriteResult.stored;
 
   @override
   Future<Session> deleteSession({required String sessionId}) async => Session(
