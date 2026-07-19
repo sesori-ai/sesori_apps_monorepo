@@ -17,7 +17,7 @@ The first unmerged stack was closed before redesign:
 |---|---|---|
 | #507 | Reopened | Redesigned Stage 10 at `794e853e`; CI/review monitored |
 | #508 | Reopened | Redesigned Stage 11-P01 at `29472036`; CI/review monitored |
-| #509 | Reopened | Redesigned Stage 11-P02 at `215b857a`; CI/review monitored |
+| #509 | Reopened | Redesigned Stage 11-P02 at `c0b3ed11`; CI/review monitored |
 | #510 | Closed | Reopen after redesigned Stage 12 is implemented and verified |
 | #511 | Closed | Reopen after redesigned Stage 13 is implemented on merged Settings architecture |
 
@@ -115,7 +115,7 @@ run their focused verification again.
   at their durable transaction boundaries and distinguished status-only stopping
   from command-owned teardown. After rebasing onto the synchronized Stage 10,
   the Stage 11-P01 production commit is `29472036` and current head is
-  `66db912b`.
+  `235589b3`.
 
 ### 2026-07-20 — replacement Stage 11-P02
 
@@ -146,9 +146,10 @@ run their focused verification again.
 - Rebased the open Stage 10 and Stage 11-P01 branches, and this in-progress
   branch, onto `origin/main` at `5a91f582` as requested.
 - `git diff --check` passed.
-- Committed as `215b857a`, force-pushed with lease, and reopened #509 using the
+- Committed as `c0b3ed11`, force-pushed with lease, and reopened #509 using the
   same temporary-old-head GitHub workaround; the verified replacement head was
-  restored immediately and is monitored.
+  restored immediately and is monitored. The current head is `1f5c7ea4` after
+  removing a stale test-only activity-readiness wait exposed by CI.
 
 ## Delivery Rules
 
