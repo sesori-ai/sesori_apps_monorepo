@@ -152,6 +152,9 @@ run their focused verification again.
   immediately and monitored. The follow-up test-only code commit `1f5c7ea4`
   removes a stale activity-readiness wait exposed by CI. These hashes identify
   the production and test-code delivery, not the eventual PR head.
+- Follow-up runtime-safety commits `8d4fc41e` and `f69f24dc` add cancellable
+  idle timers and provisional work evidence for every accepted OpenCode/Codex
+  turn before its request lease is released.
 
 ## Delivery Rules
 
