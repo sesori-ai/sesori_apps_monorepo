@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** Stage 10 implemented and verified locally; replacement delivery pending
+- **Status:** Stage 10 delivered; replacement stack rebuilding
 - **Base:** `origin/main` at `9e1625d0`
 - **Current branch:** `aware-plugin-lifecycle`
-- **Current stage:** Stage 10 delivery
-- **Next action:** squash Stage 10 onto `9e1625d0`, force-push with lease,
-  reopen #507, start its monitor, then build each successor from that head
+- **Current stage:** Stage 11-P01 rebuild
+- **Next action:** rebuild Stage 11-P01 from rewritten Stage 10, verify it,
+  rewrite its branch, reopen #508, and start its monitor
 
 ## Closed First Implementation
 
@@ -15,7 +15,7 @@ The first unmerged stack was closed before redesign:
 
 | Old PR | State | Replacement |
 |---|---|---|
-| #507 | Closed | Reopen after redesigned Stage 10 is implemented and verified |
+| #507 | Reopened | Redesigned Stage 10 at `d02f18d8`; CI/review monitored |
 | #508 | Closed | Reopen after redesigned Stage 11-P01 is implemented and verified |
 | #509 | Closed | Reopen after redesigned Stage 11-P02 is implemented and verified |
 | #510 | Closed | Reopen after redesigned Stage 12 is implemented and verified |
@@ -28,7 +28,7 @@ run their focused verification again.
 
 | Done | Stage | Branch | PR state |
 |---|---|---|---|
-| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 closed; ready to rewrite/reopen |
+| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 open and monitored |
 | [ ] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 closed |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 closed |
 | [ ] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 closed |
@@ -81,6 +81,10 @@ run their focused verification again.
   missing runtime-resolution abort checks, and empty plugin-ID acceptance. All
   three findings were fixed with regression coverage.
 - `git diff --check` passed.
+- Squashed onto `9e1625d0` as `d02f18d8`, force-pushed with lease, and
+  reopened #507. Because GitHub refuses to reopen a closed PR after its head is
+  rewritten, the old head was restored only long enough to reopen the PR, then
+  the verified replacement head was restored immediately.
 
 ## Delivery Rules
 
