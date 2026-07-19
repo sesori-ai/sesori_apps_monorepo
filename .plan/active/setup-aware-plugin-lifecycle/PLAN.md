@@ -4,7 +4,7 @@
 
 - **Plan slug:** `setup-aware-plugin-lifecycle`
 - **Status:** redesign approved; implementation stack is being rebuilt
-- **Implementation base:** latest `origin/main` at `9e1625d0`
+- **Implementation base:** latest `origin/main` at `5a91f582`
 - **Predecessor:** parallel-plugin Stages 0-9 and bridge-app-onboarding W02 are merged
 - **Delivery:** five stacked PRs; the old unmerged PRs #507-#511 are closed and
   are reopened only after their replacement stage is implemented and verified

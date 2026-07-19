@@ -3,7 +3,7 @@
 ## Plan State
 
 - **Status:** Stage 10 delivered; replacement stack rebuilding
-- **Base:** `origin/main` at `9e1625d0`
+- **Base:** `origin/main` at `5a91f582`
 - **Current branch:** `aware-plugin-lifecycle`
 - **Current stage:** Stage 11-P01 rebuild
 - **Next action:** rebuild Stage 11-P01 from rewritten Stage 10, verify it,
@@ -15,7 +15,7 @@ The first unmerged stack was closed before redesign:
 
 | Old PR | State | Replacement |
 |---|---|---|
-| #507 | Reopened | Redesigned Stage 10 at `d02f18d8`; CI/review monitored |
+| #507 | Reopened | Redesigned Stage 10 at `794e853e`; CI/review monitored |
 | #508 | Closed | Reopen after redesigned Stage 11-P01 is implemented and verified |
 | #509 | Closed | Reopen after redesigned Stage 11-P02 is implemented and verified |
 | #510 | Closed | Reopen after redesigned Stage 12 is implemented and verified |
@@ -85,6 +85,8 @@ run their focused verification again.
   reopened #507. Because GitHub refuses to reopen a closed PR after its head is
   rewritten, the old head was restored only long enough to reopen the PR, then
   the verified replacement head was restored immediately.
+- Rebased cleanly onto `origin/main` at `5a91f582` on 2026-07-20; the Stage 10
+  production commit is now `794e853e`.
 
 ## Delivery Rules
 
