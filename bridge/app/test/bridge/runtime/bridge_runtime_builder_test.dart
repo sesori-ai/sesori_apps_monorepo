@@ -61,6 +61,7 @@ void main() {
       ),
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
+      pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       database: database,
       httpClient: httpClient,
       processRunner: ProcessRunner(),

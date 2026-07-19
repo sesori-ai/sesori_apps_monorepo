@@ -6,6 +6,8 @@ import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "../../helpers/plugin_runtime_test_support.dart";
+
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -158,11 +160,7 @@ void main() {
         projectQuestions: () => Completer<List<PluginPendingQuestion>>().future,
       );
       final repository = QuestionRepository(
-        operationalPlugins: {
-          healthyPlugin.id: healthyPlugin,
-          throwingPlugin.id: throwingPlugin,
-          timedOutPlugin.id: timedOutPlugin,
-        },
+        runtime: createTestPluginRuntime(plugins: [healthyPlugin, throwingPlugin, timedOutPlugin]),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         legacyMissingPluginId: healthyPlugin.id,
@@ -205,10 +203,7 @@ void main() {
         projectQuestions: () async => throw StateError("unavailable"),
       );
       final repository = QuestionRepository(
-        operationalPlugins: {
-          emptyPlugin.id: emptyPlugin,
-          failedPlugin.id: failedPlugin,
-        },
+        runtime: createTestPluginRuntime(plugins: [emptyPlugin, failedPlugin]),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         legacyMissingPluginId: emptyPlugin.id,
@@ -230,10 +225,7 @@ void main() {
         projectQuestions: () => Completer<List<PluginPendingQuestion>>().future,
       );
       final repository = QuestionRepository(
-        operationalPlugins: {
-          throwingPlugin.id: throwingPlugin,
-          timedOutPlugin.id: timedOutPlugin,
-        },
+        runtime: createTestPluginRuntime(plugins: [throwingPlugin, timedOutPlugin]),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         legacyMissingPluginId: throwingPlugin.id,

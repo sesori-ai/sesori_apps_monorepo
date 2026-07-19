@@ -6,7 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/session_repository.dart";
 import "session_event_service.dart";
 
-typedef NormalizedSourcedBridgeEvent = ({String pluginId, BridgeSseEvent event});
+typedef NormalizedSourcedBridgeEvent = ({String pluginId, int? generation, BridgeSseEvent event});
 
 class SessionEventDispatcher {
   final SessionEventService _sessionEventService;
@@ -20,13 +20,22 @@ class SessionEventDispatcher {
 
   Stream<NormalizedSourcedBridgeEvent> get events => _eventsController.stream;
 
-  SourcedBridgeEvent capturePluginEvent({required String pluginId, required BridgeSseEvent event}) {
-    return _sessionEventService.captureSource(pluginId: pluginId, event: event);
+  SourcedBridgeEvent capturePluginEvent({
+    required String pluginId,
+    required int generation,
+    required BridgeSseEvent event,
+  }) {
+    return _sessionEventService.captureSource(
+      pluginId: pluginId,
+      generation: generation,
+      event: event,
+    );
   }
 
   Future<void> dispatchPluginEvent({required SourcedBridgeEvent source}) {
     return _dispatch(
       pluginId: source.pluginId,
+      generation: source.generation,
       operation: () => _sessionEventService.normalize(source: source),
     );
   }
@@ -34,6 +43,7 @@ class SessionEventDispatcher {
   Future<void> dispatchBindingsCommitted({required SessionBindingsCommitted commit}) {
     return _dispatch(
       pluginId: commit.pluginId,
+      generation: null,
       operation: () => _sessionEventService.handleBindingsCommitted(commit: commit),
     );
   }
@@ -41,6 +51,7 @@ class SessionEventDispatcher {
   Future<void> dispatchDeletedSession({required Session session}) {
     return _dispatch(
       pluginId: session.pluginId,
+      generation: null,
       operation: () async => [BridgeSseSessionDeleted(info: session.toJson())],
     );
   }
@@ -58,6 +69,7 @@ class SessionEventDispatcher {
 
   Future<void> _dispatch({
     required String pluginId,
+    required int? generation,
     required Future<List<BridgeSseEvent>> Function() operation,
   }) {
     if (_disposed) return Future.error(StateError("SessionEventDispatcher is disposed"));
@@ -68,9 +80,23 @@ class SessionEventDispatcher {
       await previous;
       try {
         final events = await operation();
+        if (generation != null &&
+            !_sessionEventService.isCurrentGeneration(
+              pluginId: pluginId,
+              generation: generation,
+            )) {
+          return;
+        }
         for (final event in events) {
           if (await _sessionEventService.canPublish(event: event)) {
-            _eventsController.add((pluginId: pluginId, event: event));
+            if (generation != null &&
+                !_sessionEventService.isCurrentGeneration(
+                  pluginId: pluginId,
+                  generation: generation,
+                )) {
+              return;
+            }
+            _eventsController.add((pluginId: pluginId, generation: generation, event: event));
           }
         }
       } on Object catch (error, stackTrace) {

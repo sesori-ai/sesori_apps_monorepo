@@ -15,6 +15,7 @@ import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -111,7 +112,7 @@ void main() {
         updatedAt: 2,
       );
       final zeroPluginRepository = ProjectRepository(
-        operationalPlugins: const <String, BridgePluginApi>{},
+        runtime: createTestPluginRuntime(plugins: const []),
         readDefaultEnabledPluginId: () => null,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -145,7 +146,7 @@ void main() {
         );
       var defaultPluginId = "first";
       final liveDefaultRepository = ProjectRepository(
-        operationalPlugins: {first.id: first, second.id: second},
+        runtime: createTestPluginRuntime(plugins: [first, second]),
         readDefaultEnabledPluginId: () => defaultPluginId,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,

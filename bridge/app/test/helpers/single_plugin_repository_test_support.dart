@@ -16,12 +16,14 @@ import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "plugin_runtime_test_support.dart";
+
 AgentRepository singlePluginAgentRepository({
   required BridgePluginApi plugin,
   required ProjectsDao projectsDao,
 }) {
   return AgentRepository(
-    operationalPlugins: {plugin.id: plugin},
+    runtime: createTestPluginRuntime(plugins: [plugin]),
     projectsDao: projectsDao,
     legacyPluginId: plugin.id,
   );
@@ -32,7 +34,7 @@ PermissionRepository singlePluginPermissionRepository({
   required SessionDao sessionDao,
 }) {
   return PermissionRepository(
-    operationalPlugins: {plugin.id: plugin},
+    runtime: createTestPluginRuntime(plugins: [plugin]),
     sessionDao: sessionDao,
   );
 }
@@ -46,7 +48,7 @@ ProjectRepository singlePluginProjectRepository({
   required GitCliApi gitCliApi,
 }) {
   return ProjectRepository(
-    operationalPlugins: {plugin.id: plugin},
+    runtime: createTestPluginRuntime(plugins: [plugin]),
     readDefaultEnabledPluginId: () => plugin.id,
     projectsDao: projectsDao,
     sessionDao: sessionDao,
@@ -63,7 +65,7 @@ ProviderRepository singlePluginProviderRepository({
   required ProjectsDao projectsDao,
 }) {
   return ProviderRepository(
-    operationalPlugins: {plugin.id: plugin},
+    runtime: createTestPluginRuntime(plugins: [plugin]),
     projectsDao: projectsDao,
   );
 }
@@ -74,7 +76,7 @@ QuestionRepository singlePluginQuestionRepository({
   required ProjectsDao projectsDao,
 }) {
   return QuestionRepository(
-    operationalPlugins: {plugin.id: plugin},
+    runtime: createTestPluginRuntime(plugins: [plugin]),
     sessionDao: sessionDao,
     projectsDao: projectsDao,
     legacyMissingPluginId: plugin.id,
@@ -90,11 +92,10 @@ SessionRepository singlePluginSessionRepository({
   required SessionUnseenCalculator unseenCalculator,
 }) {
   return SessionRepository(
-    operationalPlugins: {plugin.id: plugin},
+    runtime: createTestPluginRuntime(plugins: [plugin]),
     bridgeDerivedProjectPluginIds: {
       if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
     },
-    enabledPluginIds: [plugin.id],
     sessionDao: sessionDao,
     projectsDao: projectsDao,
     pullRequestDao: pullRequestDao,
@@ -114,7 +115,7 @@ WorktreeRepository singlePluginWorktreeRepository({
     projectsDao: projectsDao,
     sessionDao: sessionDao,
     gitApi: gitApi,
-    operationalPlugins: {plugin.id: plugin},
+    runtime: createTestPluginRuntime(plugins: [plugin]),
   );
 }
 
@@ -125,7 +126,7 @@ CatalogImportRepository singlePluginCatalogImportRepository({
   required CatalogHydrationsDao catalogHydrationsDao,
 }) {
   return CatalogImportRepository(
-    operationalPlugins: {plugin.id: plugin},
+    runtime: createTestPluginRuntime(plugins: [plugin]),
     projectsDao: projectsDao,
     sessionDao: sessionDao,
     catalogHydrationsDao: catalogHydrationsDao,

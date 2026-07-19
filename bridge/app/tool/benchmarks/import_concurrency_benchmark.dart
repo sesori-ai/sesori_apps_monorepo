@@ -14,6 +14,8 @@ import "package:sesori_bridge/src/repositories/project_catalog_identity_calculat
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "benchmark_plugin_runtime.dart";
+
 const _defaultProjectCount = 500;
 const _defaultSessionCount = 10000;
 const _defaultWarmupCount = 10;
@@ -104,7 +106,7 @@ class _ImportConcurrencyBenchmark {
         releaseEnumeration: releaseEnumeration,
       );
       final repository = CatalogImportRepository(
-        operationalPlugins: {plugin.id: plugin},
+        runtime: createBenchmarkPluginRuntime(plugins: [plugin]),
         projectsDao: _BenchmarkProjectsDao(
           database,
           publicationStarted: publicationTransactionStarted,

@@ -27,6 +27,8 @@ import "package:sesori_bridge/src/repositories/project_catalog_identity_calculat
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "benchmark_plugin_runtime.dart";
+
 const _defaultProjectCount = 2000;
 const _defaultSessionCount = 50000;
 const _defaultEventCount = 2000;
@@ -135,17 +137,17 @@ class _CatalogImportEventSoak {
         releaseEnumeration: releaseEnumeration,
       );
       final plugins = <String, BridgePluginApi>{plugin.id: plugin};
+      final runtime = createBenchmarkPluginRuntime(plugins: plugins.values);
       final importRepository = CatalogImportRepository(
-        operationalPlugins: plugins,
+        runtime: runtime,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
       );
       sessionRepository = SessionRepository(
-        operationalPlugins: plugins,
+        runtime: runtime,
         bridgeDerivedProjectPluginIds: {plugin.id},
-        enabledPluginIds: [plugin.id],
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
@@ -154,7 +156,7 @@ class _CatalogImportEventSoak {
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
       final projectRepository = ProjectRepository(
-        operationalPlugins: plugins,
+        runtime: runtime,
         readDefaultEnabledPluginId: () => plugin.id,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
@@ -174,6 +176,7 @@ class _CatalogImportEventSoak {
       final failureReporter = _BenchmarkFailureReporter();
       final eventService = SessionEventService(
         sessionRepository: sessionRepository,
+        pluginRuntime: runtime,
         sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: eventTracker,
@@ -542,6 +545,7 @@ class _CatalogImportEventSoak {
   }) async {
     final source = eventService.captureSource(
       pluginId: _pluginId,
+      generation: 1,
       event: BridgeSseSessionUpdated(
         info: Session(
           branchName: null,

@@ -100,6 +100,7 @@ import "routing/restart_bridge_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
+import "runtime/plugin_runtime.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
@@ -133,6 +134,7 @@ class Orchestrator {
   final RelayClient _client;
   final String _legacyMissingPluginId;
   final PluginLifecycleService _pluginLifecycleService;
+  final PluginRuntime _pluginRuntime;
   final AppDatabase _database;
   final http.Client _httpClient;
   final ProcessRunner _processRunner;
@@ -149,6 +151,7 @@ class Orchestrator {
     required RelayClient client,
     required String legacyMissingPluginId,
     required PluginLifecycleService pluginLifecycleService,
+    required PluginRuntime pluginRuntime,
     required AppDatabase database,
     required http.Client httpClient,
     required ProcessRunner processRunner,
@@ -164,6 +167,7 @@ class Orchestrator {
   }) : _client = client,
        _legacyMissingPluginId = legacyMissingPluginId,
        _pluginLifecycleService = pluginLifecycleService,
+       _pluginRuntime = pluginRuntime,
        _database = database,
        _httpClient = httpClient,
        _processRunner = processRunner,
@@ -183,12 +187,11 @@ class Orchestrator {
     const projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator();
     final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
     final sessionRepository = SessionRepository(
-      operationalPlugins: pluginComposition.operationalPlugins,
+      runtime: _pluginRuntime,
       bridgeDerivedProjectPluginIds: {
-        for (final entry in pluginComposition.operationalPlugins.entries)
-          if (entry.value is BridgeDerivedProjectsPluginApi) entry.key,
+        for (final entry in pluginComposition.projectOwnershipById.entries)
+          if (entry.value == PluginProjectOwnership.bridgeDerived) entry.key,
       },
-      enabledPluginIds: pluginComposition.enabledPluginIds,
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
       pullRequestDao: _database.pullRequestDao,
@@ -197,8 +200,8 @@ class Orchestrator {
       aggregateSourceDeadline: aggregateSourceDeadline,
     );
     final projectRepository = ProjectRepository(
-      operationalPlugins: pluginComposition.operationalPlugins,
-      readDefaultEnabledPluginId: () => _pluginLifecycleService.compositionView.defaultEnabledPluginId,
+      runtime: _pluginRuntime,
+      readDefaultEnabledPluginId: () => _pluginLifecycleService.compositionView.defaultPluginId,
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
       unseenCalculator: unseenCalculator,
@@ -224,7 +227,7 @@ class Orchestrator {
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
       gitApi: gitCliApi,
-      operationalPlugins: pluginComposition.operationalPlugins,
+      runtime: _pluginRuntime,
     );
     final worktreeService = WorktreeService(worktreeRepository: worktreeRepository);
     final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
@@ -279,7 +282,7 @@ class Orchestrator {
       now: () => DateTime.now().millisecondsSinceEpoch,
     );
     final permissionRepository = PermissionRepository(
-      operationalPlugins: pluginComposition.operationalPlugins,
+      runtime: _pluginRuntime,
       sessionDao: _database.sessionDao,
     );
     final healthRepository = HealthRepository(
@@ -287,16 +290,16 @@ class Orchestrator {
       filesystemAccessOk: _filesystemAccessOk,
     );
     final providerRepository = ProviderRepository(
-      operationalPlugins: pluginComposition.operationalPlugins,
+      runtime: _pluginRuntime,
       projectsDao: _database.projectsDao,
     );
     final agentRepository = AgentRepository(
-      operationalPlugins: pluginComposition.operationalPlugins,
+      runtime: _pluginRuntime,
       projectsDao: _database.projectsDao,
       legacyPluginId: _legacyMissingPluginId,
     );
     final questionRepository = QuestionRepository(
-      operationalPlugins: pluginComposition.operationalPlugins,
+      runtime: _pluginRuntime,
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
       legacyMissingPluginId: _legacyMissingPluginId,
@@ -328,16 +331,17 @@ class Orchestrator {
 
     final catalogImportService = CatalogImportService(
       knownPluginIds: pluginComposition.knownPluginIds,
-      enabledPluginIds: pluginComposition.enabledPluginIds,
+      enabledPluginIds: pluginComposition.eligiblePluginIds,
       emptyHydrationPolicies: {
-        for (final entry in pluginComposition.operationalPlugins.entries)
-          entry.key: switch (entry.value) {
-            NativeProjectsPluginApi() => CatalogEmptyHydrationPolicy.complete,
-            BridgeDerivedProjectsPluginApi() => CatalogEmptyHydrationPolicy.retry,
-          },
+        for (final entry in pluginComposition.projectOwnershipById.entries)
+          if (pluginComposition.eligiblePluginIds.contains(entry.key))
+            entry.key: switch (entry.value) {
+              PluginProjectOwnership.native => CatalogEmptyHydrationPolicy.complete,
+              PluginProjectOwnership.bridgeDerived => CatalogEmptyHydrationPolicy.retry,
+            },
       },
       repository: CatalogImportRepository(
-        operationalPlugins: pluginComposition.operationalPlugins,
+        runtime: _pluginRuntime,
         projectsDao: _database.projectsDao,
         sessionDao: _database.sessionDao,
         catalogHydrationsDao: _database.catalogHydrationsDao,
@@ -363,6 +367,7 @@ class Orchestrator {
     );
     final sessionEventService = SessionEventService(
       sessionRepository: sessionRepository,
+      pluginRuntime: _pluginRuntime,
       sessionMutationDispatcher: sessionMutationDispatcher,
       eventMapper: const SessionEventMapper(),
       eventTracker: SessionEventTracker(
@@ -378,9 +383,7 @@ class Orchestrator {
       permissionRepository: permissionRepository,
     );
     final pluginEventListeners = [
-      for (final pluginId in pluginComposition.enabledPluginIds)
-        if (pluginComposition.operationalPlugins[pluginId] case final plugin?)
-          PluginEventListener(pluginId: pluginId, source: plugin.events, dispatcher: sessionEventDispatcher),
+      PluginEventListener(source: _pluginRuntime.backendEvents, dispatcher: sessionEventDispatcher),
     ];
     final sessionBindingCommitListener = SessionBindingCommitListener(
       source: sessionRepository.bindingCommits,
@@ -468,6 +471,7 @@ class Orchestrator {
       sessionBindingCommitListener: sessionBindingCommitListener,
       sessionDeletionListener: sessionDeletionListener,
       sessionEventDispatcher: sessionEventDispatcher,
+      pluginRuntime: _pluginRuntime,
       pushDispatcher: pushDispatcher,
       completionListener: completionListener,
       maintenanceListener: maintenanceListener,
@@ -527,6 +531,7 @@ class OrchestratorSession {
   final SessionBindingCommitListener _sessionBindingCommitListener;
   final SessionDeletionListener _sessionDeletionListener;
   final SessionEventDispatcher _sessionEventDispatcher;
+  final PluginRuntime _pluginRuntime;
   final List<int> _roomKey;
   final SSEManager _sseManager;
   final RequestRouter _router;
@@ -591,6 +596,7 @@ class OrchestratorSession {
     required SessionBindingCommitListener sessionBindingCommitListener,
     required SessionDeletionListener sessionDeletionListener,
     required SessionEventDispatcher sessionEventDispatcher,
+    required PluginRuntime pluginRuntime,
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
@@ -622,6 +628,7 @@ class OrchestratorSession {
        _sessionBindingCommitListener = sessionBindingCommitListener,
        _sessionDeletionListener = sessionDeletionListener,
        _sessionEventDispatcher = sessionEventDispatcher,
+       _pluginRuntime = pluginRuntime,
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
@@ -1012,6 +1019,14 @@ class OrchestratorSession {
     return () async {
       await previous;
       try {
+        final generation = source.generation;
+        if (generation != null &&
+            !_pluginRuntime.isCurrentGeneration(
+              pluginId: source.pluginId,
+              generation: generation,
+            )) {
+          return;
+        }
         await _processPluginEvent(source);
       } finally {
         release.complete();
@@ -1021,8 +1036,12 @@ class OrchestratorSession {
 
   Future<void> _processPluginEvent(NormalizedSourcedBridgeEvent source) async {
     final pluginId = source.pluginId;
+    final generation = source.generation;
     final event = source.event;
     try {
+      if (generation != null && !_pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+        return;
+      }
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
 
       if (event is BridgeSsePermissionReplied) {
@@ -1058,6 +1077,9 @@ class OrchestratorSession {
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
       final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event);
+      if (generation != null && !_pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+        return;
+      }
       if (sesoriEvent != null) {
         await _deliverSseEvent(event: sesoriEvent);
       } else if (!refreshProjectsSummary) {
@@ -1067,6 +1089,9 @@ class OrchestratorSession {
       // Both trigger types mean activity changed. Rebuild from repository data
       // after delivering session.deleted so clients observe deletion first.
       if (refreshProjectsSummary) {
+        if (generation != null && !_pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+          return;
+        }
         await _buildAndDeliverProjectsSummaryInOrder();
       }
     } catch (e, st) {
@@ -1577,8 +1602,15 @@ class OrchestratorSession {
           }
         } on _ShutdownInProgressException {
           Log.v(
-            "[shutdown] route ${req.method} ${req.path} abandoned because shutdown was requested",
+            "[shutdown] route ${req.method} ${req.path} will finish without sending a response",
           );
+          try {
+            await routeFuture;
+          } on Object catch (error, stackTrace) {
+            Log.w("[shutdown] route ${req.method} ${req.path} failed while draining", error, stackTrace);
+          } finally {
+            _restartService.consumeRestartRequest();
+          }
         } catch (e) {
           if (_cancelled) {
             Log.v("[shutdown] route ${req.method} ${req.path} failed during shutdown: $e");

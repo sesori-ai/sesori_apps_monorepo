@@ -579,7 +579,7 @@ the listed source files and committed with their stage.
 
 ### Stage 11-P01 / PR #508 — dynamic runtime boundary
 
-- generation starter, runtime API, lifecycle repository;
+- concrete generation factory, runtime, and lifecycle repository;
 - migrate every backend operation and dynamic event source to acquisition;
 - retain generation fencing, independent failure, and zero-plugin composition.
 

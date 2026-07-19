@@ -7,13 +7,20 @@ import "../repositories/mappers/session_event_mapper.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/session_event_tracker.dart";
+import "../runtime/plugin_runtime.dart";
 import "session_mutation_dispatcher.dart";
 
-typedef SourcedBridgeEvent = ({String pluginId, int projectionUpdatedAt, BridgeSseEvent event});
+typedef SourcedBridgeEvent = ({
+  String pluginId,
+  int generation,
+  int projectionUpdatedAt,
+  BridgeSseEvent event,
+});
 typedef _ProjectedSession = ({StoredSession binding, bool inserted});
 
 class SessionEventService {
   final SessionRepository _sessionRepository;
+  final PluginRuntime _pluginRuntime;
   final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionEventMapper _eventMapper;
   final SessionEventTracker _eventTracker;
@@ -21,19 +28,26 @@ class SessionEventService {
 
   SessionEventService({
     required SessionRepository sessionRepository,
+    required PluginRuntime pluginRuntime,
     required SessionMutationDispatcher sessionMutationDispatcher,
     required SessionEventMapper eventMapper,
     required SessionEventTracker eventTracker,
     required FailureReporter failureReporter,
   }) : _sessionRepository = sessionRepository,
+       _pluginRuntime = pluginRuntime,
        _sessionMutationDispatcher = sessionMutationDispatcher,
        _eventMapper = eventMapper,
        _eventTracker = eventTracker,
        _failureReporter = failureReporter;
 
-  SourcedBridgeEvent captureSource({required String pluginId, required BridgeSseEvent event}) {
+  SourcedBridgeEvent captureSource({
+    required String pluginId,
+    required int generation,
+    required BridgeSseEvent event,
+  }) {
     return (
       pluginId: pluginId,
+      generation: generation,
       projectionUpdatedAt: _sessionRepository.captureProjectionTimestamp(),
       event: event,
     );
@@ -47,6 +61,9 @@ class SessionEventService {
     required SourcedBridgeEvent source,
     required bool drainPending,
   }) async {
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
+      return const [];
+    }
     try {
       return await _normalize(source: source, drainPending: drainPending);
     } on Object catch (error, stackTrace) {
@@ -65,6 +82,10 @@ class SessionEventService {
       }
       return const [];
     }
+  }
+
+  bool isCurrentGeneration({required String pluginId, required int generation}) {
+    return _pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation);
   }
 
   Future<List<BridgeSseEvent>> _normalize({
@@ -106,7 +127,11 @@ class SessionEventService {
         pluginId: commit.pluginId,
         backendSessionId: backendSessionId,
       );
-      if (pendingRoot != null) {
+      if (pendingRoot != null &&
+          isCurrentGeneration(
+            pluginId: pendingRoot.pluginId,
+            generation: pendingRoot.generation,
+          )) {
         final binding = await _sessionRepository.getStoredSessionByBackendId(
           pluginId: commit.pluginId,
           backendSessionId: backendSessionId,
@@ -139,6 +164,7 @@ class SessionEventService {
       pluginId: source.pluginId,
       backendSessionId: observed.id,
     );
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     final backendParentId = observed.parentID;
     if (existing != null) {
       if (backendParentId != null) {
@@ -146,6 +172,7 @@ class SessionEventService {
           pluginId: source.pluginId,
           backendSessionId: backendParentId,
         );
+        if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
         if (parent == null || existing.parentSessionId != parent.id) return null;
       } else if (existing.parentSessionId != null) {
         return null;
@@ -160,6 +187,7 @@ class SessionEventService {
         },
         projectionUpdatedAt: source.projectionUpdatedAt,
       );
+      if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
       return binding == null ? null : (binding: binding, inserted: false);
     }
     if (backendParentId == null) {
@@ -168,6 +196,7 @@ class SessionEventService {
           evicted: _eventTracker.addRoot(
             event: PendingSessionEvent(
               pluginId: source.pluginId,
+              generation: source.generation,
               event: source.event,
               session: observed,
               projectionUpdatedAt: source.projectionUpdatedAt,
@@ -176,12 +205,14 @@ class SessionEventService {
         );
       } else if (_eventTracker.isBindingPending(
         pluginId: source.pluginId,
+        generation: source.generation,
         backendSessionId: observed.id,
       )) {
         _warnIfEvicted(
           evicted: _eventTracker.addTranslation(
             event: PendingTranslationEvent(
               pluginId: source.pluginId,
+              generation: source.generation,
               event: source.event,
               backendSessionId: observed.id,
               projectionUpdatedAt: source.projectionUpdatedAt,
@@ -196,11 +227,13 @@ class SessionEventService {
       pluginId: source.pluginId,
       backendSessionId: backendParentId,
     );
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     if (parent == null) {
       _warnIfEvicted(
         evicted: _eventTracker.addChild(
           event: PendingSessionEvent(
             pluginId: source.pluginId,
+            generation: source.generation,
             event: source.event,
             session: observed,
             projectionUpdatedAt: source.projectionUpdatedAt,
@@ -215,6 +248,7 @@ class SessionEventService {
       parent: parent,
       projectionUpdatedAt: source.projectionUpdatedAt,
     );
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     return binding == null ? null : (binding: binding, inserted: true);
   }
 
@@ -233,6 +267,7 @@ class SessionEventService {
         await _normalizeGuarded(
           source: (
             pluginId: pending.pluginId,
+            generation: pending.generation,
             projectionUpdatedAt: pending.projectionUpdatedAt,
             event: pending.event,
           ),
@@ -269,12 +304,14 @@ class SessionEventService {
       pluginId: source.pluginId,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     if (bindings.length != backendSessionIds.length) {
       final missingBackendSessionIds = backendSessionIds.where((id) => !bindings.containsKey(id)).toList();
       if (missingBackendSessionIds.isNotEmpty &&
           missingBackendSessionIds.every(
             (id) => _eventTracker.isBindingPending(
               pluginId: source.pluginId,
+              generation: source.generation,
               backendSessionId: id,
             ),
           )) {
@@ -282,6 +319,7 @@ class SessionEventService {
           evicted: _eventTracker.addTranslation(
             event: PendingTranslationEvent(
               pluginId: source.pluginId,
+              generation: source.generation,
               event: source.event,
               backendSessionId: missingBackendSessionIds.first,
               projectionUpdatedAt: source.projectionUpdatedAt,
@@ -297,6 +335,7 @@ class SessionEventService {
         for (final entry in bindings.entries) entry.key: entry.value.id,
       },
     );
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     if (translated == null) return null;
 
     final translatedSession = _eventMapper.sessionInfo(event: translated);
@@ -309,7 +348,11 @@ class SessionEventService {
         null => null,
       },
       BridgeSseSessionUpdated(:final titleChanged) => switch (translatedSession) {
-        final session? => await _enrichUpdatedSession(session: session, titleChanged: titleChanged),
+        final session? => await _enrichUpdatedSession(
+          source: source,
+          session: session,
+          titleChanged: titleChanged,
+        ),
         null => null,
       },
       BridgeSseSessionsUpdated(:final sessionID) => switch (await _sessionRepository.findProjectIdForSession(
@@ -323,16 +366,20 @@ class SessionEventService {
   }
 
   Future<BridgeSseEvent?> _enrichUpdatedSession({
+    required SourcedBridgeEvent source,
     required Session session,
     required bool titleChanged,
   }) async {
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     if (titleChanged) {
       await _sessionMutationDispatcher.captureTitle(
         sessionId: session.id,
         title: session.title,
       );
+      if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     }
     final catalogSession = await _sessionRepository.getCatalogSession(sessionId: session.id);
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     if (catalogSession == null) return null;
     return BridgeSseSessionUpdated(info: catalogSession.toJson(), titleChanged: titleChanged);
   }

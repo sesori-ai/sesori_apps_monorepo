@@ -10,6 +10,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -652,11 +653,10 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
     required AppDatabase database,
     required super.unseenCalculator,
   }) : super(
-         operationalPlugins: {plugin.id: plugin},
+         runtime: createTestPluginRuntime(plugins: [plugin]),
          bridgeDerivedProjectPluginIds: {
            if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
          },
-         enabledPluginIds: [plugin.id],
          sessionDao: database.sessionDao,
          projectsDao: database.projectsDao,
          pullRequestDao: database.pullRequestDao,

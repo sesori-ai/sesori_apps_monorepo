@@ -1,9 +1,10 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/tables/session_table.dart";
 import "../api/git_cli_api.dart";
+import "../runtime/plugin_runtime.dart";
 import "../worktree_types.dart";
 import "models/project_not_found_exception.dart";
 
@@ -13,17 +14,17 @@ class WorktreeRepository {
   final GitCliApi _gitApi;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
-  final Map<String, BridgePluginApi> _operationalPlugins;
+  final PluginRuntime _runtime;
 
   WorktreeRepository({
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required GitCliApi gitApi,
-    required Map<String, BridgePluginApi> operationalPlugins,
+    required PluginRuntime runtime,
   }) : _gitApi = gitApi,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
-       _operationalPlugins = operationalPlugins;
+       _runtime = runtime;
 
   Future<({String path, String branchName, String baseBranch, String baseCommit})?> getParentWorktree({
     required String parentSessionId,
@@ -187,14 +188,18 @@ class WorktreeRepository {
     if (removed) {
       // The backend resolves the workspace by directory, so it gets the live
       // project path — the same root the worktree was just removed under.
-      _operationalPlugins[pluginId]
-          ?.deleteWorkspace(
-            projectId: projectPath,
-            worktreePath: worktreePath,
+      _runtime
+          .use(
+            pluginId: pluginId,
+            operation: "deleteWorkspace",
+            body: (plugin) => plugin.deleteWorkspace(
+              projectId: projectPath,
+              worktreePath: worktreePath,
+            ),
           )
-          .catchError(
-            (Object err) => Log.w("[Plugin] deleteWorkspace failed $err"),
-          )
+          .catchError((Object error, StackTrace stackTrace) {
+            Log.w("[Plugin] deleteWorkspace failed", error, stackTrace);
+          })
           .ignore();
     }
 

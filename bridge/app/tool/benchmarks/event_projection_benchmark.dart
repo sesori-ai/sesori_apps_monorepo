@@ -18,6 +18,8 @@ import "package:sesori_bridge/src/repositories/project_catalog_identity_calculat
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "benchmark_plugin_runtime.dart";
+
 const _defaultWarmupCount = 25;
 const _defaultSampleCount = 2000;
 const _pluginId = "event-benchmark";
@@ -80,10 +82,10 @@ class _EventProjectionBenchmark {
       final sqliteVersion = await _sqliteVersion(database: database);
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
+      final runtime = createBenchmarkPluginRuntime(plugins: [plugin]);
       repository = SessionRepository(
-        operationalPlugins: {plugin.id: plugin},
+        runtime: runtime,
         bridgeDerivedProjectPluginIds: const {},
-        enabledPluginIds: [plugin.id],
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
@@ -95,6 +97,7 @@ class _EventProjectionBenchmark {
       final failureReporter = _BenchmarkFailureReporter();
       final service = SessionEventService(
         sessionRepository: repository,
+        pluginRuntime: runtime,
         sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: SessionEventTracker(
@@ -256,6 +259,7 @@ class _EventProjectionBenchmark {
     final output = await service.normalize(
       source: service.captureSource(
         pluginId: _pluginId,
+        generation: 1,
         event: BridgeSseSessionUpdated(
           info: Session(
             id: _backendSessionId,

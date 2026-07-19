@@ -18,6 +18,8 @@ import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.da
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "benchmark_plugin_runtime.dart";
+
 const _defaultWarmupCount = 25;
 const _defaultSampleCount = 2000;
 const _defaultPluginCount = 1;
@@ -196,7 +198,7 @@ class _LiveListBenchmark {
 
     final projectRepository = ProjectRepository(
       gitCliApi: gitCliApi,
-      operationalPlugins: operationalPlugins,
+      runtime: createBenchmarkPluginRuntime(plugins: operationalPlugins.values),
       readDefaultEnabledPluginId: () => plugins.first.id,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
@@ -440,12 +442,11 @@ class _LiveListBenchmark {
     required Map<String, BridgePluginApi> plugins,
   }) {
     return SessionRepository(
-      operationalPlugins: plugins,
+      runtime: createBenchmarkPluginRuntime(plugins: plugins.values),
       bridgeDerivedProjectPluginIds: {
         for (final entry in plugins.entries)
           if (entry.value is BridgeDerivedProjectsPluginApi) entry.key,
       },
-      enabledPluginIds: plugins.keys.toList(growable: false),
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,

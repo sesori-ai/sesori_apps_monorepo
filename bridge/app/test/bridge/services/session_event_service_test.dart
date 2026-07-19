@@ -9,6 +9,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
 
@@ -35,6 +36,7 @@ void main() {
       eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
       service = SessionEventService(
         sessionRepository: repository,
+        pluginRuntime: createAlwaysCurrentTestPluginRuntime(),
         sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: eventTracker,
@@ -51,6 +53,7 @@ void main() {
       final unknown = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 1,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
@@ -82,6 +85,7 @@ void main() {
       final deleted = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 2,
           event: BridgeSseSessionDeleted(
             info: _sessionInfo(
@@ -116,6 +120,7 @@ void main() {
       final grandchildOutput = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 3,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
@@ -133,6 +138,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 4,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
@@ -175,6 +181,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 5,
           event: BridgeSseSessionCreated(
             info: Session(
@@ -210,6 +217,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 6,
           event: BridgeSseSessionUpdated(
             info: _sessionInfo(
@@ -242,6 +250,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 7,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
@@ -275,6 +284,7 @@ void main() {
       final created = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 7,
           event: BridgeSseSessionCreated(
             info: _sessionInfo(
@@ -291,6 +301,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 8,
           event: BridgeSseSessionUpdated(
             info: Session.fromJson(
@@ -325,6 +336,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 7,
           event: const BridgeSsePermissionAsked(
             requestID: "permission",
@@ -359,13 +371,13 @@ void main() {
 
       expect(
         await service.normalize(
-          source: (pluginId: plugin.id, projectionUpdatedAt: 10, event: rootEvent),
+          source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 10, event: rootEvent),
         ),
         isEmpty,
       );
       expect(
         await service.normalize(
-          source: (pluginId: plugin.id, projectionUpdatedAt: 11, event: childEvent),
+          source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 11, event: childEvent),
         ),
         isEmpty,
       );
@@ -412,13 +424,13 @@ void main() {
 
       expect(
         await service.normalize(
-          source: (pluginId: plugin.id, projectionUpdatedAt: 12, event: created),
+          source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 12, event: created),
         ),
         isEmpty,
       );
       expect(
         await service.normalize(
-          source: (pluginId: plugin.id, projectionUpdatedAt: 13, event: updated),
+          source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 13, event: updated),
         ),
         isEmpty,
       );
@@ -476,25 +488,25 @@ void main() {
 
       expect(
         await service.normalize(
-          source: (pluginId: plugin.id, projectionUpdatedAt: 20, event: rootEvent),
+          source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 20, event: rootEvent),
         ),
         isEmpty,
       );
       expect(
         await service.normalize(
-          source: (pluginId: plugin.id, projectionUpdatedAt: 21, event: childEvent),
+          source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 21, event: childEvent),
         ),
         isEmpty,
       );
       expect(
         await service.normalize(
-          source: (pluginId: plugin.id, projectionUpdatedAt: 22, event: rootPermissionEvent),
+          source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 22, event: rootPermissionEvent),
         ),
         isEmpty,
       );
       expect(
         await service.normalize(
-          source: (pluginId: plugin.id, projectionUpdatedAt: 23, event: childPermissionEvent),
+          source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 23, event: childPermissionEvent),
         ),
         isEmpty,
       );
@@ -555,7 +567,12 @@ void main() {
       for (var index = 0; index < events.length; index++) {
         expect(
           await service.normalize(
-            source: (pluginId: plugin.id, projectionUpdatedAt: 30 + index, event: events[index]),
+            source: (
+              pluginId: plugin.id,
+              generation: 1,
+              projectionUpdatedAt: 30 + index,
+              event: events[index],
+            ),
           ),
           isEmpty,
         );
@@ -599,6 +616,7 @@ void main() {
       final output = await service.normalize(
         source: (
           pluginId: plugin.id,
+          generation: 1,
           projectionUpdatedAt: 100,
           event: BridgeSseSessionUpdated(
             info: Session(

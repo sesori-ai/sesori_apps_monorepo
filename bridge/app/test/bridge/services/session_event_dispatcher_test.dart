@@ -15,6 +15,7 @@ void main() {
     final outputFuture = dispatcher.events.take(1).toList();
     final source = service.captureSource(
       pluginId: "plugin",
+      generation: 1,
       event: const BridgeSseSessionCreated(
         info: {
           "id": "stable-root",
@@ -54,23 +55,61 @@ void main() {
     expect(output.single.event, isA<BridgeSseSessionDeleted>());
     await dispatcher.dispose();
   });
+
+  test("drops normalized output after its captured generation is replaced", () async {
+    final normalizeGate = Completer<void>();
+    final service = _GatedSessionEventService(normalizeGate: normalizeGate.future);
+    final dispatcher = SessionEventDispatcher(sessionEventService: service);
+    final output = <NormalizedSourcedBridgeEvent>[];
+    final subscription = dispatcher.events.listen(output.add);
+    final source = service.captureSource(
+      pluginId: "plugin",
+      generation: 1,
+      event: const BridgeSsePermissionAsked(
+        requestID: "permission",
+        sessionID: "session",
+        displaySessionId: "session",
+        tool: "read",
+        description: "read a file",
+      ),
+    );
+
+    final dispatch = dispatcher.dispatchPluginEvent(source: source);
+    service.generationCurrent = false;
+    normalizeGate.complete();
+    await dispatch;
+
+    expect(output, isEmpty);
+    await subscription.cancel();
+    await dispatcher.dispose();
+  });
 }
 
 class _GatedSessionEventService implements SessionEventService {
   final Future<void> _normalizeGate;
   bool createdIsPublishable = true;
+  bool generationCurrent = true;
 
   _GatedSessionEventService({required Future<void> normalizeGate}) : _normalizeGate = normalizeGate;
 
   @override
-  SourcedBridgeEvent captureSource({required String pluginId, required BridgeSseEvent event}) {
-    return (pluginId: pluginId, projectionUpdatedAt: 1, event: event);
+  SourcedBridgeEvent captureSource({
+    required String pluginId,
+    required int generation,
+    required BridgeSseEvent event,
+  }) {
+    return (pluginId: pluginId, generation: generation, projectionUpdatedAt: 1, event: event);
   }
 
   @override
   Future<List<BridgeSseEvent>> normalize({required SourcedBridgeEvent source}) async {
     await _normalizeGate;
     return [source.event];
+  }
+
+  @override
+  bool isCurrentGeneration({required String pluginId, required int generation}) {
+    return generationCurrent && generation == 1;
   }
 
   @override

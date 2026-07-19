@@ -74,7 +74,7 @@ class SessionLifecycleService {
     required bool deleteBranch,
     required bool force,
   }) async {
-    final storedSession = await _sessionRepository.requireActiveStoredSession(
+    final storedSession = await _sessionRepository.requireRoutableStoredSession(
       sessionId: sessionId,
       operation: SessionOperation.cleanupSession,
     );
@@ -179,7 +179,7 @@ class SessionLifecycleService {
   }
 
   Future<StoredSession> _getStoredSession({required String sessionId}) async {
-    return _sessionRepository.requireActiveStoredSession(
+    return _sessionRepository.requireRoutableStoredSession(
       sessionId: sessionId,
       operation: SessionOperation.updateSessionArchiveStatus,
     );

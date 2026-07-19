@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** Stage 10 delivered; replacement stack rebuilding
+- **Status:** Stage 11-P01 implemented and verified; delivery pending
 - **Base:** `origin/main` at `5a91f582`
-- **Current branch:** `aware-plugin-lifecycle`
-- **Current stage:** Stage 11-P01 rebuild
-- **Next action:** rebuild Stage 11-P01 from rewritten Stage 10, verify it,
-  rewrite its branch, reopen #508, and start its monitor
+- **Current branch:** `setup-aware-plugin-lifecycle-s11-p01`
+- **Current stage:** Stage 11-P01 delivery
+- **Next action:** squash and force-push the verified Stage 11-P01 replacement,
+  reopen #508, and start its monitor
 
 ## Closed First Implementation
 
@@ -87,6 +87,27 @@ run their focused verification again.
   the verified replacement head was restored immediately.
 - Rebased cleanly onto `origin/main` at `5a91f582` on 2026-07-20; the Stage 10
   production commit is now `794e853e`.
+
+### 2026-07-19 — replacement Stage 11-P01
+
+- Replaced the replayed runtime interfaces with concrete `PluginRuntime`,
+  `PluginGenerationFactory`, and `PluginLifecycleRepository` ownership.
+- Migrated plugin-backed repositories, event listeners, orchestration, startup,
+  tests, and benchmarks to generation-scoped acquisitions while preserving
+  eager startup for every eligible, setup-ready, available plugin.
+- A correctness-only static diff review found three issues: relay-routed work
+  was abandoned during shutdown, backend-event generation attribution was lost
+  before asynchronous normalization, and catalog publication lacked a final
+  generation fence. All three were fixed, with stale-event and stale-catalog
+  regression coverage.
+- `dart analyze --fatal-infos` passed in `bridge/app` on the final production
+  inputs.
+- Focused runtime, event normalization/tracking, catalog import, orchestrator
+  event-ordering, shutdown-drain, and error-recovery tests passed (62 tests).
+- Earlier replacement verification also passed the wider repository/listener/
+  routing suites and the three-plugin startup benchmark; those inputs were not
+  changed by the final correctness fixes.
+- `git diff --check` passed.
 
 ## Delivery Rules
 

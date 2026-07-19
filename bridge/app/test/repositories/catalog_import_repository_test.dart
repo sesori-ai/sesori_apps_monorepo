@@ -13,6 +13,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/plugin_runtime_test_support.dart";
+
 import "../helpers/test_database.dart";
 
 void main() {
@@ -243,7 +245,7 @@ void main() {
         childrenByParent: const {},
       );
       final repository = CatalogImportRepository(
-        operationalPlugins: {plugin.id: plugin},
+        runtime: createTestPluginRuntime(plugins: [plugin]),
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
@@ -293,7 +295,7 @@ void main() {
         failOnWriteCall: null,
       );
       final repository = CatalogImportRepository(
-        operationalPlugins: {plugin.id: plugin},
+        runtime: createTestPluginRuntime(plugins: [plugin]),
         projectsDao: database.projectsDao,
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
@@ -566,6 +568,82 @@ void main() {
       expect(await database.projectsDao.getAllProjects(), isEmpty);
     });
 
+    test("consumer cancellation at committing releases the import stream without publication", () async {
+      final projectPath = "${directory.path}/cancel-committing";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "cancel-committing", directory: projectPath)],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+      final repository = _repository(database: database, plugin: plugin);
+      late StreamSubscription<CatalogImportProgress> subscription;
+      late Future<void> cancellation;
+      final cancellationStarted = Completer<void>();
+      subscription = repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .listen((status) {
+            if (status is! CatalogImportCommitting) return;
+            cancellation = subscription.cancel();
+            cancellationStarted.complete();
+          });
+
+      await cancellationStarted.future;
+      await cancellation.timeout(const Duration(seconds: 1));
+
+      expect(await database.projectsDao.getAllProjects(), isEmpty);
+    });
+
+    test("generation replacement at committing prevents stale publication", () async {
+      final projectPath = "${directory.path}/stale-generation";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "stale-generation", directory: projectPath)],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+      final runtime = createTestPluginRuntime(plugins: [plugin]);
+      final repository = CatalogImportRepository(
+        runtime: runtime,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+      final finished = Completer<void>();
+      Object? streamError;
+      repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: false,
+            ),
+          )
+          .listen(
+            (status) {
+              if (status is CatalogImportCommitting) runtime.generationCurrent = false;
+            },
+            onError: (Object error) {
+              streamError = error;
+              if (!finished.isCompleted) finished.complete();
+            },
+            onDone: () {
+              if (!finished.isCompleted) finished.complete();
+            },
+          );
+
+      await finished.future;
+
+      expect(streamError, isA<PluginOperationException>());
+      expect(await database.projectsDao.getAllProjects(), isEmpty);
+      await runtime.dispose();
+    });
+
     test("a later session batch failure rolls the entire publication back", () async {
       final projectPath = "${directory.path}/rollback";
       final plugin = _NativeImportPlugin(
@@ -586,7 +664,7 @@ void main() {
         failOnWriteCall: 2,
       );
       final repository = CatalogImportRepository(
-        operationalPlugins: {plugin.id: plugin},
+        runtime: createTestPluginRuntime(plugins: [plugin]),
         projectsDao: database.projectsDao,
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
