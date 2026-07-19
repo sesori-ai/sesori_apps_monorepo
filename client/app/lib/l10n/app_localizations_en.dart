@@ -172,6 +172,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLogout => 'Log Out';
 
   @override
+  String get settingsSectionAccount => 'Account';
+
+  @override
+  String get settingsNotificationsTitle => 'Notifications';
+
+  @override
+  String get settingsProfileTitle => 'Profile';
+
+  @override
+  String get settingsClose => 'Close settings';
+
+  @override
+  String settingsVersion(String version, String buildNumber) {
+    return 'v$version ($buildNumber)';
+  }
+
+  @override
+  String get notificationSectionAi => 'AI Notifications';
+
+  @override
+  String get notificationSectionSystem => 'System';
+
+  @override
   String get notificationCategoryAiInteraction => 'AI Interactions';
 
   @override

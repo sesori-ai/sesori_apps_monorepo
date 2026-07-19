@@ -19,6 +19,8 @@ enum AppRouteDef {
   login("/login"),
   projects("/projects"),
   settings("/settings"),
+  settingsNotifications("/settings/notifications"),
+  settingsProfile("/settings/profile"),
   sessions("/projects/:$projectIdPathParam/sessions"),
   newSession("/projects/:$projectIdPathParam/sessions/new"),
   sessionDetail("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam"),
@@ -60,6 +62,8 @@ sealed class AppRoute {
   const factory AppRoute.login() = AppRouteLogin;
   const factory AppRoute.projects() = AppRouteProjects;
   const factory AppRoute.settings() = AppRouteSettings;
+  const factory AppRoute.settingsNotifications() = AppRouteSettingsNotifications;
+  const factory AppRoute.settingsProfile() = AppRouteSettingsProfile;
   const factory AppRoute.sessions({
     required String projectId,
     required String? projectName,
@@ -96,6 +100,8 @@ sealed class AppRoute {
       AppRouteDef.login => const AppRoute.login(),
       AppRouteDef.projects => const AppRoute.projects(),
       AppRouteDef.settings => const AppRoute.settings(),
+      AppRouteDef.settingsNotifications => const AppRoute.settingsNotifications(),
+      AppRouteDef.settingsProfile => const AppRoute.settingsProfile(),
       AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.sessionDetail => AppRouteSessionDetail.fromParams(
@@ -145,6 +151,26 @@ class AppRouteSettings extends AppRoute {
 
   @override
   AppRouteDef get def => AppRouteDef.settings;
+
+  @override
+  String buildPath() => def.path;
+}
+
+class AppRouteSettingsNotifications extends AppRoute {
+  const AppRouteSettingsNotifications();
+
+  @override
+  AppRouteDef get def => AppRouteDef.settingsNotifications;
+
+  @override
+  String buildPath() => def.path;
+}
+
+class AppRouteSettingsProfile extends AppRoute {
+  const AppRouteSettingsProfile();
+
+  @override
+  AppRouteDef get def => AppRouteDef.settingsProfile;
 
   @override
   String buildPath() => def.path;

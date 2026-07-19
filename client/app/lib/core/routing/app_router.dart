@@ -15,6 +15,8 @@ import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/session_list_cubit_provider.dart";
 import "../../features/session_list/session_list_panel.dart";
 import "../../features/session_list/session_list_screen.dart";
+import "../../features/settings/notification_settings_screen.dart";
+import "../../features/settings/profile_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../extensions/build_context_x.dart";
@@ -28,6 +30,8 @@ const _newSessionRouteSegment = "new";
 const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _sessionDetailRouteSegment = ":$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
+const _settingsNotificationsRouteSegment = "notifications";
+const _settingsProfileRouteSegment = "profile";
 
 extension AppRouteToGoRoute on AppRouteDef {
   /// Returns the [GoRoute] for this route definition with an exhaustive
@@ -43,6 +47,19 @@ extension AppRouteToGoRoute on AppRouteDef {
         pageBuilder: (context, state) => _loginTransitionPage(
           context: context,
           state: state,
+          child: _buildScreen(context: context, state: state),
+        ),
+      );
+    }
+    // Settings presents as a full-screen modal (slides up from the bottom on
+    // iOS) closed via its X button rather than a back chevron.
+    if (this == AppRouteDef.settings) {
+      return GoRoute(
+        path: path,
+        routes: routes,
+        pageBuilder: (context, state) => MaterialPage<void>(
+          key: state.pageKey,
+          fullscreenDialog: true,
           child: _buildScreen(context: context, state: state),
         ),
       );
@@ -66,6 +83,8 @@ extension AppRouteToGoRoute on AppRouteDef {
       AppRouteLogin() => const LoginScreen(),
       AppRouteProjects() => const ProjectListScreen(),
       AppRouteSettings() => const SettingsScreen(),
+      AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
+      AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
         projectName: projectName,
@@ -344,7 +363,20 @@ List<RouteBase> _buildAppRoutes({
         ),
       ],
     ),
-    AppRouteDef.settings.toGoRoute(),
+    AppRouteDef.settings.toGoRoute(
+      routes: [
+        GoRoute(
+          path: _settingsNotificationsRouteSegment,
+          builder: (context, state) =>
+              AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
+        ),
+        GoRoute(
+          path: _settingsProfileRouteSegment,
+          builder: (context, state) =>
+              AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
+        ),
+      ],
+    ),
   ];
 }
 
