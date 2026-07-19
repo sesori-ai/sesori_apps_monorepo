@@ -1409,6 +1409,8 @@ void main() {
       // Aggregated pending input from all worktrees was handed to the tracker.
       expect(tracker.populatedPermissions.map((p) => p.id), containsAll(<String>["p-a", "p-b"]));
       expect(tracker.populatedQuestions.map((q) => q.id), containsAll(<String>["q-a", "q-b"]));
+      expect(tracker.pendingPermissionsBaselineTrusted, isTrue);
+      expect(tracker.pendingQuestionsBaselineTrusted, isTrue);
     });
 
     test("reset delegates to tracker", () {
@@ -2264,6 +2266,8 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   bool registerSessionReturns = false;
   List<QuestionRequest> populatedQuestions = const [];
   List<PermissionRequest> populatedPermissions = const [];
+  bool? pendingQuestionsBaselineTrusted;
+  bool? pendingPermissionsBaselineTrusted;
   final bool clearPendingQuestionFound;
   final String? clearPendingQuestionResolvedSessionId;
   final bool clearPendingQuestionChanged;
@@ -2363,13 +2367,21 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   Set<String> get sessionDiscoveryDirectories => worktreesForHydration;
 
   @override
-  void populatePendingQuestions({required List<QuestionRequest> questions}) {
+  void populatePendingQuestions({
+    required List<QuestionRequest> questions,
+    required bool baselineTrusted,
+  }) {
     populatedQuestions = questions;
+    pendingQuestionsBaselineTrusted = baselineTrusted;
   }
 
   @override
-  void populatePendingPermissions({required List<PermissionRequest> permissions}) {
+  void populatePendingPermissions({
+    required List<PermissionRequest> permissions,
+    required bool baselineTrusted,
+  }) {
     populatedPermissions = permissions;
+    pendingPermissionsBaselineTrusted = baselineTrusted;
   }
 
   @override

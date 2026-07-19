@@ -58,10 +58,12 @@ bridge/ workspace modules (siblings of app/):
 - **Catalog and import semantics** — project/root/detail/child reads use only the durable database catalog. `POST`, `DELETE`, and `GET /plugin/import` start, cancel, and report independent per-plugin imports; progress SSE is plugin-attributed. Imports are atomic/non-destructive, and concurrent catalog reads observe the last committed snapshot.
 - **Independent lifecycle** — concrete `PluginRuntime` owns generations,
   acquisitions, leases, fencing, backend events, and bounded shutdown.
-  `PluginLifecycleService` owns eligibility, setup, and derived default
-  metadata through `PluginLifecycleRepository`. A terminal plugin failure
-  removes only that plugin's routes and new-session choice; it does not stop
-  catalog browsing, the relay, or another plugin.
+  `PluginLifecycleService` owns eligibility, setup, derived default metadata,
+  hydration readiness, and idle-stop policy through
+  `PluginLifecycleRepository`. Dormant setup-ready plugins remain selectable
+  and start on demand. A terminal plugin failure removes only that plugin's
+  routes and new-session choice; it does not stop catalog browsing, the relay,
+  or another plugin.
 - **Explicit routing** — every supported route has a dedicated handler; `RequestRouter` returns 404 for unmatched routes (no catch-all proxy).
 - **Layer 4 trigger listeners** — new reactive/scheduled consumers live in
   `lib/src/listeners/`. Each owns one trigger's subscription/timer lifecycle,

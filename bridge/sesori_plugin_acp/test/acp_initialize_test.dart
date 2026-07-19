@@ -1,5 +1,6 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 /// The ACP client only implements v1. The agent echoes the protocol version it
@@ -60,6 +61,15 @@ void main() {
       throw StateError("agent never wrote an 'initialize' frame");
     }
 
+    Future<Map<String, dynamic>> waitForMethod(FakeAcpProcess fake, String method) async {
+      for (var i = 0; i < 80; i++) {
+        final frames = fake.written.where((frame) => frame["method"] == method);
+        if (frames.isNotEmpty) return frames.last;
+        await pump();
+      }
+      throw StateError("agent never wrote a '$method' frame");
+    }
+
     test("an incompatible negotiated protocol version degrades the connection", () async {
       final connecting = plugin.ensureConnected();
       await respondInitialize(fakes.single, protocolVersion: 2);
@@ -70,6 +80,52 @@ void main() {
       final connecting = plugin.ensureConnected();
       await respondInitialize(fakes.single, protocolVersion: 1);
       expect(await connecting, isTrue);
+    });
+
+    test("an advertised authentication rejection remains typed on backend operations", () async {
+      final connecting = plugin.ensureConnected();
+      final fake = fakes.single;
+      final initialize = await waitForMethod(fake, "initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": [
+            {"id": "agent_login", "name": "Agent login"},
+          ],
+        },
+      });
+      final authenticate = await waitForMethod(fake, "authenticate");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": authenticate["id"],
+        "error": {"code": -32000, "message": "login required"},
+      });
+      expect(await connecting, isFalse);
+
+      final matcher = isA<PluginAuthenticationRequiredException>()
+          .having((error) => error.statusCode, "statusCode", 503)
+          .having((error) => error.actionHint, "actionHint", isNotEmpty);
+      await expectLater(
+        plugin.sendPrompt(
+          sessionId: "session-1",
+          parts: const [PluginPromptPart.text(text: "hello")],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(matcher),
+      );
+      await expectLater(
+        plugin.listAllSessions(knownDirectories: const {}),
+        throwsA(matcher),
+      );
+      await expectLater(
+        plugin.getSessions("/repo"),
+        throwsA(matcher),
+      );
     });
   });
 }

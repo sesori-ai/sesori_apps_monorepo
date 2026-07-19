@@ -191,7 +191,7 @@ void main() {
       await expectLater(loading, throwsA(isA<PluginOperationException>()));
     });
 
-    test("a -32601 rejection of `authenticate` surfaces as a typed failure, not an empty thread", () async {
+    test("an `authenticate` rejection preserves the authentication-required failure", () async {
       final loading = plugin.getSessionMessages(sessionId);
 
       final initFrame = await waitForFrame("initialize");
@@ -215,7 +215,14 @@ void main() {
         "error": {"code": -32601, "message": "Method not found"},
       });
 
-      await expectLater(loading, throwsA(isA<PluginOperationException>()));
+      await expectLater(
+        loading,
+        throwsA(
+          isA<PluginAuthenticationRequiredException>()
+              .having((error) => error.operation, "operation", "authenticate")
+              .having((error) => error.actionHint, "actionHint", isNotEmpty),
+        ),
+      );
     });
   });
 }

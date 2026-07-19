@@ -1,38 +1,32 @@
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart";
+import "dart:async";
+
+import "package:sesori_bridge/src/listeners/plugin_catalog_hydration_listener.dart";
 import "package:sesori_bridge/src/services/catalog_import_service.dart";
 import "package:test/test.dart";
 
 void main() {
-  test("runner starts automatic import before ordered headless triggers", () {
-    final service = _RecordingCatalogImportService(operationalPluginIds: const {"selected"});
-
-    BridgeRuntimeRunner.startCatalogImports(
-      service: service,
-      pluginIds: const ["selected"],
-      headlessPluginIds: const ["selected", "selected"],
-      eligiblePluginIds: const {"selected"},
+  test("first ready snapshot hydrates every id and later snapshots hydrate only additions", () async {
+    final readyPluginIds = StreamController<List<String>>.broadcast(sync: true);
+    final service = _RecordingCatalogImportService(operationalPluginIds: const {"one", "two", "three"});
+    final listener = PluginCatalogHydrationListener(
+      readyPluginIds: readyPluginIds.stream,
+      catalogImportService: service,
     );
+    addTearDown(() async {
+      await listener.dispose();
+      await readyPluginIds.close();
+    });
+
+    listener.start();
+    readyPluginIds.add(const ["one", "two"]);
+    readyPluginIds.add(const ["one", "two"]);
+    readyPluginIds.add(const ["two"]);
+    readyPluginIds.add(const ["two", "three"]);
 
     expect(service.starts, const [
-      (pluginId: "selected", trigger: CatalogImportTrigger.automatic),
-      (pluginId: "selected", trigger: CatalogImportTrigger.headless),
-      (pluginId: "selected", trigger: CatalogImportTrigger.headless),
-    ]);
-  });
-
-  test("runner skips an unavailable headless import and starts healthy imports", () {
-    final service = _RecordingCatalogImportService(operationalPluginIds: const {"healthy"});
-
-    BridgeRuntimeRunner.startCatalogImports(
-      service: service,
-      pluginIds: const ["healthy"],
-      headlessPluginIds: const ["unavailable", "healthy"],
-      eligiblePluginIds: const {"healthy"},
-    );
-
-    expect(service.starts, const [
-      (pluginId: "healthy", trigger: CatalogImportTrigger.automatic),
-      (pluginId: "healthy", trigger: CatalogImportTrigger.headless),
+      (pluginId: "one", trigger: CatalogImportTrigger.automatic),
+      (pluginId: "two", trigger: CatalogImportTrigger.automatic),
+      (pluginId: "three", trigger: CatalogImportTrigger.automatic),
     ]);
   });
 }

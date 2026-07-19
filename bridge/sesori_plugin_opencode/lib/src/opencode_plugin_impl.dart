@@ -32,6 +32,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final io.HttpClient _httpClient;
+  final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
   // One shared error-normalization mapper drives both the live SSE path
   // ([_mapper]) and the REST load path ([_pluginModelMapper]) so an errored
   // assistant message is collapsed to a `MessageError` identically on both.
@@ -100,11 +101,15 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       onEvent: _handleRawSseEvent,
       onReconnect: () async {
         _service.reset();
+        _workState.set(PluginWorkState.unknown);
         await _service.coldStart();
         _emitProjectsSummary();
       },
       onConnected: onConnected,
-      onDisconnected: onDisconnected,
+      onDisconnected: () {
+        _workState.set(PluginWorkState.unknown);
+        onDisconnected?.call();
+      },
     );
     // The service resolves missing parent IDs out-of-band (after handleSseEvent
     // has already returned); re-emit the activity summary when it does so the
@@ -165,6 +170,12 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
 
   @override
+  Stream<PluginWorkState> get workState => _workState.stream;
+
+  @override
+  PluginWorkState get currentWorkState => _workState.current;
+
+  @override
   Future<bool> healthCheck() {
     return _service.repository.api.healthCheck();
   }
@@ -200,8 +211,18 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     Log.v("[shutdown] OpenCodePlugin.dispose: force-closing http client");
     _httpClient.close(force: true);
     final sw = Stopwatch()..start();
-    await _eventBuffer.close();
+    Object? closeError;
+    StackTrace? closeStackTrace;
+    for (final close in <Future<void> Function()>[_eventBuffer.close, _workState.close]) {
+      try {
+        await close();
+      } on Object catch (error, stackTrace) {
+        closeError ??= error;
+        closeStackTrace ??= stackTrace;
+      }
+    }
     Log.d("[shutdown] OpenCodePlugin.dispose: event buffer closed in ${sw.elapsedMilliseconds}ms");
+    if (closeError != null) Error.throwWithStackTrace(closeError, closeStackTrace!);
   }
 
   @override
@@ -561,6 +582,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
           }
 
           final changed = _service.handleSseEvent(event, parseResult.directory);
+          _syncWorkState();
           if (changed) {
             _emitProjectsSummary();
           }
@@ -623,7 +645,12 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }
 
   void _emitProjectsSummary() {
+    _syncWorkState();
     _eventBuffer.add(const BridgeSseProjectUpdated());
+  }
+
+  void _syncWorkState() {
+    _workState.set(_service.tracker.workState);
   }
 
   Session _canonicalizeSession(Session session, String fallbackProjectID) {

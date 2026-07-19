@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginWorkState;
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 
 import "models/openapi/permission_request.g.dart";
@@ -26,6 +26,10 @@ class ActiveSessionTracker {
   final Map<String, String> _sessionWorktrees = {};
   final Map<String, String> _sessionDirectories = {}; // directory where the session is located
   final Map<String, SessionStatus> _sessionStatuses = {};
+  final Set<String> _unknownSessionIds = {};
+  bool _workStateBaselineTrusted = false;
+  bool _pendingQuestionsBaselineTrusted = false;
+  bool _pendingPermissionsBaselineTrusted = false;
   final Map<String, Set<String>> _pendingQuestions = {};
   final Map<String, Set<String>> _pendingPermissions = {};
 
@@ -40,6 +44,10 @@ class ActiveSessionTracker {
   ActiveSessionTracker(this._repository);
 
   Future<void> coldStart() async {
+    _workStateBaselineTrusted = true;
+    _pendingQuestionsBaselineTrusted = false;
+    _pendingPermissionsBaselineTrusted = false;
+    _unknownSessionIds.clear();
     final projects = await _repository.getProjects();
 
     _projectWorktrees
@@ -78,6 +86,7 @@ class ActiveSessionTracker {
         try {
           return await _repository.listSessions(directory: directory, roots: false);
         } catch (e) {
+          _workStateBaselineTrusted = false;
           Log.w("coldStart: failed to list sessions for ${directory ?? "<cwd>"}: $e");
           return <Session>[];
         }
@@ -100,18 +109,19 @@ class ActiveSessionTracker {
     // from their own instance. Errors for individual directories are logged
     // and skipped so that one unavailable project doesn't block the rest.
     final allStatuses = <String, SessionStatus>{};
-    final statusFutures = sessionDiscoveryDirectories.map((directory) async {
+    final statusFutures = <String?>{null, ...sessionDiscoveryDirectories}.map((directory) async {
       try {
         final statuses = await _repository.api.getSessionStatuses(directory: directory);
         // Map session → worktree from the call context; an alias directory
         // groups under its canonical worktree.
-        final worktree = _resolveWorktree(directory) ?? directory;
+        final worktree = directory == null ? null : (_resolveWorktree(directory) ?? directory);
         for (final entry in statuses.entries) {
           allStatuses[entry.key] = entry.value;
-          _sessionWorktrees[entry.key] = worktree;
+          if (worktree != null) _sessionWorktrees[entry.key] = worktree;
         }
       } catch (e) {
-        Log.w("coldStart: failed to fetch session statuses for $directory: $e");
+        _workStateBaselineTrusted = false;
+        Log.w("coldStart: failed to fetch session statuses for ${directory ?? "<cwd>"}: $e");
       }
     });
     await Future.wait(statusFutures);
@@ -125,6 +135,9 @@ class ActiveSessionTracker {
           ),
         ),
       );
+    _unknownSessionIds.addAll(
+      allStatuses.entries.where((entry) => entry.value is SessionStatusUnknown).map((entry) => entry.key),
+    );
 
     // Also resolve worktrees for sessions whose directory is known but that
     // were not returned by the per-directory status calls (e.g. sessions in
@@ -170,6 +183,7 @@ class ActiveSessionTracker {
         _sessionDirectories.remove(event.info.id);
         _sessionWorktrees.remove(event.info.id);
         _sessionStatuses.remove(event.info.id);
+        _unknownSessionIds.remove(event.info.id);
         _sessionParentIds.remove(event.info.id);
         _clearPendingInputForSession(event.info.id);
       case SseSessionStatus():
@@ -182,17 +196,19 @@ class ActiveSessionTracker {
         switch (event.status) {
           case SessionStatusIdle():
             _sessionStatuses.remove(event.sessionID);
-            _clearPendingInputForSession(event.sessionID);
+            _unknownSessionIds.remove(event.sessionID);
           case SessionStatusBusy():
           case SessionStatusRetry():
             _sessionStatuses[event.sessionID] = event.status;
+            _unknownSessionIds.remove(event.sessionID);
           case SessionStatusUnknown():
             Log.w("Unknown session status for ${event.sessionID}; treating as inactive");
             _sessionStatuses.remove(event.sessionID);
+            _unknownSessionIds.add(event.sessionID);
         }
       case SseSessionIdle():
         _sessionStatuses.remove(event.sessionID);
-        _clearPendingInputForSession(event.sessionID);
+        _unknownSessionIds.remove(event.sessionID);
       case SseQuestionAsked():
         _pendingQuestions.putIfAbsent(event.sessionID, () => <String>{}).add(event.id);
       case SseQuestionReplied():
@@ -275,6 +291,10 @@ class ActiveSessionTracker {
     _sessionWorktrees.clear();
     _sessionDirectories.clear();
     _sessionStatuses.clear();
+    _unknownSessionIds.clear();
+    _workStateBaselineTrusted = false;
+    _pendingQuestionsBaselineTrusted = false;
+    _pendingPermissionsBaselineTrusted = false;
     _sessionParentIds.clear();
     _pendingQuestions.clear();
     _pendingPermissions.clear();
@@ -283,17 +303,25 @@ class ActiveSessionTracker {
     _lastEmittedPendingInputSessions = {};
   }
 
-  void populatePendingQuestions({required List<QuestionRequest> questions}) {
+  void populatePendingQuestions({
+    required List<QuestionRequest> questions,
+    required bool baselineTrusted,
+  }) {
     _pendingQuestions
       ..clear()
       ..addEntries(_groupBySessionId(questions.map((q) => (q.sessionID, q.id))).entries);
+    _pendingQuestionsBaselineTrusted = baselineTrusted;
     _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 
-  void populatePendingPermissions({required List<PermissionRequest> permissions}) {
+  void populatePendingPermissions({
+    required List<PermissionRequest> permissions,
+    required bool baselineTrusted,
+  }) {
     _pendingPermissions
       ..clear()
       ..addEntries(_groupBySessionId(permissions.map((p) => (p.sessionID, p.id))).entries);
+    _pendingPermissionsBaselineTrusted = baselineTrusted;
     _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 
@@ -586,6 +614,20 @@ class ActiveSessionTracker {
 
   /// Exposed for testing: raw count of all busy/retry sessions per worktree.
   Map<String, int> get activeSessions => _activeSessionCounts;
+
+  PluginWorkState get workState {
+    final hasPendingInput =
+        _pendingQuestions.values.any((requests) => requests.isNotEmpty) ||
+        _pendingPermissions.values.any((requests) => requests.isNotEmpty);
+    if (_sessionStatuses.isNotEmpty || hasPendingInput) return PluginWorkState.busy;
+    if (!_workStateBaselineTrusted ||
+        !_pendingQuestionsBaselineTrusted ||
+        !_pendingPermissionsBaselineTrusted ||
+        _unknownSessionIds.isNotEmpty) {
+      return PluginWorkState.unknown;
+    }
+    return PluginWorkState.idle;
+  }
 
   bool _hasPendingInput(String sessionId) {
     return (_pendingQuestions[sessionId]?.isNotEmpty ?? false) || (_pendingPermissions[sessionId]?.isNotEmpty ?? false);

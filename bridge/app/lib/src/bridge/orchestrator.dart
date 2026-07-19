@@ -16,6 +16,7 @@ import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../control/control_status_notifier.dart";
+import "../listeners/plugin_catalog_hydration_listener.dart";
 import "../listeners/plugin_event_listener.dart";
 import "../listeners/session_binding_commit_listener.dart";
 import "../listeners/session_deletion_listener.dart";
@@ -122,6 +123,7 @@ import "sse/sse_manager.dart";
 typedef OrchestratorComposition = ({
   OrchestratorSession session,
   CatalogImportService catalogImportService,
+  PluginCatalogHydrationListener catalogHydrationListener,
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
@@ -208,7 +210,6 @@ class Orchestrator {
       filesystemApi: const FilesystemApi(),
       gitCliApi: gitCliApi,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
-      aggregateSourceDeadline: aggregateSourceDeadline,
     );
     final sessionViewTracker = SessionViewTracker();
     final sessionUnseenService = SessionUnseenService(
@@ -347,6 +348,10 @@ class Orchestrator {
         catalogHydrationsDao: _database.catalogHydrationsDao,
         projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       ),
+    );
+    final catalogHydrationListener = PluginCatalogHydrationListener(
+      readyPluginIds: _pluginLifecycleService.readyPluginIds,
+      catalogImportService: catalogImportService,
     );
     final sessionPromptService = SessionPromptService(
       sessionRepository: sessionRepository,
@@ -501,6 +506,7 @@ class Orchestrator {
     return (
       session: session,
       catalogImportService: catalogImportService,
+      catalogHydrationListener: catalogHydrationListener,
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
@@ -709,12 +715,6 @@ class OrchestratorSession {
           })
           .addTo(_subscriptions);
 
-      // Reconcile in one batch before publishing the startup baseline. Failure
-      // is isolated so project activity cannot prevent the relay session from
-      // starting.
-      await _projectActivityService.reconcile(pluginId: null).catchError((Object e, StackTrace st) {
-        Log.w("ProjectActivityService: startup reconciliation failed", e, st);
-      });
       if (config.yolo) await _permissionAutoApprovalService.approvePending();
       final startupSummary = await _buildProjectsSummary();
       if (startupSummary != null) {
@@ -1061,13 +1061,7 @@ class OrchestratorSession {
         return;
       }
 
-      // A server (re)connect means the plugin may have just loaded a new set of
-      // sessions. Reconcile persisted project activity so we don't miss
-      // offline activity that arrived while disconnected.
       if (event is BridgeSseServerConnected) {
-        await _projectActivityService.reconcile(pluginId: pluginId).catchError((Object e, StackTrace st) {
-          Log.w("ProjectActivityService: server-connected reconciliation failed", e, st);
-        });
         if (config.yolo) await _permissionAutoApprovalService.approvePending();
       }
 

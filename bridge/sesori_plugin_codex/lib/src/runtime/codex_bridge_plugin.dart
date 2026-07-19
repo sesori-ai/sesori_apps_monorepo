@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedProcessService, ManagedRuntimeMonitor;
 
+import "codex_managed_api.dart";
 import "codex_ownership_record.dart";
 import "codex_status_reporter.dart";
 
@@ -27,7 +28,7 @@ class CodexBridgePlugin implements BridgePlugin {
        _ownedRecord = ownedRecord;
 
   @override
-  final BridgePluginApi api;
+  final CodexManagedApi api;
 
   final int port;
   final String serverUrl;
@@ -46,6 +47,12 @@ class CodexBridgePlugin implements BridgePlugin {
 
   @override
   PluginStatus get currentStatus => _status.current;
+
+  @override
+  Stream<PluginWorkState> get workState => api.workState;
+
+  @override
+  PluginWorkState get currentWorkState => api.currentWorkState;
 
   @override
   PluginDiagnostics describe() {

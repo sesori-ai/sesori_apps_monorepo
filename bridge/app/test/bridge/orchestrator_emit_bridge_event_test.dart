@@ -32,7 +32,7 @@ void main() {
     expect(plugins.map((plugin) => plugin.state), everyElement(PluginLifecycleState.ready));
   });
 
-  test("a sourced reconnect reconciles only its plugin and local events are already mapped", () async {
+  test("a sourced reconnect does not enumerate projects and local events are already mapped", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
       pluginIds: const ["one", "two"],
@@ -47,18 +47,13 @@ void main() {
     unawaited(runFuture.catchError((_) {}));
     await relayServer.nextClient();
     await _waitFor(
-      () => harness.plugins.every((plugin) => plugin.getProjectsCallCount > 0),
-      reason: "startup activity reconciliation",
+      () => harness.plugins.every((plugin) => plugin.activeSummaryReadCount > 0),
+      reason: "startup project summary",
     );
-    final before = [for (final plugin in harness.plugins) plugin.getProjectsCallCount];
 
     harness.plugins.first.emitEvent(const BridgeSseServerConnected());
-    await _waitFor(
-      () => harness.plugins.first.getProjectsCallCount > before.first,
-      reason: "source reconnect reconciliation",
-    );
     await Future<void>.delayed(const Duration(milliseconds: 20));
-    expect(harness.plugins.last.getProjectsCallCount, before.last);
+    expect(harness.plugins.map((plugin) => plugin.getProjectsCallCount), everyElement(isZero));
 
     final localEvent = harness.composition.session.localWireEvents.firstWhere(
       (event) => event is SesoriVcsBranchUpdated,
@@ -66,66 +61,6 @@ void main() {
     harness.plugins.first.emitEvent(const BridgeSseVcsBranchUpdated());
     expect(await localEvent.timeout(const Duration(seconds: 2)), isA<SesoriVcsBranchUpdated>());
 
-    await harness.composition.session.cancel();
-    await runFuture.timeout(const Duration(seconds: 5));
-  });
-
-  test("post-normalization work is concurrent across plugins and ordered within each plugin", () async {
-    final relayServer = await TestRelayServer.start();
-    final harness = await _OrchestratorHarness.create(
-      pluginIds: const ["one", "two"],
-      relayUrl: "ws://127.0.0.1:${relayServer.port}",
-    );
-    addTearDown(() async {
-      await harness.close();
-      await relayServer.close();
-    });
-
-    final runFuture = harness.composition.session.run();
-    unawaited(runFuture.catchError((_) {}));
-    await relayServer.nextClient();
-    await _waitFor(
-      () => harness.plugins.every((plugin) => plugin.getProjectsCallCount > 0),
-      reason: "startup activity reconciliation",
-    );
-
-    final firstPlugin = harness.plugins.first;
-    final projectReadStarted = Completer<void>();
-    final projectReadGate = Completer<void>();
-    firstPlugin
-      ..getProjectsStarted = projectReadStarted
-      ..getProjectsGate = projectReadGate;
-    final branchEvents = <SesoriVcsBranchUpdated>[];
-    final branchSubscription = harness.composition.session.localWireEvents
-        .where((event) => event is SesoriVcsBranchUpdated)
-        .cast<SesoriVcsBranchUpdated>()
-        .listen(branchEvents.add);
-    addTearDown(branchSubscription.cancel);
-
-    firstPlugin.emitEvent(const BridgeSseServerConnected());
-    await projectReadStarted.future.timeout(const Duration(seconds: 2));
-    firstPlugin.emitEvent(const BridgeSseVcsBranchUpdated());
-    harness.plugins.last.emitEvent(const BridgeSseVcsBranchUpdated());
-
-    try {
-      await _waitFor(
-        () => branchEvents.isNotEmpty,
-        reason: "second plugin event while first plugin is reconciling",
-        timeout: const Duration(milliseconds: 500),
-      );
-      expect(
-        branchEvents,
-        hasLength(1),
-        reason: "the following event from the first plugin must remain ordered behind reconciliation",
-      );
-    } finally {
-      projectReadGate.complete();
-    }
-
-    await _waitFor(
-      () => branchEvents.length == 2,
-      reason: "first plugin event after reconciliation",
-    );
     await harness.composition.session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
   });
@@ -145,8 +80,8 @@ void main() {
     unawaited(runFuture.catchError((_) {}));
     await relayServer.nextClient();
     await _waitFor(
-      () => harness.plugins.every((plugin) => plugin.getProjectsCallCount > 0),
-      reason: "startup activity reconciliation",
+      () => harness.plugins.every((plugin) => plugin.activeSummaryReadCount > 0),
+      reason: "startup project summary",
     );
     final subscribed = harness.composition.session.localWireEvents.firstWhere(
       (event) => event is SesoriVcsBranchUpdated,
@@ -224,45 +159,6 @@ void main() {
     );
 
     await harness.composition.session.cancel();
-    await runFuture.timeout(const Duration(seconds: 5));
-  });
-
-  test("shutdown drains in-flight post-normalization work", () async {
-    final relayServer = await TestRelayServer.start();
-    final harness = await _OrchestratorHarness.create(
-      pluginIds: const ["one", "two"],
-      relayUrl: "ws://127.0.0.1:${relayServer.port}",
-    );
-    addTearDown(() async {
-      await harness.close();
-      await relayServer.close();
-    });
-
-    final runFuture = harness.composition.session.run();
-    unawaited(runFuture.catchError((_) {}));
-    await relayServer.nextClient();
-    await _waitFor(
-      () => harness.plugins.every((plugin) => plugin.getProjectsCallCount > 0),
-      reason: "startup activity reconciliation",
-    );
-
-    final projectReadStarted = Completer<void>();
-    final projectReadGate = Completer<void>();
-    harness.plugins.first
-      ..getProjectsStarted = projectReadStarted
-      ..getProjectsGate = projectReadGate;
-    harness.plugins.first.emitEvent(const BridgeSseServerConnected());
-    await projectReadStarted.future.timeout(const Duration(seconds: 2));
-
-    var runCompleted = false;
-    unawaited(runFuture.whenComplete(() => runCompleted = true));
-    try {
-      await harness.composition.session.cancel();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(runCompleted, isFalse);
-    } finally {
-      projectReadGate.complete();
-    }
     await runFuture.timeout(const Duration(seconds: 5));
   });
 }
@@ -362,22 +258,14 @@ class _SourcedPlugin extends FakeBridgePlugin {
   _SourcedPlugin(this.pluginId);
 
   final String pluginId;
-  Completer<void>? getProjectsStarted;
-  Completer<void>? getProjectsGate;
   Completer<void>? getProjectStarted;
   Completer<void>? getProjectGate;
   Completer<void>? activeSummaryReadStarted;
   List<PluginProjectActivitySummary> activitySummaries = const [];
+  int activeSummaryReadCount = 0;
 
   @override
   String get id => pluginId;
-
-  @override
-  Future<List<PluginProject>> getProjects() async {
-    getProjectsStarted?.complete();
-    if (getProjectsGate case final gate?) await gate.future;
-    return super.getProjects();
-  }
 
   @override
   Future<PluginProject> getProject(String projectId) async {
@@ -393,6 +281,7 @@ class _SourcedPlugin extends FakeBridgePlugin {
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    activeSummaryReadCount++;
     activeSummaryReadStarted?.complete();
     activeSummaryReadStarted = null;
     return activitySummaries;

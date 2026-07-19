@@ -591,30 +591,34 @@ class OpenCodeService {
 
   Future<void> _hydratePendingQuestions(Iterable<String?> directories) async {
     final all = <QuestionRequest>[];
+    var baselineTrusted = true;
     await Future.wait(
       directories.map((directory) async {
         try {
           all.addAll(await repository.getPendingQuestions(directory: directory));
         } catch (e, st) {
+          baselineTrusted = false;
           Log.w("coldStart: failed to hydrate pending questions for ${directory ?? "<cwd>"}", e, st);
         }
       }),
     );
-    tracker.populatePendingQuestions(questions: all);
+    tracker.populatePendingQuestions(questions: all, baselineTrusted: baselineTrusted);
   }
 
   Future<void> _hydratePendingPermissions(Iterable<String?> directories) async {
     final all = <PermissionRequest>[];
+    var baselineTrusted = true;
     await Future.wait(
       directories.map((directory) async {
         try {
           all.addAll(await repository.getPendingPermissions(directory: directory));
         } catch (e, st) {
+          baselineTrusted = false;
           Log.w("coldStart: failed to hydrate pending permissions for ${directory ?? "<cwd>"}", e, st);
         }
       }),
     );
-    tracker.populatePendingPermissions(permissions: all);
+    tracker.populatePendingPermissions(permissions: all, baselineTrusted: baselineTrusted);
   }
 
   void reset() {

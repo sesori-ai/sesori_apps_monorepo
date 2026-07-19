@@ -1,4 +1,5 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgeDerivedProjectsPluginApi, BridgePluginApi;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show BridgeDerivedProjectsPluginApi, BridgePluginApi, PluginWorkState;
 
 /// The plugin-API object the [CodexPluginDescriptor] drives during `start()`.
 ///
@@ -11,6 +12,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 /// rather than the concrete `CodexPlugin`, lets the descriptor's API
 /// construction be a test seam without forcing a real socket in unit tests.
 abstract interface class CodexManagedApi implements BridgeDerivedProjectsPluginApi {
+  Stream<PluginWorkState> get workState;
+  PluginWorkState get currentWorkState;
+
   /// Opens the WebSocket transport, performs the `initialize` handshake, and
   /// starts pumping `codex app-server` notifications into [BridgePluginApi.events].
   ///

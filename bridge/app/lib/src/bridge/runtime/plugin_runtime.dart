@@ -23,7 +23,7 @@ enum PluginRuntimeTransition { none, starting, stopping, restarting }
 
 enum PluginStopIntent { safe, force }
 
-enum PluginRuntimeConflictReason { inFlight, transitioning, notEligible }
+enum PluginRuntimeConflictReason { inFlight, busy, workStateUnknown, transitioning, notEligible }
 
 class PluginRuntimeSnapshot {
   const PluginRuntimeSnapshot({
@@ -34,6 +34,7 @@ class PluginRuntimeSnapshot {
     required this.startAllowed,
     required this.generation,
     required this.state,
+    required this.workState,
     required this.leaseCount,
     required this.transition,
   });
@@ -45,6 +46,7 @@ class PluginRuntimeSnapshot {
   final bool startAllowed;
   final int? generation;
   final PluginRuntimeState state;
+  final PluginWorkState workState;
   final int leaseCount;
   final PluginRuntimeTransition transition;
 }
@@ -198,14 +200,6 @@ class PluginRuntime {
     _publishSnapshots();
   }
 
-  Future<void> startEager({required List<String> pluginIds}) async {
-    final starts = <Future<BridgePlugin?>>[];
-    for (final pluginId in pluginIds) {
-      starts.add(_ensureStarted(slot: _requireSlot(pluginId)));
-    }
-    await Future.wait(starts);
-  }
-
   Future<T> use<T>({
     required String pluginId,
     required String operation,
@@ -216,6 +210,9 @@ class PluginRuntime {
       final result = await body(lease.api);
       _requireCurrentGeneration(lease: lease, operation: operation);
       return result;
+    } on PluginAuthenticationRequiredException catch (error) {
+      _handleAuthenticationRequired(lease: lease, failure: error);
+      rethrow;
     } finally {
       _release(lease);
     }
@@ -244,6 +241,10 @@ class PluginRuntime {
 
     Future<void> finish({Object? error, StackTrace? stackTrace, required bool cancelSource}) {
       return termination ??= () async {
+        if (error is PluginAuthenticationRequiredException) {
+          final activeLease = lease;
+          if (activeLease != null) _handleAuthenticationRequired(lease: activeLease, failure: error);
+        }
         if (error != null && !cancelled && !controller.isClosed) {
           controller.addError(error, stackTrace);
         }
@@ -327,6 +328,9 @@ class PluginRuntime {
       final result = await body(lease.api, lease.generation);
       _requireCurrentGeneration(lease: lease, operation: operation);
       return result;
+    } on PluginAuthenticationRequiredException catch (error) {
+      _handleAuthenticationRequired(lease: lease, failure: error);
+      rethrow;
     } finally {
       _release(lease);
     }
@@ -388,6 +392,11 @@ class PluginRuntime {
     _shuttingDown = true;
     for (final slot in _slots.values) {
       slot.startAbortController?.abort();
+      final leaseDrainCompleter = slot.leaseDrainCompleter;
+      slot.leaseDrainCompleter = null;
+      if (leaseDrainCompleter != null && !leaseDrainCompleter.isCompleted) {
+        leaseDrainCompleter.complete();
+      }
     }
   }
 
@@ -481,13 +490,27 @@ class PluginRuntime {
         reasons: const [PluginRuntimeConflictReason.transitioning],
       );
     }
-    if (intent == PluginStopIntent.safe && slot.leaseCount > 0) {
+    final hadPlugin = slot.plugin != null || slot.startFuture != null;
+    final hasLiveGeneration = slot.plugin != null;
+    if (intent == PluginStopIntent.safe && hadPlugin && slot.leaseCount > 0) {
       return PluginRuntimeCommandConflict(
         snapshot: _snapshotFor(slot),
         reasons: const [PluginRuntimeConflictReason.inFlight],
       );
     }
-    final hadPlugin = slot.plugin != null || slot.startFuture != null;
+    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.busy) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.busy],
+      );
+    }
+    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.unknown) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.workStateUnknown],
+      );
+    }
+    if (!hadPlugin) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
     final transitionOwner = Object();
     slot
       ..commandTransitionOwner = transitionOwner
@@ -539,6 +562,12 @@ class PluginRuntime {
         reasons: const [PluginRuntimeConflictReason.notEligible],
       );
     }
+    if (!slot.startAllowed) {
+      return PluginRuntimeCommandFailed(
+        snapshot: _snapshotFor(slot),
+        message: "plugin $pluginId is unavailable",
+      );
+    }
     final forceCanTakeOverTransition =
         intent == PluginStopIntent.force &&
         slot.commandTransitionOwner == null &&
@@ -552,10 +581,24 @@ class PluginRuntime {
         reasons: const [PluginRuntimeConflictReason.transitioning],
       );
     }
-    if (intent == PluginStopIntent.safe && slot.leaseCount > 0) {
+    final hadPlugin = slot.plugin != null || slot.startFuture != null;
+    final hasLiveGeneration = slot.plugin != null;
+    if (intent == PluginStopIntent.safe && hadPlugin && slot.leaseCount > 0) {
       return PluginRuntimeCommandConflict(
         snapshot: _snapshotFor(slot),
         reasons: const [PluginRuntimeConflictReason.inFlight],
+      );
+    }
+    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.busy) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.busy],
+      );
+    }
+    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.unknown) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.workStateUnknown],
       );
     }
 
@@ -635,7 +678,8 @@ class PluginRuntime {
     final plugin = slot.plugin;
     slot
       ..plugin = null
-      ..state = PluginRuntimeState.stopping;
+      ..state = PluginRuntimeState.stopping
+      ..workState = PluginWorkState.unknown;
     _publishSnapshots();
     Object? cleanupError;
     StackTrace? cleanupStackTrace;
@@ -680,22 +724,24 @@ class PluginRuntime {
 
   void _release(_PluginLease lease) {
     if (lease.slot.leaseCount > 0) lease.slot.leaseCount--;
+    if (lease.slot.leaseCount == 0) {
+      final leaseDrainCompleter = lease.slot.leaseDrainCompleter;
+      lease.slot.leaseDrainCompleter = null;
+      if (leaseDrainCompleter != null && !leaseDrainCompleter.isCompleted) {
+        leaseDrainCompleter.complete();
+      }
+    }
     _publishSnapshots();
   }
 
+  Future<void> _waitForLeaseDrain(_PluginRuntimeSlot slot) {
+    if (_shuttingDown || slot.leaseCount == 0) return Future<void>.value();
+    return (slot.leaseDrainCompleter ??= Completer<void>()).future;
+  }
+
   void _requireCurrentGeneration({required _PluginLease lease, required String operation}) {
-    requireCurrentGeneration(
-      pluginId: lease.slot.registration.descriptor.id,
-      generation: lease.generation,
-      operation: operation,
-    );
-    if (!identical(lease.slot.plugin?.api, lease.api)) {
-      throw PluginOperationException(
-        operation,
-        statusCode: 503,
-        message: "plugin generation changed during operation",
-      );
-    }
+    if (lease.slot.generation == lease.generation && identical(lease.slot.plugin?.api, lease.api)) return;
+    throw PluginOperationException(operation, statusCode: 503, message: "plugin generation changed during operation");
   }
 
   Future<BridgePlugin?> _ensureStarted({required _PluginRuntimeSlot slot}) {
@@ -725,6 +771,7 @@ class PluginRuntime {
       ..generation = generation
       ..transition = transition
       ..state = PluginRuntimeState.starting
+      ..workState = PluginWorkState.unknown
       ..startAbortController = abortController;
     _publishSnapshots();
 
@@ -777,6 +824,7 @@ class PluginRuntime {
       }
       _validateStartedPlugin(slot: slot, plugin: started);
       slot.plugin = started;
+      final startedApi = started.api;
       // ignore: cancel_subscriptions - retained by the slot and cancelled when this generation stops.
       slot.statusSubscription = started.status.listen(
         (status) => _applyStatus(slot: slot, generation: generation, status: status),
@@ -793,6 +841,26 @@ class PluginRuntime {
           _retireFailedGeneration(slot: slot, generation: generation, reason: "status stream closed");
         },
       );
+      slot.workState = started.currentWorkState;
+      // ignore: cancel_subscriptions - retained by the slot and cancelled when this generation stops.
+      slot.workSubscription = started.workState.listen(
+        (workState) {
+          if (slot.generation != generation) return;
+          slot.workState = workState;
+          _publishSnapshots();
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (slot.generation != generation) return;
+          Log.w('Plugin "$pluginId" work-state stream failed; treating work state as unknown', error, stackTrace);
+          slot.workState = PluginWorkState.unknown;
+          _publishSnapshots();
+        },
+        onDone: () {
+          if (slot.generation != generation || slot.plugin == null) return;
+          slot.workState = PluginWorkState.unknown;
+          _publishSnapshots();
+        },
+      );
       // ignore: cancel_subscriptions - retained by the slot and cancelled when this generation stops.
       slot.eventSubscription = started.api.events.listen(
         (event) {
@@ -802,6 +870,15 @@ class PluginRuntime {
         },
         onError: (Object error, StackTrace stackTrace) {
           if (_shuttingDown) return;
+          if (error is PluginAuthenticationRequiredException) {
+            _handleGenerationAuthenticationRequired(
+              slot: slot,
+              generation: generation,
+              api: startedApi,
+              failure: error,
+            );
+            return;
+          }
           if (slot.generation == generation && !_backendEventsSubject.isClosed) {
             _backendEventsSubject.addError(error, stackTrace);
           }
@@ -923,7 +1000,8 @@ class PluginRuntime {
     if (plugin == null) return;
     slot
       ..plugin = null
-      ..state = PluginRuntimeState.failed;
+      ..state = PluginRuntimeState.failed
+      ..workState = PluginWorkState.unknown;
     if (slot.commandTransitionOwner == null) {
       slot.transition = PluginRuntimeTransition.stopping;
     }
@@ -958,10 +1036,73 @@ class PluginRuntime {
     unawaited(cleanup);
   }
 
+  void _handleAuthenticationRequired({
+    required _PluginLease lease,
+    required PluginAuthenticationRequiredException failure,
+  }) {
+    _handleGenerationAuthenticationRequired(
+      slot: lease.slot,
+      generation: lease.generation,
+      api: lease.api,
+      failure: failure,
+    );
+  }
+
+  void _handleGenerationAuthenticationRequired({
+    required _PluginRuntimeSlot slot,
+    required int generation,
+    required BridgePluginApi api,
+    required PluginAuthenticationRequiredException failure,
+  }) {
+    if (slot.generation != generation || !identical(slot.plugin?.api, api)) return;
+    slot
+      ..setup = PluginSetupAuthenticationRequired(actionHint: failure.actionHint)
+      ..startAllowed = false
+      ..workState = PluginWorkState.unknown;
+    final plugin = slot.plugin;
+    if (plugin == null) {
+      _publishSnapshots();
+      return;
+    }
+    if (slot.cleanupFuture != null && slot.transition == PluginRuntimeTransition.stopping) {
+      _publishSnapshots();
+      return;
+    }
+    slot
+      ..state = PluginRuntimeState.stopping
+      ..transition = PluginRuntimeTransition.stopping;
+    _publishSnapshots();
+
+    late final Future<void> cleanup;
+    cleanup = () async {
+      try {
+        await _waitForLeaseDrain(slot);
+        if (slot.generation != generation || !identical(slot.plugin, plugin)) return;
+        slot.plugin = null;
+        _publishSnapshots();
+        await _cancelAndShutdownGeneration(slot: slot, plugin: plugin);
+      } on Object catch (error, stackTrace) {
+        Log.w('Plugin "${slot.registration.descriptor.id}" auth-loss cleanup failed', error, stackTrace);
+      } finally {
+        if (identical(slot.cleanupFuture, cleanup)) slot.cleanupFuture = null;
+        if (slot.generation == generation) {
+          slot
+            ..state = PluginRuntimeState.blocked
+            ..transition = PluginRuntimeTransition.none
+            ..workState = PluginWorkState.unknown;
+        }
+        _publishSnapshots();
+      }
+    }();
+    slot.cleanupFuture = cleanup;
+    unawaited(cleanup);
+  }
+
   Future<void> _cancelGenerationSubscriptions(_PluginRuntimeSlot slot) async {
-    final subscriptions = [slot.statusSubscription, slot.eventSubscription];
+    final subscriptions = [slot.statusSubscription, slot.workSubscription, slot.eventSubscription];
     slot
       ..statusSubscription = null
+      ..workSubscription = null
       ..eventSubscription = null;
     await Future.wait([
       for (final subscription in subscriptions)
@@ -1042,6 +1183,7 @@ class PluginRuntime {
       startAllowed: slot.startAllowed,
       generation: slot.generation,
       state: state,
+      workState: slot.workState,
       leaseCount: slot.leaseCount,
       transition: slot.transition,
     );
@@ -1061,15 +1203,19 @@ class _PluginRuntimeSlot {
   bool startAllowed = false;
   int? generation;
   PluginRuntimeState state = PluginRuntimeState.disabled;
+  PluginWorkState workState = PluginWorkState.unknown;
   PluginRuntimeTransition transition = PluginRuntimeTransition.none;
   Object? commandTransitionOwner;
   int leaseCount = 0;
+  Completer<void>? leaseDrainCompleter;
   BridgePlugin? plugin;
   Future<BridgePlugin?>? startFuture;
   Future<void>? cleanupFuture;
   StartAbortController? startAbortController;
   // ignore: cancel_subscriptions - generation ownership cancels these in PluginRuntime.
   StreamSubscription<PluginStatus>? statusSubscription;
+  // ignore: cancel_subscriptions - generation ownership cancels these in PluginRuntime.
+  StreamSubscription<PluginWorkState>? workSubscription;
   // ignore: cancel_subscriptions - generation ownership cancels these in PluginRuntime.
   StreamSubscription<BridgeSseEvent>? eventSubscription;
 }

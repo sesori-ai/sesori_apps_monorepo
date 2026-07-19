@@ -1,11 +1,9 @@
 import "dart:async";
-import "dart:math";
+import "dart:math" show max;
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/project_activity.dart";
-import "../repositories/models/project_activity_evidence.dart";
 import "../repositories/project_repository.dart";
 
 class ProjectActivityService {
@@ -86,74 +84,6 @@ class ProjectActivityService {
         _emit(projectId: stored.projectId, updatedAt: activity.updatedAt);
       }
     });
-  }
-
-  Future<void> reconcile({required String? pluginId}) async {
-    final pluginIds = pluginId == null ? _projectRepository.operationalPluginIds : <String>{pluginId};
-    await Future.wait(pluginIds.map(_reconcileSource));
-  }
-
-  Future<void> _reconcileSource(String pluginId) async {
-    final List<ProjectActivityEvidence> evidence;
-    try {
-      evidence = await _projectRepository.listProjectActivityEvidence(pluginId: pluginId);
-    } on Object catch (error, stackTrace) {
-      Log.w("Project activity reconciliation failed for plugin $pluginId", error, stackTrace);
-      return;
-    }
-    await _serialize(() => _mergeEvidence(evidence));
-  }
-
-  Future<void> _mergeEvidence(List<ProjectActivityEvidence> evidence) async {
-    final storedActivities = await _projectRepository.getActivities(
-      projectIds: {for (final item in evidence) item.projectId},
-    );
-    final updates = <String, ProjectActivity>{};
-    final advances = <ProjectActivityChange>[];
-
-    for (final item in evidence) {
-      final activity = _reconciledActivity(
-        current: storedActivities[item.projectId],
-        evidence: item,
-      );
-      if (activity == null) continue;
-      final current = storedActivities[item.projectId];
-      if (activity == current) continue;
-      updates[item.projectId] = activity;
-      if (current == null || activity.updatedAt > current.updatedAt) {
-        advances.add(ProjectActivityChange(projectId: item.projectId, updatedAt: activity.updatedAt));
-      }
-    }
-
-    if (updates.isEmpty) return;
-    await _projectRepository.batchWriteActivities(activities: updates);
-    for (final change in advances) {
-      _emit(projectId: change.projectId, updatedAt: change.updatedAt);
-    }
-  }
-
-  ProjectActivity? _reconciledActivity({
-    required ProjectActivity? current,
-    required ProjectActivityEvidence evidence,
-  }) {
-    int? createdAt;
-    int? updatedAt;
-
-    final direct = evidence.pluginActivity;
-    if (direct != null) {
-      createdAt = direct.createdAt;
-      updatedAt = direct.updatedAt;
-    }
-    for (final session in evidence.sessionActivities) {
-      createdAt = createdAt == null ? session.created : min(createdAt, session.created);
-      updatedAt = updatedAt == null ? session.updated : max(updatedAt, session.updated);
-    }
-    if (createdAt == null || updatedAt == null) return null;
-    if (current != null) {
-      createdAt = min(current.createdAt, createdAt);
-      updatedAt = max(current.updatedAt, updatedAt);
-    }
-    return ProjectActivity(createdAt: createdAt, updatedAt: updatedAt);
   }
 
   Future<T> _serialize<T>(Future<T> Function() operation) {

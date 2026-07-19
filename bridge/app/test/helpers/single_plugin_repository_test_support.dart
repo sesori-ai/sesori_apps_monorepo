@@ -56,7 +56,6 @@ ProjectRepository singlePluginProjectRepository({
     filesystemApi: filesystemApi,
     gitCliApi: gitCliApi,
     projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-    aggregateSourceDeadline: const Duration(seconds: 5),
   );
 }
 

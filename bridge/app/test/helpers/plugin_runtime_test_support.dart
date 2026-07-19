@@ -146,6 +146,7 @@ class TestPluginRuntime extends PluginRuntime {
       startAllowed: true,
       generation: 1,
       state: PluginRuntimeState.active,
+      workState: PluginWorkState.idle,
       leaseCount: 0,
       transition: PluginRuntimeTransition.none,
     );

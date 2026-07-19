@@ -81,6 +81,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   AcpStdioClient? _client;
   Future<bool>? _connectFuture;
+  PluginAuthenticationRequiredException? _authenticationFailure;
   StreamSubscription<AcpNotification>? _notificationSubscription;
   AcpApprovalRegistry? _approvalRegistry;
   AcpInitializeResult? _initResult;
@@ -92,6 +93,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// subscriber so it is not double-handled.
   final StreamController<void> _connected = StreamController<void>.broadcast();
   Stream<void> get onConnected => _connected.stream;
+  final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
+
+  Stream<PluginWorkState> get workState => _workState.stream;
+  PluginWorkState get currentWorkState => _workState.current;
 
   final Map<String, PluginSessionStatus> _sessionStatuses = {};
 
@@ -230,6 +235,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final existing = _connectFuture;
     if (existing != null) return existing;
     final future = () async {
+      _authenticationFailure = null;
       final client = AcpStdioClient(
         launchSpec: launchSpec,
         processFactory: _processFactory,
@@ -245,8 +251,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           if (notification.method == AcpMethods.sessionUpdate) {
             final sid = notification.params["sessionId"];
             final update = notification.params["update"];
-            final isCommandUpdate =
-                update is Map && update["sessionUpdate"] == "available_commands_update";
+            final isCommandUpdate = update is Map && update["sessionUpdate"] == "available_commands_update";
             if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
               // Replay from an in-flight resume-load — drop so old history does
               // not re-stream into the live conversation.
@@ -260,12 +265,18 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         _approvalRegistry = registry;
         registry.attach(client.serverRequests);
         _initResult = await _initialize(client);
+        _syncWorkState();
         if (!_connected.isClosed) _connected.add(null);
         return true;
       } catch (error) {
+        if (error is PluginAuthenticationRequiredException) {
+          _authenticationFailure = error;
+        } else {
+          _connectFuture = null;
+        }
+        _workState.set(PluginWorkState.unknown);
         await client.dispose();
         _client = null;
-        _connectFuture = null;
         return Future<bool>.error(error);
       }
     }();
@@ -302,13 +313,21 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       );
     }
     if (init.requiresAuth) {
-      final methodId = authMethodId ??
-          (init.authMethods.isNotEmpty ? init.authMethods.first.id : null);
+      final methodId = authMethodId ?? (init.authMethods.isNotEmpty ? init.authMethods.first.id : null);
       if (methodId != null) {
-        await client.request(
-          method: AcpMethods.authenticate,
-          params: {"methodId": methodId},
-        );
+        try {
+          await client.request(
+            method: AcpMethods.authenticate,
+            params: {"methodId": methodId},
+          );
+        } on Object catch (error) {
+          throw PluginAuthenticationRequiredException(
+            AcpMethods.authenticate,
+            actionHint: "Authenticate the configured agent locally, then retry.",
+            message: "$id authentication failed",
+            cause: error,
+          );
+        }
       }
     }
     return init;
@@ -318,6 +337,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final ok = await ensureConnected();
     final client = _client;
     if (!ok || client == null) {
+      if (_authenticationFailure case final failure?) throw failure;
       throw StateError("$id agent is not connected");
     }
     return client;
@@ -335,7 +355,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// is left intact — the plugin stays alive, only the connection is reset.
   /// Never throws.
   Future<void> resetConnectionAfterExit() async {
+    _workState.set(PluginWorkState.unknown);
     _connectFuture = null;
+    _authenticationFailure = null;
     _initResult = null;
     _residentSessions.clear();
     _bareSessionListUnsupported = false;
@@ -397,6 +419,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final AcpStdioClient client;
     try {
       client = await _connectedClient();
+    } on PluginAuthenticationRequiredException {
+      rethrow;
     } on Object catch (error) {
       Log.w("[$id] listAllSessions: agent unreachable; serving no sessions", error);
       return const [];
@@ -431,6 +455,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           final hasCwd = info.cwd != null && info.cwd!.trim().isNotEmpty;
           if (!hasCwd) fallbackAttributed.add(info.sessionId);
         }
+      } on PluginAuthenticationRequiredException {
+        rethrow;
       } on Object catch (error) {
         // Only a genuine "unsupported RPC" (method-not-found / invalid-params)
         // means this agent will never serve the unfiltered form — memoize that.
@@ -460,6 +486,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
             );
           }
         }
+      } on PluginAuthenticationRequiredException {
+        rethrow;
       } on Object catch (error, stack) {
         Log.w("[$id] session/list failed for $directory; skipping", error, stack);
       }
@@ -476,6 +504,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final AcpStdioClient client;
     try {
       client = await _connectedClient();
+    } on PluginAuthenticationRequiredException {
+      rethrow;
     } on Object catch (error) {
       Log.w("[$id] getSessions: agent unreachable; serving no sessions", error);
       return const [];
@@ -495,6 +525,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       if (from >= mapped.length) return const [];
       final until = limit == null ? mapped.length : (from + limit).clamp(0, mapped.length);
       return mapped.sublist(from, until);
+    } on PluginAuthenticationRequiredException {
+      rethrow;
     } on Object catch (error, stack) {
       Log.w("[$id] session/list failed for $target; serving no sessions", error, stack);
       return const [];
@@ -531,6 +563,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         result = AcpSessionListResult.fromJson(
           raw is Map ? raw.cast<String, dynamic>() : const {},
         );
+      } on PluginAuthenticationRequiredException {
+        rethrow;
       } on Object catch (error, stack) {
         if (page == 0) rethrow;
         Log.w(
@@ -678,9 +712,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
-    eventMapper
-        .mapSentPrompt(sessionId: sessionId, parts: parts)
-        .forEach(_eventBuffer.add);
+    eventMapper.mapSentPrompt(sessionId: sessionId, parts: parts).forEach(_eventBuffer.add);
     _enqueueTurn(
       sessionId: sessionId,
       parts: parts,
@@ -713,8 +745,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   /// The directory a session should be loaded/operated in — its own canonical
   /// directory when known, else the launch directory.
-  String _directoryForSession(String sessionId) =>
-      _sessionDirectories[sessionId] ?? launchDirectory;
+  String _directoryForSession(String sessionId) => _sessionDirectories[sessionId] ?? launchDirectory;
 
   @override
   void primeSessionDirectory({required String sessionId, required String directory}) {
@@ -865,15 +896,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required PluginSessionVariant? variant,
     required String? agent,
   }) {
-    final blocks = parts
-        .map(_promptPartToContentBlock)
-        .whereType<Map<String, dynamic>>()
-        .toList(growable: false);
+    final blocks = parts.map(_promptPartToContentBlock).whereType<Map<String, dynamic>>().toList(growable: false);
     if (blocks.isEmpty) return;
 
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
     state.pending++;
     if (state.pending == 1) {
+      _workState.set(PluginWorkState.busy);
       _sessionStatuses[sessionId] = const PluginSessionStatus.busy();
       _eventBuffer.add(
         BridgeSseSessionStatus(
@@ -940,6 +969,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       }
       // The send was already accepted, so a dead/unrespawnable agent must
       // surface as a failed turn, not a silent drop.
+      if (error is PluginAuthenticationRequiredException) {
+        _eventBuffer.addError(error, stack);
+      }
       Log.w("[$id] could not reach the agent for a queued turn on $sessionId", error, stack);
       _finishTurn(sessionId: sessionId, state: state, failed: true, refused: false);
       return;
@@ -1013,11 +1045,15 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // [_turnStates]; its detached accounting above must still settle, but it
     // must not resurrect the deleted session's status entry or emit
     // idle/error events for it.
-    if (!identical(_turnStates[sessionId], state)) return;
+    if (!identical(_turnStates[sessionId], state)) {
+      _syncWorkState();
+      return;
+    }
     if (state.pending == 0) {
       _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
       _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
     }
+    _syncWorkState();
     if (failed || refused) {
       _eventBuffer.add(BridgeSseSessionError(sessionID: sessionId));
     }
@@ -1126,12 +1162,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async =>
-      const [];
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => const [];
 
   @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async =>
-      Map.unmodifiable(_sessionStatuses);
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => Map.unmodifiable(_sessionStatuses);
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
@@ -1247,6 +1281,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       collector.modelId = eventMapper.modelForSession(sessionId);
       collector.providerId = eventMapper.providerForSession(sessionId);
       return collector.build();
+    } on PluginAuthenticationRequiredException {
+      rethrow;
     } on Object catch (error, stackTrace) {
       // A broken replay (connect/init/auth/load failure) must stay
       // distinguishable from a genuinely empty thread: surface it as a typed
@@ -1343,14 +1379,12 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
-  }) async =>
-      _approvalRegistry?.pendingForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingForSession(sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingPermission>> getPendingPermissions({
     required String sessionId,
-  }) async =>
-      _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({
@@ -1430,8 +1464,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     if (byProject.isEmpty) return const [];
 
     return [
-      for (final entry in byProject.entries)
-        PluginProjectActivitySummary(id: entry.key, activeSessions: entry.value),
+      for (final entry in byProject.entries) PluginProjectActivitySummary(id: entry.key, activeSessions: entry.value),
     ];
   }
 
@@ -1471,6 +1504,16 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     } on Object catch (e, st) {
       Log.w("[$id] failed to close connected stream", e, st);
     }
+    try {
+      await _workState.close();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to close work-state stream", e, st);
+    }
+  }
+
+  void _syncWorkState() {
+    final busy = _turnStates.values.any((state) => state.pending > 0);
+    _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
   }
 }
 

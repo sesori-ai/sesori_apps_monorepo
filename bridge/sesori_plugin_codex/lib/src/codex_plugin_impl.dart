@@ -39,6 +39,7 @@ class CodexPlugin implements CodexManagedApi {
   // non-loopback (`--ws-auth`) support.
   final String? _capabilityToken;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
+  final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
   // Nullable: when the caller injects a factory (tests) we use it verbatim;
   // otherwise [_ensureConnected] builds the default client itself so it can
   // wire the client's disconnect signal into [_handleClientDisconnected].
@@ -186,6 +187,12 @@ class CodexPlugin implements CodexManagedApi {
   @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
 
+  @override
+  Stream<PluginWorkState> get workState => _workState.stream;
+
+  @override
+  PluginWorkState get currentWorkState => _workState.current;
+
   /// Lazily opens the WS connection, performs `initialize`, and starts
   /// piping server notifications into the bridge event buffer.
   ///
@@ -238,6 +245,7 @@ class CodexPlugin implements CodexManagedApi {
     _client = null;
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
+    _workState.set(PluginWorkState.unknown);
     _onDisconnected?.call();
   }
 
@@ -322,7 +330,21 @@ class CodexPlugin implements CodexManagedApi {
         _sessionStatuses[id] = const PluginSessionStatus.idle();
         final cwd = thread?["cwd"] as String?;
         if (cwd != null && cwd.isNotEmpty) _recordThreadDirectory(id, cwd);
+      case "thread/status/changed":
+        if (threadId == null) return;
+        final status = params["status"];
+        final statusMap = status is Map ? status.cast<String, dynamic>() : null;
+        final nested = statusMap?["status"];
+        final nestedMap = nested is Map ? nested.cast<String, dynamic>() : null;
+        final type = (statusMap?["type"] ?? nestedMap?["type"]) as String?;
+        if (type == "idle") {
+          _activeTurnByThread.remove(threadId);
+          _sessionStatuses[threadId] = const PluginSessionStatus.idle();
+        } else {
+          _sessionStatuses[threadId] = const PluginSessionStatus.busy();
+        }
     }
+    _syncWorkState();
   }
 
   /// Cold-start hook the runtime descriptor awaits before reporting the
@@ -336,6 +358,7 @@ class CodexPlugin implements CodexManagedApi {
     if (!connected) {
       throw StateError("codex app-server cold-start failed for $_serverUrl");
     }
+    _syncWorkState();
   }
 
   @override
@@ -978,12 +1001,35 @@ class CodexPlugin implements CodexManagedApi {
   Future<void> dispose() async {
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
-    await _notificationSubscription?.cancel();
+    Object? firstError;
+    StackTrace? firstStackTrace;
+    Future<void> capture(Future<void> Function() cleanup) async {
+      try {
+        await cleanup();
+      } on Object catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
+      }
+    }
+
+    await capture(() => _notificationSubscription?.cancel() ?? Future<void>.value());
     _notificationSubscription = null;
-    await _approvalRegistry?.dispose();
+    await capture(() => _approvalRegistry?.dispose() ?? Future<void>.value());
     _approvalRegistry = null;
-    await _client?.dispose();
+    await capture(() => _client?.dispose() ?? Future<void>.value());
     _client = null;
-    await _eventBuffer.close();
+    await capture(_eventBuffer.close);
+    await capture(_workState.close);
+    final error = firstError;
+    if (error != null) Error.throwWithStackTrace(error, firstStackTrace!);
+  }
+
+  void _syncWorkState() {
+    final busy =
+        _activeTurnByThread.isNotEmpty ||
+        _sessionStatuses.values.any(
+          (status) => status is PluginSessionStatusBusy || status is PluginSessionStatusRetry,
+        );
+    _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
   }
 }

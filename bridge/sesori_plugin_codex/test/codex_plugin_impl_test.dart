@@ -10,6 +10,7 @@ import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginWorkState;
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
@@ -95,14 +96,15 @@ void main() {
     test("getAgents/getProviders synthesise from config + the project's own latest rollout", () async {
       final tempHome = Directory.systemTemp.createTempSync("codex-home-syn-");
       try {
-        File(p.join(tempHome.path, "config.toml"))
-            .writeAsStringSync('model = "gpt-5.5"\nmodel_provider = "openai"\n');
+        File(p.join(tempHome.path, "config.toml")).writeAsStringSync('model = "gpt-5.5"\nmodel_provider = "openai"\n');
         // A rollout whose turn_context model differs from the global config
         // default — the per-session model must win.
-        final rollout = File(p.join(
-          tempHome.path,
-          "sessions/2026/05/27/rollout-2026-05-27T10-00-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
-        ))..createSync(recursive: true);
+        final rollout = File(
+          p.join(
+            tempHome.path,
+            "sessions/2026/05/27/rollout-2026-05-27T10-00-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
+          ),
+        )..createSync(recursive: true);
         rollout.writeAsStringSync(
           "${jsonEncode({
             "type": "session_meta",
@@ -120,10 +122,12 @@ void main() {
         );
         // A NEWER rollout in a different derived project — it must not leak
         // into /repo/example's defaults.
-        final otherRollout = File(p.join(
-          tempHome.path,
-          "sessions/2026/05/28/rollout-2026-05-28T10-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
-        ))..createSync(recursive: true);
+        final otherRollout = File(
+          p.join(
+            tempHome.path,
+            "sessions/2026/05/28/rollout-2026-05-28T10-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
+          ),
+        )..createSync(recursive: true);
         otherRollout.writeAsStringSync(
           "${jsonEncode({
             "type": "session_meta",
@@ -166,8 +170,7 @@ void main() {
         expect(agent.model?.modelID, equals("gpt-5.4-codex"));
         expect(agent.model?.providerID, equals("openai"));
 
-        final providers =
-            (await plugin.getProviders(projectId: "/repo/example")).providers;
+        final providers = (await plugin.getProviders(projectId: "/repo/example")).providers;
         expect(providers.single.id, equals("openai"));
         expect(providers.single.defaultModelID, equals("gpt-5.4-codex"));
 
@@ -237,6 +240,57 @@ void main() {
       });
 
       expect(await plugin.healthCheck(), isFalse);
+      await plugin.dispose();
+    });
+
+    test("thread status changes drive conservative aggregate work state", () async {
+      final fake = _FakeWebSocket();
+      final plugin = CodexPlugin(
+        serverUrl: "ws://127.0.0.1:0",
+        clientFactory: () => CodexAppServerClient(
+          serverUrl: "ws://127.0.0.1:0",
+          channelFactory: (_) => fake.channel,
+        ),
+      );
+
+      fake.outgoing.first.then((Object? frame) {
+        final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
+        fake.serverSink.add(
+          jsonEncode({
+            "jsonrpc": "2.0",
+            "id": decoded["id"],
+            "result": _initOk,
+          }),
+        );
+      });
+      await plugin.initialize();
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+
+      final busy = plugin.workState.firstWhere((state) => state == PluginWorkState.busy);
+      fake.serverSink.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "method": "thread/status/changed",
+          "params": {
+            "threadId": "thread-1",
+            "status": {"type": "active"},
+          },
+        }),
+      );
+      await busy.timeout(const Duration(seconds: 1));
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      fake.serverSink.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "method": "thread/status/changed",
+          "params": {
+            "threadId": "thread-1",
+            "status": {"type": "idle"},
+          },
+        }),
+      );
+      await idle.timeout(const Duration(seconds: 1));
       await plugin.dispose();
     });
 
@@ -393,8 +447,7 @@ class _SinkAdapter implements WebSocketSink {
   void add(Object? data) => _controller.add(data);
 
   @override
-  void addError(Object error, [StackTrace? stackTrace]) =>
-      _controller.addError(error, stackTrace);
+  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
 
   @override
   Future<void> addStream(Stream<Object?> stream) async {
