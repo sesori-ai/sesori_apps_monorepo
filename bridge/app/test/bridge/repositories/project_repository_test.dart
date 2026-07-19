@@ -102,6 +102,68 @@ void main() {
       expect(plugin.getProjectsCallCount, 0);
     });
 
+    test("zero-plugin mode keeps catalog reads online and rejects default-targeted opens with 503", () async {
+      await db.projectsDao.recordOpenedProject(
+        projectId: "stored-project",
+        path: "/projects/stored",
+        displayName: "Stored",
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      final zeroPluginRepository = ProjectRepository(
+        operationalPlugins: const <String, BridgePluginApi>{},
+        readDefaultEnabledPluginId: () => null,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+        gitCliApi: FakeGitCliApi(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+      );
+
+      final projects = await zeroPluginRepository.getProjects();
+
+      expect(projects.map((project) => project.id), ["stored-project"]);
+      await expectLater(
+        zeroPluginRepository.resolveProjectOpenTarget(path: "/projects/new"),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.statusCode, "statusCode", 503)
+              .having((error) => error.message, "message", contains("no default plugin")),
+        ),
+      );
+    });
+
+    test("default-targeted opens read the latest routable default", () async {
+      final first = _FakeBridgePlugin(pluginId: "first");
+      final second = _FakeBridgePlugin(pluginId: "second")
+        ..projectResult = const PluginProject(
+          id: "second-project",
+          directory: "/projects/second",
+          name: "Second",
+        );
+      var defaultPluginId = "first";
+      final liveDefaultRepository = ProjectRepository(
+        operationalPlugins: {first.id: first, second.id: second},
+        readDefaultEnabledPluginId: () => defaultPluginId,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+        gitCliApi: FakeGitCliApi(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+      );
+
+      defaultPluginId = "second";
+      final target = await liveDefaultRepository.resolveProjectOpenTarget(path: "/projects/second");
+
+      expect(target.project.id, "second-project");
+      expect(first.lastGetProjectId, isNull);
+      expect(second.lastGetProjectId, "/projects/second");
+    });
+
     test("activity reconciliation seeds native directories and preserves existing paths", () async {
       plugin.projectsResult = const [
         PluginProject(
@@ -1077,6 +1139,9 @@ PluginSession _session(
 /// Minimal [BridgePluginApi] fake that only implements the surface touched by
 /// [ProjectRepository]. Every other member throws so accidental use is loud.
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
+  _FakeBridgePlugin({this.pluginId = "fake"});
+
+  final String pluginId;
   List<PluginProject> projectsResult = const [];
   Future<List<PluginProject>>? getProjectsFuture;
   Object? getProjectsError;
@@ -1095,7 +1160,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  String get id => "fake";
+  String get id => pluginId;
 
   @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();

@@ -18,6 +18,64 @@ import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 
 void main() {
+  test("zero-plugin composition keeps the relay session online", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final lifecycleService = PluginLifecycleService()
+      ..registerPlugins(
+        plugins: const [(id: "opencode", displayName: "OpenCode")],
+      )
+      ..initialize(
+        disabledPluginIds: const {"opencode"},
+        setupById: const {
+          "opencode": PluginSetupNotInspected(),
+        },
+      );
+    final httpClient = http.Client();
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(""),
+      bridgeIdProvider: FakeBridgeIdProvider(),
+    );
+    final composition = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+        yolo: false,
+      ),
+      client: relayClient,
+      legacyMissingPluginId: "opencode",
+      pluginLifecycleService: lifecycleService,
+      database: database,
+      httpClient: httpClient,
+      processRunner: ProcessRunner(),
+      accessTokenProvider: FakeAccessTokenProvider(""),
+      tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
+      failureReporter: FakeFailureReporter(),
+      restartService: buildTestRestartService(),
+      filesystemAccessOk: true,
+      statusNotifier: null,
+    ).create();
+    final runFuture = composition.session.run();
+
+    try {
+      await relayServer.nextClient();
+      expect(lifecycleService.compositionView.enabledPluginIds, isEmpty);
+      expect(lifecycleService.compositionView.operationalPlugins, isEmpty);
+      expect(composition.catalogImportService.latestStatuses, isEmpty);
+    } finally {
+      await composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 5));
+      await composition.catalogImportService.dispose();
+      await lifecycleService.dispose();
+      httpClient.close();
+      await database.close();
+      await relayServer.close();
+    }
+  });
+
   group("OrchestratorSession SSE error recovery", () {
     test("initial relay connect failure does not leave push listeners running", () async {
       final plugin = _ThrowingSummaryPlugin();

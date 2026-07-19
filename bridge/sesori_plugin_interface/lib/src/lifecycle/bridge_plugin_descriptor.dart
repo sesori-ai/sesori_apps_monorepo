@@ -6,15 +6,17 @@ import "bridge_plugin.dart";
 import "plugin_availability.dart";
 import "plugin_config.dart";
 import "plugin_option.dart";
+import "plugin_project_ownership.dart";
+import "plugin_setup_status.dart";
 import "plugin_state_storage.dart";
 import "runtime_provision_progress.dart";
 
 /// The registration unit for a bridge plugin.
 ///
 /// Descriptors are const and inert: constructing or registering one has no
-/// side effects. **Registered is not started** — the bridge starts only the
-/// selected/enabled subset of registered descriptors, and every enabled
-/// descriptor contributes its [options] to the CLI parser.
+/// side effects. **Registered is not started** — eligibility, setup, and
+/// residency are independent, and every descriptor contributes its [options]
+/// to the CLI parser.
 @immutable
 abstract class BridgePluginDescriptor {
   const BridgePluginDescriptor();
@@ -26,13 +28,17 @@ abstract class BridgePluginDescriptor {
   /// Human-readable name for logs and help output.
   String get displayName;
 
+  /// Whether this plugin exposes native projects or the bridge derives them
+  /// from session directories.
+  PluginProjectOwnership get projectOwnership;
+
   /// Layout used for the plugin's private host state.
   ///
   /// New plugins are isolated by default. Plugins with shipped state in the
   /// legacy shared runtime directory can preserve that location explicitly.
   PluginStateStorage get stateStorage => PluginStateStorage.isolated;
 
-  /// CLI options this plugin contributes when selected.
+  /// Namespaced CLI options this plugin contributes.
   List<PluginOption> get options;
 
   /// Validates [config] before the bridge takes any irreversible step.
@@ -44,6 +50,22 @@ abstract class BridgePluginDescriptor {
   ///
   /// Must be pure: no I/O, no side effects. The default accepts everything.
   void validateConfig(PluginConfig config) {}
+
+  /// Inspects whether this plugin's runtime and authentication are already set
+  /// up without installing, starting, or initiating a login flow.
+  ///
+  /// A bounded, non-interactive helper command is allowed. Raw command output,
+  /// account identifiers, credential paths, and secrets must not cross this
+  /// boundary. [stateDirectory] is the descriptor-selected state root and is
+  /// provided read-only so inspection can recognize an existing managed
+  /// runtime without creating files. The default is ready for plugins with no
+  /// local setup needs.
+  Future<PluginSetupStatus> inspectSetup({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async => const PluginSetupReady();
 
   /// Reports whether this plugin's backend is available to run.
   ///
@@ -68,21 +90,18 @@ abstract class BridgePluginDescriptor {
     required Map<String, String> environment,
   }) async => const PluginAvailable();
 
-  /// Ensures the plugin's backend runtime is installed and runnable, acquiring
-  /// (e.g. downloading) it when necessary, and reports progress.
+  /// Resolves an already-present backend runtime and reports progress.
   ///
   /// Runs after [checkAvailability] returns [PluginAvailable] and immediately
-  /// before [start] — under the bridge's startup mutex, so concurrent bridge
-  /// instances can never install the same managed runtime at once. The stream's
+  /// before [start] under the bridge's startup mutex. It must never download,
+  /// install, sweep, or otherwise mutate a runtime. The stream's
   /// final event is terminal: [ProvisionReady] carries the resolved launch path,
   /// which the bridge exposes to [start] via [PluginHost.provisionedRuntimePath];
   /// [ProvisionFailed] is **non-fatal** — the bridge proceeds to [start], which
   /// reports a degraded status rather than terminating a healthy resident bridge.
   ///
-  /// Provisioning must observe [PluginHost.startAborted] at each phase boundary
-  /// so a slow download can be cancelled. The default emits nothing, which suits
-  /// plugins that need no runtime acquisition (remote-server or attach-mode
-  /// plugins).
+  /// Resolution must observe [PluginHost.startAborted] at each phase boundary.
+  /// The default emits nothing, which suits remote-server or attach-mode plugins.
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) {
     return const Stream<RuntimeProvisionProgress>.empty();
   }

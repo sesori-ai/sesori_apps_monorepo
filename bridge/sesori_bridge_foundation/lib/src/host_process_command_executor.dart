@@ -17,13 +17,20 @@ class HostProcessCommandExecutor implements CommandExecutor {
   final HostProcessService _processes;
   final bool _runInShell;
   final Duration _defaultTimeout;
+  final int? _maxCapturedOutputCharactersPerStream;
 
   HostProcessCommandExecutor({
     required HostProcessService processes,
     required bool runInShell,
+    required int? maxCapturedOutputCharactersPerStream,
     Duration defaultTimeout = const Duration(seconds: 30),
   }) : _processes = processes,
        _runInShell = runInShell,
+       _maxCapturedOutputCharactersPerStream = maxCapturedOutputCharactersPerStream,
+       assert(
+         maxCapturedOutputCharactersPerStream == null || maxCapturedOutputCharactersPerStream >= 0,
+         "maxCapturedOutputCharactersPerStream must not be negative",
+       ),
        _defaultTimeout = defaultTimeout;
 
   @override
@@ -47,16 +54,20 @@ class HostProcessCommandExecutor implements CommandExecutor {
     // allowMalformed: tool output (tar/unzip listings) is not guaranteed valid
     // UTF-8; a decode error must not crash a command run.
     const decoder = Utf8Decoder(allowMalformed: true);
-    final stdoutSub = process.stdout.transform(decoder).listen(
-      stdoutBuffer.write,
-      onError: (Object error, StackTrace stackTrace) =>
-          Log.w("HostProcessCommandExecutor: '$executable' stdout stream error", error, stackTrace),
-    );
-    final stderrSub = process.stderr.transform(decoder).listen(
-      stderrBuffer.write,
-      onError: (Object error, StackTrace stackTrace) =>
-          Log.w("HostProcessCommandExecutor: '$executable' stderr stream error", error, stackTrace),
-    );
+    final stdoutSub = process.stdout
+        .transform(decoder)
+        .listen(
+          (chunk) => _capture(buffer: stdoutBuffer, chunk: chunk),
+          onError: (Object error, StackTrace stackTrace) =>
+              Log.w("HostProcessCommandExecutor: '$executable' stdout stream error", error, stackTrace),
+        );
+    final stderrSub = process.stderr
+        .transform(decoder)
+        .listen(
+          (chunk) => _capture(buffer: stderrBuffer, chunk: chunk),
+          onError: (Object error, StackTrace stackTrace) =>
+              Log.w("HostProcessCommandExecutor: '$executable' stderr stream error", error, stackTrace),
+        );
     // Completes when each stream is fully delivered (the child has exited AND the
     // pipe is drained). Draining happens via the listeners above, so awaiting
     // these alongside exitCode never deadlocks on a full pipe.
@@ -95,6 +106,17 @@ class HostProcessCommandExecutor implements CommandExecutor {
       await _cancelQuietly(stdoutSub, stream: "stdout", executable: executable);
       await _cancelQuietly(stderrSub, stream: "stderr", executable: executable);
     }
+  }
+
+  void _capture({required StringBuffer buffer, required String chunk}) {
+    final limit = _maxCapturedOutputCharactersPerStream;
+    if (limit == null) {
+      buffer.write(chunk);
+      return;
+    }
+    final remaining = limit - buffer.length;
+    if (remaining <= 0) return;
+    buffer.write(chunk.length <= remaining ? chunk : chunk.substring(0, remaining));
   }
 
   Future<void> _cancelQuietly(

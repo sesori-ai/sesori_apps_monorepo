@@ -36,6 +36,19 @@ void main() {
 
       expect(availability, isA<PluginAvailable>());
     });
+
+    test('inspectSetup reports ready without process work by default', () async {
+      const descriptor = _MinimalDescriptor();
+
+      final setup = await descriptor.inspectSetup(
+        config: const PluginConfig.empty(),
+        processes: const _UnusedProcessService(),
+        environment: const <String, String>{},
+        stateDirectory: "/state",
+      );
+
+      expect(setup, const PluginSetupReady());
+    });
   });
 
   group('PluginOption', () {
@@ -179,6 +192,9 @@ class _MinimalDescriptor extends BridgePluginDescriptor {
   String get displayName => 'No-op plugin';
 
   @override
+  PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
+
+  @override
   List<PluginOption> get options => const [];
 
   @override
@@ -219,6 +235,9 @@ class _ValidatingDescriptor extends BridgePluginDescriptor {
 
   @override
   String get displayName => 'Validating plugin';
+
+  @override
+  PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
 
   @override
   List<PluginOption> get options => const [

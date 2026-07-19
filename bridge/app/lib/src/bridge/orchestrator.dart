@@ -32,6 +32,7 @@ import "../repositories/catalog_import_repository.dart";
 import "../repositories/project_catalog_identity_calculator.dart";
 import "../routing/cancel_catalog_import_handler.dart";
 import "../routing/get_catalog_import_statuses_handler.dart";
+import "../routing/get_plugin_setup_handler.dart";
 import "../routing/get_plugins_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
@@ -197,7 +198,7 @@ class Orchestrator {
     );
     final projectRepository = ProjectRepository(
       operationalPlugins: pluginComposition.operationalPlugins,
-      defaultEnabledPluginId: pluginComposition.defaultEnabledPluginId,
+      readDefaultEnabledPluginId: () => _pluginLifecycleService.compositionView.defaultEnabledPluginId,
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
       unseenCalculator: unseenCalculator,
@@ -399,6 +400,7 @@ class Orchestrator {
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
+        GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService),
         RestartBridgeHandler(restartService: _restartService),
         GetCurrentProjectHandler(projectRepository: projectRepository),

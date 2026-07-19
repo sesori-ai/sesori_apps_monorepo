@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:convert';
 
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
@@ -8,221 +8,166 @@ import 'package:test/test.dart';
 
 void main() {
   group('BridgeSettingsRepository', () {
-    test('loadSettings creates and returns defaults when config is missing', () async {
+    test('creates defaults when config is missing', () async {
       final api = FakeBridgeSettingsApi(readResult: null);
       final repository = BridgeSettingsRepository(api: api);
 
       final settings = await repository.loadSettings();
 
-      expect(settings.sleepPrevention, SleepPreventionMode.always);
-      expect(settings.yolo, isFalse);
-      expect(api.lastWrittenConfig, equals(_defaultJson));
+      expect(settings.plugins.disabledPluginIds, isEmpty);
+      expect(repository.currentSettings, same(settings));
+      expect(api.lastWrittenConfig, _defaultJson);
     });
 
-    test('loadSettings parses valid sleep prevention mode', () async {
-      final api = FakeBridgeSettingsApi(readResult: '{"sleepPrevention":"off"}');
-      final repository = BridgeSettingsRepository(api: api);
-
-      final settings = await repository.loadSettings();
-
-      expect(settings.sleepPrevention, SleepPreventionMode.off);
-      expect(api.writeCount, equals(0));
-    });
-
-    test('loadSettings defaults missing sleepPrevention without rewriting', () async {
-      final api = FakeBridgeSettingsApi(readResult: '{}');
-      final repository = BridgeSettingsRepository(api: api);
-
-      final settings = await repository.loadSettings();
-
-      expect(settings.sleepPrevention, SleepPreventionMode.always);
-      expect(api.writeCount, equals(0));
-    });
-
-    test('loadSettings defaults invalid sleepPrevention without rewriting', () async {
-      final api = FakeBridgeSettingsApi(readResult: '{"sleepPrevention":"sometimes"}');
-      final repository = BridgeSettingsRepository(api: api);
-
-      final settings = await repository.loadSettings();
-
-      expect(settings.sleepPrevention, SleepPreventionMode.always);
-      expect(api.writeCount, equals(0));
-    });
-
-    test('loadSettings recovers from corrupted JSON by overwriting defaults', () async {
-      final api = FakeBridgeSettingsApi(readResult: '{');
-      final repository = BridgeSettingsRepository(api: api);
-
-      final settings = await repository.loadSettings();
-
-      expect(settings.sleepPrevention, SleepPreventionMode.always);
-      expect(api.lastWrittenConfig, equals(_defaultJson));
-    });
-
-    test('loadSettings treats non-object JSON as corrupted and overwrites defaults', () async {
-      final api = FakeBridgeSettingsApi(readResult: '[]');
-      final repository = BridgeSettingsRepository(api: api);
-
-      final settings = await repository.loadSettings();
-
-      expect(settings.sleepPrevention, SleepPreventionMode.always);
-      expect(api.lastWrittenConfig, equals(_defaultJson));
-    });
-
-    test('peekSettings returns defaults without writing when config is missing', () async {
-      final api = FakeBridgeSettingsApi(readResult: null);
-      final repository = BridgeSettingsRepository(api: api);
-
-      final settings = await repository.peekSettings();
-
-      expect(settings.sleepPrevention, SleepPreventionMode.always);
-      expect(settings.enabledPlugins, isNull);
-      expect(api.writeCount, equals(0));
-    });
-
-    test('peekSettings parses a valid config', () async {
+    test('loads valid plugin settings without rewriting', () async {
       final api = FakeBridgeSettingsApi(
-        readResult: '{"sleepPrevention":"off","enabledPlugins":["opencode"]}',
+        readResult: '{"sleepPrevention":"off","plugins":{"disabled":["cursor"]}}',
       );
       final repository = BridgeSettingsRepository(api: api);
 
-      final settings = await repository.peekSettings();
+      final settings = await repository.loadSettings();
 
       expect(settings.sleepPrevention, SleepPreventionMode.off);
-      expect(settings.enabledPlugins, equals(['opencode']));
-      expect(api.writeCount, equals(0));
+      expect(settings.plugins.disabledPluginIds, {'cursor'});
+      expect(api.writeCount, 0);
     });
 
-    test('peekSettings returns defaults without rewriting a corrupted config', () async {
+    test('does not replace corrupted JSON with an empty denylist', () async {
       final api = FakeBridgeSettingsApi(readResult: '{');
       final repository = BridgeSettingsRepository(api: api);
 
-      final settings = await repository.peekSettings();
-
-      expect(settings.sleepPrevention, SleepPreventionMode.always);
-      expect(api.writeCount, equals(0));
+      await expectLater(repository.loadSettings(), throwsA(isA<FormatException>()));
+      expect(api.writeCount, 0);
     });
 
-    test('peekSettings reports a corrupted config on stderr, never stdout', () async {
+    test('does not replace a malformed denylist', () async {
+      final api = FakeBridgeSettingsApi(
+        readResult: '{"plugins":{"disabled":["cursor",42]}}',
+      );
+      final repository = BridgeSettingsRepository(api: api);
+
+      await expectLater(repository.loadSettings(), throwsA(isA<PluginSettingsFormatException>()));
+      expect(api.writeCount, 0);
+    });
+
+    test('does not replace explicit null plugin policy', () async {
+      for (final storedConfig in ['{"plugins":null}', '{"plugins":{"disabled":null}}']) {
+        final api = FakeBridgeSettingsApi(readResult: storedConfig);
+        final repository = BridgeSettingsRepository(api: api);
+
+        await expectLater(repository.loadSettings(), throwsA(isA<PluginSettingsFormatException>()));
+        expect(api.writeCount, 0);
+      }
+    });
+
+    test('repairs one malformed timeout without dropping policy or unknown fields', () async {
+      final api = FakeBridgeSettingsApi(
+        readResult: jsonEncode({
+          'plugins': {
+            'disabled': ['cursor'],
+            'opencode': {'idleTimeoutMins': 'ten', 'futureOption': true},
+            'future-plugin': {'futureOption': 'kept'},
+          },
+        }),
+      );
+      final repository = BridgeSettingsRepository(api: api);
+
+      final settings = await repository.loadSettings();
+
+      expect(settings.plugins.disabledPluginIds, {'cursor'});
+      expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), defaultPluginIdleTimeoutMins);
+      final written = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      final plugins = written['plugins'] as Map<String, dynamic>;
+      expect(plugins['disabled'], ['cursor']);
+      expect(plugins['opencode'], {'futureOption': true});
+      expect(plugins['future-plugin'], {'futureOption': 'kept'});
+    });
+
+    test('repairs an explicit null timeout locally', () async {
+      final api = FakeBridgeSettingsApi(
+        readResult: '{"plugins":{"disabled":["cursor"],"opencode":{"idleTimeoutMins":null}}}',
+      );
+      final repository = BridgeSettingsRepository(api: api);
+
+      final settings = await repository.loadSettings();
+
+      expect(settings.plugins.disabledPluginIds, {'cursor'});
+      expect(settings.plugins.settingsByPluginId, isNot(contains('opencode')));
+      final written = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      expect((written['plugins'] as Map)['disabled'], ['cursor']);
+      expect(written['plugins'] as Map, isNot(contains('opencode')));
+    });
+
+    test('ensureConfigExists does not parse or rewrite an existing file', () async {
       final api = FakeBridgeSettingsApi(readResult: '{');
       final repository = BridgeSettingsRepository(api: api);
-      final stderrLines = <String>[];
-      final stdoutLines = <String>[];
 
-      await IOOverrides.runZoned(
-        repository.peekSettings,
-        stderr: () => _CapturingStdout(stderrLines),
-        stdout: () => _CapturingStdout(stdoutLines),
-      );
+      await repository.ensureConfigExists();
 
-      expect(stderrLines, hasLength(1));
-      expect(stderrLines.single, contains('invalid config at /tmp/config.json'));
-      expect(stdoutLines, isEmpty, reason: 'stdout must stay machine-clean for --version/--help');
+      expect(api.writeCount, 0);
     });
 
-    test('peekSettings logs nothing for a valid or missing config', () async {
-      final stderrLines = <String>[];
-      final stdoutLines = <String>[];
-
-      await IOOverrides.runZoned(
-        () async {
-          await BridgeSettingsRepository(
-            api: FakeBridgeSettingsApi(readResult: null),
-          ).peekSettings();
-          await BridgeSettingsRepository(
-            api: FakeBridgeSettingsApi(readResult: '{"sleepPrevention":"off"}'),
-          ).peekSettings();
-        },
-        stderr: () => _CapturingStdout(stderrLines),
-        stdout: () => _CapturingStdout(stdoutLines),
-      );
-
-      expect(stderrLines, isEmpty);
-      expect(stdoutLines, isEmpty);
-    });
-
-    test('saveSettings pretty prints JSON through the api', () async {
+    test('saveSettings pretty prints and updates the current snapshot', () async {
       final api = FakeBridgeSettingsApi(readResult: null);
       final repository = BridgeSettingsRepository(api: api);
-
-      await repository.saveSettings(
-        settings: const BridgeSettings(sleepPrevention: SleepPreventionMode.off),
+      const settings = BridgeSettings(
+        sleepPrevention: SleepPreventionMode.off,
+        plugins: BridgePluginSettings(disabledPluginIds: {'cursor'}),
       );
 
-      expect(
-        api.lastWrittenConfig,
-        equals('{\n  "sleepPrevention": "off",\n  "yolo": false,\n  "releaseTrack": "stable"\n}'),
-      );
+      await repository.saveSettings(settings: settings);
+
+      expect(repository.currentSettings, same(settings));
+      expect(api.lastWrittenConfig, contains('"disabled": [\n      "cursor"'));
     });
 
-    test('updateReleaseTrack persists the track and preserves other settings', () async {
-      final api = FakeBridgeSettingsApi(readResult: '{"sleepPrevention":"off"}');
+    test('updates denylist while preserving plugin objects and dropping abandoned allowlists', () async {
+      final api = FakeBridgeSettingsApi(
+        readResult: jsonEncode({
+          'enabledPlugins': ['opencode'],
+          'plugins': {
+            'future-plugin': {'futureOption': 'kept'},
+          },
+        }),
+      );
+      final repository = BridgeSettingsRepository(api: api);
+
+      final updated = await repository.updatePluginDisabled(pluginId: 'cursor', disabled: true);
+
+      expect(updated.plugins.disabledPluginIds, {'cursor'});
+      final written = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      expect(written, isNot(contains('enabledPlugins')));
+      expect((written['plugins'] as Map)['future-plugin'], {'futureOption': 'kept'});
+    });
+
+    test('release track and yolo updates preserve plugin policy', () async {
+      final api = FakeBridgeSettingsApi(
+        readResult: '{"plugins":{"disabled":["cursor"]}}',
+      );
       final repository = BridgeSettingsRepository(api: api);
 
       await repository.updateReleaseTrack(track: ReleaseTrack.internal);
-
-      expect(
-        api.lastWrittenConfig,
-        equals('{\n  "sleepPrevention": "off",\n  "yolo": false,\n  "releaseTrack": "internal"\n}'),
-      );
-    });
-
-    test('updateYolo enables it and preserves other settings', () async {
-      final api = FakeBridgeSettingsApi(
-        readResult: '{"sleepPrevention":"off","yolo":false,"releaseTrack":"internal","enabledPlugins":["opencode"]}',
-      );
-      final repository = BridgeSettingsRepository(api: api);
+      final afterTrack = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      expect(afterTrack['releaseTrack'], 'internal');
+      expect((afterTrack['plugins'] as Map)['disabled'], ['cursor']);
 
       await repository.updateYolo(enabled: true);
-
-      expect(
-        api.lastWrittenConfig,
-        equals(
-          '{\n  "sleepPrevention": "off",\n  "yolo": true,\n  "releaseTrack": "internal",\n  "enabledPlugins": [\n    "opencode"\n  ]\n}',
-        ),
-      );
+      final afterYolo = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      expect(afterYolo['yolo'], isTrue);
+      expect((afterYolo['plugins'] as Map)['disabled'], ['cursor']);
     });
 
-    test('updateYolo persists an explicit false value', () async {
-      final api = FakeBridgeSettingsApi(readResult: '{"yolo":true}');
-      final repository = BridgeSettingsRepository(api: api);
-
-      await repository.updateYolo(enabled: false);
-
-      expect(
-        api.lastWrittenConfig,
-        equals('{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable"\n}'),
+    test('configFilePath delegates to the API', () {
+      final repository = BridgeSettingsRepository(
+        api: FakeBridgeSettingsApi(readResult: null, configFilePath: '/tmp/custom-config.json'),
       );
-    });
 
-    test('configFilePath delegates to the api', () {
-      final api = FakeBridgeSettingsApi(
-        readResult: null,
-        configFilePath: '/tmp/custom-config.json',
-      );
-      final repository = BridgeSettingsRepository(api: api);
-
-      expect(repository.configFilePath, equals('/tmp/custom-config.json'));
+      expect(repository.configFilePath, '/tmp/custom-config.json');
     });
   });
 }
 
 const _defaultJson = '{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable"\n}';
-
-/// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
-class _CapturingStdout implements Stdout {
-  _CapturingStdout(this.lines);
-
-  final List<String> lines;
-
-  @override
-  void writeln([Object? object = '']) {
-    lines.add(object.toString());
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
 
 class FakeBridgeSettingsApi implements BridgeSettingsApi {
   @override
@@ -238,9 +183,7 @@ class FakeBridgeSettingsApi implements BridgeSettingsApi {
   });
 
   @override
-  Future<String?> readConfig() async {
-    return readResult;
-  }
+  Future<String?> readConfig() async => readResult;
 
   @override
   Future<void> writeConfig(String jsonContent) async {

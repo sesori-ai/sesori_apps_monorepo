@@ -8,6 +8,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../cursor_binary.dart";
 import "../cursor_plugin_impl.dart";
 
+const int _setupProbeOutputLimit = 64 * 1024;
+
 /// Builds the [CursorPlugin] (the live [BridgePluginApi]) for a resolved
 /// binary. The production default constructs the real plugin wired to the
 /// host-backed process factory; tests inject a fake to avoid spawning the
@@ -99,7 +101,80 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   String get displayName => "Cursor";
 
   @override
+  PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
+
+  @override
   List<PluginOption> get options => cliOptions;
+
+  @override
+  Future<PluginSetupStatus> inspectSetup({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
+    final executablePath = config.value(binOption) ?? CursorBinary.defaultBinary;
+    final runtime = await _probeCursorRuntime(
+      executablePath: executablePath,
+      processes: processes,
+      environment: environment,
+    );
+    switch (runtime.state) {
+      case _CursorRuntimeProbeState.missing:
+        return const PluginSetupRuntimeMissing(
+          actionHint: "Install the Cursor CLI locally, then retry setup detection.",
+        );
+      case _CursorRuntimeProbeState.outdated:
+        return const PluginSetupUnavailable(
+          actionHint: "Update the Cursor CLI to a supported version, then retry setup detection.",
+        );
+      case _CursorRuntimeProbeState.unknown:
+      case _CursorRuntimeProbeState.unrecognized:
+        return const PluginSetupUnknown(
+          actionHint: "Cursor setup could not be determined. Verify the local CLI and retry.",
+        );
+      case _CursorRuntimeProbeState.ready:
+        break;
+    }
+
+    if (environment["CURSOR_API_KEY"]?.trim().isNotEmpty ?? false) {
+      return const PluginSetupReady();
+    }
+    final executor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
+    final CommandResult statusResult;
+    try {
+      statusResult = await executor.run(
+        executablePath,
+        const ["status"],
+        environment: environment,
+        timeout: _versionProbeTimeout,
+      );
+    } on Object {
+      return const PluginSetupUnknown(
+        actionHint:
+            "Cursor authentication could not be determined. Run the Cursor CLI status command locally and retry.",
+      );
+    }
+    final statusOutput = _normalizedStatusOutput(statusResult);
+    if (statusOutput.contains("not authenticated") ||
+        statusOutput.contains("unauthenticated") ||
+        statusOutput.contains("not logged in") ||
+        statusOutput.contains("logged out")) {
+      return const PluginSetupAuthenticationRequired(
+        actionHint: "Log in with the Cursor CLI on this machine, then retry setup detection.",
+      );
+    }
+    if (statusResult.exitCode == 0 && (statusOutput.contains("authenticated") || statusOutput.contains("logged in"))) {
+      return const PluginSetupReady();
+    }
+    return const PluginSetupUnknown(
+      actionHint: "Cursor authentication could not be determined. Run the Cursor CLI status command locally and retry.",
+    );
+  }
 
   /// Confirms the Cursor CLI is installed and runnable before the
   /// bridge commits to startup. Runs `<bin> --version`: exit 0 within
@@ -124,13 +199,38 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
     required HostProcessService processes,
     required Map<String, String> environment,
   }) async {
-    // Run the `--version` probe through the shared host-process executor, which
-    // owns the spawn/drain/timeout/force-kill mechanics (the same primitive the
-    // codex and opencode probes use). Cursor layers its calendar-version gate
-    // and CLI-specific guidance on top of the raw result.
+    final result = await _probeCursorRuntime(
+      executablePath: executablePath,
+      processes: processes,
+      environment: environment,
+    );
+    return switch (result.state) {
+      _CursorRuntimeProbeState.ready => const PluginAvailable(),
+      _CursorRuntimeProbeState.missing => PluginUnavailable(
+        message: _notInstalledMessage(executablePath: executablePath),
+      ),
+      _CursorRuntimeProbeState.outdated => PluginUnavailable(
+        message: _outdatedMessage(executablePath: executablePath, version: result.version!),
+      ),
+      _CursorRuntimeProbeState.unknown => PluginUnavailable(
+        message: _notWorkingMessage(executablePath: executablePath),
+      ),
+      // Explicit CLI/settings startup historically treated any exit-zero
+      // version response as available. Setup inspection can stay conservative,
+      // but this legacy availability gate must keep that behavior.
+      _CursorRuntimeProbeState.unrecognized => const PluginAvailable(),
+    };
+  }
+
+  Future<({_CursorRuntimeProbeState state, String? version})> _probeCursorRuntime({
+    required String executablePath,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+  }) async {
     final executor = HostProcessCommandExecutor(
       processes: processes,
       runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     );
     final CommandResult result;
     try {
@@ -147,29 +247,36 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
         "[cursor] availability probe '$executablePath --version' did not exit within "
         "${_versionProbeTimeout.inSeconds}s",
       );
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
+      return (state: _CursorRuntimeProbeState.unknown, version: null);
     } on Object catch (error) {
       // Spawn could not launch — almost always ENOENT: not installed / not on PATH.
       Log.d("[cursor] availability probe could not launch '$executablePath --version': $error");
-      return PluginUnavailable(message: _notInstalledMessage(executablePath: executablePath));
+      return (state: _CursorRuntimeProbeState.missing, version: null);
     }
 
     if (result.exitCode != 0) {
       Log.d("[cursor] availability probe '$executablePath --version' exited with code ${result.exitCode}");
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
+      return (state: _CursorRuntimeProbeState.unknown, version: null);
     }
 
-    final version = result.stdout.trim();
-    final parsed = _CalVer.tryParse(version);
+    final parsed = _CalVer.tryParse(result.stdout);
     final minimum = _CalVer.tryParse(minVersion);
     if (parsed != null && minimum != null && parsed.compareTo(minimum) < 0) {
+      final version = parsed.toString();
       Log.w("[cursor] Cursor CLI $version is below the supported minimum $minVersion");
-      return PluginUnavailable(
-        message: _outdatedMessage(executablePath: executablePath, version: version),
-      );
+      return (state: _CursorRuntimeProbeState.outdated, version: version);
     }
-    Log.d("[cursor] available: '$executablePath --version' -> ${version.isEmpty ? "exit 0 (no output)" : version}");
-    return const PluginAvailable();
+    if (parsed == null) {
+      return (state: _CursorRuntimeProbeState.unrecognized, version: null);
+    }
+    final version = parsed.toString();
+    Log.d("[cursor] available: '$executablePath --version' -> $version");
+    return (state: _CursorRuntimeProbeState.ready, version: version);
+  }
+
+  String _normalizedStatusOutput(CommandResult result) {
+    final combined = "${result.stdout}\n${result.stderr}";
+    return combined.replaceAll(RegExp(r"\x1B\[[0-?]*[ -/]*[@-~]"), "").trim().toLowerCase();
   }
 
   String _notInstalledMessage({required String executablePath}) {
@@ -273,6 +380,8 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   }
 }
 
+enum _CursorRuntimeProbeState { ready, missing, outdated, unknown, unrecognized }
+
 /// A Cursor CLI calendar version (`YYYY.MM.DD`, the leading component of a
 /// build string like `2026.06.15-18-00-12-6f5a2cf`). Parsed once into a typed
 /// [Comparable] rather than comparing version strings ad hoc.
@@ -303,4 +412,7 @@ class _CalVer implements Comparable<_CalVer> {
     if (byMonth != 0) return byMonth;
     return day.compareTo(other.day);
   }
+
+  @override
+  String toString() => "$year.${month.toString().padLeft(2, "0")}.${day.toString().padLeft(2, "0")}";
 }

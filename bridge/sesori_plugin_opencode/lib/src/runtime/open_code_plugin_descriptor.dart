@@ -16,6 +16,8 @@ import "open_code_record_mapper.dart";
 import "open_code_runtime_manifest.dart";
 import "open_code_runtime_policy.dart";
 
+const int _setupProbeOutputLimit = 64 * 1024;
+
 /// Builds the [OpenCodeManagedApi] for a resolved server. The production default
 /// constructs an [OpenCodePlugin] with auto-initialization disabled (the
 /// descriptor awaits [OpenCodeManagedApi.initialize] explicitly); tests inject a
@@ -42,7 +44,6 @@ OpenCodeManagedApi _defaultBuildApi({
     onDisconnected: onDisconnected,
   );
 }
-
 
 /// The real, const OpenCode plugin descriptor: it owns the full OpenCode runtime
 /// lifecycle (stale cleanup, start-or-attach, health, ownership persistence,
@@ -86,8 +87,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   final Duration _coldStartBudget;
   final Duration _versionProbeTimeout;
 
-  /// Test seam for the runtime provisioner. Production builds a default in
-  /// [ensureRuntime] from the host's process service and an HTTP client.
+  /// Test seam for existing-runtime resolution. Production builds a default in
+  /// [ensureRuntime] from the host's process service.
   final ManagedRuntimeProvisionService? _provisionService;
 
   /// Frozen ownership filename in the legacy shared runtime directory.
@@ -234,6 +235,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   String get displayName => "OpenCode";
 
   @override
+  PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
+
+  @override
   PluginStateStorage get stateStorage => PluginStateStorage.legacySharedRuntime;
 
   @override
@@ -241,6 +245,112 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
   @override
   void validateConfig(PluginConfig config) => validateConfigValues(config);
+
+  @override
+  Future<PluginSetupStatus> inspectSetup({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
+    if (config.flag("no-auto-start")) {
+      return const PluginSetupReady();
+    }
+
+    final explicitBin = config.value("bin")?.trim();
+    final hasExplicitBin = explicitBin != null && explicitBin.isNotEmpty;
+    const manifest = OpenCodeRuntimeManifest();
+    final executable = hasExplicitBin ? explicitBin : manifest.pathExecutableName;
+    final executor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
+    final versionValidator = RuntimeVersionValidator(
+      commandExecutor: executor,
+      runtimeId: manifest.runtimeId,
+      probeTimeout: _versionProbeTimeout,
+    );
+
+    Future<bool> managedRuntimeIsReady() async {
+      if (hasExplicitBin) return false;
+      final managedVersion = await versionValidator.detectVersion(
+        executable: manifest.managedBinaryPath(stateDirectory: stateDirectory),
+        environment: environment,
+      );
+      return managedVersion != null && managedVersion.compareTo(manifest.bundledVersion) == 0;
+    }
+
+    CommandResult? result;
+    var runtimeResolved = false;
+    try {
+      result = await executor.run(
+        executable,
+        const ["--version"],
+        environment: environment,
+        timeout: _versionProbeTimeout,
+      );
+    } on io.ProcessException {
+      runtimeResolved = await managedRuntimeIsReady();
+      if (!runtimeResolved) {
+        return PluginSetupRuntimeMissing(
+          actionHint: hasExplicitBin
+              ? "Fix the configured OpenCode binary path, then restart the bridge."
+              : "Install OpenCode locally, then retry setup detection.",
+        );
+      }
+    } on TimeoutException {
+      runtimeResolved = await managedRuntimeIsReady();
+      if (!runtimeResolved) {
+        return const PluginSetupUnknown(
+          actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
+        );
+      }
+    } on Object {
+      runtimeResolved = await managedRuntimeIsReady();
+      if (!runtimeResolved) {
+        return const PluginSetupUnknown(
+          actionHint: "OpenCode setup could not be determined. Verify the local installation and retry.",
+        );
+      }
+    }
+
+    if (!runtimeResolved) {
+      if (result!.exitCode != 0) {
+        if (!await managedRuntimeIsReady()) {
+          if (!hasExplicitBin) {
+            return const PluginSetupRuntimeMissing(
+              actionHint: "Install OpenCode locally, then retry setup detection.",
+            );
+          }
+          return const PluginSetupUnknown(
+            actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
+          );
+        }
+      } else {
+        final version = versionValidator.parseVersionOutput(output: result.stdout);
+        if (version == null) {
+          if (!await managedRuntimeIsReady()) {
+            return const PluginSetupUnknown(
+              actionHint: "OpenCode returned an unrecognized version. Update OpenCode and retry.",
+            );
+          }
+        } else if (version.compareTo(manifest.minPathVersion) < 0) {
+          if (!await managedRuntimeIsReady()) {
+            if (!hasExplicitBin) {
+              return const PluginSetupRuntimeMissing(
+                actionHint: "Update OpenCode locally, then retry setup detection.",
+              );
+            }
+            return const PluginSetupUnavailable(
+              actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
+            );
+          }
+        }
+      }
+    }
+    return const PluginSetupReady();
+  }
 
   /// Confirms an explicitly-configured OpenCode binary is runnable before the
   /// bridge commits to startup.
@@ -250,7 +360,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   /// it: an explicit override is a user promise, so a broken one is a fatal
   /// config error (run `<bin> --version`; exit 0 within
   /// [openCodeVersionProbeTimeout] is available). When no binary is configured,
-  /// runtime resolution (a recent-enough PATH install or a managed download) is
+  /// runtime resolution (a recent-enough PATH install or existing managed runtime) is
   /// deferred to [ensureRuntime], so report available here.
   @override
   Future<PluginAvailability> checkAvailability({
@@ -282,8 +392,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     return const PluginAvailable();
   }
 
-  /// Resolves the OpenCode runtime (a recent-enough PATH install, otherwise a
-  /// managed download) and reports progress. Skipped in attach mode and when an
+  /// Resolves an existing OpenCode runtime (a recent-enough PATH install or the
+  /// pinned managed runtime when already installed). Skipped in attach mode and when an
   /// explicit `--opencode-bin` is set (both already have their binary). The
   /// resolved launch path is surfaced via [ProvisionReady]; a failure is
   /// non-fatal and `start()` degrades.
@@ -304,24 +414,19 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       return;
     }
 
-    final http.Client client = (_probeClientFactory ?? http.Client.new)();
-    try {
-      yield* _buildDefaultProvisionService(host: host, httpClient: client).provision(host: host);
-    } finally {
-      client.close();
-    }
+    yield* _buildDefaultProvisionService(host: host).provision(host: host);
   }
 
-  /// Assembles the production provisioner from the host's process service (so
-  /// helper commands go through the host, never a raw spawn) and [httpClient].
+  /// Assembles the production resolver from the host's process service so
+  /// helper commands go through the host, never a raw spawn.
   ManagedRuntimeProvisionService _buildDefaultProvisionService({
     required PluginHost host,
-    required http.Client httpClient,
   }) {
     const manifest = OpenCodeRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
       processes: host.processes,
       runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: null,
     );
     return ManagedRuntimeProvisionService(
       manifest: manifest,
@@ -330,14 +435,6 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
         runtimeId: manifest.runtimeId,
         probeTimeout: _versionProbeTimeout,
       ),
-      installService: RuntimeInstallService(
-        downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        checksumValidator: ChecksumValidator(),
-        archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-        commandExecutor: commandExecutor,
-        runtimeId: manifest.runtimeId,
-      ),
-      cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
     );
   }
 

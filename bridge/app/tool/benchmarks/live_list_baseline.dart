@@ -197,7 +197,7 @@ class _LiveListBenchmark {
     final projectRepository = ProjectRepository(
       gitCliApi: gitCliApi,
       operationalPlugins: operationalPlugins,
-      defaultEnabledPluginId: plugins.first.id,
+      readDefaultEnabledPluginId: () => plugins.first.id,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,

@@ -2,137 +2,92 @@
 
 ## Plan State
 
-- **Status:** Plan corrected after the second architecture review; onboarding
-  W02 is complete and the plan is ready to implement after landing
-- **Implementation base:** `main`
-- **Initial audited tip:** `c491d7c40a0ef86c7bfeabf71ccbe1b9009849b0`
-- **Post-W02 audited tip:** `2acd7b876667c4abeb7613ae6e46d0010a1241be`
-- **Plan slug:** `setup-aware-plugin-lifecycle`
-- **Predecessor:** parallel-plugin Stages 0-9 complete; PR #497 merged
-- **Entry dependency:** satisfied — bridge-app-onboarding W02 merged in PR #504
+- **Status:** Stage 10 implemented and verified locally; replacement delivery pending
+- **Base:** `origin/main` at `9e1625d0`
+- **Current branch:** `aware-plugin-lifecycle`
+- **Current stage:** Stage 10 delivery
+- **Next action:** squash Stage 10 onto `9e1625d0`, force-push with lease,
+  reopen #507, start its monitor, then build each successor from that head
 
-## Current Pointer
+## Closed First Implementation
 
-- **Stage:** Planning
-- **Next action:** Land this plan PR, then branch S10-P01 from the then-current
-  `main` and reassess drift from the post-W02 audited tip. The second review
-  findings were applied directly; this corrected version was not reviewed again
-  and is not recorded as reviewer-approved.
+The first unmerged stack was closed before redesign:
 
-## Plan Review
+| Old PR | State | Replacement |
+|---|---|---|
+| #507 | Closed | Reopen after redesigned Stage 10 is implemented and verified |
+| #508 | Closed | Reopen after redesigned Stage 11-P01 is implemented and verified |
+| #509 | Closed | Reopen after redesigned Stage 11-P02 is implemented and verified |
+| #510 | Closed | Reopen after redesigned Stage 12 is implemented and verified |
+| #511 | Closed | Reopen after redesigned Stage 13 is implemented on merged Settings architecture |
 
-| Pass | Verdict | Reviewer | Date | Scope |
-|---|---|---|---|---|
-| 1 | `TOO_VAGUE` | `aristotle-plan-review` | 2026-07-18 | Initial `PLAN.md` and `TRACKER.md` against main through `120a6f41` |
-| 2 | `REJECT` | `aristotle-plan-review` | 2026-07-18 | Clarified runtime/startup/migration/wire/client/file-boundary plan; seven blocking ownership/semantics gaps returned for direct correction |
+Old verification results are historical evidence only; replacement stages must
+run their focused verification again.
 
-## Value Stages
+## Replacement Stages
 
-| Done | Stage | User value | Release-safe boundary |
+| Done | Stage | Branch | PR state |
 |---|---|---|---|
-| [ ] | Stage 10 — Setup-aware automatic plugins | Detect and auto-enable setup-ready plugins; explain blocked plugins; keep zero-plugin bridge online | Explicit CLI/settings behavior preserved; inspection has no install/login/start side effects |
-| [ ] | Stage 11 — Transient on-demand runtime | Wake for real work and release idle plugin resources | Compatibility migration remains eager until every operation uses acquisition |
-| [ ] | Stage 12 — Headless hot lifecycle control | API enable/start, disable/stop, restart, setup refresh, idle policy and safe force | Additive E2E API; one plugin action never stops bridge/catalog/peers |
-| [ ] | Stage 13 — Mobile plugin control | Phone management, confirmations, default/order and idle timeout | New app degrades gracefully against old bridges; bridge API ships independently |
+| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 closed; ready to rewrite/reopen |
+| [ ] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 closed |
+| [ ] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 closed |
+| [ ] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 closed |
+| [ ] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 closed |
 
-## Implementation PRs
+## Locked Redesign Deltas
 
-PR boundaries are finalized against the then-current code before each stage.
-Stage 11 is expected to use one compatibility-preserving acquisition migration
-PR and one value-bearing dormancy cutover PR; other stages should remain one
-focused PR unless drift demonstrates a concrete release-safety reason to split.
+- Denylist is the sole persisted eligibility source.
+- All plugin CLI options are registered; `--plugin` is removed.
+- Setup inspection skips denied plugins and never installs.
+- Setup adds `notInspected` and removes `canProvision`.
+- Alphabetical ordering/default replaces persisted order and bridge last-used.
+- Client stores last-used per bridge after the settings stage.
+- Every ready plugin starts dormant.
+- Idle configuration is integer minutes; `<= 0` never idle-stops after demand.
+- Headless management removes authority/order/serialized enabled.
+- Settings work targets the merged Prego Settings landing/sub-page architecture.
+- No compatibility machinery is retained for any contract from the closed
+  unmerged stack.
 
-| Done | ID | Dependency | Purpose | PR |
-|---|---|---|---|---|
-| [ ] | S10-P01 | Onboarding W02 complete | Setup inspection, auto selection, zero-plugin bridge, setup API | — |
-| [ ] | S11-P01 | S10 | Dynamic acquisition/generation boundary under unchanged eager behavior | — |
-| [ ] | S11-P02 | S11-P01 | Demand activation, dynamic events and configurable idle suspension | — |
-| [ ] | S12-P01 | S11 | Headless controls, remote authority, safe/force and lifecycle SSE | — |
-| [ ] | S13-P01 | S12 | Module-core and mobile lifecycle management | — |
+## Review
 
-## Blockers And Staleness
+- The original plan had two reviews before the redesign.
+- 2026-07-19 redesign review pass 1 failed the specificity gate; the plan was
+  expanded with concrete workspaces, files, classes, flows, and constructors.
+- 2026-07-19 permitted specificity recheck passed the gate and rejected six
+  architecture choices. Applied directly without another review: concrete
+  `PluginRuntime` and `PluginGenerationFactory`, explicit disable access-gate
+  transitions instead of a persistence callback, Stage-11 hydration listener
+  ownership, and Layer-3 `NewSessionPluginService` preference coordination.
 
-- No implementation blocker is currently known. Bridge-app-onboarding W02
-  merged in PR #504 at `2acd7b876667c4abeb7613ae6e46d0010a1241be`.
-  Its advisory M01 manual checkpoint is not an entry dependency for this plan.
-- The post-W02 audit confirms the checkpoint remains after authentication and
-  concurrent enabled-plugin availability, and before predecessor wait, startup
-  mutex, provisioning, and plugin start. S10 explicitly removes the current
-  non-empty-availability exit/gate when zero-plugin startup becomes valid while
-  preserving standalone/interactivity checks.
-- The independent session-pull-request-monitoring plan may continue. Before each
-  implementation PR, assess overlap in `Orchestrator`, session repositories,
-  event flow and client session detail; stop for plan correction only when drift
-  changes a locked lifecycle decision or release boundary.
-- Desktop UI is not a dependency. Its future surface consumes module-core logic.
-- Phone-driven runtime installation/authentication is a separate future plan and
-  does not block Stages 10-13.
-- `origin/main` advanced first to the docs-only `120a6f41`, then to W02 merge
-  `2acd7b87`. PR #504 added the bounded onboarding API/storage/repository/service
-  path and the runner checkpoint; it introduced no plugin lifecycle boundary.
+## Verification Log
 
-## User Decisions
+### 2026-07-19 — replacement Stage 10
 
-- 2026-07-18: Automatic mode derives all setup-ready plugins.
-- 2026-07-18: Durable phone authority overrides replayed CLI selection until a
-  local reset.
-- 2026-07-18: Enable starts and disable stops; restart is separate.
-- 2026-07-18: Ordinary stop/restart is safe; confirmed force may interrupt.
-- 2026-07-18: Idle policy is persisted per-plugin-capable as
-  `suspendAfter(duration)` or `alwaysOn`, with a ten-minute inherited default.
-  Headless API/config supports overrides now; mobile exposes only one
-  apply-to-all selector and `Never` means `alwaysOn` for all.
-- 2026-07-18: Concrete backend operations wake dormant plugins; catalog and
-  management reads do not.
-- 2026-07-18: “Install from phone” means backend runtime provisioning, not
-  downloading plugin implementation code.
-- 2026-07-18: Phone install/login is directionally required but belongs to a
-  separate future plan.
-- 2026-07-18: The bridge remains online and browseable with zero plugins.
-- 2026-07-18: Mobile ships first with shared module-core ownership.
-- 2026-07-18: Implement the full staged lifecycle refactor after onboarding W02.
-- 2026-07-18: Stages must deliver real value, every PR must remain releasable,
-  and tests are added only when they provide actual confidence.
+- Regenerated `sesori_shared` Freezed/JSON outputs from source with
+  `dart run build_runner build`.
+- Sequential `dart analyze --fatal-infos` passed in `shared/sesori_shared`,
+  `bridge/sesori_plugin_interface`, `bridge/sesori_plugin_runtime`,
+  `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`,
+  `bridge/sesori_plugin_cursor`, and `bridge/app`. The runtime and app analyzers
+  were rerun after final review fixes and passed.
+- Focused shared setup-wire tests passed.
+- Focused interface descriptor/setup tests passed.
+- Focused existing-runtime resolution/version and cooperative-abort tests passed.
+- Focused OpenCode, Codex, and Cursor setup/availability tests passed.
+- Focused bridge settings/repository/config-command, CLI parser/registry,
+  setup-route, lifecycle, runtime-startup, routing, and zero-plugin tests passed.
+- A correctness-only static diff review found explicit-null fail-open parsing,
+  missing runtime-resolution abort checks, and empty plugin-ID acceptance. All
+  three findings were fixed with regression coverage.
+- `git diff --check` passed.
 
-## Findings And Plan Deltas
+## Delivery Rules
 
-- 2026-07-18: Initial draft created from latest `main` after Stage 9 and the
-  reduced onboarding plan merged. The plan separates setup inspection from
-  availability/provisioning, selection from residency, and current lifecycle
-  work from later phone install/login.
-- 2026-07-18: First architecture review returned `TOO_VAGUE`. Blocking gaps were
-  unnamed runtime/start ownership, no ordered zero-plugin startup model, an
-  inventory rather than method-level acquisition migration, ambiguous settings
-  layering, unspecified HTTP/SSE/shared contracts, undecided client ownership,
-  phone provisioning contradicting the locked deferral, and no per-PR production
-  file ledger.
-- 2026-07-18: Clarified the plan with exact `PluginGenerationStarter`,
-  `BridgePluginGenerationStarter`, `PluginRuntimeApi`,
-  `PluginLifecycleRepository`, and `PluginLifecycleService` files,
-  constructors, APIs and dependency direction; a raw-argv-to-zero-plugin phase
-  model; generation/event/shutdown flow; method-level migration matrix; exact
-  routes/DTOs/status codes/SSE; locked module-core service/cubit and mobile-shell
-  ownership; explicit `existingOnly` remote enablement; and exact production
-  files/cutover gates for S10-P01 through S13-P01.
-- 2026-07-18: The permitted second review returned `REJECT`. It found a
-  Layer-1/type-name collision, abort-controller ownership split across API and
-  service, unsafe disable persistence outside the transition lock, backend
-  events incorrectly resetting idle eligibility, two potential automatic
-  catalog-hydration owners, a speculative phone-login capability, and an unnamed
-  S10 setup-inspection handoff.
-- 2026-07-18: Applied those findings directly: the runtime boundary is named
-  `PluginRuntimeApi`; it exclusively owns per-generation abort controllers;
-  disable uses a callback-scoped durable commit while the per-plugin transition
-  lock remains held; only leases and work-state transitions affect idle timing;
-  one replay-latest `PluginCatalogHydrationListener` owns automatic hydration;
-  the deferred login capability was removed; and S10 now names
-  `BridgeRuntimeRunner` as probe producer with an immutable setup map handed to
-  `PluginLifecycleService.initialize`. Per review policy, no third approval pass
-  was requested.
-- 2026-07-18: Re-audited `origin/main` after onboarding PR #504 merged. The
-  current runner invokes onboarding only for standalone interactive startup when
-  at least one enabled descriptor passed availability, immediately before
-  predecessor wait/start locking. No staged lifecycle architecture changed. S10
-  now names its one integration delta: because an empty effective plugin set no
-  longer exits, that still-live standalone interactive bridge runs the same
-  bounded checkpoint without a non-empty-availability condition.
+- Start Stage 10 from latest `origin/main`; stack every later branch from its
+  verified predecessor.
+- Force-with-lease history rewrites are explicitly authorized for these closed
+  branches.
+- Reopen a PR only after its replacement stage is complete and focused checks
+  pass.
+- Start a PR monitor immediately after each PR is reopened.

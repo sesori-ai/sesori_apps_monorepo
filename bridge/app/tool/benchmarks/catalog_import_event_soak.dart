@@ -155,7 +155,7 @@ class _CatalogImportEventSoak {
       );
       final projectRepository = ProjectRepository(
         operationalPlugins: plugins,
-        defaultEnabledPluginId: plugin.id,
+        readDefaultEnabledPluginId: () => plugin.id,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),

@@ -47,7 +47,7 @@ ProjectRepository singlePluginProjectRepository({
 }) {
   return ProjectRepository(
     operationalPlugins: {plugin.id: plugin},
-    defaultEnabledPluginId: plugin.id,
+    readDefaultEnabledPluginId: () => plugin.id,
     projectsDao: projectsDao,
     sessionDao: sessionDao,
     unseenCalculator: unseenCalculator,

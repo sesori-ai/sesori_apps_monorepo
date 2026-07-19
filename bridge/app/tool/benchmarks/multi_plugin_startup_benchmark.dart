@@ -79,12 +79,12 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     for (var index = 0; index < selectedCount; index++) _FakeDescriptor(id: "plugin-$index", probe: probe),
   ];
   final lifecycle = PluginLifecycleService()
-    ..registerSelection(
-      knownPluginIds: {for (final descriptor in descriptors) descriptor.id},
-      enabledPlugins: [
-        for (var index = 0; index < descriptors.length; index++)
-          (id: descriptors[index].id, displayName: descriptors[index].displayName, isDefault: index == 0),
-      ],
+    ..registerPlugins(
+      plugins: [for (final descriptor in descriptors) (id: descriptor.id, displayName: descriptor.displayName)],
+    )
+    ..initialize(
+      disabledPluginIds: const {},
+      setupById: {for (final descriptor in descriptors) descriptor.id: const PluginSetupReady()},
     );
   final startupMutexRepository = _FakeStartupMutexRepository();
   final bridgeInstanceService = _FakeBridgeInstanceService();
@@ -248,6 +248,9 @@ class _FakeDescriptor extends BridgePluginDescriptor {
 
   @override
   String get displayName => id;
+
+  @override
+  PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
 
   @override
   List<PluginOption> get options => const [];

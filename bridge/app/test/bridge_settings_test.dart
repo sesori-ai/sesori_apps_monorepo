@@ -4,194 +4,217 @@ import 'package:test/test.dart';
 
 void main() {
   group('BridgeSettings', () {
-    test('defaults to always sleep prevention', () {
+    test('uses stable non-plugin defaults and omits an untouched plugins root', () {
       const settings = BridgeSettings();
 
       expect(settings.sleepPrevention, SleepPreventionMode.always);
-    });
-
-    test('can disable sleep prevention', () {
-      const settings = BridgeSettings(
-        sleepPrevention: SleepPreventionMode.off,
-      );
-
-      expect(settings.sleepPrevention, SleepPreventionMode.off);
-    });
-
-    test('fromJson parses off mode', () {
-      final settings = BridgeSettings.fromJson({'sleepPrevention': 'off'});
-
-      expect(settings.sleepPrevention, SleepPreventionMode.off);
-    });
-
-    test('fromJson defaults invalid values to always', () {
-      final settings = BridgeSettings.fromJson({'sleepPrevention': 'sometimes'});
-
-      expect(settings.sleepPrevention, SleepPreventionMode.always);
-    });
-
-    test('fromJson defaults missing key to always', () {
-      final settings = BridgeSettings.fromJson({});
-
-      expect(settings.sleepPrevention, SleepPreventionMode.always);
-    });
-
-    test('toJson serializes always mode', () {
-      const settings = BridgeSettings(sleepPrevention: SleepPreventionMode.always);
-
-      expect(
-        settings.toJson(),
-        equals({'sleepPrevention': 'always', 'yolo': false, 'releaseTrack': 'stable'}),
-      );
-    });
-
-    test('toJson serializes off mode', () {
-      const settings = BridgeSettings(sleepPrevention: SleepPreventionMode.off);
-
-      expect(
-        settings.toJson(),
-        equals({'sleepPrevention': 'off', 'yolo': false, 'releaseTrack': 'stable'}),
-      );
-    });
-
-    test('yolo defaults to disabled', () {
-      const settings = BridgeSettings();
-
       expect(settings.yolo, isFalse);
-    });
-
-    test('fromJson enables yolo only for boolean true', () {
-      expect(BridgeSettings.fromJson({'yolo': true}).yolo, isTrue);
-      expect(BridgeSettings.fromJson({'yolo': false}).yolo, isFalse);
-      expect(BridgeSettings.fromJson({'yolo': 'true'}).yolo, isFalse);
-      expect(BridgeSettings.fromJson({}).yolo, isFalse);
-    });
-
-    test('toJson serializes yolo mode', () {
-      const settings = BridgeSettings(yolo: true);
-
-      expect(settings.toJson()['yolo'], isTrue);
-    });
-
-    test('enabledPlugins defaults to unset', () {
-      const settings = BridgeSettings();
-
-      expect(settings.enabledPlugins, isNull);
-    });
-
-    test('fromJson parses enabledPlugins entries', () {
-      final settings = BridgeSettings.fromJson({
-        'enabledPlugins': ['opencode'],
-      });
-
-      expect(settings.enabledPlugins, equals(['opencode']));
-    });
-
-    test('fromJson treats a missing enabledPlugins key as unset', () {
-      final settings = BridgeSettings.fromJson({'sleepPrevention': 'always'});
-
-      expect(settings.enabledPlugins, isNull);
-    });
-
-    test('fromJson treats a non-list enabledPlugins as unset', () {
-      final settings = BridgeSettings.fromJson({'enabledPlugins': 'opencode'});
-
-      expect(settings.enabledPlugins, isNull);
-    });
-
-    test('fromJson keeps only string entries of enabledPlugins', () {
-      final settings = BridgeSettings.fromJson({
-        'enabledPlugins': ['opencode', 42, null],
-      });
-
-      expect(settings.enabledPlugins, equals(['opencode']));
-    });
-
-    test('toJson omits enabledPlugins when unset, keeping the defaults file shape', () {
-      const settings = BridgeSettings();
-
-      expect(
-        settings.toJson(),
-        equals({'sleepPrevention': 'always', 'yolo': false, 'releaseTrack': 'stable'}),
-      );
-    });
-
-    test('toJson includes enabledPlugins when set', () {
-      const settings = BridgeSettings(enabledPlugins: ['opencode']);
-
-      expect(
-        settings.toJson(),
-        equals({
-          'sleepPrevention': 'always',
-          'yolo': false,
-          'releaseTrack': 'stable',
-          'enabledPlugins': ['opencode'],
-        }),
-      );
-    });
-
-    test('releaseTrack defaults to stable', () {
-      const settings = BridgeSettings();
-
       expect(settings.releaseTrack, ReleaseTrack.stable);
+      expect(settings.plugins.disabledPluginIds, isEmpty);
+      expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), defaultPluginIdleTimeoutMins);
+      expect(settings.toJson(), {
+        'sleepPrevention': 'always',
+        'yolo': false,
+        'releaseTrack': 'stable',
+      });
     });
 
-    test('fromJson parses the internal track', () {
-      final settings = BridgeSettings.fromJson({'releaseTrack': 'internal'});
+    test('parses existing bridge settings', () {
+      final settings = BridgeSettings.fromJson({
+        'sleepPrevention': 'off',
+        'yolo': true,
+        'releaseTrack': 'internal',
+      });
 
+      expect(settings.sleepPrevention, SleepPreventionMode.off);
+      expect(settings.yolo, isTrue);
       expect(settings.releaseTrack, ReleaseTrack.internal);
     });
 
-    test('fromJson defaults an unknown releaseTrack to stable', () {
-      final settings = BridgeSettings.fromJson({'releaseTrack': 'nightly'});
+    test('invalid legacy scalar values retain their established defaults', () {
+      final settings = BridgeSettings.fromJson({
+        'sleepPrevention': 'sometimes',
+        'yolo': 'true',
+        'releaseTrack': 'nightly',
+      });
 
+      expect(settings.sleepPrevention, SleepPreventionMode.always);
+      expect(settings.yolo, isFalse);
       expect(settings.releaseTrack, ReleaseTrack.stable);
     });
 
-    test('fromJson defaults a missing releaseTrack to stable', () {
-      final settings = BridgeSettings.fromJson({'sleepPrevention': 'always'});
+    test('parses denylist and inherited numeric idle timeouts', () {
+      final settings = BridgeSettings.fromJson({
+        'plugins': {
+          'disabled': ['cursor'],
+          'default': {'idleTimeoutMins': 30},
+          'opencode': {'idleTimeoutMins': 0},
+        },
+      });
 
-      expect(settings.releaseTrack, ReleaseTrack.stable);
+      expect(settings.plugins.isDisabled(pluginId: 'cursor'), isTrue);
+      expect(settings.plugins.isDisabled(pluginId: 'opencode'), isFalse);
+      expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), 0);
+      expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'codex'), 30);
     });
 
-    test('fromJson defaults a non-string releaseTrack to stable', () {
-      final settings = BridgeSettings.fromJson({'releaseTrack': 42});
+    test('preserves exact negative timeout values', () {
+      final settings = BridgeSettings.fromJson({
+        'plugins': {
+          'opencode': {'idleTimeoutMins': -7},
+        },
+      });
 
-      expect(settings.releaseTrack, ReleaseTrack.stable);
+      expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), -7);
+      expect((settings.toJson()['plugins'] as Map)['opencode'], {'idleTimeoutMins': -7});
     });
 
-    test('toJson always serializes the release track', () {
-      const settings = BridgeSettings(releaseTrack: ReleaseTrack.internal);
+    test('preserves unknown plugin objects and fields', () {
+      final settings = BridgeSettings.fromJson({
+        'plugins': {
+          'future-plugin': {'idleTimeoutMins': 5, 'futureOption': 'kept'},
+          'opencode': {'futureOption': true},
+        },
+      });
 
-      expect(settings.toJson()['releaseTrack'], equals('internal'));
+      final plugins = settings.toJson()['plugins'] as Map<String, dynamic>;
+      expect(plugins['future-plugin'], {'futureOption': 'kept', 'idleTimeoutMins': 5});
+      expect(plugins['opencode'], {'futureOption': true});
     });
 
-    test('copyWith changes only releaseTrack and preserves other fields', () {
-      const settings = BridgeSettings(
-        sleepPrevention: SleepPreventionMode.off,
-        enabledPlugins: ['opencode'],
+    test('canonicalizes duplicate disabled IDs and write order', () {
+      final settings = BridgeSettings.fromJson({
+        'plugins': {
+          'disabled': ['opencode', 'cursor', 'opencode'],
+        },
+      });
+
+      expect((settings.toJson()['plugins'] as Map)['disabled'], ['cursor', 'opencode']);
+    });
+
+    test('ignores abandoned allowlist fields', () {
+      final settings = BridgeSettings.fromJson({
+        'enabledPlugins': ['opencode'],
+        'remoteEnabledPlugins': ['cursor'],
+      });
+
+      expect(settings.plugins.disabledPluginIds, isEmpty);
+      expect(settings.toJson(), isNot(anyOf(contains('enabledPlugins'), contains('remoteEnabledPlugins'))));
+    });
+
+    test('rejects malformed plugin root and denylist', () {
+      expect(
+        () => BridgeSettings.fromJson({'plugins': 'opencode'}),
+        throwsA(isA<PluginSettingsFormatException>()),
+      );
+      expect(
+        () => BridgeSettings.fromJson({'plugins': null}),
+        throwsA(isA<PluginSettingsFormatException>()),
+      );
+      expect(
+        () => BridgeSettings.fromJson({
+          'plugins': {
+            'disabled': ['opencode', 42],
+          },
+        }),
+        throwsA(isA<PluginSettingsFormatException>()),
+      );
+      expect(
+        () => BridgeSettings.fromJson({
+          'plugins': {
+            'disabled': [''],
+          },
+        }),
+        throwsA(isA<PluginSettingsFormatException>()),
+      );
+      expect(
+        () => BridgeSettings.fromJson({
+          'plugins': {'disabled': null},
+        }),
+        throwsA(isA<PluginSettingsFormatException>()),
+      );
+      expect(
+        () => BridgeSettings.fromJson({
+          'plugins': {'': <String, dynamic>{}},
+        }),
+        throwsA(isA<PluginSettingsFormatException>()),
+      );
+    });
+
+    test('identifies malformed timeout at its exact entry', () {
+      expect(
+        () => BridgeSettings.fromJson({
+          'plugins': {
+            'opencode': {'idleTimeoutMins': 'ten'},
+          },
+        }),
+        throwsA(
+          isA<PluginIdleTimeoutFormatException>().having(
+            (error) => error.entryName,
+            'entryName',
+            'opencode',
+          ),
+        ),
+      );
+      expect(
+        () => BridgeSettings.fromJson({
+          'plugins': {
+            'opencode': {'idleTimeoutMins': null},
+          },
+        }),
+        throwsA(
+          isA<PluginIdleTimeoutFormatException>().having(
+            (error) => error.entryName,
+            'entryName',
+            'opencode',
+          ),
+        ),
+      );
+    });
+
+    test('denylist mutation preserves lifecycle objects', () {
+      final original = BridgeSettings.fromJson({
+        'plugins': {
+          'future-plugin': {'futureOption': 'kept'},
+          'opencode': {'idleTimeoutMins': 2},
+        },
+      });
+
+      final updated = original.copyWith(
+        plugins: original.plugins.withPluginDisabled(pluginId: 'cursor', disabled: true),
       );
 
-      final updated = settings.copyWith(releaseTrack: ReleaseTrack.internal);
+      expect(updated.plugins.disabledPluginIds, {'cursor'});
+      expect(updated.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), 2);
+      expect((updated.toJson()['plugins'] as Map)['future-plugin'], {'futureOption': 'kept'});
+    });
 
-      expect(updated.releaseTrack, ReleaseTrack.internal);
+    test('apply-all clears timeout overrides while preserving unknown fields', () {
+      final original = BridgeSettings.fromJson({
+        'plugins': {
+          'opencode': {'idleTimeoutMins': 2, 'futureOption': true},
+        },
+      });
+
+      final updated = original.plugins.withDefaultIdleTimeout(idleTimeoutMins: 15, clearOverrides: true);
+      final json = updated.toJson();
+
+      expect(json['default'], {'idleTimeoutMins': 15});
+      expect(json['opencode'], {'futureOption': true});
+    });
+
+    test('copyWith changes one legacy setting and preserves plugin policy', () {
+      const settings = BridgeSettings(
+        sleepPrevention: SleepPreventionMode.off,
+        plugins: BridgePluginSettings(disabledPluginIds: {'cursor'}),
+      );
+
+      final updated = settings.copyWith(releaseTrack: ReleaseTrack.internal, yolo: true);
+
       expect(updated.sleepPrevention, SleepPreventionMode.off);
-      expect(updated.enabledPlugins, equals(['opencode']));
-    });
-
-    test('copyWith changes only yolo and preserves other fields', () {
-      const settings = BridgeSettings(
-        sleepPrevention: SleepPreventionMode.off,
-        enabledPlugins: ['opencode'],
-        releaseTrack: ReleaseTrack.internal,
-      );
-
-      final updated = settings.copyWith(yolo: true);
-
+      expect(updated.plugins.disabledPluginIds, {'cursor'});
+      expect(updated.releaseTrack, ReleaseTrack.internal);
       expect(updated.yolo, isTrue);
-      expect(updated.sleepPrevention, SleepPreventionMode.off);
-      expect(updated.enabledPlugins, equals(['opencode']));
-      expect(updated.releaseTrack, ReleaseTrack.internal);
     });
   });
 }

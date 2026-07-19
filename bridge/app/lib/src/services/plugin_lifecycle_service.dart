@@ -8,11 +8,18 @@ import "package:sesori_shared/sesori_shared.dart";
 typedef PluginCompositionView = ({
   Set<String> knownPluginIds,
   List<String> enabledPluginIds,
-  String defaultEnabledPluginId,
+  String? defaultEnabledPluginId,
   Map<String, BridgePluginApi> operationalPlugins,
 });
 
 typedef EnabledPluginRegistration = ({String id, String displayName, bool isDefault});
+typedef RegisteredPluginMetadata = ({String id, String displayName});
+
+typedef EffectivePluginSelection = ({
+  List<String> enabledPluginIds,
+  List<String> eagerPluginIds,
+  String? defaultPluginId,
+});
 
 class PluginLifecycleService {
   PluginLifecycleService();
@@ -24,36 +31,78 @@ class PluginLifecycleService {
       <String, StreamSubscription<PluginStatus>>{};
   final Map<BridgePluginApi, Future<void>> _earlyDisposals = <BridgePluginApi, Future<void>>{};
 
+  List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   List<EnabledPluginRegistration>? _enabledPlugins;
-  late final Map<String, PluginMetadata> _metadataById;
+  Map<String, PluginMetadata> _metadataById = <String, PluginMetadata>{};
+  Map<String, PluginSetupStatus>? _setupById;
+  EffectivePluginSelection? _effectiveSelection;
   BehaviorSubject<List<PluginMetadata>>? _metadataSubject;
   bool _earlyDisposeStarted = false;
   Future<void>? _stopFuture;
   Future<void>? _disposeFuture;
 
-  void registerSelection({
-    required Set<String> knownPluginIds,
-    required List<EnabledPluginRegistration> enabledPlugins,
+  void registerPlugins({required List<RegisteredPluginMetadata> plugins}) {
+    if (_registeredPlugins != null) {
+      throw StateError("Plugins are already registered.");
+    }
+    final ids = plugins.map((plugin) => plugin.id).toList(growable: false);
+    if (ids.toSet().length != ids.length) {
+      throw ArgumentError.value(plugins, "plugins", "must not contain duplicate ids");
+    }
+    final sortedPlugins = [...plugins]
+      ..sort((left, right) {
+        final byName = left.displayName.toLowerCase().compareTo(right.displayName.toLowerCase());
+        return byName != 0 ? byName : left.id.compareTo(right.id);
+      });
+    _registeredPlugins = List<RegisteredPluginMetadata>.unmodifiable(sortedPlugins);
+    _knownPluginIds = Set<String>.unmodifiable(ids);
+  }
+
+  EffectivePluginSelection initialize({
+    required Set<String> disabledPluginIds,
+    required Map<String, PluginSetupStatus> setupById,
   }) {
-    if (_knownPluginIds != null) {
-      throw StateError("Plugin selection is already registered.");
+    if (_enabledPlugins != null) {
+      throw StateError("Plugin lifecycle is already initialized.");
     }
-    if (enabledPlugins.isEmpty) {
-      throw ArgumentError.value(enabledPlugins, "enabledPlugins", "must not be empty");
+    final registeredPlugins = _registeredPlugins;
+    final knownPluginIds = _knownPluginIds;
+    if (registeredPlugins == null || knownPluginIds == null) {
+      throw StateError("Plugins have not been registered.");
     }
+    if (setupById.keys.toSet().difference(knownPluginIds).isNotEmpty ||
+        knownPluginIds.difference(setupById.keys.toSet()).isNotEmpty) {
+      throw ArgumentError.value(setupById, "setupById", "must contain exactly every registered plugin id");
+    }
+    _setupById = Map<String, PluginSetupStatus>.unmodifiable(setupById);
+
+    final selection = _resolveSelection(
+      disabledPluginIds: disabledPluginIds,
+      registeredPlugins: registeredPlugins,
+      setupById: setupById,
+    );
+    _effectiveSelection = selection;
+    final enabledPlugins = [
+      for (final id in selection.enabledPluginIds)
+        (
+          id: id,
+          displayName: registeredPlugins.singleWhere((plugin) => plugin.id == id).displayName,
+          isDefault: id == selection.defaultPluginId,
+        ),
+    ];
     final enabledIds = enabledPlugins.map((plugin) => plugin.id).toList(growable: false);
     if (enabledIds.toSet().length != enabledIds.length) {
       throw ArgumentError.value(enabledPlugins, "enabledPlugins", "must not contain duplicate ids");
     }
-    if (enabledPlugins.where((plugin) => plugin.isDefault).length != 1) {
-      throw ArgumentError.value(enabledPlugins, "enabledPlugins", "must contain exactly one default plugin");
+    final defaultCount = enabledPlugins.where((plugin) => plugin.isDefault).length;
+    if (defaultCount > 1 || (selection.defaultPluginId != null && defaultCount != 1)) {
+      throw ArgumentError.value(enabledPlugins, "enabledPlugins", "must contain at most one valid default plugin");
     }
     if (!knownPluginIds.containsAll(enabledIds)) {
       throw ArgumentError.value(enabledPlugins, "enabledPlugins", "contains an unknown plugin id");
     }
 
-    _knownPluginIds = Set<String>.unmodifiable(knownPluginIds);
     _enabledPlugins = List<EnabledPluginRegistration>.unmodifiable(enabledPlugins);
     _metadataById = <String, PluginMetadata>{
       for (final plugin in enabledPlugins)
@@ -66,6 +115,13 @@ class PluginLifecycleService {
         ),
     };
     _metadataSubject = BehaviorSubject<List<PluginMetadata>>.seeded(_orderedMetadata());
+    return selection;
+  }
+
+  EffectivePluginSelection get effectiveSelection {
+    final selection = _effectiveSelection;
+    if (selection == null) throw StateError("Plugin lifecycle has not been initialized.");
+    return selection;
   }
 
   PluginCompositionView get compositionView {
@@ -77,12 +133,41 @@ class PluginLifecycleService {
     return (
       knownPluginIds: knownPluginIds,
       enabledPluginIds: List<String>.unmodifiable(enabledPlugins.map((plugin) => plugin.id)),
-      defaultEnabledPluginId: enabledPlugins.singleWhere((plugin) => plugin.isDefault).id,
+      defaultEnabledPluginId: _routableDefaultPluginId(),
       operationalPlugins: UnmodifiableMapView<String, BridgePluginApi>(_operationalPlugins),
     );
   }
 
   List<PluginMetadata> get metadataSnapshot => List<PluginMetadata>.unmodifiable(_orderedMetadata());
+
+  /// Enabled choices a released new-session client can route immediately.
+  List<PluginMetadata> get selectableMetadataSnapshot {
+    final selection = _effectiveSelection;
+    if (selection == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    final selectable = [
+      for (final metadata in _orderedMetadata())
+        if (_operationalPlugins.containsKey(metadata.id)) metadata,
+    ];
+    final selectableDefaultId = _routableDefaultPluginId();
+    return List<PluginMetadata>.unmodifiable([
+      for (final metadata in selectable) metadata.copyWith(isDefault: metadata.id == selectableDefaultId),
+    ]);
+  }
+
+  PluginSetupResponse get setupSnapshot {
+    final registeredPlugins = _registeredPlugins;
+    final setupById = _setupById;
+    if (registeredPlugins == null || setupById == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    return PluginSetupResponse(
+      plugins: [
+        for (final plugin in registeredPlugins) _mapSetupMetadata(plugin: plugin, setup: setupById[plugin.id]!),
+      ],
+    );
+  }
 
   Stream<List<PluginMetadata>> get metadataSnapshots {
     final subject = _metadataSubject;
@@ -297,6 +382,60 @@ class PluginLifecycleService {
     }
     return List<PluginMetadata>.unmodifiable(
       enabledPlugins.map((plugin) => _metadataById[plugin.id]!),
+    );
+  }
+
+  EffectivePluginSelection _resolveSelection({
+    required Set<String> disabledPluginIds,
+    required List<RegisteredPluginMetadata> registeredPlugins,
+    required Map<String, PluginSetupStatus> setupById,
+  }) {
+    final enabledIds = List<String>.unmodifiable([
+      for (final plugin in registeredPlugins)
+        if (!disabledPluginIds.contains(plugin.id)) plugin.id,
+    ]);
+    final readyIds = List<String>.unmodifiable([
+      for (final id in enabledIds)
+        if (setupById[id] is PluginSetupReady) id,
+    ]);
+    return (
+      enabledPluginIds: enabledIds,
+      eagerPluginIds: readyIds,
+      defaultPluginId: readyIds.isEmpty ? null : readyIds.first,
+    );
+  }
+
+  String? _routableDefaultPluginId() {
+    final selection = _effectiveSelection;
+    if (selection == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    final preferredDefault = selection.defaultPluginId;
+    if (preferredDefault != null && _operationalPlugins.containsKey(preferredDefault)) {
+      return preferredDefault;
+    }
+    for (final id in selection.enabledPluginIds) {
+      if (_operationalPlugins.containsKey(id)) return id;
+    }
+    return null;
+  }
+
+  PluginSetupMetadata _mapSetupMetadata({
+    required RegisteredPluginMetadata plugin,
+    required PluginSetupStatus setup,
+  }) {
+    return PluginSetupMetadata(
+      id: plugin.id,
+      displayName: plugin.displayName,
+      state: switch (setup) {
+        PluginSetupNotInspected() => PluginSetupState.notInspected,
+        PluginSetupReady() => PluginSetupState.ready,
+        PluginSetupRuntimeMissing() => PluginSetupState.runtimeMissing,
+        PluginSetupAuthenticationRequired() => PluginSetupState.authenticationRequired,
+        PluginSetupUnavailable() => PluginSetupState.unavailable,
+        PluginSetupUnknown() => PluginSetupState.unknown,
+      },
+      actionHint: setup.actionHint,
     );
   }
 

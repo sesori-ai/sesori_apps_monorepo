@@ -37,6 +37,35 @@ void main() {
     expect(metadata.state, PluginLifecycleState.unavailable);
   });
 
+  test("plugin setup round-trips ordered generic metadata and maps future states to unknown", () {
+    const response = PluginSetupResponse(
+      plugins: [
+        PluginSetupMetadata(
+          id: "codex",
+          displayName: "Codex",
+          state: PluginSetupState.authenticationRequired,
+          actionHint: "Run codex login on this machine.",
+        ),
+        PluginSetupMetadata(
+          id: "opencode",
+          displayName: "OpenCode",
+          state: PluginSetupState.ready,
+          actionHint: null,
+        ),
+      ],
+    );
+
+    expect(PluginSetupResponse.fromJson(response.toJson()), response);
+    expect(
+      PluginSetupMetadata.fromJson(const {
+        "id": "future",
+        "displayName": "Future",
+        "state": "partially_ready",
+      }).state,
+      PluginSetupState.unknown,
+    );
+  });
+
   test("bridge health remains plugin-neutral", () {
     const response = HealthResponse(
       healthy: true,

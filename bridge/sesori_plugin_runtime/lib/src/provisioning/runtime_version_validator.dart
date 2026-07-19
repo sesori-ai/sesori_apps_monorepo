@@ -45,7 +45,11 @@ class RuntimeVersionValidator {
       Log.d("[$_runtimeId] version probe '$executable --version' exited ${result.exitCode}");
       return null;
     }
-    return _parseVersion(result.stdout);
+    final version = parseVersionOutput(output: result.stdout);
+    if (version == null) {
+      Log.d("[$_runtimeId] version probe output had no parseable version");
+    }
+    return version;
   }
 
   /// Extracts the first whitespace-separated token that parses as a semantic
@@ -53,7 +57,7 @@ class RuntimeVersionValidator {
   /// both parse: every token is tried, and the non-version tokens are skipped. A
   /// leading `v`/`V` (e.g. `v1.17.9`) is stripped so a prefixed build is not
   /// misdetected as unsupported.
-  SemanticVersion? _parseVersion(String output) {
+  SemanticVersion? parseVersionOutput({required String output}) {
     for (final rawToken in output.split(RegExp(r"\s+"))) {
       final token = rawToken.trim();
       final candidate = (token.startsWith("v") || token.startsWith("V")) ? token.substring(1) : token;
@@ -62,7 +66,6 @@ class RuntimeVersionValidator {
         return version;
       }
     }
-    Log.d("[$_runtimeId] version probe output had no parseable version: '${output.trim()}'");
     return null;
   }
 }
