@@ -91,6 +91,10 @@ class CodexPlugin implements CodexManagedApi {
   /// response race, preventing that response from restoring stale busy state.
   final Map<String, int> _turnEvidenceRevisionByThread = {};
 
+  /// Deleted thread identities cannot accept new provisional turn evidence
+  /// until codex supplies an authoritative new thread lifecycle.
+  final Set<String> _deletedThreadIds = {};
+
   /// Threads the current `app-server` process has loaded into memory — i.e.
   /// started (`thread/start`) or resumed (`thread/resume`) during this plugin
   /// instance's lifetime. codex keeps threads in memory per process, so a
@@ -255,7 +259,7 @@ class CodexPlugin implements CodexManagedApi {
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     _provisionalAcceptedTurnThreadIds.clear();
-    _turnEvidenceRevisionByThread.clear();
+    _turnEvidenceRevisionByThread.keys.toList().forEach(_advanceTurnEvidenceRevision);
     _workState.set(PluginWorkState.unknown);
     _onDisconnected?.call();
   }
@@ -314,26 +318,28 @@ class CodexPlugin implements CodexManagedApi {
     switch (notification.method) {
       case "turn/started":
         if (threadId == null) return;
-        _recordAuthoritativeTurnEvidence(threadId);
+        if (!_recordAuthoritativeTurnEvidence(threadId)) return;
         final turn = (params["turn"] as Map?)?.cast<String, dynamic>();
         final turnId = turn?["id"] as String?;
         if (turnId != null) _activeTurnByThread[threadId] = turnId;
         _sessionStatuses[threadId] = const PluginSessionStatus.busy();
       case "turn/completed":
         if (threadId == null) return;
-        _recordAuthoritativeTurnEvidence(threadId);
+        if (!_recordAuthoritativeTurnEvidence(threadId)) return;
         _activeTurnByThread.remove(threadId);
         _sessionStatuses[threadId] = const PluginSessionStatus.idle();
       case "error":
         if (threadId == null) return;
-        _recordAuthoritativeTurnEvidence(threadId);
+        if (!_recordAuthoritativeTurnEvidence(threadId)) return;
         _activeTurnByThread.remove(threadId);
         // PluginSessionStatus has no explicit "error" — surfacing as idle
         // and letting the mapped BridgeSseSessionError carry the signal.
         _sessionStatuses[threadId] = const PluginSessionStatus.idle();
       case "thread/closed":
         if (threadId == null) return;
-        _recordAuthoritativeTurnEvidence(threadId);
+        if (!_deletedThreadIds.contains(threadId)) {
+          _recordAuthoritativeTurnEvidence(threadId);
+        }
         _activeTurnByThread.remove(threadId);
         _sessionStatuses.remove(threadId);
         // The app-server unloaded this thread; a later turn must resume it.
@@ -342,12 +348,13 @@ class CodexPlugin implements CodexManagedApi {
         final thread = (params["thread"] as Map?)?.cast<String, dynamic>();
         final id = thread?["id"] as String?;
         if (id == null) return;
+        _recordAuthoritativeThreadCreation(id);
         _sessionStatuses[id] = const PluginSessionStatus.idle();
         final cwd = thread?["cwd"] as String?;
         if (cwd != null && cwd.isNotEmpty) _recordThreadDirectory(id, cwd);
       case "thread/status/changed":
         if (threadId == null) return;
-        _recordAuthoritativeTurnEvidence(threadId);
+        if (!_recordAuthoritativeTurnEvidence(threadId)) return;
         final status = params["status"];
         final statusMap = status is Map ? status.cast<String, dynamic>() : null;
         final nested = statusMap?["status"];
@@ -443,6 +450,7 @@ class CodexPlugin implements CodexManagedApi {
     if (threadId == null) {
       throw StateError("thread/start response missing thread.id");
     }
+    _recordAuthoritativeThreadCreation(threadId);
     // The app-server now holds this thread in memory; record it so a later
     // turn against it does not trigger a redundant resume.
     _loadedThreads.add(threadId);
@@ -581,14 +589,26 @@ class CodexPlugin implements CodexManagedApi {
       evidenceRevision = _turnEvidenceRevisionByThread[threadId] ?? 0;
       await client.request(method: "turn/start", params: params);
     }
-    if ((_turnEvidenceRevisionByThread[threadId] ?? 0) == evidenceRevision) {
+    if (!_deletedThreadIds.contains(threadId) && (_turnEvidenceRevisionByThread[threadId] ?? 0) == evidenceRevision) {
       _provisionalAcceptedTurnThreadIds.add(threadId);
     }
     _syncWorkState();
   }
 
-  void _recordAuthoritativeTurnEvidence(String threadId) {
+  bool _recordAuthoritativeTurnEvidence(String threadId) {
+    if (_deletedThreadIds.contains(threadId)) return false;
     _provisionalAcceptedTurnThreadIds.remove(threadId);
+    _advanceTurnEvidenceRevision(threadId);
+    return true;
+  }
+
+  void _recordAuthoritativeThreadCreation(String threadId) {
+    _deletedThreadIds.remove(threadId);
+    _provisionalAcceptedTurnThreadIds.remove(threadId);
+    _advanceTurnEvidenceRevision(threadId);
+  }
+
+  void _advanceTurnEvidenceRevision(String threadId) {
     _turnEvidenceRevisionByThread[threadId] = (_turnEvidenceRevisionByThread[threadId] ?? 0) + 1;
   }
 
@@ -734,6 +754,9 @@ class CodexPlugin implements CodexManagedApi {
   /// best-effort delete semantics.
   @override
   Future<void> deleteSession(String sessionId) async {
+    _deletedThreadIds.add(sessionId);
+    _provisionalAcceptedTurnThreadIds.remove(sessionId);
+    _advanceTurnEvidenceRevision(sessionId);
     if (_activeTurnByThread.containsKey(sessionId)) {
       try {
         await abortSession(sessionId: sessionId);
@@ -742,8 +765,6 @@ class CodexPlugin implements CodexManagedApi {
       }
     }
     _rolloutReader.deleteSession(sessionId);
-    _provisionalAcceptedTurnThreadIds.remove(sessionId);
-    _turnEvidenceRevisionByThread.remove(sessionId);
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
     _loadedThreads.remove(sessionId);

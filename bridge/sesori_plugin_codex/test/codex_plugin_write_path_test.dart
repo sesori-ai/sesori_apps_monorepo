@@ -306,6 +306,56 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
+    test("delete invalidates an in-flight turn response until the backend recreates the thread", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-deleted"},
+          },
+        ),
+      ]);
+      fake.holdNextResponse("turn/start");
+      final turnStarted = Completer<void>();
+      fake.onRequest = (method) {
+        if (method == "turn/start" && !turnStarted.isCompleted) {
+          turnStarted.complete();
+        }
+      };
+
+      final send = plugin.sendPrompt(
+        sessionId: "t-deleted",
+        parts: const [PluginPromptPart.text(text: "quick task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await turnStarted.future;
+      await plugin.deleteSession("t-deleted");
+
+      fake.respondToHeld("turn/start", const _Response(result: {"turnId": "u-deleted"}));
+      await send;
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            "thread": {"id": "t-deleted"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-recreated"}),
+      ]);
+      await plugin.createSession(
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "new lifecycle")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
     for (final terminalNotification in ["error", "thread/status/changed"]) {
       test("$terminalNotification clears provisional busy", () async {
         fake.respondInOrder([
@@ -759,6 +809,8 @@ class _FakeAppServer {
 
   final List<_SentFrame> _sent = [];
   final List<_Response> _pending = [];
+  final Set<String> _responsesToHold = {};
+  final Map<String, Object> _heldRequestIds = {};
 
   /// Invoked with each request method BEFORE the canned response is sent —
   /// lets a test emit server notifications mid-request (e.g. codex pushing
@@ -778,6 +830,16 @@ class _FakeAppServer {
       ..addAll(responses);
   }
 
+  void holdNextResponse(String method) {
+    _responsesToHold.add(method);
+  }
+
+  void respondToHeld(String method, _Response response) {
+    final id = _heldRequestIds.remove(method);
+    if (id == null) throw StateError("no held request for $method");
+    _sendResponse(id, response);
+  }
+
   void pushNotification(String method, Map<String, dynamic> params) {
     _serverToClient.add(
       jsonEncode({"jsonrpc": "2.0", "method": method, "params": params}),
@@ -794,8 +856,13 @@ class _FakeAppServer {
       ),
     );
     onRequest?.call(decoded["method"] as String);
-    final id = decoded["id"];
+    final id = decoded["id"] as Object?;
     if (id == null) return; // notification from client (none today)
+    final method = decoded["method"] as String;
+    if (_responsesToHold.remove(method)) {
+      _heldRequestIds[method] = id;
+      return;
+    }
     if (_pending.isEmpty) {
       _serverToClient.add(
         jsonEncode({
@@ -810,6 +877,10 @@ class _FakeAppServer {
       return;
     }
     final response = _pending.removeAt(0);
+    _sendResponse(id, response);
+  }
+
+  void _sendResponse(Object id, _Response response) {
     final envelope = <String, dynamic>{"jsonrpc": "2.0", "id": id};
     if (response.error != null) {
       envelope["error"] = response.error;

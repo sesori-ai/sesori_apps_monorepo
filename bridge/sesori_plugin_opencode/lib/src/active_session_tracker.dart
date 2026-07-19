@@ -27,7 +27,10 @@ class ActiveSessionTracker {
   final Map<String, String> _sessionDirectories = {}; // directory where the session is located
   final Map<String, SessionStatus> _sessionStatuses = {};
   final Set<String> _unknownSessionIds = {};
-  final Set<String> _provisionalAcceptedTurnSessionIds = {};
+  // A detached failure may revoke only the exact accepted turn it owns; a
+  // newer acceptance for the same session replaces this revision.
+  final Map<String, int> _provisionalAcceptedTurnRevisionBySession = {};
+  int _nextAcceptedTurnRevision = 0;
   bool _workStateBaselineTrusted = false;
   bool _pendingQuestionsBaselineTrusted = false;
   bool _pendingPermissionsBaselineTrusted = false;
@@ -129,7 +132,7 @@ class ActiveSessionTracker {
 
     // A reconnect retains accepted-turn evidence until this authoritative
     // status baseline observes the session again.
-    _provisionalAcceptedTurnSessionIds.removeWhere(allStatuses.containsKey);
+    _provisionalAcceptedTurnRevisionBySession.removeWhere((sessionId, _) => allStatuses.containsKey(sessionId));
 
     _sessionStatuses
       ..clear()
@@ -185,7 +188,7 @@ class ActiveSessionTracker {
           forceReemit = true;
         }
       case SseSessionDeleted():
-        _provisionalAcceptedTurnSessionIds.remove(event.info.id);
+        _provisionalAcceptedTurnRevisionBySession.remove(event.info.id);
         _sessionDirectories.remove(event.info.id);
         _sessionWorktrees.remove(event.info.id);
         _sessionStatuses.remove(event.info.id);
@@ -193,7 +196,7 @@ class ActiveSessionTracker {
         _sessionParentIds.remove(event.info.id);
         _clearPendingInputForSession(event.info.id);
       case SseSessionStatus():
-        _provisionalAcceptedTurnSessionIds.remove(event.sessionID);
+        _provisionalAcceptedTurnRevisionBySession.remove(event.sessionID);
         if (!_sessionWorktrees.containsKey(event.sessionID)) {
           final resolvedDirectory = directory ?? _sessionDirectories[event.sessionID];
           if (resolvedDirectory != null) {
@@ -214,12 +217,12 @@ class ActiveSessionTracker {
             _unknownSessionIds.add(event.sessionID);
         }
       case SseSessionIdle():
-        _provisionalAcceptedTurnSessionIds.remove(event.sessionID);
+        _provisionalAcceptedTurnRevisionBySession.remove(event.sessionID);
         _sessionStatuses.remove(event.sessionID);
         _unknownSessionIds.remove(event.sessionID);
       case SseSessionError(:final sessionID):
         if (sessionID == null) return false;
-        _provisionalAcceptedTurnSessionIds.remove(sessionID);
+        _provisionalAcceptedTurnRevisionBySession.remove(sessionID);
       case SseQuestionAsked():
         _pendingQuestions.putIfAbsent(event.sessionID, () => <String>{}).add(event.id);
       case SseQuestionReplied():
@@ -314,11 +317,21 @@ class ActiveSessionTracker {
     _lastEmittedPendingInputSessions = {};
   }
 
-  void markTurnAccepted({required String sessionId}) {
-    _provisionalAcceptedTurnSessionIds.add(sessionId);
+  int markTurnAccepted({required String sessionId}) {
+    final revision = ++_nextAcceptedTurnRevision;
+    _provisionalAcceptedTurnRevisionBySession[sessionId] = revision;
+    return revision;
   }
 
-  bool get hasAcceptedTurnEvidence => _provisionalAcceptedTurnSessionIds.isNotEmpty;
+  bool revokeTurnAccepted({required String sessionId, required int revision}) {
+    if (_provisionalAcceptedTurnRevisionBySession[sessionId] != revision) {
+      return false;
+    }
+    _provisionalAcceptedTurnRevisionBySession.remove(sessionId);
+    return true;
+  }
+
+  bool get hasAcceptedTurnEvidence => _provisionalAcceptedTurnRevisionBySession.isNotEmpty;
 
   void populatePendingQuestions({
     required List<QuestionRequest> questions,
@@ -636,7 +649,7 @@ class ActiveSessionTracker {
     final hasPendingInput =
         _pendingQuestions.values.any((requests) => requests.isNotEmpty) ||
         _pendingPermissions.values.any((requests) => requests.isNotEmpty);
-    if (_provisionalAcceptedTurnSessionIds.isNotEmpty || _sessionStatuses.isNotEmpty || hasPendingInput) {
+    if (_provisionalAcceptedTurnRevisionBySession.isNotEmpty || _sessionStatuses.isNotEmpty || hasPendingInput) {
       return PluginWorkState.busy;
     }
     if (!_workStateBaselineTrusted ||

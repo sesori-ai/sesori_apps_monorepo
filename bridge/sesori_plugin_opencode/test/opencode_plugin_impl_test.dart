@@ -326,6 +326,30 @@ void main() {
       server.holdCommand!.complete();
     });
 
+    test("detached sendCommand failure revokes provisional plugin busy", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server.holdCommand = Completer<void>();
+
+      await plugin.sendCommand(
+        sessionId: "s-root",
+        command: "/review-work",
+        arguments: "",
+        agent: null,
+        variant: null,
+        model: null,
+      );
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      server.commandStatusCode = HttpStatus.internalServerError;
+      server.holdCommand!.complete();
+
+      await idle.timeout(const Duration(seconds: 1));
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("getSessionMessages maps raw messages to plugin messages", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
@@ -843,6 +867,7 @@ class _FakeOpenCodeServer {
   String? lastCreatedSessionParentId;
   Completer<void>? holdCommand;
   int promptStatusCode = HttpStatus.ok;
+  int commandStatusCode = HttpStatus.ok;
   bool acceptSseConnections = true;
 
   /// Extra sessions appended to the `GET /session` response, so tests can
@@ -1038,6 +1063,12 @@ class _FakeOpenCodeServer {
         lastCommandDirectoryHeader = request.headers.value("x-opencode-directory");
         if (holdCommand case final hold?) {
           await hold.future;
+        }
+        if (commandStatusCode != HttpStatus.ok) {
+          request.response.statusCode = commandStatusCode;
+          request.response.write("command failed");
+          await request.response.close();
+          return;
         }
         await _sendJson(request.response, true);
         return;

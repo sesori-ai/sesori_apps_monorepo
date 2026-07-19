@@ -41,10 +41,10 @@ class OpenCodeService {
   final ActiveSessionTracker tracker;
   final Duration _commandDispatchFastFailWindow;
 
-  /// Signals that service-owned tracker bookkeeping changed the activity
-  /// summary and the consumer (the plugin) should re-emit it. Broadcast so the
-  /// single plugin subscriber can attach in its constructor; the service never
-  /// emits SSE events itself (the plugin owns that decision).
+  /// Signals that service-owned tracker bookkeeping changed observable state
+  /// and the consumer (the plugin) should resync work state and re-emit its
+  /// summary. Broadcast so the single plugin subscriber can attach in its
+  /// constructor; the service never emits SSE events itself.
   final StreamController<void> _summaryInvalidations = StreamController<void>.broadcast();
 
   /// Session IDs with an in-flight one-shot parent-ID lookup, used to dedupe
@@ -356,16 +356,21 @@ class OpenCodeService {
     // `onTimeout` (rather than catching [TimeoutException]) fires only when
     // the window itself elapses, so a genuine TimeoutException raised by the
     // send chain within the window still propagates as a dispatch failure.
-    var detached = false;
     await sendFuture.timeout(
       _commandDispatchFastFailWindow,
       onTimeout: () {
-        detached = true;
+        final acceptedTurnRevision = _markTurnAccepted(sessionId: sessionId);
         unawaited(
           sendFuture.catchError((Object e, StackTrace s) {
+            final revoked = tracker.revokeTurnAccepted(
+              sessionId: sessionId,
+              revision: acceptedTurnRevision,
+            );
+            if (revoked && !_summaryInvalidations.isClosed) {
+              _summaryInvalidations.add(null);
+            }
             Log.w(
-              "command '$command' for session $sessionId "
-              "failed after dispatch: $e",
+              "command '$command' for session $sessionId failed after dispatch",
               e,
               s,
             );
@@ -373,13 +378,10 @@ class OpenCodeService {
         );
       },
     );
-    if (detached) {
-      _markTurnAccepted(sessionId: sessionId);
-    }
   }
 
-  void _markTurnAccepted({required String sessionId}) {
-    tracker.markTurnAccepted(sessionId: sessionId);
+  int _markTurnAccepted({required String sessionId}) {
+    return tracker.markTurnAccepted(sessionId: sessionId);
   }
 
   Future<void> _compact({
@@ -515,8 +517,8 @@ class OpenCodeService {
     return tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId);
   }
 
-  /// Fires when service-owned tracker updates change activity-summary grouping.
-  /// The plugin subscribes and re-emits the summary.
+  /// Fires when service-owned tracker updates require the plugin to resync its
+  /// work state and re-emit the activity summary.
   Stream<void> get summaryInvalidations => _summaryInvalidations.stream;
 
   bool handleSseEvent(SseEventData event, String? directory) {

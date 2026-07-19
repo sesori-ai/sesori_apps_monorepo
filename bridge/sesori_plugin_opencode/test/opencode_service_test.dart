@@ -856,10 +856,50 @@ void main() {
         repository.sendCommandCompleter = completer;
 
         await sendCommand();
+        expect(service.tracker.hasAcceptedTurnEvidence, isTrue);
 
         completer.completeError(StateError("run failed mid-flight"));
         // Flush microtasks — an unhandled async error would fail the test zone.
         await Future<void>.delayed(Duration.zero);
+        expect(service.tracker.hasAcceptedTurnEvidence, isFalse);
+      });
+
+      test("late detached failure does not clear authoritative busy evidence", () async {
+        final completer = Completer<void>();
+        repository.sendCommandCompleter = completer;
+
+        await sendCommand();
+        service.tracker.handleEvent(
+          const SseEventData.sessionStatus(
+            sessionID: "ses-1",
+            status: SessionStatusBusy(),
+          ),
+          "/repo",
+        );
+        expect(service.tracker.hasAcceptedTurnEvidence, isFalse);
+
+        completer.completeError(StateError("late transport failure"));
+        await Future<void>.delayed(Duration.zero);
+
+        expect(service.tracker.workState, PluginWorkState.busy);
+      });
+
+      test("late detached failure does not clear a newer accepted turn", () async {
+        final firstCompleter = Completer<void>();
+        repository.sendCommandCompleter = firstCompleter;
+        await sendCommand();
+
+        final secondCompleter = Completer<void>();
+        repository.sendCommandCompleter = secondCompleter;
+        await sendCommand();
+
+        firstCompleter.completeError(StateError("first command failed late"));
+        await Future<void>.delayed(Duration.zero);
+        expect(service.tracker.hasAcceptedTurnEvidence, isTrue);
+
+        secondCompleter.completeError(StateError("second command failed late"));
+        await Future<void>.delayed(Duration.zero);
+        expect(service.tracker.hasAcceptedTurnEvidence, isFalse);
       });
     });
   });
