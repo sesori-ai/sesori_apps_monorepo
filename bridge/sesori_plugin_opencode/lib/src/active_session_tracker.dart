@@ -27,6 +27,7 @@ class ActiveSessionTracker {
   final Map<String, String> _sessionDirectories = {}; // directory where the session is located
   final Map<String, SessionStatus> _sessionStatuses = {};
   final Set<String> _unknownSessionIds = {};
+  final Set<String> _provisionalAcceptedTurnSessionIds = {};
   bool _workStateBaselineTrusted = false;
   bool _pendingQuestionsBaselineTrusted = false;
   bool _pendingPermissionsBaselineTrusted = false;
@@ -126,6 +127,10 @@ class ActiveSessionTracker {
     });
     await Future.wait(statusFutures);
 
+    // A reconnect retains accepted-turn evidence until this authoritative
+    // status baseline observes the session again.
+    _provisionalAcceptedTurnSessionIds.removeWhere(allStatuses.containsKey);
+
     _sessionStatuses
       ..clear()
       ..addAll(
@@ -180,6 +185,7 @@ class ActiveSessionTracker {
           forceReemit = true;
         }
       case SseSessionDeleted():
+        _provisionalAcceptedTurnSessionIds.remove(event.info.id);
         _sessionDirectories.remove(event.info.id);
         _sessionWorktrees.remove(event.info.id);
         _sessionStatuses.remove(event.info.id);
@@ -187,6 +193,7 @@ class ActiveSessionTracker {
         _sessionParentIds.remove(event.info.id);
         _clearPendingInputForSession(event.info.id);
       case SseSessionStatus():
+        _provisionalAcceptedTurnSessionIds.remove(event.sessionID);
         if (!_sessionWorktrees.containsKey(event.sessionID)) {
           final resolvedDirectory = directory ?? _sessionDirectories[event.sessionID];
           if (resolvedDirectory != null) {
@@ -207,8 +214,12 @@ class ActiveSessionTracker {
             _unknownSessionIds.add(event.sessionID);
         }
       case SseSessionIdle():
+        _provisionalAcceptedTurnSessionIds.remove(event.sessionID);
         _sessionStatuses.remove(event.sessionID);
         _unknownSessionIds.remove(event.sessionID);
+      case SseSessionError(:final sessionID):
+        if (sessionID == null) return false;
+        _provisionalAcceptedTurnSessionIds.remove(sessionID);
       case SseQuestionAsked():
         _pendingQuestions.putIfAbsent(event.sessionID, () => <String>{}).add(event.id);
       case SseQuestionReplied():
@@ -302,6 +313,12 @@ class ActiveSessionTracker {
     _lastEmittedRetrySessions = {};
     _lastEmittedPendingInputSessions = {};
   }
+
+  void markTurnAccepted({required String sessionId}) {
+    _provisionalAcceptedTurnSessionIds.add(sessionId);
+  }
+
+  bool get hasAcceptedTurnEvidence => _provisionalAcceptedTurnSessionIds.isNotEmpty;
 
   void populatePendingQuestions({
     required List<QuestionRequest> questions,
@@ -619,7 +636,9 @@ class ActiveSessionTracker {
     final hasPendingInput =
         _pendingQuestions.values.any((requests) => requests.isNotEmpty) ||
         _pendingPermissions.values.any((requests) => requests.isNotEmpty);
-    if (_sessionStatuses.isNotEmpty || hasPendingInput) return PluginWorkState.busy;
+    if (_provisionalAcceptedTurnSessionIds.isNotEmpty || _sessionStatuses.isNotEmpty || hasPendingInput) {
+      return PluginWorkState.busy;
+    }
     if (!_workStateBaselineTrusted ||
         !_pendingQuestionsBaselineTrusted ||
         !_pendingPermissionsBaselineTrusted ||

@@ -146,10 +146,12 @@ run their focused verification again.
 - Rebased the open Stage 10 and Stage 11-P01 branches, and this in-progress
   branch, onto `origin/main` at `5a91f582` as requested.
 - `git diff --check` passed.
-- Committed as `c0b3ed11`, force-pushed with lease, and reopened #509 using the
-  same temporary-old-head GitHub workaround; the verified replacement head was
-  restored immediately and is monitored. The current head is `1f5c7ea4` after
-  removing a stale test-only activity-readiness wait exposed by CI.
+- The replacement production implementation commit is `c0b3ed11`; it was
+  force-pushed with lease and #509 was reopened using the same
+  temporary-old-head GitHub workaround. The replacement code was restored
+  immediately and monitored. The follow-up test-only code commit `1f5c7ea4`
+  removes a stale activity-readiness wait exposed by CI. These hashes identify
+  the production and test-code delivery, not the eventual PR head.
 
 ## Delivery Rules
 

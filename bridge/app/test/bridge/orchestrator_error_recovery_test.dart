@@ -28,7 +28,7 @@ void main() {
         PluginLifecycleService(
             lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
             bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-            clock: const ServerClock(),
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
           )
           ..registerPlugins(
             plugins: const [(id: "opencode", displayName: "OpenCode")],

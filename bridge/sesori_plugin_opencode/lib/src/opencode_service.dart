@@ -297,9 +297,9 @@ class OpenCodeService {
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
-  }) {
+  }) async {
     final directory = _getTrackedDirectory(sessionId: sessionId);
-    return repository.sendPrompt(
+    await repository.sendPrompt(
       sessionId: sessionId,
       directory: directory,
       parts: parts,
@@ -307,6 +307,7 @@ class OpenCodeService {
       variant: variant,
       model: model,
     );
+    tracker.markTurnAccepted(sessionId: sessionId);
   }
 
   Future<void> sendCommand({

@@ -23,7 +23,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
       PluginLifecycleService(
           lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
           bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-          clock: const ServerClock(),
+          idleTimerScheduler: const PluginIdleTimerScheduler(),
         )
         ..registerPlugins(
           plugins: [for (final plugin in plugins) (id: plugin.id, displayName: plugin.id)],

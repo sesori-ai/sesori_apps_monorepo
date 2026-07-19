@@ -518,6 +518,40 @@ void main() {
         tracker.handleEvent(_questionReplied("question", "session"), null);
         expect(tracker.workState, PluginWorkState.idle);
       });
+
+      test("accepted turn stays busy through delayed busy status until idle", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+
+        tracker.markTurnAccepted(sessionId: "session");
+        expect(tracker.workState, PluginWorkState.busy);
+
+        tracker.handleEvent(_sessionBusy("session"), null);
+        expect(tracker.workState, PluginWorkState.busy);
+
+        tracker.handleEvent(_sessionIdle("session"), null);
+        expect(tracker.workState, PluginWorkState.idle);
+      });
+
+      test("terminal session evidence clears an accepted turn", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+        tracker.markTurnAccepted(sessionId: "session");
+
+        tracker.handleEvent(
+          const SseEventData.sessionError(sessionID: "session"),
+          null,
+        );
+
+        expect(tracker.workState, PluginWorkState.idle);
+      });
+
+      test("accepted turn evidence survives tracker reset during SSE disconnect", () async {
+        final tracker = await _coldStartedTracker(projects: const []);
+        tracker.markTurnAccepted(sessionId: "session");
+
+        tracker.reset();
+
+        expect(tracker.workState, PluginWorkState.busy);
+      });
     });
 
     test("session directory exactly matches worktree", () async {

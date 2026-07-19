@@ -101,13 +101,15 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       onEvent: _handleRawSseEvent,
       onReconnect: () async {
         _service.reset();
-        _workState.set(PluginWorkState.unknown);
+        _syncWorkState();
         await _service.coldStart();
         _emitProjectsSummary();
       },
       onConnected: onConnected,
       onDisconnected: () {
-        _workState.set(PluginWorkState.unknown);
+        _workState.set(
+          _service.tracker.hasAcceptedTurnEvidence ? PluginWorkState.busy : PluginWorkState.unknown,
+        );
         onDisconnected?.call();
       },
     );
@@ -365,8 +367,8 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
-  }) {
-    return _call(
+  }) async {
+    await _call(
       () => _service.sendPrompt(
         sessionId: sessionId,
         parts: parts,
@@ -375,6 +377,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         model: model,
       ),
     );
+    _syncWorkState();
   }
 
   @override

@@ -171,7 +171,7 @@ void main() {
     final service = PluginLifecycleService(
       lifecycleRepository: repository,
       bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-      clock: const ServerClock(),
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
     )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
     addTearDown(service.dispose);
     service.initialize(
@@ -186,11 +186,11 @@ void main() {
   test("idle suspension requires every safe-stop gate and uses a full positive timeout", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
-    final clock = _ControllableServerClock();
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
     final service = PluginLifecycleService(
       lifecycleRepository: repository,
       bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-      clock: clock,
+      idleTimerScheduler: timerScheduler,
     )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
     addTearDown(service.dispose);
     service.initialize(
@@ -213,38 +213,64 @@ void main() {
       leaseCount: 0,
     );
     await Future<void>.delayed(Duration.zero);
-    expect(clock.delays, isEmpty);
+    expect(timerScheduler.timers, isEmpty);
 
     repository.publish(
       state: PluginRuntimeState.degraded,
       workState: PluginWorkState.idle,
       leaseCount: 0,
     );
-    await _waitUntil(() => clock.delays.length == 1);
-    expect(clock.delays.single.duration, const Duration(minutes: defaultPluginIdleTimeoutMins));
+    await _waitUntil(() => timerScheduler.timers.length == 1);
+    expect(timerScheduler.timers.single.duration, const Duration(minutes: defaultPluginIdleTimeoutMins));
 
     repository.publish(workState: PluginWorkState.busy, leaseCount: 0);
-    clock.delays.single.completer.complete();
+    expect(timerScheduler.timers.single.isActive, isFalse);
+    timerScheduler.timers.single.elapse();
     await Future<void>.delayed(Duration.zero);
     expect(repository.stopCalls, isZero);
 
     repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
-    await _waitUntil(() => clock.delays.length == 2);
+    await _waitUntil(() => timerScheduler.timers.length == 2);
     repository.replaceWithoutPublishing(workState: PluginWorkState.unknown);
-    clock.delays.last.completer.complete();
+    timerScheduler.timers.last.elapse();
     await Future<void>.delayed(Duration.zero);
     expect(repository.stopCalls, isZero, reason: "expiry must recheck current work state");
 
     repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
-    await _waitUntil(() => clock.delays.length == 3);
-    clock.delays.last.completer.complete();
+    await _waitUntil(() => timerScheduler.timers.length == 3);
+    timerScheduler.timers.last.elapse();
     await _waitUntil(() => repository.stopCalls == 1);
+  });
+
+  test("dispose cancels a scheduled idle timer and prevents a later stop", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: timerScheduler,
+    )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+    repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
+    await _waitUntil(() => timerScheduler.timers.length == 1);
+
+    final timer = timerScheduler.timers.single;
+    await service.dispose();
+
+    expect(timer.isActive, isFalse);
+    timer.elapse();
+    await Future<void>.delayed(Duration.zero);
+    expect(repository.stopCalls, isZero);
   });
 
   test("non-positive idle timeout never auto-stops a demanded plugin", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
-    final clock = _ControllableServerClock();
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
     final service = PluginLifecycleService(
       lifecycleRepository: repository,
       bridgeSettingsRepository: createTestBridgeSettingsRepository(
@@ -256,7 +282,7 @@ void main() {
           ),
         ),
       ),
-      clock: clock,
+      idleTimerScheduler: timerScheduler,
     )..registerPlugins(plugins: const [(id: "one", displayName: "One")]);
     addTearDown(service.dispose);
     service.initialize(
@@ -267,7 +293,7 @@ void main() {
     repository.publish(workState: PluginWorkState.idle, leaseCount: 0);
     await Future<void>.delayed(Duration.zero);
 
-    expect(clock.delays, isEmpty);
+    expect(timerScheduler.timers, isEmpty);
     expect(repository.stopCalls, isZero);
   });
 }
@@ -279,7 +305,7 @@ PluginLifecycleService _service({
   return PluginLifecycleService(
     lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
     bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-    clock: const ServerClock(),
+    idleTimerScheduler: const PluginIdleTimerScheduler(),
   )..registerPlugins(plugins: plugins);
 }
 
@@ -395,15 +421,38 @@ class _IdleLifecycleRepository implements PluginLifecycleRepository {
   }
 }
 
-class _ControllableServerClock extends ServerClock {
-  final List<({Duration duration, Completer<void> completer})> delays = [];
+class _ControllablePluginIdleTimerScheduler implements PluginIdleTimerScheduler {
+  final List<_ControllablePluginIdleTimer> timers = [];
 
   @override
-  Future<void> delay({required Duration duration}) {
-    final completer = Completer<void>();
-    delays.add((duration: duration, completer: completer));
-    return completer.future;
+  Timer schedule({required Duration duration, required void Function() onElapsed}) {
+    final timer = _ControllablePluginIdleTimer(duration: duration, onElapsed: onElapsed);
+    timers.add(timer);
+    return timer;
   }
+}
+
+class _ControllablePluginIdleTimer implements Timer {
+  _ControllablePluginIdleTimer({required this.duration, required void Function() onElapsed}) : _onElapsed = onElapsed;
+
+  final Duration duration;
+  final void Function() _onElapsed;
+  bool _isActive = true;
+
+  void elapse() {
+    if (!_isActive) return;
+    _isActive = false;
+    _onElapsed();
+  }
+
+  @override
+  void cancel() => _isActive = false;
+
+  @override
+  bool get isActive => _isActive;
+
+  @override
+  int get tick => _isActive ? 0 : 1;
 }
 
 Future<void> _waitUntil(bool Function() predicate) async {

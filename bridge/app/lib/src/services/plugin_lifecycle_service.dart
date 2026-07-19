@@ -22,18 +22,26 @@ typedef PluginStartupPolicy = ({
   String? defaultPluginId,
 });
 
+class PluginIdleTimerScheduler {
+  const PluginIdleTimerScheduler();
+
+  Timer schedule({required Duration duration, required void Function() onElapsed}) {
+    return Timer(duration, onElapsed);
+  }
+}
+
 class PluginLifecycleService {
   PluginLifecycleService({
     required PluginLifecycleRepository lifecycleRepository,
     required BridgeSettingsRepository bridgeSettingsRepository,
-    required ServerClock clock,
+    required PluginIdleTimerScheduler idleTimerScheduler,
   }) : _lifecycleRepository = lifecycleRepository,
        _bridgeSettingsRepository = bridgeSettingsRepository,
-       _clock = clock;
+       _idleTimerScheduler = idleTimerScheduler;
 
   final PluginLifecycleRepository _lifecycleRepository;
   final BridgeSettingsRepository _bridgeSettingsRepository;
-  final ServerClock _clock;
+  final PluginIdleTimerScheduler _idleTimerScheduler;
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   List<String>? _eligiblePluginIds;
@@ -45,8 +53,7 @@ class PluginLifecycleService {
   BehaviorSubject<List<String>>? _readyPluginIdsSubject;
   StreamSubscription<List<PluginLifecycleSnapshot>>? _runtimeSubscription;
   Future<void>? _disposeFuture;
-  final Map<String, int> _idleTimerTokens = <String, int>{};
-  int _nextIdleTimerToken = 0;
+  final Map<String, ({Duration duration, Timer timer})> _idleTimers = {};
   bool _disposing = false;
 
   void registerPlugins({required List<RegisteredPluginMetadata> plugins}) {
@@ -276,7 +283,10 @@ class PluginLifecycleService {
 
   Future<void> _dispose() async {
     _disposing = true;
-    _idleTimerTokens.clear();
+    for (final entry in _idleTimers.values) {
+      entry.timer.cancel();
+    }
+    _idleTimers.clear();
     Object? firstError;
     StackTrace? firstStackTrace;
     try {
@@ -332,24 +342,33 @@ class PluginLifecycleService {
   void _syncIdleTimers(List<PluginLifecycleSnapshot> snapshots) {
     if (_disposing) return;
     final currentIds = snapshots.map((snapshot) => snapshot.pluginId).toSet();
-    _idleTimerTokens.removeWhere((pluginId, _) => !currentIds.contains(pluginId));
+    _idleTimers.keys.where((pluginId) => !currentIds.contains(pluginId)).toList().forEach(_cancelIdleTimer);
     for (final snapshot in snapshots) {
       final timeoutMins = _effectiveIdleTimeoutMins(snapshot.pluginId);
       if (timeoutMins <= 0 || !_isIdleCandidate(snapshot)) {
-        _idleTimerTokens.remove(snapshot.pluginId);
+        _cancelIdleTimer(snapshot.pluginId);
         continue;
       }
-      if (_idleTimerTokens.containsKey(snapshot.pluginId)) continue;
-      final token = ++_nextIdleTimerToken;
-      _idleTimerTokens[snapshot.pluginId] = token;
-      unawaited(
-        _stopAfterIdleWindow(
-          pluginId: snapshot.pluginId,
-          token: token,
-          duration: Duration(minutes: timeoutMins),
+      final duration = Duration(minutes: timeoutMins);
+      final existing = _idleTimers[snapshot.pluginId];
+      if (existing != null && existing.duration == duration) continue;
+      _cancelIdleTimer(snapshot.pluginId);
+      late final Timer timer;
+      timer = _idleTimerScheduler.schedule(
+        duration: duration,
+        onElapsed: () => unawaited(
+          _stopAfterIdleWindow(
+            pluginId: snapshot.pluginId,
+            timer: timer,
+          ),
         ),
       );
+      _idleTimers[snapshot.pluginId] = (duration: duration, timer: timer);
     }
+  }
+
+  void _cancelIdleTimer(String pluginId) {
+    _idleTimers.remove(pluginId)?.timer.cancel();
   }
 
   bool _isIdleCandidate(PluginLifecycleSnapshot snapshot) {
@@ -366,20 +385,10 @@ class PluginLifecycleService {
 
   Future<void> _stopAfterIdleWindow({
     required String pluginId,
-    required int token,
-    required Duration duration,
+    required Timer timer,
   }) async {
-    try {
-      await _clock.delay(duration: duration);
-    } on Object catch (error, stackTrace) {
-      if (!_disposing && _idleTimerTokens[pluginId] == token) {
-        Log.w('Idle suspension timer for plugin "$pluginId" failed', error, stackTrace);
-        _idleTimerTokens.remove(pluginId);
-      }
-      return;
-    }
-    if (_disposing || _idleTimerTokens[pluginId] != token) return;
-    _idleTimerTokens.remove(pluginId);
+    if (_disposing || !identical(_idleTimers[pluginId]?.timer, timer)) return;
+    _idleTimers.remove(pluginId);
     final snapshot = _lifecycleRepository.snapshot.where((entry) => entry.pluginId == pluginId).firstOrNull;
     if (snapshot == null || _effectiveIdleTimeoutMins(pluginId) <= 0 || !_isIdleCandidate(snapshot)) return;
     try {

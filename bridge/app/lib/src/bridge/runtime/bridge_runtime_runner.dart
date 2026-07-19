@@ -606,7 +606,7 @@ class BridgeRuntimeRunner {
           PluginLifecycleService(
             lifecycleRepository: lifecycleRepository,
             bridgeSettingsRepository: bridgeSettingsRepository,
-            clock: serverClock,
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
           )..registerPlugins(
             plugins: [
               for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
