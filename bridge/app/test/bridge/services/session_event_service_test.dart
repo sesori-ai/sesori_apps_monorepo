@@ -1,3 +1,6 @@
+import "dart:async";
+
+import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -5,6 +8,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -16,7 +20,9 @@ import "../../helpers/test_helpers.dart";
 void main() {
   group("SessionEventService", () {
     late AppDatabase database;
+    late _TransactionGatedSessionDao sessionDao;
     late _EventPlugin plugin;
+    late TestPluginRuntime pluginRuntime;
     late SessionRepository repository;
     late SessionMutationDispatcher mutationDispatcher;
     late SessionEventTracker eventTracker;
@@ -24,19 +30,24 @@ void main() {
 
     setUp(() {
       database = createTestDatabase();
+      sessionDao = _TransactionGatedSessionDao(database);
       plugin = _EventPlugin();
-      repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: database.sessionDao,
+      pluginRuntime = createTestPluginRuntime(plugins: [plugin]);
+      repository = SessionRepository(
+        runtime: pluginRuntime,
+        bridgeDerivedProjectPluginIds: const {},
+        sessionDao: sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
       );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
       eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
       service = SessionEventService(
         sessionRepository: repository,
-        pluginRuntime: createAlwaysCurrentTestPluginRuntime(),
+        pluginRuntime: pluginRuntime,
         sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: eventTracker,
@@ -643,6 +654,149 @@ void main() {
       expect(row?.projectionUpdatedAt, 200);
     });
 
+    test("does not commit a retired-generation session projection after transaction entry", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final before = await database.sessionDao.getSession(sessionId: "stable-root");
+      sessionDao.gateNextProjectionTransaction();
+
+      final normalization = service.normalize(
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 100,
+          event: BridgeSseSessionUpdated(
+            info: Session.fromJson(
+              _sessionInfo(
+                sessionId: "backend-root",
+                parentId: null,
+                projectId: "backend-project",
+                directory: "/retired",
+              ),
+            ).copyWith(title: "Retired title").toJson(),
+            titleChanged: true,
+          ),
+        ),
+      );
+      await sessionDao.projectionTransactionEntered;
+      pluginRuntime.generationCurrent = false;
+      sessionDao.releaseProjectionTransaction();
+
+      expect(await normalization, isEmpty);
+      final after = await database.sessionDao.getSession(sessionId: "stable-root");
+      expect(after?.directory, before?.directory);
+      expect(after?.catalogTitle, before?.catalogTitle);
+      expect(after?.updatedAt, before?.updatedAt);
+      expect(after?.projectionUpdatedAt, before?.projectionUpdatedAt);
+    });
+
+    test("does not commit a retired-generation child after transaction entry", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      sessionDao.gateNextProjectionTransaction();
+
+      final normalization = service.normalize(
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 100,
+          event: BridgeSseSessionCreated(
+            info: _sessionInfo(
+              sessionId: "backend-child",
+              parentId: "backend-root",
+              projectId: "backend-project",
+              directory: "/retired-child",
+            ),
+          ),
+        ),
+      );
+      await sessionDao.projectionTransactionEntered;
+      pluginRuntime.generationCurrent = false;
+      sessionDao.releaseProjectionTransaction();
+
+      expect(await normalization, isEmpty);
+      expect(
+        await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "backend-child",
+        ),
+        isNull,
+      );
+    });
+
+    test("commits same-generation projection writes after transaction entry", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      sessionDao.gateNextProjectionTransaction();
+
+      final update = service.normalize(
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 100,
+          event: BridgeSseSessionUpdated(
+            info: Session.fromJson(
+              _sessionInfo(
+                sessionId: "backend-root",
+                parentId: null,
+                projectId: "backend-project",
+                directory: "/current",
+              ),
+            ).copyWith(title: "Current title").toJson(),
+            titleChanged: true,
+          ),
+        ),
+      );
+      await sessionDao.projectionTransactionEntered;
+      sessionDao.releaseProjectionTransaction();
+
+      expect(await update, hasLength(1));
+      final updated = await database.sessionDao.getSession(sessionId: "stable-root");
+      expect(updated?.directory, "/current");
+      expect(updated?.catalogTitle, "Current title");
+      expect(updated?.projectionUpdatedAt, greaterThanOrEqualTo(100));
+
+      sessionDao.gateNextProjectionTransaction();
+      final childCreation = service.normalize(
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 101,
+          event: BridgeSseSessionCreated(
+            info: _sessionInfo(
+              sessionId: "backend-child",
+              parentId: "backend-root",
+              projectId: "backend-project",
+              directory: "/current-child",
+            ),
+          ),
+        ),
+      );
+      await sessionDao.projectionTransactionEntered;
+      sessionDao.releaseProjectionTransaction();
+
+      expect(await childCreation, hasLength(1));
+      final child = await database.sessionDao.getSessionByBinding(
+        pluginId: plugin.id,
+        backendSessionId: "backend-child",
+      );
+      expect(child?.parentSessionId, "stable-root");
+      expect(child?.directory, "/current-child");
+      expect(child?.projectionUpdatedAt, greaterThanOrEqualTo(101));
+    });
+
     test("does not publish a created event after its durable row is removed", () async {
       await _insertRoot(
         database: database,
@@ -702,6 +856,40 @@ void main() {
       expect(await service.canPublish(event: event), isFalse);
     });
   });
+}
+
+class _TransactionGatedSessionDao extends SessionDao {
+  _TransactionGatedSessionDao(super.attachedDatabase);
+
+  Completer<void>? _transactionEntered;
+  Completer<void>? _releaseTransaction;
+
+  Future<void> get projectionTransactionEntered => _transactionEntered!.future;
+
+  void gateNextProjectionTransaction() {
+    _transactionEntered = Completer<void>();
+    _releaseTransaction = Completer<void>();
+  }
+
+  void releaseProjectionTransaction() {
+    _releaseTransaction!.complete();
+  }
+
+  @override
+  Future<bool> isSessionTombstoned({required String backendSessionId, required String pluginId}) async {
+    final transactionEntered = _transactionEntered;
+    final releaseTransaction = _releaseTransaction;
+    if (transactionEntered != null && releaseTransaction != null) {
+      transactionEntered.complete();
+      await releaseTransaction.future;
+      _transactionEntered = null;
+      _releaseTransaction = null;
+    }
+    return super.isSessionTombstoned(
+      backendSessionId: backendSessionId,
+      pluginId: pluginId,
+    );
+  }
 }
 
 Future<void> _insertRoot({

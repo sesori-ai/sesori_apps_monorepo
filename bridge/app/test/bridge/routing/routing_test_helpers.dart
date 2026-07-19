@@ -822,6 +822,7 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<StoredSession?> updateObservedSessionProjection({
     required String pluginId,
+    required int generation,
     required Session observed,
     required bool updateCatalogTitle,
     required int projectionUpdatedAt,
@@ -830,6 +831,7 @@ class _NoopSessionRepository implements SessionRepository {
   @override
   Future<StoredSession?> insertObservedChild({
     required String pluginId,
+    required int generation,
     required Session observed,
     required StoredSession parent,
     required int projectionUpdatedAt,
@@ -1202,6 +1204,7 @@ class FakeSessionRepository implements SessionRepository {
   @override
   Future<StoredSession?> updateObservedSessionProjection({
     required String pluginId,
+    required int generation,
     required Session observed,
     required bool updateCatalogTitle,
     required int projectionUpdatedAt,
@@ -1210,6 +1213,7 @@ class FakeSessionRepository implements SessionRepository {
   @override
   Future<StoredSession?> insertObservedChild({
     required String pluginId,
+    required int generation,
     required Session observed,
     required StoredSession parent,
     required int projectionUpdatedAt,

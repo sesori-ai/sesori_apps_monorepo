@@ -179,6 +179,7 @@ class SessionEventService {
       }
       final binding = await _sessionRepository.updateObservedSessionProjection(
         pluginId: source.pluginId,
+        generation: source.generation,
         observed: observed,
         updateCatalogTitle: switch (source.event) {
           BridgeSseSessionCreated() => true,
@@ -244,6 +245,7 @@ class SessionEventService {
     }
     final binding = await _sessionRepository.insertObservedChild(
       pluginId: source.pluginId,
+      generation: source.generation,
       observed: observed,
       parent: parent,
       projectionUpdatedAt: source.projectionUpdatedAt,

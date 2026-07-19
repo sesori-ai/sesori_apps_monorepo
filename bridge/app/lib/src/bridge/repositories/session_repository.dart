@@ -954,6 +954,7 @@ class SessionRepository {
 
   Future<StoredSession?> updateObservedSessionProjection({
     required String pluginId,
+    required int generation,
     required Session observed,
     required bool updateCatalogTitle,
     required int projectionUpdatedAt,
@@ -970,6 +971,11 @@ class SessionRepository {
         backendSessionId: observed.id,
       );
       if (binding == null) return null;
+      _runtime.requireCurrentGeneration(
+        pluginId: pluginId,
+        generation: generation,
+        operation: "updateObservedSessionProjection",
+      );
       final updated = await _sessionDao.updateObservedSessionProjection(
         sessionId: binding.sessionId,
         directory: observed.directory,
@@ -978,13 +984,25 @@ class SessionRepository {
         updatedAt: observed.time?.updated ?? binding.updatedAt,
         projectionUpdatedAt: projectionUpdatedAt,
       );
+      _runtime.requireCurrentGeneration(
+        pluginId: pluginId,
+        generation: generation,
+        operation: "updateObservedSessionProjection",
+      );
       if (!updated) return null;
-      return (await _sessionDao.getSession(sessionId: binding.sessionId))?.toStoredSession();
+      final stored = (await _sessionDao.getSession(sessionId: binding.sessionId))?.toStoredSession();
+      _runtime.requireCurrentGeneration(
+        pluginId: pluginId,
+        generation: generation,
+        operation: "updateObservedSessionProjection",
+      );
+      return stored;
     });
   }
 
   Future<StoredSession?> insertObservedChild({
     required String pluginId,
+    required int generation,
     required Session observed,
     required StoredSession parent,
     required int projectionUpdatedAt,
@@ -1005,6 +1023,11 @@ class SessionRepository {
       );
       if (existing != null) {
         if (existing.parentSessionId != durableParent.sessionId) return null;
+        _runtime.requireCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+          operation: "insertObservedChild",
+        );
         final updated = await _sessionDao.updateObservedSessionProjection(
           sessionId: existing.sessionId,
           directory: observed.directory,
@@ -1013,11 +1036,27 @@ class SessionRepository {
           updatedAt: observed.time?.updated ?? existing.updatedAt,
           projectionUpdatedAt: projectionUpdatedAt,
         );
+        _runtime.requireCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+          operation: "insertObservedChild",
+        );
         if (!updated) return null;
-        return (await _sessionDao.getSession(sessionId: existing.sessionId))?.toStoredSession();
+        final stored = (await _sessionDao.getSession(sessionId: existing.sessionId))?.toStoredSession();
+        _runtime.requireCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+          operation: "insertObservedChild",
+        );
+        return stored;
       }
       final sessionId = await _allocateSessionId();
       final createdAt = observed.time?.created ?? projectionUpdatedAt;
+      _runtime.requireCurrentGeneration(
+        pluginId: pluginId,
+        generation: generation,
+        operation: "insertObservedChild",
+      );
       await _sessionDao.insertObservedChild(
         sessionId: sessionId,
         backendSessionId: observed.id,
@@ -1031,7 +1070,18 @@ class SessionRepository {
         projectionUpdatedAt: projectionUpdatedAt,
         pluginId: pluginId,
       );
-      return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
+      _runtime.requireCurrentGeneration(
+        pluginId: pluginId,
+        generation: generation,
+        operation: "insertObservedChild",
+      );
+      final stored = (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
+      _runtime.requireCurrentGeneration(
+        pluginId: pluginId,
+        generation: generation,
+        operation: "insertObservedChild",
+      );
+      return stored;
     });
   }
 
