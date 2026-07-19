@@ -484,6 +484,7 @@ class CodexEventMapper {
   shared.Session _threadToSession(Map<String, dynamic> thread, String id) {
     final projectId = _projectIdForThread(id, cwd: thread["cwd"] as String?);
     return shared.Session(
+      branchName: null,
       id: id,
       pluginId: pluginId,
       projectID: projectId,
@@ -503,6 +504,7 @@ class CodexEventMapper {
   shared.Session _minimalSession({required String id, required String? title}) {
     final projectId = _projectIdForThread(id);
     return shared.Session(
+      branchName: null,
       id: id,
       pluginId: pluginId,
       projectID: projectId,

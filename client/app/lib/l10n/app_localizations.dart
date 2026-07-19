@@ -523,12 +523,6 @@ abstract class AppLocalizations {
   /// **'Untitled session'**
   String get sessionListUntitled;
 
-  /// No description provided for @sessionListUpdated.
-  ///
-  /// In en, this message translates to:
-  /// **'Updated {timestamp}'**
-  String sessionListUpdated(String timestamp);
-
   /// No description provided for @sessionListRefreshSuccess.
   ///
   /// In en, this message translates to:
@@ -1093,11 +1087,17 @@ abstract class AppLocalizations {
   /// **'Login session expired. Please start again.'**
   String get loginPkceStateMissing;
 
-  /// Label shown next to the green dot for sessions that are currently active
+  /// Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle
   ///
   /// In en, this message translates to:
   /// **'Running'**
   String get sessionListRunning;
+
+  /// Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle
+  ///
+  /// In en, this message translates to:
+  /// **'New activity'**
+  String get sessionListNewActivity;
 
   /// Label shown next to the red dot for sessions that are active but in a retry/error state
   ///

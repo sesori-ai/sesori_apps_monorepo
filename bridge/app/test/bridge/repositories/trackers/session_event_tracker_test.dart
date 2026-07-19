@@ -185,6 +185,7 @@ PendingSessionEvent _pending({
     time: null,
     pullRequest: null,
     promptDefaults: null,
+    branchName: null,
   );
   return PendingSessionEvent(
     pluginId: pluginId,

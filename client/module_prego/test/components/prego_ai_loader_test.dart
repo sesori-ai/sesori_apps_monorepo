@@ -45,6 +45,22 @@ void main() {
   /// Where in the loop the sparkle is at its hollowest.
   const outlineKeyframe = Duration(milliseconds: 560);
 
+  group("phaseFor", () {
+    test("derives a stable phase in [0, 1) from a seed", () {
+      final phase = PregoAiLoader.phaseFor("session-42");
+
+      expect(phase, PregoAiLoader.phaseFor("session-42"));
+      expect(phase, greaterThanOrEqualTo(0));
+      expect(phase, lessThan(1));
+    });
+
+    test("staggers different seeds apart", () {
+      // Not a hash-quality proof — just a guard that two neighbouring ids
+      // don't collapse onto one phase, which is the whole point of the offset.
+      expect(PregoAiLoader.phaseFor("session-1"), isNot(PregoAiLoader.phaseFor("session-2")));
+    });
+  });
+
   testWidgets("twinkles by default", (tester) async {
     await tester.pumpWidget(harness(const PregoAiLoader()));
     await tester.pump(const Duration(milliseconds: 200));

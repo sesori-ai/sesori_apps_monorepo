@@ -193,6 +193,7 @@ void main() {
 
       final result = await repository.enrichSession(
         session: const Session(
+          branchName: null,
           id: "s1",
           pluginId: "fake",
           projectID: "p1",
@@ -209,6 +210,7 @@ void main() {
       expect(result.pluginId, equals(plugin.id));
       expect(result.time?.updated, equals(2));
       expect(result.time?.archived, isNull);
+      expect(result.branchName, equals("feature/one"));
       expect(result.hasWorktree, isTrue);
       expect(result.promptDefaults?.agent, equals("agent-1"));
       expect(result.promptDefaults?.model?.providerID, equals("provider-1"));
@@ -249,6 +251,7 @@ void main() {
 
       final result = await repository.enrichSession(
         session: const Session(
+          branchName: null,
           id: "s1",
           pluginId: "fake",
           projectID: "p1",
@@ -319,6 +322,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            branchName: null,
             id: "s1",
             pluginId: "fake",
             projectID: "p1",
@@ -330,6 +334,7 @@ void main() {
             promptDefaults: null,
           ),
           Session(
+            branchName: null,
             id: "s2",
             pluginId: "fake",
             projectID: "p1",
@@ -405,6 +410,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            branchName: null,
             id: "native-session",
             pluginId: "fake",
             projectID: "native-reported-project",
@@ -416,6 +422,7 @@ void main() {
             promptDefaults: null,
           ),
           Session(
+            branchName: null,
             id: "derived-session",
             pluginId: "codex",
             projectID: "/derived/.worktrees/session",

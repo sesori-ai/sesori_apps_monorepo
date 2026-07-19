@@ -43,6 +43,7 @@ void main() {
         time: null,
         pullRequest: null,
         promptDefaults: null,
+        branchName: null,
       ),
     );
     normalizeGate.complete();

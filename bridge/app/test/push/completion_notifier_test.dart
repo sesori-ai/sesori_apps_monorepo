@@ -1108,6 +1108,7 @@ Session _session({
   String? title,
 }) {
   return Session(
+    branchName: null,
     id: id,
     pluginId: "fake",
     projectID: projectID,

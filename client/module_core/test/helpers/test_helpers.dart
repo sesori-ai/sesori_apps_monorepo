@@ -328,6 +328,7 @@ Session testSession({
   String pluginId = "plugin-1",
 }) {
   return Session(
+    branchName: null,
     id: id ?? "session-1",
     pluginId: pluginId,
     projectID: "project-1",

@@ -11,6 +11,7 @@ class SessionCatalogMapper {
     required bool unseen,
   }) {
     return Session(
+      branchName: row.branchName,
       id: row.sessionId,
       pluginId: row.pluginId,
       projectID: row.projectId,

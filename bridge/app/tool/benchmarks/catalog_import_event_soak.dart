@@ -544,6 +544,7 @@ class _CatalogImportEventSoak {
       pluginId: _pluginId,
       event: BridgeSseSessionUpdated(
         info: Session(
+          branchName: null,
           id: fixture.sessions.first.id,
           pluginId: _pluginId,
           projectID: fixture.projectPaths.first,

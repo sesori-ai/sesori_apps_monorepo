@@ -44,6 +44,7 @@ void main() {
       time: null,
       pullRequest: null,
       promptDefaults: null,
+      branchName: null,
     );
 
     source.add(deleted);

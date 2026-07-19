@@ -61,6 +61,7 @@ _Session _$SessionFromJson(Map json) => _Session(
       : SessionPromptDefaults.fromJson(
           Map<String, dynamic>.from(json['promptDefaults'] as Map),
         ),
+  branchName: json['branchName'] as String?,
   hasWorktree: json['hasWorktree'] as bool? ?? false,
   unseen: json['unseen'] as bool? ?? false,
 );
@@ -78,6 +79,7 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
       .map((e) => e.toJson())
       .toList(),
   'promptDefaults': ?instance.promptDefaults?.toJson(),
+  'branchName': ?instance.branchName,
   'hasWorktree': instance.hasWorktree,
   'unseen': instance.unseen,
 };
