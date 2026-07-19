@@ -434,16 +434,25 @@ class SessionRepository {
     final results = await Future.wait(
       _runtime.activePluginIds.map((pluginId) async {
         try {
-          final observation = await _runtime
+          final sourcedObservation = await _runtime
               .useIfActive(
                 pluginId: pluginId,
-                body: (plugin) => _collectPluginProjectActivity(
-                  pluginId: pluginId,
-                  plugin: plugin,
+                body: (plugin, generation) async => (
+                  generation: generation,
+                  observation: await _collectPluginProjectActivity(
+                    pluginId: pluginId,
+                    plugin: plugin,
+                  ),
                 ),
               )
               .timeout(_aggregateSourceDeadline);
-          if (observation == null) return const <ProjectActivitySummary>[];
+          if (sourcedObservation == null) return const <ProjectActivitySummary>[];
+          final (:generation, :observation) = sourcedObservation;
+          _runtime.requireCurrentGeneration(
+            pluginId: pluginId,
+            generation: generation,
+            operation: "getProjectActivitySummaries",
+          );
           await _persistActiveRootHydrations(observation: observation);
           return _mapPluginProjectActivitySummaries(observation: observation);
         } on Object catch (error, stackTrace) {
@@ -759,7 +768,7 @@ class SessionRepository {
           final pluginStatuses = await _runtime
               .useIfActive(
                 pluginId: pluginId,
-                body: (plugin) => plugin.getSessionStatuses(),
+                body: (plugin, _) => plugin.getSessionStatuses(),
               )
               .timeout(_aggregateSourceDeadline);
           if (pluginStatuses == null) return (pluginId: pluginId, statuses: null);

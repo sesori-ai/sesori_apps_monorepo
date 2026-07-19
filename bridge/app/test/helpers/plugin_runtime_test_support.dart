@@ -129,10 +129,10 @@ class TestPluginRuntime extends PluginRuntime {
   @override
   Future<T?> useIfActive<T>({
     required String pluginId,
-    required Future<T> Function(BridgePluginApi api) body,
+    required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     final plugin = _plugins[pluginId];
-    return plugin == null ? null : body(plugin);
+    return plugin == null ? null : body(plugin, 1);
   }
 
   PluginRuntimeSnapshot _snapshotFor(BridgePluginApi plugin) {

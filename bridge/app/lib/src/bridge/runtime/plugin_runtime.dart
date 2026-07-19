@@ -317,14 +317,14 @@ class PluginRuntime {
 
   Future<T?> useIfActive<T>({
     required String pluginId,
-    required Future<T> Function(BridgePluginApi api) body,
+    required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     const operation = "activePluginOperation";
     final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
     if (!_isRoutable(slot)) return null;
     final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: false);
     try {
-      final result = await body(lease.api);
+      final result = await body(lease.api, lease.generation);
       _requireCurrentGeneration(lease: lease, operation: operation);
       return result;
     } finally {
@@ -468,9 +468,11 @@ class PluginRuntime {
         reasons: const [PluginRuntimeConflictReason.notEligible],
       );
     }
-    final forceCanTakeOverStart =
-        intent == PluginStopIntent.force && slot.transition == PluginRuntimeTransition.starting;
-    if (slot.transition != PluginRuntimeTransition.none && !forceCanTakeOverStart) {
+    final forceCanTakeOverTransition =
+        intent == PluginStopIntent.force &&
+        (slot.transition == PluginRuntimeTransition.starting ||
+            (slot.transition == PluginRuntimeTransition.stopping && slot.plugin != null));
+    if (slot.transition != PluginRuntimeTransition.none && !forceCanTakeOverTransition) {
       return PluginRuntimeCommandConflict(
         snapshot: _snapshotFor(slot),
         reasons: const [PluginRuntimeConflictReason.transitioning],
@@ -517,9 +519,11 @@ class PluginRuntime {
         reasons: const [PluginRuntimeConflictReason.notEligible],
       );
     }
-    final forceCanTakeOverStart =
-        intent == PluginStopIntent.force && slot.transition == PluginRuntimeTransition.starting;
-    if (slot.transition != PluginRuntimeTransition.none && !forceCanTakeOverStart) {
+    final forceCanTakeOverTransition =
+        intent == PluginStopIntent.force &&
+        (slot.transition == PluginRuntimeTransition.starting ||
+            (slot.transition == PluginRuntimeTransition.stopping && slot.plugin != null));
+    if (slot.transition != PluginRuntimeTransition.none && !forceCanTakeOverTransition) {
       return PluginRuntimeCommandConflict(
         snapshot: _snapshotFor(slot),
         reasons: const [PluginRuntimeConflictReason.transitioning],

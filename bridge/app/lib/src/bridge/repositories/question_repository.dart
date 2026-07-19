@@ -99,7 +99,7 @@ class QuestionRepository {
           return await _runtime
               .useIfActive(
                 pluginId: pluginId,
-                body: (plugin) => _getPluginProjectQuestions(
+                body: (plugin, _) => _getPluginProjectQuestions(
                   plugin: plugin,
                   projectId: projectId,
                   directory: directory,

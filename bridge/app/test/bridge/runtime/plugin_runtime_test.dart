@@ -237,6 +237,31 @@ void main() {
     expect(runtime.snapshot.single.state, PluginRuntimeState.active);
   });
 
+  test("a force restart recovers a generation stuck in PluginStopping", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final stoppingPlugin = factory.plugins.single;
+
+    stoppingPlugin.statuses.add(const PluginStopping());
+    await _waitUntil(() => runtime.snapshot.single.transition == PluginRuntimeTransition.stopping);
+
+    expect(
+      await runtime.restart(pluginId: "one", intent: PluginStopIntent.safe),
+      isA<PluginRuntimeCommandConflict>(),
+    );
+    expect(
+      await runtime.restart(pluginId: "one", intent: PluginStopIntent.force),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+    expect(stoppingPlugin.shutdownCount, 1);
+    expect(factory.startCount, 2);
+    expect(runtime.snapshot.single.generation, 2);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+  });
+
   test("a terminal plugin failure fences its generation and allows a later retry", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);

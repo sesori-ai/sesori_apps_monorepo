@@ -1250,6 +1250,56 @@ void main() {
       );
     });
 
+    test("active-root hydration is not persisted after generation replacement", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const directory = "/projects/stale";
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: directory,
+            activeSessions: [PluginActiveSession(id: "stale-root", awaitingInput: true)],
+          ),
+        ]
+        ..sessionsByWorktree = const {
+          directory: [
+            PluginSession(
+              id: "stale-root",
+              projectID: directory,
+              directory: directory,
+              parentID: null,
+              title: "Stale root",
+              time: PluginSessionTime(created: 1, updated: 2, archived: null),
+            ),
+          ],
+        };
+      final runtime = _GenerationReplacingRuntime(plugin: plugin);
+      final repository = SessionRepository(
+        runtime: runtime,
+        bridgeDerivedProjectPluginIds: const {},
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+      );
+
+      final summaries = repository.getProjectActivitySummaries();
+      await runtime.observationCollected.future;
+      runtime.replaceGeneration();
+
+      expect(await summaries, isEmpty);
+      expect(await db.projectsDao.getAllProjects(), isEmpty);
+      expect(
+        await db.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "stale-root",
+        ),
+        isNull,
+      );
+    });
+
     test("active native-root hydration reuses the normalized-path catalog row", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -2071,6 +2121,29 @@ void main() {
       );
     });
   });
+}
+
+class _GenerationReplacingRuntime extends TestPluginRuntime {
+  _GenerationReplacingRuntime({required BridgePluginApi plugin}) : super(plugins: {plugin.id: plugin});
+
+  final Completer<void> observationCollected = Completer<void>();
+  final Completer<void> _replacement = Completer<void>();
+
+  void replaceGeneration() {
+    generationCurrent = false;
+    _replacement.complete();
+  }
+
+  @override
+  Future<T?> useIfActive<T>({
+    required String pluginId,
+    required Future<T> Function(BridgePluginApi api, int generation) body,
+  }) async {
+    final result = await super.useIfActive(pluginId: pluginId, body: body);
+    observationCollected.complete();
+    await _replacement.future;
+    return result;
+  }
 }
 
 class _FakeBridgePlugin implements NativeProjectsPluginApi {

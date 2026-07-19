@@ -395,7 +395,7 @@ class ProjectRepository {
     final source = await _runtime
         .useIfActive<_ProjectActivitySource>(
           pluginId: pluginId,
-          body: _loadProjectActivitySource,
+          body: (plugin, _) => _loadProjectActivitySource(plugin),
         )
         .timeout(_aggregateSourceDeadline);
     if (source == null) return const <ProjectActivityEvidence>[];
