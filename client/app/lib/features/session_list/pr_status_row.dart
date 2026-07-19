@@ -36,14 +36,22 @@ class PrStatusRow extends StatelessWidget {
           child: Icon(mergeIcon, size: 14, color: mergeColor),
         ),
         const SizedBox(width: 4),
-        Text(
-          loc.prLabel(pr.number),
-          style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
+        Flexible(
+          child: Text(
+            loc.prLabel(pr.number),
+            style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         const SizedBox(width: 6),
-        Text(
-          _stateText(loc: loc, state: pr.state),
-          style: context.prego.textTheme.textXs.regular.copyWith(color: stateColor),
+        Flexible(
+          child: Text(
+            _stateText(loc: loc, state: pr.state),
+            style: context.prego.textTheme.textXs.regular.copyWith(color: stateColor),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         // Review/check indicators are only relevant for open PRs.
         if (pr.state == PrState.open) ...[

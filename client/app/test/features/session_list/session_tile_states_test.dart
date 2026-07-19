@@ -201,6 +201,37 @@ void main() {
       expect(find.text("PR #42"), findsOneWidget);
       expect(find.text("Open"), findsOneWidget);
     });
+
+    testWidgets("yield to the timestamp under scaled-up accessibility text", (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 3.0;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      tester.view.physicalSize = const Size(390, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final session =
+          testSession(
+            title: "My Session",
+            branchName: "sesori/a-very-long-worktree-branch",
+            updatedAt: DateTime.now().millisecondsSinceEpoch,
+          ).copyWith(
+            pullRequest: const PullRequestInfo(
+              number: 483,
+              url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/483",
+              title: "Redesign the session list item",
+              state: PrState.open,
+              mergeableStatus: PrMergeableStatus.conflicting,
+              reviewDecision: PrReviewDecision.changesRequested,
+              checkStatus: PrCheckStatus.failure,
+            ),
+          );
+
+      await pumpTile(tester, tile(session: session, isActive: true, awaitingInput: true));
+
+      expect(tester.takeException(), isNull);
+      final tileRect = tester.getRect(find.byType(SessionTile));
+      expect(tester.getRect(find.text("just now")).right, lessThanOrEqualTo(tileRect.right));
+    });
   });
 
   group("row chrome", () {
@@ -239,6 +270,31 @@ void main() {
         ),
       );
       expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+    });
+
+    testWidgets("announces the whole row as one button", (tester) async {
+      final semantics = tester.ensureSemantics();
+      final session = testSession(
+        title: "My Session",
+        branchName: "sesori/add-search",
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      await pumpTile(tester, tile(session: session));
+
+      expect(
+        tester.getSemantics(find.descendant(of: find.byType(SessionTile), matching: find.byType(MergeSemantics))),
+        matchesSemantics(
+          label: "My Session\nsesori/add-search\njust now",
+          isButton: true,
+          isFocusable: true,
+          hasTapAction: true,
+          hasLongPressAction: true,
+          hasFocusAction: true,
+        ),
+      );
+
+      semantics.dispose();
     });
   });
 }

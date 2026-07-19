@@ -46,8 +46,7 @@ Session enrichSharedSession({
   required SessionUnseenCalculator unseenCalculator,
   required bool adoptStoredProjectId,
 }) {
-  // The plugin never reports a branch of its own; the stored row is the only
-  // source, recorded when the bridge cut the session's worktree.
+  // The stored row carries the branch created with a dedicated worktree.
   var result = session.copyWith(branchName: session.branchName ?? storedSession?.branchName);
 
   if (storedSession != null) {
