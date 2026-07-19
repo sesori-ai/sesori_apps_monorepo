@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** Stage 11-P02 implemented and verified; delivery pending
+- **Status:** Stage 11-P02 delivered; replacement stack rebuilding
 - **Base:** `origin/main` at `5a91f582`
 - **Current branch:** `setup-aware-plugin-lifecycle-s11-p02`
-- **Current stage:** Stage 11-P02 delivery
-- **Next action:** commit and force-push the verified Stage 11-P02 replacement,
-  reopen #509, and start its monitor
+- **Current stage:** Stage 12 rebuild
+- **Next action:** rebuild Stage 12 from rewritten Stage 11-P02, verify it,
+  rewrite its branch, reopen #510, and start its monitor
 
 ## Closed First Implementation
 
@@ -17,7 +17,7 @@ The first unmerged stack was closed before redesign:
 |---|---|---|
 | #507 | Reopened | Redesigned Stage 10 at `794e853e`; CI/review monitored |
 | #508 | Reopened | Redesigned Stage 11-P01 at `29472036`; CI/review monitored |
-| #509 | Closed | Reopen after redesigned Stage 11-P02 is implemented and verified |
+| #509 | Reopened | Redesigned Stage 11-P02 at `215b857a`; CI/review monitored |
 | #510 | Closed | Reopen after redesigned Stage 12 is implemented and verified |
 | #511 | Closed | Reopen after redesigned Stage 13 is implemented on merged Settings architecture |
 
@@ -30,7 +30,7 @@ run their focused verification again.
 |---|---|---|---|
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 open and monitored |
 | [x] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 open and monitored |
-| [ ] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 closed |
+| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 open and monitored |
 | [ ] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 closed |
 | [ ] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 closed |
 
@@ -146,6 +146,9 @@ run their focused verification again.
 - Rebased the open Stage 10 and Stage 11-P01 branches, and this in-progress
   branch, onto `origin/main` at `5a91f582` as requested.
 - `git diff --check` passed.
+- Committed as `215b857a`, force-pushed with lease, and reopened #509 using the
+  same temporary-old-head GitHub workaround; the verified replacement head was
+  restored immediately and is monitored.
 
 ## Delivery Rules
 
