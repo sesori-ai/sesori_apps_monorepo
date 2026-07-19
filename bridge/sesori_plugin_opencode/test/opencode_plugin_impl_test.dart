@@ -169,6 +169,7 @@ void main() {
       expect(server.lastPromptBody?['agent'], equals('build'));
       expect(server.lastPromptBody?['variant'], equals('low'));
       expect(server.lastPromptBody?['model'], equals({"providerID": "openai", "modelID": "gpt-5.4"}));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
     });
 
     test("sendPrompt resolves tracked directory before sending", () async {
@@ -205,6 +206,7 @@ void main() {
       );
       addTearDown(plugin.dispose);
       await connected.future;
+      await server.waitForSseConnection();
       expect(plugin.currentWorkState, PluginWorkState.idle);
 
       await plugin.sendPrompt(
@@ -230,6 +232,7 @@ void main() {
       );
       addTearDown(plugin.dispose);
       await connected.future;
+      await server.waitForSseConnection();
 
       await plugin.sendPrompt(
         sessionId: "s-root",
@@ -292,10 +295,11 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
-    test("sendCommand resolves tracked directory before sending", () async {
+    test("sendCommand detaches with the tracked directory and marks the turn busy", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       await server.waitForSseConnection();
       server.requestLog.clear();
+      server.holdCommand = Completer<void>();
 
       await plugin.sendCommand(
         sessionId: "s-root",
@@ -318,6 +322,8 @@ void main() {
           "model": "openai/gpt-4.1",
         }),
       );
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      server.holdCommand!.complete();
     });
 
     test("getSessionMessages maps raw messages to plugin messages", () async {
@@ -835,6 +841,7 @@ class _FakeOpenCodeServer {
   Map<String, dynamic>? lastCommandBody;
   String? lastCommandDirectoryHeader;
   String? lastCreatedSessionParentId;
+  Completer<void>? holdCommand;
   int promptStatusCode = HttpStatus.ok;
   bool acceptSseConnections = true;
 
@@ -1029,6 +1036,9 @@ class _FakeOpenCodeServer {
         final rawBody = await utf8.decoder.bind(request).join();
         lastCommandBody = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
         lastCommandDirectoryHeader = request.headers.value("x-opencode-directory");
+        if (holdCommand case final hold?) {
+          await hold.future;
+        }
         await _sendJson(request.response, true);
         return;
       }

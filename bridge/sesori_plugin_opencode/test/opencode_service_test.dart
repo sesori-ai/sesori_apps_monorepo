@@ -606,6 +606,7 @@ void main() {
       expect(repository.lastPromptModel?.modelID, equals("gpt-5.4"));
       expect(session.id, equals("ses-new"));
       expect(session.projectID, equals("/repo"));
+      expect(tracker.hasAcceptedTurnEvidence, isTrue);
     });
 
     test("skips first prompt when create session parts are empty", () async {
@@ -633,6 +634,7 @@ void main() {
 
       expect(repository.lastPromptSessionId, isNull);
       expect(session.id, equals("ses-new"));
+      expect(tracker.hasAcceptedTurnEvidence, isFalse);
     });
 
     test("returns created session when first prompt send fails", () async {
@@ -664,6 +666,7 @@ void main() {
       expect(tracker.lastRegisteredSessionId, isNull);
       expect(repository.lastDeletedSessionId, equals("ses-new"));
       expect(repository.lastDeletedDirectory, equals("/repo/subdir"));
+      expect(tracker.hasAcceptedTurnEvidence, isFalse);
     });
   });
 
@@ -686,6 +689,7 @@ void main() {
       expect(repository.lastPromptDirectory, equals("/repo"));
       expect(repository.lastPromptParts, equals(parts));
       expect(repository.lastPromptVariant, isNull);
+      expect(tracker.hasAcceptedTurnEvidence, isTrue);
     });
   });
 
@@ -711,6 +715,7 @@ void main() {
       expect(repository.lastCommandAgent, equals("reviewer"));
       expect(repository.lastCommandVariant, equals("xhigh"));
       expect(repository.lastCommandModel, equals((providerID: "openai", modelID: "gpt-4.1")));
+      expect(tracker.hasAcceptedTurnEvidence, isFalse);
     });
 
     test("routes the artificial compact command to the summarize endpoint", () async {
@@ -810,6 +815,8 @@ void main() {
         completer.completeError(StateError("unknown command"));
 
         await expectLater(sendCommand(), throwsA(isA<StateError>()));
+
+        expect(service.tracker.hasAcceptedTurnEvidence, isFalse);
       });
 
       test("propagates a TimeoutException raised by the send chain within the window", () async {
@@ -839,6 +846,7 @@ void main() {
           lessThan(const Duration(seconds: 5)),
           reason: "dispatch must detach instead of awaiting the full run",
         );
+        expect(service.tracker.hasAcceptedTurnEvidence, isTrue);
 
         completer.complete();
       });

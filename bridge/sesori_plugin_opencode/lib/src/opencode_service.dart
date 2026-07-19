@@ -288,6 +288,9 @@ class OpenCodeService {
       directory: session.directory,
       parentId: session.parentID,
     );
+    if (parts.isNotEmpty) {
+      _markTurnAccepted(sessionId: session.id);
+    }
     return session;
   }
 
@@ -307,7 +310,7 @@ class OpenCodeService {
       variant: variant,
       model: model,
     );
-    tracker.markTurnAccepted(sessionId: sessionId);
+    _markTurnAccepted(sessionId: sessionId);
   }
 
   Future<void> sendCommand({
@@ -353,9 +356,11 @@ class OpenCodeService {
     // `onTimeout` (rather than catching [TimeoutException]) fires only when
     // the window itself elapses, so a genuine TimeoutException raised by the
     // send chain within the window still propagates as a dispatch failure.
+    var detached = false;
     await sendFuture.timeout(
       _commandDispatchFastFailWindow,
       onTimeout: () {
+        detached = true;
         unawaited(
           sendFuture.catchError((Object e, StackTrace s) {
             Log.w(
@@ -368,6 +373,13 @@ class OpenCodeService {
         );
       },
     );
+    if (detached) {
+      _markTurnAccepted(sessionId: sessionId);
+    }
+  }
+
+  void _markTurnAccepted({required String sessionId}) {
+    tracker.markTurnAccepted(sessionId: sessionId);
   }
 
   Future<void> _compact({

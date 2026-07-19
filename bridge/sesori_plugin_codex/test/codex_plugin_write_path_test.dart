@@ -79,6 +79,7 @@ void main() {
       final turnStartParams = fake.sentParamsFor("turn/start");
       expect(turnStartParams["threadId"], equals("t-new"));
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
     });
 
     test("a live event emitted during the first turn is scoped to the new session's directory", () async {
@@ -191,14 +192,170 @@ void main() {
       expect(methods, equals(["initialize", "thread/resume", "turn/start"]));
       expect(fake.sentParamsFor("thread/resume")["threadId"], equals("t-existing"));
       expect(fake.sentParamsFor("turn/start")["threadId"], equals("t-existing"));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
     });
+
+    test("sendCommand marks an accepted turn busy before notifications arrive", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-command"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-command"}),
+      ]);
+
+      await plugin.sendCommand(
+        sessionId: "t-command",
+        command: "review",
+        arguments: "recent changes",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("turn/start rejection does not mark the plugin busy", () async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.initialize();
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            "thread": {"id": "t-rejected"},
+          },
+        ),
+        const _Response(error: {"code": -32000, "message": "turn rejected"}),
+      ]);
+
+      await expectLater(
+        plugin.sendPrompt(
+          sessionId: "t-rejected",
+          parts: const [PluginPromptPart.text(text: "go on")],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(isA<CodexRpcException>()),
+      );
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("accepted turn remains busy through delayed start and clears on completion", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-delayed"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-delayed"}),
+      ]);
+
+      await plugin.sendPrompt(
+        sessionId: "t-delayed",
+        parts: const [PluginPromptPart.text(text: "go on")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      fake.pushNotification("turn/started", {
+        "threadId": "t-delayed",
+        "turn": {"id": "u-delayed"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      fake.pushNotification("turn/completed", {"threadId": "t-delayed"});
+      await idle.timeout(const Duration(seconds: 1));
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("completion received before turn/start response prevents stale provisional busy", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-early-complete"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-early-complete"}),
+      ]);
+      fake.onRequest = (method) {
+        if (method == "turn/start") {
+          fake.pushNotification("turn/completed", {"threadId": "t-early-complete"});
+        }
+      };
+
+      await plugin.sendPrompt(
+        sessionId: "t-early-complete",
+        parts: const [PluginPromptPart.text(text: "quick task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    for (final terminalNotification in ["error", "thread/status/changed"]) {
+      test("$terminalNotification clears provisional busy", () async {
+        fake.respondInOrder([
+          const _Response(result: _initOk),
+          const _Response(
+            result: {
+              "thread": {"id": "t-terminal"},
+            },
+          ),
+          const _Response(result: {"turnId": "u-terminal"}),
+        ]);
+
+        await plugin.sendPrompt(
+          sessionId: "t-terminal",
+          parts: const [PluginPromptPart.text(text: "go on")],
+          variant: null,
+          agent: null,
+          model: null,
+        );
+        expect(plugin.currentWorkState, PluginWorkState.busy);
+
+        final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+        fake.pushNotification(
+          terminalNotification,
+          terminalNotification == "error"
+              ? {
+                  "threadId": "t-terminal",
+                  "error": {"message": "turn failed"},
+                }
+              : {
+                  "threadId": "t-terminal",
+                  "status": {"type": "idle"},
+                },
+        );
+
+        await idle.timeout(const Duration(seconds: 1));
+        expect(plugin.currentWorkState, PluginWorkState.idle);
+      });
+    }
 
     test("sendPrompt does not re-resume a thread created in this run", () async {
       // createSession (no parts) loads the thread; a follow-up turn must reuse
       // it without a redundant resume round-trip.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-fresh"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-fresh"},
+          },
+        ),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -227,7 +384,11 @@ void main() {
       // the first turn/start fails, then resume + retry must recover it.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-dropped"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-dropped"},
+          },
+        ),
         const _Response(error: {"code": -32600, "message": "thread not found"}),
         const _Response(
           result: {
@@ -268,7 +429,11 @@ void main() {
       // unknown to this run, so the prompt resumes it before the turn.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-1"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-1"},
+          },
+        ),
         const _Response(result: {"turnId": "u-active"}),
         const _Response(result: null),
       ]);
@@ -358,13 +523,11 @@ void main() {
       await kaPlugin.healthCheck(); // connect → starts keepalive
       await Future<void>.delayed(const Duration(milliseconds: 90));
 
-      final firedWhileConnected =
-          kaFake.sentMethods.where((m) => m == "model/list").length;
+      final firedWhileConnected = kaFake.sentMethods.where((m) => m == "model/list").length;
       expect(firedWhileConnected, greaterThanOrEqualTo(2));
 
       await kaPlugin.dispose();
-      final afterDispose =
-          kaFake.sentMethods.where((m) => m == "model/list").length;
+      final afterDispose = kaFake.sentMethods.where((m) => m == "model/list").length;
       await Future<void>.delayed(const Duration(milliseconds: 60));
       // No further keepalives once disposed.
       expect(
@@ -517,7 +680,11 @@ void main() {
     test("sendPrompt without a variant sends no effort (codex uses its default)", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-default"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-default"},
+          },
+        ),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -535,7 +702,11 @@ void main() {
     test("createSession applies the variant on the first turn", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-new"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-new"},
+          },
+        ),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -594,8 +765,7 @@ class _FakeAppServer {
   /// `thread/name/updated` while `turn/start` is still in flight).
   void Function(String method)? onRequest;
 
-  List<String> get sentMethods =>
-      _sent.map((f) => f.method).toList(growable: false);
+  List<String> get sentMethods => _sent.map((f) => f.method).toList(growable: false);
 
   Map<String, dynamic> sentParamsFor(String method) {
     final frame = _sent.firstWhere((f) => f.method == method);
@@ -686,8 +856,7 @@ class _SinkAdapter implements WebSocketSink {
   void add(Object? data) => _controller.add(data);
 
   @override
-  void addError(Object error, [StackTrace? stackTrace]) =>
-      _controller.addError(error, stackTrace);
+  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
 
   @override
   Future<void> addStream(Stream<Object?> stream) async {

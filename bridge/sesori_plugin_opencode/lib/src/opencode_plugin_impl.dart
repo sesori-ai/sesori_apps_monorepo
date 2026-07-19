@@ -165,6 +165,12 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     }
   }
 
+  Future<T> _callAndSyncWorkState<T>(Future<T> Function() fn) async {
+    final result = await _call(fn);
+    _syncWorkState();
+    return result;
+  }
+
   @override
   String get id => "opencode";
 
@@ -272,7 +278,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
-    return _call(
+    return _callAndSyncWorkState(
       () => _service.createSession(
         directory: directory,
         parentSessionId: parentSessionId,
@@ -368,7 +374,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
-    await _call(
+    await _callAndSyncWorkState(
       () => _service.sendPrompt(
         sessionId: sessionId,
         parts: parts,
@@ -377,7 +383,6 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         model: model,
       ),
     );
-    _syncWorkState();
   }
 
   @override
@@ -388,8 +393,8 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
-  }) {
-    return _call(
+  }) async {
+    await _callAndSyncWorkState(
       () => _service.sendCommand(
         sessionId: sessionId,
         command: command,
