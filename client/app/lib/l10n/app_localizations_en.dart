@@ -240,11 +240,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListUntitled => 'Untitled session';
 
   @override
-  String sessionListUpdated(String timestamp) {
-    return 'Updated $timestamp';
-  }
-
-  @override
   String get sessionListRefreshSuccess => 'Sessions updated';
 
   @override
@@ -550,6 +545,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListRunning => 'Running';
+
+  @override
+  String get sessionListNewActivity => 'New activity';
 
   @override
   String get sessionListRunningRetrying => 'Running (retrying)';

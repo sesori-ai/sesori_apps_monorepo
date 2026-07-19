@@ -27,6 +27,9 @@ class PrStatusRow extends StatelessWidget {
     final mergeColor = _mergeColor(colors: context.prego.colors, status: pr.mergeableStatus) ?? stateColor;
 
     return Row(
+      // Hugs its content: the row sits inline among the session footer's other
+      // details, so it must not claim the whole line.
+      mainAxisSize: MainAxisSize.min,
       children: [
         Tooltip(
           message: _mergeTooltip(loc: loc, status: pr.mergeableStatus),
@@ -35,7 +38,7 @@ class PrStatusRow extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           loc.prLabel(pr.number),
-          style: context.prego.textTheme.textXs.medium,
+          style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
         ),
         const SizedBox(width: 6),
         Text(

@@ -193,6 +193,7 @@ void main() {
 
       final result = await repository.enrichSession(
         session: const Session(
+          branchName: null,
           id: "s1",
           pluginId: "fake",
           projectID: "p1",
@@ -249,6 +250,7 @@ void main() {
 
       final result = await repository.enrichSession(
         session: const Session(
+          branchName: null,
           id: "s1",
           pluginId: "fake",
           projectID: "p1",
@@ -319,6 +321,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            branchName: null,
             id: "s1",
             pluginId: "fake",
             projectID: "p1",
@@ -330,6 +333,7 @@ void main() {
             promptDefaults: null,
           ),
           Session(
+            branchName: null,
             id: "s2",
             pluginId: "fake",
             projectID: "p1",
@@ -2002,6 +2006,172 @@ void main() {
         repository.getSessionsForProject(projectId: worktree, start: null, limit: null),
         throwsA(isA<ProjectNotFoundException>()),
       );
+    });
+  });
+
+  group("the branch a session's workspace is on", () {
+    late _FakeBridgePlugin plugin;
+
+    setUp(() {
+      plugin = _FakeBridgePlugin();
+    });
+
+    /// A project whose sessions the plugin reports from [directory].
+    Future<SessionRepository> repositoryListing({
+      required AppDatabase db,
+      required String directory,
+      required List<String> sessionIds,
+    }) async {
+      await db.projectsDao.recordOpenedProject(
+        projectId: directory,
+        path: directory,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      plugin.sessionsByWorktree = {
+        directory: [
+          for (final id in sessionIds)
+            PluginSession(
+              id: id,
+              projectID: directory,
+              directory: directory,
+              parentID: null,
+              title: "Session $id",
+              time: null,
+            ),
+        ],
+      };
+      return SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+    }
+
+    /// A stored row for a plugin-reported session in [directory], carrying the
+    /// branch the bridge recorded for it.
+    Future<void> insertRowWithBranch({
+      required AppDatabase db,
+      required String sessionId,
+      required String directory,
+      required String branchName,
+    }) {
+      return db.sessionDao.insertSession(
+        sessionId: sessionId,
+        backendSessionId: sessionId,
+        projectId: directory,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: branchName,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: plugin.id,
+      );
+    }
+
+    test("names the branch a worktree session was cut on", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = await repositoryListing(db: db, directory: "/repo", sessionIds: ["s1"]);
+      await repository.insertStoredSession(
+        sessionId: "s1",
+        backendSessionId: "s1",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/repo/.worktrees/s1",
+        branchName: "sesori/s1",
+        baseBranch: "main",
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      expect(sessions.single.branchName, equals("sesori/s1"));
+    });
+
+    test("leaves the branch unknown when the row records none", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = await repositoryListing(db: db, directory: "/repo", sessionIds: ["s1"]);
+
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      expect(sessions.single.branchName, isNull);
+    });
+
+    test("enrichSessions names the stored branch for a plugin session, which carries none of its own", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = await repositoryListing(db: db, directory: "/repo", sessionIds: const []);
+      await insertRowWithBranch(db: db, sessionId: "s1", directory: "/repo", branchName: "main");
+
+      final enriched = await repository.enrichPluginSession(
+        pluginSession: const PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session s1",
+          time: null,
+        ),
+      );
+
+      expect(enriched.branchName, equals("main"));
+    });
+
+    test("names the branch for a live session event, which carries none of its own", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = await repositoryListing(db: db, directory: "/repo", sessionIds: const []);
+      await insertRowWithBranch(db: db, sessionId: "s1", directory: "/repo", branchName: "main");
+
+      final enriched = await repository.getCatalogSession(sessionId: "s1");
+
+      expect(enriched?.branchName, equals("main"));
+    });
+
+    test("shows every session sharing a branch the PR open on it", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = await repositoryListing(db: db, directory: "/repo", sessionIds: ["s1", "s2"]);
+      for (final sessionId in ["s1", "s2"]) {
+        await insertRowWithBranch(
+          db: db,
+          sessionId: sessionId,
+          directory: "/repo",
+          branchName: "ui/session-list-item",
+        );
+      }
+      await db.pullRequestDao.upsertPr(
+        pullRequest: const PullRequestDto(
+          projectId: "/repo",
+          branchName: "ui/session-list-item",
+          prNumber: 482,
+          url: "https://github.com/org/repo/pull/482",
+          title: "Redesign the session list item",
+          state: PrState.open,
+          mergeableStatus: PrMergeableStatus.mergeable,
+          reviewDecision: PrReviewDecision.approved,
+          checkStatus: PrCheckStatus.success,
+          lastCheckedAt: 1,
+          createdAt: 1,
+        ),
+      );
+
+      // The PR-to-session join runs in SQL over the stored branch_name.
+      final sessions = await repository.getSessionsForProject(projectId: "/repo", start: null, limit: null);
+
+      expect(sessions, hasLength(2));
+      expect(sessions.map((session) => session.pullRequest?.number), everyElement(equals(482)));
     });
   });
 }

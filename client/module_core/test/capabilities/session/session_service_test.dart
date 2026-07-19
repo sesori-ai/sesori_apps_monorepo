@@ -21,6 +21,7 @@ void main() {
 
     test("archiveSession sends cleanup options in request body", () async {
       const session = Session(
+        branchName: null,
         id: "s1",
         pluginId: legacyMissingPluginId,
         projectID: "p1",

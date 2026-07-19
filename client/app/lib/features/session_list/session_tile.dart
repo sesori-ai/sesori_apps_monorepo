@@ -15,7 +15,15 @@ import "pr_status_row.dart";
 /// snackbar, closing a deleted session's detail route).
 typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext context, Session session);
 
-/// A single session row.
+/// A single session row: a title line led by the session's state icon, over an
+/// indented footer with the workspace branch, pull-request status and when the
+/// session last changed.
+///
+/// The icon slot carries the liveness the old status line spelled out: the
+/// sparkle twinkles while an agent works and rests solid — the same "new
+/// activity" mark the project list uses — when the session has activity the
+/// user hasn't opened. Only states that need words keep them, as coloured
+/// footer labels.
 ///
 /// Tapping opens the session; long-pressing — or right-clicking with a mouse —
 /// opens its actions in a [PregoAnchorMenu] anchored to the row, which blurs
@@ -72,8 +80,7 @@ class SessionTile extends StatelessWidget {
   }
 
   Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
-    final loc = context.loc;
-    final updatedAt = session.time?.updated;
+    final prego = context.prego;
 
     return Dismissible(
       key: ValueKey(session.id),
@@ -83,121 +90,230 @@ class SessionTile extends StatelessWidget {
         return false;
       },
       background: ColoredBox(
-        color: context.prego.colors.bgSurface1,
+        color: prego.colors.bgSurface1,
         child: Align(
           alignment: Alignment.centerLeft,
           child: Padding(
             padding: const EdgeInsetsDirectional.only(start: 24),
             child: Icon(
               isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
-              color: context.prego.colors.textPrimary,
+              color: prego.colors.textPrimary,
             ),
           ),
         ),
       ),
-      // Right-click is the mouse counterpart of long-press; ListTile has no
-      // secondary-tap slot of its own, so a detector wraps it.
+      // Right-click is the mouse counterpart of long-press. The row announces
+      // itself as one button, so its two lines aren't separate nodes to swipe
+      // past.
       child: GestureDetector(
         onSecondaryTap: openMenu,
-        child: ListTile(
-          selected: selected,
-          selectedTileColor: context.prego.colors.bgBrandSolid.withValues(alpha: 0.08),
-          leading: CircleAvatar(
-            backgroundColor: context.prego.colors.bgBrandSolid,
-            child: Icon(
-              Icons.chat_outlined,
-              color: context.prego.colors.fgWhite,
-            ),
-          ),
-          title: Text(
-            session.title ?? loc.sessionListUntitled,
-            style: unseen ? context.prego.textTheme.textMd.bold : null,
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (updatedAt != null)
-                Text(
-                  loc.sessionListUpdated(context.formatTimestamp(updatedAt)),
-                  style: context.prego.textTheme.textXs.regular.copyWith(
-                    color: context.prego.colors.textSecondary,
+        child: MergeSemantics(
+          child: Semantics(
+            button: true,
+            // Ink rather than a plain colour so the tap ripple stays visible
+            // over the selected tint (a widget's own colour would cover it).
+            child: Ink(
+              color: selected ? prego.colors.bgBrandSolid.withValues(alpha: 0.08) : null,
+              child: InkWell(
+                onTap: onTap,
+                onLongPress: openMenu,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: PregoSpacing.xl,
+                    vertical: PregoSpacing.lg,
+                  ),
+                  decoration: BoxDecoration(
+                    // A zero-width side is a single physical pixel and costs
+                    // the row no height, so the divider doesn't push the list
+                    // off its pitch.
+                    border: Border(bottom: BorderSide(color: prego.colors.borderTertiary, width: 0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: PregoSpacing.xxs,
+                    children: [
+                      _titleRow(context: context),
+                      _footerRow(context: context),
+                    ],
                   ),
                 ),
-              if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
-              if (isActive)
-                _ActivityRow(
-                  awaitingInput: awaitingInput,
-                  isRetrying: isRetrying,
-                  backgroundTaskCount: backgroundTaskCount,
-                ),
-            ],
-          ),
-          isThreeLine:
-              [
-                updatedAt != null,
-                session.pullRequest != null,
-                isActive,
-              ].where((v) => v).length >=
-              2,
-          trailing: switch (unseen) {
-            true => Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.circle, size: 10, color: context.prego.colors.bgBrandSolid),
-                const SizedBox(width: 8),
-                const Icon(Icons.chevron_right),
-              ],
+              ),
             ),
-            false => const Icon(Icons.chevron_right),
-          },
-          onTap: onTap,
-          onLongPress: openMenu,
+          ),
         ),
       ),
     );
   }
+
+  Widget _titleRow({required BuildContext context}) {
+    final prego = context.prego;
+    return Row(
+      spacing: PregoSpacing.xxs,
+      children: [
+        // The slot is held open even without an icon, so titles line up down
+        // the list whatever each row's state is.
+        SizedBox(
+          width: _iconSlotWidth,
+          height: _titleLineHeight,
+          child: Center(child: _stateIcon(context: context)),
+        ),
+        Expanded(
+          child: Text(
+            session.title ?? context.loc.sessionListUntitled,
+            // Unopened activity leans on weight rather than a badge.
+            style: (unseen ? prego.textTheme.textMd.medium : prego.textTheme.textMd.regular).copyWith(
+              color: prego.colors.textPrimary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The session's state, told by the sparkle: twinkling while an agent works,
+  /// resting solid when there is activity the user hasn't opened, absent for a
+  /// quiet session. A live turn is the more informative of the two, so it wins;
+  /// unseen still shows through the title's weight.
+  Widget? _stateIcon({required BuildContext context}) {
+    if (isActive) {
+      // The twinkle is visual-only, so the merged row semantics carry the
+      // words the old "Running" label used to speak.
+      return Semantics(
+        label: context.loc.sessionListRunning,
+        child: PregoAiLoader(size: _stateIconSize, phase: PregoAiLoader.phaseFor(session.id)),
+      );
+    }
+    if (unseen) {
+      // Same contract as the project list: the resting sparkle is decorative,
+      // so the spoken "New activity" label carries the unread meaning that
+      // title weight alone does not announce.
+      return Semantics(
+        label: context.loc.sessionListNewActivity,
+        child: const PregoAiLoader(size: _stateIconSize, animate: false),
+      );
+    }
+    return null;
+  }
+
+  /// The row's second line, indented under the title: branch, pull request and
+  /// any state that needs words, with the last-updated time holding the end.
+  Widget _footerRow({required BuildContext context}) {
+    final prego = context.prego;
+    final updatedAt = session.time?.updated;
+
+    // The line box is held open even when there is nothing to say, so a quiet
+    // session doesn't shrink its row out of the list's pitch. A minimum rather
+    // than a fixed height: scaled-up accessibility text grows the row instead
+    // of being cropped to the 1x line box.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _footerLineHeight),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl),
+        child: Row(
+          spacing: PregoSpacing.md,
+          children: [
+            Expanded(
+              child: Row(
+                spacing: PregoSpacing.md,
+                children: [
+                  // The branch yields and ellipsizes when the line runs out of
+                  // width — branch names are the one unbounded detail — so it
+                  // can't push the rest out of the row.
+                  if (session.branchName case final branch?) Flexible(child: _BranchDetail(branch: branch)),
+                  if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
+                  if (_statusLabel(context: context) case final status?) Flexible(child: status),
+                ],
+              ),
+            ),
+            if (updatedAt != null)
+              Text(
+                context.formatTimestamp(updatedAt),
+                style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The states that still need words after the sparkle has said "working":
+  /// input wanted, a retry loop, tasks running behind the turn. A plain
+  /// running session carries no label — the twinkle is the signal.
+  Widget? _statusLabel({required BuildContext context}) {
+    final loc = context.loc;
+    final prego = context.prego;
+    final (label, color) = switch ((awaitingInput, isRetrying)) {
+      (true, _) => (loc.sessionListAwaitingInput, kStatusAmber),
+      (_, true) => (loc.sessionListRunningRetrying, prego.colors.fgErrorPrimary),
+      _ when backgroundTaskCount > 0 => (
+        loc.sessionListBackgroundTasks(backgroundTaskCount),
+        prego.colors.bgBrandSolid,
+      ),
+      _ => (null, null),
+    };
+    if (label == null || color == null) return null;
+
+    return Text(
+      label,
+      style: prego.textTheme.textXs.regular.copyWith(color: color),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
 }
 
-class _ActivityRow extends StatelessWidget {
-  final bool awaitingInput;
-  final bool isRetrying;
-  final int backgroundTaskCount;
+/// The branch the session's workspace is checked out on: a git-branch mark in
+/// a fixed slot, then the name.
+class _BranchDetail extends StatelessWidget {
+  const _BranchDetail({required this.branch});
 
-  const _ActivityRow({required this.awaitingInput, required this.isRetrying, required this.backgroundTaskCount});
+  final String branch;
 
   @override
   Widget build(BuildContext context) {
-    final loc = context.loc;
-    final color = switch ((awaitingInput, isRetrying)) {
-      (true, _) => kStatusAmber,
-      (_, true) => context.prego.colors.fgErrorPrimary,
-      _ => context.prego.colors.bgBrandSolid,
-    };
-    final label = switch ((awaitingInput, isRetrying)) {
-      (true, _) => loc.sessionListAwaitingInput,
-      (_, true) => loc.sessionListRunningRetrying,
-      _ => loc.sessionListRunning,
-    };
-
+    final prego = context.prego;
     return Row(
+      // Hugs its content: inside the footer's Flexible slot a max-sized Row
+      // would claim the whole allotment and strand its neighbours at the far
+      // end.
+      mainAxisSize: MainAxisSize.min,
+      spacing: _detailIconGap,
       children: [
-        Icon(Icons.circle, size: 8, color: color),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: context.prego.textTheme.textXs.regular.copyWith(color: color),
+        ExcludeSemantics(
+          child: SizedBox(
+            width: _iconSlotWidth,
+            child: Center(
+              child: Icon(TablerRegular.git_branch, size: _detailIconSize, color: prego.colors.textSecondary),
+            ),
+          ),
         ),
-        if (backgroundTaskCount > 0) ...[
-          Padding(
-            padding: const EdgeInsetsDirectional.symmetric(horizontal: 6),
-            child: Icon(Icons.circle, size: 3, color: color),
+        Flexible(
+          child: Text(
+            branch,
+            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          Text(
-            loc.sessionListBackgroundTasks(backgroundTaskCount),
-            style: context.prego.textTheme.textXs.regular.copyWith(color: color),
-          ),
-        ],
+        ),
       ],
     );
   }
 }
+
+/// The row's line boxes, from the type scale it renders: a 16/24 title over a
+/// 14/20 footer line.
+const double _titleLineHeight = 24;
+const double _footerLineHeight = 20;
+
+/// The state and detail icons sit in fixed slots so titles — and the footer
+/// details under them — line up with each other down the list.
+const double _iconSlotWidth = 20;
+
+const double _stateIconSize = 14;
+const double _detailIconSize = 14;
+
+/// The design pairs a footer icon with its text tighter than any spacing
+/// token.
+const double _detailIconGap = 3;

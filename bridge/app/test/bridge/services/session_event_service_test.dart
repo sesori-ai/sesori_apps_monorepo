@@ -187,6 +187,7 @@ void main() {
               time: const SessionTime(created: 10, updated: 20, archived: 30),
               pullRequest: null,
               promptDefaults: null,
+              branchName: null,
             ).toJson(),
           ),
         ),
@@ -610,6 +611,7 @@ void main() {
               time: const SessionTime(created: 1, updated: 100, archived: null),
               pullRequest: null,
               promptDefaults: null,
+              branchName: null,
             ).toJson(),
             titleChanged: false,
           ),
@@ -645,6 +647,7 @@ void main() {
               time: null,
               pullRequest: null,
               promptDefaults: null,
+              branchName: null,
             ).toJson(),
           ),
         ),
@@ -670,6 +673,7 @@ void main() {
           time: null,
           pullRequest: null,
           promptDefaults: null,
+          branchName: null,
         ).toJson(),
         titleChanged: false,
       );
@@ -722,6 +726,7 @@ Map<String, dynamic> _sessionInfo({
     time: const SessionTime(created: 10, updated: 20, archived: null),
     pullRequest: null,
     promptDefaults: null,
+    branchName: null,
   ).toJson();
 }
 

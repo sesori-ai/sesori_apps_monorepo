@@ -497,6 +497,7 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<Session> deleteSession({required String sessionId}) async => Session(
+    branchName: null,
     id: sessionId,
     pluginId: "fake",
     projectID: "",
@@ -539,6 +540,7 @@ class _FakeSessionRepository implements SessionRepository {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async => const Session(
+    branchName: null,
     id: "",
     pluginId: "fake",
     projectID: "",
@@ -686,6 +688,7 @@ class _FakeSessionRepository implements SessionRepository {
 
   @override
   Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
+    branchName: null,
     id: "",
     pluginId: "fake",
     projectID: "",

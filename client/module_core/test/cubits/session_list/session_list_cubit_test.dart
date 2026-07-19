@@ -1152,6 +1152,7 @@ void main() {
       "SSE session.created for same project adds to list",
       build: () {
         const existing = Session(
+          branchName: null,
           id: "s1",
           pluginId: legacyMissingPluginId,
           projectID: projectId,
@@ -1178,6 +1179,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
+                branchName: null,
                 id: "s2",
                 pluginId: legacyMissingPluginId,
                 projectID: projectId,
@@ -1358,6 +1360,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
+                branchName: null,
                 id: "child-1",
                 pluginId: legacyMissingPluginId,
                 projectID: projectId,
@@ -1598,6 +1601,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
+                branchName: null,
                 id: "foreign-session",
                 pluginId: legacyMissingPluginId,
                 projectID: "project-other",
@@ -1637,6 +1641,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionUpdated(
               info: Session(
+                branchName: null,
                 id: "foreign-session",
                 pluginId: legacyMissingPluginId,
                 projectID: "project-other",
@@ -1674,6 +1679,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionDeleted(
               info: Session(
+                branchName: null,
                 id: "foreign-session",
                 pluginId: legacyMissingPluginId,
                 projectID: "project-other",
@@ -1702,6 +1708,7 @@ void main() {
       build: () {
         const sessions = [
           Session(
+            branchName: null,
             id: "s1",
             pluginId: legacyMissingPluginId,
             projectID: "global",
@@ -1713,6 +1720,7 @@ void main() {
             promptDefaults: null,
           ),
           Session(
+            branchName: null,
             id: "s2",
             pluginId: legacyMissingPluginId,
             projectID: "global",

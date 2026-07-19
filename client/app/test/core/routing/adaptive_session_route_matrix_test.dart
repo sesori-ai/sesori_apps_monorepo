@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/widgets/session_split/empty_session_detail_panel.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
+import "package:sesori_mobile/features/session_list/session_tile.dart";
 
 import "../../helpers/test_helpers.dart";
 import "adaptive_session_router_test_harness.dart";
@@ -162,7 +163,7 @@ void main() {
           } else {
             expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
             expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
-            final tile = tester.widget<ListTile>(find.widgetWithText(ListTile, "Session One"));
+            final tile = tester.widget<SessionTile>(find.widgetWithText(SessionTile, "Session One"));
             expect(tile.selected, isFalse);
           }
         } finally {

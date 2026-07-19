@@ -42,6 +42,7 @@ void main() {
 
     test("round-trips non-null JSON", () {
       const session = Session(
+        branchName: null,
         id: "ses_1",
         pluginId: legacyMissingPluginId,
         projectID: "proj_1",

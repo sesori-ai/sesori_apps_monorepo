@@ -43,6 +43,12 @@ class PregoAiLoader extends StatefulWidget {
   /// shows the solid keyframe.
   final double phase;
 
+  /// A [phase] derived from [seed], for staggering a list of sparkles.
+  ///
+  /// Rows pass something stable about themselves (their id), so each row keeps
+  /// its offset across rebuilds while different rows twinkle out of step.
+  static double phaseFor(String seed) => (seed.hashCode % 100) / 100;
+
   @override
   State<PregoAiLoader> createState() => _PregoAiLoaderState();
 }

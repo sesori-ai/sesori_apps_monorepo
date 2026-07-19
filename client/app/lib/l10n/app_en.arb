@@ -195,14 +195,6 @@
     "description": "Headline on the sessions list when a project has no active sessions yet, inviting the user to begin."
   },
   "sessionListUntitled": "Untitled session",
-  "sessionListUpdated": "Updated {timestamp}",
-  "@sessionListUpdated": {
-    "placeholders": {
-      "timestamp": {
-        "type": "String"
-      }
-    }
-  },
   "sessionListRefreshSuccess": "Sessions updated",
   "sessionListRefreshFailed": "Could not refresh sessions",
   "sessionListErrorTitle": "Failed to load sessions",
@@ -336,7 +328,11 @@
   "loginPkceStateMissing": "Login session expired. Please start again.",
   "sessionListRunning": "Running",
   "@sessionListRunning": {
-    "description": "Label shown next to the green dot for sessions that are currently active"
+    "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"
+  },
+  "sessionListNewActivity": "New activity",
+  "@sessionListNewActivity": {
+    "description": "Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle"
   },
   "sessionListRunningRetrying": "Running (retrying)",
   "@sessionListRunningRetrying": {

@@ -271,6 +271,7 @@ class _EventProjectionBenchmark {
             ),
             pullRequest: null,
             promptDefaults: null,
+            branchName: null,
           ).toJson(),
           titleChanged: false,
         ),

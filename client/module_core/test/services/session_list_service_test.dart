@@ -47,5 +47,6 @@ Session _session({required String id, required String title, required int update
     time: SessionTime(created: 1, updated: updatedAt, archived: null),
     pullRequest: null,
     promptDefaults: null,
+    branchName: null,
   );
 }

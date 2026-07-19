@@ -263,6 +263,7 @@ void main() {
 
 Session _session() {
   return const Session(
+    branchName: null,
     id: "session-1",
     pluginId: legacyMissingPluginId,
     projectID: "project-1",

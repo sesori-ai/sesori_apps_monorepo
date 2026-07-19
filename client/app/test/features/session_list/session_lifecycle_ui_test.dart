@@ -9,6 +9,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
 import "package:sesori_mobile/features/session_list/session_list_panel.dart";
 import "package:sesori_mobile/features/session_list/session_list_screen.dart";
+import "package:sesori_mobile/features/session_list/session_tile.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -77,6 +78,7 @@ Widget _buildScreenApp({required Widget child}) {
 
 Session _testSessionWithPullRequest() {
   return const Session(
+    branchName: null,
     id: "session-pr-1",
     pluginId: "plugin-1",
     projectID: "project-1",
@@ -624,7 +626,7 @@ void main() {
         ),
       );
 
-      final tile = tester.widget<ListTile>(find.byType(ListTile));
+      final tile = tester.widget<SessionTile>(find.byType(SessionTile));
       expect(tile.selected, isTrue);
     });
   });
