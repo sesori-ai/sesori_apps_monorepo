@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** Stage 12 implemented and verified; delivery pending
+- **Status:** Stage 12 delivered; replacement stack rebuilding
 - **Base:** `origin/main` at `5a91f582`
 - **Current branch:** `setup-aware-plugin-lifecycle-s12-p01`
-- **Current stage:** Stage 12 delivery
-- **Next action:** commit and force-push the verified Stage 12 replacement,
-  reopen #510, and start its monitor
+- **Current stage:** Stage 13 rebuild
+- **Next action:** rebuild Stage 13 from rewritten Stage 12, verify it,
+  rewrite its branch, reopen #511, and start its monitor
 
 ## Closed First Implementation
 
@@ -18,7 +18,7 @@ The first unmerged stack was closed before redesign:
 | #507 | Reopened | Redesigned Stage 10 at `794e853e`; CI/review monitored |
 | #508 | Reopened | Redesigned Stage 11-P01 at `29472036`; CI/review monitored |
 | #509 | Reopened | Redesigned Stage 11-P02 at `c0b3ed11`; CI/review monitored |
-| #510 | Closed | Reopen after redesigned Stage 12 is implemented and verified |
+| #510 | Reopened | Redesigned Stage 12 at `c4104e73`; CI/review monitored |
 | #511 | Closed | Reopen after redesigned Stage 13 is implemented on merged Settings architecture |
 
 Old verification results are historical evidence only; replacement stages must
@@ -31,7 +31,7 @@ run their focused verification again.
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 open and monitored |
 | [x] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 open and monitored |
 | [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 open and monitored |
-| [ ] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 closed |
+| [x] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 open and monitored |
 | [ ] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 closed |
 
 ## Locked Redesign Deltas
@@ -185,6 +185,9 @@ run their focused verification again.
   lifecycle, handlers, catalog, hydration, Orchestrator, and debug tests passed
   (83 tests); affected module-core SSE tests and compilation passed.
 - `git diff --check` passed.
+- Committed as `c4104e73`, force-pushed with lease, and reopened #510 through
+  the temporary-old-head GitHub workaround; the verified replacement head was
+  restored immediately and is monitored.
 
 ## Delivery Rules
 
