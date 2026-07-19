@@ -323,6 +323,14 @@ class CatalogImportRepository {
     final observedSessions = observation.observedSessions;
     final derivedLaunchDirectory = observation.derivedLaunchDirectory;
     final importStartedAt = observation.importStartedAt;
+    void requireCurrentGeneration() {
+      _runtime.requireCurrentGeneration(
+        pluginId: pluginId,
+        generation: observation.generation,
+        operation: "importCatalog",
+      );
+    }
+
     return _sessionDao.attachedDatabase.transaction(() async {
       final currentProjects = await _projectsDao.getAllProjects();
       final tombstones = await _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
@@ -393,6 +401,7 @@ class CatalogImportRepository {
         importedProjectIdByPath[observation.path] = row.projectId;
       }
 
+      requireCurrentGeneration();
       await _projectsDao.upsertProjectRows(rows: projectRows);
       final reservedIds = await _sessionDao.getAllSessionIds();
 
@@ -426,15 +435,18 @@ class CatalogImportRepository {
         );
         sessionsImported++;
         if (sessionRows.length == _responsivenessBatchSize) {
+          requireCurrentGeneration();
           await _sessionDao.upsertSessionRows(rows: sessionRows);
           sessionRows = <SessionDto>[];
           await Future<void>.delayed(Duration.zero);
         }
       }
 
+      requireCurrentGeneration();
       await _sessionDao.upsertSessionRows(rows: sessionRows);
       final completedAt = DateTime.now().millisecondsSinceEpoch;
       if (control.hydrationMarkerRequested) {
+        requireCurrentGeneration();
         await _catalogHydrationsDao.recordCompletion(
           completion: CatalogHydrationDto(
             pluginId: pluginId,
@@ -443,6 +455,7 @@ class CatalogImportRepository {
           ),
         );
       }
+      requireCurrentGeneration();
       return (
         projectsImported: projectRows.length,
         sessionsImported: sessionsImported,

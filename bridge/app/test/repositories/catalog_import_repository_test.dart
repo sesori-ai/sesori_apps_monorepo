@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
@@ -644,6 +645,45 @@ void main() {
       await runtime.dispose();
     });
 
+    test("generation replacement inside the transaction rolls back catalog publication", () async {
+      final projectPath = "${directory.path}/stale-transaction-generation";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "stale-transaction-generation", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [_pluginSession(id: "stale-root", directory: projectPath)],
+        },
+        childrenByParent: const {},
+      );
+      final runtime = createTestPluginRuntime(plugins: [plugin]);
+      final projectsDao = _BlockingProjectsDao(database: database);
+      final repository = CatalogImportRepository(
+        runtime: runtime,
+        projectsDao: projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+      final publication = repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: false,
+              hydrationMarkerRequested: true,
+            ),
+          )
+          .drain<void>();
+      await projectsDao.readStarted.future;
+
+      runtime.generationCurrent = false;
+      projectsDao.release();
+
+      await expectLater(publication, throwsA(isA<PluginOperationException>()));
+      expect(await database.projectsDao.getAllProjects(), isEmpty);
+      expect(await database.sessionDao.getSessionsForPlugin(pluginId: plugin.id), isEmpty);
+      expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNull);
+      await runtime.dispose();
+    });
+
     test("a later session batch failure rolls the entire publication back", () async {
       final projectPath = "${directory.path}/rollback";
       final plugin = _NativeImportPlugin(
@@ -690,6 +730,22 @@ void main() {
       expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNull);
     });
   });
+}
+
+class _BlockingProjectsDao extends ProjectsDao {
+  _BlockingProjectsDao({required AppDatabase database}) : super(database);
+
+  final Completer<void> readStarted = Completer<void>();
+  final Completer<void> _readGate = Completer<void>();
+
+  void release() => _readGate.complete();
+
+  @override
+  Future<List<ProjectDto>> getAllProjects() async {
+    readStarted.complete();
+    await _readGate.future;
+    return super.getAllProjects();
+  }
 }
 
 class _RecordingSessionDao extends SessionDao {

@@ -181,6 +181,36 @@ void main() {
     expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
   });
 
+  test("a command-owned stop rejects force takeover until teardown finishes", () async {
+    final shutdownGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (generation) => _FakePlugin(
+        api: _FakeApi(),
+        shutdownGate: generation == 1 ? shutdownGate.future : null,
+      ),
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(() async {
+      if (!shutdownGate.isCompleted) shutdownGate.complete();
+      await runtime.dispose();
+    });
+    await runtime.startEager(pluginIds: const ["one"]);
+    final originalPlugin = factory.plugins.single;
+
+    final stopping = runtime.stop(pluginId: "one", intent: PluginStopIntent.safe);
+    final takeover = await runtime.restart(pluginId: "one", intent: PluginStopIntent.force);
+
+    expect(takeover, isA<PluginRuntimeCommandConflict>());
+    expect(factory.startCount, 1);
+    shutdownGate.complete();
+    expect(await stopping, isA<PluginRuntimeCommandApplied>());
+    expect(originalPlugin.shutdownInvocationCount, 1);
+    expect(runtime.snapshot.single.generation, 1);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+  });
+
   test("a force stop fences an operation that completes after shutdown", () async {
     final operationGate = Completer<void>();
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
@@ -486,6 +516,7 @@ class _FakePlugin implements BridgePlugin {
   final Future<void>? shutdownGate;
   final Object? shutdownError;
   Future<void>? _shutdownFuture;
+  int shutdownInvocationCount = 0;
   int shutdownCount = 0;
 
   @override
@@ -501,7 +532,10 @@ class _FakePlugin implements BridgePlugin {
   PluginDiagnostics describe() => const PluginDiagnostics(pluginId: "one", endpoint: null, details: {});
 
   @override
-  Future<void> shutdown({required Duration? budget}) => _shutdownFuture ??= _shutdown();
+  Future<void> shutdown({required Duration? budget}) {
+    shutdownInvocationCount++;
+    return _shutdownFuture ??= _shutdown();
+  }
 
   Future<void> _shutdown() async {
     shutdownCount++;
