@@ -2,11 +2,11 @@
 
 ## Plan State
 
-- **Status:** Stage 13 implemented and verified; final PR delivery in progress
+- **Status:** replacement stack delivered; all five PRs reopened and monitored
 - **Base:** `origin/main` at `5a91f582`
 - **Current branch:** `setup-aware-plugin-lifecycle-s13-p01`
-- **Current stage:** Stage 13 delivery
-- **Next action:** rewrite the Stage 13 branch, reopen #511, and start its monitor
+- **Current stage:** Stage 13 delivered
+- **Next action:** monitor CI and review activity across #507-#511
 
 ## Closed First Implementation
 
@@ -18,7 +18,7 @@ The first unmerged stack was closed before redesign:
 | #508 | Reopened | Redesigned Stage 11-P01 at `29472036`; CI/review monitored |
 | #509 | Reopened | Redesigned Stage 11-P02 at `c0b3ed11`; CI/review monitored |
 | #510 | Reopened | Redesigned Stage 12 plus CI fixture fix at `bf0433b8`; CI/review monitored |
-| #511 | Closed | Redesigned Stage 13 implemented and verified; ready to reopen |
+| #511 | Reopened | Redesigned Stage 13 at `167a3ee7`; CI/review monitored |
 
 Old verification results are historical evidence only; replacement stages must
 run their focused verification again.
@@ -31,7 +31,7 @@ run their focused verification again.
 | [x] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 open and monitored |
 | [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 open and monitored |
 | [x] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 open and monitored |
-| [x] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 ready to reopen |
+| [x] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 open and monitored |
 
 ## Locked Redesign Deltas
 
@@ -217,6 +217,9 @@ run their focused verification again.
   Plugins-copy regeneration was covered by 6 settings tests.
 - Architecture review approved the combined Stage 13 working-tree scope with
   no findings. `git diff --check` passed.
+- Committed as `167a3ee7`, force-pushed with lease, and reopened #511 through
+  the temporary-old-head GitHub workaround; the verified replacement head was
+  restored immediately and is monitored.
 
 ## Delivery Rules
 
