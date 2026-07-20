@@ -8,13 +8,11 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/git_diff_output_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_diff_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_diff_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
@@ -31,12 +29,11 @@ void main() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
       processRunner = ProcessRunner();
-      final sessionRepository = SessionRepository(
+      final sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       service = SessionDiffService(

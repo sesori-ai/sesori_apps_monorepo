@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
+import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/registered_bridges_store.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -119,6 +120,8 @@ class MockSessionService extends Mock implements SessionService {}
 class MockSessionRepository extends Mock implements SessionRepository {}
 
 class MockBridgeRepository extends Mock implements BridgeRepository {}
+
+class MockPluginRepository extends Mock implements PluginRepository {}
 
 class MockRegisteredBridgesStore extends Mock implements RegisteredBridgesStore {}
 

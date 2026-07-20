@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -14,6 +15,8 @@ import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/session_list_cubit_provider.dart";
 import "../../features/session_list/session_list_panel.dart";
 import "../../features/session_list/session_list_screen.dart";
+import "../../features/settings/notification_settings_screen.dart";
+import "../../features/settings/profile_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../extensions/build_context_x.dart";
@@ -27,6 +30,8 @@ const _newSessionRouteSegment = "new";
 const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _sessionDetailRouteSegment = ":$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
+const _settingsNotificationsRouteSegment = "notifications";
+const _settingsProfileRouteSegment = "profile";
 
 extension AppRouteToGoRoute on AppRouteDef {
   /// Returns the [GoRoute] for this route definition with an exhaustive
@@ -42,6 +47,19 @@ extension AppRouteToGoRoute on AppRouteDef {
         pageBuilder: (context, state) => _loginTransitionPage(
           context: context,
           state: state,
+          child: _buildScreen(context: context, state: state),
+        ),
+      );
+    }
+    // Settings presents as a full-screen modal (slides up from the bottom on
+    // iOS) closed via its X button rather than a back chevron.
+    if (this == AppRouteDef.settings) {
+      return GoRoute(
+        path: path,
+        routes: routes,
+        pageBuilder: (context, state) => MaterialPage<void>(
+          key: state.pageKey,
+          fullscreenDialog: true,
           child: _buildScreen(context: context, state: state),
         ),
       );
@@ -65,6 +83,8 @@ extension AppRouteToGoRoute on AppRouteDef {
       AppRouteLogin() => const LoginScreen(),
       AppRouteProjects() => const ProjectListScreen(),
       AppRouteSettings() => const SettingsScreen(),
+      AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
+      AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
         projectName: projectName,
@@ -72,6 +92,7 @@ extension AppRouteToGoRoute on AppRouteDef {
       AppRouteNewSession(:final projectId, :final projectName) => NewSessionScreen(
         projectId: projectId,
         projectName: projectName,
+        initialSupportsDedicatedWorktrees: null,
       ),
       AppRouteSessionDetail(
         :final projectId,
@@ -214,11 +235,18 @@ List<RouteBase> _buildAppRoutes({
           builder: (context, state, child) {
             final projectId = state.pathParameters[projectIdPathParam] ?? "";
             final projectName = state.uri.queryParameters[projectNameQueryParam];
+            final supportsDedicatedWorktrees =
+                switch (state.uri.queryParameters[supportsDedicatedWorktreesQueryParam]) {
+                  "true" => true,
+                  "false" => false,
+                  _ => null,
+                };
             final selectedSessionId = state.pathParameters[sessionIdPathParam];
 
             return SessionListCubitProvider(
               key: ValueKey("session-list-cubit-$projectId"),
               projectId: projectId,
+              initialSupportsDedicatedWorktrees: supportsDedicatedWorktrees,
               child: SessionSplitShell(
                 list: _SessionListPane(
                   projectId: projectId,
@@ -268,7 +296,13 @@ List<RouteBase> _buildAppRoutes({
                       context: context,
                       state: state,
                       pageKey: state.pageKey,
-                      child: NewSessionScreen(projectId: route.projectId, projectName: route.projectName),
+                      child: NewSessionScreen(
+                        projectId: route.projectId,
+                        projectName: route.projectName,
+                        initialSupportsDedicatedWorktrees: context
+                            .read<SessionListCubit>()
+                            .initialSupportsDedicatedWorktrees,
+                      ),
                     );
                   },
                 ),
@@ -329,7 +363,20 @@ List<RouteBase> _buildAppRoutes({
         ),
       ],
     ),
-    AppRouteDef.settings.toGoRoute(),
+    AppRouteDef.settings.toGoRoute(
+      routes: [
+        GoRoute(
+          path: _settingsNotificationsRouteSegment,
+          builder: (context, state) =>
+              AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
+        ),
+        GoRoute(
+          path: _settingsProfileRouteSegment,
+          builder: (context, state) =>
+              AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
+        ),
+      ],
+    ),
   ];
 }
 

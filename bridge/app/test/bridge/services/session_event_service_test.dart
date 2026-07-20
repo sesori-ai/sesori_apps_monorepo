@@ -9,7 +9,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
 
@@ -25,16 +24,15 @@ void main() {
     setUp(() {
       database = createTestDatabase();
       plugin = _EventPlugin();
-      repository = SessionRepository(
+      repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
-      eventTracker = SessionEventTracker(maxPendingEntries: 1024);
+      eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
       service = SessionEventService(
         sessionRepository: repository,
         sessionMutationDispatcher: mutationDispatcher,

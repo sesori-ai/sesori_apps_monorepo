@@ -1,9 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgeDerivedProjectsPluginApi, BridgePluginApi, Log, NativeProjectsPluginApi;
-
-import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart";
-import "../../api/database/database.dart";
 import "session_unseen_calculator.dart";
 
 /// The unseen-relevant timestamps for a single session, plus its project id.
@@ -18,30 +13,18 @@ typedef UnseenRow = ({
 /// timestamps (`last_activity_at`, `last_seen_at`, `last_user_message_at`),
 /// including removing rows for sessions that no longer exist.
 ///
-/// Writes are intentionally UPDATE-only for the activity/seen mutators. New
-/// root sessions get a row via [ensureRootSessionActivity]; project-level
-/// aggregation decides that durable child rows do not contribute independently.
+/// Writes are intentionally UPDATE-only for the activity/seen mutators;
+/// project-level aggregation decides that durable child rows do not contribute
+/// independently.
 class SessionUnseenRepository {
   final SessionDao _sessionDao;
-  final ProjectsDao _projectsDao;
-  final AppDatabase _db;
   final SessionUnseenCalculator _calculator;
-
-  /// The active plugin determines both ownership and project-path semantics for
-  /// session rows this repository creates ([ensureRootSessionActivity]).
-  final BridgePluginApi _plugin;
 
   SessionUnseenRepository({
     required SessionDao sessionDao,
-    required ProjectsDao projectsDao,
-    required AppDatabase db,
     required SessionUnseenCalculator calculator,
-    required BridgePluginApi plugin,
   }) : _sessionDao = sessionDao,
-       _projectsDao = projectsDao,
-       _db = db,
-       _calculator = calculator,
-       _plugin = plugin;
+       _calculator = calculator;
 
   /// Returns the unseen timestamps + project id for [sessionId], or null when
   /// the session has no persisted row.
@@ -94,95 +77,11 @@ class SessionUnseenRepository {
     return _sessionDao.forceUnseen(sessionId: sessionId, activityAt: at);
   }
 
-  /// Ensures a ROOT session row exists for [sessionId] and stamps its activity
-  /// at [activityAt] so a brand-new session is immediately unseen even before
-  /// any list fetch. When [advanceSeen] is true (a phone is already viewing it),
-  /// the seen timestamp is advanced too so it does not bold under the watcher.
-  /// When [isUserMessage] is true, the user-message marker is stamped so the
-  /// user's own first message doesn't bold the session.
-  ///
-  /// [createdAt] is the row-creation guard timestamp and MUST be bridge-local:
-  /// the vanished-session reconcile compares it against a locally-captured
-  /// fetch-start time to protect rows created during an in-flight fetch, so a
-  /// backend-domain value here (skewed behind the local clock) could get a
-  /// freshly-created session's row wrongly reconcile-deleted. [activityAt] may
-  /// live in the backend's clock domain. [sessionDirectory] is persisted as the
-  /// project path only when the active plugin owns native projects; for a
-  /// bridge-derived project, [projectId] is already the owning project path.
-  /// Wrapped in a transaction so the project FK cannot fire.
-  Future<void> ensureRootSessionActivity({
-    required String sessionId,
-    required String projectId,
-    required String sessionDirectory,
-    required int createdAt,
-    required int activityAt,
-    required bool advanceSeen,
-    required bool isUserMessage,
-  }) async {
-    var projectPath = sessionDirectory;
-    switch (_plugin) {
-      case final NativeProjectsPluginApi plugin:
-        try {
-          final projects = await plugin.getProjects();
-          projectPath =
-              projects.where((project) => project.id == projectId).map((project) => project.directory).firstOrNull ??
-              sessionDirectory;
-        } catch (error, stackTrace) {
-          Log.w("failed to resolve native project root for $projectId; using session directory", error, stackTrace);
-        }
-      case BridgeDerivedProjectsPluginApi():
-        projectPath = projectId;
-    }
-    await _db.transaction(() async {
-      await _projectsDao.insertProjectIfMissing(projectId: projectId, path: projectPath);
-      await _sessionDao.insertSessionsIfMissing(
-        pluginId: _plugin.id,
-        sessions: [
-          (
-            sessionId: sessionId,
-            backendSessionId: sessionId,
-            projectId: projectId,
-            directory: sessionDirectory,
-            createdAt: createdAt,
-            archivedAt: null,
-          ),
-        ],
-      );
-      await _sessionDao.setActivityTimestamps(
-        sessionId: sessionId,
-        activityAt: activityAt,
-        userMessageAt: isUserMessage ? activityAt : null,
-        seenAt: advanceSeen ? activityAt : null,
-      );
-    });
-  }
-
   /// Removes the persisted session row (used when a session is deleted live so
   /// a stale unseen row can't keep its project's aggregate bold). No-op if the
   /// row doesn't exist.
   Future<void> deleteSession({required String sessionId}) {
     return _sessionDao.deleteSession(sessionId: sessionId);
-  }
-
-  /// Removes the rows of sessions that vanished from the authoritative
-  /// complete session list for [projectId] (deleted while the bridge was
-  /// offline / backend-side without a `session.deleted` event), returning the
-  /// deleted ids. Rows created at/after [createdBefore] (the time the fetch
-  /// started) are kept — they are legitimately absent from the stale snapshot.
-  /// Scoped to the active plugin: the list is only authoritative for the
-  /// plugin that produced it, so rows another plugin recorded for the same
-  /// project are never reconciled away.
-  Future<List<String>> deleteSessionsNotIn({
-    required String projectId,
-    required List<String> keepSessionIds,
-    required int createdBefore,
-  }) {
-    return _sessionDao.deleteSessionsForProjectNotIn(
-      projectId: projectId,
-      keepSessionIds: keepSessionIds,
-      createdBefore: createdBefore,
-      pluginId: _plugin.id,
-    );
   }
 
   /// Whether [sessionId] currently has unseen changes.

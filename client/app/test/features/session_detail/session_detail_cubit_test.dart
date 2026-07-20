@@ -84,7 +84,11 @@ void main() {
       delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
       when(() => mockProjectRepository.findSessionContext(sessionId: any(named: "sessionId"))).thenAnswer(
-        (_) async => const ProjectSessionContext(projectId: "test-project", sessionTitle: null),
+        (_) async => const ProjectSessionContext(
+          projectId: "test-project",
+          pluginId: "plugin-1",
+          sessionTitle: null,
+        ),
       );
 
       _stubAllDefaults(

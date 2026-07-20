@@ -13,6 +13,8 @@ import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
 import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
+import "package:sesori_mobile/features/settings/notification_settings_screen.dart";
+import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/features/splash/splash_screen.dart";
 
@@ -35,7 +37,11 @@ void main() {
     });
 
     test("substitutes projectId for sessions", () {
-      final result = const AppRoute.sessions(projectId: "proj-123", projectName: null).buildPath();
+      final result = const AppRoute.sessions(
+        projectId: "proj-123",
+        projectName: null,
+        supportsDedicatedWorktrees: null,
+      ).buildPath();
       expect(result, "/projects/proj-123/sessions");
     });
 
@@ -51,13 +57,21 @@ void main() {
     });
 
     test("includes projectName as query param for sessions", () {
-      final result = const AppRoute.sessions(projectId: "proj-123", projectName: "My Project").buildPath();
+      final result = const AppRoute.sessions(
+        projectId: "proj-123",
+        projectName: "My Project",
+        supportsDedicatedWorktrees: null,
+      ).buildPath();
       expect(result, contains("/projects/proj-123/sessions?"));
       expect(result, contains("name=My+Project"));
     });
 
     test("omits query string when no query params set", () {
-      final result = const AppRoute.sessions(projectId: "proj-123", projectName: null).buildPath();
+      final result = const AppRoute.sessions(
+        projectId: "proj-123",
+        projectName: null,
+        supportsDedicatedWorktrees: null,
+      ).buildPath();
       expect(result, "/projects/proj-123/sessions");
       expect(result, isNot(contains("?")));
     });
@@ -133,9 +147,30 @@ void main() {
       expect(widget, isA<ProjectListScreen>());
     });
 
-    test("settings route builds SettingsScreen", () {
-      final widget = AppRouteDef.settings.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
-      expect(widget, isA<SettingsScreen>());
+    test("settings route builds SettingsScreen inside a fullscreen-dialog page", () {
+      final page = AppRouteDef.settings.toGoRoute().pageBuilder!(_FakeBuildContext(), _FakeGoRouterState());
+      expect(page, isA<MaterialPage<void>>());
+      final materialPage = page as MaterialPage<void>;
+      expect(materialPage.fullscreenDialog, isTrue);
+      expect(materialPage.child, isA<SettingsScreen>());
+    });
+
+    test("settings child routes build the notifications and profile screens", () {
+      final settingsRoute =
+          buildAppRoutes().whereType<GoRoute>().singleWhere((route) => route.path == AppRouteDef.settings.path);
+      final children = settingsRoute.routes.whereType<GoRoute>().toList();
+
+      expect(children.map((route) => route.path), equals(["notifications", "profile"]));
+      expect(children[0].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<NotificationSettingsScreen>());
+      expect(children[1].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<ProfileScreen>());
+      expect(
+        _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[0].path),
+        AppRouteDef.settingsNotifications.path,
+      );
+      expect(
+        _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[1].path),
+        AppRouteDef.settingsProfile.path,
+      );
     });
 
     test("newSession route builds NewSessionScreen", () {
@@ -190,6 +225,8 @@ void main() {
           AppRouteDef.sessionDetail.path,
           AppRouteDef.sessionDiffs.path,
           AppRouteDef.settings.path,
+          AppRouteDef.settingsNotifications.path,
+          AppRouteDef.settingsProfile.path,
         ]),
       );
     });
@@ -353,7 +390,11 @@ void main() {
         stack: RouteStack(
           paths: [
             const AppRoute.projects().buildPath(),
-            const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
+            const AppRoute.sessions(
+              projectId: "proj_1",
+              projectName: null,
+              supportsDedicatedWorktrees: null,
+            ).buildPath(),
             const AppRoute.sessionDetail(
               projectId: "proj_1",
               projectName: null,
@@ -370,7 +411,11 @@ void main() {
       expect(
         pushCalls,
         equals([
-          const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
+          const AppRoute.sessions(
+            projectId: "proj_1",
+            projectName: null,
+            supportsDedicatedWorktrees: null,
+          ).buildPath(),
           const AppRoute.sessionDetail(
             projectId: "proj_1",
             projectName: null,

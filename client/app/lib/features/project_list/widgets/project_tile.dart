@@ -307,7 +307,11 @@ class ProjectTile extends StatelessWidget {
     }
     context.read<ProjectListCubit>().setActiveProject(project);
     context.pushRoute(
-      AppRoute.sessions(projectId: project.id, projectName: displayName),
+      AppRoute.sessions(
+        projectId: project.id,
+        projectName: displayName,
+        supportsDedicatedWorktrees: project.supportsDedicatedWorktrees,
+      ),
     );
   }
 }

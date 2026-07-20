@@ -21,4 +21,44 @@ void main() {
       expect(BridgeRuntimeRunner.isLoopbackControlUrl(Uri.parse("https://localhost:9")), isFalse);
     });
   });
+
+  group("BridgeRuntimeRunner.shouldRunAppOnboarding", () {
+    test("runs only for an interactive standalone start with an available plugin", () {
+      expect(
+        BridgeRuntimeRunner.shouldRunAppOnboarding(
+          isSupervised: false,
+          isInteractive: true,
+          hasAvailablePlugins: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test("skips supervised, noninteractive, and all-plugin-unavailable starts", () {
+      expect(
+        BridgeRuntimeRunner.shouldRunAppOnboarding(
+          isSupervised: true,
+          isInteractive: true,
+          hasAvailablePlugins: true,
+        ),
+        isFalse,
+      );
+      expect(
+        BridgeRuntimeRunner.shouldRunAppOnboarding(
+          isSupervised: false,
+          isInteractive: false,
+          hasAvailablePlugins: true,
+        ),
+        isFalse,
+      );
+      expect(
+        BridgeRuntimeRunner.shouldRunAppOnboarding(
+          isSupervised: false,
+          isInteractive: true,
+          hasAvailablePlugins: false,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

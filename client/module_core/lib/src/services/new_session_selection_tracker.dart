@@ -3,9 +3,10 @@ import "package:sesori_shared/sesori_shared.dart";
 
 /// A snapshot of the new-session composer's agent / model / variant selection.
 typedef NewSessionSelection = ({String? agent, AgentModel? agentModel});
+typedef _RevisionedSelection = ({NewSessionSelection selection, int revision});
 
 /// Tracks the new-session composer's deliberately chosen agent / model /
-/// variant (reasoning effort) per project, exposing the latest snapshot.
+/// variant (reasoning effort) per project and plugin, exposing the latest snapshot.
 ///
 /// The selection counterpart of the unsent prompt *text* draft: it lets a model
 /// or effort the user picked survive navigating away from the new-session
@@ -22,16 +23,44 @@ typedef NewSessionSelection = ({String? agent, AgentModel? agentModel});
 /// its draft).
 @lazySingleton
 class NewSessionSelectionTracker {
-  final Map<String, NewSessionSelection> _selections = <String, NewSessionSelection>{};
+  final Map<({String projectId, String pluginId}), _RevisionedSelection> _selections =
+      <({String projectId, String pluginId}), _RevisionedSelection>{};
+  int _nextRevision = 0;
 
-  /// The saved selection for [projectId], or `null` if none.
-  NewSessionSelection? read({required String projectId}) => _selections[projectId];
+  /// The saved selection for [projectId] and [pluginId], or `null` if none.
+  NewSessionSelection? read({required String projectId, required String pluginId}) =>
+      _selections[(projectId: projectId, pluginId: pluginId)]?.selection;
 
-  /// Saves the composer [agent]/[agentModel] selection for [projectId].
-  void write({required String projectId, required String? agent, required AgentModel? agentModel}) {
-    _selections[projectId] = (agent: agent, agentModel: agentModel);
+  /// The revision of the latest write for [projectId] and [pluginId].
+  int? currentRevision({required String projectId, required String pluginId}) =>
+      _selections[(projectId: projectId, pluginId: pluginId)]?.revision;
+
+  /// Saves the composer [agent]/[agentModel] selection for [projectId] and [pluginId].
+  void write({
+    required String projectId,
+    required String pluginId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) {
+    _selections[(projectId: projectId, pluginId: pluginId)] = (
+      selection: (agent: agent, agentModel: agentModel),
+      revision: ++_nextRevision,
+    );
   }
 
-  /// Drops any saved selection for [projectId] (e.g. after the session is created).
-  void clear({required String projectId}) => _selections.remove(projectId);
+  /// Drops the saved selection only when it is still the write at [revision].
+  void clearIfRevision({
+    required String projectId,
+    required String pluginId,
+    required int? revision,
+  }) {
+    final key = (projectId: projectId, pluginId: pluginId);
+    if (_selections[key]?.revision == revision) {
+      _selections.remove(key);
+    }
+  }
+
+  /// Drops the saved selection for [projectId] and [pluginId].
+  void clear({required String projectId, required String pluginId}) =>
+      _selections.remove((projectId: projectId, pluginId: pluginId));
 }

@@ -23,6 +23,14 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     return select(projectsTable).get();
   }
 
+  /// Upserts the supplied rows without applying merge or import policy.
+  Future<void> upsertProjectRows({required List<ProjectDto> rows}) async {
+    if (rows.isEmpty) return;
+    await batch((batch) {
+      batch.insertAllOnConflictUpdate(projectsTable, rows);
+    });
+  }
+
   /// Returns the stored row for [projectId], or null when none exists.
   Future<ProjectDto?> getProject({required String projectId}) async {
     return (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
@@ -59,6 +67,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   Future<void> recordOpenedProject({
     required String projectId,
     required String path,
+    required String? displayName,
     required int createdAt,
     required int updatedAt,
   }) async {
@@ -66,6 +75,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
       ProjectsTableCompanion.insert(
         projectId: projectId,
         path: path,
+        displayName: Value(displayName),
         createdAt: Value(createdAt),
         updatedAt: Value(updatedAt),
         projectionUpdatedAt: updatedAt,

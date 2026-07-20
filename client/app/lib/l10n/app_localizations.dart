@@ -397,6 +397,48 @@ abstract class AppLocalizations {
   /// **'Log Out'**
   String get settingsLogout;
 
+  /// No description provided for @settingsSectionAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get settingsSectionAccount;
+
+  /// No description provided for @settingsNotificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsNotificationsTitle;
+
+  /// No description provided for @settingsProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get settingsProfileTitle;
+
+  /// No description provided for @settingsClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close settings'**
+  String get settingsClose;
+
+  /// App version footer at the bottom of the settings screen
+  ///
+  /// In en, this message translates to:
+  /// **'v{version} ({buildNumber})'**
+  String settingsVersion(String version, String buildNumber);
+
+  /// No description provided for @notificationSectionAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Notifications'**
+  String get notificationSectionAi;
+
+  /// No description provided for @notificationSectionSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get notificationSectionSystem;
+
   /// No description provided for @notificationCategoryAiInteraction.
   ///
   /// In en, this message translates to:
@@ -1285,6 +1327,48 @@ abstract class AppLocalizations {
   /// **'Project discovered'**
   String get projectDiscovered;
 
+  /// No description provided for @addProjectEnableGitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Git tracking?'**
+  String get addProjectEnableGitTitle;
+
+  /// No description provided for @addProjectEnableGitBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori will commit all non-ignored files to enable history and parallel sessions with dedicated worktrees.'**
+  String get addProjectEnableGitBody;
+
+  /// No description provided for @addProjectContinueWithoutGit.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Without Git'**
+  String get addProjectContinueWithoutGit;
+
+  /// No description provided for @addProjectEnableGit.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Git'**
+  String get addProjectEnableGit;
+
+  /// No description provided for @addProjectGitSetupIncompleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project opened, Git setup incomplete'**
+  String get addProjectGitSetupIncompleteTitle;
+
+  /// No description provided for @addProjectGitSetupIncompleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The folder is open and ready for sessions, but Sesori could not finish Git setup. Git files may have been created. Dedicated worktrees stay unavailable until the repository has an initial commit.'**
+  String get addProjectGitSetupIncompleteBody;
+
+  /// No description provided for @addProjectGitSetupIncompleteAcknowledge.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand'**
+  String get addProjectGitSetupIncompleteAcknowledge;
+
   /// No description provided for @projectCreateFailed.
   ///
   /// In en, this message translates to:
@@ -1422,6 +1506,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Creates a dedicated git worktree and branch for this session'**
   String get newSessionDedicatedWorktreeDescription;
+
+  /// No description provided for @newSessionPluginChooserLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Coding tool'**
+  String get newSessionPluginChooserLabel;
+
+  /// No description provided for @newSessionPluginDegraded.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention'**
+  String get newSessionPluginDegraded;
+
+  /// No description provided for @newSessionPluginUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get newSessionPluginUnavailable;
+
+  /// No description provided for @newSessionPluginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get newSessionPluginFailed;
+
+  /// No description provided for @newSessionPluginLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading coding tool options'**
+  String get newSessionPluginLoading;
 
   /// No description provided for @sessionListDeleteWorktreeCheckbox.
   ///

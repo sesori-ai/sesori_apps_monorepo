@@ -84,6 +84,12 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   final ManagedRuntimeProvisionService? _provisionService;
   final http.Client Function()? _probeClientFactory;
 
+  /// Backend-namespaced ownership filename in shared runtime storage.
+  static const String ownershipFileName = "codex-processes.json";
+
+  /// Backend-namespaced start intent filename in shared runtime storage.
+  static const String startIntentFileName = "codex-start-intent.json";
+
   /// The codex CLI options the bridge registers when this plugin is selected.
   static const List<PluginOption> cliOptions = [
     PluginValueOption.integer(
@@ -109,6 +115,9 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
 
   @override
   String get displayName => "Codex";
+
+  @override
+  PluginStateStorage get stateStorage => PluginStateStorage.legacySharedRuntime;
 
   @override
   List<PluginOption> get options => cliOptions;
@@ -243,7 +252,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       ownershipRepository: HostJsonRuntimeOwnershipRepository<CodexOwnershipRecord>(
         store: host.store,
         mapper: mapper,
-        fileName: "codex-processes.json",
+        fileName: ownershipFileName,
         clock: host.clock,
       ),
       mapper: mapper,
@@ -252,7 +261,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       clock: host.clock,
       runtimeId: "codex",
       gracefulShutdownWait: codexGracefulShutdownWait,
-      intentStore: RuntimeStartIntentStore(store: host.store, fileName: "codex-start-intent.json"),
+      intentStore: RuntimeStartIntentStore(store: host.store, fileName: startIntentFileName),
     );
 
     final RuntimePortPolicy portPolicy;

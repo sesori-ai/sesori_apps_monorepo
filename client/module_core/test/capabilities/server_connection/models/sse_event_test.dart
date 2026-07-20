@@ -13,4 +13,19 @@ void main() {
 
     expect(event.sessionId, equals("session-123"));
   });
+
+  test("catalogImportProgress is a global non-session event", () {
+    final event = SseEvent(
+      data: const SesoriSseEvent.catalogImportProgress(
+        progress: CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 2,
+          sessionsSeen: 5,
+        ),
+      ),
+    );
+
+    expect(event.sessionId, isNull);
+    expect(event.data, isNot(isA<SesoriSessionEvent>()));
+  });
 }

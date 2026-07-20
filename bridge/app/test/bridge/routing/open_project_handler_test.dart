@@ -6,8 +6,10 @@ import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_valida
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/open_project_handler.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
+import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -23,6 +25,7 @@ void main() {
     late AppDatabase db;
     late ProjectRepository projectRepository;
     late ProjectActivityService projectActivityService;
+    late _ConfigurableGitCliApi gitCliApi;
     late OpenProjectHandler handler;
     late Directory tempDir;
     late File tempFile;
@@ -32,8 +35,13 @@ void main() {
       db = createTestDatabase();
       tempDir = Directory.systemTemp.createTempSync("sesori_discover_test_");
       tempFile = File("${tempDir.path}/test_file.txt")..createSync();
-      projectRepository = ProjectRepository(
-        gitCliApi: FakeGitCliApi(),
+      gitCliApi = _ConfigurableGitCliApi();
+      final filesystemRepository = FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+      projectRepository = singlePluginProjectRepository(
+        gitCliApi: gitCliApi,
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -45,9 +53,15 @@ void main() {
         now: () => 1234,
       );
       handler = OpenProjectHandler(
-        filesystemRepository: FilesystemRepository(
-          filesystemApi: const FilesystemApi(),
-          permissionValidator: const FilesystemPermissionValidator(),
+        filesystemRepository: filesystemRepository,
+        projectInitializationService: ProjectInitializationService(
+          worktreeRepository: WorktreeRepository(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            gitApi: gitCliApi,
+            operationalPlugins: {plugin.id: plugin},
+          ),
+          filesystemRepository: filesystemRepository,
         ),
         projectActivityService: projectActivityService,
       );
@@ -80,7 +94,7 @@ void main() {
       await expectLater(
         () => handler.handle(
           makeRequest("POST", "/project/open"),
-          body: const ProjectPathRequest(path: ""),
+          body: const OpenProjectRequest(path: ""),
           pathParams: {},
           queryParams: {},
           fragment: null,
@@ -93,7 +107,7 @@ void main() {
       await expectLater(
         () => handler.handle(
           makeRequest("POST", "/project/open"),
-          body: const ProjectPathRequest(path: "relative/path"),
+          body: const OpenProjectRequest(path: "relative/path"),
           pathParams: {},
           queryParams: {},
           fragment: null,
@@ -106,7 +120,7 @@ void main() {
       await expectLater(
         () => handler.handle(
           makeRequest("POST", "/project/open"),
-          body: const ProjectPathRequest(path: "/tmp/../etc"),
+          body: const OpenProjectRequest(path: "/tmp/../etc"),
           pathParams: {},
           queryParams: {},
           fragment: null,
@@ -123,7 +137,7 @@ void main() {
       await expectLater(
         () => handler.handle(
           makeRequest("POST", "/project/open"),
-          body: ProjectPathRequest(path: nonExistent),
+          body: OpenProjectRequest(path: nonExistent),
           pathParams: {},
           queryParams: {},
           fragment: null,
@@ -136,13 +150,176 @@ void main() {
       await expectLater(
         () => handler.handle(
           makeRequest("POST", "/project/open"),
-          body: ProjectPathRequest(path: tempFile.path),
+          body: OpenProjectRequest(path: tempFile.path),
           pathParams: {},
           queryParams: {},
           fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
+    });
+
+    // ── Git setup choice ─────────────────────────────────────────────────────
+
+    test("requires a choice before opening a non-Git folder", () async {
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: OpenProjectRequest(
+            path: tempDir.path,
+            gitAction: OpenProjectGitAction.promptIfNeeded,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((response) => response.status, "status", 428)),
+      );
+
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
+    });
+
+    test("requires a choice when Git is unavailable", () async {
+      gitCliApi.insideWorkTreeError = const ProcessException("git", []);
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: OpenProjectRequest(
+            path: tempDir.path,
+            gitAction: OpenProjectGitAction.promptIfNeeded,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<RelayResponse>().having((response) => response.status, "status", 428)),
+      );
+    });
+
+    test("opens a non-Git folder without changing it when requested", () async {
+      gitCliApi.insideWorkTreeError = const ProcessException("git", []);
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
+
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: OpenProjectRequest(
+          path: tempDir.path,
+          gitAction: OpenProjectGitAction.openWithoutGit,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(gitCliApi.initCalls, 0);
+      expect(result.supportsDedicatedWorktrees, isFalse);
+      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+    });
+
+    test("opens an existing Git repository without commits but disables worktrees", () async {
+      gitCliApi.initialized = true;
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
+
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: OpenProjectRequest(
+          path: tempDir.path,
+          gitAction: OpenProjectGitAction.promptIfNeeded,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(gitCliApi.initCalls, 0);
+      expect(result.supportsDedicatedWorktrees, isFalse);
+      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+    });
+
+    test("opens a folder inside an enclosing Git worktree without initializing it", () async {
+      gitCliApi.insideWorkTree = true;
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
+
+      for (final gitAction in [OpenProjectGitAction.promptIfNeeded, OpenProjectGitAction.initializeGit]) {
+        final result = await handler.handle(
+          makeRequest("POST", "/project/open"),
+          body: OpenProjectRequest(
+            path: tempDir.path,
+            gitAction: gitAction,
+          ),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        );
+
+        expect(result.supportsDedicatedWorktrees, isFalse);
+      }
+
+      expect(gitCliApi.initCalls, 0);
+      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+    });
+
+    test("an explicit Git action retries setup for a repository without commits", () async {
+      gitCliApi.initialized = true;
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
+
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: OpenProjectRequest(
+          path: tempDir.path,
+          gitAction: OpenProjectGitAction.initializeGit,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(gitCliApi.initCalls, 1);
+      expect(gitCliApi.stageCalls, 1);
+      expect(gitCliApi.commitCalls, 1);
+      expect(result.supportsDedicatedWorktrees, isTrue);
+    });
+
+    test("initializes, stages, and commits before opening when Git is enabled", () async {
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
+
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: OpenProjectRequest(
+          path: tempDir.path,
+          gitAction: OpenProjectGitAction.initializeGit,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(gitCliApi.initCalls, 1);
+      expect(gitCliApi.stageCalls, 1);
+      expect(gitCliApi.commitCalls, 1);
+      expect(result.supportsDedicatedWorktrees, isTrue);
+      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+    });
+
+    test("still opens the folder when Git setup is incomplete", () async {
+      gitCliApi.commitSucceeds = false;
+      plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
+
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: OpenProjectRequest(
+          path: tempDir.path,
+          gitAction: OpenProjectGitAction.initializeGit,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(gitCliApi.commitCalls, 1);
+      expect(result.supportsDedicatedWorktrees, isFalse);
+      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
     });
 
     // ── Successful discovery ─────────────────────────────────────────────────
@@ -152,7 +329,7 @@ void main() {
 
       await handler.handle(
         makeRequest("POST", "/project/open"),
-        body: ProjectPathRequest(path: tempDir.path),
+        body: OpenProjectRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -166,7 +343,7 @@ void main() {
 
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
-        body: ProjectPathRequest(path: tempDir.path),
+        body: OpenProjectRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -184,7 +361,7 @@ void main() {
 
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
-        body: ProjectPathRequest(path: tempDir.path),
+        body: OpenProjectRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -203,7 +380,7 @@ void main() {
 
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
-        body: ProjectPathRequest(path: tempDir.path),
+        body: OpenProjectRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -217,7 +394,7 @@ void main() {
 
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
-        body: ProjectPathRequest(path: tempDir.path),
+        body: OpenProjectRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -234,7 +411,7 @@ void main() {
       await expectLater(
         () => handler.handle(
           makeRequest("POST", "/project/open"),
-          body: ProjectPathRequest(path: tempDir.path),
+          body: OpenProjectRequest(path: tempDir.path),
           pathParams: {},
           queryParams: {},
           fragment: null,
@@ -254,7 +431,7 @@ void main() {
 
       final first = await handler.handle(
         makeRequest("POST", "/project/open"),
-        body: ProjectPathRequest(path: tempDir.path),
+        body: OpenProjectRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -262,7 +439,7 @@ void main() {
 
       final second = await handler.handle(
         makeRequest("POST", "/project/open"),
-        body: ProjectPathRequest(path: tempDir.path),
+        body: OpenProjectRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -277,7 +454,7 @@ void main() {
 
       await handler.handle(
         makeRequest("POST", "/project/open"),
-        body: ProjectPathRequest(path: tempDir.path),
+        body: OpenProjectRequest(path: tempDir.path),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -287,4 +464,49 @@ void main() {
       expect(hiddenIds, isNot(contains(tempDir.path)));
     });
   });
+}
+
+class _ConfigurableGitCliApi extends FakeGitCliApi {
+  bool initialized = false;
+  bool insideWorkTree = false;
+  Object? insideWorkTreeError;
+  bool committed = false;
+  bool initSucceeds = true;
+  bool stageSucceeds = true;
+  bool commitSucceeds = true;
+  int initCalls = 0;
+  int stageCalls = 0;
+  int commitCalls = 0;
+
+  @override
+  Future<bool> isGitInitialized({required String projectPath}) async => initialized;
+
+  @override
+  Future<bool> isInsideGitWorkTree({required String projectPath}) async {
+    if (insideWorkTreeError case final error?) throw error;
+    return insideWorkTree;
+  }
+
+  @override
+  Future<bool> initRepository({required String path}) async {
+    initCalls += 1;
+    if (initSucceeds) initialized = true;
+    return initSucceeds;
+  }
+
+  @override
+  Future<bool> stageAll({required String projectPath}) async {
+    stageCalls += 1;
+    return stageSucceeds;
+  }
+
+  @override
+  Future<bool> commitAll({required String projectPath, required String message}) async {
+    commitCalls += 1;
+    if (commitSucceeds) committed = true;
+    return commitSucceeds;
+  }
+
+  @override
+  Future<bool> hasAtLeastOneCommit({required String projectPath}) async => committed;
 }

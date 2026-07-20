@@ -41,6 +41,7 @@ typedef SessionProjectPathRow = ({
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   static const _ownerIdentity = "local";
+  static const _writeBatchSize = 500;
 
   SessionDao(super.attachedDatabase);
 
@@ -190,6 +191,18 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
   }
 
+  /// Upserts the supplied rows without applying merge or import policy.
+  Future<void> upsertSessionRows({required List<SessionDto> rows}) async {
+    if (rows.isEmpty) return;
+    for (var start = 0; start < rows.length; start += _writeBatchSize) {
+      final candidateEnd = start + _writeBatchSize;
+      final end = candidateEnd < rows.length ? candidateEnd : rows.length;
+      await batch((batch) {
+        batch.insertAllOnConflictUpdate(sessionTable, rows.sublist(start, end));
+      });
+    }
+  }
+
   Future<SessionDto?> getSessionByBinding({
     required String pluginId,
     required String backendSessionId,
@@ -211,6 +224,17 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
             ))
             .get();
     return {for (final row in rows) row.backendSessionId: row};
+  }
+
+  Future<Map<String, SessionDto>> getSessionsForPlugin({required String pluginId}) async {
+    final rows = await (select(sessionTable)..where((table) => table.pluginId.equals(pluginId))).get();
+    return {for (final row in rows) row.backendSessionId: row};
+  }
+
+  Future<Set<String>> getAllSessionIds() async {
+    final query = selectOnly(sessionTable)..addColumns([sessionTable.sessionId]);
+    final rows = await query.get();
+    return {for (final row in rows) row.read(sessionTable.sessionId)!};
   }
 
   Future<Map<String, SessionDto>> upsertObservedRootSessions({
@@ -315,7 +339,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   Future<List<SessionDto>> getRootCatalogSessions({
     required String projectId,
     required int offset,
-    required int limit,
+    required int? limit,
   }) {
     return (select(sessionTable)
           ..where(
@@ -325,7 +349,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
             (table) => OrderingTerm.desc(table.updatedAt),
             (table) => OrderingTerm.desc(table.sessionId),
           ])
-          ..limit(limit, offset: offset))
+          ..limit(limit ?? -1, offset: offset))
         .get();
   }
 
@@ -388,19 +412,6 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
-  }
-
-  /// Records the branch every session in [sessionIds] is checked out on.
-  ///
-  /// Unlike the setters above, this deliberately leaves `updatedAt` and
-  /// `projectionUpdatedAt` alone. The branch is re-read from git on ordinary
-  /// list reads, so it lands whenever someone switches branches — but switching
-  /// branches is not session activity and not a projection observation, and
-  /// bumping either column would reorder the user's list underneath them.
-  Future<void> setBranchName({required List<String> sessionIds, required String branchName}) async {
-    await (update(sessionTable)..where((t) => t.sessionId.isIn(sessionIds))).write(
-      SessionTableCompanion(branchName: Value(branchName)),
-    );
   }
 
   /// The stored project path for every session recorded for [pluginId], via a
@@ -609,38 +620,5 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   Future<List<SessionDto>> getSessionsByParentIds({required List<String> parentSessionIds}) {
     if (parentSessionIds.isEmpty) return Future.value(const []);
     return (select(sessionTable)..where((table) => table.parentSessionId.isIn(parentSessionIds))).get();
-  }
-
-  /// Deletes every persisted row for [projectId] AND [pluginId] whose session
-  /// id is NOT in [keepSessionIds] and whose `created_at` is strictly before
-  /// [createdBefore], returning the ids of the rows that were deleted. Used to
-  /// reconcile rows for sessions that vanished from the authoritative list
-  /// (deleted while offline / backend-side). Only safe when [keepSessionIds]
-  /// is the COMPLETE list for the project.
-  ///
-  /// Scoped to [pluginId] because the authoritative list comes from the active
-  /// plugin: rows another plugin recorded for the same project are legitimately
-  /// absent from it and must never be reconciled away.
-  ///
-  /// [createdBefore] (the wall-clock time the `/sessions` fetch started) guards
-  /// against deleting a session that was created AFTER the snapshot was taken
-  /// (e.g. a concurrent `/session/create`): such a row is legitimately absent
-  /// from the stale snapshot but must be kept.
-  Future<List<String>> deleteSessionsForProjectNotIn({
-    required String projectId,
-    required List<String> keepSessionIds,
-    required int createdBefore,
-    required String pluginId,
-  }) async {
-    final rows =
-        await (delete(sessionTable)..where(
-              (t) =>
-                  t.projectId.equals(projectId) &
-                  t.pluginId.equals(pluginId) &
-                  t.sessionId.isNotIn(keepSessionIds) &
-                  t.createdAt.isSmallerThanValue(createdBefore),
-            ))
-            .goAndReturn();
-    return [for (final row in rows) row.sessionId];
   }
 }

@@ -172,6 +172,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLogout => 'Log Out';
 
   @override
+  String get settingsSectionAccount => 'Account';
+
+  @override
+  String get settingsNotificationsTitle => 'Notifications';
+
+  @override
+  String get settingsProfileTitle => 'Profile';
+
+  @override
+  String get settingsClose => 'Close settings';
+
+  @override
+  String settingsVersion(String version, String buildNumber) {
+    return 'v$version ($buildNumber)';
+  }
+
+  @override
+  String get notificationSectionAi => 'AI Notifications';
+
+  @override
+  String get notificationSectionSystem => 'System';
+
+  @override
   String get notificationCategoryAiInteraction => 'AI Interactions';
 
   @override
@@ -651,6 +674,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectDiscovered => 'Project discovered';
 
   @override
+  String get addProjectEnableGitTitle => 'Enable Git tracking?';
+
+  @override
+  String get addProjectEnableGitBody =>
+      'Sesori will commit all non-ignored files to enable history and parallel sessions with dedicated worktrees.';
+
+  @override
+  String get addProjectContinueWithoutGit => 'Continue Without Git';
+
+  @override
+  String get addProjectEnableGit => 'Enable Git';
+
+  @override
+  String get addProjectGitSetupIncompleteTitle => 'Project opened, Git setup incomplete';
+
+  @override
+  String get addProjectGitSetupIncompleteBody =>
+      'The folder is open and ready for sessions, but Sesori could not finish Git setup. Git files may have been created. Dedicated worktrees stay unavailable until the repository has an initial commit.';
+
+  @override
+  String get addProjectGitSetupIncompleteAcknowledge => 'I understand';
+
+  @override
   String get projectCreateFailed => 'Failed to create project';
 
   @override
@@ -723,6 +769,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionDedicatedWorktreeDescription => 'Creates a dedicated git worktree and branch for this session';
+
+  @override
+  String get newSessionPluginChooserLabel => 'Coding tool';
+
+  @override
+  String get newSessionPluginDegraded => 'Needs attention';
+
+  @override
+  String get newSessionPluginUnavailable => 'Unavailable';
+
+  @override
+  String get newSessionPluginFailed => 'Failed';
+
+  @override
+  String get newSessionPluginLoading => 'Loading coding tool options';
 
   @override
   String get sessionListDeleteWorktreeCheckbox => 'Delete worktree';

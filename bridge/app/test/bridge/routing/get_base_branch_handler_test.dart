@@ -20,7 +20,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      projectRepository = ProjectRepository(
+      projectRepository = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -105,12 +105,13 @@ void main() {
       await db.projectsDao.recordOpenedProject(
         projectId: "/Users/dev/my-app",
         path: "/Users/dev/my-app",
+        displayName: null,
         createdAt: 1,
         updatedAt: 1,
       );
       await db.projectsDao.setBaseBranch(projectId: "/Users/dev/my-app", baseBranch: "develop");
       final slugHandler = GetBaseBranchHandler(
-        projectRepository: ProjectRepository(
+        projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(remoteUrl: "https://github.com/sesori-ai/sesori_apps.git"),
           plugin: plugin,
           projectsDao: db.projectsDao,

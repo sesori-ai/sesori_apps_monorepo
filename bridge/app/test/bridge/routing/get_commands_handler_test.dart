@@ -1,14 +1,12 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -23,12 +21,11 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       plugin = _OpenCodeFakeBridgePlugin();
       handler = GetCommandsHandler(
-        sessionRepository: SessionRepository(
+        sessionRepository: singlePluginSessionRepository(
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
           pullRequestDao: db.pullRequestDao,
-          gitCliApi: FakeGitCliApi(),
           unseenCalculator: const SessionUnseenCalculator(),
         ),
       );

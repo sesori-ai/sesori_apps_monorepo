@@ -556,6 +556,7 @@ void main() {
         _buildScreenApp(
           child: const SessionListCubitProvider(
             projectId: "project-1",
+            initialSupportsDedicatedWorktrees: null,
             child: SessionListScreen(projectId: "project-1"),
           ),
         ),

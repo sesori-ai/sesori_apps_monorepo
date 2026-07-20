@@ -3,25 +3,24 @@ import "dart:async";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/control/control_status_notifier.dart";
 import "package:sesori_bridge/src/foundation/control_channel_client.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
   late _FakeControlChannelClient client;
-  late StreamController<PluginStatus> pluginStatus;
+  late StreamController<List<PluginMetadata>> pluginMetadata;
   late StreamController<RelayConnectionState> relayState;
   late StreamController<String> registrations;
   late ControlStatusNotifier notifier;
 
   setUp(() {
     client = _FakeControlChannelClient();
-    pluginStatus = StreamController<PluginStatus>.broadcast();
+    pluginMetadata = StreamController<List<PluginMetadata>>.broadcast();
     relayState = StreamController<RelayConnectionState>.broadcast();
     registrations = StreamController<String>.broadcast();
     notifier = ControlStatusNotifier(
       client: client,
-      pluginStatus: pluginStatus.stream,
+      pluginMetadata: pluginMetadata.stream,
       relayConnectionState: relayState.stream,
       registrations: registrations.stream,
     );
@@ -30,7 +29,7 @@ void main() {
 
   tearDown(() async {
     await notifier.dispose();
-    await pluginStatus.close();
+    await pluginMetadata.close();
     await relayState.close();
     await registrations.close();
     await client.dispose();
@@ -38,9 +37,15 @@ void main() {
 
   Future<void> pump() => Future<void>.delayed(Duration.zero);
 
+  void emitPluginState(PluginLifecycleState state) {
+    pluginMetadata.add([
+      PluginMetadata(id: "plugin", displayName: "Plugin", isDefault: true, state: state, actionHint: null),
+    ]);
+  }
+
   group("status pushes", () {
     test("a plugin status change pushes a status with the mapped health", () async {
-      pluginStatus.add(const PluginReady());
+      emitPluginState(PluginLifecycleState.ready);
       await pump();
 
       expect(client.sentMessages, hasLength(1));
@@ -51,16 +56,9 @@ void main() {
     });
 
     test("plugin lifecycle states map to the wire health enum", () async {
-      pluginStatus.add(const PluginReady());
-      pluginStatus.add(
-        PluginDegraded(
-          since: DateTime.utc(2026),
-          recoverable: true,
-          requiresUserAction: false,
-          userActionHint: null,
-        ),
-      );
-      pluginStatus.add(const PluginFailed(reason: "gone", cause: null));
+      emitPluginState(PluginLifecycleState.ready);
+      emitPluginState(PluginLifecycleState.degraded);
+      emitPluginState(PluginLifecycleState.failed);
       await pump();
 
       expect(
@@ -128,7 +126,7 @@ void main() {
     });
 
     test("a status combines the latest of every dimension", () async {
-      pluginStatus.add(const PluginReady());
+      emitPluginState(PluginLifecycleState.ready);
       relayState.add(const RelayConnected());
       notifier.handleProjectsSummary(summary: _summaryWithSessionCount(2));
       await pump();
@@ -140,19 +138,12 @@ void main() {
     });
 
     test("identical consecutive states are deduped", () async {
-      pluginStatus.add(const PluginReady());
-      pluginStatus.add(const PluginReady());
+      emitPluginState(PluginLifecycleState.ready);
+      emitPluginState(PluginLifecycleState.ready);
       // Restarting maps to degraded...
-      pluginStatus.add(const PluginRestarting(attempt: 1, reason: "crash"));
+      emitPluginState(PluginLifecycleState.degraded);
       // ...and Degraded maps to degraded too: no second frame.
-      pluginStatus.add(
-        PluginDegraded(
-          since: DateTime.utc(2026),
-          recoverable: true,
-          requiresUserAction: false,
-          userActionHint: null,
-        ),
-      );
+      emitPluginState(PluginLifecycleState.degraded);
       await pump();
 
       expect(
@@ -173,13 +164,15 @@ void main() {
 
     test("the count sums active sessions across projects", () async {
       notifier.handleProjectsSummary(
-        summary: SesoriSseEvent.projectsSummary(
-          projects: [
-            ProjectActivitySummary(id: "p1", activeSessions: [_session("a"), _session("b")]),
-            ProjectActivitySummary(id: "p2", activeSessions: [_session("c")]),
-            const ProjectActivitySummary(id: "p3", activeSessions: []),
-          ],
-        ) as SesoriProjectsSummary,
+        summary:
+            SesoriSseEvent.projectsSummary(
+                  projects: [
+                    ProjectActivitySummary(id: "p1", activeSessions: [_session("a"), _session("b")]),
+                    ProjectActivitySummary(id: "p2", activeSessions: [_session("c")]),
+                    const ProjectActivitySummary(id: "p3", activeSessions: []),
+                  ],
+                )
+                as SesoriProjectsSummary,
       );
       await pump();
 
@@ -213,7 +206,7 @@ void main() {
   group("control-channel resilience", () {
     test("a send failure while the channel is down is swallowed and later sends recover", () async {
       client.throwOnSend = true;
-      pluginStatus.add(const PluginReady());
+      emitPluginState(PluginLifecycleState.ready);
       await pump();
       expect(client.sentMessages, isEmpty);
 
@@ -225,7 +218,7 @@ void main() {
     });
 
     test("a control-channel reconnect re-sends registered and the status snapshot", () async {
-      pluginStatus.add(const PluginReady());
+      emitPluginState(PluginLifecycleState.ready);
       registrations.add("br_test1234");
       await pump();
       client.sentFrames.clear();
@@ -259,7 +252,7 @@ void main() {
   group("lifecycle", () {
     test("start is idempotent — a second start does not double-subscribe", () async {
       notifier.start();
-      pluginStatus.add(const PluginReady());
+      emitPluginState(PluginLifecycleState.ready);
       await pump();
 
       expect(client.sentMessages, hasLength(1));
@@ -268,7 +261,7 @@ void main() {
     test("dispose cancels the subscriptions — later events push nothing", () async {
       await notifier.dispose();
 
-      pluginStatus.add(const PluginReady());
+      emitPluginState(PluginLifecycleState.ready);
       relayState.add(const RelayConnected());
       registrations.add("br_test1234");
       await pump();
@@ -282,13 +275,14 @@ ActiveSession _session(String id) => ActiveSession(id: id);
 
 SesoriProjectsSummary _summaryWithSessionCount(int count) {
   return SesoriSseEvent.projectsSummary(
-    projects: [
-      ProjectActivitySummary(
-        id: "project-1",
-        activeSessions: List<ActiveSession>.generate(count, (i) => _session("session-$i")),
-      ),
-    ],
-  ) as SesoriProjectsSummary;
+        projects: [
+          ProjectActivitySummary(
+            id: "project-1",
+            activeSessions: List<ActiveSession>.generate(count, (i) => _session("session-$i")),
+          ),
+        ],
+      )
+      as SesoriProjectsSummary;
 }
 
 class _FakeControlChannelClient implements ControlChannelClient {

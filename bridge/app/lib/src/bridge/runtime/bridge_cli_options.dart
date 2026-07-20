@@ -6,6 +6,8 @@ class BridgeCliOptions {
   final String authBackendUrl;
   final int? debugPort;
   final String logLevelName;
+  final List<String> enabledPluginIds;
+  final List<String> importPluginIds;
 
   /// Loopback control-channel URL supplied by a GUI supervisor via
   /// `--control-url`. `null` in standalone mode. See [isSupervised].
@@ -17,6 +19,8 @@ class BridgeCliOptions {
     required this.authBackendUrl,
     required this.debugPort,
     required this.logLevelName,
+    required this.enabledPluginIds,
+    required this.importPluginIds,
     required this.controlUrl,
   });
 
@@ -31,6 +35,7 @@ class BridgeCliOptions {
     required ArgResults results,
     required Map<String, String> environment,
     required String defaultAuthUrl,
+    required List<String> enabledPluginIds,
   }) {
     final authBackendFlag = results["auth-backend"] as String;
     final authBackendUrl = resolveAuthBackendUrl(
@@ -52,6 +57,8 @@ class BridgeCliOptions {
       authBackendUrl: authBackendUrl,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
       logLevelName: results["log-level"] as String,
+      enabledPluginIds: List<String>.unmodifiable(enabledPluginIds),
+      importPluginIds: List.unmodifiable(results["import-plugin"] as List<String>),
       controlUrl: controlUrl,
     );
   }

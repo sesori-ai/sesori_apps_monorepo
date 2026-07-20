@@ -1,11 +1,11 @@
 # Sesori Bridge
 
-Dart workspace containing the Sesori Bridge CLI and its plugin system. The bridge connects a local AI assistant server to mobile devices over an encrypted WebSocket relay.
+Dart workspace containing the headless Sesori Bridge CLI and its plugin system. One bridge can connect ordered enabled AI-assistant plugins to mobile and desktop clients over an encrypted WebSocket relay.
 
 The bridge itself is plugin-agnostic: it knows how to authenticate, relay, encrypt, and route traffic, but all backend-specific logic (how to spawn the assistant, what its health endpoint looks like, how to parse its events) lives in plugins.
 
 ```
-Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Plugin] -> AI assistant server
+Clients <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Plugins] -> AI assistant backends
 ```
 
 ## Modules
@@ -13,8 +13,13 @@ Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Pl
 | Module | Description |
 |--------|-------------|
 | `sesori_plugin_interface` | Plugin contract (`BridgePluginApi`, `BridgePluginDescriptor`, lifecycle types) and shared model types |
+| `sesori_bridge_foundation` | Pure-Dart primitives shared by bridge core and plugins |
+| `sesori_plugin_runtime` | Managed backend-process supervision used by plugins |
 | `sesori_plugin_opencode` | OpenCode backend implementation of the plugin contract |
-| `app` | CLI entry point: auth, relay, encryption, request routing, plugin loading |
+| `sesori_plugin_codex` | Codex backend implementation |
+| `sesori_plugin_acp` | Shared ACP protocol plugin base |
+| `sesori_plugin_cursor` | Cursor implementation over ACP |
+| `app` | CLI entry point: auth, relay, encryption, catalog, request routing, and ordered plugin composition |
 
 ## Quick Start
 
@@ -22,9 +27,13 @@ Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Pl
 # Install dependencies for the whole workspace
 dart pub get
 
-# Build a native binary (from bridge/app/)
+# Build the host-native CLI bundle (from bridge/app/)
 make build
 ```
+
+The Makefiles use Dart from the Flutter SDK pinned in the repository's
+`.tool-versions`; install that asdf Flutter version first. Packaged installs
+remain the simplest way to run the bridge headlessly without a source checkout.
 
 ## Install
 
@@ -89,11 +98,39 @@ Run these from `bridge/app/`:
 
 | Command | Description |
 |---------|-------------|
-| `make build` | Build all targets: host-native binary + Linux cross-compiled binaries |
+| `make build` | Build the host-native CLI bundle |
 | `make build-host` | Build the native binary for the current OS and architecture |
-| `make build-linux` | Cross-compile Linux binaries for arm, arm64, riscv64, x64 |
 
-Artifacts land in `app/dist/` named `bridge-<os>-<arch>`.
+The launcher artifact lands in `app/dist/` as `bridge-<os>-<arch>`, with native
+libraries in `app/build/cli/bundle/`. `sqlite3` build hooks require native target
+compilation, so release platforms build on matching CI runners rather than by
+local cross-compilation.
+
+## Parallel Plugins And Catalog
+
+`--plugin` is repeatable and order-preserving. Repeated CLI values override the
+ordered `enabledPlugins` array in bridge settings; if neither is set, OpenCode
+is the sole enabled/default plugin. The first enabled plugin is the current
+default for new clients. This default is separate from legacy missing identity:
+released payloads without `pluginId` always mean OpenCode, not the first enabled
+plugin.
+
+```bash
+sesori-bridge --plugin opencode --plugin codex
+sesori-bridge --plugin opencode --plugin codex --import-plugin codex
+```
+
+Plugins are probed, provisioned, started, monitored, failed, and stopped
+independently. A plugin failure disables controls routed to that plugin but does
+not stop the relay, catalog browsing, or another plugin.
+
+Normal project, root-session, session-detail, and child reads use the durable
+database catalog only. Import is a non-destructive observation of one plugin:
+`POST /plugin/import` starts, `DELETE /plugin/import` cancels, and
+`GET /plugin/import` returns the latest per-plugin statuses; progress is also
+published as plugin-attributed SSE. Repeated `--import-plugin <id>` flags expose
+the same start operation to headless runs. Catalog readers continue to see the
+last committed snapshot while import enumerates or publishes.
 
 ## Security
 
@@ -122,10 +159,18 @@ For a concrete example, see `sesori_plugin_opencode`.
 
 ### Plugin lifecycle at a glance
 
-The bridge selects one plugin at startup, runs its `validateConfig()` strictly before acquiring the startup mutex, then calls `start(PluginHost)` under the mutex. The plugin is responsible for:
+The bridge resolves and validates the complete ordered plugin set before I/O.
+It probes availability concurrently, acquires the startup mutex once, provisions
+available plugins sequentially in order, and registers each start as soon as
+that plugin's provisioning settles. Starts may overlap later provisioning and
+other starts. Each plugin is responsible for:
 
 - Starting (or attaching to) its backend server.
 - Publishing `Ready` / `Degraded` / `Failed` / `Restarting` status transitions.
 - Gracefully shutting down when the bridge exits.
 
-The bridge handles relay connection, encryption, request routing, and SSE multiplexing; it never knows the backend's command line, health endpoint, or event format.
+The bridge lifecycle service publishes one ordered enabled/default/operational
+view. A terminal plugin failure removes only that plugin API from routing. The
+bridge handles relay connection, encryption, catalog routing, and sourced SSE
+multiplexing; it never knows a backend's command line, health endpoint, or event
+format.

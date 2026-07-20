@@ -8,6 +8,10 @@ part "new_session_state.freezed.dart";
 @Freezed()
 sealed class NewSessionState with _$NewSessionState {
   const factory NewSessionState.idle({
+    required List<PluginMetadata> availablePlugins,
+    required PluginMetadata? selectedPlugin,
+    required bool isComposerDataLoading,
+    required bool isPluginDiscoveryInFlight,
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
@@ -15,9 +19,14 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
+    required bool supportsDedicatedWorktrees,
   }) = NewSessionIdle;
 
   const factory NewSessionState.sending({
+    required List<PluginMetadata> availablePlugins,
+    required PluginMetadata? selectedPlugin,
+    required bool isComposerDataLoading,
+    required bool isPluginDiscoveryInFlight,
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
@@ -25,10 +34,15 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
+    required bool supportsDedicatedWorktrees,
   }) = NewSessionSending;
 
   const factory NewSessionState.error({
     required RemoteFailureReason reason,
+    required List<PluginMetadata> availablePlugins,
+    required PluginMetadata? selectedPlugin,
+    required bool isComposerDataLoading,
+    required bool isPluginDiscoveryInFlight,
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,
@@ -36,6 +50,7 @@ sealed class NewSessionState with _$NewSessionState {
     required AgentModel? selectedAgentModel,
     required CommandInfo? stagedCommand,
     @Default([]) List<SessionVariant> availableVariants,
+    required bool supportsDedicatedWorktrees,
   }) = NewSessionError;
 
   const factory NewSessionState.created({required Session session}) = NewSessionCreated;
@@ -45,6 +60,10 @@ sealed class NewSessionState with _$NewSessionState {
 /// the [NewSessionIdle], [NewSessionSending], and [NewSessionError] variants.
 /// Returns `null` for [NewSessionCreated] (where the data is irrelevant).
 typedef AgentModelData = ({
+  List<PluginMetadata> plugins,
+  PluginMetadata? plugin,
+  bool isLoading,
+  bool isPluginDiscoveryInFlight,
   List<AgentInfo> agents,
   List<ProviderInfo> providers,
   List<CommandInfo> commands,
@@ -52,11 +71,16 @@ typedef AgentModelData = ({
   AgentModel? agentModel,
   CommandInfo? stagedCommand,
   List<SessionVariant> availableVariants,
+  bool supportsDedicatedWorktrees,
 });
 
 extension NewSessionStateAgentModel on NewSessionState {
   AgentModelData? get agentModelData => switch (this) {
     NewSessionIdle(
+      :final availablePlugins,
+      :final selectedPlugin,
+      :final isComposerDataLoading,
+      :final isPluginDiscoveryInFlight,
       :final availableAgents,
       :final availableProviders,
       :final availableCommands,
@@ -64,8 +88,13 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgentModel,
       :final stagedCommand,
       :final availableVariants,
+      :final supportsDedicatedWorktrees,
     ) =>
       (
+        plugins: availablePlugins,
+        plugin: selectedPlugin,
+        isLoading: isComposerDataLoading,
+        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
         agents: availableAgents,
         providers: availableProviders,
         commands: availableCommands,
@@ -73,8 +102,13 @@ extension NewSessionStateAgentModel on NewSessionState {
         agentModel: selectedAgentModel,
         stagedCommand: stagedCommand,
         availableVariants: availableVariants,
+        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
     NewSessionSending(
+      :final availablePlugins,
+      :final selectedPlugin,
+      :final isComposerDataLoading,
+      :final isPluginDiscoveryInFlight,
       :final availableAgents,
       :final availableProviders,
       :final availableCommands,
@@ -82,8 +116,13 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgentModel,
       :final stagedCommand,
       :final availableVariants,
+      :final supportsDedicatedWorktrees,
     ) =>
       (
+        plugins: availablePlugins,
+        plugin: selectedPlugin,
+        isLoading: isComposerDataLoading,
+        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
         agents: availableAgents,
         providers: availableProviders,
         commands: availableCommands,
@@ -91,8 +130,13 @@ extension NewSessionStateAgentModel on NewSessionState {
         agentModel: selectedAgentModel,
         stagedCommand: stagedCommand,
         availableVariants: availableVariants,
+        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
     NewSessionError(
+      :final availablePlugins,
+      :final selectedPlugin,
+      :final isComposerDataLoading,
+      :final isPluginDiscoveryInFlight,
       :final availableAgents,
       :final availableProviders,
       :final availableCommands,
@@ -100,8 +144,13 @@ extension NewSessionStateAgentModel on NewSessionState {
       :final selectedAgentModel,
       :final stagedCommand,
       :final availableVariants,
+      :final supportsDedicatedWorktrees,
     ) =>
       (
+        plugins: availablePlugins,
+        plugin: selectedPlugin,
+        isLoading: isComposerDataLoading,
+        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
         agents: availableAgents,
         providers: availableProviders,
         commands: availableCommands,
@@ -109,7 +158,12 @@ extension NewSessionStateAgentModel on NewSessionState {
         agentModel: selectedAgentModel,
         stagedCommand: stagedCommand,
         availableVariants: availableVariants,
+        supportsDedicatedWorktrees: supportsDedicatedWorktrees,
       ),
     NewSessionCreated() => null,
   };
+}
+
+extension PluginMetadataSelection on PluginMetadata {
+  bool get isRoutable => state == PluginLifecycleState.ready || state == PluginLifecycleState.degraded;
 }

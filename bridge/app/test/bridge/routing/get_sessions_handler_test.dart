@@ -3,7 +3,6 @@ import "dart:convert";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
@@ -11,7 +10,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -77,12 +75,11 @@ void main() {
     });
 
     test("returns 404 for an unknown project without creating state or calling the plugin", () async {
-      final realRepository = SessionRepository(
+      final realRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final realHandler = GetSessionsHandler(
@@ -190,86 +187,6 @@ void main() {
       );
       expect(plugin.lastGetSessionsWorktree, "project-1");
       expect(sessionTitleService.appliedSessionIds, isEmpty);
-    });
-
-    test("retains durable roots and children missing from a complete plugin refresh", () async {
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
-      await db.sessionDao.insertSession(
-        pluginId: "fake",
-        sessionId: "stable-root",
-        backendSessionId: "backend-root",
-        projectId: "project-1",
-        isDedicated: false,
-        createdAt: 1,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-      await db.sessionDao.insertObservedChild(
-        sessionId: "stable-child",
-        backendSessionId: "backend-child",
-        projectId: "project-1",
-        parentSessionId: "stable-root",
-        directory: "/tmp/project-1/child",
-        catalogTitle: "child",
-        archivedAt: null,
-        createdAt: 2,
-        updatedAt: 2,
-        projectionUpdatedAt: 2,
-        pluginId: "fake",
-      );
-      plugin.sessionsResult = const [];
-
-      await handler.handle(
-        makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(await db.sessionDao.getSession(sessionId: "stable-root"), isNotNull);
-      expect(await db.sessionDao.getSession(sessionId: "stable-child"), isNotNull);
-    });
-
-    test("does not reconcile vanished rows when the session list is not authoritative", () async {
-      // A bridge-derived plugin's enumeration is only eventually-complete: a
-      // freshly-created session can exist solely as a stored row until the
-      // backend flushes it to disk. The row must survive an unpaginated
-      // refresh that cannot see the session yet.
-      sessionRepository.sessionListIsAuthoritative = false;
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
-      await db.sessionDao.insertSession(
-        pluginId: "fake",
-        sessionId: "fresh",
-        backendSessionId: "fresh",
-        projectId: "project-1",
-        isDedicated: true,
-        createdAt: 1,
-        worktreePath: "/tmp/project-1/.worktrees/fresh",
-        branchName: "fresh",
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-      // The fetch returns an empty list — the backend hasn't flushed yet.
-      plugin.sessionsResult = const [];
-
-      await handler.handle(
-        makeRequest("POST", "/sessions"),
-        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-      // Allow any (wrongly-fired) reconcile to run before asserting.
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-
-      expect(await db.sessionDao.getSession(sessionId: "fresh"), isNotNull);
     });
 
     test("persists sessions after successful fetch", () async {
@@ -844,13 +761,12 @@ void main() {
       expect(pr?.checkStatus, equals(PrCheckStatus.success));
     });
 
-    test("writes through catalog fields while preserving stored worktree and pull request metadata", () async {
-      final realRepository = SessionRepository(
+    test("reads catalog fields while preserving stored worktree and pull request metadata", () async {
+      final realRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final realHandler = GetSessionsHandler(
@@ -899,8 +815,15 @@ void main() {
           time: PluginSessionTime(created: 100, updated: 200, archived: null),
         ),
       ];
+      await db.sessionDao.updateObservedSessionProjection(
+        sessionId: "s1",
+        directory: "/tmp/project",
+        catalogTitle: "replacement payload",
+        updateCatalogTitle: true,
+        updatedAt: 200,
+        projectionUpdatedAt: 200,
+      );
 
-      final beforeFetch = DateTime.now().millisecondsSinceEpoch;
       final result = await realHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null),
@@ -908,7 +831,6 @@ void main() {
         queryParams: {},
         fragment: null,
       );
-      final afterFetch = DateTime.now().millisecondsSinceEpoch;
 
       expect(result.items, hasLength(1));
       expect(result.items.single.title, equals("replacement payload"));
@@ -924,10 +846,11 @@ void main() {
       expect(stored?.catalogTitle, "replacement payload");
       expect(stored?.createdAt, 10);
       expect(stored?.updatedAt, 200);
-      expect(stored?.projectionUpdatedAt, inInclusiveRange(beforeFetch, afterFetch));
+      expect(stored?.projectionUpdatedAt, 200);
       expect(stored?.worktreePath, "/tmp/worktree");
       expect(stored?.branchName, "feature/preserved-pr");
       expect(stored?.isDedicated, isTrue);
+      expect(plugin.lastGetSessionsWorktree, isNull);
     });
 
     test("keeps pullRequest null when session has no PR", () async {
@@ -1004,7 +927,7 @@ void main() {
     });
 
     test("triggers PR refresh in background when waitForPrData is false", () async {
-      plugin.currentProjectResult = const PluginProject(id: "/tmp/project", directory: "/tmp/project");
+      sessionRepository.projectPathResult = "/tmp/project";
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
@@ -1019,8 +942,8 @@ void main() {
       expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
     });
 
-    test("triggers PR refresh with project path resolved from plugin.getProject", () async {
-      plugin.currentProjectResult = const PluginProject(id: "/tmp/project", directory: "/tmp/project");
+    test("triggers PR refresh with the stored catalog project path", () async {
+      sessionRepository.projectPathResult = "/tmp/project";
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null, waitForPrData: true),
@@ -1031,10 +954,10 @@ void main() {
 
       expect(prSyncService.calls, hasLength(1));
       expect(prSyncService.calls.single, equals((projectId: "project-1", projectPath: "/tmp/project")));
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
-    test("falls back to session directory when plugin.getProject fails", () async {
-      plugin.throwOnGetProjectError = Exception("failed");
+    test("falls back to session directory when the catalog project path is missing", () async {
       plugin.sessionsResult = const [
         PluginSession(
           id: "s1",

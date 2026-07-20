@@ -55,7 +55,11 @@ void main() {
         stack.paths,
         equals([
           const AppRoute.projects().buildPath(),
-          const AppRoute.sessions(projectId: "project-1", projectName: null).buildPath(),
+          const AppRoute.sessions(
+            projectId: "project-1",
+            projectName: null,
+            supportsDedicatedWorktrees: null,
+          ).buildPath(),
           const AppRoute.sessionDetail(
             projectId: "project-1",
             projectName: null,

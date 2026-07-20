@@ -31,6 +31,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriGlobalDisposed.fromJson(
             json
           );
+                case 'catalog.import.progress':
+          return SesoriCatalogImportProgress.fromJson(
+            json
+          );
                 case 'session.created':
           return SesoriSessionCreated.fromJson(
             json
@@ -437,6 +441,79 @@ String toString() {
 
 
 
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriCatalogImportProgress implements SesoriSseEvent {
+  const SesoriCatalogImportProgress({required this.progress, final  String? $type}): $type = $type ?? 'catalog.import.progress';
+  factory SesoriCatalogImportProgress.fromJson(Map<String, dynamic> json) => _$SesoriCatalogImportProgressFromJson(json);
+
+ final  CatalogImportProgress progress;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriCatalogImportProgressCopyWith<SesoriCatalogImportProgress> get copyWith => _$SesoriCatalogImportProgressCopyWithImpl<SesoriCatalogImportProgress>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriCatalogImportProgressToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriCatalogImportProgress&&(identical(other.progress, progress) || other.progress == progress));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,progress);
+
+@override
+String toString() {
+  return 'SesoriSseEvent.catalogImportProgress(progress: $progress)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriCatalogImportProgressCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriCatalogImportProgressCopyWith(SesoriCatalogImportProgress value, $Res Function(SesoriCatalogImportProgress) _then) = _$SesoriCatalogImportProgressCopyWithImpl;
+@useResult
+$Res call({
+ CatalogImportProgress progress
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriCatalogImportProgressCopyWithImpl<$Res>
+    implements $SesoriCatalogImportProgressCopyWith<$Res> {
+  _$SesoriCatalogImportProgressCopyWithImpl(this._self, this._then);
+
+  final SesoriCatalogImportProgress _self;
+  final $Res Function(SesoriCatalogImportProgress) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? progress = null,}) {
+  return _then(SesoriCatalogImportProgress(
+progress: null == progress ? _self.progress : progress // ignore: cast_nullable_to_non_nullable
+as CatalogImportProgress,
+  ));
+}
+
+
+}
 
 /// @nodoc
 @JsonSerializable()

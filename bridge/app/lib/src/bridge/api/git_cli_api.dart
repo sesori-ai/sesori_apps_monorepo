@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../foundation/process_runner.dart";
@@ -29,7 +30,15 @@ class GitCliApi {
        _gitPathExists = gitPathExists;
 
   Future<bool> isGitInitialized({required String projectPath}) async {
-    return _gitPathExists(gitPath: "$projectPath/.git");
+    return _gitPathExists(gitPath: p.join(projectPath, ".git"));
+  }
+
+  Future<bool> isInsideGitWorkTree({required String projectPath}) async {
+    final result = await runGit(
+      projectPath: projectPath,
+      arguments: const ["rev-parse", "--is-inside-work-tree"],
+    );
+    return result.exitCode == 0 && result.stdout.toString().trim() == "true";
   }
 
   /// Initializes a new git repository at [path]. Returns `true` on success.
@@ -46,7 +55,20 @@ class GitCliApi {
 
   /// Creates a commit with [message] in [projectPath]. Returns `true` on success.
   Future<bool> commitAll({required String projectPath, required String message}) async {
-    final result = await runGit(projectPath: projectPath, arguments: ["commit", "-m", message]);
+    final result = await runGit(
+      projectPath: projectPath,
+      arguments: [
+        "-c",
+        "user.name=Sesori",
+        "-c",
+        "user.email=sesori@localhost",
+        "-c",
+        "commit.gpgSign=false",
+        "commit",
+        "-m",
+        message,
+      ],
+    );
     return result.exitCode == 0;
   }
 
@@ -90,30 +112,6 @@ class GitCliApi {
     }
 
     return "main";
-  }
-
-  /// The branch [projectPath] currently has checked out. Null when the
-  /// directory has no branch to report: it is missing (git cannot even start
-  /// there — e.g. a stored project folder that was moved or deleted), is not a
-  /// git repository, or its HEAD is detached.
-  Future<String?> getCurrentBranch({required String projectPath}) async {
-    try {
-      final result = await runGit(projectPath: projectPath, arguments: const ["rev-parse", "--abbrev-ref", "HEAD"]);
-      if (result.exitCode != 0) {
-        return null;
-      }
-      final branch = result.stdout.toString().trim();
-      // A detached HEAD succeeds and answers with the literal "HEAD" rather
-      // than failing, and a repository without commits yet has no branch to
-      // name. Neither is a branch the caller can show.
-      if (branch.isEmpty || branch == "HEAD") {
-        return null;
-      }
-      return branch;
-    } on Object catch (e) {
-      Log.w("[GitCli] failed to read current branch", e);
-      return null;
-    }
   }
 
   /// URL of the repository's remote in [projectPath], preferring `origin` and

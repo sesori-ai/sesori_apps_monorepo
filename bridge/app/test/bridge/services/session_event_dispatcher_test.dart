@@ -50,7 +50,8 @@ void main() {
 
     await Future.wait([createdDispatch, deletedDispatch]);
     final output = await outputFuture;
-    expect(output.single, isA<BridgeSseSessionDeleted>());
+    expect(output.single.pluginId, "plugin");
+    expect(output.single.event, isA<BridgeSseSessionDeleted>());
     await dispatcher.dispose();
   });
 }

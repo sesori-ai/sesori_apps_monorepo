@@ -6,8 +6,9 @@ import "package:meta/meta.dart";
 /// takes any irreversible startup step — strictly before the cross-instance
 /// startup mutex and before `start()`, so a missing backend can never
 /// terminate a healthy resident bridge. The bridge core treats
-/// [PluginUnavailable] as a fatal, user-facing startup error: it prints
-/// [PluginUnavailable.message] via `Console.error` and exits non-zero.
+/// [PluginUnavailable] as a user-facing descriptor outcome: it prints
+/// [PluginUnavailable.message] via `Console.error`, skips that descriptor, and
+/// exits non-zero only when no enabled descriptor is available.
 ///
 /// The check is plugin-owned because *how* a backend proves it is usable is
 /// backend-specific (e.g. the OpenCode plugin runs `opencode --version`). The
@@ -37,7 +38,7 @@ final class PluginAvailable extends PluginAvailability {
   String toString() => "PluginAvailable";
 }
 
-/// The plugin's backend is missing or not usable; startup must abort.
+/// The plugin's backend is missing or not usable; this descriptor is skipped.
 ///
 /// [message] is a user-facing explanation (shown via `Console.error`, which is
 /// never gated by `--log-level`) that tells the user how to make the backend
@@ -48,8 +49,7 @@ final class PluginUnavailable extends PluginAvailability {
     : assert(message.isNotEmpty, "PluginUnavailable.message must not be empty"),
       message = message;
 
-  /// User-facing guidance printed to the user immediately before the bridge
-  /// exits non-zero.
+  /// User-facing guidance printed when this descriptor is skipped.
   final String message;
 
   @override

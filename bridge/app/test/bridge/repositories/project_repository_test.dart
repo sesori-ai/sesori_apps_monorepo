@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
@@ -6,6 +8,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_e
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -23,7 +26,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeBridgePlugin();
-      repo = ProjectRepository(
+      repo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -37,7 +40,7 @@ void main() {
       await db.close();
     });
 
-    test("getProjects fetches plugin projects, persists each, filters hidden, sorts by updated desc", () async {
+    test("getProjects reads stored projects, filters hidden, and keeps SQL order", () async {
       plugin.projectsResult = const [
         PluginProject(id: "p1", directory: "p1", name: "P1"),
         PluginProject(id: "p2", directory: "p2", name: "P2"),
@@ -58,15 +61,14 @@ void main() {
         updatedAt: 300,
       );
 
-      final result = await repo.getProjects(defaultTimestamp: 9999);
+      final result = await repo.getProjects();
 
-      // (a) DB has all 3 rows (every plugin project is persisted regardless
-      //     of hidden status — the FK target must always exist).
+      expect(plugin.getProjectsCallCount, 0);
       final rows = await db.select(db.projectsTable).get();
       expect(
         rows.map((r) => r.projectId).toSet(),
         equals({"p1", "p2", "p3"}),
-        reason: "every plugin project must be upserted into projects_table",
+        reason: "catalog reads must not alter stored projects",
       );
 
       // (b) Returned list filters p2 out.
@@ -76,12 +78,20 @@ void main() {
       expect(result.map((p) => p.id).toList(), equals(["p3", "p1"]));
     });
 
-    test("getProjects persists a native project's declared directory instead of its id", () async {
+    test("getProjects maps the stored path independently from the project id", () async {
       plugin.projectsResult = const [
         PluginProject(id: "backend-project-1", directory: "/projects/one", name: "One"),
       ];
 
-      final result = await repo.getProjects(defaultTimestamp: 9999);
+      await db.projectsDao.recordOpenedProject(
+        projectId: "backend-project-1",
+        path: "/projects/one",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+
+      final result = await repo.getProjects();
 
       expect(result.single.id, "backend-project-1");
       expect(result.single.path, "/projects/one");
@@ -89,6 +99,7 @@ void main() {
         (await db.projectsDao.getProject(projectId: "backend-project-1"))!.path,
         "/projects/one",
       );
+      expect(plugin.getProjectsCallCount, 0);
     });
 
     test("activity reconciliation seeds native directories and preserves existing paths", () async {
@@ -107,38 +118,126 @@ void main() {
       await db.projectsDao.recordOpenedProject(
         projectId: "moved-project",
         path: "/projects/moved",
+        displayName: null,
         createdAt: 1,
         updatedAt: 1,
       );
       final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
       addTearDown(service.dispose);
 
-      await service.reconcile();
+      await service.reconcile(pluginId: null);
 
       final newProject = await db.projectsDao.getProject(projectId: "new-project");
       expect(newProject?.path, "/projects/new");
       expect(newProject?.createdAt, 10);
       expect(newProject?.updatedAt, 20);
-      expect((await db.projectsDao.getProject(projectId: "moved-project"))?.path, "/projects/moved");
+      final movedProject = await db.projectsDao.getProject(projectId: "moved-project");
+      expect(movedProject?.path, "/projects/moved");
+      expect(movedProject?.updatedAt, 60, reason: "stable native identity must retain activity after a move");
     });
 
-    test("getProjects rethrows PluginApiException when plugin throws", () async {
-      plugin.getProjectsError = PluginApiException("/project", 500);
-
-      await expectLater(
-        () => repo.getProjects(defaultTimestamp: 9999),
-        throwsA(isA<PluginApiException>()),
+    test("native activity reuses an existing path-canonical project row", () async {
+      const directory = "/projects/shared";
+      plugin.projectsResult = const [
+        PluginProject(
+          id: "native-project-id",
+          directory: directory,
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+      ];
+      await db.projectsDao.recordOpenedProject(
+        projectId: directory,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
       );
 
-      // Plugin failed before the transaction opened — no rows should be
-      // present in the database.
-      final rows = await db.select(db.projectsTable).get();
-      expect(rows, isEmpty, reason: "no DB writes on plugin failure");
+      final evidence = await repo.listProjectActivityEvidence(pluginId: plugin.id);
+
+      expect(evidence.single.projectId, directory);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
     });
 
-    test("getProjects inserts all projects atomically via batch", () async {
-      // Verify that all N plugin projects are persisted in a single batch call.
-      // The batch API is internally atomic — all rows land or none do.
+    test("native activity atomically resolves identity against catalog import", () async {
+      const directory = "/projects/shared";
+      const nativeProjectId = "native-project-id";
+      const importedProjectId = "catalog-project-id";
+      plugin.projectsResult = const [
+        PluginProject(
+          id: nativeProjectId,
+          directory: directory,
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+      ];
+      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
+      final racingRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        plugin: plugin,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+
+      final reconciliation = racingRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      await projectsDao.snapshotTaken.future;
+      final catalogImport = db.transaction(() async {
+        final storedProjects = await db.projectsDao.getAllProjects();
+        final existing = const ProjectCatalogIdentityCalculator().calculate(
+          projectsById: {
+            for (final project in storedProjects) project.projectId: project,
+          },
+          projectsByNormalizedPath: {
+            for (final project in storedProjects) project.path: project,
+          },
+          preferredProjectId: importedProjectId,
+          observedPath: directory,
+        );
+        if (existing == null) {
+          await db.projectsDao.recordOpenedProject(
+            projectId: importedProjectId,
+            path: directory,
+            displayName: null,
+            createdAt: 1,
+            updatedAt: 2,
+          );
+        }
+      });
+      await Future<void>.delayed(Duration.zero);
+      projectsDao.releaseSnapshot.complete();
+
+      final evidence = await reconciliation;
+      await catalogImport;
+
+      final rows = await db.projectsDao.getAllProjects();
+      expect(rows, hasLength(1));
+      expect(evidence.single.projectId, rows.single.projectId);
+    });
+
+    test("getProjects completes from the catalog when plugin enumeration throws", () async {
+      plugin.getProjectsError = PluginApiException("/project", 500);
+      await db.projectsDao.setActivity(projectId: "stored", createdAt: 1, updatedAt: 2);
+
+      final projects = await repo.getProjects().timeout(const Duration(seconds: 1));
+
+      expect(projects.single.id, "stored");
+      expect(plugin.getProjectsCallCount, 0);
+    });
+
+    test("project list and detail complete while plugin reads never complete", () async {
+      plugin.getProjectsFuture = Completer<List<PluginProject>>().future;
+      await db.projectsDao.setActivity(projectId: "stored", createdAt: 1, updatedAt: 2);
+
+      final projects = await repo.getProjects().timeout(const Duration(seconds: 1));
+      final project = await repo.getProject(projectId: "stored").timeout(const Duration(seconds: 1));
+
+      expect(projects.single, project);
+      expect(plugin.getProjectsCallCount, 0);
+      expect(plugin.lastGetProjectId, isNull);
+    });
+
+    test("getProjects does not seed projects that only exist in the plugin", () async {
       plugin.projectsResult = const [
         PluginProject(id: "p1", directory: "p1"),
         PluginProject(id: "p2", directory: "p2"),
@@ -146,17 +245,14 @@ void main() {
         PluginProject(id: "p4", directory: "p4"),
       ];
 
-      await repo.getProjects(defaultTimestamp: 9999);
+      await repo.getProjects();
 
       final rows = await db.select(db.projectsTable).get();
-      expect(
-        rows.map((r) => r.projectId).toSet(),
-        equals({"p1", "p2", "p3", "p4"}),
-        reason: "all plugin projects must be persisted via batch insert",
-      );
+      expect(rows, isEmpty);
+      expect(plugin.getProjectsCallCount, 0);
     });
 
-    test("getProjects seeds direct activity and one now default for missing evidence", () async {
+    test("getProjects maps stored activity without plugin evidence", () async {
       plugin.projectsResult = const [
         PluginProject(
           id: "direct",
@@ -166,7 +262,9 @@ void main() {
         PluginProject(id: "default", directory: "default"),
       ];
 
-      final result = await repo.getProjects(defaultTimestamp: 1234);
+      await db.projectsDao.setActivity(projectId: "direct", createdAt: 10, updatedAt: 20);
+      await db.projectsDao.setActivity(projectId: "default", createdAt: 1234, updatedAt: 1234);
+      final result = await repo.getProjects();
       final rows = {for (final row in await db.projectsDao.getAllProjects()) row.projectId: row};
 
       expect(rows["direct"]!.createdAt, 10);
@@ -176,7 +274,7 @@ void main() {
       expect(result.every((project) => project.time != null), isTrue);
     });
 
-    test("getProjects reuses one post-seed project snapshot for paths and activity", () async {
+    test("getProjects uses one catalog project query", () async {
       plugin.projectsResult = const [
         PluginProject(
           id: "new",
@@ -185,7 +283,7 @@ void main() {
         ),
       ];
       final projectsDao = _CountingProjectsDao(database: db);
-      final countingRepo = ProjectRepository(
+      final countingRepo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: projectsDao,
@@ -193,14 +291,15 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
       );
+      await db.projectsDao.setActivity(projectId: "new", createdAt: 10, updatedAt: 20);
 
-      final result = await countingRepo.getProjects(defaultTimestamp: 9999);
+      final result = await countingRepo.getProjects();
 
-      expect(projectsDao.getAllProjectsCallCount, 1);
+      expect(projectsDao.getCatalogProjectsCallCount, 1);
       expect(result.single.time, const ProjectTime(created: 10, updated: 20));
     });
 
-    test("getProjects sorts equal timestamps by name and then id", () async {
+    test("getProjects breaks equal timestamps by project id descending", () async {
       plugin.projectsResult = const [
         PluginProject(id: "z", directory: "z", name: "Beta"),
         PluginProject(id: "b", directory: "b", name: "Alpha"),
@@ -210,9 +309,9 @@ void main() {
         await db.projectsDao.setActivity(projectId: id, createdAt: 1, updatedAt: 10);
       }
 
-      final result = await repo.getProjects(defaultTimestamp: 9999);
+      final result = await repo.getProjects();
 
-      expect(result.map((project) => project.id), ["a", "b", "z"]);
+      expect(result.map((project) => project.id), ["z", "b", "a"]);
     });
 
     test("openProject discovers via plugin, unhides stored row, and maps result", () async {
@@ -224,18 +323,141 @@ void main() {
       await db.projectsDao.hideProject(projectId: "p-open");
 
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-open");
-      await repo.persistOpenedProject(
-        projectId: target.projectId,
-        path: target.path,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+      final commit = await repo.persistOpenedProject(
+        target: target,
+        observedAt: 2,
       );
-      final result = await repo.mapOpenedProject(target: target);
+      final result = await repo.mapOpenedProject(
+        target: commit.committedTarget,
+        committedActivity: commit.committedActivity,
+      );
 
       expect(plugin.lastGetProjectId, equals("/tmp/p-open"));
       expect(result.id, equals("p-open"));
       expect(result.name, equals("Opened"));
       final hiddenIds = await db.projectsDao.getHiddenProjectIds();
       expect(hiddenIds, isNot(contains("p-open")));
+    });
+
+    test("opening a new native project persists its backend display name", () async {
+      plugin.projectResult = const PluginProject(
+        id: "p-new",
+        directory: "/tmp/p-new",
+        name: "Backend project name",
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-new");
+      await repo.persistOpenedProject(
+        target: target,
+        observedAt: 2,
+      );
+
+      expect((await repo.getProjects()).single.name, "Backend project name");
+    });
+
+    test("opening a native project reuses the normalized-path catalog row", () async {
+      const directory = "/tmp/projects/shared";
+      plugin.projectResult = const PluginProject(
+        id: "native-project-id",
+        directory: directory,
+        name: "Native project",
+      );
+      await db.projectsDao.recordOpenedProject(
+        projectId: directory,
+        path: "$directory/.",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: directory);
+      final commit = await repo.persistOpenedProject(
+        target: target,
+        observedAt: 2,
+      );
+      final opened = await repo.mapOpenedProject(
+        target: commit.committedTarget,
+        committedActivity: commit.committedActivity,
+      );
+
+      expect(opened.id, directory);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
+    });
+
+    test("openProject atomically rechecks identity after a concurrent catalog import", () async {
+      const directory = "/tmp/projects/racing-open";
+      const nativeProjectId = "native-project-id";
+      const importedProjectId = "catalog-project-id";
+      plugin.projectResult = const PluginProject(
+        id: nativeProjectId,
+        directory: directory,
+        name: "Native project",
+      );
+      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
+      final racingRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        plugin: plugin,
+        projectsDao: projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+      );
+      final service = ProjectActivityService(projectRepository: racingRepo, now: () => 10);
+      addTearDown(service.dispose);
+      final changes = <ProjectActivityChange>[];
+      final subscription = service.changes.listen(changes.add);
+      addTearDown(subscription.cancel);
+
+      final opening = service.openProject(path: directory);
+      await projectsDao.snapshotTaken.future;
+      await db.projectsDao.recordOpenedProject(
+        projectId: importedProjectId,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      projectsDao.releaseSnapshot.complete();
+
+      final opened = await opening;
+      await Future<void>.delayed(Duration.zero);
+      final rows = await db.projectsDao.getAllProjects();
+
+      expect(rows, hasLength(1));
+      expect(rows.single.projectId, importedProjectId);
+      expect(rows.single.createdAt, 1, reason: "opening must preserve the imported row's creation time");
+      expect(rows.single.updatedAt, 10, reason: "opening must advance activity monotonically to observed now");
+      expect(opened.id, importedProjectId);
+      expect(opened.time, const ProjectTime(created: 1, updated: 10));
+      expect(changes, [const ProjectActivityChange(projectId: importedProjectId, updatedAt: 10)]);
+    });
+
+    test("reopening a native project preserves its user display name", () async {
+      plugin.projectResult = const PluginProject(
+        id: "p-renamed",
+        directory: "/tmp/p-renamed",
+        name: "Backend project name",
+      );
+      await db.projectsDao.recordOpenedProject(
+        projectId: "p-renamed",
+        path: "/tmp/p-renamed",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      await db.projectsDao.setDisplayName(
+        projectId: "p-renamed",
+        displayName: "User project name",
+        updatedAt: 1,
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: "/tmp/p-renamed");
+      await repo.persistOpenedProject(
+        target: target,
+        observedAt: 2,
+      );
+
+      expect((await repo.getProjects()).single.name, "User project name");
     });
 
     group("moved project (stable id, new live path)", () {
@@ -248,12 +470,14 @@ void main() {
         await db.projectsDao.setBaseBranch(projectId: "/projects/a", baseBranch: "develop");
 
         final target = await repo.resolveProjectOpenTarget(path: "/moved/a");
-        await repo.persistOpenedProject(
-          projectId: target.projectId,
-          path: target.path,
-          activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+        final commit = await repo.persistOpenedProject(
+          target: target,
+          observedAt: 2,
         );
-        final result = await repo.mapOpenedProject(target: target);
+        final result = await repo.mapOpenedProject(
+          target: commit.committedTarget,
+          committedActivity: commit.committedActivity,
+        );
 
         expect(result.id, equals("/projects/a"));
         expect(result.path, equals("/moved/a"));
@@ -283,12 +507,11 @@ void main() {
         );
         final target = await repo.resolveProjectOpenTarget(path: "/moved/a");
         await repo.persistOpenedProject(
-          projectId: target.projectId,
-          path: target.path,
-          activity: const ProjectActivity(createdAt: 0, updatedAt: 1),
+          target: target,
+          observedAt: 1,
         );
 
-        final result = await repo.getProjects(defaultTimestamp: 9999);
+        final result = await repo.getProjects();
 
         expect(result, hasLength(1));
         expect(result.single.id, equals("/projects/a"));
@@ -300,7 +523,7 @@ void main() {
         plugin.projectsResult = const [
           PluginProject(id: "/projects/a", directory: "/projects/a", name: "A"),
         ];
-        final repoWithMissing = ProjectRepository(
+        final repoWithMissing = singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: db.projectsDao,
@@ -311,32 +534,68 @@ void main() {
         );
         final target = await repoWithMissing.resolveProjectOpenTarget(path: "/moved/a");
         await repoWithMissing.persistOpenedProject(
-          projectId: target.projectId,
-          path: target.path,
-          activity: const ProjectActivity(createdAt: 0, updatedAt: 1),
+          target: target,
+          observedAt: 1,
         );
 
-        final result = await repoWithMissing.getProjects(defaultTimestamp: 9999);
+        final result = await repoWithMissing.getProjects();
 
         expect(result.firstWhere((p) => p.id == "/projects/a").directoryMissing, isFalse);
       });
 
-      test("getProject and renameProject hand the plugin the live path", () async {
+      test("getProject is catalog-only while renameProject hands the plugin the live path", () async {
         plugin.projectResult = const PluginProject(id: "/projects/a", directory: "/moved/a", name: "A");
         await db.projectsDao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
+          displayName: null,
           createdAt: 0,
           updatedAt: 1,
         );
 
         final fetched = await repo.getProject(projectId: "/projects/a");
-        expect(plugin.lastGetProjectId, equals("/moved/a"));
+        expect(plugin.lastGetProjectId, isNull);
         expect(fetched.path, equals("/moved/a"));
 
         final renamed = await repo.renameProject(projectId: "/projects/a", name: "Renamed");
         expect(plugin.lastRenameProjectId, equals("/moved/a"));
         expect(renamed.path, equals("/moved/a"));
+      });
+
+      test("native rename retains the requested durable catalog identity and unseen state", () async {
+        const directory = "/moved/shared";
+        plugin.projectResult = const PluginProject(
+          id: "native-project-id",
+          directory: directory,
+          name: "Renamed",
+        );
+        await db.projectsDao.recordOpenedProject(
+          projectId: directory,
+          path: directory,
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 2,
+        );
+        await db.sessionDao.insertSession(
+          pluginId: plugin.id,
+          sessionId: "shared-session",
+          backendSessionId: "shared-session",
+          projectId: directory,
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+        );
+        await db.sessionDao.forceUnseen(sessionId: "shared-session", activityAt: 10);
+
+        final renamed = await repo.renameProject(projectId: directory, name: "Renamed");
+
+        expect(renamed.id, directory);
+        expect(renamed.hasUnseenChanges, isTrue);
       });
     });
 
@@ -362,12 +621,12 @@ void main() {
       expect(stored, equals("main"));
     });
 
-    test("getProjects flags a project whose directory no longer exists on disk", () async {
+    test("getProjects leaves directoryMissing false without filesystem probes", () async {
       plugin.projectsResult = const [
         PluginProject(id: "/present", directory: "/present", name: "Present"),
         PluginProject(id: "/moved", directory: "/moved", name: "Moved"),
       ];
-      final repoWithMissing = ProjectRepository(
+      final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -386,16 +645,16 @@ void main() {
         updatedAt: 1,
       );
 
-      final result = await repoWithMissing.getProjects(defaultTimestamp: 9999);
+      final result = await repoWithMissing.getProjects();
 
       expect(result.firstWhere((p) => p.id == "/present").directoryMissing, isFalse);
-      expect(result.firstWhere((p) => p.id == "/moved").directoryMissing, isTrue);
+      expect(result.firstWhere((p) => p.id == "/moved").directoryMissing, isFalse);
     });
 
-    test("getProject flags a since-deleted directory as missing", () async {
+    test("getProject leaves directoryMissing false without a filesystem probe", () async {
       plugin.projectResult = const PluginProject(id: "/gone", directory: "/gone", name: "Gone");
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/gone"]);
-      final repoWithMissing = ProjectRepository(
+      final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -406,14 +665,13 @@ void main() {
 
       final result = await repoWithMissing.getProject(projectId: "/gone");
 
-      expect(result.directoryMissing, isTrue);
+      expect(result.directoryMissing, isFalse);
+      expect(plugin.lastGetProjectId, isNull);
     });
 
     test("a directory whose existence probe throws is treated as present, not missing", () async {
-      plugin.projectsResult = const [
-        PluginProject(id: "/denied", directory: "/denied", name: "Denied"),
-      ];
-      final repoWithThrow = ProjectRepository(
+      await db.projectsDao.setActivity(projectId: "/denied", createdAt: 1, updatedAt: 2);
+      final repoWithThrow = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -422,7 +680,7 @@ void main() {
         filesystemApi: FakeFilesystemApi(throwingPaths: {"/denied"}),
       );
 
-      final result = await repoWithThrow.getProjects(defaultTimestamp: 9999);
+      final result = await repoWithThrow.getProjects();
 
       expect(result.single.directoryMissing, isFalse);
     });
@@ -436,7 +694,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeDerivedPlugin([]);
-      repo = ProjectRepository(
+      repo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -450,7 +708,7 @@ void main() {
       await db.close();
     });
 
-    test("getProjects derives projects from the plugin's sessions, grouped by directory and sorted", () async {
+    test("getProjects reads imported derived projects without enumerating sessions", () async {
       plugin.sessions = [
         _session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20),
         _session("/tmp/proj/alpha", id: "a2", created: 5, updated: 50),
@@ -469,17 +727,17 @@ void main() {
         updatedAt: 1,
       );
 
-      final result = await repo.getProjects(defaultTimestamp: 9999);
+      final result = await repo.getProjects();
 
       expect(result.map((p) => p.id).toSet(), {"/tmp/proj/alpha", "/tmp/proj/beta"});
-      // Canonical rows are persisted so a later session insert has an FK target.
       final rows = await db.select(db.projectsTable).get();
       expect(rows.map((r) => r.projectId).toSet(), containsAll({"/tmp/proj/alpha", "/tmp/proj/beta"}));
       // Sorted by persisted updatedAt descending: alpha (50) before beta (1).
       expect(result.first.id, "/tmp/proj/alpha");
+      expect(plugin.listAllSessionsCallCount, 0);
     });
 
-    test("normal listing seeds new derived projects without reconciling session evidence", () async {
+    test("normal listing does not seed derived plugin sessions", () async {
       plugin.sessions = [
         _session("/tmp/proj/alpha", id: "a1", created: 20, updated: 30),
         _session("/tmp/proj/alpha", id: "a2", created: 10, updated: 40),
@@ -489,20 +747,20 @@ void main() {
 
       final result = await service.getProjects();
 
-      expect(result.single.time, const ProjectTime(created: 9999, updated: 9999));
+      expect(result, isEmpty);
       final row = await db.projectsDao.getProject(projectId: "/tmp/proj/alpha");
-      expect(row?.createdAt, 9999);
-      expect(row?.updatedAt, 9999);
+      expect(row, isNull);
+      expect(plugin.listAllSessionsCallCount, 0);
     });
 
     test("getProjects omits a project flagged hidden", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", created: 1, updated: 1)];
       await db.projectsDao.hideProject(projectId: "/tmp/proj/alpha");
 
-      expect(await repo.getProjects(defaultTimestamp: 9999), isEmpty);
+      expect(await repo.getProjects(), isEmpty);
     });
 
-    test("getProjects ignores tombstoned sessions in project derivation", () async {
+    test("getProjects retains durable projects regardless of plugin tombstones", () async {
       // The backend has no session deletion, so it keeps enumerating the
       // deleted session — its project must not resurrect from it.
       plugin.sessions = [
@@ -510,11 +768,14 @@ void main() {
         _session("/tmp/proj/deleted-only", id: "gone", created: 1, updated: 1),
       ];
       await db.sessionDao.insertSessionTombstone(backendSessionId: "gone", pluginId: "codex", deletedAt: 1);
+      await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 1, updatedAt: 2);
+      await db.projectsDao.setActivity(projectId: "/tmp/proj/deleted-only", createdAt: 1, updatedAt: 1);
 
-      final result = await repo.getProjects(defaultTimestamp: 1);
+      final result = await repo.getProjects();
 
       expect(result.map((p) => p.id), contains("/tmp/proj/alpha"));
-      expect(result.map((p) => p.id), isNot(contains("/tmp/proj/deleted-only")));
+      expect(result.map((p) => p.id), contains("/tmp/proj/deleted-only"));
+      expect(plugin.listAllSessionsCallCount, 0);
     });
 
     test("project activity evidence ignores tombstoned sessions", () async {
@@ -527,45 +788,86 @@ void main() {
         deletedAt: 1,
       );
 
-      final result = await repo.listProjectActivityEvidence();
+      final result = await repo.listProjectActivityEvidence(pluginId: plugin.id);
 
-      expect(result.evidence.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
+      expect(result.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
+    });
+
+    test("derived activity uses the stored native project identity for the same directory", () async {
+      const directory = "/tmp/proj/shared";
+      const nativeProjectId = "native-project-id";
+      await db.projectsDao.recordOpenedProject(
+        projectId: nativeProjectId,
+        path: directory,
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      plugin.sessions = [_session(directory, id: "derived-session", created: 10, updated: 20)];
+
+      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
+      addTearDown(service.dispose);
+      await service.reconcile(pluginId: plugin.id);
+
+      final rows = await db.projectsDao.getAllProjects();
+      expect(rows.map((project) => project.projectId), [nativeProjectId]);
+      expect(rows.single.updatedAt, 20);
     });
 
     test("openProject records an opened folder so an empty project survives the listing", () async {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/proj/empty");
-      await repo.persistOpenedProject(
-        projectId: target.projectId,
-        path: target.path,
-        activity: const ProjectActivity(createdAt: 1, updatedAt: 2),
+      final commit = await repo.persistOpenedProject(
+        target: target,
+        observedAt: 2,
       );
-      final opened = await repo.mapOpenedProject(target: target);
+      final opened = await repo.mapOpenedProject(
+        target: commit.committedTarget,
+        committedActivity: commit.committedActivity,
+      );
 
       expect(opened.id, "/tmp/proj/empty");
       expect(opened.name, "empty");
       expect(
-        (await repo.getProjects(defaultTimestamp: 9999)).map((p) => p.id),
+        (await repo.getProjects()).map((p) => p.id),
         contains("/tmp/proj/empty"),
       );
       final row = (await db.select(db.projectsTable).get()).firstWhere((r) => r.projectId == "/tmp/proj/empty");
-      expect(row.createdAt, equals(1));
+      expect(row.createdAt, equals(2));
       expect(row.updatedAt, equals(2));
-      // The stored rows are also the enumeration hints: a directory-scoped
-      // backend (ACP) is pointed at every recorded folder, so opening one makes
-      // its pre-existing sessions discoverable on the next enumeration.
-      expect(plugin.receivedKnownDirectories, containsAll(<String>["/tmp/proj/empty", plugin.launchDir]));
+      expect(plugin.receivedKnownDirectories, isNull);
+    });
+
+    test("derived open reuses a native catalog row for the normalized directory", () async {
+      const directory = "/tmp/proj/shared-open";
+      const nativeProjectId = "native-project-id";
+      await db.projectsDao.recordOpenedProject(
+        projectId: nativeProjectId,
+        path: "$directory/.",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 2,
+      );
+
+      final target = await repo.resolveProjectOpenTarget(path: directory);
+      await repo.persistOpenedProject(
+        target: target,
+        observedAt: 3,
+      );
+
+      expect(target.projectId, nativeProjectId);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [nativeProjectId]);
     });
 
     test("renameProject persists a display-name override applied on the next listing", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", created: 1, updated: 1)];
-      await repo.getProjects(defaultTimestamp: 9999);
+      await repo.getProjects();
       await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 10, updatedAt: 20);
 
       final renamed = await repo.renameProject(projectId: "/tmp/proj/alpha", name: "Renamed Alpha");
 
       expect(renamed.name, "Renamed Alpha");
       expect(renamed.time, const ProjectTime(created: 10, updated: 20));
-      final listed = (await repo.getProjects(defaultTimestamp: 9999)).firstWhere(
+      final listed = (await repo.getProjects()).firstWhere(
         (p) => p.id == "/tmp/proj/alpha",
       );
       expect(listed.name, "Renamed Alpha");
@@ -573,7 +875,7 @@ void main() {
 
     test("getProject resolves a derived project without calling the plugin's guarded getProject", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
-      await repo.getProjects(defaultTimestamp: 9999);
+      await repo.getProjects();
       await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 30, updatedAt: 40);
 
       // The mixin's getProject throws; routing through the repository must
@@ -589,7 +891,7 @@ void main() {
       plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
       await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 30, updatedAt: 40);
       final projectsDao = _CountingProjectsDao(database: db);
-      final countingRepo = ProjectRepository(
+      final countingRepo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: projectsDao,
@@ -601,7 +903,7 @@ void main() {
       final project = await countingRepo.getProject(projectId: "/tmp/proj/alpha");
 
       expect(project.time, const ProjectTime(created: 30, updated: 40));
-      expect(projectsDao.getProjectCallCount, 2);
+      expect(projectsDao.getProjectCallCount, 1);
     });
 
     test("getProject and renameProject reject an unknown derived project id", () async {
@@ -644,7 +946,7 @@ void main() {
         _session(worktree, id: "w1", created: 200, updated: 200),
       ];
 
-      final result = await repo.getProjects(defaultTimestamp: 9999);
+      final result = await repo.getProjects();
 
       // One card (the parent), never a card named after the worktree.
       expect(result.map((p) => p.id).toSet(), {parent});
@@ -653,12 +955,12 @@ void main() {
       expect(result.single.time?.updated, persistedActivity!.updatedAt);
     });
 
-    test("getProjects flags a derived project whose directory no longer exists on disk", () async {
+    test("getProjects does not probe derived project directories", () async {
       plugin.sessions = [
         _session("/tmp/proj/alpha", id: "a1", created: 1, updated: 2),
         _session("/tmp/proj/beta", id: "b1", created: 1, updated: 1),
       ];
-      final repoWithMissing = ProjectRepository(
+      final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
         plugin: plugin,
         projectsDao: db.projectsDao,
@@ -677,10 +979,10 @@ void main() {
         updatedAt: 1,
       );
 
-      final result = await repoWithMissing.getProjects(defaultTimestamp: 9999);
+      final result = await repoWithMissing.getProjects();
 
       expect(result.firstWhere((p) => p.id == "/tmp/proj/alpha").directoryMissing, isFalse);
-      expect(result.firstWhere((p) => p.id == "/tmp/proj/beta").directoryMissing, isTrue);
+      expect(result.firstWhere((p) => p.id == "/tmp/proj/beta").directoryMissing, isFalse);
     });
   });
 
@@ -697,7 +999,7 @@ void main() {
       await db.close();
     });
 
-    ProjectRepository repoWith({required String? remoteUrl}) => ProjectRepository(
+    ProjectRepository repoWith({required String? remoteUrl}) => singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(remoteUrl: remoteUrl),
       plugin: plugin,
       projectsDao: db.projectsDao,
@@ -713,14 +1015,26 @@ void main() {
     });
 
     test("returns null when the project has no usable remote", () async {
-      await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
+      await db.projectsDao.recordOpenedProject(
+        projectId: "/dev/app",
+        path: "/dev/app",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
       final repo = repoWith(remoteUrl: null);
 
       expect(await repo.getRemoteIdentity(projectId: "/dev/app"), isNull);
     });
 
     test("parses the remote URL of the stored project path into host and slug", () async {
-      await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
+      await db.projectsDao.recordOpenedProject(
+        projectId: "/dev/app",
+        path: "/dev/app",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
       final repo = repoWith(remoteUrl: "git@github.com:sesori-ai/sesori.git");
 
       expect(
@@ -730,7 +1044,13 @@ void main() {
     });
 
     test("returns null for a local filesystem remote", () async {
-      await db.projectsDao.recordOpenedProject(projectId: "/dev/app", path: "/dev/app", createdAt: 1, updatedAt: 1);
+      await db.projectsDao.recordOpenedProject(
+        projectId: "/dev/app",
+        path: "/dev/app",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
       final repo = repoWith(remoteUrl: "/srv/git/repo.git");
 
       expect(await repo.getRemoteIdentity(projectId: "/dev/app"), isNull);
@@ -758,20 +1078,24 @@ PluginSession _session(
 /// [ProjectRepository]. Every other member throws so accidental use is loud.
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
+  Future<List<PluginProject>>? getProjectsFuture;
   Object? getProjectsError;
   PluginProject projectResult = const PluginProject(id: "project-id", directory: "project-id");
   String? lastGetProjectId;
   String? lastRenameProjectId;
+  int getProjectsCallCount = 0;
 
   @override
   Future<List<PluginProject>> getProjects() async {
+    getProjectsCallCount++;
+    if (getProjectsFuture case final future?) return future;
     final err = getProjectsError;
     if (err != null) throw err;
     return projectsResult;
   }
 
   @override
-  String get id => throw UnimplementedError();
+  String get id => "fake";
 
   @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();
@@ -907,12 +1231,14 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
   /// The hint set received on the most recent [listAllSessions] call.
   Set<String>? receivedKnownDirectories;
+  int listAllSessionsCallCount = 0;
 
   @override
   String get id => "codex";
 
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    listAllSessionsCallCount++;
     receivedKnownDirectories = knownDirectories;
     return sessions;
   }
@@ -929,6 +1255,13 @@ class _CountingProjectsDao extends ProjectsDao {
 
   int getAllProjectsCallCount = 0;
   int getProjectCallCount = 0;
+  int getCatalogProjectsCallCount = 0;
+
+  @override
+  Future<List<ProjectDto>> getCatalogProjects() {
+    getCatalogProjectsCallCount++;
+    return super.getCatalogProjects();
+  }
 
   @override
   Future<List<ProjectDto>> getAllProjects() {
@@ -940,5 +1273,22 @@ class _CountingProjectsDao extends ProjectsDao {
   Future<ProjectDto?> getProject({required String projectId}) {
     getProjectCallCount++;
     return super.getProject(projectId: projectId);
+  }
+}
+
+class _BlockingSnapshotProjectsDao extends ProjectsDao {
+  _BlockingSnapshotProjectsDao({required AppDatabase database}) : super(database);
+
+  final Completer<void> snapshotTaken = Completer<void>();
+  final Completer<void> releaseSnapshot = Completer<void>();
+
+  @override
+  Future<List<ProjectDto>> getAllProjects() async {
+    final projects = await super.getAllProjects();
+    if (!snapshotTaken.isCompleted) {
+      snapshotTaken.complete();
+      await releaseSnapshot.future;
+    }
+    return projects;
   }
 }

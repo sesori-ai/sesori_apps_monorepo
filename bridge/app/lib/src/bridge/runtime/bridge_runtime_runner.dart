@@ -15,7 +15,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         Console,
         Log,
         PluginConfig,
-        PluginFailed,
         PluginStartAbortedException,
         PluginUnavailable,
         ProcessIdentity,
@@ -25,11 +24,14 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ServerClock,
         StartAbortController,
         StartAbortSignal;
-import "package:sesori_shared/sesori_shared.dart" show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo;
+import "package:sesori_shared/sesori_shared.dart"
+    show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo, legacyMissingPluginId;
 
+import "../../api/app_onboarding_state_storage.dart";
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
 import "../../api/database/database.dart";
+import "../../api/sesori_server_api.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_id_migration_service.dart";
 import "../../auth/bridge_id_storage.dart";
@@ -47,7 +49,11 @@ import "../../control/bridge_control_message_dispatcher.dart";
 import "../../control/control_channel_loss_listener.dart";
 import "../../control/control_provision_notifier.dart";
 import "../../control/control_status_notifier.dart";
+import "../../foundation/app_onboarding_formatter.dart";
 import "../../foundation/control_channel_client.dart";
+import "../../listeners/catalog_import_console_listener.dart";
+import "../../repositories/app_client_status_repository.dart";
+import "../../repositories/app_onboarding_state_repository.dart";
 import "../../repositories/bridge_settings.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
@@ -63,15 +69,19 @@ import "../../server/host/bridge_host_json_store.dart";
 import "../../server/host/bridge_host_port_service.dart";
 import "../../server/host/bridge_host_process_service.dart";
 import "../../server/host/bridge_plugin_host_impl.dart";
+import "../../server/host/plugin_state_directory.dart";
 import "../../server/repositories/bridge_instance_repository.dart";
 import "../../server/repositories/process_repository.dart";
 import "../../server/repositories/startup_mutex_repository.dart";
 import "../../server/repositories/terminal_prompt_repository.dart";
 import "../../server/services/bridge_instance_service.dart";
 import "../../server/services/bridge_restart_service.dart";
+import "../../services/app_client_onboarding_service.dart";
+import "../../services/catalog_import_service.dart";
 import "../../services/control_channel_token_service.dart";
 import "../../services/control_prompt_service.dart";
 import "../../services/control_unregister_service.dart";
+import "../../services/plugin_lifecycle_service.dart";
 import "../../updater/api/checksum_manifest_api.dart";
 import "../../updater/api/github_releases_api.dart";
 import "../../updater/api/managed_runtime_manifest_api.dart";
@@ -99,10 +109,12 @@ import "../../updater/services/update_lifecycle_service.dart";
 import "../../updater/services/update_reconciliation_service.dart";
 import "../../updater/services/update_service.dart";
 import "../../version.dart";
+import "../debug_server.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
 import "../log_failure_reporter.dart";
 import "../models/bridge_config.dart";
+import "../orchestrator.dart";
 import "../persistence/bridge_diagnostics.dart";
 import "../relay_client.dart";
 import "../sse/sse_manager.dart";
@@ -111,8 +123,6 @@ import "bridge_runtime.dart";
 import "bridge_runtime_auth.dart";
 import "bridge_runtime_server_exception.dart";
 import "bridge_shutdown_coordinator.dart";
-import "plugin_failure_latch.dart";
-import "plugin_manager.dart";
 import "plugin_registry.dart";
 import "runtime_provision_formatter.dart";
 
@@ -160,13 +170,11 @@ enum SupervisedExitCode {
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
-  required PluginConfig pluginConfig,
-  required String pluginId,
+  required Map<String, PluginConfig> pluginConfigs,
 }) {
   return BridgeRuntimeRunner.run(
     options: options,
-    pluginConfig: pluginConfig,
-    pluginId: pluginId,
+    pluginConfigs: pluginConfigs,
   );
 }
 
@@ -179,10 +187,14 @@ class BridgeRuntimeRunner {
 
   static Future<int> run({
     required BridgeCliOptions options,
-    required PluginConfig pluginConfig,
-    required String pluginId,
+    required Map<String, PluginConfig> pluginConfigs,
   }) async {
-    final failureLatch = PluginFailureLatch();
+    final startAbortController = StartAbortController();
+    final pluginLifecycleService = PluginLifecycleService();
+    BridgeRuntime? runtime;
+    DebugServer? debugServer;
+    CatalogImportConsoleListener? catalogImportConsoleListener;
+    Future<void>? sessionRun;
     // The single typed slot for a deliberate supervised exit (restart /
     // auth-required / contention / logout / control-channel loss). Set at the
     // moment an outcome is decided — BEFORE any shutdown runs — so both the
@@ -197,8 +209,56 @@ class BridgeRuntimeRunner {
     // decided intentional exit.
     SupervisedExitCode? requestedSupervisedExit;
     final shutdownCoordinator = BridgeShutdownCoordinator(
-      backstopExitCode: () => requestedSupervisedExit?.code ?? (failureLatch.failure == null ? 0 : 1),
+      startAbortSignal: startAbortController.signal,
+      backstopExitCode: () => requestedSupervisedExit?.code ?? 0,
     );
+    shutdownCoordinator
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
+        action: startAbortController.abort,
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
+        action: () => runtime?.catalogImportService.beginShutdown(),
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
+        action: () => runtime?.session.beginShutdown(),
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
+        action: () => debugServer?.beginShutdown(),
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
+        action: () => catalogImportConsoleListener?.dispose(),
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.drain,
+        action: () => runtime?.catalogImportService.drain() ?? Future<void>.value(),
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.drain,
+        action: () => sessionRun ?? Future<void>.value(),
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.drain,
+        action: () => debugServer?.drain() ?? Future<void>.value(),
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.pluginDispose,
+        action: pluginLifecycleService.disposeStartedApis,
+        budget: _pluginShutdownBudget,
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.lifecycle,
+        action: pluginLifecycleService.dispose,
+        budget: _pluginShutdownBudget,
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.shared,
+        action: () => runtime?.close(),
+      );
     final subscriptions = CompositeSubscription();
     shutdownCoordinator.add(disposable: subscriptions.cancel);
     final httpClient = http.Client();
@@ -213,8 +273,8 @@ class BridgeRuntimeRunner {
     final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(
       environment: environment,
     );
-    // Also the OpenCode plugin's state directory: its ownership file lives
-    // here under a frozen cross-version contract (see pluginStateDirectoryPath).
+    // Also the legacy shared plugin state directory. Shipped ownership files
+    // live here under a frozen cross-version contract (see pluginStateDirectoryPath).
     final runtimeDirectory = path.join(managedRuntimePaths.cacheDirectory, "runtime");
     final runtimeFileApi = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
     final systemProcessApi = SystemProcessApi(
@@ -443,7 +503,15 @@ class BridgeRuntimeRunner {
       // provider menu, no email/password prompt — the access token comes from
       // the GUI over the control channel. Standalone runs the unchanged
       // interactive flow. logAuthenticatedUser is identical on both paths.
+      // In supervised mode the GUI is the token authority: the control-channel
+      // token service is the access-token provider + refresher, pulling tokens
+      // from the GUI over the loopback channel. Standalone keeps the
+      // TokenManager, which refreshes against the auth server with the locally
+      // stored refresh token (no GUI exists to ask). Build it before interactive
+      // app onboarding so an unbounded wait can refresh its access token.
       final String authAccessToken;
+      final AccessTokenProvider accessTokenProvider;
+      final TokenRefresher tokenRefresher;
       final supervisedTokenService = controlChannelTokenService;
       if (supervisedTokenService != null) {
         try {
@@ -458,9 +526,20 @@ class BridgeRuntimeRunner {
           requestedSupervisedExit = SupervisedExitCode.authRequired;
           return SupervisedExitCode.authRequired.code;
         }
+        accessTokenProvider = supervisedTokenService;
+        tokenRefresher = supervisedTokenService;
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
         authAccessToken = authTokens.accessToken;
+        final tokenManager = TokenManager(
+          initialToken: authAccessToken,
+          authBackendUrl: options.authBackendUrl,
+          loadTokens: loadTokens,
+          saveTokens: saveTokens,
+        );
+        shutdownCoordinator.add(disposable: tokenManager.dispose);
+        accessTokenProvider = tokenManager;
+        tokenRefresher = tokenManager;
       }
       await runtimeAuthService.logAuthenticatedUser(
         authBackendUrl: options.authBackendUrl,
@@ -476,12 +555,21 @@ class BridgeRuntimeRunner {
       );
       final ownerSessionId = _buildOwnerSessionId(currentBridgeIdentity: currentBridgeIdentity);
 
-      final descriptor = knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId);
-
-      // Fail fast with clear, user-facing guidance if the selected plugin's
-      // backend is unavailable — BEFORE the startup mutex and single-live-bridge
-      // enforcement, so a missing backend (e.g. OpenCode not installed) can
-      // never terminate a healthy resident bridge. The probe is read-only.
+      final descriptors = [
+        for (final pluginId in options.enabledPluginIds)
+          knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId),
+      ];
+      pluginLifecycleService.registerSelection(
+        knownPluginIds: {for (final descriptor in knownPlugins) descriptor.id},
+        enabledPlugins: [
+          for (var index = 0; index < descriptors.length; index++)
+            (
+              id: descriptors[index].id,
+              displayName: descriptors[index].displayName,
+              isDefault: index == 0,
+            ),
+        ],
+      );
       final hostProcessService = BridgeHostProcessService(
         processStarter: io.Process.start,
         processRepository: processRepository,
@@ -490,38 +578,66 @@ class BridgeRuntimeRunner {
         isWindows: io.Platform.isWindows,
         platform: io.Platform.operatingSystem,
       );
-      final availability = await descriptor.checkAvailability(
-        config: pluginConfig,
-        processes: hostProcessService,
-        environment: environment,
+      final availabilityResults = await Future.wait(
+        descriptors.map((descriptor) async {
+          try {
+            return (
+              descriptor: descriptor,
+              availability: await descriptor.checkAvailability(
+                config: pluginConfigs[descriptor.id]!,
+                processes: hostProcessService,
+                environment: environment,
+              ),
+              error: null,
+              stackTrace: null,
+            );
+          } on Object catch (error, stackTrace) {
+            return (
+              descriptor: descriptor,
+              availability: null,
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }
+        }),
       );
-      if (availability is PluginUnavailable) {
-        Console.error(availability.message);
+      final availableDescriptors = <BridgePluginDescriptor>[];
+      for (final result in availabilityResults) {
+        switch (result.availability) {
+          case PluginUnavailable(:final message):
+            pluginLifecycleService.registerUnavailable(id: result.descriptor.id);
+            Console.error(message);
+          case null:
+            pluginLifecycleService.registerUnavailable(id: result.descriptor.id);
+            Console.error("${result.descriptor.displayName} availability check failed: ${result.error}");
+          default:
+            availableDescriptors.add(result.descriptor);
+        }
+      }
+      final runAppOnboarding = shouldRunAppOnboarding(
+        isSupervised: options.isSupervised,
+        isInteractive: terminalPromptApi.isInteractive,
+        hasAvailablePlugins: availableDescriptors.isNotEmpty,
+      );
+      if (availableDescriptors.isEmpty) {
         return 1;
       }
-
-      final startAbortController = StartAbortController();
-      final pluginManager = PluginManager();
-      pluginManager.register(
-        id: descriptor.id,
-        shutdownBudget: _pluginShutdownBudget,
-        starter: () => startPluginUnderStartupMutex(
-          descriptor: descriptor,
-          pluginConfig: pluginConfig,
-          currentBridgeIdentity: currentBridgeIdentity,
-          ownerSessionId: ownerSessionId,
-          startupMutexRepository: startupMutexRepository,
-          bridgeInstanceService: bridgeInstanceService,
-          processRepository: processRepository,
-          runtimeFileApi: runtimeFileApi,
-          runtimeDirectory: runtimeDirectory,
-          serverClock: serverClock,
-          environment: environment,
-          currentUser: currentUser,
-          startAborted: startAbortController.signal,
-          provisionNotifier: controlProvisionNotifier,
-        ),
-      );
+      if (runAppOnboarding) {
+        await AppClientOnboardingService(
+          statusRepository: AppClientStatusRepository(
+            api: SesoriServerApi(
+              authBackendUrl: options.authBackendUrl,
+              client: httpClient,
+              requestDeadline: SesoriServerApi.defaultRequestDeadline,
+            ),
+          ),
+          stateRepository: AppOnboardingStateRepository(
+            storage: AppOnboardingStateStorage(directoryPath: appOnboardingStateDirectoryPath()),
+          ),
+          formatter: AppOnboardingFormatter(out: io.stdout, environment: environment),
+          tokenRefresher: tokenRefresher,
+        ).run(accessToken: authAccessToken, authBackendUrl: options.authBackendUrl);
+      }
       // If this bridge was spawned by a restart, wait for the predecessor to
       // exit before single-live-bridge enforcement so the handoff is clean.
       final predecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
@@ -546,46 +662,32 @@ class BridgeRuntimeRunner {
         }
       }
 
-      // Register the ordered plugin-stop BEFORE starting the plugin. A logout
-      // (or the ADR-A9 control-loss exit) can trigger `_shutdownThenExit` while
-      // `startPlugin()` is still in-flight; registering the stop first means the
-      // ordered shutdown covers a partially-started plugin (`stopPlugin` awaits
-      // the in-flight start, then shuts it down) instead of exiting without
-      // stopping it and orphaning the backend. It is a no-op if start never ran.
-      shutdownCoordinator.addOrdered(
-        action: () => pluginManager.stopPlugin(id: pluginId),
-        budget: _pluginShutdownBudget,
+      final startedPlugins = <String, BridgePlugin>{};
+      await startPluginsUnderStartupMutex(
+        descriptors: availableDescriptors,
+        pluginConfigs: pluginConfigs,
+        lifecycleService: pluginLifecycleService,
+        startedPlugins: startedPlugins,
+        managedRuntimePaths: managedRuntimePaths,
+        currentBridgeIdentity: currentBridgeIdentity,
+        ownerSessionId: ownerSessionId,
+        startupMutexRepository: startupMutexRepository,
+        bridgeInstanceService: bridgeInstanceService,
+        processRepository: processRepository,
+        runtimeFileApi: runtimeFileApi,
+        serverClock: serverClock,
+        environment: environment,
+        currentUser: currentUser,
+        startAborted: startAbortController.signal,
+        provisionNotifier: controlProvisionNotifier,
       );
-      final plugin = await pluginManager.startPlugin(id: pluginId);
-      plugin.status
-          .listen((status) {
-            if (status is PluginFailed) {
-              failureLatch.record(status);
-            }
-          })
-          .addTo(subscriptions);
-
-      // In supervised mode the GUI is the token authority: the control-channel
-      // token service is the access-token provider + refresher, pulling tokens
-      // from the GUI over the loopback channel. Standalone keeps the
-      // TokenManager, which refreshes against the auth server with the locally
-      // stored refresh token (no GUI exists to ask). The control service's
-      // dispose is already registered with the shutdown coordinator above.
-      final AccessTokenProvider accessTokenProvider;
-      final TokenRefresher tokenRefresher;
-      if (supervisedTokenService != null) {
-        accessTokenProvider = supervisedTokenService;
-        tokenRefresher = supervisedTokenService;
-      } else {
-        final tokenManager = TokenManager(
-          initialToken: authAccessToken,
-          authBackendUrl: options.authBackendUrl,
-          loadTokens: loadTokens,
-          saveTokens: saveTokens,
-        );
-        shutdownCoordinator.add(disposable: tokenManager.dispose);
-        accessTokenProvider = tokenManager;
-        tokenRefresher = tokenManager;
+      if (startAbortController.isAborted) {
+        Log.i("Plugin start aborted as requested.");
+        return 0;
+      }
+      for (final pluginId in options.enabledPluginIds) {
+        final plugin = startedPlugins[pluginId];
+        if (plugin != null) Console.message("Target [$pluginId]: ${plugin.describe().endpoint ?? pluginId}");
       }
 
       // Supervised mode already built this early (so the dispatcher could route
@@ -621,7 +723,7 @@ class BridgeRuntimeRunner {
       if (controlChannelClient != null) {
         controlStatusNotifier = ControlStatusNotifier(
           client: controlChannelClient,
-          pluginStatus: plugin.status,
+          pluginMetadata: pluginLifecycleService.metadataSnapshots,
           relayConnectionState: relayClient.connectionState,
           registrations: bridgeRegistrationService.registrations,
         );
@@ -655,58 +757,67 @@ class BridgeRuntimeRunner {
         Log.w("Startup diagnostics failed; continuing without a degraded-access warning", error, stackTrace);
       }
 
-      final runtime = BridgeRuntime.create(
+      final database = AppDatabase.create();
+      final failureReporter = LogFailureReporter();
+      final composition = Orchestrator(
         config: BridgeConfig(
           relayURL: options.relayUrl,
-          pluginEndpoint: plugin.describe().endpoint ?? pluginId,
           authBackendURL: options.authBackendUrl,
           sseReplayWindow: SSEManager.defaultReplayWindow,
           yolo: bridgeSettings.yolo,
         ),
-        plugin: plugin.api,
-        pluginId: pluginId,
-        relayClient: relayClient,
+        client: relayClient,
+        legacyMissingPluginId: legacyMissingPluginId,
+        pluginLifecycleService: pluginLifecycleService,
+        database: database,
         httpClient: httpClient,
+        processRunner: processRunner,
         accessTokenProvider: accessTokenProvider,
         tokenRefresher: tokenRefresher,
         bridgeRegistrationService: bridgeRegistrationService,
-        database: AppDatabase.create(),
-        processRunner: processRunner,
-        failureReporter: LogFailureReporter(),
+        failureReporter: failureReporter,
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
         statusNotifier: controlStatusNotifier,
+      ).create();
+      runtime = BridgeRuntime(
+        database: database,
+        failureReporter: failureReporter,
+        restartService: restartService,
+        composition: composition,
       );
-      shutdownCoordinator.add(disposable: runtime.close);
-      // Defined stop semantics: stopping the active plugin cancels the
-      // session first, so the bridge never keeps serving requests against a
-      // stopped plugin. cancel() is idempotent and safe after run() returns,
-      // which covers the ordinary post-session stop during shutdown.
-      pluginManager.bindActiveSession(cancel: runtime.session.cancel);
+      final activeRuntime = runtime;
 
-      await startDebugServerIfRequested(
+      if (!options.isSupervised) {
+        catalogImportConsoleListener = CatalogImportConsoleListener(
+          progress: activeRuntime.catalogImportService.progress,
+        );
+        catalogImportConsoleListener.start();
+      }
+      startCatalogImports(
+        service: activeRuntime.catalogImportService,
+        pluginIds: [
+          for (final pluginId in options.enabledPluginIds)
+            if (pluginLifecycleService.compositionView.operationalPlugins.containsKey(pluginId)) pluginId,
+        ],
+        headlessPluginIds: options.importPluginIds,
+        operationalPluginIds: pluginLifecycleService.compositionView.operationalPlugins.keys.toSet(),
+      );
+
+      debugServer = await startDebugServerIfRequested(
         debugPort: options.debugPort,
-        runtime: runtime,
+        runtime: activeRuntime,
         shutdownCoordinator: shutdownCoordinator,
       );
-      registerSignalHandlers(session: runtime.session, subscriptions: subscriptions);
+      registerSignalHandlers(session: activeRuntime.session, subscriptions: subscriptions);
       // Background: check + download + stage + apply-in-place on a 4h cadence.
       // The swap takes effect on the next launch (or a phone-triggered restart).
       shutdownCoordinator.add(disposable: updateLifecycle.dispose);
       updateLifecycle.start();
 
-      final startupFailure = failureLatch.failure;
-      if (startupFailure != null) {
-        Log.e("Plugin failed before the session could start: ${startupFailure.reason}");
-        return 1;
-      }
-      failureLatch.bind((failure) {
-        Log.e("Plugin failed: ${failure.reason}. Cancelling the session.");
-        unawaited(runtime.session.cancel());
-      });
-
       try {
-        await runtime.session.run();
+        sessionRun = activeRuntime.session.run();
+        await sessionRun;
       } finally {
         // A supervised phone-triggered restart handed the session off by exiting
         // rather than spawning a successor; resolve the GUI-respawn sentinel here
@@ -723,10 +834,13 @@ class BridgeRuntimeRunner {
       if (requestedSupervisedExit == SupervisedExitCode.restart) {
         return SupervisedExitCode.restart.code;
       }
-      return failureLatch.failure == null ? 0 : 1;
-    } on PluginStartAbortedException {
-      Log.i("Plugin start aborted as requested.");
       return 0;
+    } on PluginStartAbortedException {
+      if (startAbortController.isAborted) {
+        Log.i("Plugin start aborted as requested.");
+        return 0;
+      }
+      rethrow;
     } on BridgeRuntimeServerException catch (error) {
       // Same-machine single-live contention: another bridge is running (or
       // holds the startup mutex) and this bridge did not replace it. Standalone
@@ -767,13 +881,40 @@ class BridgeRuntimeRunner {
           case SupervisedExitCode.restart:
           case SupervisedExitCode.authRequired:
           case SupervisedExitCode.bridgeContention:
-            Log.w("Shutdown error during a supervised sentinel exit; preserving the sentinel exit code", error, stackTrace);
+            Log.w(
+              "Shutdown error during a supervised sentinel exit; preserving the sentinel exit code",
+              error,
+              stackTrace,
+            );
           case SupervisedExitCode.logout:
           case SupervisedExitCode.controlChannelLost:
           case null:
             rethrow;
         }
       }
+    }
+  }
+
+  @visibleForTesting
+  static bool shouldRunAppOnboarding({
+    required bool isSupervised,
+    required bool isInteractive,
+    required bool hasAvailablePlugins,
+  }) => !isSupervised && isInteractive && hasAvailablePlugins;
+
+  @visibleForTesting
+  static void startCatalogImports({
+    required CatalogImportService service,
+    required List<String> pluginIds,
+    required List<String> headlessPluginIds,
+    required Set<String> operationalPluginIds,
+  }) {
+    for (final pluginId in pluginIds) {
+      service.start(pluginId: pluginId, trigger: CatalogImportTrigger.automatic);
+    }
+    for (final headlessPluginId in headlessPluginIds) {
+      if (!operationalPluginIds.contains(headlessPluginId)) continue;
+      service.start(pluginId: headlessPluginId, trigger: CatalogImportTrigger.headless);
     }
   }
 
@@ -927,24 +1068,30 @@ class BridgeRuntimeRunner {
   ///
   /// Public so tests can drive the live orchestration with a fake
   /// [descriptor]; production passes the registry-selected one.
-  static Future<BridgePlugin> startPluginUnderStartupMutex({
-    required BridgePluginDescriptor descriptor,
-    required PluginConfig pluginConfig,
+  static Future<void> startPluginsUnderStartupMutex({
+    required List<BridgePluginDescriptor> descriptors,
+    required Map<String, PluginConfig> pluginConfigs,
+    required PluginLifecycleService lifecycleService,
+    required Map<String, BridgePlugin> startedPlugins,
+    required ManagedRuntimePaths managedRuntimePaths,
     required ProcessIdentity currentBridgeIdentity,
     required String ownerSessionId,
     required StartupMutexRepository startupMutexRepository,
     required BridgeInstanceService bridgeInstanceService,
     required ProcessRepository processRepository,
     required RuntimeFileApi runtimeFileApi,
-    required String runtimeDirectory,
     required ServerClock serverClock,
     required Map<String, String> environment,
     required ProcessUser? currentUser,
     required StartAbortSignal startAborted,
     required ControlProvisionNotifier? provisionNotifier,
   }) {
-    Future<BridgePlugin> attemptStart({required int attempt}) {
-      return startupMutexRepository.withLock<BridgePlugin>(
+    final fileApisByStateDirectory = <String, RuntimeFileApi>{
+      runtimeFileApi.runtimeDirectory: runtimeFileApi,
+    };
+
+    Future<void> attemptStart({required int attempt}) {
+      return startupMutexRepository.withLock<void>(
         bridgePid: currentBridgeIdentity.pid,
         bridgeStartMarker: currentBridgeIdentity.startMarker,
         onLockAcquired: () async {
@@ -954,44 +1101,87 @@ class BridgeRuntimeRunner {
           );
           switch (resolution.status) {
             case BridgeInstanceResolutionStatus.allowed:
-              // The host contract promises the state directory exists before
-              // start() runs. The store shares the runner's RuntimeFileApi:
-              // its locked update() is only mutually exclusive within one
-              // instance per directory.
-              await io.Directory(runtimeDirectory).create(recursive: true);
-              final host = BridgePluginHostImpl(
-                config: pluginConfig,
-                stateDirectory: runtimeDirectory,
-                environment: Map<String, String>.unmodifiable(environment),
-                clock: serverClock,
-                startAborted: startAborted,
-                bridge: BridgeHostInfoImpl(
-                  identity: currentBridgeIdentity,
-                  ownerSessionId: ownerSessionId,
-                  terminatedBridgeIdentities: resolution.terminatedBridges,
-                  processRepository: processRepository,
-                ),
-                processes: BridgeHostProcessService(
-                  processStarter: io.Process.start,
-                  processRepository: processRepository,
+              final hosts = <String, BridgePluginHostImpl>{};
+              for (final descriptor in descriptors) {
+                final stateDirectory = pluginStateDirectoryPath(
+                  paths: managedRuntimePaths,
+                  pluginId: descriptor.id,
+                  stateStorage: descriptor.stateStorage,
+                );
+                await io.Directory(stateDirectory).create(recursive: true);
+                final fileApi = fileApisByStateDirectory.putIfAbsent(
+                  stateDirectory,
+                  () => RuntimeFileApi(runtimeDirectory: stateDirectory),
+                );
+                hosts[descriptor.id] = BridgePluginHostImpl(
+                  config: pluginConfigs[descriptor.id]!,
+                  stateDirectory: stateDirectory,
+                  environment: Map<String, String>.unmodifiable(environment),
                   clock: serverClock,
-                  currentUser: currentUser,
-                  isWindows: io.Platform.isWindows,
-                  platform: io.Platform.operatingSystem,
-                ),
-                ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
-                store: BridgeHostJsonStore(fileApi: runtimeFileApi),
-              );
-              // Ensure the plugin's backend runtime exists (download it if
-              // needed), recording the resolved launch path on the host, before
-              // start(). Runs under the mutex so concurrent bridge instances
-              // can't install the same managed runtime at once.
-              await _ensurePluginRuntime(
-                descriptor: descriptor,
-                host: host,
-                provisionNotifier: provisionNotifier,
-              );
-              return descriptor.start(host);
+                  startAborted: startAborted,
+                  bridge: BridgeHostInfoImpl(
+                    identity: currentBridgeIdentity,
+                    ownerSessionId: ownerSessionId,
+                    terminatedBridgeIdentities: resolution.terminatedBridges,
+                    processRepository: processRepository,
+                  ),
+                  processes: BridgeHostProcessService(
+                    processStarter: io.Process.start,
+                    processRepository: processRepository,
+                    clock: serverClock,
+                    currentUser: currentUser,
+                    isWindows: io.Platform.isWindows,
+                    platform: io.Platform.operatingSystem,
+                  ),
+                  ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
+                  store: BridgeHostJsonStore(fileApi: fileApi),
+                );
+              }
+
+              final settlements = <Future<void>>[];
+              for (final descriptor in descriptors) {
+                final host = hosts[descriptor.id]!;
+                Future<BridgePlugin> startFuture;
+                try {
+                  await _ensurePluginRuntime(
+                    descriptor: descriptor,
+                    host: host,
+                    provisionNotifier: provisionNotifier,
+                  );
+                  startFuture = Future<BridgePlugin>.sync(() => descriptor.start(host));
+                } on Object catch (error, stackTrace) {
+                  startFuture = Future<BridgePlugin>.error(error, stackTrace);
+                }
+                final observedStart = startFuture.then((plugin) {
+                  startedPlugins[descriptor.id] = plugin;
+                  return plugin;
+                });
+                settlements.add(
+                  lifecycleService.registerStart(
+                    id: descriptor.id,
+                    startFuture: observedStart,
+                    shutdownBudget: _pluginShutdownBudget,
+                  ),
+                );
+              }
+              Object? firstError;
+              StackTrace? firstStackTrace;
+              for (final settlement in settlements) {
+                try {
+                  await settlement;
+                } on PluginStartAbortedException catch (error, stackTrace) {
+                  if (!startAborted.isAborted) {
+                    firstError ??= error;
+                    firstStackTrace ??= stackTrace;
+                  }
+                } on Object catch (error, stackTrace) {
+                  firstError ??= error;
+                  firstStackTrace ??= stackTrace;
+                }
+              }
+              if (firstError != null) {
+                Error.throwWithStackTrace(firstError, firstStackTrace!);
+              }
             case BridgeInstanceResolutionStatus.declined:
               throw const BridgeRuntimeServerException(
                 "Startup aborted because another Sesori bridge is already running and replacement was declined.",
@@ -1068,13 +1258,16 @@ class BridgeRuntimeRunner {
     // token lifts the bridge to the authenticated 5000/hour limit. Resolve the
     // first non-empty value so a blank GITHUB_TOKEN does not shadow a valid
     // GH_TOKEN.
-    final githubToken = [
-      io.Platform.environment['GITHUB_TOKEN'],
-      io.Platform.environment['GH_TOKEN'],
-    ].map((token) => token?.trim()).firstWhere(
-      (token) => token != null && token.isNotEmpty,
-      orElse: () => null,
-    );
+    final githubToken =
+        [
+              io.Platform.environment['GITHUB_TOKEN'],
+              io.Platform.environment['GH_TOKEN'],
+            ]
+            .map((token) => token?.trim())
+            .firstWhere(
+              (token) => token != null && token.isNotEmpty,
+              orElse: () => null,
+            );
 
     final logRepository = UpdateLogRepository(
       api: UpdateLogApi(installRoot: installRoot, clock: clock),

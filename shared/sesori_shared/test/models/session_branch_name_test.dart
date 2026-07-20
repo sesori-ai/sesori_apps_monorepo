@@ -27,6 +27,7 @@ void main() {
         "time": null,
         "pullRequest": null,
         "branchName": "sesori/add-search",
+        "hasWorktree": true,
       });
 
       expect(session.branchName, "sesori/add-search");
@@ -44,6 +45,7 @@ void main() {
         time: null,
         pullRequest: null,
         promptDefaults: null,
+        hasWorktree: true,
       );
 
       final json = session.toJson();

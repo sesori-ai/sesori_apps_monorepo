@@ -1,6 +1,5 @@
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
@@ -26,7 +25,7 @@ void main() {
       db = createTestDatabase();
       projectsDao = db.projectsDao;
       projectActivityService = ProjectActivityService(
-        projectRepository: ProjectRepository(
+        projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           plugin: plugin,
           projectsDao: projectsDao,
@@ -77,9 +76,10 @@ void main() {
         fragment: null,
       );
       expect(response.data, isEmpty);
+      expect(plugin.getProjectsCallCount, 0);
     });
 
-    test("maps PluginProject id and name fields", () async {
+    test("maps stored project id and display name", () async {
       plugin.projectsResult = [
         const PluginProject(
           id: "p1",
@@ -87,6 +87,8 @@ void main() {
           name: "My Project",
         ),
       ];
+      await projectsDao.setActivity(projectId: "p1", createdAt: 1, updatedAt: 2);
+      await projectsDao.setDisplayName(projectId: "p1", displayName: "My Project", updatedAt: 2);
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
@@ -98,9 +100,10 @@ void main() {
       final project = response.data[0];
       expect(project.id, equals("p1"));
       expect(project.name, equals("My Project"));
+      expect(plugin.getProjectsCallCount, 0);
     });
 
-    test("maps PluginProjectActivity when present", () async {
+    test("maps stored project activity", () async {
       plugin.projectsResult = [
         const PluginProject(
           id: "p1",
@@ -108,6 +111,7 @@ void main() {
           activity: PluginProjectActivity(createdAt: 1000, updatedAt: 2000),
         ),
       ];
+      await projectsDao.setActivity(projectId: "p1", createdAt: 1000, updatedAt: 2000);
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
@@ -121,10 +125,11 @@ void main() {
       expect(time?.updated, equals(2000));
     });
 
-    test("time uses the persisted insertion timestamp when plugin activity is absent", () async {
+    test("time uses the persisted insertion timestamp", () async {
       plugin.projectsResult = [
         const PluginProject(id: "p1", directory: "p1"),
       ];
+      await projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
@@ -137,12 +142,15 @@ void main() {
       expect(response.data[0].time, ProjectTime(created: row!.createdAt, updated: row.updatedAt));
     });
 
-    test("returns all projects when plugin returns multiple", () async {
+    test("returns all stored projects", () async {
       plugin.projectsResult = [
         const PluginProject(id: "p1", directory: "p1"),
         const PluginProject(id: "p2", directory: "p2"),
         const PluginProject(id: "p3", directory: "p3"),
       ];
+      for (final id in ["p1", "p2", "p3"]) {
+        await projectsDao.setActivity(projectId: id, createdAt: 1, updatedAt: 1);
+      }
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
@@ -152,6 +160,7 @@ void main() {
       );
 
       expect(response.data.length, equals(3));
+      expect(plugin.getProjectsCallCount, 0);
     });
 
     test("filters out hidden project ids", () async {
@@ -160,6 +169,9 @@ void main() {
         const PluginProject(id: "hidden-1", directory: "hidden-1"),
         const PluginProject(id: "visible-2", directory: "visible-2"),
       ];
+      for (final id in ["visible-1", "hidden-1", "visible-2"]) {
+        await projectsDao.setActivity(projectId: id, createdAt: 1, updatedAt: 1);
+      }
       await projectsDao.hideProject(projectId: "hidden-1");
 
       final response = await handler.handle(
@@ -173,6 +185,7 @@ void main() {
 
       expect(ids, hasLength(2));
       expect(ids, containsAll(["visible-1", "visible-2"]));
+      expect(plugin.getProjectsCallCount, 0);
     });
   });
 }

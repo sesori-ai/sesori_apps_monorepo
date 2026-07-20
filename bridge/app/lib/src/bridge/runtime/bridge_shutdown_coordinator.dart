@@ -1,109 +1,114 @@
 import "dart:async";
 import "dart:io" as io;
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show Log, PluginStartAbortedException, StartAbortSignal;
 
-/// Coordinates bridge shutdown in two phases under one process-wide backstop:
-///
-/// 1. **Ordered phase** — steps registered with [addOrdered] run
-///    sequentially, in registration order. The plugin's `shutdown(budget)`
-///    runs here so api teardown and the owned-runtime stop finish before
-///    anything else is torn down (previously they raced the parallel phase).
-/// 2. **Parallel phase** — disposables registered with [add] run
-///    concurrently, as before.
-///
-/// The backstop timer is armed *before* the ordered phase — there is no
-/// window with no timer running — and is sized as the sum of the ordered
-/// budgets plus [_backstopSlack] for the parallel phase. When it fires, the
-/// process exits with [backstopExitCode]: a hung shutdown after a terminal
-/// plugin failure must not exit 0.
-///
-/// A *throwing* ordered step does not block later steps or the parallel
-/// phase, but [shutdown] rethrows the first such error once both phases ran
-/// — a failed plugin stop must surface loudly (non-zero exit), exactly as it
-/// did when it was a parallel disposable.
+enum BridgeShutdownPhase {
+  signal,
+  drain,
+  pluginDispose,
+  lifecycle,
+  shared,
+}
+
 class BridgeShutdownCoordinator {
   BridgeShutdownCoordinator({
+    required StartAbortSignal startAbortSignal,
     int Function()? backstopExitCode,
     void Function(int code)? exitProcess,
   }) : _backstopExitCode = backstopExitCode ?? _alwaysZero,
-       _exitProcess = exitProcess ?? io.exit;
+       _exitProcess = exitProcess ?? io.exit,
+       _startAbortSignal = startAbortSignal;
 
   static int _alwaysZero() => 0;
-
   static const Duration _backstopSlack = Duration(seconds: 10);
 
   final int Function() _backstopExitCode;
   final void Function(int code) _exitProcess;
-  final List<FutureOr<void> Function()> _disposables = <FutureOr<void> Function()>[];
-  final List<({Future<void> Function() action, Duration budget})> _orderedSteps =
-      <({Future<void> Function() action, Duration budget})>[];
+  final StartAbortSignal _startAbortSignal;
+  final Map<BridgeShutdownPhase, List<_ShutdownAction>> _actions = {
+    for (final phase in BridgeShutdownPhase.values) phase: <_ShutdownAction>[],
+  };
   Future<void>? _activeShutdown;
 
   void add({required FutureOr<void> Function() disposable}) {
-    _disposables.add(disposable);
+    addPhase(phase: BridgeShutdownPhase.shared, action: disposable);
   }
 
-  /// Registers an ordered shutdown step that runs before the parallel phase.
-  ///
-  /// [budget] is the step's soft deadline; it extends the backstop rather
-  /// than being enforced per-step (the step itself is expected to degrade to
-  /// forceful termination within its budget).
   void addOrdered({required Future<void> Function() action, required Duration budget}) {
-    _orderedSteps.add((action: action, budget: budget));
+    addPhase(phase: BridgeShutdownPhase.lifecycle, action: action, budget: budget);
   }
 
-  Future<void> shutdown() {
-    return _activeShutdown ??= _shutdownInternal();
+  void addPhase({
+    required BridgeShutdownPhase phase,
+    required FutureOr<void> Function() action,
+    Duration budget = Duration.zero,
+  }) {
+    _actions[phase]!.add(_ShutdownAction(action: action, budget: budget));
   }
+
+  Future<void> shutdown() => _activeShutdown ??= _shutdownInternal();
 
   Future<void> _shutdownInternal() async {
-    final orderedBudget = _orderedSteps.fold(Duration.zero, (total, step) => total + step.budget);
+    final shutdownBudget = _actions.values.fold(Duration.zero, (total, actions) {
+      final phaseBudget = actions.fold(
+        Duration.zero,
+        (longest, action) => action.budget > longest ? action.budget : longest,
+      );
+      return total + phaseBudget;
+    });
     final totalSw = Stopwatch()..start();
-    Log.d(
-      "[shutdown] coordinator start: ${_orderedSteps.length} ordered step(s), "
-      "${_disposables.length} disposable(s), backstop=${(orderedBudget + _backstopSlack).inSeconds}s",
-    );
-    final backstop = Timer(orderedBudget + _backstopSlack, () {
-      Log.e("Failed to finish gracefully after ${totalSw.elapsedMilliseconds}ms — forcing exit");
+    final backstop = Timer(shutdownBudget + _backstopSlack, () {
+      Log.e("Failed to finish gracefully after ${totalSw.elapsedMilliseconds}ms - forcing exit");
       _exitProcess(_backstopExitCode());
     });
+    Object? firstError;
+    StackTrace? firstStackTrace;
 
     try {
-      Object? firstOrderedError;
-      StackTrace? firstOrderedStackTrace;
-      for (var i = 0; i < _orderedSteps.length; i++) {
-        final step = _orderedSteps[i];
-        final stepSw = Stopwatch()..start();
-        Log.v(
-          "[shutdown] ordered step ${i + 1}/${_orderedSteps.length} start (budget=${step.budget.inSeconds}s)",
-        );
-        try {
-          await step.action();
-          Log.v(
-            "[shutdown] ordered step ${i + 1}/${_orderedSteps.length} done (${stepSw.elapsedMilliseconds}ms)",
-          );
-        } catch (error, stackTrace) {
-          Log.e("Ordered shutdown step failed after ${stepSw.elapsedMilliseconds}ms: $error");
-          firstOrderedError ??= error;
-          firstOrderedStackTrace ??= stackTrace;
+      for (final phase in BridgeShutdownPhase.values) {
+        final actions = _actions[phase]!;
+        final futures = <Future<void>>[];
+        for (final action in actions) {
+          try {
+            final result = action.action();
+            futures.add(Future<void>.value(result));
+          } on Object catch (error, stackTrace) {
+            if (!_isExpected(error)) {
+              firstError ??= error;
+              firstStackTrace ??= stackTrace;
+            }
+          }
         }
-      }
-      // Future.sync (not Future.value(disposable())): a synchronously
-      // throwing disposable must become a failed future, not abort the lazy
-      // map iteration inside Future.wait and skip the disposables after it.
-      final parallelSw = Stopwatch()..start();
-      Log.v("[shutdown] parallel phase start (${_disposables.length} disposable(s))");
-      await Future.wait(
-        _disposables.map(Future.sync),
-      );
-      Log.v("[shutdown] parallel phase done (${parallelSw.elapsedMilliseconds}ms)");
-      if (firstOrderedError != null) {
-        Error.throwWithStackTrace(firstOrderedError, firstOrderedStackTrace!);
+        for (final future in futures) {
+          try {
+            await future;
+          } on Object catch (error, stackTrace) {
+            if (!_isExpected(error)) {
+              firstError ??= error;
+              firstStackTrace ??= stackTrace;
+            }
+          }
+        }
       }
     } finally {
       backstop.cancel();
       Log.d("[shutdown] coordinator complete (${totalSw.elapsedMilliseconds}ms total)");
     }
+    if (firstError != null) {
+      Error.throwWithStackTrace(firstError, firstStackTrace!);
+    }
   }
+
+  bool _isExpected(Object error) {
+    return error is PluginStartAbortedException && _startAbortSignal.isAborted;
+  }
+}
+
+class _ShutdownAction {
+  const _ShutdownAction({required this.action, required this.budget});
+
+  final FutureOr<void> Function() action;
+  final Duration budget;
 }

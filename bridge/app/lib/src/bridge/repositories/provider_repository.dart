@@ -7,15 +7,16 @@ import "models/project_not_found_exception.dart";
 
 /// Wraps [BridgePluginApi.getProviders] and maps plugin models to shared types.
 class ProviderRepository {
-  final BridgePluginApi _plugin;
+  final Map<String, BridgePluginApi> _operationalPlugins;
   final ProjectsDao _projectsDao;
 
-  ProviderRepository({required BridgePluginApi plugin, required ProjectsDao projectsDao})
-    : _plugin = plugin,
+  ProviderRepository({required Map<String, BridgePluginApi> operationalPlugins, required ProjectsDao projectsDao})
+    : _operationalPlugins = operationalPlugins,
       _projectsDao = projectsDao;
 
   Future<ProviderListResponse> getProviders({required String projectId, required String pluginId}) async {
-    if (pluginId != _plugin.id) {
+    final plugin = _operationalPlugins[pluginId];
+    if (plugin == null) {
       throw PluginOperationException(
         "getProviders",
         statusCode: 503,
@@ -28,7 +29,7 @@ class ProviderRepository {
     if (directory == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
-    final result = await _plugin.getProviders(projectId: directory);
+    final result = await plugin.getProviders(projectId: directory);
     final providers = result.providers.map((p) => p.toSharedProviderInfo()).toList();
     return ProviderListResponse(items: providers, connectedOnly: true);
   }

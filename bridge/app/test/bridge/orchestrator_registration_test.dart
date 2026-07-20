@@ -5,49 +5,18 @@ import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
-import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
-import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
-import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
-import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
-import "package:sesori_bridge/src/push/completion_notifier.dart";
-import "package:sesori_bridge/src/push/completion_push_listener.dart";
-import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
-import "package:sesori_bridge/src/push/push_dispatcher.dart";
-import "package:sesori_bridge/src/push/push_maintenance_telemetry.dart";
-import "package:sesori_bridge/src/push/push_notification_client.dart";
-import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
-import "package:sesori_bridge/src/push/push_rate_limiter.dart";
-import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
-import "../helpers/fake_filesystem_api.dart";
-import "../helpers/fake_git_cli_api.dart";
+import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
-import "api/git_remote_api_test.dart";
 import "routing/routing_test_helpers.dart";
 
 void main() {
@@ -256,6 +225,8 @@ class _RegistrationHarness {
   final Future<void> runFuture;
   final _CountingRelayServer relayServer;
   final AppDatabase database;
+  final PluginLifecycleService lifecycleService;
+  final http.Client httpClient;
 
   _RegistrationHarness._({
     required this.plugin,
@@ -264,6 +235,8 @@ class _RegistrationHarness {
     required this.runFuture,
     required this.relayServer,
     required this.database,
+    required this.lifecycleService,
+    required this.httpClient,
   });
 
   static Future<_RegistrationHarness> start({
@@ -280,29 +253,12 @@ class _RegistrationHarness {
       hostName: "test-host",
       platform: "macos",
     );
-    final sessionRepository = SessionRepository(
-      plugin: plugin,
-      sessionDao: database.sessionDao,
-      projectsDao: database.projectsDao,
-      pullRequestDao: database.pullRequestDao,
-      gitCliApi: FakeGitCliApi(),
-      unseenCalculator: const SessionUnseenCalculator(),
-    );
-    final sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
-    final pushSubsystem = _createPushSubsystem();
-    final projectRepository = ProjectRepository(
-      gitCliApi: FakeGitCliApi(),
-      plugin: plugin,
-      projectsDao: database.projectsDao,
-      sessionDao: database.sessionDao,
-      unseenCalculator: const SessionUnseenCalculator(),
-      filesystemApi: FakeFilesystemApi(),
-    );
+    final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
+    final httpClient = http.Client();
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
-        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
         yolo: false,
@@ -312,119 +268,21 @@ class _RegistrationHarness {
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: registrationService,
       ),
-      plugin: plugin,
-      pluginId: plugin.id,
-      sessionCreationService: SessionCreationService(
-        metadataService: FakeMetadataService(),
-        worktreeService: WorktreeService(
-          worktreeRepository: WorktreeRepository(
-            projectsDao: database.projectsDao,
-            sessionDao: database.sessionDao,
-            gitApi: GitCliApi(
-              processRunner: FakeProcessRunner((
-                String executable,
-                List<String> arguments, {
-                Map<String, String>? environment,
-                String? workingDirectory,
-                Duration timeout = const Duration(seconds: 15),
-              }) async {
-                return ProcessResult(0, 127, "", "command not found");
-              }),
-              gitPathExists: ({required String gitPath}) => true,
-            ),
-            plugin: plugin,
-          ),
-        ),
-        sessionRepository: sessionRepository,
-        sessionMutationDispatcher: sessionMutationDispatcher,
-      ),
-      pushDispatcher: pushSubsystem.dispatcher,
-      completionListener: pushSubsystem.completionListener,
-      maintenanceListener: pushSubsystem.maintenanceListener,
+      legacyMissingPluginId: plugin.id,
+      pluginLifecycleService: lifecycleService,
+      database: database,
+      httpClient: httpClient,
+      processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: registrationService,
       failureReporter: FakeFailureReporter(),
-      prSyncService: FakePrSyncService(),
-      sessionRepository: sessionRepository,
-      projectRepository: projectRepository,
-      sessionUnseenService: SessionUnseenService(
-        unseenRepository: SessionUnseenRepository(
-          plugin: plugin,
-          sessionDao: database.sessionDao,
-          projectsDao: database.projectsDao,
-          db: database,
-          calculator: const SessionUnseenCalculator(),
-        ),
-        projectRepository: projectRepository,
-        viewTracker: SessionViewTracker(),
-      ),
-      sessionViewTracker: SessionViewTracker(),
-      filesystemRepository: FilesystemRepository(
-        filesystemApi: const FilesystemApi(),
-        permissionValidator: const FilesystemPermissionValidator(),
-      ),
-      gitCliApi: GitCliApi(
-        processRunner: ProcessRunner(),
-        gitPathExists: ({required String gitPath}) => gitPath.isNotEmpty,
-      ),
-      projectInitializationService: ProjectInitializationService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          plugin: plugin,
-          gitApi: GitCliApi(
-            processRunner: ProcessRunner(),
-            gitPathExists: ({required String gitPath}) => false,
-          ),
-        ),
-        filesystemRepository: FilesystemRepository(
-          filesystemApi: const FilesystemApi(),
-          permissionValidator: const FilesystemPermissionValidator(),
-        ),
-      ),
-      projectActivityService: ProjectActivityService(
-        projectRepository: projectRepository,
-        now: () => DateTime.now().millisecondsSinceEpoch,
-      ),
-      healthRepository: HealthRepository(
-        plugin: plugin,
-        bridgeVersion: "0.0.0-test",
-        filesystemAccessOk: true,
-      ),
-      providerRepository: ProviderRepository(plugin: plugin, projectsDao: database.projectsDao),
-      agentRepository: AgentRepository(plugin: plugin, projectsDao: database.projectsDao),
-      permissionRepository: PermissionRepository(plugin: plugin, sessionDao: database.sessionDao),
-      questionRepository: QuestionRepository(
-        plugin: plugin,
-        sessionDao: database.sessionDao,
-        projectsDao: database.projectsDao,
-      ),
-      worktreeService: WorktreeService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: FakeProcessRunner((
-              String executable,
-              List<String> arguments, {
-              Map<String, String>? environment,
-              String? workingDirectory,
-              Duration timeout = const Duration(seconds: 15),
-            }) async {
-              return ProcessResult(0, 127, "", "command not found");
-            }),
-            gitPathExists: ({required String gitPath}) => true,
-          ),
-          plugin: plugin,
-        ),
-      ),
-      sessionMutationDispatcher: sessionMutationDispatcher,
       restartService: buildTestRestartService(),
+      filesystemAccessOk: true,
       statusNotifier: null,
     );
 
-    final session = orchestrator.create();
+    final session = orchestrator.create().session;
     // Surface run() failures through [runFuture] without triggering an
     // unhandled async error when a test only awaits it via expectLater later.
     final runFuture = session.run();
@@ -437,6 +295,8 @@ class _RegistrationHarness {
       runFuture: runFuture,
       relayServer: relayServer,
       database: database,
+      lifecycleService: lifecycleService,
+      httpClient: httpClient,
     );
   }
 
@@ -447,6 +307,8 @@ class _RegistrationHarness {
     } on Object {
       // run() may have already completed with the error under test.
     }
+    await lifecycleService.dispose();
+    httpClient.close();
     await database.close();
     await relayServer.close();
   }
@@ -472,55 +334,4 @@ class _CountingRelayServer {
   }
 
   Future<void> close() => _inner.close();
-}
-
-typedef _TestPushSubsystem = ({
-  PushDispatcher dispatcher,
-  CompletionPushListener completionListener,
-  MaintenancePushListener maintenanceListener,
-});
-
-_TestPushSubsystem _createPushSubsystem() {
-  final tracker = PushSessionStateTracker(now: DateTime.now);
-  final completionNotifier = CompletionNotifier(tracker: tracker);
-  final rateLimiter = PushRateLimiter();
-  final telemetryBuilder = PushMaintenanceTelemetryBuilder(
-    completionNotifier: completionNotifier,
-    rateLimiter: rateLimiter,
-    rssBytesReader: () => null,
-  );
-  final dispatcher = PushDispatcher(
-    client: _NoopPushNotificationClient(),
-    rateLimiter: rateLimiter,
-    tracker: tracker,
-    contentBuilder: const PushNotificationContentBuilder(),
-  );
-  return (
-    dispatcher: dispatcher,
-    completionListener: CompletionPushListener(
-      tracker: tracker,
-      completionNotifier: completionNotifier,
-      contentBuilder: const PushNotificationContentBuilder(),
-      dispatcher: dispatcher,
-    ),
-    maintenanceListener: MaintenancePushListener(
-      tracker: tracker,
-      completionNotifier: completionNotifier,
-      rateLimiter: rateLimiter,
-      telemetryBuilder: telemetryBuilder,
-      maintenanceInterval: const Duration(minutes: 10),
-    ),
-  );
-}
-
-class _NoopPushNotificationClient extends PushNotificationClient {
-  _NoopPushNotificationClient()
-    : super(
-        authBackendURL: "http://127.0.0.1:8080",
-        tokenRefreshManager: FakeTokenRefresher(),
-        client: http.Client(),
-      );
-
-  @override
-  Future<void> sendNotification(SendNotificationPayload payload) async {}
 }

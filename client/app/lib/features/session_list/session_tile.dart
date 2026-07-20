@@ -264,6 +264,29 @@ class SessionTile extends StatelessWidget {
   Widget _footerRow({required BuildContext context}) {
     final prego = context.prego;
     final updatedAt = session.time?.updated;
+    final status = _statusLabel(context: context);
+    final details = Row(
+      spacing: PregoSpacing.md,
+      children: [
+        // The branch yields and ellipsizes when the line runs out of width —
+        // branch names are the one unbounded detail — so it can't push the
+        // rest out of the row.
+        if (session.branchName case final branch?) Flexible(child: _BranchDetail(branch: branch)),
+        if (session.pullRequest case final pr?) Flexible(flex: 2, child: PrStatusRow(pr: pr)),
+        if (status != null) Flexible(child: status),
+      ],
+    );
+    final timestamp = updatedAt == null
+        ? null
+        : Text(
+            context.formatTimestamp(updatedAt),
+            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+          );
+    final footerFontSize = prego.textTheme.textXs.regular.fontSize ?? 12;
+    final stackTimestamp =
+        timestamp != null &&
+        (session.branchName != null || session.pullRequest != null || status != null) &&
+        MediaQuery.textScalerOf(context).scale(footerFontSize) > _footerLineHeight;
 
     // The line box is held open even when there is nothing to say, so a quiet
     // session doesn't shrink its row out of the list's pitch. A minimum rather
@@ -273,29 +296,22 @@ class SessionTile extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: _footerLineHeight),
       child: Padding(
         padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl),
-        child: Row(
-          spacing: PregoSpacing.md,
-          children: [
-            Expanded(
-              child: Row(
+        child: stackTimestamp
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: PregoSpacing.xxs,
+                children: [
+                  details,
+                  Align(alignment: AlignmentDirectional.centerEnd, child: timestamp),
+                ],
+              )
+            : Row(
                 spacing: PregoSpacing.md,
                 children: [
-                  // The branch yields and ellipsizes when the line runs out of
-                  // width — branch names are the one unbounded detail — so it
-                  // can't push the rest out of the row.
-                  if (session.branchName case final branch?) Flexible(child: _BranchDetail(branch: branch)),
-                  if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
-                  if (_statusLabel(context: context) case final status?) Flexible(child: status),
+                  Expanded(child: details),
+                  ?timestamp,
                 ],
               ),
-            ),
-            if (updatedAt != null)
-              Text(
-                context.formatTimestamp(updatedAt),
-                style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-              ),
-          ],
-        ),
       ),
     );
   }
@@ -365,7 +381,7 @@ class _BranchDetail extends StatelessWidget {
 }
 
 /// The row's line boxes, from the type scale it renders: a 16/24 title over a
-/// 14/20 footer line.
+/// 12/18 footer line with 20px minimum height.
 const double _titleLineHeight = 24;
 const double _footerLineHeight = 20;
 

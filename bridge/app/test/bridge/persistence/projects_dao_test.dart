@@ -165,6 +165,7 @@ void main() {
         await dao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/projects/a",
+          displayName: "Opened project",
           createdAt: 111,
           updatedAt: 222,
         );
@@ -172,6 +173,7 @@ void main() {
         final row = await dao.getProject(projectId: "/projects/a");
         expect(row, isNotNull);
         expect(row!.path, equals("/projects/a"));
+        expect(row.displayName, "Opened project");
         expect(row.createdAt, equals(111));
         expect(row.updatedAt, equals(222));
       });
@@ -180,6 +182,7 @@ void main() {
         await dao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/projects/a",
+          displayName: null,
           createdAt: 111,
           updatedAt: 111,
         );
@@ -187,6 +190,7 @@ void main() {
         await dao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
+          displayName: null,
           createdAt: 111,
           updatedAt: 222,
         );
@@ -209,6 +213,7 @@ void main() {
         await dao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
+          displayName: "Backend App",
           createdAt: 111,
           updatedAt: 333,
         );
@@ -227,6 +232,7 @@ void main() {
       await dao.recordOpenedProject(
         projectId: "/projects/a",
         path: "/projects/a",
+        displayName: null,
         createdAt: 100,
         updatedAt: 500,
       );
@@ -261,6 +267,7 @@ void main() {
         await dao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
+          displayName: null,
           createdAt: 0,
           updatedAt: 1,
         );
@@ -273,6 +280,7 @@ void main() {
         await dao.recordOpenedProject(
           projectId: "/projects/a",
           path: "/moved/a",
+          displayName: null,
           createdAt: 0,
           updatedAt: 1,
         );

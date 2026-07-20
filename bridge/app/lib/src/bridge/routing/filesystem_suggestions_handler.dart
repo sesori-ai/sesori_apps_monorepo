@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -26,12 +27,12 @@ class FilesystemSuggestionsHandler extends BodyRequestHandler<FilesystemSuggesti
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    final prefix = body.prefix ?? Platform.environment["HOME"] ?? "/";
+    final prefix = body.prefix ?? _filesystemRepository.defaultBrowsePath;
 
-    if (!prefix.startsWith("/")) {
+    if (!p.isAbsolute(prefix)) {
       throw buildErrorResponse(request, 400, "prefix must be an absolute path");
     }
-    if (prefix.contains("..")) {
+    if (p.split(prefix).contains("..")) {
       throw buildErrorResponse(request, 400, "path traversal not allowed");
     }
 

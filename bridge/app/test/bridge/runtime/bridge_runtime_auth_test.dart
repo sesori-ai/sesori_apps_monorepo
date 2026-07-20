@@ -144,6 +144,8 @@ BridgeCliOptions _options({required String authBackendUrl}) {
     authBackendUrl: authBackendUrl,
     debugPort: null,
     logLevelName: 'info',
+    enabledPluginIds: const ['opencode'],
+    importPluginIds: const [],
     controlUrl: null,
   );
 }

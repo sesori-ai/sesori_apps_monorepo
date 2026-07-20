@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import '../../auth/token.dart' as token_store;
+import '../../repositories/app_onboarding_state_repository.dart';
 import '../../server/foundation/terminal_prompt_decision.dart';
 import '../../server/repositories/bridge_instance_repository.dart';
 import '../../server/repositories/terminal_prompt_repository.dart';
@@ -19,7 +20,7 @@ enum BridgeLogoutStatus {
   /// User declined to stop running bridges; tokens were not cleared.
   cancelled,
 
-  /// Deleting the token file failed; tokens may still be present.
+  /// Deleting onboarding state or the token file failed; tokens may still be present.
   failed,
 }
 
@@ -41,17 +42,20 @@ class BridgeLogoutRunner {
     required BridgeInstanceService bridgeInstanceService,
     required TerminalPromptRepository terminalPromptRepository,
     required Future<void> Function() unregisterBridge,
+    required AppOnboardingStateRepository appOnboardingStateRepository,
     Future<void> Function() clearTokens = token_store.clearTokens,
   }) : _bridgeInstanceRepository = bridgeInstanceRepository,
        _bridgeInstanceService = bridgeInstanceService,
        _terminalPromptRepository = terminalPromptRepository,
        _unregisterBridge = unregisterBridge,
+       _appOnboardingStateRepository = appOnboardingStateRepository,
        _clearTokens = clearTokens;
 
   final BridgeInstanceRepository _bridgeInstanceRepository;
   final BridgeInstanceService _bridgeInstanceService;
   final TerminalPromptRepository _terminalPromptRepository;
   final Future<void> Function() _unregisterBridge;
+  final AppOnboardingStateRepository _appOnboardingStateRepository;
   final Future<void> Function() _clearTokens;
 
   Future<BridgeLogoutResult> logout({required int currentPid}) async {
@@ -79,12 +83,22 @@ class BridgeLogoutRunner {
       }
     }
 
+    try {
+      await _appOnboardingStateRepository.clearAll();
+    } on Object catch (error) {
+      return BridgeLogoutResult(
+        status: BridgeLogoutStatus.failed,
+        runningBridgeCount: runningBridgeCount,
+        error: error,
+      );
+    }
+
     // Best-effort: remove this bridge's registration on the auth server while
     // we still have tokens. Logout must never block or fail because of this.
     try {
       await _unregisterBridge();
-    } on Object catch (error) {
-      Log.w('Failed to remove bridge registration on auth server (ignored): $error');
+    } on Object catch (error, stackTrace) {
+      Log.w('Failed to remove bridge registration on auth server (ignored)', error, stackTrace);
     }
 
     try {

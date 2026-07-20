@@ -1,4 +1,7 @@
+import "dart:io" show ProcessException;
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_shared/sesori_shared.dart" show OpenProjectGitAction;
 
 import "../repositories/filesystem_repository.dart";
 import "../repositories/worktree_repository.dart";
@@ -24,15 +27,23 @@ class ProjectParentMissingException implements Exception {
   String toString() => "ProjectParentMissingException: parent directory does not exist: $path";
 }
 
-/// Thrown when `git init` fails for a newly created project directory.
-class ProjectGitInitException implements Exception {
+/// Thrown when Git setup fails for a newly created project directory.
+class ProjectGitSetupException implements Exception {
   final String path;
+  final String operation;
+  final Object? cause;
 
-  ProjectGitInitException({required this.path});
+  ProjectGitSetupException({
+    required this.path,
+    required this.operation,
+    required this.cause,
+  });
 
   @override
-  String toString() => "ProjectGitInitException: git init failed: $path";
+  String toString() => "ProjectGitSetupException: $operation failed: $path";
 }
+
+enum ExistingProjectPreparationOutcome { ready, gitChoiceRequired }
 
 /// Layer 3 service that owns the "create a new project from a directory path"
 /// flow: create the directory, initialize git, write the `.worktrees/`
@@ -58,10 +69,9 @@ class ProjectInitializationService {
   /// Creates and initializes a new git project at [path].
   ///
   /// Throws [ProjectParentMissingException], [ProjectDirectoryExistsException],
-  /// [ProjectGitInitException], or [FilesystemPermissionDeniedException] on the
-  /// corresponding failures. Staging and the initial commit are best-effort: a
-  /// failure there is logged but does not abort creation (the directory is a
-  /// valid, initialized repository regardless).
+  /// [ProjectGitSetupException], or [FilesystemPermissionDeniedException] on
+  /// the corresponding failures. Git initialization, staging, and the initial
+  /// commit must all succeed so the project supports dedicated worktrees.
   Future<void> initializeProject({required String path}) async {
     final status = _filesystemRepository.checkCreatableDirectory(path: path);
     switch (status) {
@@ -75,55 +85,106 @@ class ProjectInitializationService {
 
     _filesystemRepository.createProjectDirectory(path: path);
 
-    // git init must succeed for the project to be usable, so a non-zero exit
-    // OR a thrown execution error both become the typed failure the handler
-    // maps to 500.
-    bool initialized;
     try {
-      initialized = await _worktreeRepository.initRepository(path: path);
+      await _initializeGitProject(path: path);
     } on Object catch (error, stackTrace) {
-      Log.w("ProjectInitializationService: git init threw for $path", error, stackTrace);
-      throw ProjectGitInitException(path: path);
+      _cleanupCreatedProject(path: path);
+      Error.throwWithStackTrace(error, stackTrace);
     }
-    if (!initialized) {
-      throw ProjectGitInitException(path: path);
+  }
+
+  Future<ExistingProjectPreparationOutcome> prepareExistingProject({
+    required String path,
+    required OpenProjectGitAction gitAction,
+  }) async {
+    if (gitAction == OpenProjectGitAction.openWithoutGit) {
+      return ExistingProjectPreparationOutcome.ready;
     }
+
+    bool isGitInitialized;
+    bool isInsideGitWorkTree;
+    try {
+      isGitInitialized = await _worktreeRepository.isGitInitialized(projectPath: path);
+      isInsideGitWorkTree = isGitInitialized || await _worktreeRepository.isInsideGitWorkTree(projectPath: path);
+    } on ProcessException catch (error, stackTrace) {
+      Log.w("ProjectInitializationService: Git is unavailable for $path", error, stackTrace);
+      isGitInitialized = false;
+      isInsideGitWorkTree = false;
+    }
+    switch (gitAction) {
+      case OpenProjectGitAction.promptIfNeeded:
+        if (!isInsideGitWorkTree) {
+          return ExistingProjectPreparationOutcome.gitChoiceRequired;
+        }
+      case OpenProjectGitAction.initializeGit:
+        if (isInsideGitWorkTree && !isGitInitialized) {
+          break;
+        }
+        final hasCommit = isInsideGitWorkTree && await _worktreeRepository.hasAtLeastOneCommit(projectPath: path);
+        if (!hasCommit) {
+          try {
+            await _initializeGitProject(path: path);
+          } on Object catch (error, stackTrace) {
+            Log.w("ProjectInitializationService: Git setup incomplete for $path", error, stackTrace);
+          }
+        }
+      case OpenProjectGitAction.openWithoutGit:
+        return ExistingProjectPreparationOutcome.ready;
+    }
+    return ExistingProjectPreparationOutcome.ready;
+  }
+
+  Future<void> _initializeGitProject({required String path}) async {
+    await _requireGitStep(
+      path: path,
+      operation: "git init",
+      run: () => _worktreeRepository.initRepository(path: path),
+    );
 
     _filesystemRepository.ensureGitignoreEntry(projectPath: path, entry: _gitignoreEntry);
 
-    // Staging and the initial commit are best-effort: a non-zero exit OR a
-    // thrown execution error is logged and swallowed, since the directory is a
-    // valid initialized repository regardless.
-    if (!await _stageBestEffort(path: path)) {
-      return;
-    }
-    await _commitBestEffort(path: path);
-  }
-
-  Future<bool> _stageBestEffort({required String path}) async {
-    try {
-      if (!await _worktreeRepository.stageAll(projectPath: path)) {
-        Log.w("ProjectInitializationService: git add failed for $path");
-        return false;
-      }
-      return true;
-    } on Object catch (error, stackTrace) {
-      Log.w("ProjectInitializationService: git add threw for $path", error, stackTrace);
-      return false;
-    }
-  }
-
-  Future<void> _commitBestEffort({required String path}) async {
-    try {
-      final committed = await _worktreeRepository.commitAll(
+    await _requireGitStep(
+      path: path,
+      operation: "git add",
+      run: () => _worktreeRepository.stageAll(projectPath: path),
+    );
+    await _requireGitStep(
+      path: path,
+      operation: "initial commit",
+      run: () => _worktreeRepository.commitAll(
         projectPath: path,
         message: _initialCommitMessage,
-      );
-      if (!committed) {
-        Log.w("ProjectInitializationService: initial commit failed for $path");
-      }
+      ),
+    );
+  }
+
+  Future<void> _requireGitStep({
+    required String path,
+    required String operation,
+    required Future<bool> Function() run,
+  }) async {
+    try {
+      if (await run()) return;
     } on Object catch (error, stackTrace) {
-      Log.w("ProjectInitializationService: initial commit threw for $path", error, stackTrace);
+      Error.throwWithStackTrace(
+        ProjectGitSetupException(path: path, operation: operation, cause: error),
+        stackTrace,
+      );
+    }
+    throw ProjectGitSetupException(path: path, operation: operation, cause: null);
+  }
+
+  void _cleanupCreatedProject({required String path}) {
+    try {
+      final entries = _filesystemRepository.listDirectoryEntryNames(path: path);
+      const createdEntries = {".git", ".gitignore"};
+      if (!entries.every(createdEntries.contains)) {
+        Log.w("ProjectInitializationService: leaving failed project directory with unknown content: $path");
+        return;
+      }
+      _filesystemRepository.deleteDirectoryRecursively(path: path);
+    } on Object catch (error, stackTrace) {
+      Log.w("ProjectInitializationService: failed to clean up $path", error, stackTrace);
     }
   }
 }

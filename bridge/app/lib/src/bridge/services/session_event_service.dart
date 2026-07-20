@@ -259,7 +259,7 @@ class SessionEventService {
     if (evicted == null) return;
     Log.w(
       "Dropping pending session event ${evicted.pluginId}/${evicted.backendSessionId}: "
-      "the ${_eventTracker.maxPendingEntries}-event ancestry buffer is full",
+      "the ${_eventTracker.maxPendingEntriesPerPlugin}-event ancestry buffer is full",
     );
   }
 

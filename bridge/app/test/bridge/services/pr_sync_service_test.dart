@@ -3,6 +3,7 @@ import "dart:async";
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
@@ -492,9 +493,6 @@ class _FakeSessionRepository implements SessionRepository {
   Future<void> dispose() async {}
 
   @override
-  bool get sessionListIsAuthoritative => true;
-
-  @override
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
@@ -565,8 +563,8 @@ class _FakeSessionRepository implements SessionRepository {
   Future<Session> enrichSession({required Session session}) async => session;
 
   @override
-  Future<Session> enrichPluginSession({required PluginSession pluginSession}) async =>
-      Session.fromJson(pluginSession.toJson());
+  Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async =>
+      pluginSession.toSharedSession(pluginId: pluginId);
 
   @override
   Future<List<Session>> enrichSessions({required List<Session> sessions}) async => sessions;

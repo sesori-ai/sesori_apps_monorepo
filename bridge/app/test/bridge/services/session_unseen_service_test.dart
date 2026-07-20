@@ -19,14 +19,11 @@ void main() {
     var clock = 1000;
 
     SessionUnseenRepository unseenRepository() => SessionUnseenRepository(
-      plugin: const _FakePlugin(),
       sessionDao: db.sessionDao,
-      projectsDao: db.projectsDao,
-      db: db,
       calculator: const SessionUnseenCalculator(),
     );
 
-    ProjectRepository projectRepository() => ProjectRepository(
+    ProjectRepository projectRepository() => singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(),
       plugin: const _FakePlugin(),
       projectsDao: db.projectsDao,
@@ -359,93 +356,6 @@ void main() {
       expect(last.unseen, isFalse);
       expect(last.projectHasUnseenChanges, isFalse);
       await sub.cancel();
-    });
-
-    test("reconcileVanishedSessions deletes stale rows and emits their clears", () async {
-      // Two persisted sessions; the backend now only knows about s1.
-      await persistRoot(sessionId: "s1");
-      await persistRoot(sessionId: "gone");
-      await service.recordSessionCreated(
-        sessionId: "s1",
-        parentId: null,
-      );
-      await service.recordSessionCreated(
-        sessionId: "gone",
-        parentId: null,
-      );
-      expect(await unseen("gone"), isTrue);
-
-      final events = <UnseenChange>[];
-      final sub = service.unseenChanges.listen(events.add);
-
-      clock = 5000;
-      await service.reconcileVanishedSessions(
-        projectId: "p1",
-        keepSessionIds: ["s1"],
-        fetchStartedAt: 5000,
-      );
-      await Future<void>.delayed(Duration.zero);
-
-      expect(await unseen("gone"), isFalse);
-      expect(await unseen("s1"), isTrue);
-      final clear = events.where((e) => e.sessionId == "gone").single;
-      expect(clear.unseen, isFalse);
-      // s1 is still unseen, so the aggregate stays true.
-      expect(clear.projectHasUnseenChanges, isTrue);
-      await sub.cancel();
-    });
-
-    test("reconcile keeps a session created live during the fetch, even with a skewed backend clock", () async {
-      await persistRoot(sessionId: "s1");
-      await service.recordSessionCreated(
-        sessionId: "s1",
-        parentId: null,
-      );
-      // A live session.created lands DURING an in-flight /sessions fetch
-      // (fetch started at local 8000; we process the event at local 9000). The
-      // backend's clock is behind, so the session's own creation time (7000)
-      // predates the fetch start — the row-creation guard must use the local
-      // clock, not the backend time, or this fresh row would be deleted.
-      clock = 9000;
-      await persistRoot(sessionId: "fresh", createdAt: clock);
-      await service.recordSessionCreated(
-        sessionId: "fresh",
-        parentId: null,
-        occurredAt: 7000,
-      );
-
-      await service.reconcileVanishedSessions(
-        projectId: "p1",
-        keepSessionIds: ["s1"],
-        fetchStartedAt: 8000,
-      );
-
-      expect(await unseen("fresh"), isTrue);
-    });
-
-    test("reconcileVanishedSessions keeps rows created after the fetch started", () async {
-      await persistRoot(sessionId: "s1");
-      await service.recordSessionCreated(
-        sessionId: "s1",
-        parentId: null,
-      );
-      // A session created AFTER the (stale) snapshot was taken: its row's
-      // created_at is past fetchStartedAt, so it must survive the reconcile
-      // even though it is absent from keepSessionIds.
-      clock = 9000;
-      await persistRoot(sessionId: "concurrent", createdAt: clock);
-      await service.recordSessionCreated(
-        sessionId: "concurrent",
-        parentId: null,
-      );
-
-      await service.reconcileVanishedSessions(
-        projectId: "p1",
-        keepSessionIds: ["s1"],
-        fetchStartedAt: 8000,
-      );
-
-      expect(await unseen("concurrent"), isTrue);
     });
 
     test("recordSessionCreated stamps a bare placeholder row so it bolds", () async {

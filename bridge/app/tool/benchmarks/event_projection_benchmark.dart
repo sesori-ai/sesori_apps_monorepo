@@ -3,11 +3,8 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
-import "package:drift/native.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
@@ -17,6 +14,7 @@ import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -78,20 +76,20 @@ class _EventProjectionBenchmark {
     SSEManager? sseManager;
 
     try {
-      database = AppDatabase(NativeDatabase.createInBackground(databaseFile));
+      database = AppDatabase.openFile(file: databaseFile);
       final sqliteVersion = await _sqliteVersion(database: database);
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
       repository = SessionRepository(
-        plugin: plugin,
+        operationalPlugins: {plugin.id: plugin},
+        bridgeDerivedProjectPluginIds: const {},
+        enabledPluginIds: [plugin.id],
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
-        gitCliApi: GitCliApi(
-          processRunner: _AnsweringProcessRunner(),
-          gitPathExists: ({required String gitPath}) => false,
-        ),
         unseenCalculator: const SessionUnseenCalculator(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
       );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
       final failureReporter = _BenchmarkFailureReporter();
@@ -100,7 +98,7 @@ class _EventProjectionBenchmark {
         sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: SessionEventTracker(
-          maxPendingEntries: SessionEventTracker.defaultMaxPendingEntries,
+          maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
         ),
         failureReporter: failureReporter,
       );
@@ -291,6 +289,7 @@ class _EventProjectionBenchmark {
     await database.projectsDao.recordOpenedProject(
       projectId: _projectId,
       path: _projectId,
+      displayName: null,
       createdAt: _defaultTimestamp,
       updatedAt: _defaultTimestamp,
     );
@@ -420,29 +419,4 @@ class _BenchmarkFailureReporter implements FailureReporter {
 
   @override
   void setGlobalKey({required String key, required Object value}) {}
-}
-
-/// Answers every git invocation the way a non-repository would, without paying
-/// for a process. Keeps the measured cost of an event projection to the
-/// projection itself.
-class _AnsweringProcessRunner implements ProcessRunner {
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    return ProcessResult(0, 128, "", "not a git repository");
-  }
-
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnsupportedError("the benchmark never starts processes");
-  }
 }

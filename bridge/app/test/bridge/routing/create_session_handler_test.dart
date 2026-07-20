@@ -10,7 +10,6 @@ import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
@@ -19,7 +18,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -74,12 +72,11 @@ void main() {
       plugin = _OpenCodeFakeBridgePlugin();
       metadataService = FakeMetadataService();
       worktreeService = _FakeWorktreeService(database: db);
-      sessionRepository = SessionRepository(
+      sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = CreateSessionHandler(
@@ -293,7 +290,13 @@ void main() {
 
     test("moved project: session cwd is the live directory, stored attribution keeps the id", () async {
       // The folder moved from /repo to /moved/repo and was re-opened there.
-      await db.projectsDao.recordOpenedProject(projectId: "/repo", path: "/moved/repo", createdAt: 1, updatedAt: 1);
+      await db.projectsDao.recordOpenedProject(
+        projectId: "/repo",
+        path: "/moved/repo",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
       plugin.createSessionResult = const PluginSession(
         id: "moved-1",
         projectID: "p1",
@@ -462,12 +465,11 @@ void main() {
 
     test("plugin failure is propagated and no session row is inserted", () async {
       final failingPlugin = _ThrowingCreateSessionPlugin();
-      final localRepository = SessionRepository(
+      final localRepository = singlePluginSessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = CreateSessionHandler(
@@ -936,12 +938,11 @@ void main() {
           title: "Ordered Session",
           time: null,
         );
-      final orderedRepository = SessionRepository(
+      final orderedRepository = singlePluginSessionRepository(
         plugin: orderedPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = CreateSessionHandler(
@@ -1131,12 +1132,11 @@ void main() {
         title: "Session",
         time: null,
       );
-      final throwingRepository = SessionRepository(
+      final throwingRepository = singlePluginSessionRepository(
         plugin: throwingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
-        gitCliApi: FakeGitCliApi(),
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = CreateSessionHandler(
@@ -1186,7 +1186,7 @@ class _FakeWorktreeService extends WorktreeService {
 
   _FakeWorktreeService({required AppDatabase database})
     : super(
-        worktreeRepository: WorktreeRepository(
+        worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           gitApi: GitCliApi(

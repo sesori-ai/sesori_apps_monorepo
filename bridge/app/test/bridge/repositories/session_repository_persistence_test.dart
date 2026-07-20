@@ -1,575 +1,270 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
-  group("SessionRepository root publication", () {
-    late AppDatabase db;
-    late _FakeNativePlugin plugin;
-    late SessionRepository repository;
+  group("SessionRepository catalog reads", () {
+    late AppDatabase database;
 
     setUp(() async {
-      db = createTestDatabase();
-      plugin = _FakeNativePlugin();
-      repository = _repository(db: db, plugin: plugin, sessionDao: db.sessionDao);
-      await db.projectsDao.recordOpenedProject(
+      database = createTestDatabase();
+      await database.projectsDao.recordOpenedProject(
         projectId: "project-X",
         path: "/projects/X",
+        displayName: null,
         createdAt: 1,
         updatedAt: 1,
       );
     });
 
-    tearDown(() async {
-      await repository.dispose();
-      await db.close();
-    });
+    tearDown(() => database.close());
 
-    test("getSessionsForProject publishes every binding before returning", () async {
-      plugin.sessions = List<PluginSession>.generate(
-        5,
-        (index) => _pluginSession(
-          id: "backend-$index",
-          directory: "/projects/X",
-          title: "Session $index",
-          createdAt: 1000 + index,
-        ),
-      );
+    test("root pagination and unbounded offset use deterministic SQL order", () async {
+      final repository = _repository(database: database, plugin: _ThrowingPlugin());
+      addTearDown(repository.dispose);
+      await _insertRoot(database: database, sessionId: "root-a", updatedAt: 10);
+      await _insertRoot(database: database, sessionId: "root-b", updatedAt: 20);
+      await _insertRoot(database: database, sessionId: "root-c", updatedAt: 20);
 
-      final commitFuture = repository.bindingCommits.first;
-      final sessions = await repository.getSessionsForProject(
+      final firstPage = await repository.getSessionsForProject(
         projectId: "project-X",
-        start: null,
+        start: 0,
+        limit: 2,
+      );
+      final unboundedTail = await repository.getSessionsForProject(
+        projectId: "project-X",
+        start: 1,
         limit: null,
       );
-      final commit = await commitFuture;
-      final rows = await db.select(db.sessionTable).get();
-
-      expect(commit.pluginId, plugin.id);
-      expect(
-        commit.backendSessionIds,
-        unorderedEquals(["backend-0", "backend-1", "backend-2", "backend-3", "backend-4"]),
+      final zeroLimit = await repository.getSessionsForProject(
+        projectId: "project-X",
+        start: 0,
+        limit: 0,
       );
-      expect(sessions.map((session) => session.id), everyElement(startsWith("ses_")));
-      expect(rows, hasLength(5));
-      for (final row in rows) {
-        expect(row.sessionId, isNot(row.backendSessionId));
-        expect(row.pluginId, equals(plugin.id));
-        expect(row.projectId, equals("project-X"));
-        expect(row.directory, equals("/projects/X"));
-      }
+
+      expect(firstPage.map((session) => session.id), ["root-c", "root-b"]);
+      expect(unboundedTail.map((session) => session.id), ["root-b", "root-a"]);
+      expect(zeroLimit.map((session) => session.id), ["root-c", "root-b", "root-a"]);
     });
 
-    test("publication preserves a stable id and worktree state for an existing backend binding", () async {
-      await repository.insertStoredSession(
+    test("list and detail map durable metadata without an operational owning plugin", () async {
+      final plugin = _ThrowingPlugin();
+      final repository = _repository(database: database, plugin: plugin);
+      addTearDown(repository.dispose);
+      await _insertRoot(
+        database: database,
         sessionId: "stable-id",
         backendSessionId: "backend-id",
-        pluginId: plugin.id,
-        projectId: "project-X",
-        isDedicated: true,
-        createdAt: 123,
-        worktreePath: "/projects/X/.worktrees/stable-id",
-        branchName: "feature/stable-id",
-        baseBranch: "main",
-        baseCommit: "abc123",
-        agent: "agent-1",
-        agentModel: const AgentModel(
-          providerID: "provider-1",
-          modelID: "model-1",
-          variant: "high",
-        ),
+        pluginId: "offline-plugin",
+        updatedAt: 20,
+        catalogTitle: "Catalog title",
       );
-      plugin.sessions = [
-        _pluginSession(
-          id: "backend-id",
-          directory: "/projects/X/.worktrees/stable-id",
-          title: "Backend title",
-          createdAt: 999,
-        ),
-      ];
+      await database.sessionDao.setTitle(
+        sessionId: "stable-id",
+        title: "User title",
+        updatedAt: 21,
+        projectionUpdatedAt: 21,
+      );
 
-      final sessions = await repository.getSessionsForProject(
+      final listed = await repository.getSessionsForProject(
         projectId: "project-X",
         start: null,
         limit: null,
       );
-      final row = await db.sessionDao.getSession(sessionId: "stable-id");
-
-      expect(sessions.single.id, equals("stable-id"));
-      expect(row?.backendSessionId, equals("backend-id"));
-      expect(row?.worktreePath, equals("/projects/X/.worktrees/stable-id"));
-      expect(row?.branchName, equals("feature/stable-id"));
-      expect(row?.isDedicated, isTrue);
-      expect(row?.lastAgent, equals("agent-1"));
-      expect(row?.lastAgentModel?.modelID, equals("model-1"));
-    });
-
-    test("publication preserves stored timestamps when the plugin omits time", () async {
-      await repository.insertStoredSession(
-        sessionId: "stable-id",
-        backendSessionId: "backend-id",
-        pluginId: plugin.id,
+      final detail = await repository.getSessionForProject(
         projectId: "project-X",
-        isDedicated: false,
-        createdAt: 123,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
-      );
-      plugin.sessions = const [
-        PluginSession(
-          id: "backend-id",
-          projectID: "project-X",
-          directory: "/projects/X",
-          parentID: null,
-          title: "Untimed session",
-          time: null,
-        ),
-      ];
-
-      final sessions = await repository.getSessionsForProject(
-        projectId: "project-X",
-        start: null,
-        limit: null,
-      );
-      final row = await db.sessionDao.getSession(sessionId: "stable-id");
-
-      expect(sessions.single.time?.created, 123);
-      expect(sessions.single.time?.updated, 123);
-      expect(row?.createdAt, 123);
-      expect(row?.updatedAt, 123);
-    });
-
-    test("bridge title override wins over later catalog publication", () async {
-      plugin.sessions = [
-        _pluginSession(
-          id: "backend-id",
-          directory: "/projects/X",
-          title: "Initial catalog title",
-          createdAt: 10,
-        ),
-      ];
-      final first = await repository.getSessionsForProject(projectId: "project-X", start: null, limit: null);
-      await repository.setSessionTitleIfStored(sessionId: first.single.id, title: "User title");
-      plugin.sessions = [
-        _pluginSession(
-          id: "backend-id",
-          directory: "/projects/X",
-          title: "Later catalog title",
-          createdAt: 20,
-        ),
-      ];
-
-      final sessions = await repository.getSessionsForProject(
-        projectId: "project-X",
-        start: null,
-        limit: null,
-      );
-
-      expect(sessions.single.title, equals("User title"));
-      expect((await db.sessionDao.getSession(sessionId: first.single.id))?.catalogTitle, equals("Later catalog title"));
-    });
-
-    test("older projections cannot overwrite a newer catalog projection", () async {
-      await db.sessionDao.upsertObservedRootSessions(
-        pluginId: plugin.id,
-        sessions: [
-          _observedRoot(title: "New title", updatedAt: 200, projectionUpdatedAt: 200),
-        ],
-      );
-      await db.sessionDao.upsertObservedRootSessions(
-        pluginId: plugin.id,
-        sessions: [
-          _observedRoot(title: "Stale title", updatedAt: 100, projectionUpdatedAt: 100),
-        ],
-      );
-
-      final row = await db.sessionDao.getSession(sessionId: "stable-id");
-      expect(row?.catalogTitle, equals("New title"));
-      expect(row?.updatedAt, equals(200));
-      expect(row?.projectionUpdatedAt, equals(200));
-    });
-
-    test("local title and archive writes advance the projection marker", () async {
-      await db.sessionDao.insertSession(
         sessionId: "stable-id",
-        backendSessionId: "backend-id",
-        projectId: "project-X",
-        isDedicated: false,
-        createdAt: 1,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-        pluginId: plugin.id,
-      );
-      final projectedAt = repository.captureProjectionTimestamp();
-      await db.sessionDao.updateObservedSessionProjection(
-        sessionId: "stable-id",
-        directory: "/newer",
-        catalogTitle: "newer",
-        updateCatalogTitle: true,
-        updatedAt: projectedAt,
-        projectionUpdatedAt: projectedAt,
       );
 
-      await repository.setSessionTitleIfStored(sessionId: "stable-id", title: "local");
-      final titledAt = (await db.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
-      expect(titledAt, greaterThan(projectedAt));
-      await repository.archiveStoredSession(sessionId: "stable-id", archivedAt: projectedAt);
-      final archivedAt = (await db.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
-      expect(archivedAt, greaterThan(titledAt));
-      await repository.unarchiveStoredSession(sessionId: "stable-id");
-      final unarchivedAt = (await db.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
-      expect(unarchivedAt, greaterThan(archivedAt));
-
-      await db.sessionDao.updateObservedSessionProjection(
-        sessionId: "stable-id",
-        directory: "/stale",
-        catalogTitle: "stale",
-        updateCatalogTitle: true,
-        updatedAt: projectedAt,
-        projectionUpdatedAt: projectedAt,
-      );
-      final row = await db.sessionDao.getSession(sessionId: "stable-id");
-      expect(row?.directory, "/newer");
-      expect(row?.catalogTitle, "newer");
+      expect(listed.single.id, "stable-id");
+      expect(listed.single.pluginId, "offline-plugin");
+      expect(listed.single.title, "User title");
+      expect(detail, listed.single);
+      expect(plugin.calls, 0);
     });
 
-    test("publication transaction leaves no partial bindings when the batch fails", () async {
-      plugin.sessions = [
-        _pluginSession(id: "backend-1", directory: "/projects/X", title: null, createdAt: 1),
-        _pluginSession(id: "backend-2", directory: "/projects/X", title: null, createdAt: 2),
-      ];
-      final failingRepository = _repository(
-        db: db,
-        plugin: plugin,
-        sessionDao: _ThrowingSessionDao(db: db),
+    test("children retain durable history while every plugin read would throw", () async {
+      final plugin = _ThrowingPlugin();
+      final repository = _repository(database: database, plugin: plugin);
+      addTearDown(repository.dispose);
+      await _insertRoot(database: database, sessionId: "root", updatedAt: 1);
+      await database.sessionDao.insertObservedChild(
+        sessionId: "child",
+        backendSessionId: "backend-child",
+        projectId: "project-X",
+        parentSessionId: "root",
+        directory: "/projects/X/child",
+        catalogTitle: "Child history",
+        archivedAt: null,
+        createdAt: 2,
+        updatedAt: 3,
+        projectionUpdatedAt: 3,
+        pluginId: "offline-plugin",
       );
+
+      final children = await repository.getChildSessions(sessionId: "root");
+
+      expect(children.single.id, "child");
+      expect(children.single.parentID, "root");
+      expect(children.single.title, "Child history");
+      expect(plugin.calls, 0);
+    });
+
+    test("catalog reads complete while plugin methods never complete", () async {
+      final plugin = _NeverCompletingPlugin();
+      final repository = _repository(database: database, plugin: plugin);
+      addTearDown(repository.dispose);
+      await _insertRoot(database: database, sessionId: "root", updatedAt: 1);
+
+      final roots = await repository
+          .getSessionsForProject(projectId: "project-X", start: null, limit: null)
+          .timeout(const Duration(seconds: 1));
+      final detail = await repository
+          .getSessionForProject(projectId: "project-X", sessionId: "root")
+          .timeout(const Duration(seconds: 1));
+      final children = await repository.getChildSessions(sessionId: "root").timeout(const Duration(seconds: 1));
+
+      expect(roots.single.id, "root");
+      expect(detail?.id, "root");
+      expect(children, isEmpty);
+      expect(plugin.calls, 0);
+    });
+
+    test("unknown project and session ids preserve typed not-found behavior", () async {
+      final repository = _repository(database: database, plugin: _ThrowingPlugin());
+      addTearDown(repository.dispose);
 
       await expectLater(
-        failingRepository.getSessionsForProject(projectId: "project-X", start: null, limit: null),
-        throwsStateError,
+        repository.getSessionsForProject(projectId: "missing", start: null, limit: null),
+        throwsA(isA<ProjectNotFoundException>()),
       );
-      expect(await db.select(db.sessionTable).get(), isEmpty);
+      expect(
+        await repository.getSessionForProject(projectId: "project-X", sessionId: "missing"),
+        isNull,
+      );
+      await expectLater(
+        repository.getChildSessions(sessionId: "missing"),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
+      );
     });
 
-    test("stale enumeration cannot recreate a session deleted before publication", () async {
-      await repository.insertStoredSession(
+    test("local title and archive writes reject stale catalog projections", () async {
+      final repository = _repository(database: database, plugin: _ThrowingPlugin());
+      addTearDown(repository.dispose);
+      await _insertRoot(
+        database: database,
         sessionId: "stable-id",
-        backendSessionId: "backend-id",
-        pluginId: plugin.id,
-        projectId: "project-X",
-        isDedicated: false,
-        createdAt: 1,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
-      );
-      plugin.sessions = [
-        _pluginSession(
-          id: "backend-id",
-          directory: "/projects/X",
-          title: "Stale session",
-          createdAt: 1,
-        ),
-      ];
-      final fetchStarted = Completer<void>();
-      final releaseFetch = Completer<void>();
-      plugin.fetchStarted = fetchStarted;
-      plugin.releaseFetch = releaseFetch.future;
-
-      final sessionsFuture = repository.getSessionsForProject(
-        projectId: "project-X",
-        start: null,
-        limit: null,
-      );
-      await fetchStarted.future;
-      await repository.deleteSession(sessionId: "stable-id");
-      releaseFetch.complete();
-
-      expect(await sessionsFuture, isEmpty);
-      expect(await db.sessionDao.getSession(sessionId: "stable-id"), isNull);
-      expect(
-        await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
-        contains("backend-id"),
-      );
-    });
-
-    test("a backend id matching another plugin's stable id receives an independent random id", () async {
-      await db.sessionDao.insertSession(
-        pluginId: "other-plugin",
-        sessionId: "collision-id",
-        backendSessionId: "other-backend-id",
-        projectId: "project-X",
-        isDedicated: false,
-        createdAt: 1,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-      plugin.sessions = [
-        _pluginSession(
-          id: "collision-id",
-          directory: "/projects/X",
-          title: "Colliding session",
-          createdAt: 1,
-        ),
-        _pluginSession(
-          id: "backend-live",
-          directory: "/projects/X",
-          title: "Live session",
-          createdAt: 2,
-        ),
-      ];
-
-      final sessions = await repository.getSessionsForProject(
-        projectId: "project-X",
-        start: null,
-        limit: null,
-      );
-      final retained = await db.sessionDao.getSession(sessionId: "collision-id");
-
-      expect(sessions, hasLength(2));
-      expect(sessions.map((session) => session.id), everyElement(startsWith("ses_")));
-      expect(retained?.pluginId, "other-plugin");
-      expect(retained?.backendSessionId, "other-backend-id");
-      expect(
-        (await db.sessionDao.getSessionByBinding(
-          pluginId: plugin.id,
-          backendSessionId: "collision-id",
-        ))?.sessionId,
-        isNot("collision-id"),
-      );
-      expect(
-        await db.sessionDao.getSessionByBinding(
-          pluginId: plugin.id,
-          backendSessionId: "backend-live",
-        ),
-        isNotNull,
-      );
-    });
-
-    test("concurrent list publications reuse one random binding", () async {
-      plugin.sessions = [
-        _pluginSession(
-          id: "backend-race",
-          directory: "/projects/X",
-          title: "Race",
-          createdAt: 1,
-        ),
-      ];
-
-      final results = await Future.wait([
-        repository.getSessionsForProject(projectId: "project-X", start: null, limit: null),
-        repository.getSessionsForProject(projectId: "project-X", start: null, limit: null),
-      ]);
-      final binding = await db.sessionDao.getSessionByBinding(
-        pluginId: plugin.id,
-        backendSessionId: "backend-race",
+        updatedAt: 200,
+        catalogTitle: "New title",
       );
 
-      expect(results[0].single.id, results[1].single.id);
-      expect(results[0].single.id, binding?.sessionId);
-      expect(results[0].single.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
-      expect(await db.select(db.sessionTable).get(), hasLength(1));
-    });
+      await repository.setSessionTitleIfStored(sessionId: "stable-id", title: "Local title");
+      final titledAt = (await database.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
+      await repository.archiveStoredSession(sessionId: "stable-id", archivedAt: 300);
+      final archivedAt = (await database.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
+      expect(archivedAt, greaterThan(titledAt));
 
-    test("create and list publication races converge on one binding", () async {
-      final racingPlugin = _RacingNativePlugin()
-        ..sessions = [
-          _pluginSession(
-            id: "backend-create-race",
-            directory: "/projects/X",
-            title: "Race",
-            createdAt: 1,
-          ),
-        ];
-      final racingRepository = _repository(
-        db: db,
-        plugin: racingPlugin,
-        sessionDao: db.sessionDao,
-      );
-
-      final createFuture = racingRepository.createSession(
-        pluginId: racingPlugin.id,
-        projectId: "project-X",
-        directory: "/projects/X",
-        parentSessionId: null,
-        parts: const [],
-        variant: null,
-        agent: null,
-        model: null,
-        isDedicated: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-      final listFuture = racingRepository.getSessionsForProject(
-        projectId: "project-X",
-        start: null,
-        limit: null,
-      );
-      final created = await createFuture;
-      final listed = await listFuture;
-      final binding = await db.sessionDao.getSessionByBinding(
-        pluginId: racingPlugin.id,
-        backendSessionId: "backend-create-race",
-      );
-
-      expect(created.id, listed.single.id);
-      expect(created.id, binding?.sessionId);
-      expect(created.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
-      expect(await db.select(db.sessionTable).get(), hasLength(1));
-    });
-  });
-
-  group("SessionRepository stored archive state", () {
-    test("archive and unarchive update an existing binding", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-      final plugin = _FakeNativePlugin();
-      final repository = _repository(db: db, plugin: plugin, sessionDao: db.sessionDao);
-      await repository.insertStoredSession(
+      await database.sessionDao.updateObservedSessionProjection(
         sessionId: "stable-id",
-        backendSessionId: "backend-id",
-        pluginId: plugin.id,
-        projectId: "project-X",
-        isDedicated: false,
-        createdAt: 1,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
+        directory: "/stale",
+        catalogTitle: "Stale title",
+        updateCatalogTitle: true,
+        updatedAt: 100,
+        projectionUpdatedAt: 100,
       );
-
-      await repository.archiveStoredSession(sessionId: "stable-id", archivedAt: 777);
-      expect((await db.sessionDao.getSession(sessionId: "stable-id"))?.archivedAt, equals(777));
-
-      await repository.unarchiveStoredSession(sessionId: "stable-id");
-      expect((await db.sessionDao.getSession(sessionId: "stable-id"))?.archivedAt, isNull);
+      final row = await database.sessionDao.getSession(sessionId: "stable-id");
+      expect(row?.directory, "/projects/X");
+      expect(row?.catalogTitle, "New title");
+      expect(row?.title, "Local title");
+      expect(row?.archivedAt, 300);
     });
   });
 }
 
-SessionRepository _repository({
-  required AppDatabase db,
-  required BridgePluginApi plugin,
-  required SessionDao sessionDao,
-}) {
-  return SessionRepository(
+SessionRepository _repository({required AppDatabase database, required BridgePluginApi plugin}) {
+  return singlePluginSessionRepository(
     plugin: plugin,
-    projectsDao: db.projectsDao,
-    sessionDao: sessionDao,
-    pullRequestDao: db.pullRequestDao,
-    gitCliApi: FakeGitCliApi(),
+    projectsDao: database.projectsDao,
+    sessionDao: database.sessionDao,
+    pullRequestDao: database.pullRequestDao,
     unseenCalculator: const SessionUnseenCalculator(),
   );
 }
 
-PluginSession _pluginSession({
-  required String id,
-  required String directory,
-  required String? title,
-  required int createdAt,
-}) {
-  return PluginSession(
-    id: id,
-    projectID: "project-X",
-    directory: directory,
-    parentID: null,
-    title: title,
-    time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
+Future<void> _insertRoot({
+  required AppDatabase database,
+  required String sessionId,
+  String? backendSessionId,
+  String pluginId = "offline-plugin",
+  required int updatedAt,
+  String? catalogTitle,
+}) async {
+  await database.sessionDao.insertSession(
+    sessionId: sessionId,
+    backendSessionId: backendSessionId ?? "backend-$sessionId",
+    projectId: "project-X",
+    isDedicated: false,
+    createdAt: 1,
+    worktreePath: null,
+    branchName: null,
+    baseBranch: null,
+    baseCommit: null,
+    lastAgent: null,
+    lastAgentModel: null,
+    pluginId: pluginId,
+  );
+  await database.sessionDao.updateObservedSessionProjection(
+    sessionId: sessionId,
+    directory: "/projects/X",
+    catalogTitle: catalogTitle,
+    updateCatalogTitle: true,
+    updatedAt: updatedAt,
+    projectionUpdatedAt: updatedAt,
   );
 }
 
-ObservedRootSession _observedRoot({
-  required String title,
-  required int updatedAt,
-  required int projectionUpdatedAt,
-}) => (
-  sessionId: "stable-id",
-  backendSessionId: "backend-id",
-  projectId: "project-X",
-  directory: "/projects/X",
-  catalogTitle: title,
-  createdAt: updatedAt,
-  updatedAt: updatedAt,
-  archivedAt: null,
-  projectionUpdatedAt: projectionUpdatedAt,
-);
-
-class _ThrowingSessionDao extends SessionDao {
-  _ThrowingSessionDao({required AppDatabase db}) : super(db);
+class _ThrowingPlugin implements NativeProjectsPluginApi {
+  int calls = 0;
 
   @override
-  Future<Map<String, SessionDto>> upsertObservedRootSessions({
-    required String pluginId,
-    required List<ObservedRootSession> sessions,
-  }) {
-    throw StateError("boom");
+  String get id => "running-plugin";
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    calls++;
+    throw StateError("plugin member ${invocation.memberName} must not be called by catalog reads");
   }
 }
 
-class _FakeNativePlugin implements NativeProjectsPluginApi {
-  List<PluginSession> sessions = const [];
-  Completer<void>? fetchStarted;
-  Future<void>? releaseFetch;
-
+class _NeverCompletingPlugin extends _ThrowingPlugin {
   @override
-  String get id => "fake";
-
-  @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async {
-    final snapshot = List<PluginSession>.of(sessions);
-    fetchStarted?.complete();
-    if (releaseFetch case final release?) await release;
-    return snapshot;
+  Future<List<PluginProject>> getProjects() {
+    calls++;
+    return Completer<List<PluginProject>>().future;
   }
 
   @override
-  Future<void> deleteSession(String sessionId) async {}
+  Future<PluginProject> getProject(String projectId) {
+    calls++;
+    return Completer<PluginProject>().future;
+  }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) {
+    calls++;
+    return Completer<List<PluginSession>>().future;
+  }
 
-class _RacingNativePlugin extends _FakeNativePlugin {
   @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    return sessions.single;
+  Future<List<PluginSession>> getChildSessions(String sessionId) {
+    calls++;
+    return Completer<List<PluginSession>>().future;
   }
 }

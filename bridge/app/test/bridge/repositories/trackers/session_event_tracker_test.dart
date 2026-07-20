@@ -7,14 +7,14 @@ void main() {
   group("SessionEventTracker", () {
     test("requires a positive bound", () {
       expect(
-        () => SessionEventTracker(maxPendingEntries: 0),
+        () => SessionEventTracker(maxPendingEntriesPerPlugin: 0),
         throwsArgumentError,
       );
     });
 
-    test("evicts the globally oldest root or child when the shared bound overflows", () {
+    test("evicts only the oldest entry in the plugin whose bound overflows", () {
       final tracker = SessionEventTracker(
-        maxPendingEntries: SessionEventTracker.defaultMaxPendingEntries,
+        maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
       );
 
       expect(
@@ -27,7 +27,7 @@ void main() {
         expect(
           tracker.addChild(
             event: _pending(
-              pluginId: index.isEven ? "plugin-a" : "plugin-b",
+              pluginId: "plugin-a",
               sessionId: "child-$index",
               parentId: "parent-${index % 3}",
             ),
@@ -35,22 +35,29 @@ void main() {
           isNull,
         );
       }
+      tracker.addRoot(
+        event: _pending(pluginId: "plugin-b", sessionId: "other-root", parentId: null),
+      );
 
       final evicted = tracker.addChild(
         event: _pending(
-          pluginId: "plugin-b",
+          pluginId: "plugin-a",
           sessionId: "overflow",
           parentId: "parent-overflow",
         ),
       );
 
       expect(evicted?.backendSessionId, "root");
-      expect(tracker.length, SessionEventTracker.defaultMaxPendingEntries);
+      expect(tracker.length, SessionEventTracker.defaultMaxPendingEntries + 1);
       expect(tracker.takeRoot(pluginId: "plugin-a", backendSessionId: "root"), isNull);
+      expect(
+        tracker.takeRoot(pluginId: "plugin-b", backendSessionId: "other-root"),
+        isNotNull,
+      );
     });
 
     test("drains only the requested plugin and parent while preserving sibling order", () {
-      final tracker = SessionEventTracker(maxPendingEntries: 4);
+      final tracker = SessionEventTracker(maxPendingEntriesPerPlugin: 4);
       tracker.addChild(
         event: _pending(pluginId: "a", sessionId: "a-1", parentId: "parent"),
       );
@@ -74,7 +81,7 @@ void main() {
     });
 
     test("stores pending roots separately by plugin and backend session", () {
-      final tracker = SessionEventTracker(maxPendingEntries: 2);
+      final tracker = SessionEventTracker(maxPendingEntriesPerPlugin: 2);
       tracker.addRoot(
         event: _pending(pluginId: "a", sessionId: "root", parentId: null),
       );
@@ -89,7 +96,7 @@ void main() {
     });
 
     test("drains child projections and following input in source order", () {
-      final tracker = SessionEventTracker(maxPendingEntries: 4);
+      final tracker = SessionEventTracker(maxPendingEntriesPerPlugin: 4);
       tracker.addRoot(
         event: _pending(pluginId: "a", sessionId: "root", parentId: null),
       );
@@ -114,7 +121,7 @@ void main() {
     });
 
     test("keeps child input ahead of a later pending child update", () {
-      final tracker = SessionEventTracker(maxPendingEntries: 4);
+      final tracker = SessionEventTracker(maxPendingEntriesPerPlugin: 4);
       tracker.addChild(
         event: _pending(pluginId: "a", sessionId: "child", parentId: "root"),
       );
@@ -147,7 +154,7 @@ void main() {
     });
 
     test("rejects translation retention without a pending binding", () {
-      final tracker = SessionEventTracker(maxPendingEntries: 1);
+      final tracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1);
 
       expect(
         () => tracker.addTranslation(

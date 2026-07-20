@@ -5,6 +5,7 @@ import 'package:args/args.dart' show ArgParserException;
 import 'package:args/command_runner.dart' as cli;
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
+import 'package:sesori_bridge/src/api/app_onboarding_state_storage.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
@@ -24,6 +25,7 @@ import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_cli_options_mapper.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_registry.dart';
+import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
@@ -75,20 +77,22 @@ class RunCommand extends cli.Command<void> {
   @override
   final description = 'Run the Sesori bridge (default)';
 
-  final BridgePluginDescriptor _selectedPlugin;
+  final List<BridgePluginDescriptor> _selectedPlugins;
 
   /// Maps the selected plugin's options to/from the CLI parser, namespaced
   /// under its id (e.g. `--opencode-host`).
-  final PluginCliOptionsMapper _pluginCliMapper;
+  final Map<String, PluginCliOptionsMapper> _pluginCliMappers;
 
   /// Deferred plugin-selection failure (bad `enabledPlugins`): only running
   /// the bridge needs a valid selection, so the error surfaces here instead
   /// of blocking informational commands like `--help`, logout, or config.
   final String? _selectionError;
 
-  RunCommand({required BridgePluginDescriptor selectedPlugin, required String? selectionError})
-    : _selectedPlugin = selectedPlugin,
-      _pluginCliMapper = PluginCliOptionsMapper(pluginId: selectedPlugin.id),
+  RunCommand({required List<BridgePluginDescriptor> selectedPlugins, required String? selectionError})
+    : _selectedPlugins = selectedPlugins,
+      _pluginCliMappers = {
+        for (final plugin in selectedPlugins) plugin.id: PluginCliOptionsMapper(pluginId: plugin.id),
+      },
       _selectionError = selectionError {
     argParser
       ..addFlag(
@@ -101,14 +105,19 @@ class RunCommand extends cli.Command<void> {
       // parser (see PluginSelector); registering the option here makes the
       // full parse accept it and reject unknown ids via the allowed list.
       // --help therefore documents the *selected* plugin's options.
-      ..addOption(
+      ..addMultiOption(
         'plugin',
-        help: 'Plugin backend to run. Defaults to "enabledPlugins" in the bridge settings, then opencode',
+        help: 'Plugin backends to run, in order. Repeatable; defaults to "enabledPlugins", then opencode',
         allowed: [for (final plugin in knownPlugins) plugin.id],
+        splitCommas: false,
+      )
+      ..addMultiOption(
+        'import-plugin',
+        help: 'Import the selected plugin catalog after startup. Repeatable.',
       );
-    // The selected plugin contributes its own CLI options, namespaced under the
-    // plugin id (for OpenCode: --opencode-port, --opencode-host, etc.).
-    _pluginCliMapper.register(parser: argParser, options: _selectedPlugin.options);
+    for (final plugin in _selectedPlugins) {
+      _pluginCliMappers[plugin.id]!.register(parser: argParser, options: plugin.options);
+    }
     argParser
       ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
       ..addOption(
@@ -144,26 +153,46 @@ class RunCommand extends cli.Command<void> {
     }
 
     final BridgeCliOptions options;
-    final PluginConfig pluginConfig;
-    final List<String> pluginConfigDeprecations;
+    final Map<String, PluginConfig> pluginConfigs;
+    final pluginConfigDeprecations = <String>[];
     try {
       // Plugin option validate hooks and config validation run at
       // argument-parse time — strictly before the startup mutex, so a typo'd
       // flag can never terminate a healthy resident bridge.
-      final parsed = _pluginCliMapper.parse(results: results, options: _selectedPlugin.options);
-      pluginConfig = parsed.config;
-      pluginConfigDeprecations = parsed.deprecations;
-      _selectedPlugin.validateConfig(pluginConfig);
+      final cliPluginIds = List<String>.from(results['plugin'] as List<String>);
+      if (cliPluginIds.toSet().length != cliPluginIds.length) {
+        usageException('Plugin selection contains duplicate ids: ${cliPluginIds.join(", ")}.');
+      }
+      final enabledPlugins = cliPluginIds.isEmpty
+          ? _selectedPlugins
+          : [for (final id in cliPluginIds) knownPlugins.firstWhere((plugin) => plugin.id == id)];
+      pluginConfigs = <String, PluginConfig>{};
+      for (final plugin in enabledPlugins) {
+        final parsed = _pluginCliMappers[plugin.id]!.parse(results: results, options: plugin.options);
+        pluginConfigs[plugin.id] = parsed.config;
+        pluginConfigDeprecations.addAll(parsed.deprecations);
+      }
+      for (final plugin in enabledPlugins) {
+        plugin.validateConfig(pluginConfigs[plugin.id]!);
+      }
       options = BridgeCliOptions.fromArgResults(
         cliArgs: globalResults!.arguments,
         results: results,
         environment: Platform.environment,
         defaultAuthUrl: _defaultAuthURL,
+        enabledPluginIds: [for (final plugin in enabledPlugins) plugin.id],
       );
     } on ArgParserException catch (e) {
       usageException(e.message);
     } on PluginConfigException catch (e) {
       usageException(e.message);
+    }
+    for (final importPluginId in options.importPluginIds) {
+      if (!options.enabledPluginIds.contains(importPluginId)) {
+        usageException(
+          'Cannot import plugin "$importPluginId" because it is not selected.',
+        );
+      }
     }
     Log.level = LogLevel.values.byName(options.logLevelName);
 
@@ -193,8 +222,7 @@ class RunCommand extends cli.Command<void> {
 
     final exitCode = await runBridgeApp(
       options: options,
-      pluginConfig: pluginConfig,
-      pluginId: _selectedPlugin.id,
+      pluginConfigs: pluginConfigs,
     );
     await sleepPreventionService.dispose();
     exit(exitCode);
@@ -259,6 +287,9 @@ class LogoutCommand extends cli.Command<void> {
       ),
       terminalPromptRepository: terminalPromptRepository,
       unregisterBridge: () => _unregisterBridgeRegistration(authBackendUrl: authBackendUrl),
+      appOnboardingStateRepository: AppOnboardingStateRepository(
+        storage: AppOnboardingStateStorage(directoryPath: appOnboardingStateDirectoryPath()),
+      ),
     );
 
     final result = await logoutRunner.logout(currentPid: pid);
@@ -275,7 +306,7 @@ class LogoutCommand extends cli.Command<void> {
         Console.message('Logout cancelled; stored tokens were not cleared.');
         exitCode = 1;
       case BridgeLogoutStatus.failed:
-        Console.error('Error: Failed to clear authentication tokens: ${result.error}');
+        Console.error('Error: Failed to clear authentication state: ${result.error}');
         exitCode = 1;
     }
   }
@@ -650,10 +681,10 @@ Future<void> main(List<String> args) async {
 
   // First pass of the two-pass parse: the selected plugin determines which
   // options the run command's parser is built with.
-  BridgePluginDescriptor selectedPlugin;
+  List<BridgePluginDescriptor> selectedPlugins;
   String? pluginSelectionError;
   try {
-    selectedPlugin = await const PluginSelector(
+    selectedPlugins = await const PluginSelector(
       knownPlugins: knownPlugins,
       defaultPluginId: defaultPluginId,
       loadEnabledPlugins: _loadEnabledPluginsFromSettings,
@@ -662,12 +693,12 @@ Future<void> main(List<String> args) async {
     // Bad settings must not brick --help, logout, or config — config being
     // the recovery command the message recommends. Build the parser from the
     // default surface and defer the error to the run command itself.
-    selectedPlugin = knownPlugins.firstWhere((plugin) => plugin.id == defaultPluginId);
+    selectedPlugins = [knownPlugins.firstWhere((plugin) => plugin.id == defaultPluginId)];
     pluginSelectionError = e.message;
   }
 
   final runner = cli.CommandRunner<void>('sesori-bridge', 'Sesori Bridge CLI')
-    ..addCommand(RunCommand(selectedPlugin: selectedPlugin, selectionError: pluginSelectionError))
+    ..addCommand(RunCommand(selectedPlugins: selectedPlugins, selectionError: pluginSelectionError))
     ..addCommand(LogoutCommand())
     ..addCommand(ConfigCommand())
     ..addCommand(UpdateCommand());

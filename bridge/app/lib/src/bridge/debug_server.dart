@@ -3,48 +3,45 @@ import "dart:convert";
 import "dart:io";
 
 import "package:rxdart/rxdart.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console, Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../server/services/bridge_restart_service.dart";
-import "repositories/session_repository.dart";
 import "routing/request_router.dart";
-import "sse/bridge_event_mapper.dart";
 
 class DebugServer {
-  final Stream<BridgeSseEvent> _pluginEvents;
+  final Stream<SesoriSseEvent> _localWireEvents;
   final RequestRouter _router;
-  final BridgeEventMapper _mapper;
-  final SessionRepository _sessionRepository;
   final FailureReporter _failureReporter;
   final BridgeRestartService _restartService;
   final Future<void> Function() _restartHandoff;
   final int port;
   final List<HttpResponse> _sseClients = [];
+  // ignore: cancel_subscriptions - cancelled by the failure-isolated drain.
   final CompositeSubscription _compositeSubscription = CompositeSubscription();
 
   HttpServer? _server;
-  StreamSubscription<void>? _pluginEventsSub;
+  // ignore: cancel_subscriptions - cancelled by the failure-isolated drain.
+  StreamSubscription<void>? _localWireEventsSub;
+  final Set<Future<void>> _inFlightRequests = <Future<void>>{};
+  final Completer<void> _shutdownSignal = Completer<void>();
+  Future<void>? _serverClose;
+  Future<void>? _drainFuture;
 
   int _nextRequestId = 1;
 
   DebugServer({
-    required Stream<BridgeSseEvent> pluginEvents,
+    required Stream<SesoriSseEvent> localWireEvents,
     required RequestRouter router,
     required this.port,
     required FailureReporter failureReporter,
-    required SessionRepository sessionRepository,
     required BridgeRestartService restartService,
     required Future<void> Function() restartHandoff,
-  }) : _pluginEvents = pluginEvents,
+  }) : _localWireEvents = localWireEvents,
        _router = router,
        _failureReporter = failureReporter,
-       _sessionRepository = sessionRepository,
        _restartService = restartService,
-       _restartHandoff = restartHandoff,
-       _mapper = BridgeEventMapper(
-         failureReporter: failureReporter,
-       );
+       _restartHandoff = restartHandoff;
 
   int? get boundPort => _server?.port;
   RequestRouter get router => _router;
@@ -58,25 +55,63 @@ class DebugServer {
     _server = server;
 
     Console.message("Debug server listening on http://127.0.0.1:${server.port}");
-    server.listen(_handleRequest).addTo(_compositeSubscription);
+    server
+        .listen((request) {
+          late final Future<void> operation;
+          operation = _handleRequest(request).whenComplete(() => _inFlightRequests.remove(operation));
+          _inFlightRequests.add(operation);
+          unawaited(
+            operation.catchError((Object error, StackTrace stackTrace) {
+              Log.w("debug server request failed", error, stackTrace);
+            }),
+          );
+        })
+        .addTo(_compositeSubscription);
   }
 
-  Future<void> stop() async {
-    await _compositeSubscription.cancel();
-    await _pluginEventsSub?.cancel();
-    _pluginEventsSub = null;
-    final clients = List<HttpResponse>.from(_sseClients);
-    _sseClients.clear();
-    for (final client in clients) {
-      try {
-        await client.close();
-      } catch (e) {
-        Log.d("stop: client close failed (ignored): $e");
-      }
-    }
+  void beginShutdown() {
+    if (!_shutdownSignal.isCompleted) _shutdownSignal.complete();
     final server = _server;
     _server = null;
-    await server?.close();
+    _serverClose ??= server?.close() ?? Future<void>.value();
+  }
+
+  Future<void> drain() => _drainFuture ??= _drain();
+
+  Future<void> stop() {
+    beginShutdown();
+    return drain();
+  }
+
+  Future<void> _drain() async {
+    Object? firstError;
+    StackTrace? firstStackTrace;
+
+    Future<void> attempt(FutureOr<void> Function() action) async {
+      try {
+        await action();
+      } on Object catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
+      }
+    }
+
+    final localWireEventsSub = _localWireEventsSub;
+    _localWireEventsSub = null;
+    final clients = List<HttpResponse>.from(_sseClients);
+    _sseClients.clear();
+    await Future.wait([
+      attempt(_compositeSubscription.cancel),
+      if (localWireEventsSub != null) attempt(localWireEventsSub.cancel),
+      for (final client in clients) attempt(client.close),
+      attempt(() => Future.wait(_inFlightRequests.toList(growable: false))),
+      attempt(() async {
+        await _serverClose;
+      }),
+    ]);
+    if (firstError != null) {
+      Error.throwWithStackTrace(firstError!, firstStackTrace!);
+    }
   }
 
   Future<void> _handleRequest(HttpRequest request) async {
@@ -93,6 +128,7 @@ class DebugServer {
     // synchronously right after routing so a concurrently-handled relay request
     // cannot steal the shared flag before this handler triggers the handoff.
     bool restartRequested = false;
+    Future<RelayResponse>? routeToDrain;
     try {
       final rawBody = await utf8.decoder.bind(request).join();
       final body = rawBody.isEmpty ? null : rawBody;
@@ -112,29 +148,42 @@ class DebugServer {
               )
               as RelayRequest;
 
-      final message = await _router.route(relayRequest);
-      // The RestartBridgeHandler arms the shared restart flag during routing;
-      // consume it now, attributed to this request, mirroring the relay path.
-      restartRequested = _restartService.consumeRestartRequest();
-      request.response.statusCode = message.status;
-      // Skip hop-by-hop and length headers — dart:io sets them
-      // automatically based on the actual response body written.
-      const skipHeaders = {"content-length", "transfer-encoding", "connection"};
-      message.headers.forEach((k, v) {
-        if (!skipHeaders.contains(k.toLowerCase())) {
-          request.response.headers.set(k, v);
+      final route = _router.route(relayRequest);
+      final message = await Future.any<RelayResponse?>([
+        route,
+        _shutdownSignal.future.then<RelayResponse?>((_) => null),
+      ]);
+      if (message == null) {
+        routeToDrain = route;
+      } else {
+        // The RestartBridgeHandler arms the shared restart flag during routing;
+        // consume it now, attributed to this request, mirroring the relay path.
+        restartRequested = _restartService.consumeRestartRequest();
+        request.response.statusCode = message.status;
+        // Skip hop-by-hop and length headers — dart:io sets them
+        // automatically based on the actual response body written.
+        const skipHeaders = {"content-length", "transfer-encoding", "connection"};
+        message.headers.forEach((k, v) {
+          if (!skipHeaders.contains(k.toLowerCase())) {
+            request.response.headers.set(k, v);
+          }
+        });
+        if (message.body != null) {
+          // Write as UTF-8 bytes — dart:io defaults to Latin1 which
+          // cannot represent the full range of characters in JSON payloads.
+          request.response.add(utf8.encode(message.body!));
         }
-      });
-      if (message.body != null) {
-        // Write as UTF-8 bytes — dart:io defaults to Latin1 which
-        // cannot represent the full range of characters in JSON payloads.
-        request.response.add(utf8.encode(message.body!));
       }
     } catch (e) {
       request.response.statusCode = HttpStatus.badGateway;
       request.response.add(utf8.encode("Debug server proxy error: $e"));
     } finally {
       await request.response.close();
+    }
+
+    if (routeToDrain != null) {
+      await routeToDrain;
+      return;
     }
 
     // Drive the handoff only after the `{restarting:true}` reply has been
@@ -167,15 +216,8 @@ class DebugServer {
 
       _sseClients.add(response);
 
-      _pluginEventsSub ??= _pluginEvents
-          // Mirrors the orchestrator: a project update rebuilds the full
-          // summary from repository data; everything else maps 1:1.
-          .asyncMap<SesoriSseEvent?>(
-            (event) async => event is BridgeSseProjectUpdated
-                ? _buildProjectsSummary()
-                : _mapper.map(event),
-          )
-          .asyncMap((mapped) => _fanOutMappedEvent(mapped: mapped))
+      _localWireEventsSub ??= _localWireEvents
+          .asyncMap((event) => _fanOutEvent(jsonEncode(event.toJson())))
           .listen(
             (_) {},
             onError: (Object e, StackTrace st) {
@@ -233,47 +275,11 @@ class DebugServer {
     }
   }
 
-  Future<SesoriSseEvent?> _buildProjectsSummary() async {
-    try {
-      return _mapper.buildProjectsSummaryEvent(
-        projects: await _sessionRepository.getProjectActivitySummaries(),
-      );
-    } on Object catch (error, stackTrace) {
-      Log.w("debug SSE projects-summary rebuild failed", error, stackTrace);
-      unawaited(
-        _failureReporter
-            .recordFailure(
-              error: error,
-              stackTrace: stackTrace,
-              uniqueIdentifier: "bridge.debug_server.projects_summary",
-              fatal: false,
-              reason: "debug SSE projects-summary rebuild failed",
-              information: const [],
-            )
-            .catchError((Object reportError, StackTrace reportStackTrace) {
-              Log.w(
-                "debug SSE projects-summary failure report failed",
-                reportError,
-                reportStackTrace,
-              );
-            }),
-      );
-      return null;
-    }
-  }
-
-  Future<void> _fanOutMappedEvent({required SesoriSseEvent? mapped}) async {
-    if (mapped == null) {
-      return;
-    }
-    await _fanOutEvent(jsonEncode(mapped.toJson()));
-  }
-
   void _removeSseClient(HttpResponse client) {
     _sseClients.remove(client);
     if (_sseClients.isEmpty) {
-      final sub = _pluginEventsSub;
-      _pluginEventsSub = null;
+      final sub = _localWireEventsSub;
+      _localWireEventsSub = null;
       if (sub != null) unawaited(sub.cancel());
     }
   }

@@ -19,6 +19,7 @@ dependencies:
   intl: any
   json_annotation: ^4.12.0
   meta: ^1.18.0
+  path: any
   rxdart: ^0.28.0
   sesori_auth:
     path: ../module_auth

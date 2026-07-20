@@ -35,6 +35,7 @@ class SseEvent {
     SesoriServerHeartbeat() ||
     SesoriServerInstanceDisposed() ||
     SesoriGlobalDisposed() ||
+    SesoriCatalogImportProgress() ||
     SesoriPtyCreated() ||
     SesoriPtyUpdated() ||
     SesoriPtyExited() ||

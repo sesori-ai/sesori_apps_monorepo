@@ -180,6 +180,7 @@ class WorktreeService {
   }
 
   Future<bool> removeWorktree({
+    required String pluginId,
     required String projectId,
     required String worktreePath,
     required bool force,
@@ -192,6 +193,7 @@ class WorktreeService {
       return false;
     }
     return _worktreeRepository.removeWorktree(
+      pluginId: pluginId,
       projectPath: projectPath,
       worktreePath: worktreePath,
       force: force,

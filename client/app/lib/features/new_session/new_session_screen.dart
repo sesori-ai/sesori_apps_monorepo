@@ -12,24 +12,31 @@ import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
+import "new_session_plugin_chooser.dart";
 
 class NewSessionScreen extends StatelessWidget {
   final String projectId;
   final String? projectName;
+  final bool? initialSupportsDedicatedWorktrees;
 
   const NewSessionScreen({
     super.key,
     required this.projectId,
     required this.projectName,
+    required this.initialSupportsDedicatedWorktrees,
   });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => NewSessionCubit(
+        connectionService: getIt<ConnectionService>(),
         sessionService: getIt<SessionService>(),
+        pluginRepository: getIt<PluginRepository>(),
+        projectRepository: getIt<ProjectRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
         projectId: projectId,
+        initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
       ),
       child: _NewSessionBody(projectId: projectId, projectName: projectName),
     );
@@ -105,7 +112,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   Widget? _buildComposerHeader(NewSessionState state) {
     final data = state.agentModelData;
     final selectedAgent = data?.agent;
-    if (data == null || data.agents.isEmpty || selectedAgent == null) return null;
+    if (data == null || (data.agents.isEmpty && data.providers.isEmpty)) return null;
 
     final cubit = context.read<NewSessionCubit>();
     return AgentModelButtons(
@@ -126,6 +133,9 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final loc = context.loc;
     final prego = context.prego;
     final isSending = state is NewSessionSending;
+    final composerData = state.agentModelData;
+    final isComposerEnabled =
+        composerData != null && !composerData.isLoading && (composerData.plugin?.isRoutable ?? false) && !isSending;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
     // object stays stable, so `isCurrent` remains safe to read at event time.
@@ -154,6 +164,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       },
       child: PregoGlassScaffold(
         title: loc.sessionListNewSession,
+        scrollable: false,
         banner: ConnectionBanner.maybeFor(context),
         // The loading scrim must dim the body while the glass back button
         // stays tappable (the user can abort while creation is in flight),
@@ -170,10 +181,10 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
               )
             : null,
         slivers: [
-          // The screen doesn't scroll: a single fill-remaining sliver holds
-          // the worktree toggle at the top and pins the composer to the
-          // bottom. With the scaffold's keyboard resize (Scaffold default),
-          // the composer rides above the keyboard when the field is focused.
+          // A single fill-remaining sliver pins the composer to the bottom while
+          // the variable-height plugin and worktree options scroll above it.
+          // With the scaffold's keyboard resize (Scaffold default), the
+          // composer rides above the keyboard when the field is focused.
           SliverFillRemaining(
             hasScrollBody: false,
             child: AbsorbPointer(
@@ -181,48 +192,69 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
               child: Column(
                 children: [
                   Expanded(
-                    child: Padding(
+                    child: SingleChildScrollView(
+                      key: const Key("new_session_options_scroll"),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SwitchListTile(
-                            title: Text(loc.newSessionDedicatedWorktree),
-                            subtitle: Text(
-                              loc.newSessionDedicatedWorktreeDescription,
-                              style: prego.textTheme.textXs.regular.copyWith(
-                                color: prego.colors.textSecondary,
-                              ),
+                          NewSessionPluginChooser(
+                            plugins: composerData?.plugins ?? const [],
+                            selectedPluginId: composerData?.plugin?.id,
+                            isComposerDataLoading: composerData?.isLoading ?? false,
+                            isSelectionEnabled: !(composerData?.isPluginDiscoveryInFlight ?? false),
+                            onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(
+                              pluginId: pluginId,
                             ),
-                            value: _dedicatedWorktree,
-                            onChanged: (value) => setState(() => _dedicatedWorktree = value),
                           ),
+                          if (composerData?.plugins.isNotEmpty ?? false) SizedBox(height: prego.spacing.sm),
+                          if (composerData?.supportsDedicatedWorktrees ?? false)
+                            SwitchListTile(
+                              title: Text(loc.newSessionDedicatedWorktree),
+                              subtitle: Text(
+                                loc.newSessionDedicatedWorktreeDescription,
+                                style: prego.textTheme.textXs.regular.copyWith(
+                                  color: prego.colors.textSecondary,
+                                ),
+                              ),
+                              value: _dedicatedWorktree,
+                              onChanged: (value) => setState(() => _dedicatedWorktree = value),
+                            ),
                         ],
                       ),
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: PromptInput(
-                      // Persist the unsent prompt per project so it survives
-                      // leaving and returning to the new-session screen before
-                      // a session exists; cleared once the session is created.
-                      draftKey: "new-session:${widget.projectId}",
-                      isBusy: state is NewSessionSending,
-                      onSend: (String text, String? command) {
-                        context.read<NewSessionCubit>().createSession(
-                          text: text,
-                          command: command,
-                          dedicatedWorktree: _dedicatedWorktree,
-                        );
-                      },
-                      onAbort: _dismissScreen,
-                      header: _buildErrorBanner(state),
-                      composerHeader: _buildComposerHeader(state),
-                      availableCommands: state.agentModelData?.commands ?? const [],
-                      stagedCommand: state.agentModelData?.stagedCommand,
-                      onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-                      onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+                    child: Semantics(
+                      enabled: isComposerEnabled,
+                      child: ExcludeFocus(
+                        excluding: !isComposerEnabled,
+                        child: IgnorePointer(
+                          ignoring: !isComposerEnabled,
+                          child: PromptInput(
+                            // Persist the unsent prompt per project so it survives
+                            // leaving and returning to the new-session screen before
+                            // a session exists; cleared once the session is created.
+                            draftKey: "new-session:${widget.projectId}",
+                            isBusy: state is NewSessionSending,
+                            onSend: (String text, String? command) {
+                              context.read<NewSessionCubit>().createSession(
+                                text: text,
+                                command: command,
+                                dedicatedWorktree: _dedicatedWorktree,
+                              );
+                            },
+                            onAbort: _dismissScreen,
+                            header: _buildErrorBanner(state),
+                            composerHeader: _buildComposerHeader(state),
+                            availableCommands: composerData?.commands ?? const [],
+                            stagedCommand: composerData?.stagedCommand,
+                            onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                            onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],

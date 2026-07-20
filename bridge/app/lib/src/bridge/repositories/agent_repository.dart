@@ -8,17 +8,20 @@ import "mappers/plugin_agent_mapper.dart";
 import "models/project_not_found_exception.dart";
 
 class AgentRepository {
-  final BridgePluginApi _plugin;
+  final Map<String, BridgePluginApi> _operationalPlugins;
   final ProjectsDao _projectsDao;
+  final String legacyPluginId;
 
-  AgentRepository({required BridgePluginApi plugin, required ProjectsDao projectsDao})
-    : _plugin = plugin,
-      _projectsDao = projectsDao;
-
-  String get pluginId => _plugin.id;
+  AgentRepository({
+    required Map<String, BridgePluginApi> operationalPlugins,
+    required ProjectsDao projectsDao,
+    required this.legacyPluginId,
+  }) : _operationalPlugins = operationalPlugins,
+       _projectsDao = projectsDao;
 
   Future<Agents> getAgents({required String? projectId, required String pluginId}) async {
-    if (pluginId != _plugin.id) {
+    final plugin = _operationalPlugins[pluginId];
+    if (plugin == null) {
       throw PluginOperationException(
         "getAgents",
         statusCode: 503,
@@ -40,7 +43,7 @@ class AgentRepository {
       }
       directory = storedPath;
     }
-    final pluginAgents = await _plugin.getAgents(projectId: directory);
+    final pluginAgents = await plugin.getAgents(projectId: directory);
     final agents = pluginAgents.map((a) => a.toAgentInfo()).toList();
     return Agents(agents: agents);
   }
