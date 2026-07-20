@@ -75,8 +75,8 @@ class SessionListContent extends StatelessWidget {
                   // keeps its state with its session instead of at its old
                   // index.
                   findChildIndexCallback: (key) {
-                    final id = (key as ValueKey<String>).value;
-                    final index = loaded.sessions.indexWhere((session) => session.id == id);
+                    if (key is! ValueKey<String>) return null;
+                    final index = loaded.sessions.indexWhere((session) => session.id == key.value);
                     return index == -1 ? null : index;
                   },
                   itemBuilder: (_, index) {

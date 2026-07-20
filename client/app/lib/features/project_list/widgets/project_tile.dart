@@ -237,6 +237,7 @@ class ProjectTile extends StatelessWidget {
     icon: TablerRegular.eye_off,
     hierarchy: PregoButtonsSolidHierarchy.primary,
     type: PregoButtonsSolidType.warning,
+    semanticsLabel: null,
     close: close,
     onPressed: () => unawaited(_hide(context: context)),
   );
@@ -251,7 +252,7 @@ class ProjectTile extends StatelessWidget {
     required IconData icon,
     required PregoButtonsSolidHierarchy hierarchy,
     PregoButtonsSolidType type = PregoButtonsSolidType.regular,
-    String? semanticsLabel,
+    required String? semanticsLabel,
     required VoidCallback close,
     required VoidCallback onPressed,
   }) {
