@@ -41,10 +41,16 @@ typedef PregoSwipeActionBuilder = Widget Function(BuildContext context, VoidCall
 /// one), a tap on the row's own content (absorbed, so the row doesn't also
 /// activate), and any scroll of the enclosing scrollable.
 ///
+/// While the row settles shut the strips keep rendering the children captured
+/// as the close began: the tapped or committed action often just changed the
+/// very state its own label derives from (a read toggle), and a live rebuild
+/// would morph the still-visible pill into its opposite mid-settle. Fresh
+/// builder output applies again once the row is closed.
+///
 /// The gesture is undiscoverable to assistive tech by nature; hosts must keep
 /// an alternative path to the same actions (the project row's long-press
-/// menu). While a side is closed its actions are excluded from semantics
-/// entirely, so the row still reads as one button.
+/// menu). While a side is closed its actions are excluded from semantics and
+/// focus traversal entirely, so the row still reads as one button.
 class PregoSwipeActions extends StatefulWidget {
   const PregoSwipeActions({
     super.key,
@@ -54,6 +60,7 @@ class PregoSwipeActions extends StatefulWidget {
     required this.onFullSwipe,
     this.leadingPrimaryActionBuilder,
     this.onLeadingFullSwipe,
+    this.showBottomHairline = false,
   }) : assert(
          (leadingPrimaryActionBuilder == null) == (onLeadingFullSwipe == null),
          'A leading action takes both its builder and its full-swipe commit.',
@@ -88,6 +95,12 @@ class PregoSwipeActions extends StatefulWidget {
   /// exactly when [leadingPrimaryActionBuilder] is.
   final VoidCallback? onLeadingFullSwipe;
 
+  /// Draws a row divider along the bottom edge, outside the sliding stack, so
+  /// the divider holds still while the row's content slides. A zero-width
+  /// border side is a single physical pixel and costs the row no height, so
+  /// the divider doesn't push the list off its pitch. Off by default.
+  final bool showBottomHairline;
+
   @override
   State<PregoSwipeActions> createState() => _PregoSwipeActionsState();
 }
@@ -109,6 +122,9 @@ const double _commitClearance = 64;
 /// shut and cancels a pending commit.
 const double _flingVelocity = 700;
 
+/// One build's strip children, captured as a unit when a close settle begins.
+typedef _StripChildren = ({List<Widget> actions, Widget primary, Widget? leadingPrimary});
+
 class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTickerProviderStateMixin {
   /// 0 is closed, and the sign is the open side: positive slides the content
   /// toward the start edge (trailing actions), negative toward the end edge
@@ -116,32 +132,38 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
   /// extent, so thresholds stay proportional if the row resizes mid-gesture.
   late final AnimationController _controller = AnimationController(vsync: this, value: 0, lowerBound: -1);
 
-  final GlobalKey _trailingStripKey = GlobalKey();
+  final _SwipeSide _trailing = _SwipeSide(sign: 1);
 
-  final GlobalKey _trailingPrimaryKey = GlobalKey();
-
-  final GlobalKey _leadingStripKey = GlobalKey();
-
-  final GlobalKey _leadingPrimaryKey = GlobalKey();
+  final _SwipeSide _leading = _SwipeSide(sign: -1);
 
   double _rowWidth = 0;
 
-  /// Measured from each side's strip as laid out, so token or label changes
-  /// never desync the settle target from the rendered actions.
-  double? _trailingRevealWidth;
-  double? _leadingRevealWidth;
-
-  /// Each side's primary action at its natural width — the base its overdrag
-  /// stretch grows from. Measured alongside the reveal widths, under the same
-  /// staleness contract.
-  double? _trailingPrimaryWidth;
-  double? _leadingPrimaryWidth;
-
   bool _dragging = false;
+
+  /// The extent's sign as the current drag began — the side the gesture found
+  /// the row on. A fling toward the opposite side then reads as a closing
+  /// fling even when its last pixels overshot past zero.
+  double _dragStartSide = 0;
 
   /// Tracks threshold crossings during a drag, for the haptic edges and the
   /// release decision.
   bool _pastCommit = false;
+
+  /// Set when a release fires a full-swipe commit, so the closing settle's
+  /// still-large extents cannot re-arm [_pastCommit] on a re-grab and fire the
+  /// same commit twice. Cleared once the extent retreats below the threshold —
+  /// a fresh crossing after that is a new decision.
+  bool _commitFired = false;
+
+  /// The strip children as last built — what a beginning close settle
+  /// captures.
+  _StripChildren? _lastBuiltStrips;
+
+  /// While a close settle runs, the children captured as it began; the strips
+  /// render these instead of fresh builder output, so the closing action's
+  /// own state change cannot morph the still-visible pill mid-settle. Null
+  /// whenever rebuilds are live: at rest, dragging, or settling open.
+  _StripChildren? _frozenStrips;
 
   /// The scroll position being watched while the row is revealed, so any list
   /// scroll closes it. Null while closed.
@@ -151,26 +173,14 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
 
   double get _extent => _controller.value * _rowWidth;
 
-  double get _trailingSurplus => math.max(0, _extent - (_trailingRevealWidth ?? double.infinity));
-
-  double get _leadingSurplus => math.max(0, -_extent - (_leadingRevealWidth ?? double.infinity));
-
-  /// The width imposed on a side's primary action while an overdrag stretches
-  /// it. Null at rest and through the reveal, which leaves the action its
-  /// natural width.
-  double? get _trailingStretchTarget => _stretchTarget(surplus: _trailingSurplus, natural: _trailingPrimaryWidth);
-
-  double? get _leadingStretchTarget => _stretchTarget(surplus: _leadingSurplus, natural: _leadingPrimaryWidth);
-
-  double? _stretchTarget({required double surplus, required double? natural}) {
-    if (surplus <= 0 || natural == null) return null;
-    return natural + surplus;
-  }
+  /// The side an extent of [sign] opens; zero reads as trailing.
+  _SwipeSide _sideOf({required double sign}) => sign < 0 ? _leading : _trailing;
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(_syncScrollWatch);
+    _controller.addListener(_syncStripThaw);
   }
 
   @override
@@ -182,11 +192,19 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    final actions = widget.actionsBuilder(context, _close);
-    final primary = widget.primaryActionBuilder(context, _close);
-    final leadingPrimary = widget.leadingPrimaryActionBuilder?.call(context, _close);
+    final strips =
+        _frozenStrips ??
+        (
+          actions: widget.actionsBuilder(context, _close),
+          primary: widget.primaryActionBuilder(context, _close),
+          leadingPrimary: widget.leadingPrimaryActionBuilder?.call(context, _close),
+        );
+    _lastBuiltStrips = strips;
+    final actions = strips.actions;
+    final primary = strips.primary;
+    final leadingPrimary = strips.leadingPrimary;
 
-    return TapRegion(
+    final row = TapRegion(
       onTapOutside: (_) => _handleTapOutside(),
       child: GestureDetector(
         onHorizontalDragStart: _handleDragStart,
@@ -209,35 +227,9 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
                   return Stack(
                     children: [
                       Transform.translate(offset: shift, child: widget.child),
-                      PositionedDirectional(
-                        start: _rowWidth,
-                        top: 0,
-                        bottom: 0,
-                        child: Transform.translate(
-                          offset: shift,
-                          // Off-screen actions must not be announced: with the
-                          // side closed the row reads as one merged button, and
-                          // the host's menu remains the assistive path to the
-                          // same actions.
-                          child: ExcludeSemantics(
-                            excluding: extent <= 0,
-                            child: _trailingStrip(actions: actions, primary: primary),
-                          ),
-                        ),
-                      ),
+                      _positionedStrip(side: _trailing, actions: actions, primary: primary, extent: extent, shift: shift),
                       if (leadingPrimary != null)
-                        PositionedDirectional(
-                          end: _rowWidth,
-                          top: 0,
-                          bottom: 0,
-                          child: Transform.translate(
-                            offset: shift,
-                            child: ExcludeSemantics(
-                              excluding: extent >= 0,
-                              child: _leadingStrip(primary: leadingPrimary),
-                            ),
-                          ),
-                        ),
+                        _positionedStrip(side: _leading, actions: const [], primary: leadingPrimary, extent: extent, shift: shift),
                       if (extent != 0)
                         // Absorbs taps on the revealed row's content so it
                         // closes instead of activating; sized to spare the open
@@ -265,42 +257,42 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
         ),
       ),
     );
-  }
-
-  Widget _trailingStrip({required List<Widget> actions, required Widget primary}) {
-    return KeyedSubtree(
-      key: _trailingStripKey,
-      child: Padding(
-        // Start gap separates the strip from the sliding content edge; the end
-        // inset matches the row's own horizontal padding so the open actions
-        // sit flush with the rest of the screen's content.
-        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.sm, end: PregoSpacing.xl),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: PregoSpacing.sm,
-          children: [
-            ...actions,
-            SizedBox(key: _trailingPrimaryKey, width: _trailingStretchTarget, child: primary),
-          ],
-        ),
+    if (!widget.showBottomHairline) return row;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: context.prego.colors.borderTertiary, width: 0)),
       ),
+      child: row,
     );
   }
 
-  /// The mirror of [_trailingStrip] down to its insets: outer edge flush with
-  /// the screen's content, inner gap against the sliding content edge. Still a
-  /// Row for its cross-axis behavior — the strip spans the row's height, and
-  /// the action must center in it, not stretch to it.
-  Widget _leadingStrip({required Widget primary}) {
-    return KeyedSubtree(
-      key: _leadingStripKey,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl, end: PregoSpacing.sm),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(key: _leadingPrimaryKey, width: _leadingStretchTarget, child: primary),
-          ],
+  /// One side's strip, laid out just past its own edge of the row so the
+  /// shared [shift] carries it in with the content. While the side is closed
+  /// its actions must be inert chrome: excluded from semantics (the row reads
+  /// as one merged button, and the host's menu remains the assistive path to
+  /// the same actions) and from focus traversal (the clipped pills must not be
+  /// invisible tab stops).
+  Widget _positionedStrip({
+    required _SwipeSide side,
+    required List<Widget> actions,
+    required Widget primary,
+    required double extent,
+    required Offset shift,
+  }) {
+    final closed = side.closedAt(extent: extent);
+    return PositionedDirectional(
+      start: side.sign > 0 ? _rowWidth : null,
+      end: side.sign > 0 ? null : _rowWidth,
+      top: 0,
+      bottom: 0,
+      child: Transform.translate(
+        offset: shift,
+        child: ExcludeSemantics(
+          excluding: closed,
+          child: ExcludeFocus(
+            excluding: closed,
+            child: side.buildStrip(actions: actions, primary: primary, extent: extent),
+          ),
         ),
       ),
     );
@@ -311,8 +303,14 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
   void _handleDragStart(DragStartDetails details) {
     _dragging = true;
     _controller.stop();
-    _measureRestingWidths();
-    _pastCommit = _extent.abs() >= _commitThreshold(extent: _extent);
+    // A re-grab mid-close takes the row back to live rebuilds.
+    if (_frozenStrips != null) setState(() => _frozenStrips = null);
+    _dragStartSide = _extent.sign;
+    _trailing.measureIfResting(extent: _extent);
+    _leading.measureIfResting(extent: _extent);
+    // A re-grab of a held overdrag stays armed — unless the extent is the
+    // closing settle of a commit that already fired.
+    _pastCommit = !_commitFired && _extent.abs() >= _commitThreshold(extent: _extent);
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
@@ -321,7 +319,9 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
     final extent = (_extent + _toExtentDelta(details.primaryDelta ?? 0)).clamp(floor, _rowWidth);
     _controller.value = extent / _rowWidth;
 
-    final past = extent.abs() >= _commitThreshold(extent: extent);
+    final threshold = _commitThreshold(extent: extent);
+    if (extent.abs() < threshold) _commitFired = false;
+    final past = !_commitFired && extent.abs() >= threshold;
     if (past == _pastCommit) return;
     _pastCommit = past;
     // The threshold is otherwise only visible as the stretch's progression;
@@ -332,28 +332,46 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
 
   void _handleDragEnd(DragEndDetails details) {
     _dragging = false;
-    // The release reads relative to the side the row is open toward: positive
-    // velocity opens that side further, negative closes it.
+    // Velocity in extent terms: positive drives toward the trailing side, the
+    // way the extent itself grows.
+    final velocity = _toExtentDelta(details.primaryVelocity ?? 0);
     final side = _extent.sign;
-    final velocity = side * _toExtentDelta(details.primaryVelocity ?? 0);
     // A deliberate fling back cancels a pending commit — position alone would
     // read a fast "changed my mind" swipe as a commit.
-    if (_pastCommit && velocity > -_flingVelocity) {
+    if (_pastCommit && side * velocity > -_flingVelocity) {
+      _commitFired = true;
       // A negative side only exists with a leading action, whose constructor
       // pairs the builder with its commit.
       (side < 0 ? widget.onLeadingFullSwipe : widget.onFullSwipe)?.call();
       _close();
       return;
     }
-    if (velocity > _flingVelocity) {
-      _settleTo(side * _revealOf(side));
-      return;
-    }
-    if (velocity < -_flingVelocity) {
-      _close();
+    if (velocity.abs() > _flingVelocity) {
+      final flingSide = velocity.sign;
+      if (_flingOpens(side: flingSide)) {
+        _settleTo(flingSide * _sideOf(sign: flingSide).reveal);
+      } else {
+        _close();
+      }
       return;
     }
     _settleToNearest();
+  }
+
+  /// Whether a fling toward [side] reads as opening it — otherwise it is a
+  /// closing fling for the other side. Opening needs actions on [side], the
+  /// extent at or past zero toward it (exactly zero is the violent short flick
+  /// whose whole delta went to winning the gesture arena), and — when the drag
+  /// began with the opposite side open — the gesture to have crossed
+  /// meaningfully in, past the point where a plain release would settle [side]
+  /// open anyway. A hard close that overshoots zero by a few pixels then
+  /// settles closed instead of bouncing the opposite side open.
+  bool _flingOpens({required double side}) {
+    if (side < 0 && !_hasLeading) return false;
+    final toward = _extent * side;
+    if (toward < 0) return false;
+    if (_dragStartSide == -side) return toward > _sideOf(sign: side).reveal / 2;
+    return true;
   }
 
   void _handleDragCancel() {
@@ -370,36 +388,19 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
   /// toward. A fraction of the row's width — but never inside the side's own
   /// reveal: a strip that is wide on its row (long labels, large text scales,
   /// narrow screens) must keep a reachable open state, so its commit only
-  /// arms once the overdrag has stretched visibly past it.
-  double _commitThreshold({required double extent}) =>
-      math.max(_commitFraction * _rowWidth, _revealOf(extent.sign) + _commitClearance);
+  /// arms once the overdrag has stretched visibly past it. And never past the
+  /// row's width, which is as far as the drag itself reaches: when the reveal
+  /// plus its clearance would put the threshold out of range, the full-width
+  /// drag still arms.
+  double _commitThreshold({required double extent}) => math.min(
+    _rowWidth,
+    math.max(_commitFraction * _rowWidth, _sideOf(sign: extent.sign).reveal + _commitClearance),
+  );
 
   /// Extent grows positive toward the start edge: a leftward drag in LTR,
   /// rightward in RTL.
   double _toExtentDelta(double primaryDelta) =>
       Directionality.of(context) == TextDirection.rtl ? primaryDelta : -primaryDelta;
-
-  double _revealOf(double side) => side < 0 ? (_leadingRevealWidth ?? 0) : (_trailingRevealWidth ?? 0);
-
-  /// The settle targets are the action strips as laid out, and the stretch
-  /// bases each primary's own size within its strip. A side's measurements are
-  /// only trustworthy while that side is not stretched, so a re-grab
-  /// mid-overdrag keeps its previous ones.
-  void _measureRestingWidths() {
-    if (_trailingSurplus <= 0) {
-      _trailingRevealWidth = _measuredWidth(_trailingStripKey) ?? _trailingRevealWidth;
-      _trailingPrimaryWidth = _measuredWidth(_trailingPrimaryKey) ?? _trailingPrimaryWidth;
-    }
-    if (_hasLeading && _leadingSurplus <= 0) {
-      _leadingRevealWidth = _measuredWidth(_leadingStripKey) ?? _leadingRevealWidth;
-      _leadingPrimaryWidth = _measuredWidth(_leadingPrimaryKey) ?? _leadingPrimaryWidth;
-    }
-  }
-
-  double? _measuredWidth(GlobalKey key) {
-    final box = key.currentContext?.findRenderObject();
-    return box is RenderBox && box.hasSize ? box.size.width : null;
-  }
 
   // ── Settling ───────────────────────────────────────────────────────────────
 
@@ -407,7 +408,7 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
 
   void _settleToNearest() {
     final side = _extent.sign;
-    final reveal = _revealOf(side);
+    final reveal = _sideOf(sign: side).reveal;
     _settleTo(_extent.abs() > reveal / 2 ? side * reveal : 0);
   }
 
@@ -415,12 +416,25 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
     // The close callback escapes to host action handlers, which may hold it
     // across an await that outlives the row.
     if (!mounted || _rowWidth <= 0) return;
+    if (target == 0 && _extent != 0) {
+      // A second close mid-close keeps the original capture.
+      _frozenStrips ??= _lastBuiltStrips;
+    } else {
+      _frozenStrips = null;
+    }
     final value = (target / _rowWidth).clamp(-1.0, 1.0);
     if (prefersReducedMotion(context)) {
       _controller.value = value;
       return;
     }
     unawaited(_controller.animateTo(value, duration: _settleDuration, curve: Curves.easeOutCubic));
+  }
+
+  /// Thaws the frozen strips once the close settle lands, so the very next
+  /// build picks up fresh builder output again.
+  void _syncStripThaw() {
+    if (_frozenStrips == null || _controller.value != 0) return;
+    setState(() => _frozenStrips = null);
   }
 
   // ── Close on scroll ────────────────────────────────────────────────────────
@@ -446,5 +460,89 @@ class _PregoSwipeActionsState extends State<PregoSwipeActions> with SingleTicker
   void _unwatchScroll() {
     _watchedScroll?.removeListener(_handleScroll);
     _watchedScroll = null;
+  }
+}
+
+/// One side of a [PregoSwipeActions] row — the trailing strip or the leading
+/// action — so each per-side mechanic (measurement, overdrag stretch, strip
+/// layout) exists once, instantiated for both sides.
+class _SwipeSide {
+  _SwipeSide({required this.sign});
+
+  /// The extent sign that opens this side: positive trailing, negative
+  /// leading.
+  final double sign;
+
+  final GlobalKey stripKey = GlobalKey();
+
+  final GlobalKey primaryKey = GlobalKey();
+
+  /// Measured from the strip as laid out, so token or label changes never
+  /// desync the settle target from the rendered actions.
+  double? revealWidth;
+
+  /// The primary action at its natural width — the base its overdrag stretch
+  /// grows from. Measured alongside [revealWidth], under the same staleness
+  /// contract.
+  double? primaryWidth;
+
+  double get reveal => revealWidth ?? 0;
+
+  /// Whether [extent] leaves this side closed — at zero or open toward the
+  /// other side.
+  bool closedAt({required double extent}) => extent * sign <= 0;
+
+  /// How far [extent] has overdragged past this side's reveal; zero through
+  /// the reveal and while unmeasured.
+  double surplusAt({required double extent}) => math.max(0, extent * sign - (revealWidth ?? double.infinity));
+
+  /// The width imposed on this side's primary action while an overdrag
+  /// stretches it. Null at rest and through the reveal, which leaves the
+  /// action its natural width.
+  double? stretchTargetAt({required double extent}) {
+    final surplus = surplusAt(extent: extent);
+    final natural = primaryWidth;
+    if (surplus <= 0 || natural == null) return null;
+    return natural + surplus;
+  }
+
+  /// The settle targets are the action strips as laid out, and the stretch
+  /// bases each primary's own size within its strip. A side's measurements are
+  /// only trustworthy while that side is not stretched, so a re-grab
+  /// mid-overdrag keeps its previous ones.
+  void measureIfResting({required double extent}) {
+    if (surplusAt(extent: extent) > 0) return;
+    revealWidth = _measuredWidth(key: stripKey) ?? revealWidth;
+    primaryWidth = _measuredWidth(key: primaryKey) ?? primaryWidth;
+  }
+
+  static double? _measuredWidth({required GlobalKey key}) {
+    final box = key.currentContext?.findRenderObject();
+    return box is RenderBox && box.hasSize ? box.size.width : null;
+  }
+
+  /// The gap on the content side separates the strip from the sliding content
+  /// edge; the inset on the outer side matches the row's own horizontal
+  /// padding so the open actions sit flush with the rest of the screen's
+  /// content. A Row for its cross-axis behavior — the strip spans the row's
+  /// height, and the actions must center in it, not stretch to it.
+  Widget buildStrip({required List<Widget> actions, required Widget primary, required double extent}) {
+    return KeyedSubtree(
+      key: stripKey,
+      child: Padding(
+        padding: EdgeInsetsDirectional.only(
+          start: sign > 0 ? PregoSpacing.sm : PregoSpacing.xl,
+          end: sign > 0 ? PregoSpacing.xl : PregoSpacing.sm,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: PregoSpacing.sm,
+          children: [
+            ...actions,
+            SizedBox(key: primaryKey, width: stretchTargetAt(extent: extent), child: primary),
+          ],
+        ),
+      ),
+    );
   }
 }

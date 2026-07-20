@@ -28,16 +28,14 @@ class SessionListActionDispatcher {
         title: isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
         subtitle: null,
         isSelected: false,
-        onTap: () => unawaited(cubit.markSessionSeen(sessionId: session.id, read: isUnseen)),
+        onTap: () => handleSessionToggleUnread(context: context, session: session),
       ),
       PregoMenuItem(
         leadingIcon: isArchived ? TablerRegular.archive_off : TablerRegular.archive,
         title: isArchived ? loc.sessionListUnarchive : loc.sessionListArchive,
         subtitle: null,
         isSelected: false,
-        onTap: () => isArchived
-            ? _unarchiveSession(context: context, cubit: cubit, sessionId: session.id)
-            : _showArchiveSheet(context: context, cubit: cubit, session: session),
+        onTap: () => handleSessionArchive(context: context, session: session),
       ),
       // Delete is the only entry here that destroys work the user cannot get
       // back — archiving is reversible — so it is set apart and tinted.
@@ -48,7 +46,7 @@ class SessionListActionDispatcher {
         subtitle: null,
         isSelected: false,
         isDestructive: true,
-        onTap: () => _showDeleteSheet(context: context, cubit: cubit, session: session),
+        onTap: () => handleSessionDelete(context: context, session: session),
       ),
     ];
   }
@@ -80,6 +78,6 @@ class SessionListActionDispatcher {
   /// else what the session payload said.
   bool _isUnseen({required SessionListCubit cubit, required Session session}) {
     final state = cubit.state;
-    return state is SessionListLoaded ? (state.unseenBySessionId[session.id] ?? session.unseen) : session.unseen;
+    return state is SessionListLoaded ? state.isSessionUnseen(session: session) : session.unseen;
   }
 }

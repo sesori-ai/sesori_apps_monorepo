@@ -154,67 +154,59 @@ class ProjectTile extends StatelessWidget {
     // darker than the rest so the reason is still legible.
     final dimmed = missing ? prego.colors.textDisabled : null;
 
-    // The hairline sits outside the swipe stack so the divider holds still
-    // while the row's content slides. A zero-width side is a single physical
-    // pixel and costs the row no height, so the divider doesn't push the list
-    // off its pitch.
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: prego.colors.borderTertiary, width: 0)),
-      ),
-      child: PregoSwipeActions(
-        actionsBuilder: (context, close) => [
-          _renameAction(context: context, close: close),
-        ],
-        primaryActionBuilder: (context, close) => _hideAction(context: context, close: close),
-        onFullSwipe: () => unawaited(_hide(context: context)),
-        // Right-click is the mouse counterpart of long-press. The row also has
-        // to announce itself as a button and as one thing: that came free from
-        // ListTile, whereas an InkWell contributes only the actions, not the
-        // role, and leaves the row's three lines as three separate nodes to
-        // swipe past.
-        child: GestureDetector(
-          onSecondaryTap: openMenu,
-          child: MergeSemantics(
-            child: Semantics(
-              button: true,
-              child: InkWell(
-                onTap: () => _open(context: context, displayName: displayName, missing: missing),
-                onLongPress: openMenu,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: PregoSpacing.xl,
-                    vertical: PregoSpacing.lg,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: PregoSpacing.xs,
-                          children: [
-                            _titleRow(prego: prego, displayName: displayName, dimmed: dimmed),
-                            Text(
-                              projectShortPath(project),
-                              style: prego.textTheme.textSm.regular.copyWith(
-                                color: dimmed ?? prego.colors.textSecondary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+    return PregoSwipeActions(
+      showBottomHairline: true,
+      actionsBuilder: (context, close) => [
+        _renameAction(context: context, close: close),
+      ],
+      primaryActionBuilder: (context, close) => _hideAction(context: context, close: close),
+      onFullSwipe: () => unawaited(_hide(context: context)),
+      // Right-click is the mouse counterpart of long-press. The row also has
+      // to announce itself as a button and as one thing: that came free from
+      // ListTile, whereas an InkWell contributes only the actions, not the
+      // role, and leaves the row's three lines as three separate nodes to
+      // swipe past.
+      child: GestureDetector(
+        onSecondaryTap: openMenu,
+        child: MergeSemantics(
+          child: Semantics(
+            button: true,
+            child: InkWell(
+              onTap: () => _open(context: context, displayName: displayName, missing: missing),
+              onLongPress: openMenu,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: PregoSpacing.xl,
+                  vertical: PregoSpacing.lg,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: PregoSpacing.xs,
+                        children: [
+                          _titleRow(prego: prego, displayName: displayName, dimmed: dimmed),
+                          Text(
+                            projectShortPath(project),
+                            style: prego.textTheme.textSm.regular.copyWith(
+                              color: dimmed ?? prego.colors.textSecondary,
                             ),
-                            _StatusRow(project: project, activeSessions: activeSessions, unseen: unseen),
-                          ],
-                        ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          _StatusRow(project: project, activeSessions: activeSessions, unseen: unseen),
+                        ],
                       ),
-                      ExcludeSemantics(
-                        child: Icon(
-                          TablerLight.chevron_right,
-                          size: _chevronSize,
-                          color: dimmed ?? prego.colors.textSecondary,
-                        ),
+                    ),
+                    ExcludeSemantics(
+                      child: Icon(
+                        TablerLight.chevron_right,
+                        size: _chevronSize,
+                        color: dimmed ?? prego.colors.textSecondary,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -226,38 +218,64 @@ class ProjectTile extends StatelessWidget {
 
   /// The swipe strip's rename button. Icon-only, so the label rides in the
   /// semantics instead.
-  Widget _renameAction({required BuildContext context, required VoidCallback close}) {
-    return Semantics(
-      label: context.loc.rename,
-      child: PregoButtonsSolid.iconOnly(
-        leadingIcon: TablerRegular.pencil,
-        hierarchy: PregoButtonsSolidHierarchy.secondary,
-        size: PregoButtonsSolidSize.md,
-        onPressed: () {
-          close();
-          _rename(context: context);
-        },
-      ),
-    );
-  }
+  Widget _renameAction({required BuildContext context, required VoidCallback close}) => _actionPill(
+    label: null,
+    icon: TablerRegular.pencil,
+    hierarchy: PregoButtonsSolidHierarchy.secondary,
+    semanticsLabel: context.loc.rename,
+    close: close,
+    onPressed: () => _rename(context: context),
+  );
 
   /// The swipe strip's hide pill — the primary action, which is also what a
   /// full swipe commits. Sized by its own content at rest; when
   /// [PregoSwipeActions] widens its box during an overdrag, the button's
   /// centered content rides the stretch. Not `fullWidth`: that needs a
   /// bounded parent, and at rest the strip's width is open-ended.
-  Widget _hideAction({required BuildContext context, required VoidCallback close}) {
-    return PregoButtonsSolid(
-      label: context.loc.hide,
-      leadingIcon: TablerRegular.eye_off,
-      hierarchy: PregoButtonsSolidHierarchy.primary,
-      type: PregoButtonsSolidType.warning,
-      size: PregoButtonsSolidSize.md,
-      onPressed: () {
-        close();
-        unawaited(_hide(context: context));
-      },
-    );
+  Widget _hideAction({required BuildContext context, required VoidCallback close}) => _actionPill(
+    label: context.loc.hide,
+    icon: TablerRegular.eye_off,
+    hierarchy: PregoButtonsSolidHierarchy.primary,
+    type: PregoButtonsSolidType.warning,
+    close: close,
+    onPressed: () => unawaited(_hide(context: context)),
+  );
+
+  /// Builds one of the swipe strip's pills: medium size and the close-then-
+  /// dispatch sequencing are shared by both, and a null [label] switches to
+  /// the icon-only variant with [semanticsLabel] carrying the spoken name in
+  /// its place — the only other differences between the two are hierarchy
+  /// and tone.
+  Widget _actionPill({
+    required String? label,
+    required IconData icon,
+    required PregoButtonsSolidHierarchy hierarchy,
+    PregoButtonsSolidType type = PregoButtonsSolidType.regular,
+    String? semanticsLabel,
+    required VoidCallback close,
+    required VoidCallback onPressed,
+  }) {
+    void onTap() {
+      close();
+      onPressed();
+    }
+
+    final button = label == null
+        ? PregoButtonsSolid.iconOnly(
+            leadingIcon: icon,
+            hierarchy: hierarchy,
+            size: PregoButtonsSolidSize.md,
+            onPressed: onTap,
+          )
+        : PregoButtonsSolid(
+            label: label,
+            leadingIcon: icon,
+            hierarchy: hierarchy,
+            type: type,
+            size: PregoButtonsSolidSize.md,
+            onPressed: onTap,
+          );
+    return semanticsLabel == null ? button : Semantics(label: semanticsLabel, child: button);
   }
 
   Widget _titleRow({

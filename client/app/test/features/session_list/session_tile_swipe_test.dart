@@ -33,9 +33,9 @@ void main() {
     cubit = _MockSessionListCubit();
   });
 
-  /// Renders the real panel with the real action dispatcher behind the rows.
-  /// The swipe callbacks close over a context above the rows, as the screen's
-  /// do, so they keep working after an action unmounts its row.
+  /// Renders the real panel. [SessionListContent] wires the swipe actions to
+  /// the real [SessionListActionDispatcher] itself, using its own context
+  /// above the rows, so they keep working after an action unmounts its row.
   Future<void> pumpPanel(WidgetTester tester, {required Session session}) async {
     when(() => cubit.state).thenReturn(
       SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
@@ -53,18 +53,12 @@ void main() {
           home: Scaffold(
             body: BlocProvider<SessionListCubit>.value(
               value: cubit,
-              child: Builder(
-                builder: (context) => SessionListPanel(
-                  projectName: "Project One",
-                  onNewSession: () {},
-                  onSessionTap: (_) {},
-                  sessionMenuEntries: (BuildContext context, Session session) =>
-                      dispatcher.sessionMenuEntries(context: context, session: session),
-                  onSessionArchive: (session) => dispatcher.handleSessionArchive(context: context, session: session),
-                  onSessionDelete: (session) => dispatcher.handleSessionDelete(context: context, session: session),
-                  onSessionToggleUnread: (session) =>
-                      dispatcher.handleSessionToggleUnread(context: context, session: session),
-                ),
+              child: SessionListPanel(
+                projectName: "Project One",
+                onNewSession: () {},
+                onSessionTap: (_) {},
+                sessionMenuEntries: (BuildContext context, Session session) =>
+                    dispatcher.sessionMenuEntries(context: context, session: session),
               ),
             ),
           ),

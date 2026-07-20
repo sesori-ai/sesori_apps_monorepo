@@ -9,7 +9,10 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "session_empty_state.dart";
+import "session_list_screen.dart";
 import "session_tile.dart";
+
+const _actionDispatcher = SessionListActionDispatcher();
 
 /// Pull-to-refresh handler shared by [SessionListScaffold] and
 /// [SessionListPanel]: re-fetches the session list and reports the outcome via
@@ -33,9 +36,6 @@ class SessionListContent extends StatelessWidget {
   final String? selectedSessionId;
   final ValueChanged<Session> onSessionTap;
   final SessionMenuEntriesBuilder sessionMenuEntries;
-  final ValueChanged<Session> onSessionArchive;
-  final ValueChanged<Session> onSessionDelete;
-  final ValueChanged<Session> onSessionToggleUnread;
 
   const SessionListContent({
     super.key,
@@ -43,9 +43,6 @@ class SessionListContent extends StatelessWidget {
     this.selectedSessionId,
     required this.onSessionTap,
     required this.sessionMenuEntries,
-    required this.onSessionArchive,
-    required this.onSessionDelete,
-    required this.onSessionToggleUnread,
   });
 
   /// Returns the page content as a single sliver per state, so it slots
@@ -61,31 +58,40 @@ class SessionListContent extends StatelessWidget {
       SessionListLoading() => SliverToBoxAdapter(
         child: PregoSkeletonList(semanticLabel: loc.sessionListLoadingSemantics),
       ),
-      SessionListLoaded(:final sessions, :final showArchived, :final activeSessionIds, :final unseenBySessionId) =>
-        sessions.isEmpty
+      final SessionListLoaded loaded =>
+        loaded.sessions.isEmpty
             ? SliverFillRemaining(
                 hasScrollBody: false,
-                child: showArchived
+                child: loaded.showArchived
                     ? Center(child: Text(loc.sessionListEmptyArchived))
                     : SessionEmptyState(projectName: projectName),
               )
             : SliverPadding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 sliver: SliverList.builder(
-                  itemCount: sessions.length,
+                  itemCount: loaded.sessions.length,
+                  // Lets Flutter relocate a keyed row after the list reorders
+                  // (sessions live-sort by activity), so a swiped-open row
+                  // keeps its state with its session instead of at its old
+                  // index.
+                  findChildIndexCallback: (key) {
+                    final id = (key as ValueKey<String>).value;
+                    final index = loaded.sessions.indexWhere((session) => session.id == id);
+                    return index == -1 ? null : index;
+                  },
                   itemBuilder: (_, index) {
-                    final session = sessions[index];
+                    final session = loaded.sessions[index];
                     final isArchived = session.time?.archived != null;
-                    final activityInfo = activeSessionIds[session.id];
+                    final activityInfo = loaded.activeSessionIds[session.id];
 
                     return SessionTile(
-                      // Keyed so a swiped-open row keeps its state with its
-                      // session when the list reorders around it.
+                      // Keyed so findChildIndexCallback above can remap this
+                      // row to its new index when the list reorders around it.
                       key: ValueKey(session.id),
                       session: session,
                       isArchived: isArchived,
                       isActive: activityInfo != null,
-                      unseen: unseenBySessionId[session.id] ?? session.unseen,
+                      unseen: loaded.isSessionUnseen(session: session),
                       selected: selectedSessionId == session.id,
                       awaitingInput: activityInfo?.awaitingInput ?? false,
                       isRetrying: activityInfo?.isRetrying ?? false,
@@ -94,9 +100,10 @@ class SessionListContent extends StatelessWidget {
                       // The list's context, not the row's: archive/delete
                       // unmount the row before their follow-ups run.
                       menuEntries: () => sessionMenuEntries(context, session),
-                      onArchive: () => onSessionArchive(session),
-                      onDelete: () => onSessionDelete(session),
-                      onToggleUnread: () => onSessionToggleUnread(session),
+                      onArchive: () => _actionDispatcher.handleSessionArchive(context: context, session: session),
+                      onDelete: () => _actionDispatcher.handleSessionDelete(context: context, session: session),
+                      onToggleUnread: () =>
+                          _actionDispatcher.handleSessionToggleUnread(context: context, session: session),
                     );
                   },
                 ),

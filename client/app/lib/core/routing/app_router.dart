@@ -420,10 +420,6 @@ class _SessionListPane extends StatelessWidget {
         },
         sessionMenuEntries: (BuildContext context, Session session) =>
             actionDispatcher.sessionMenuEntries(context: context, session: session),
-        onSessionArchive: (session) => actionDispatcher.handleSessionArchive(context: context, session: session),
-        onSessionDelete: (session) => actionDispatcher.handleSessionDelete(context: context, session: session),
-        onSessionToggleUnread: (session) =>
-            actionDispatcher.handleSessionToggleUnread(context: context, session: session),
       ),
     );
   }

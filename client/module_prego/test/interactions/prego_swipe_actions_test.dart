@@ -36,8 +36,10 @@ Widget _row({
   bool closeOnAction = false,
   double primaryWidth = _primaryWidth,
   double? leadingWidth,
+  bool bottomHairline = false,
 }) {
   return PregoSwipeActions(
+    showBottomHairline: bottomHairline,
     leadingPrimaryActionBuilder: leadingWidth == null
         ? null
         : (context, close) => SizedBox(
@@ -368,6 +370,73 @@ void main() {
     expect(counters.fullSwipes, 1);
   });
 
+  testWidgets('a strip whose reveal crowds the row still opens, and still commits at the full-width drag', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters, primaryWidth: 700)]));
+
+    // Reveal: 6 + 40 + 6 + 700 + 16 = 768, so reveal plus the 64px clearance
+    // is 832 — beyond the 800px row, which is as far as the drag can reach.
+    // A drag short of the full width must still settle open, not commit…
+    final gesture = await tester.startGesture(tester.getCenter(find.text('A content')));
+    await _moveInSteps(
+      tester,
+      gesture,
+      total: const Offset(-880, 0),
+      pumpEach: const Duration(milliseconds: 100),
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(counters.fullSwipes, 0);
+    expect(_primaryRect(tester, 'A').left, moreOrLessEquals(_surfaceWidth - 16 - 700, epsilon: 1));
+
+    // …and the commit threshold caps at the row width: dragging to the full
+    // width arms and fires. The content has slid off-row, so the re-grab
+    // starts on the sliver of row the open strip spares.
+    final commitGesture = await tester.startGesture(const Offset(16, 48));
+    await _moveInSteps(
+      tester,
+      commitGesture,
+      total: const Offset(-300, 0),
+      pumpEach: const Duration(milliseconds: 100),
+    );
+    await commitGesture.up();
+    await tester.pumpAndSettle();
+
+    expect(counters.fullSwipes, 1);
+    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+  });
+
+  testWidgets('re-grabbing the row while a committed swipe settles shut does not fire the commit again', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+
+    // A full swipe deep past the 480px threshold: the commit fires on release
+    // and the row starts settling shut from a still-past-threshold extent.
+    final gesture = await tester.startGesture(tester.getCenter(find.text('A content')));
+    await _moveInSteps(
+      tester,
+      gesture,
+      total: const Offset(-880, 0),
+      pumpEach: const Duration(milliseconds: 100),
+    );
+    await gesture.up();
+    expect(counters.fullSwipes, 1);
+
+    // One frame into the settle the extent is still past the threshold.
+    // Grabbing the row there (the accepting move's delta is discarded, so the
+    // grab itself adds no movement) and releasing must not fire again.
+    await tester.pump(const Duration(milliseconds: 16));
+    final regrab = await tester.startGesture(const Offset(100, 48));
+    await tester.pump(const Duration(milliseconds: 8));
+    await regrab.moveBy(const Offset(-30, 0));
+    await tester.pump(const Duration(milliseconds: 200));
+    await regrab.up();
+    await tester.pumpAndSettle();
+
+    expect(counters.fullSwipes, 1);
+  });
+
   testWidgets('dragging past the threshold and back before releasing does not commit', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
@@ -531,6 +600,70 @@ void main() {
     expect(counters.leadingFullSwipes, 0);
   });
 
+  testWidgets('a closing fling that overshoots past zero settles closed instead of opening the other side', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+    );
+
+    await _swipe(tester, label: 'A', dx: -150);
+    expect(_primaryRect(tester, 'A').left, lessThan(_surfaceWidth));
+
+    // From the +204 trailing reveal, a hard rightward fling: the first step is
+    // spent winning the arena, the remaining +210 land a few pixels past
+    // closed. The release must settle at zero — not read the overshoot as an
+    // opening fling for the leading side. Explicit timestamps, because a
+    // default moveBy stamps every event at zero and the release would carry
+    // no velocity at all.
+    final gesture = await tester.startGesture(tester.getCenter(find.text('A content')));
+    await gesture.moveBy(const Offset(70, 0), timeStamp: const Duration(milliseconds: 8));
+    await gesture.moveBy(const Offset(70, 0), timeStamp: const Duration(milliseconds: 16));
+    await gesture.moveBy(const Offset(70, 0), timeStamp: const Duration(milliseconds: 24));
+    await gesture.moveBy(const Offset(70, 0), timeStamp: const Duration(milliseconds: 32));
+    await gesture.up(timeStamp: const Duration(milliseconds: 40));
+    await tester.pumpAndSettle();
+
+    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(counters.fullSwipes, 0);
+    expect(counters.leadingFullSwipes, 0);
+  });
+
+  testWidgets('a flick whose whole delta is spent winning the arena still opens the flicked side', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+    );
+
+    // Every event lands before or at arena acceptance, so the accepted drag
+    // carries zero extent — only velocity (explicit timestamps; a default
+    // moveBy stamps events at zero and would zero that too). It must still
+    // open the flicked side, as the same flick did when the extent survived.
+    final flick = await tester.startGesture(tester.getCenter(find.text('A content')));
+    await flick.moveBy(const Offset(-6, 0), timeStamp: const Duration(milliseconds: 8));
+    await flick.moveBy(const Offset(-6, 0), timeStamp: const Duration(milliseconds: 16));
+    await flick.moveBy(const Offset(-288, 0), timeStamp: const Duration(milliseconds: 24));
+    await flick.up(timeStamp: const Duration(milliseconds: 32));
+    await tester.pumpAndSettle();
+
+    expect(_primaryRect(tester, 'A').left, moreOrLessEquals(_surfaceWidth - 16 - _primaryWidth, epsilon: 1));
+
+    // Close again, via the catcher covering the content.
+    await tester.tap(find.text('A content'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+
+    // The mirrored flick opens the leading side.
+    final endFlick = await tester.startGesture(tester.getCenter(find.text('A content')));
+    await endFlick.moveBy(const Offset(6, 0), timeStamp: const Duration(milliseconds: 8));
+    await endFlick.moveBy(const Offset(6, 0), timeStamp: const Duration(milliseconds: 16));
+    await endFlick.moveBy(const Offset(288, 0), timeStamp: const Duration(milliseconds: 24));
+    await endFlick.up(timeStamp: const Duration(milliseconds: 32));
+    await tester.pumpAndSettle();
+
+    expect(_leadingRect(tester, 'A').left, moreOrLessEquals(16, epsilon: 1));
+  });
+
   testWidgets('reveals the leading action with an end-edge drag under RTL', (tester) async {
     final counters = _Counters();
     await tester.pumpWidget(
@@ -569,6 +702,85 @@ void main() {
     // The other side's actions stay excluded while this one is open.
     expect(find.bySemanticsLabel('Hide A'), findsNothing);
     handle.dispose();
+  });
+
+  testWidgets("a closed side's action pills are excluded from focus traversal", (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)]),
+    );
+
+    FocusNode nodeOf(String label) => Focus.of(tester.element(find.text(label)));
+
+    // At rest both strips are clipped off-row; their pills must not be
+    // reachable tab stops.
+    expect(nodeOf('Hide A').canRequestFocus, isFalse);
+    expect(nodeOf('Unread A').canRequestFocus, isFalse);
+
+    await _swipe(tester, label: 'A', dx: -150);
+
+    // The open side's actions join traversal; the other side stays out.
+    expect(nodeOf('Hide A').canRequestFocus, isTrue);
+    expect(nodeOf('Unread A').canRequestFocus, isFalse);
+  });
+
+  testWidgets('the stationary bottom hairline is opt-in', (tester) async {
+    final counters = _Counters();
+    bool hairline(Widget widget) =>
+        widget is DecoratedBox &&
+        widget.decoration is BoxDecoration &&
+        ((widget.decoration as BoxDecoration).border as Border?)?.bottom ==
+            const BorderSide(color: PregoColorsLight.borderTertiary, width: 0);
+
+    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
+    expect(
+      find.descendant(of: find.byType(PregoSwipeActions), matching: find.byWidgetPredicate(hairline)),
+      findsNothing,
+    );
+
+    await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters, bottomHairline: true)]));
+    expect(
+      find.descendant(of: find.byType(PregoSwipeActions), matching: find.byWidgetPredicate(hairline)),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a close settle keeps rendering the strip captured when the close began', (tester) async {
+    Widget rowWith({required String primaryLabel}) {
+      return _harness(rows: [
+        PregoSwipeActions(
+          actionsBuilder: (context, close) => const [SizedBox(width: 40, height: 40)],
+          primaryActionBuilder: (context, close) => SizedBox(
+            width: _primaryWidth,
+            child: TextButton(onPressed: close, child: Text(primaryLabel)),
+          ),
+          onFullSwipe: () {},
+          child: const SizedBox(height: 96, child: Center(child: Text('A content'))),
+        ),
+      ]);
+    }
+
+    await tester.pumpWidget(rowWith(primaryLabel: 'Mark unread'));
+    await _swipe(tester, label: 'A', dx: -150);
+    expect(find.text('Mark unread'), findsOneWidget);
+
+    // The pill closes the row, and — the way a real read toggle does — the
+    // consumer rebuilds with the opposite label while the row is still
+    // settling shut. The still-visible pill must keep its captured label
+    // instead of morphing mid-settle.
+    await tester.tap(find.text('Mark unread'));
+    await tester.pump();
+    await tester.pumpWidget(rowWith(primaryLabel: 'Mark read'));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('Mark unread'), findsOneWidget);
+    expect(find.text('Mark read'), findsNothing);
+
+    await tester.pumpAndSettle();
+
+    // Landed closed: the fresh builder output applies.
+    expect(find.text('Mark unread'), findsNothing);
+    expect(find.text('Mark read'), findsOneWidget);
   });
 
   testWidgets('the close callback is safe to call after the row is unmounted', (tester) async {

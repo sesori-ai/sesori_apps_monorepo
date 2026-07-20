@@ -54,9 +54,6 @@ void main() {
                 onSessionTap: (_) {},
                 sessionMenuEntries: (BuildContext context, Session session) =>
                     dispatcher.sessionMenuEntries(context: context, session: session),
-                onSessionArchive: (_) {},
-                onSessionDelete: (_) {},
-                onSessionToggleUnread: (_) {},
               ),
             ),
           ),
@@ -194,9 +191,6 @@ void main() {
                 onSessionTap: (_) {},
                 sessionMenuEntries: (BuildContext context, Session session) =>
                     dispatcher.sessionMenuEntries(context: context, session: session),
-                onSessionArchive: (_) {},
-                onSessionDelete: (_) {},
-                onSessionToggleUnread: (_) {},
               ),
             ),
           ),
