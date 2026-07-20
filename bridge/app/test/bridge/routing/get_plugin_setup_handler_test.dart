@@ -19,7 +19,14 @@ void main() {
     late GetPluginsHandler selectableHandler;
 
     setUp(() async {
-      pluginRuntime = createTestPluginRuntime(plugins: [_ReadyPluginApi()]);
+      pluginRuntime = createTestPluginRuntime(
+        plugins: [_TestPluginApi(id: "ready"), _TestPluginApi(id: "blocked")],
+        setupByPluginId: const {
+          "blocked": PluginSetupAuthenticationRequired(
+            actionHint: "Authenticate the backend locally, then retry.",
+          ),
+        },
+      );
       lifecycleService =
           PluginLifecycleService(
               lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
@@ -87,9 +94,11 @@ void main() {
   });
 }
 
-class _ReadyPluginApi extends NativeProjectsPluginApi {
+class _TestPluginApi extends NativeProjectsPluginApi {
   @override
-  String get id => "ready";
+  final String id;
+
+  _TestPluginApi({required this.id});
 
   @override
   Future<void> dispose() async {}

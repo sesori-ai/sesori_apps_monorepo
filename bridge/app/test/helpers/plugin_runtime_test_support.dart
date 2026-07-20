@@ -3,8 +3,14 @@ import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart"
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-TestPluginRuntime createTestPluginRuntime({required Iterable<BridgePluginApi> plugins}) {
-  return TestPluginRuntime(plugins: {for (final plugin in plugins) plugin.id: plugin});
+TestPluginRuntime createTestPluginRuntime({
+  required Iterable<BridgePluginApi> plugins,
+  Map<String, PluginSetupStatus> setupByPluginId = const {},
+}) {
+  return TestPluginRuntime(
+    plugins: {for (final plugin in plugins) plugin.id: plugin},
+    setupByPluginId: setupByPluginId,
+  );
 }
 
 PluginRuntime createAlwaysCurrentTestPluginRuntime() => _AlwaysCurrentTestPluginRuntime();
@@ -28,8 +34,12 @@ PluginRuntime createRegisteredTestPluginRuntime({required Iterable<String> plugi
 }
 
 class TestPluginRuntime extends PluginRuntime {
-  TestPluginRuntime({required Map<String, BridgePluginApi> plugins})
+  TestPluginRuntime({
+    required Map<String, BridgePluginApi> plugins,
+    Map<String, PluginSetupStatus> setupByPluginId = const {},
+  })
     : _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins),
+      _setupByPluginId = Map<String, PluginSetupStatus>.unmodifiable(setupByPluginId),
       super(
         registrations: const [],
         generationFactory: const _UnusedGenerationFactory(),
@@ -40,13 +50,16 @@ class TestPluginRuntime extends PluginRuntime {
       );
 
   final Map<String, BridgePluginApi> _plugins;
+  final Map<String, PluginSetupStatus> _setupByPluginId;
   bool generationCurrent = true;
 
   @override
-  Set<String> get activePluginIds => Set<String>.unmodifiable(_plugins.keys);
+  Set<String> get activePluginIds => Set<String>.unmodifiable(
+    _plugins.keys.where((pluginId) => (_setupByPluginId[pluginId] ?? const PluginSetupReady()) is PluginSetupReady),
+  );
 
   @override
-  Set<String> get startAllowedPluginIds => Set<String>.unmodifiable(_plugins.keys);
+  Set<String> get startAllowedPluginIds => activePluginIds;
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) {
@@ -136,16 +149,18 @@ class TestPluginRuntime extends PluginRuntime {
   }
 
   PluginRuntimeSnapshot _snapshotFor(BridgePluginApi plugin) {
+    final setup = _setupByPluginId[plugin.id] ?? const PluginSetupReady();
+    final setupReady = setup is PluginSetupReady;
     return PluginRuntimeSnapshot(
       pluginId: plugin.id,
       projectOwnership: plugin is NativeProjectsPluginApi
           ? PluginProjectOwnership.native
           : PluginProjectOwnership.bridgeDerived,
-      setup: const PluginSetupReady(),
+      setup: setup,
       accessGate: PluginRuntimeAccessGate.enabled,
-      startAllowed: true,
+      startAllowed: setupReady,
       generation: 1,
-      state: PluginRuntimeState.active,
+      state: setupReady ? PluginRuntimeState.active : PluginRuntimeState.blocked,
       workState: PluginWorkState.idle,
       leaseCount: 0,
       transition: PluginRuntimeTransition.none,
