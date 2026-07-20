@@ -55,6 +55,13 @@ void main() {
 
         expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
         expect(find.byIcon(VESPRSolid.github), findsNothing);
+
+        // The indicator must carry the button's foreground colour — the
+        // default gray ticks are invisible on the dark provider buttons.
+        final indicator = tester.widget<CupertinoActivityIndicator>(
+          find.byType(CupertinoActivityIndicator),
+        );
+        expect(indicator.color, isNotNull);
       },
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
     );
