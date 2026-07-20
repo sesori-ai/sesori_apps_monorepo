@@ -1,0 +1,112 @@
+import "package:flutter/cupertino.dart";
+import "package:flutter/material.dart";
+import "package:flutter_test/flutter_test.dart";
+import "package:sesori_mobile/features/login/login_provider_buttons.dart";
+import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:theme_prego/module_prego.dart";
+
+Widget _buildApp({
+  required bool isLoading,
+  required LoginOption? loadingOption,
+  VoidCallback? onGithubSelected,
+  VoidCallback? onAppleSelected,
+  VoidCallback? onGoogleSelected,
+  VoidCallback? onShowEmailForm,
+}) {
+  return MaterialApp(
+    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(
+      body: LoginProviderButtons(
+        isLoading: isLoading,
+        loadingOption: loadingOption,
+        showEmailForm: false,
+        showApple: true,
+        onGithubSelected: onGithubSelected ?? () {},
+        onAppleSelected: onAppleSelected ?? () {},
+        onGoogleSelected: onGoogleSelected ?? () {},
+        onShowEmailForm: onShowEmailForm ?? () {},
+      ),
+    ),
+  );
+}
+
+void main() {
+  group("LoginProviderButtons", () {
+    testWidgets("spinner replaces only the tapped provider's logo", (tester) async {
+      await tester.pumpWidget(
+        _buildApp(isLoading: true, loadingOption: LoginOption.google),
+      );
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byIcon(VESPRSolid.google), findsNothing);
+      expect(find.byIcon(VESPRSolid.github), findsOneWidget);
+      expect(find.byIcon(VESPRSolid.apple), findsOneWidget);
+    });
+
+    testWidgets(
+      "spinner is the adaptive Cupertino variant on iOS",
+      (tester) async {
+        await tester.pumpWidget(
+          _buildApp(isLoading: true, loadingOption: LoginOption.github),
+        );
+
+        expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+        expect(find.byIcon(VESPRSolid.github), findsNothing);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
+
+    testWidgets("all options are disabled while one is loading", (tester) async {
+      final calls = <String>[];
+      await tester.pumpWidget(
+        _buildApp(
+          isLoading: true,
+          loadingOption: LoginOption.github,
+          onGithubSelected: () => calls.add("github"),
+          onAppleSelected: () => calls.add("apple"),
+          onGoogleSelected: () => calls.add("google"),
+          onShowEmailForm: () => calls.add("email"),
+        ),
+      );
+
+      await tester.tap(find.text("Sign in with GitHub"), warnIfMissed: false);
+      await tester.tap(find.text("Sign in with Apple"), warnIfMissed: false);
+      await tester.tap(find.text("Sign in with Google"), warnIfMissed: false);
+      await tester.tap(find.text("Sign in with Email"), warnIfMissed: false);
+      await tester.pump();
+
+      expect(calls, isEmpty);
+    });
+
+    testWidgets("no provider spinner during an email-form login", (tester) async {
+      await tester.pumpWidget(
+        _buildApp(isLoading: true, loadingOption: null),
+      );
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byIcon(VESPRSolid.github), findsOneWidget);
+      expect(find.byIcon(VESPRSolid.apple), findsOneWidget);
+      expect(find.byIcon(VESPRSolid.google), findsOneWidget);
+    });
+
+    testWidgets("taps reach their callbacks when idle", (tester) async {
+      final calls = <String>[];
+      await tester.pumpWidget(
+        _buildApp(
+          isLoading: false,
+          loadingOption: null,
+          onGithubSelected: () => calls.add("github"),
+          onGoogleSelected: () => calls.add("google"),
+        ),
+      );
+
+      await tester.tap(find.text("Sign in with GitHub"));
+      await tester.tap(find.text("Sign in with Google"));
+      await tester.pump();
+
+      expect(calls, equals(["github", "google"]));
+    });
+  });
+}

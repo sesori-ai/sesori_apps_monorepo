@@ -4,8 +4,16 @@ import "package:theme_prego/icons/vespr_icons.g.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
+/// The login options whose button can show an in-flight loading spinner.
+enum LoginOption { github, apple, google }
+
 class LoginProviderButtons extends StatelessWidget {
   final bool isLoading;
+
+  /// Which option's button swaps its provider logo for the loading spinner
+  /// while [isLoading] is true. Null when the active flow was not started by
+  /// one of these buttons (e.g. the email form).
+  final LoginOption? loadingOption;
   final bool showEmailForm;
   final bool showApple;
   final VoidCallback onGithubSelected;
@@ -16,6 +24,7 @@ class LoginProviderButtons extends StatelessWidget {
   const LoginProviderButtons({
     super.key,
     required this.isLoading,
+    required this.loadingOption,
     required this.showEmailForm,
     required this.showApple,
     required this.onGithubSelected,
@@ -36,7 +45,7 @@ class LoginProviderButtons extends StatelessWidget {
           hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
           size: PregoButtonsSolidSize.xl,
           leadingIcon: VESPRSolid.github,
-          isLoading: isLoading,
+          isLoading: isLoading && loadingOption == LoginOption.github,
           fullWidth: true,
           onPressed: isLoading ? null : onGithubSelected,
         ),
@@ -47,7 +56,7 @@ class LoginProviderButtons extends StatelessWidget {
             hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
             size: PregoButtonsSolidSize.xl,
             leadingIcon: VESPRSolid.apple,
-            isLoading: isLoading,
+            isLoading: isLoading && loadingOption == LoginOption.apple,
             fullWidth: true,
             onPressed: isLoading ? null : onAppleSelected,
           ),
@@ -58,7 +67,7 @@ class LoginProviderButtons extends StatelessWidget {
           hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
           size: PregoButtonsSolidSize.xl,
           leadingIcon: VESPRSolid.google,
-          isLoading: isLoading,
+          isLoading: isLoading && loadingOption == LoginOption.google,
           fullWidth: true,
           onPressed: isLoading ? null : onGoogleSelected,
         ),
@@ -68,7 +77,6 @@ class LoginProviderButtons extends StatelessWidget {
             label: loc.signInWithEmail,
             hierarchy: PregoButtonsSolidHierarchy.tertiary,
             size: PregoButtonsSolidSize.xl,
-            isLoading: isLoading,
             fullWidth: true,
             onPressed: isLoading ? null : onShowEmailForm,
           ),

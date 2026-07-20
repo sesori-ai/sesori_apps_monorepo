@@ -48,11 +48,26 @@ class _LoginScreenBody extends StatefulWidget {
 class _LoginScreenBodyState extends State<_LoginScreenBody> {
   bool _showEmailForm = false;
 
-  Future<void> _loginWithProvider(OAuthProvider provider) async {
+  /// The option whose button was tapped for the currently pending login flow.
+  /// Drives which button shows the loading spinner; cleared when the cubit
+  /// reaches a terminal state so a later email-form login cannot resurrect a
+  /// stale provider spinner.
+  LoginOption? _pendingOption;
+
+  Future<void> _loginWithProvider({
+    required LoginOption option,
+    required OAuthProvider provider,
+  }) async {
+    setState(() {
+      _pendingOption = option;
+    });
     await context.read<LoginCubit>().loginWithProvider(provider);
   }
 
   Future<void> _loginWithApple() async {
+    setState(() {
+      _pendingOption = LoginOption.apple;
+    });
     final rawNonce = _generateNonce();
     final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
 
@@ -82,6 +97,13 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) {
         logd("Apple Sign-In cancelled by user");
+        // Cancelling the native sheet emits no cubit state, so the pending
+        // marker must be cleared here.
+        if (mounted) {
+          setState(() {
+            _pendingOption = null;
+          });
+        }
         return;
       }
       if (mounted) {
@@ -115,12 +137,21 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
 
     return Scaffold(
       body: BlocListener<LoginCubit, LoginState>(
-        listenWhen: (previous, current) => current is LoginSuccess,
+        listenWhen: (previous, current) =>
+            current is LoginSuccess || current is LoginFailed || current is LoginTimeout || current is LoginIdle,
         listener: (context, state) {
-          // Relay connection is handled reactively: AuthManager emits
-          // AuthState.authenticated → ConnectionService connects. The
-          // connection overlay shows progress; navigation proceeds immediately.
-          context.goRoute(const AppRoute.projects());
+          if (state is LoginSuccess) {
+            // Relay connection is handled reactively: AuthManager emits
+            // AuthState.authenticated → ConnectionService connects. The
+            // connection overlay shows progress; navigation proceeds immediately.
+            context.goRoute(const AppRoute.projects());
+            return;
+          }
+          if (_pendingOption != null) {
+            setState(() {
+              _pendingOption = null;
+            });
+          }
         },
         child: Stack(
           children: [
@@ -162,11 +193,18 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                 const SizedBox(height: 24),
                                 LoginProviderButtons(
                                   isLoading: isLoading,
+                                  loadingOption: _pendingOption,
                                   showEmailForm: _showEmailForm,
                                   showApple: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
-                                  onGithubSelected: () => _loginWithProvider(AuthProvider.github),
+                                  onGithubSelected: () => _loginWithProvider(
+                                    option: LoginOption.github,
+                                    provider: AuthProvider.github,
+                                  ),
                                   onAppleSelected: _loginWithApple,
-                                  onGoogleSelected: () => _loginWithProvider(AuthProvider.google),
+                                  onGoogleSelected: () => _loginWithProvider(
+                                    option: LoginOption.google,
+                                    provider: AuthProvider.google,
+                                  ),
                                   onShowEmailForm: _showEmailLogin,
                                 ),
                                 if (_showEmailForm) ...[
