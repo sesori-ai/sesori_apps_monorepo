@@ -12,9 +12,8 @@ class LoginProviderButtons extends StatelessWidget {
 
   /// Which option's button swaps its provider logo for the loading spinner
   /// while [isLoading] is true. Null when the active flow was not started by
-  /// one of these buttons (e.g. the email form).
+  /// one of these buttons (e.g. the email sheet).
   final LoginOption? loadingOption;
-  final bool showEmailForm;
   final bool showApple;
   final VoidCallback onGithubSelected;
   final VoidCallback onAppleSelected;
@@ -25,7 +24,6 @@ class LoginProviderButtons extends StatelessWidget {
     super.key,
     required this.isLoading,
     required this.loadingOption,
-    required this.showEmailForm,
     required this.showApple,
     required this.onGithubSelected,
     required this.onAppleSelected,
@@ -80,16 +78,14 @@ class LoginProviderButtons extends StatelessWidget {
               fullWidth: true,
               onPressed: onGoogleSelected,
             ),
-            if (!showEmailForm) ...[
-              const SizedBox(height: 12),
-              PregoButtonsSolid(
-                label: loc.signInWithEmail,
-                hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                size: PregoButtonsSolidSize.xl,
-                fullWidth: true,
-                onPressed: onShowEmailForm,
-              ),
-            ],
+            const SizedBox(height: 12),
+            PregoButtonsSolid(
+              label: loc.signInWithEmail,
+              hierarchy: PregoButtonsSolidHierarchy.tertiary,
+              size: PregoButtonsSolidSize.xl,
+              fullWidth: true,
+              onPressed: onShowEmailForm,
+            ),
           ],
         ),
       ),

@@ -505,7 +505,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get passwordRequired => 'Password is required';
 
   @override
-  String get signIn => 'Sign In';
+  String get passwordShow => 'Show password';
+
+  @override
+  String get passwordHide => 'Hide password';
+
+  @override
+  String get signIn => 'Sign in';
 
   @override
   String get backToLogin => 'Back to login';

@@ -1009,10 +1009,22 @@ abstract class AppLocalizations {
   /// **'Password is required'**
   String get passwordRequired;
 
+  /// Accessibility label for the reveal toggle inside the password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get passwordShow;
+
+  /// Accessibility label for the toggle that re-masks the password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get passwordHide;
+
   /// No description provided for @signIn.
   ///
   /// In en, this message translates to:
-  /// **'Sign In'**
+  /// **'Sign in'**
   String get signIn;
 
   /// No description provided for @backToLogin.

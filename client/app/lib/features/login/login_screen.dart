@@ -13,12 +13,12 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/extensions/login_failed_reason_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/markdown_styles.dart";
 import "../../core/widgets/sesori_background_widget.dart";
 import "../../core/widgets/sesori_logo.dart";
-import "../../l10n/app_localizations.dart";
-import "email_login_form.dart";
+import "email_login_sheet.dart";
 import "login_provider_buttons.dart";
 
 class LoginScreen extends StatelessWidget {
@@ -46,7 +46,10 @@ class _LoginScreenBody extends StatefulWidget {
 }
 
 class _LoginScreenBodyState extends State<_LoginScreenBody> {
-  bool _showEmailForm = false;
+  /// While the email sheet is up it renders failures inline, next to the form.
+  /// The screen's own banner would otherwise show the same error a second time
+  /// over the scrim, so it stands down for the duration.
+  bool _isEmailSheetOpen = false;
 
   /// The option whose button was tapped for the currently pending login flow.
   /// Drives which button shows the loading spinner; cleared when the cubit
@@ -122,10 +125,16 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
   }
 
-  void _showEmailLogin() {
-    setState(() {
-      _showEmailForm = true;
-    });
+  Future<void> _showEmailLogin() async {
+    setState(() => _isEmailSheetOpen = true);
+    try {
+      await showEmailLoginSheet(
+        context: context,
+        cubit: context.read<LoginCubit>(),
+      );
+    } finally {
+      if (mounted) setState(() => _isEmailSheetOpen = false);
+    }
   }
 
   @override
@@ -194,7 +203,6 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                 LoginProviderButtons(
                                   isLoading: isLoading,
                                   loadingOption: _pendingOption,
-                                  showEmailForm: _showEmailForm,
                                   showApple: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
                                   onGithubSelected: () => _loginWithProvider(
                                     option: LoginOption.github,
@@ -207,12 +215,6 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                   ),
                                   onShowEmailForm: _showEmailLogin,
                                 ),
-                                if (_showEmailForm) ...[
-                                  const SizedBox(height: 8),
-                                  EmailLoginForm(
-                                    key: ValueKey(_showEmailForm),
-                                  ),
-                                ],
                                 switch (state) {
                                   LoginAuthenticating() => Padding(
                                     padding: const EdgeInsetsDirectional.only(top: 16),
@@ -301,7 +303,9 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
               top: 0,
               start: 0,
               end: 0,
-              child: _LoginErrorBanner(state: state),
+              child: _isEmailSheetOpen
+                  ? const SizedBox.shrink()
+                  : _LoginErrorBanner(state: state),
             ),
           ],
         ),
@@ -373,7 +377,7 @@ class _LoginErrorBannerState extends State<_LoginErrorBanner> {
                   ? const SizedBox.shrink()
                   : PregoPopupAlertsNotifications(
                       title: loc.loginAuthenticationFailedTitle,
-                      message: _getErrorMessage(loc: loc, reason: reason),
+                      message: reason.localizedMessage(loc),
                       onClose: () => context.read<LoginCubit>().onDismissedLoginFailureError(),
                     ),
             ),
@@ -382,17 +386,4 @@ class _LoginErrorBannerState extends State<_LoginErrorBanner> {
       ),
     );
   }
-}
-
-String _getErrorMessage({
-  required AppLocalizations loc,
-  required LoginFailedReason reason,
-}) {
-  return switch (reason) {
-    LoginFailedReason.browserOpenFailed => loc.loginBrowserOpenFailed,
-    LoginFailedReason.appleIdTokenMissing => loc.appleIdTokenMissing,
-    LoginFailedReason.emailRequired => loc.emailRequired,
-    LoginFailedReason.passwordRequired => loc.passwordRequired,
-    LoginFailedReason.unknown => loc.loginError,
-  };
 }
