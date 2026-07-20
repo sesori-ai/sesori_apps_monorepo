@@ -96,6 +96,33 @@ void main() {
       }
     });
 
+    testWidgets("buttons cannot take keyboard focus while one is loading", (tester) async {
+      await tester.pumpWidget(
+        _buildApp(isLoading: true, loadingOption: LoginOption.github),
+      );
+
+      // Keyboard activation (e.g. Enter on a focused button) bypasses the
+      // pointer-level AbsorbPointer block, so the buttons must also be
+      // unfocusable while a flow is in flight.
+      final googleFocus = Focus.of(tester.element(find.text("Sign in with Google")));
+      googleFocus.requestFocus();
+      await tester.pump();
+
+      expect(googleFocus.hasFocus, isFalse);
+    });
+
+    testWidgets("buttons are focusable when idle", (tester) async {
+      await tester.pumpWidget(
+        _buildApp(isLoading: false, loadingOption: null),
+      );
+
+      final googleFocus = Focus.of(tester.element(find.text("Sign in with Google")));
+      googleFocus.requestFocus();
+      await tester.pump();
+
+      expect(googleFocus.hasFocus, isTrue);
+    });
+
     testWidgets("no provider spinner during an email-form login", (tester) async {
       await tester.pumpWidget(
         _buildApp(isLoading: true, loadingOption: null),

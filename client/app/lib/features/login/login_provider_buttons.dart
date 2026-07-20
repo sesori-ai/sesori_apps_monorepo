@@ -39,54 +39,59 @@ class LoginProviderButtons extends StatelessWidget {
 
     // Taps are blocked at the pointer level instead of via `onPressed: null`
     // so the idle buttons keep their normal styling while a flow is in
-    // flight — the design has no grayed-out state for them.
-    return AbsorbPointer(
-      absorbing: isLoading,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          PregoButtonsSolid(
-            label: loc.loginWithGithub,
-            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-            size: PregoButtonsSolidSize.xl,
-            leadingIcon: VESPRSolid.github,
-            isLoading: isLoading && loadingOption == LoginOption.github,
-            fullWidth: true,
-            onPressed: onGithubSelected,
-          ),
-          if (showApple) ...[
-            const SizedBox(height: 12),
+    // flight — the design has no grayed-out state for them. AbsorbPointer
+    // does not cover keyboard activation of a focused button, so the buttons
+    // are also excluded from focus while loading.
+    return ExcludeFocus(
+      excluding: isLoading,
+      child: AbsorbPointer(
+        absorbing: isLoading,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             PregoButtonsSolid(
-              label: loc.loginWithApple,
+              label: loc.loginWithGithub,
               hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
               size: PregoButtonsSolidSize.xl,
-              leadingIcon: VESPRSolid.apple,
-              isLoading: isLoading && loadingOption == LoginOption.apple,
+              leadingIcon: VESPRSolid.github,
+              isLoading: isLoading && loadingOption == LoginOption.github,
               fullWidth: true,
-              onPressed: onAppleSelected,
+              onPressed: onGithubSelected,
             ),
-          ],
-          const SizedBox(height: 12),
-          PregoButtonsSolid(
-            label: loc.loginWithGoogle,
-            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-            size: PregoButtonsSolidSize.xl,
-            leadingIcon: VESPRSolid.google,
-            isLoading: isLoading && loadingOption == LoginOption.google,
-            fullWidth: true,
-            onPressed: onGoogleSelected,
-          ),
-          if (!showEmailForm) ...[
+            if (showApple) ...[
+              const SizedBox(height: 12),
+              PregoButtonsSolid(
+                label: loc.loginWithApple,
+                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                size: PregoButtonsSolidSize.xl,
+                leadingIcon: VESPRSolid.apple,
+                isLoading: isLoading && loadingOption == LoginOption.apple,
+                fullWidth: true,
+                onPressed: onAppleSelected,
+              ),
+            ],
             const SizedBox(height: 12),
             PregoButtonsSolid(
-              label: loc.signInWithEmail,
-              hierarchy: PregoButtonsSolidHierarchy.tertiary,
+              label: loc.loginWithGoogle,
+              hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
               size: PregoButtonsSolidSize.xl,
+              leadingIcon: VESPRSolid.google,
+              isLoading: isLoading && loadingOption == LoginOption.google,
               fullWidth: true,
-              onPressed: onShowEmailForm,
+              onPressed: onGoogleSelected,
             ),
+            if (!showEmailForm) ...[
+              const SizedBox(height: 12),
+              PregoButtonsSolid(
+                label: loc.signInWithEmail,
+                hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                size: PregoButtonsSolidSize.xl,
+                fullWidth: true,
+                onPressed: onShowEmailForm,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
