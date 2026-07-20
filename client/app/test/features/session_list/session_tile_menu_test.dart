@@ -7,8 +7,8 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/features/session_list/session_list_action_dispatcher.dart";
 import "package:sesori_mobile/features/session_list/session_list_panel.dart";
-import "package:sesori_mobile/features/session_list/session_list_screen.dart";
 import "package:sesori_mobile/features/session_list/session_tile.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -54,7 +54,6 @@ void main() {
                 onSessionTap: (_) {},
                 sessionMenuEntries: (BuildContext context, Session session) =>
                     dispatcher.sessionMenuEntries(context: context, session: session),
-                onSessionSwipe: (_) {},
               ),
             ),
           ),
@@ -109,10 +108,12 @@ void main() {
     await longPressTile(tester, title: "My Session");
 
     // Archiving is reversible and Delete is not, so only Delete shouts. If every
-    // row were tinted, none of them would carry a warning.
+    // row were tinted, none of them would carry a warning. Hit-testable scopes
+    // the finders to the open menu — the row's swipe pills reuse the same
+    // labels but rest clipped off-row.
     final error = PregoDesignSystem.light.colors.fgErrorPrimary;
-    expect(tester.widget<Text>(find.text("Delete")).style?.color, equals(error));
-    expect(tester.widget<Text>(find.text("Archive")).style?.color, isNot(equals(error)));
+    expect(tester.widget<Text>(find.text("Delete").hitTestable()).style?.color, equals(error));
+    expect(tester.widget<Text>(find.text("Archive").hitTestable()).style?.color, isNot(equals(error)));
   });
 
   testWidgets("Mark as unread dismisses the menu and marks the session", (tester) async {
@@ -128,7 +129,9 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => cubit.markSessionSeen(sessionId: session.id, read: false)).called(1);
-    expect(find.text("Mark as unread"), findsNothing);
+    // The menu is gone; the row's off-row swipe pill is the only remaining
+    // "Mark as unread", and it is not reachable.
+    expect(find.text("Mark as unread").hitTestable(), findsNothing);
   });
 
   testWidgets("an archived session offers Unarchive instead of Archive", (tester) async {
@@ -188,7 +191,6 @@ void main() {
                 onSessionTap: (_) {},
                 sessionMenuEntries: (BuildContext context, Session session) =>
                     dispatcher.sessionMenuEntries(context: context, session: session),
-                onSessionSwipe: (_) {},
               ),
             ),
           ),
@@ -223,7 +225,7 @@ void main() {
     await tester.tapAt(const Offset(4, 4));
     await tester.pumpAndSettle();
 
-    expect(find.text("Delete"), findsNothing);
+    expect(find.text("Delete").hitTestable(), findsNothing);
     verifyNever(
       () => cubit.markSessionSeen(sessionId: any(named: "sessionId"), read: any(named: "read")),
     );
