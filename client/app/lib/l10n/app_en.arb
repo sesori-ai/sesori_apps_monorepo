@@ -7,10 +7,6 @@
   "apiErrorServerRejected": "The server returned an error. Please try again.",
   "apiErrorNetworkDown": "Connection failed — check your network and try again.",
   "projectListTitle": "Projects",
-  "projectListConnectTitle": "Connect",
-  "@projectListConnectTitle": {
-    "description": "App-bar title shown in place of 'Projects' while the connect-your-computer onboarding is visible (no bridge has ever been registered and none is connected)."
-  },
   "projectListLoadingSemantics": "Loading projects",
   "projectListDefaultName": "Default Project",
   "projectListRefreshSuccess": "Projects updated",

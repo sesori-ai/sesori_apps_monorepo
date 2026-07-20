@@ -121,13 +121,13 @@ class _ConnectBridgeChecklist extends StatelessWidget {
         const Center(
           child: ExcludeSemantics(child: ConnectionGraphic.connectionOff()),
         ),
-        const SizedBox(height: PregoSpacing.lg),
+        const SizedBox(height: PregoSpacing.sm),
         Text(
           loc.projectsOnboardingWaitingForBridge,
           textAlign: TextAlign.center,
           style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),
-        const SizedBox(height: PregoSpacing.x4l),
+        const SizedBox(height: PregoSpacing.x5l),
         Text(
           loc.projectsOnboardingRunOnComputer,
           textAlign: TextAlign.center,
@@ -174,8 +174,8 @@ class _ConnectBridgeChecklist extends StatelessWidget {
         ),
         const SizedBox(height: PregoSpacing.x3l),
         const _WhyBridgeButton(surface: OnboardingSurface.connectSetup),
-        // Bottom breathing room so the last command box can be scrolled clear of
-        // the "Need help?" button pinned in the bottom-right corner.
+        // Bottom breathing room so the last command box can be scrolled clear
+        // of the "Need help?" button pinned centred at the bottom of the page.
         const SizedBox(height: PregoSpacing.x6l),
       ],
     );

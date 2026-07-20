@@ -6,6 +6,19 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "../../module_prego.dart";
 import "../../utils/color_extensions.dart";
 
+/// Where [PregoGlassScaffold] parks its
+/// [PregoGlassScaffold.floatingActionButton].
+enum PregoFloatingActionAlignment {
+  /// Trailing edge — Flutter's [FloatingActionButtonLocation.endFloat], the
+  /// placement for a corner action such as add-project or new-session.
+  end,
+
+  /// Horizontally centred, at the same height — for an action the page
+  /// presents as its own call to action rather than a corner affordance (the
+  /// bridge onboarding's "Need help?" pill).
+  center,
+}
+
 /// A page scaffold with a glass top navigation bar and the iOS-style
 /// large-title collapse from the `liquid_glass_widgets` navigation showcase
 /// (its `_LargeTitleCollapseDemo`).
@@ -71,12 +84,14 @@ class PregoGlassScaffold extends StatefulWidget {
     this.subtitle,
     this.subtitleText,
     this.titleMode = PregoTopNavigationTitleMode.collapsing,
+    this.leadingTitleEmphasis = PregoNavLeadingTitleEmphasis.muted,
     this.banner,
     this.actions,
     this.leading,
     this.onBack,
     this.automaticallyImplyLeading = true,
     this.floatingActionButton,
+    this.floatingActionAlignment = PregoFloatingActionAlignment.end,
     this.overlay,
     this.onRefresh,
     this.backgroundColor,
@@ -106,6 +121,9 @@ class PregoGlassScaffold extends StatefulWidget {
   /// How the bar presents its title — collapsing large title (default), fixed
   /// centred inline title, or the back-leading title block. See the class doc.
   final PregoTopNavigationTitleMode titleMode;
+
+  /// Weight of the back-leading title line. Back-leading [titleMode] only.
+  final PregoNavLeadingTitleEmphasis leadingTitleEmphasis;
 
   /// An inline alert hosted in the top-navigation area, below the status bar
   /// and above the bar row (e.g. a [PregoInlineAlertsNotifications]).
@@ -146,6 +164,10 @@ class PregoGlassScaffold extends StatefulWidget {
 
   /// Optional floating action button, forwarded to the inner [GlassScaffold].
   final Widget? floatingActionButton;
+
+  /// Where [floatingActionButton] sits horizontally. Defaults to the trailing
+  /// edge.
+  final PregoFloatingActionAlignment floatingActionAlignment;
 
   /// A full-screen overlay painted above the body but below the bar, so the
   /// bar (and its back button) stays interactive while it is shown. Use for a
@@ -199,6 +221,37 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
     super.dispose();
   }
 
+  /// The floating action handed to [GlassScaffold], positioned per
+  /// [PregoGlassScaffold.floatingActionAlignment].
+  ///
+  /// [GlassScaffold] gives its inner [Scaffold] no
+  /// [FloatingActionButtonLocation], so the action always lands on
+  /// [FloatingActionButtonLocation.endFloat]. Rather than reimplement that
+  /// slot's vertical placement — which already clears the keyboard, the home
+  /// indicator and any snack bar — the centred variant widens the action to
+  /// the full content width and centres the caller's widget inside it.
+  /// `endFloat` then insets that box by the same margin on both sides, so its
+  /// child lands exactly on the page's centre line. The surrounding box is
+  /// empty, and an unfilled [Center] hit-tests only its child, so the widened
+  /// action swallows no taps.
+  Widget? get _floatingActionButton {
+    final fab = widget.floatingActionButton;
+    if (fab == null) return null;
+    return switch (widget.floatingActionAlignment) {
+      PregoFloatingActionAlignment.end => fab,
+      // Measured from the action's own loose constraints (the scaffold's size)
+      // rather than the window, so a narrow split-pane centres on the pane.
+      PregoFloatingActionAlignment.center => LayoutBuilder(
+        builder: (context, constraints) => SizedBox(
+          width: constraints.maxWidth - 2 * kFloatingActionButtonMargin,
+          // heightFactor: 1 keeps the box the child's height; without it the
+          // Center would expand to the full scaffold height.
+          child: Center(heightFactor: 1, child: fab),
+        ),
+      ),
+    };
+  }
+
   void _onBannerHeightChanged(double height) {
     // The measurement arrives in a post-frame callback, which can outlive this
     // state on synchronous teardown — writing to the disposed notifier throws.
@@ -220,6 +273,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
       subtitle: widget.subtitle,
       subtitleText: widget.subtitleText,
       titleMode: widget.titleMode,
+      leadingTitleEmphasis: widget.leadingTitleEmphasis,
       scrollController: _scrollController,
       actions: widget.actions,
       leading: widget.leading,
@@ -351,7 +405,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
       extendBody: extendBehind,
       topEdgeFade: false, // Disable the top edge fade -- we use our own custom gradient
       bottomEdgeFade: false, // Disable the bottom edge fade -- we use our own custom gradient
-      floatingActionButton: widget.floatingActionButton,
+      floatingActionButton: _floatingActionButton,
       bodyOverlays: bodyOverlays.isEmpty ? null : bodyOverlays,
       appBar: topBar,
       // The top bar is a Column (not a PreferredSizeWidget), so GlassScaffold
