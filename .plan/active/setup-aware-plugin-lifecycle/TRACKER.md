@@ -2,12 +2,11 @@
 
 ## Plan State
 
-- **Status:** Stage 12 delivered; replacement stack rebuilding
+- **Status:** Stage 13 implemented and verified; final PR delivery in progress
 - **Base:** `origin/main` at `5a91f582`
-- **Current branch:** `setup-aware-plugin-lifecycle-s12-p01`
-- **Current stage:** Stage 13 rebuild
-- **Next action:** rebuild Stage 13 from rewritten Stage 12, verify it,
-  rewrite its branch, reopen #511, and start its monitor
+- **Current branch:** `setup-aware-plugin-lifecycle-s13-p01`
+- **Current stage:** Stage 13 delivery
+- **Next action:** rewrite the Stage 13 branch, reopen #511, and start its monitor
 
 ## Closed First Implementation
 
@@ -18,8 +17,8 @@ The first unmerged stack was closed before redesign:
 | #507 | Reopened | Redesigned Stage 10 at `794e853e`; CI/review monitored |
 | #508 | Reopened | Redesigned Stage 11-P01 at `29472036`; CI/review monitored |
 | #509 | Reopened | Redesigned Stage 11-P02 at `c0b3ed11`; CI/review monitored |
-| #510 | Reopened | Redesigned Stage 12 at `c4104e73`; CI/review monitored |
-| #511 | Closed | Reopen after redesigned Stage 13 is implemented on merged Settings architecture |
+| #510 | Reopened | Redesigned Stage 12 plus CI fixture fix at `bf0433b8`; CI/review monitored |
+| #511 | Closed | Redesigned Stage 13 implemented and verified; ready to reopen |
 
 Old verification results are historical evidence only; replacement stages must
 run their focused verification again.
@@ -32,7 +31,7 @@ run their focused verification again.
 | [x] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 open and monitored |
 | [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 open and monitored |
 | [x] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 open and monitored |
-| [ ] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 closed |
+| [x] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 ready to reopen |
 
 ## Locked Redesign Deltas
 
@@ -188,6 +187,36 @@ run their focused verification again.
 - Committed as `c4104e73`, force-pushed with lease, and reopened #510 through
   the temporary-old-head GitHub workaround; the verified replacement head was
   restored immediately and is monitored.
+- CI exposed a setup-route fixture that registered a setup-blocked plugin
+  without a matching runtime snapshot. `bf0433b8` makes the test runtime model
+  blocked setup honestly; the focused route test and bridge analyzer passed,
+  and the rerun bridge test job passed. The remaining CLA failure is a GitHub
+  503 after the action confirmed all contributors are signed.
+
+### 2026-07-20 — replacement Stage 13
+
+- Added nullable bridge identity to plugin discovery. New bridges return the
+  registered bridge ID while older bridges decode as `null` without breaking
+  discovery.
+- Added module-core management transport, typed unsupported/not-found/conflict
+  results, revision-monotonic orchestration, reconnect/SSE coalesced refresh,
+  and explicit safe-to-force cubit state.
+- Added secure per-bridge new-session plugin preferences through a dedicated
+  API, repository, and `NewSessionPluginService`. Missing bridge identity skips
+  persistence; read/write failures are logged and never block creation.
+- Added the `/settings/plugins` Prego sub-page, a Plugins landing row, numeric
+  global/per-plugin timeout controls, lifecycle actions, status presentation,
+  and explicit force confirmation. No desktop route or screen was added.
+- Generated shared Freezed/JSON, module-core Freezed/Injectable, and mobile
+  localization outputs from source.
+- Sequential `dart analyze --fatal-infos` passed in `sesori_shared`,
+  `bridge/app`, `client/module_core`, `client/app`, and `client/desktop`.
+- Focused shared/bridge contract and route tests passed; 97 focused module-core
+  management, preference, reconnect, new-session, and route tests passed; 65
+  focused mobile settings, new-session, and route tests passed. The final
+  Plugins-copy regeneration was covered by 6 settings tests.
+- Architecture review approved the combined Stage 13 working-tree scope with
+  no findings. `git diff --check` passed.
 
 ## Delivery Rules
 

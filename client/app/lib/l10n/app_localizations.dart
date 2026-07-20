@@ -421,6 +421,360 @@ abstract class AppLocalizations {
   /// **'Close settings'**
   String get settingsClose;
 
+  /// No description provided for @pluginSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get pluginSettingsTitle;
+
+  /// No description provided for @pluginSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage which coding tools Sesori can use and how long they stay running while idle.'**
+  String get pluginSettingsDescription;
+
+  /// No description provided for @pluginSettingsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading coding tools'**
+  String get pluginSettingsLoading;
+
+  /// No description provided for @pluginSettingsUnsupportedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your bridge to manage coding tools'**
+  String get pluginSettingsUnsupportedTitle;
+
+  /// No description provided for @pluginSettingsUnsupportedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This older bridge still supports existing sessions, but it does not offer remote coding tool controls.'**
+  String get pluginSettingsUnsupportedDescription;
+
+  /// No description provided for @pluginSettingsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load coding tools'**
+  String get pluginSettingsLoadFailed;
+
+  /// No description provided for @pluginSettingsLoadFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your bridge connection and try again.'**
+  String get pluginSettingsLoadFailedDescription;
+
+  /// No description provided for @pluginSettingsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get pluginSettingsRetry;
+
+  /// No description provided for @pluginSettingsIdleTimeoutSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle timeout'**
+  String get pluginSettingsIdleTimeoutSection;
+
+  /// No description provided for @pluginSettingsGlobalIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Global idle timeout'**
+  String get pluginSettingsGlobalIdleTimeout;
+
+  /// No description provided for @pluginSettingsGlobalIdleTimeoutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to every coding tool and clears custom overrides.'**
+  String get pluginSettingsGlobalIdleTimeoutDescription;
+
+  /// No description provided for @pluginSettingsRegistrationsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered coding tools'**
+  String get pluginSettingsRegistrationsSection;
+
+  /// No description provided for @pluginSettingsDefaultBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get pluginSettingsDefaultBadge;
+
+  /// No description provided for @pluginSettingsSetupStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup'**
+  String get pluginSettingsSetupStatus;
+
+  /// No description provided for @pluginSettingsRuntimeStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime'**
+  String get pluginSettingsRuntimeStatus;
+
+  /// No description provided for @pluginSettingsWorkStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get pluginSettingsWorkStatus;
+
+  /// No description provided for @pluginSettingsEligibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Eligibility'**
+  String get pluginSettingsEligibility;
+
+  /// No description provided for @pluginSettingsEligible.
+  ///
+  /// In en, this message translates to:
+  /// **'Eligible'**
+  String get pluginSettingsEligible;
+
+  /// No description provided for @pluginSettingsNotEligible.
+  ///
+  /// In en, this message translates to:
+  /// **'Not eligible'**
+  String get pluginSettingsNotEligible;
+
+  /// No description provided for @pluginSettingsEffectiveIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Effective idle timeout'**
+  String get pluginSettingsEffectiveIdleTimeout;
+
+  /// No description provided for @pluginSettingsCustomIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom override'**
+  String get pluginSettingsCustomIdleTimeout;
+
+  /// No description provided for @pluginSettingsUsesGlobalIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the global timeout'**
+  String get pluginSettingsUsesGlobalIdleTimeout;
+
+  /// No description provided for @pluginSettingsTimeoutMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String pluginSettingsTimeoutMinutes(int minutes);
+
+  /// No description provided for @pluginSettingsRefreshSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Check setup'**
+  String get pluginSettingsRefreshSetup;
+
+  /// No description provided for @pluginSettingsRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get pluginSettingsRestart;
+
+  /// No description provided for @pluginSettingsSetOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Set override'**
+  String get pluginSettingsSetOverride;
+
+  /// No description provided for @pluginSettingsClearOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear override'**
+  String get pluginSettingsClearOverride;
+
+  /// No description provided for @pluginSettingsGlobalTimeoutDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the global idle timeout'**
+  String get pluginSettingsGlobalTimeoutDialogTitle;
+
+  /// No description provided for @pluginSettingsOverrideDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the idle timeout for {pluginName}'**
+  String pluginSettingsOverrideDialogTitle(String pluginName);
+
+  /// No description provided for @pluginSettingsIdleTimeoutField.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle timeout'**
+  String get pluginSettingsIdleTimeoutField;
+
+  /// No description provided for @pluginSettingsMinutesUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'minutes'**
+  String get pluginSettingsMinutesUnit;
+
+  /// No description provided for @pluginSettingsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get pluginSettingsSave;
+
+  /// No description provided for @pluginSettingsCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pluginSettingsCancel;
+
+  /// No description provided for @pluginSettingsActionFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Coding tool action failed'**
+  String get pluginSettingsActionFailedTitle;
+
+  /// No description provided for @pluginSettingsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The request failed. Try again.'**
+  String get pluginSettingsActionFailed;
+
+  /// No description provided for @pluginSettingsInvalidIdleTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an idle timeout as a whole number.'**
+  String get pluginSettingsInvalidIdleTimeout;
+
+  /// No description provided for @pluginSettingsActionNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This coding tool is no longer registered. Refresh and try again.'**
+  String get pluginSettingsActionNotFound;
+
+  /// No description provided for @pluginSettingsActionConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The coding tool cannot perform that action in its current state.'**
+  String get pluginSettingsActionConflict;
+
+  /// No description provided for @pluginSettingsDismissError.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss error'**
+  String get pluginSettingsDismissError;
+
+  /// No description provided for @pluginSettingsForceDisableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Force disable this coding tool?'**
+  String get pluginSettingsForceDisableTitle;
+
+  /// No description provided for @pluginSettingsForceRestartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Force restart this coding tool?'**
+  String get pluginSettingsForceRestartTitle;
+
+  /// No description provided for @pluginSettingsForceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The tool is busy or its work state is uncertain. Forcing this action may interrupt active work.'**
+  String get pluginSettingsForceDescription;
+
+  /// No description provided for @pluginSettingsForceAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Force'**
+  String get pluginSettingsForceAction;
+
+  /// No description provided for @pluginSettingsSetupNotInspected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked'**
+  String get pluginSettingsSetupNotInspected;
+
+  /// No description provided for @pluginSettingsSetupReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get pluginSettingsSetupReady;
+
+  /// No description provided for @pluginSettingsSetupRuntimeMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime missing'**
+  String get pluginSettingsSetupRuntimeMissing;
+
+  /// No description provided for @pluginSettingsSetupAuthenticationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication required'**
+  String get pluginSettingsSetupAuthenticationRequired;
+
+  /// No description provided for @pluginSettingsSetupUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get pluginSettingsSetupUnavailable;
+
+  /// No description provided for @pluginSettingsStatusDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get pluginSettingsStatusDisabled;
+
+  /// No description provided for @pluginSettingsStatusBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get pluginSettingsStatusBlocked;
+
+  /// No description provided for @pluginSettingsStatusDormant.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready when needed'**
+  String get pluginSettingsStatusDormant;
+
+  /// No description provided for @pluginSettingsStatusStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get pluginSettingsStatusStarting;
+
+  /// No description provided for @pluginSettingsStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get pluginSettingsStatusActive;
+
+  /// No description provided for @pluginSettingsStatusDegraded.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention'**
+  String get pluginSettingsStatusDegraded;
+
+  /// No description provided for @pluginSettingsStatusStopping.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping'**
+  String get pluginSettingsStatusStopping;
+
+  /// No description provided for @pluginSettingsStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get pluginSettingsStatusFailed;
+
+  /// No description provided for @pluginSettingsStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get pluginSettingsStatusUnknown;
+
+  /// No description provided for @pluginSettingsWorkIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get pluginSettingsWorkIdle;
+
+  /// No description provided for @pluginSettingsWorkBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Busy'**
+  String get pluginSettingsWorkBusy;
+
   /// App version footer at the bottom of the settings screen
   ///
   /// In en, this message translates to:

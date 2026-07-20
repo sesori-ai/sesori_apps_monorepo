@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/errors/remote_failure_reason.dart";
+import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -37,6 +38,8 @@ void main() {
   group("NewSessionCubit plugin selection", () {
     late MockSessionService sessionService;
     late MockPluginRepository pluginRepository;
+    late MockPluginPreferenceRepository pluginPreferenceRepository;
+    late NewSessionPluginService newSessionPluginService;
     late MockProjectRepository projectRepository;
     late MockConnectionService connectionService;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
@@ -45,6 +48,11 @@ void main() {
     setUp(() {
       sessionService = MockSessionService();
       pluginRepository = MockPluginRepository();
+      pluginPreferenceRepository = MockPluginPreferenceRepository();
+      newSessionPluginService = NewSessionPluginService(
+        pluginRepository: pluginRepository,
+        pluginPreferenceRepository: pluginPreferenceRepository,
+      );
       projectRepository = MockProjectRepository();
       connectionService = MockConnectionService();
       connectionStatus = BehaviorSubject.seeded(connectedStatus);
@@ -72,7 +80,7 @@ void main() {
     NewSessionCubit buildCubit() => NewSessionCubit(
       connectionService: connectionService,
       sessionService: sessionService,
-      pluginRepository: pluginRepository,
+      newSessionPluginService: newSessionPluginService,
       projectRepository: projectRepository,
       selectionTracker: selectionTracker,
       projectId: "project-1",
@@ -86,7 +94,7 @@ void main() {
         if (discoveryCalls == 1) {
           return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null));
         }
-        return ApiResponse.success(const PluginListResponse(plugins: [pluginA]));
+        return ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA]));
       });
 
       final cubit = buildCubit();
@@ -112,7 +120,7 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         if (discoveryCalls == 1) {
-          return ApiResponse.success(const PluginListResponse(plugins: [pluginA]));
+          return ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA]));
         }
         return ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null));
       });
@@ -184,7 +192,9 @@ void main() {
       });
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])),
+      );
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
@@ -227,9 +237,13 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         return switch (discoveryCalls) {
-          1 => ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])),
-          2 => ApiResponse.success(const PluginListResponse(plugins: [refreshedDefault, refreshedB])),
-          _ => ApiResponse.success(const PluginListResponse(plugins: [refreshedDefault, unavailableB])),
+          1 => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+          2 => ApiResponse.success(
+            const PluginListResponse(bridgeId: null, plugins: [refreshedDefault, refreshedB]),
+          ),
+          _ => ApiResponse.success(
+            const PluginListResponse(bridgeId: null, plugins: [refreshedDefault, unavailableB]),
+          ),
         };
       });
 
@@ -276,7 +290,9 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) {
         discoveryCalls++;
         if (discoveryCalls == 1) {
-          return Future.value(ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])));
+          return Future.value(
+            ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB])),
+          );
         }
         return reconnectDiscovery.future;
       });
@@ -296,7 +312,7 @@ void main() {
       expect(cubit.state.agentModelData?.plugin, pluginA);
 
       reconnectDiscovery.complete(
-        ApiResponse.success(const PluginListResponse(plugins: [pluginA, unavailableB])),
+        ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA, unavailableB])),
       );
       await _waitUntil(() {
         final data = cubit.state.agentModelData;
@@ -324,7 +340,10 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         return ApiResponse.success(
-          PluginListResponse(plugins: [discoveryCalls == 1 ? pluginA : refreshedA]),
+          PluginListResponse(
+            bridgeId: null,
+            plugins: [discoveryCalls == 1 ? pluginA : refreshedA],
+          ),
         );
       });
       when(
@@ -362,7 +381,9 @@ void main() {
       var commandCalls = 0;
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])),
+      );
       when(
         () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) {
@@ -397,7 +418,9 @@ void main() {
       var commandCalls = 0;
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])),
+      );
       when(
         () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async {
@@ -425,7 +448,9 @@ void main() {
       var providerCalls = 0;
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])),
+      );
       when(
         () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async {
@@ -452,7 +477,9 @@ void main() {
 
     test("failed provider load after a plugin switch does not restore the prior plugin catalog", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB]),
+        ),
       );
       when(
         () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
@@ -479,7 +506,9 @@ void main() {
       var providerCalls = 0;
       when(
         pluginRepository.listPlugins,
-      ).thenAnswer((_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])),
+      );
       when(
         () => sessionService.listProviders(projectId: "project-1", pluginId: "plugin-a"),
       ).thenAnswer((_) async {
@@ -525,8 +554,10 @@ void main() {
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
         return discoveryCalls == 1
-            ? ApiResponse.success(const PluginListResponse(plugins: [initialB]))
-            : ApiResponse.success(const PluginListResponse(plugins: [pluginA, unavailableB]));
+            ? ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [initialB]))
+            : ApiResponse.success(
+                const PluginListResponse(bridgeId: null, plugins: [pluginA, unavailableB]),
+              );
       });
       when(
         () => sessionService.listCommands(projectId: "project-1", pluginId: "plugin-b"),
@@ -556,7 +587,7 @@ void main() {
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {
         discoveryCalls++;
-        return ApiResponse.success(const PluginListResponse(plugins: [pluginA]));
+        return ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA]));
       });
       final cubit = buildCubit();
       await _waitForComposer(cubit);
@@ -617,7 +648,9 @@ void main() {
       final cubit = buildCubit();
 
       await cubit.close();
-      discovery.complete(ApiResponse.success(const PluginListResponse(plugins: [pluginA])));
+      discovery.complete(
+        ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginA])),
+      );
       await discovery.future;
       await Future<void>.delayed(Duration.zero);
 
@@ -641,7 +674,9 @@ void main() {
         actionHint: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [first, second])),
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: null, plugins: [first, second]),
+        ),
       );
 
       final cubit = buildCubit();
@@ -665,7 +700,9 @@ void main() {
         actionHint: "Check the bridge console.",
       );
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [degraded])),
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: null, plugins: [degraded]),
+        ),
       );
       when(
         () => sessionService.createSessionWithMessage(
@@ -704,6 +741,53 @@ void main() {
       ).called(1);
     });
 
+    test("submit records the selected bridge plugin without awaiting persistence", () async {
+      final preferenceWrite = Completer<void>();
+      when(pluginRepository.listPlugins).thenAnswer(
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: "bridge-1", plugins: [pluginA]),
+        ),
+      );
+      when(
+        () => pluginPreferenceRepository.readPluginId(bridgeId: "bridge-1"),
+      ).thenAnswer((_) async => null);
+      when(
+        () => pluginPreferenceRepository.writePluginId(
+          bridgeId: "bridge-1",
+          pluginId: "plugin-a",
+        ),
+      ).thenAnswer((_) => preferenceWrite.future);
+      when(
+        () => sessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(testSession(pluginId: "plugin-a")));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+
+      expect(cubit.state, isA<NewSessionCreated>());
+      verify(
+        () => pluginPreferenceRepository.writePluginId(
+          bridgeId: "bridge-1",
+          pluginId: "plugin-a",
+        ),
+      ).called(1);
+      expect(preferenceWrite.isCompleted, isFalse);
+      preferenceWrite.complete();
+      await preferenceWrite.future;
+    });
+
     test("unavailable and failed plugins remain visible but cannot load or create", () async {
       const unavailable = PluginMetadata(
         id: "unavailable",
@@ -720,7 +804,9 @@ void main() {
         actionHint: "Restart the bridge.",
       );
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [unavailable, failed])),
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: null, plugins: [unavailable, failed]),
+        ),
       );
 
       final cubit = buildCubit();
@@ -753,7 +839,7 @@ void main() {
 
     test("absent default does not load or create until the user selects a plugin", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginB])),
+        (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [pluginB])),
       );
       final cubit = buildCubit();
       addTearDown(cubit.close);
@@ -770,7 +856,9 @@ void main() {
 
     test("plugin switch clears backend-local composer state synchronously", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB]),
+        ),
       );
       final bAgents = Completer<ApiResponse<Agents>>();
       when(
@@ -807,7 +895,9 @@ void main() {
 
     test("A-B rejects late A resource completion", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB]),
+        ),
       );
       final a = Completer<ApiResponse<Agents>>();
       final b = Completer<ApiResponse<Agents>>();
@@ -834,7 +924,9 @@ void main() {
 
     test("A-B-A rejects both late original A and B completions", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB]),
+        ),
       );
       final firstA = Completer<ApiResponse<Agents>>();
       final secondA = Completer<ApiResponse<Agents>>();
@@ -865,7 +957,9 @@ void main() {
 
     test("restores selection only from the matching project-plugin key", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB]),
+        ),
       );
       selectionTracker
         ..write(projectId: "project-1", pluginId: "plugin-a", agent: "agent-a", agentModel: null)
@@ -889,7 +983,9 @@ void main() {
 
     test("successful creation clears only its matching plugin snapshot", () async {
       when(pluginRepository.listPlugins).thenAnswer(
-        (_) async => ApiResponse.success(const PluginListResponse(plugins: [pluginA, pluginB])),
+        (_) async => ApiResponse.success(
+          const PluginListResponse(bridgeId: null, plugins: [pluginA, pluginB]),
+        ),
       );
       selectionTracker
         ..write(projectId: "project-1", pluginId: "plugin-a", agent: "agent-a", agentModel: null)

@@ -129,7 +129,7 @@ Map<String, dynamic> _$PluginLifecycleRefreshRequestToJson(
 PluginIdleTimeoutApplyAllRequest _$PluginIdleTimeoutApplyAllRequestFromJson(
   Map json,
 ) => PluginIdleTimeoutApplyAllRequest(
-  idleTimeoutMins: _strictIntFromJson(json['idleTimeoutMins']),
+  idleTimeoutMins: _strictIntFromJson(json['idleTimeoutMins'] as num),
   $type: json['type'] as String?,
 );
 
@@ -144,7 +144,7 @@ PluginIdleTimeoutSetOverrideRequest
 _$PluginIdleTimeoutSetOverrideRequestFromJson(Map json) =>
     PluginIdleTimeoutSetOverrideRequest(
       pluginId: json['pluginId'] as String,
-      idleTimeoutMins: _strictIntFromJson(json['idleTimeoutMins']),
+      idleTimeoutMins: _strictIntFromJson(json['idleTimeoutMins'] as num),
       $type: json['type'] as String?,
     );
 

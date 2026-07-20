@@ -4,6 +4,7 @@ import "package:test/test.dart";
 void main() {
   test("plugin discovery round-trips ordered metadata", () {
     const response = PluginListResponse(
+      bridgeId: "bridge-1",
       plugins: [
         PluginMetadata(
           id: "codex",
@@ -23,7 +24,15 @@ void main() {
     );
 
     expect(PluginListResponse.fromJson(response.toJson()), response);
+    expect(response.toJson()["bridgeId"], "bridge-1");
     expect(response.toJson()["plugins"], hasLength(2));
+  });
+
+  test("plugin discovery decodes a missing bridge ID from an older bridge", () {
+    final response = PluginListResponse.fromJson(const {"plugins": <Object?>[]});
+
+    expect(response.bridgeId, isNull);
+    expect(response.toJson(), isNot(contains("bridgeId")));
   });
 
   test("plugin discovery maps a future lifecycle state to unavailable", () {

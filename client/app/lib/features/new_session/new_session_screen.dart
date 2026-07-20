@@ -32,7 +32,7 @@ class NewSessionScreen extends StatelessWidget {
       create: (_) => NewSessionCubit(
         connectionService: getIt<ConnectionService>(),
         sessionService: getIt<SessionService>(),
-        pluginRepository: getIt<PluginRepository>(),
+        newSessionPluginService: getIt<NewSessionPluginService>(),
         projectRepository: getIt<ProjectRepository>(),
         selectionTracker: getIt<NewSessionSelectionTracker>(),
         projectId: projectId,

@@ -36,6 +36,7 @@ const _$PluginLifecycleStateEnumMap = {
 
 _PluginListResponse _$PluginListResponseFromJson(Map json) =>
     _PluginListResponse(
+      bridgeId: json['bridgeId'] as String?,
       plugins: (json['plugins'] as List<dynamic>)
           .map(
             (e) => PluginMetadata.fromJson(Map<String, dynamic>.from(e as Map)),
@@ -45,5 +46,6 @@ _PluginListResponse _$PluginListResponseFromJson(Map json) =>
 
 Map<String, dynamic> _$PluginListResponseToJson(_PluginListResponse instance) =>
     <String, dynamic>{
+      'bridgeId': ?instance.bridgeId,
       'plugins': instance.plugins.map((e) => e.toJson()).toList(),
     };

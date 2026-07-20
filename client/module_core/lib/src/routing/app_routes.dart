@@ -20,6 +20,7 @@ enum AppRouteDef {
   projects("/projects"),
   settings("/settings"),
   settingsNotifications("/settings/notifications"),
+  settingsPlugins("/settings/plugins"),
   settingsProfile("/settings/profile"),
   sessions("/projects/:$projectIdPathParam/sessions"),
   newSession("/projects/:$projectIdPathParam/sessions/new"),
@@ -63,6 +64,7 @@ sealed class AppRoute {
   const factory AppRoute.projects() = AppRouteProjects;
   const factory AppRoute.settings() = AppRouteSettings;
   const factory AppRoute.settingsNotifications() = AppRouteSettingsNotifications;
+  const factory AppRoute.settingsPlugins() = AppRouteSettingsPlugins;
   const factory AppRoute.settingsProfile() = AppRouteSettingsProfile;
   const factory AppRoute.sessions({
     required String projectId,
@@ -101,6 +103,7 @@ sealed class AppRoute {
       AppRouteDef.projects => const AppRoute.projects(),
       AppRouteDef.settings => const AppRoute.settings(),
       AppRouteDef.settingsNotifications => const AppRoute.settingsNotifications(),
+      AppRouteDef.settingsPlugins => const AppRoute.settingsPlugins(),
       AppRouteDef.settingsProfile => const AppRoute.settingsProfile(),
       AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(pathParams: pathParams, queryParams: queryParams),
@@ -161,6 +164,16 @@ class AppRouteSettingsNotifications extends AppRoute {
 
   @override
   AppRouteDef get def => AppRouteDef.settingsNotifications;
+
+  @override
+  String buildPath() => def.path;
+}
+
+class AppRouteSettingsPlugins extends AppRoute {
+  const AppRouteSettingsPlugins();
+
+  @override
+  AppRouteDef get def => AppRouteDef.settingsPlugins;
 
   @override
   String buildPath() => def.path;

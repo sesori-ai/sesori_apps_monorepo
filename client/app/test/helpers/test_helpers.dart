@@ -9,7 +9,8 @@ import "package:mocktail/mocktail.dart";
 import "package:record/record.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef, RouteSource;
+import "package:sesori_dart_core/sesori_dart_core.dart"
+    show AppRouteDef, PluginManagementService, PluginPreferenceRepository, RouteSource;
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
@@ -68,6 +69,13 @@ class StubConnectionOverlayCubit extends Cubit<ConnectionOverlayState> implement
 class MockProjectApi extends Mock implements ProjectApi {}
 
 class MockProjectRepository extends Mock implements ProjectRepository {}
+
+class MockPluginPreferenceRepository extends Mock implements PluginPreferenceRepository {}
+
+class MockPluginManagementService extends Mock implements PluginManagementService {
+  @override
+  Future<void> onDispose() async {}
+}
 
 class MockBridgeRepository extends Mock implements BridgeRepository {}
 

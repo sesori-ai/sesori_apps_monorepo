@@ -409,7 +409,10 @@ class Orchestrator {
         HealthCheckHandler(healthRepository: healthRepository),
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
-        GetPluginsHandler(lifecycleService: _pluginLifecycleService),
+        GetPluginsHandler(
+          bridgeIdProvider: _bridgeRegistrationService,
+          lifecycleService: _pluginLifecycleService,
+        ),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         RestartBridgeHandler(restartService: _restartService),

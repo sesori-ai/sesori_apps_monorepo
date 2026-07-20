@@ -14,6 +14,7 @@ import "package:sesori_mobile/features/session_detail/session_detail_screen.dart
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
 import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
 import "package:sesori_mobile/features/settings/notification_settings_screen.dart";
+import "package:sesori_mobile/features/settings/plugin_settings_screen.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/features/splash/splash_screen.dart";
@@ -34,6 +35,7 @@ void main() {
       expect(const AppRoute.login().buildPath(), "/login");
       expect(const AppRoute.projects().buildPath(), "/projects");
       expect(const AppRoute.settings().buildPath(), "/settings");
+      expect(const AppRoute.settingsPlugins().buildPath(), "/settings/plugins");
     });
 
     test("substitutes projectId for sessions", () {
@@ -155,20 +157,26 @@ void main() {
       expect(materialPage.child, isA<SettingsScreen>());
     });
 
-    test("settings child routes build the notifications and profile screens", () {
-      final settingsRoute =
-          buildAppRoutes().whereType<GoRoute>().singleWhere((route) => route.path == AppRouteDef.settings.path);
+    test("settings child routes build the notifications, plugins, and profile screens", () {
+      final settingsRoute = buildAppRoutes().whereType<GoRoute>().singleWhere(
+        (route) => route.path == AppRouteDef.settings.path,
+      );
       final children = settingsRoute.routes.whereType<GoRoute>().toList();
 
-      expect(children.map((route) => route.path), equals(["notifications", "profile"]));
+      expect(children.map((route) => route.path), equals(["notifications", "plugins", "profile"]));
       expect(children[0].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<NotificationSettingsScreen>());
-      expect(children[1].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<ProfileScreen>());
+      expect(children[1].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<PluginSettingsScreen>());
+      expect(children[2].builder!(_FakeBuildContext(), _FakeGoRouterState()), isA<ProfileScreen>());
       expect(
         _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[0].path),
         AppRouteDef.settingsNotifications.path,
       );
       expect(
         _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[1].path),
+        AppRouteDef.settingsPlugins.path,
+      );
+      expect(
+        _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[2].path),
         AppRouteDef.settingsProfile.path,
       );
     });
@@ -226,6 +234,7 @@ void main() {
           AppRouteDef.sessionDiffs.path,
           AppRouteDef.settings.path,
           AppRouteDef.settingsNotifications.path,
+          AppRouteDef.settingsPlugins.path,
           AppRouteDef.settingsProfile.path,
         ]),
       );

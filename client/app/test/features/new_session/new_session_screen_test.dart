@@ -114,6 +114,7 @@ void main() {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         const PluginListResponse(
+          bridgeId: null,
           plugins: [
             PluginMetadata(
               id: "plugin-1",
@@ -178,6 +179,12 @@ void main() {
 
     GetIt.instance.registerSingleton<SessionService>(sessionService);
     GetIt.instance.registerSingleton<PluginRepository>(pluginRepository);
+    GetIt.instance.registerSingleton<NewSessionPluginService>(
+      NewSessionPluginService(
+        pluginRepository: pluginRepository,
+        pluginPreferenceRepository: MockPluginPreferenceRepository(),
+      ),
+    );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
@@ -238,6 +245,7 @@ void main() {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         const PluginListResponse(
+          bridgeId: null,
           plugins: [
             PluginMetadata(
               id: "failed-id",
@@ -297,6 +305,7 @@ void main() {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         const PluginListResponse(
+          bridgeId: null,
           plugins: [
             PluginMetadata(
               id: "degraded-id",
@@ -346,6 +355,7 @@ void main() {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginListResponse(
+          bridgeId: null,
           plugins: [
             for (var index = 0; index < 8; index++)
               PluginMetadata(
@@ -419,7 +429,7 @@ void main() {
       actionHint: "Check the bridge console.",
     );
     when(pluginRepository.listPlugins).thenAnswer(
-      (_) async => ApiResponse.success(const PluginListResponse(plugins: [toolA, toolB])),
+      (_) async => ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [toolA, toolB])),
     );
     final toolBAgents = Completer<ApiResponse<Agents>>();
     when(
@@ -497,7 +507,9 @@ void main() {
     when(pluginRepository.listPlugins).thenAnswer((_) {
       discoveryCalls++;
       if (discoveryCalls == 1) {
-        return Future.value(ApiResponse.success(const PluginListResponse(plugins: [toolA, toolB])));
+        return Future.value(
+          ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [toolA, toolB])),
+        );
       }
       return reconnectDiscovery.future;
     });
@@ -537,7 +549,9 @@ void main() {
     );
     verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
 
-    reconnectDiscovery.complete(ApiResponse.success(const PluginListResponse(plugins: [toolA, toolB])));
+    reconnectDiscovery.complete(
+      ApiResponse.success(const PluginListResponse(bridgeId: null, plugins: [toolA, toolB])),
+    );
     await tester.pumpAndSettle();
 
     expect(tester.widget<NewSessionPluginChooser>(find.byType(NewSessionPluginChooser)).isSelectionEnabled, isTrue);
@@ -564,6 +578,7 @@ void main() {
       if (discoveryCalls == 1) {
         return ApiResponse.success(
           const PluginListResponse(
+            bridgeId: null,
             plugins: [
               PluginMetadata(
                 id: "plugin-1",
