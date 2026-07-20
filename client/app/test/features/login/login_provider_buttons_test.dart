@@ -3,6 +3,7 @@ import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/features/login/login_provider_buttons.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 Widget _buildApp({
@@ -58,7 +59,7 @@ void main() {
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
     );
 
-    testWidgets("all options are disabled while one is loading", (tester) async {
+    testWidgets("options are untappable but keep enabled styling while one is loading", (tester) async {
       final calls = <String>[];
       await tester.pumpWidget(
         _buildApp(
@@ -78,6 +79,14 @@ void main() {
       await tester.pump();
 
       expect(calls, isEmpty);
+
+      // A null onPressed is what switches PregoButtonsSolid to its grayed
+      // disabled visuals; the design keeps idle options looking normal.
+      final buttons = tester.widgetList<PregoButtonsSolid>(find.byType(PregoButtonsSolid));
+      expect(buttons.length, equals(4));
+      for (final button in buttons) {
+        expect(button.onPressed, isNotNull);
+      }
     });
 
     testWidgets("no provider spinner during an email-form login", (tester) async {
