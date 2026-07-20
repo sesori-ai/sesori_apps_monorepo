@@ -9,7 +9,7 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "session_empty_state.dart";
-import "session_list_screen.dart";
+import "session_list_action_dispatcher.dart";
 import "session_tile.dart";
 
 const _actionDispatcher = SessionListActionDispatcher();
