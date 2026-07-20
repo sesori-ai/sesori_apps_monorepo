@@ -1,3 +1,4 @@
+import "package:flutter/cupertino.dart" show CupertinoActivityIndicator;
 import "package:flutter/material.dart";
 
 import "../../interactions/prego_tappable.dart";
@@ -871,10 +872,22 @@ class _LoadingSpinner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CircularProgressIndicator.adaptive(
-      constraints: BoxConstraints.tight(Size(size, size)),
-      strokeWidth: 2,
-      valueColor: AlwaysStoppedAnimation<Color>(color),
-    );
+    // Not CircularProgressIndicator.adaptive: its Cupertino variant takes the
+    // tick colour from backgroundColor, not valueColor, so the themed colour
+    // is dropped and the default gray ticks are invisible on dark buttons.
+    switch (Theme.of(context).platform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return CupertinoActivityIndicator(color: color, radius: size / 2);
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        return CircularProgressIndicator(
+          constraints: BoxConstraints.tight(Size(size, size)),
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(color),
+        );
+    }
   }
 }
