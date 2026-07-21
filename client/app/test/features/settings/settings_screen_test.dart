@@ -96,7 +96,7 @@ void main() {
 
     final store = _MockAppearanceStore();
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
-    appearance = AppearanceCubit(store: store);
+    appearance = AppearanceCubit(store: store, initialMode: AppearanceMode.system);
 
     urlLauncher = _MockUrlLauncher();
     when(() => urlLauncher.launch(any(), mode: any(named: "mode"))).thenAnswer((_) async => true);

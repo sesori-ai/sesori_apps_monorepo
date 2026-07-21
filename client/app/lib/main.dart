@@ -83,7 +83,7 @@ void main() async {
         foregroundNotificationDispatcher: getIt<ForegroundNotificationDispatcher>(),
         notificationOpenDispatcher: getIt<NotificationOpenDispatcher>(),
       ),
-      restoreAppearanceFn: () => getIt<AppearanceCubit>().restore(),
+      readAppearanceFn: () => getIt<AppearanceStore>().read(),
       runAppFn: runApp,
     );
     return;
@@ -95,7 +95,7 @@ void main() async {
     configureDependenciesFn: configureDependencies,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
     startNotificationStartupFn: () async {},
-    restoreAppearanceFn: () => getIt<AppearanceCubit>().restore(),
+    readAppearanceFn: () => getIt<AppearanceStore>().read(),
     runAppFn: runApp,
   );
 }
@@ -106,7 +106,7 @@ Future<void> bootstrapSesoriApp({
   required void Function() configureDependenciesFn,
   required void Function() initializeDeepLinks,
   required Future<void> Function() startNotificationStartupFn,
-  required Future<void> Function() restoreAppearanceFn,
+  required Future<AppearanceMode> Function() readAppearanceFn,
   required void Function(Widget app) runAppFn,
 }) async {
   configureDependenciesFn();
@@ -129,7 +129,7 @@ Future<void> bootstrapSesoriApp({
 
   // Awaited: the persisted theme has to be in place before the first frame,
   // otherwise a pinned light/dark choice flashes the device theme on launch.
-  await restoreAppearanceFn();
+  final appearance = await readAppearanceFn();
 
   final isImpeller = ui.ImageFilter.isShaderFilterSupported;
 
@@ -141,7 +141,7 @@ Future<void> bootstrapSesoriApp({
 
   runAppFn(
     LiquidGlassWidgets.wrap(
-      child: const SesoriApp(),
+      child: SesoriApp(initialAppearance: appearance),
       adaptiveQuality: true,
       // ignore: experimental_member_use
       adaptiveConfig: GlassAdaptiveScopeConfig(
@@ -217,21 +217,32 @@ bool get _supportsFirebaseCrashlytics {
 }
 
 class SesoriApp extends StatelessWidget {
-  const SesoriApp({super.key});
+  const SesoriApp({required this.initialAppearance, super.key});
+
+  /// The persisted appearance, read before the first frame.
+  final AppearanceMode initialAppearance;
 
   @override
   Widget build(BuildContext context) {
     // Above the router so the whole app — including full-screen modal routes —
     // rebuilds when the appearance choice changes.
-    return BlocProvider<AppearanceCubit>.value(
-      value: getIt<AppearanceCubit>(),
-      child: BlocBuilder<AppearanceCubit, AppearanceMode>(
-        builder: (context, appearance) => _buildApp(themeMode: appearance.themeMode),
+    return BlocProvider<AppearanceCubit>(
+      create: (_) => AppearanceCubit(
+        store: getIt<AppearanceStore>(),
+        initialMode: initialAppearance,
       ),
+      child: const _SesoriAppShell(),
     );
   }
+}
 
-  Widget _buildApp({required ThemeMode themeMode}) {
+class _SesoriAppShell extends StatelessWidget {
+  const _SesoriAppShell();
+
+  @override
+  Widget build(BuildContext context) {
+    final themeMode = context.watch<AppearanceCubit>().state.themeMode;
+
     return MaterialApp.router(
       onGenerateTitle: (context) => context.loc.appTitle,
       themeMode: themeMode,

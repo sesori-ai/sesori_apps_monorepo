@@ -55,6 +55,6 @@ void main() {
   });
 
   test("SesoriApp can be instantiated", () {
-    expect(const SesoriApp(), isA<SesoriApp>());
+    expect(const SesoriApp(initialAppearance: AppearanceMode.system), isA<SesoriApp>());
   });
 }

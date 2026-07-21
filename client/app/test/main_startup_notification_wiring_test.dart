@@ -32,7 +32,10 @@ void main() {
       events.add("notificationStartup.done");
     }
 
-    Future<void> restoreAppearance() async => events.add("restoreAppearance");
+    Future<AppearanceMode> readAppearance() async {
+      events.add("readAppearance");
+      return AppearanceMode.dark;
+    }
 
     void runAppFn(_) => events.add("runApp");
 
@@ -42,7 +45,7 @@ void main() {
       configureDependenciesFn: configureDependencies,
       initializeDeepLinks: initializeDeepLinks,
       startNotificationStartupFn: startNotificationStartup,
-      restoreAppearanceFn: restoreAppearance,
+      readAppearanceFn: readAppearance,
       runAppFn: runAppFn,
     );
 
@@ -54,7 +57,7 @@ void main() {
       "notificationStartup.start",
       // The persisted theme is restored before the first frame, so the app
       // never launches in the wrong appearance.
-      "restoreAppearance",
+      "readAppearance",
       "runApp",
     ]);
 
@@ -67,7 +70,7 @@ void main() {
         "configureDependencies",
         "deepLinks",
         "notificationStartup.start",
-        "restoreAppearance",
+        "readAppearance",
         "runApp",
         "notificationStartup.done",
       ],

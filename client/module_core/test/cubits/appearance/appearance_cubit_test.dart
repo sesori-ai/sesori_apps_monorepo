@@ -14,19 +14,14 @@ void main() {
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
   });
 
-  test("restore adopts the persisted mode", () async {
-    when(store.read).thenAnswer((_) async => AppearanceMode.dark);
-    final cubit = AppearanceCubit(store: store);
-
-    expect(cubit.state, AppearanceMode.system);
-    await cubit.restore();
+  test("starts in the persisted mode handed to it", () {
+    final cubit = AppearanceCubit(store: store, initialMode: AppearanceMode.dark);
 
     expect(cubit.state, AppearanceMode.dark);
   });
 
   test("select switches the app and persists the choice", () async {
-    when(store.read).thenAnswer((_) async => AppearanceMode.system);
-    final cubit = AppearanceCubit(store: store);
+    final cubit = AppearanceCubit(store: store, initialMode: AppearanceMode.system);
 
     await cubit.select(mode: AppearanceMode.light);
 
@@ -35,8 +30,7 @@ void main() {
   });
 
   test("re-selecting the current mode does not rewrite storage", () async {
-    when(store.read).thenAnswer((_) async => AppearanceMode.system);
-    final cubit = AppearanceCubit(store: store);
+    final cubit = AppearanceCubit(store: store, initialMode: AppearanceMode.system);
 
     await cubit.select(mode: AppearanceMode.system);
 
