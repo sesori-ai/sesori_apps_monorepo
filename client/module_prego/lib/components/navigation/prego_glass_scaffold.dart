@@ -388,6 +388,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
             subtitle: widget.subtitleText,
             scrollController: _scrollController,
             onHeightChanged: _onLargeTitleHeightChanged,
+            pinDuringOverscroll: onRefresh != null,
           ),
         ...widget.slivers,
       ],
@@ -679,11 +680,13 @@ class _LargeTitleSliver extends StatelessWidget {
   final String? subtitle;
   final ScrollController scrollController;
   final ValueChanged<double> onHeightChanged;
+  final bool pinDuringOverscroll;
   const _LargeTitleSliver({
     required this.title,
     required this.subtitle,
     required this.scrollController,
     required this.onHeightChanged,
+    required this.pinDuringOverscroll,
   });
 
   @override
@@ -717,7 +720,7 @@ class _LargeTitleSliver extends StatelessWidget {
               // The refresh sliver displaces every later sliver. Counteract its
               // negative pull offset so the title stays fixed while the caller's
               // content opens below it; positive offsets still collapse normally.
-              final pullOffset = scrollOffset < 0 ? scrollOffset : 0.0;
+              final pullOffset = pinDuringOverscroll && scrollOffset < 0 ? scrollOffset : 0.0;
 
               return Transform.translate(
                 offset: Offset(0, pullOffset),
