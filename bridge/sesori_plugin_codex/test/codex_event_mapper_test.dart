@@ -1,5 +1,3 @@
-import "dart:io";
-
 import "package:codex_plugin/codex_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -47,7 +45,6 @@ void main() {
               "updatedAt": 1779293090,
               "status": {"type": "idle"},
               "modelProvider": "openai",
-              "gitInfo": {"branch": "sesori/codex-branch"},
               "cliVersion": "0.121.0",
               "source": "vscode",
             },
@@ -63,7 +60,6 @@ void main() {
       expect(session.projectID, projectCwd);
       expect(session.directory, "/repo/app");
       expect(session.title, "Plan the theme");
-      expect(session.branchName, "sesori/codex-branch");
       expect(session.time?.created, 1779293088000);
       expect(session.time?.updated, 1779293090000);
       expect(parseAsSesori(created), isA<shared.SesoriSessionCreated>());
@@ -79,24 +75,6 @@ void main() {
         ),
       );
       expect(events, isEmpty);
-    });
-
-    test("malformed thread DTO is dropped with an observable warning", () {
-      late List<BridgeSseEvent> events;
-
-      final output = _captureWarnings(() {
-        events = mapper.map(
-          const CodexServerNotification(
-            method: "thread/started",
-            params: {
-              "thread": {"id": "t-malformed", "gitInfo": "not-an-object"},
-            },
-          ),
-        );
-      });
-
-      expect(events, isEmpty);
-      expect(output, contains("failed to decode thread/started notification"));
     });
 
     test("thread/name/updated → SessionUpdated parseable as Session", () {
@@ -330,11 +308,9 @@ void main() {
           },
         ),
       );
-      final assistant =
-          shared.Message.fromJson(
-                (events[0] as BridgeSseMessageUpdated).info,
-              )
-              as shared.MessageAssistant;
+      final assistant = shared.Message.fromJson(
+        (events[0] as BridgeSseMessageUpdated).info,
+      ) as shared.MessageAssistant;
       expect(assistant.modelID, equals("gpt-5.4-mini"));
       expect(assistant.providerID, equals("openai"));
 
@@ -349,11 +325,9 @@ void main() {
           },
         ),
       );
-      final assistant2 =
-          shared.Message.fromJson(
-                (events2[0] as BridgeSseMessageUpdated).info,
-              )
-              as shared.MessageAssistant;
+      final assistant2 = shared.Message.fromJson(
+        (events2[0] as BridgeSseMessageUpdated).info,
+      ) as shared.MessageAssistant;
       expect(assistant2.modelID, equals("gpt-5.5"));
     });
 
@@ -518,10 +492,7 @@ void main() {
       final events = mapper.map(
         const CodexServerNotification(
           method: "error",
-          params: {
-            "threadId": "t-1",
-            "error": {"message": "boom"},
-          },
+          params: {"threadId": "t-1", "error": {"message": "boom"}},
         ),
       );
       expect(events, hasLength(1));
@@ -593,28 +564,4 @@ void main() {
       expect(() => parseAsSesori(agent[0]), returnsNormally);
     });
   });
-}
-
-String _captureWarnings(void Function() action) {
-  final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
-  try {
-    Log.level = LogLevel.warning;
-    IOOverrides.runZoned(action, stderr: () => stderr);
-  } finally {
-    Log.level = previousLevel;
-  }
-  return stderr.text;
-}
-
-class _BufferingStdout implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }

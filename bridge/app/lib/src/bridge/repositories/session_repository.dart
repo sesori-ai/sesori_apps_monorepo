@@ -183,7 +183,6 @@ class SessionRepository {
       await _sessionDao.updateObservedSessionProjection(
         sessionId: sessionId,
         directory: directory,
-        branchName: created.branchName,
         catalogTitle: created.title,
         updateCatalogTitle: true,
         updatedAt: updatedAt,
@@ -606,7 +605,6 @@ class SessionRepository {
           backendSessionId: session.id,
           projectId: hydratedProject.projectId,
           directory: session.directory,
-          branchName: session.branchName,
           catalogTitle: session.title,
           createdAt: session.time?.created ?? existingBinding?.createdAt ?? projectionUpdatedAt,
           updatedAt: session.time?.updated ?? existingBinding?.updatedAt ?? projectionUpdatedAt,
@@ -870,7 +868,6 @@ class SessionRepository {
       final updated = await _sessionDao.updateObservedSessionProjection(
         sessionId: binding.sessionId,
         directory: observed.directory,
-        branchName: observed.branchName,
         catalogTitle: observed.title,
         updateCatalogTitle: updateCatalogTitle,
         updatedAt: observed.time?.updated ?? binding.updatedAt,
@@ -906,7 +903,6 @@ class SessionRepository {
         final updated = await _sessionDao.updateObservedSessionProjection(
           sessionId: existing.sessionId,
           directory: observed.directory,
-          branchName: observed.branchName,
           catalogTitle: observed.title,
           updateCatalogTitle: observed.title != null,
           updatedAt: observed.time?.updated ?? existing.updatedAt,
@@ -923,7 +919,6 @@ class SessionRepository {
         projectId: durableParent.projectId,
         parentSessionId: durableParent.sessionId,
         directory: observed.directory,
-        branchName: observed.branchName,
         catalogTitle: observed.title,
         archivedAt: observed.time?.archived,
         createdAt: createdAt,

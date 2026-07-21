@@ -187,7 +187,7 @@ void main() {
               time: const SessionTime(created: 10, updated: 20, archived: 30),
               pullRequest: null,
               promptDefaults: null,
-              branchName: "child/branch",
+              branchName: null,
             ).toJson(),
           ),
         ),
@@ -195,9 +195,7 @@ void main() {
 
       final child = Session.fromJson((output.single as BridgeSseSessionCreated).info);
       expect(child.time?.archived, 30);
-      expect(child.branchName, "child/branch");
       expect((await database.sessionDao.getSession(sessionId: child.id))?.archivedAt, 30);
-      expect((await database.sessionDao.getSession(sessionId: child.id))?.branchName, "child/branch");
       expect((await repository.getChildSessions(sessionId: "stable-root")).single.time?.archived, 30);
     });
 
@@ -592,7 +590,6 @@ void main() {
       await database.sessionDao.updateObservedSessionProjection(
         sessionId: "stable-root",
         directory: "/newer",
-        branchName: "newer/branch",
         catalogTitle: "newer title",
         updateCatalogTitle: true,
         updatedAt: 200,
@@ -614,7 +611,7 @@ void main() {
               time: const SessionTime(created: 1, updated: 100, archived: null),
               pullRequest: null,
               promptDefaults: null,
-              branchName: "older/branch",
+              branchName: null,
             ).toJson(),
             titleChanged: false,
           ),
@@ -624,7 +621,6 @@ void main() {
       expect(output, isEmpty);
       final row = await database.sessionDao.getSession(sessionId: "stable-root");
       expect(row?.directory, "/newer");
-      expect(row?.branchName, "newer/branch");
       expect(row?.catalogTitle, "newer title");
       expect(row?.projectionUpdatedAt, 200);
     });
@@ -719,7 +715,6 @@ Map<String, dynamic> _sessionInfo({
   required String? parentId,
   required String projectId,
   required String directory,
-  String? branchName,
 }) {
   return Session(
     id: sessionId,
@@ -731,7 +726,7 @@ Map<String, dynamic> _sessionInfo({
     time: const SessionTime(created: 10, updated: 20, archived: null),
     pullRequest: null,
     promptDefaults: null,
-    branchName: branchName,
+    branchName: null,
   ).toJson();
 }
 

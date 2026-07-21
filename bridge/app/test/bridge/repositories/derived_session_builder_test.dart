@@ -7,7 +7,6 @@ void main() {
 
   PluginSession session(String directory, {required String id}) {
     return PluginSession(
-      branchName: null,
       id: id,
       projectID: directory,
       directory: directory,

@@ -55,7 +55,6 @@ void main() {
     test("returns typed response", () async {
       plugin.childSessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "c1",
           projectID: "p1",
           directory: "/tmp",
@@ -79,7 +78,6 @@ void main() {
     test("maps correctly", () async {
       plugin.childSessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "child-1",
           projectID: "project-1",
           directory: "/tmp/project",
@@ -111,7 +109,6 @@ void main() {
     test("keeps pullRequest null for child sessions", () async {
       plugin.childSessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "child-1",
           projectID: "project-1",
           directory: "/tmp/project",

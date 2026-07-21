@@ -100,7 +100,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo/.worktrees/session-001",
@@ -163,7 +162,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo",
@@ -210,7 +208,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo/.worktrees/session-001",
@@ -332,7 +329,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo/.worktrees/session-001",
@@ -382,7 +378,6 @@ void main() {
       );
       plugin.sessionsResult = [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: existingDir.path,
@@ -448,7 +443,6 @@ void main() {
       );
       plugin.sessionsResult = [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: deletedWorktreePath,
@@ -569,7 +563,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo",
@@ -614,7 +607,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo",
@@ -664,7 +656,6 @@ void main() {
       );
       plugin.sessionsResult = [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: existingDir.path,
@@ -706,7 +697,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo",
@@ -750,7 +740,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo",
@@ -794,7 +783,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo",
@@ -839,7 +827,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo/.worktrees/session-001",
@@ -880,7 +867,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo",
@@ -928,7 +914,6 @@ void main() {
       );
       plugin.sessionsResult = [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: existingDir.path,
@@ -969,7 +954,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo",
@@ -1010,7 +994,6 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
-          branchName: null,
           id: "s-preserve",
           projectID: "/repo",
           directory: "/repo",

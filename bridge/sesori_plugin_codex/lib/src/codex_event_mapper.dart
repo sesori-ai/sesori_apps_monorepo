@@ -2,7 +2,6 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
-import "api/models/codex_thread_dto.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 
@@ -111,11 +110,10 @@ class CodexEventMapper {
 
     switch (method) {
       case "thread/started":
-        final envelope = _decodeThreadEnvelope(params);
-        final thread = envelope?.thread;
-        final id = thread?.id;
+        final thread = _asMap(params["thread"]);
+        final id = thread?["id"] as String?;
         if (thread == null || id == null || id.isEmpty) return const [];
-        final provider = thread.modelProvider;
+        final provider = thread["modelProvider"] as String?;
         if (provider != null && provider.isNotEmpty) {
           _threadProvider[id] = provider;
         }
@@ -441,7 +439,8 @@ class CodexEventMapper {
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
-      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      providerID:
+          _threadProvider[threadId] ?? config.modelProvider ?? "openai",
       // Live notifications carry no per-message timestamp; the rollout
       // re-fetch is authoritative and fills this in.
       time: null,
@@ -482,16 +481,16 @@ class CodexEventMapper {
   }
 
   /// Builds a full [shared.Session] from a codex `thread` object.
-  shared.Session _threadToSession(CodexThreadDto thread, String id) {
-    final projectId = _projectIdForThread(id, cwd: thread.cwd);
+  shared.Session _threadToSession(Map<String, dynamic> thread, String id) {
+    final projectId = _projectIdForThread(id, cwd: thread["cwd"] as String?);
     return shared.Session(
-      branchName: _usefulText(thread.gitInfo?.branch),
+      branchName: null,
       id: id,
       pluginId: pluginId,
       projectID: projectId,
       directory: projectId,
       parentID: null,
-      title: thread.name,
+      title: thread["name"] as String?,
       time: _threadTime(thread),
       pullRequest: null,
       promptDefaults: null,
@@ -520,29 +519,15 @@ class CodexEventMapper {
 
   /// Codex timestamps are unix **seconds**; sesori [shared.SessionTime] is in
   /// **milliseconds**.
-  shared.SessionTime? _threadTime(CodexThreadDto thread) {
-    final created = thread.createdAt;
-    final updated = thread.updatedAt;
-    if (created == null || updated == null) return null;
+  shared.SessionTime? _threadTime(Map<String, dynamic> thread) {
+    final created = thread["createdAt"];
+    final updated = thread["updatedAt"];
+    if (created is! num || updated is! num) return null;
     return shared.SessionTime(
       created: (created * 1000).round(),
       updated: (updated * 1000).round(),
       archived: null,
     );
-  }
-
-  CodexThreadEnvelopeDto? _decodeThreadEnvelope(Map<String, dynamic> params) {
-    try {
-      return CodexThreadEnvelopeDto.fromJson(params);
-    } on Object catch (error, stackTrace) {
-      Log.w("[codex] failed to decode thread/started notification", error, stackTrace);
-      return null;
-    }
-  }
-
-  String? _usefulText(String? value) {
-    final trimmed = value?.trim();
-    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
   /// Maps a codex thread status object (`{type: idle|active, …}`) onto the
@@ -551,7 +536,9 @@ class CodexEventMapper {
   shared.SessionStatus _codexStatusToSessionStatus(Object? raw) {
     final map = _asMap(raw);
     final type = (map?["type"] ?? _asMap(map?["status"])?["type"]) as String?;
-    return type == "idle" ? const shared.SessionStatus.idle() : const shared.SessionStatus.busy();
+    return type == "idle"
+        ? const shared.SessionStatus.idle()
+        : const shared.SessionStatus.busy();
   }
 
   /// Concatenates the `text` of every text-bearing entry in a codex `content`

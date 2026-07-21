@@ -93,7 +93,6 @@ void main() {
         cwd: "/repo/app",
         timestamp: "2026-04-17T10:00:00Z",
         cliVersion: "0.121.0",
-        branch: "sesori/codex-branch",
       );
       final meta = reader.readMeta(path);
       expect(meta, isNotNull);
@@ -101,7 +100,6 @@ void main() {
       expect(meta.cwd, equals("/repo/app"));
       expect(meta.timestamp, isNotNull);
       expect(meta.cliVersion, equals("0.121.0"));
-      expect(meta.branch, equals("sesori/codex-branch"));
     });
 
     test("listSessions joins index + rollout header and sorts by updatedAt", () {
@@ -573,7 +571,6 @@ String _writeRollout(
   required String cwd,
   String timestamp = "2026-04-17T10:00:00Z",
   String cliVersion = "0.121.0",
-  String? branch,
   List<String> extraLines = const [],
 }) {
   final full = p.join(codexHome.path, path);
@@ -588,7 +585,6 @@ String _writeRollout(
         "cwd": cwd,
         "cli_version": cliVersion,
         "model_provider": "openai",
-        if (branch != null) "git": {"branch": branch},
       },
     }),
     ...extraLines,

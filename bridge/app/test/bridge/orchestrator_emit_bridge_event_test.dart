@@ -156,7 +156,6 @@ void main() {
 
     const directory = "/projects/one";
     const oldSession = PluginSession(
-      branchName: null,
       id: "old-session",
       projectID: directory,
       directory: directory,
@@ -165,7 +164,6 @@ void main() {
       time: PluginSessionTime(created: 1, updated: 1, archived: null),
     );
     const newSession = PluginSession(
-      branchName: null,
       id: "new-session",
       projectID: directory,
       directory: directory,

@@ -220,7 +220,6 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     lastCreateSessionModel = model;
     return createSessionResult ??
         const PluginSession(
-          branchName: null,
           id: "",
           projectID: "",
           directory: "",
@@ -239,7 +238,6 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     lastRenameSessionTitle = title;
     return renameSessionResult ??
         const PluginSession(
-          branchName: null,
           id: "",
           projectID: "",
           directory: "",
@@ -716,7 +714,6 @@ Future<void> recordSessionBinding({
     projectId: projectId,
     parentSessionId: parentSessionId,
     directory: projectId,
-    branchName: null,
     catalogTitle: null,
     archivedAt: null,
     createdAt: 1,

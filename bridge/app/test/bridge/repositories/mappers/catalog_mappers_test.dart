@@ -1,28 +1,12 @@
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/project_catalog_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/session_catalog_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  test("PluginSessionMapper preserves a plugin branch", () {
-    const pluginSession = PluginSession(
-      branchName: "sesori/codex-branch",
-      id: "backend-id",
-      projectID: "project-1",
-      directory: "/projects/one",
-      parentID: null,
-      title: null,
-      time: null,
-    );
-
-    expect(pluginSession.toSharedSession(pluginId: "codex").branchName, "sesori/codex-branch");
-  });
-
   test("ProjectCatalogMapper applies name precedence and maps catalog timestamps", () {
     const mapper = ProjectCatalogMapper();
     const base = ProjectDto(

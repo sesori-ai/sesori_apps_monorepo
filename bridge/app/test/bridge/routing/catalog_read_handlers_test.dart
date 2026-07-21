@@ -60,7 +60,6 @@ void main() {
         projectId: "project",
         parentSessionId: "root",
         directory: "/projects/project/child",
-        branchName: null,
         catalogTitle: "Child",
         archivedAt: null,
         createdAt: 2,
