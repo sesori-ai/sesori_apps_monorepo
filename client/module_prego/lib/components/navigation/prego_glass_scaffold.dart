@@ -351,8 +351,13 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
                 triggerDistance,
                 indicatorExtent,
               );
-              // A non-extended body already begins below the bar.
-              if (!extendBehind) return indicator;
+              // A non-extended body already begins below the bar, but its
+              // collapsing title still precedes the caller-provided content.
+              if (!extendBehind) {
+                return collapsing
+                    ? Transform.translate(offset: Offset(0, _largeTitleHeight), child: indicator)
+                    : indicator;
+              }
 
               return ValueListenableBuilder<double>(
                 valueListenable: _bannerHeight,

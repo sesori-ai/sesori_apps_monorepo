@@ -296,6 +296,29 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets("non-extended pull-to-refresh also opens below the large title", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        banner: null,
+        titleMode: PregoTopNavigationTitleMode.collapsing,
+        extendBodyBehindBar: false,
+        onRefresh: () async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final largeTitle = find.descendant(of: find.byType(CustomScrollView), matching: find.text("Title"));
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_contentKey)));
+    await gesture.moveBy(const Offset(0, 80));
+    await tester.pump();
+
+    final indicator = find.byType(CupertinoActivityIndicator);
+    expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(tester.getBottomLeft(largeTitle).dy));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("the banner slot clips through a ClipRect around its AnimatedSize", (tester) async {
     await tester.pumpWidget(_harness(banner: _banner()));
     await tester.pump();
