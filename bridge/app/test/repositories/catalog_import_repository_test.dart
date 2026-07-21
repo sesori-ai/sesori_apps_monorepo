@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/catalog_hydrations_table.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
@@ -145,6 +146,83 @@ void main() {
       expect(
         (await database.sessionDao.getSessionByBinding(pluginId: "native", backendSessionId: "child"))?.sessionId,
         child?.sessionId,
+      );
+    });
+
+    test("projection v2 backfills only null stored branches", () async {
+      final projectPath = "${directory.path}/branch-backfill";
+      final worktreePath = "$projectPath/.worktrees/dedicated";
+      await database.projectsDao.upsertProjectRows(
+        rows: [_projectRow(id: "branch-project", path: projectPath)],
+      );
+      await database.sessionDao.upsertSessionRows(
+        rows: [
+          _sessionRow(
+            sessionId: "ses_null_branch",
+            backendSessionId: "null-branch",
+            projectId: "branch-project",
+            directory: projectPath,
+            projectionUpdatedAt: 20,
+          ),
+          _sessionRow(
+            sessionId: "ses_dedicated",
+            backendSessionId: "dedicated",
+            projectId: "branch-project",
+            directory: worktreePath,
+            worktreePath: worktreePath,
+            projectionUpdatedAt: 20,
+          ),
+        ],
+      );
+      await database.catalogHydrationsDao.recordCompletion(
+        completion: const CatalogHydrationDto(
+          pluginId: "native",
+          projectionVersion: 1,
+          completedAt: 10,
+        ),
+      );
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "branch-project", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [
+            _pluginSession(
+              id: "null-branch",
+              directory: projectPath,
+              branchName: "codex/main",
+            ),
+            _pluginSession(
+              id: "dedicated",
+              directory: worktreePath,
+              branchName: "backend/replacement",
+            ),
+          ],
+        },
+        childrenByParent: const {},
+      );
+      final repository = _repository(database: database, plugin: plugin);
+
+      expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNull);
+      await repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: false,
+              hydrationMarkerRequested: true,
+            ),
+          )
+          .drain<void>();
+
+      expect(
+        (await database.sessionDao.getSession(sessionId: "ses_null_branch"))?.branchName,
+        "codex/main",
+      );
+      expect(
+        (await database.sessionDao.getSession(sessionId: "ses_dedicated"))?.branchName,
+        "feature",
+      );
+      expect(
+        (await repository.getHydrationCompletion(pluginId: plugin.id))?.projectionVersion,
+        CatalogImportRepository.projectionVersion,
       );
     });
 
@@ -443,6 +521,7 @@ void main() {
               id: "stale-root",
               directory: "$projectPath/import",
               title: "stale import title",
+              branchName: "stale/import",
             ),
           ],
         },
@@ -752,8 +831,10 @@ PluginSession _pluginSession({
   String? title,
   int? archivedAt,
   int updatedAt = 100,
+  String? branchName,
 }) {
   return PluginSession(
+    branchName: branchName,
     id: id,
     projectID: directory,
     directory: directory,

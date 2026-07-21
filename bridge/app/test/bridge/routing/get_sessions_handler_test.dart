@@ -130,6 +130,7 @@ void main() {
     test("persists the project and sessions after a successful repository fetch", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "project-1",
           directory: "/tmp/project-1",
@@ -138,6 +139,7 @@ void main() {
           time: PluginSessionTime(created: 1, updated: 1, archived: null),
         ),
         const PluginSession(
+          branchName: null,
           id: "s2",
           projectID: "project-1",
           directory: "/tmp/project-1",
@@ -146,6 +148,7 @@ void main() {
           time: PluginSessionTime(created: 2, updated: 2, archived: null),
         ),
         const PluginSession(
+          branchName: null,
           id: "s3",
           projectID: "project-1",
           directory: "/tmp/project-1",
@@ -193,6 +196,7 @@ void main() {
       sessionTitleService.failSessionIds.add("s2");
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "project-1",
           directory: "/tmp/project-1",
@@ -201,6 +205,7 @@ void main() {
           time: PluginSessionTime(created: 10, updated: 10, archived: null),
         ),
         const PluginSession(
+          branchName: null,
           id: "s2",
           projectID: "project-1",
           directory: "/tmp/project-1",
@@ -209,6 +214,7 @@ void main() {
           time: PluginSessionTime(created: 11, updated: 11, archived: null),
         ),
         const PluginSession(
+          branchName: null,
           id: "s3",
           projectID: "project-1",
           directory: "/tmp/project-1",
@@ -234,6 +240,7 @@ void main() {
     test("returns sessions re-enriched after pending titles are applied", () async {
       plugin.sessionsResult = const [
         PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "project-1",
           directory: "/tmp/project-1",
@@ -290,6 +297,7 @@ void main() {
     test("maps PluginSession id, projectID, directory, and title", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -317,6 +325,7 @@ void main() {
     test("maps PluginSessionTime when present", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -343,6 +352,7 @@ void main() {
     test("time is null when absent", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -367,6 +377,7 @@ void main() {
     test("overrides time.archived with DB archivedAt when present", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -420,6 +431,7 @@ void main() {
     test("keeps plugin time.archived when no DB record exists", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -446,6 +458,7 @@ void main() {
     test("sets time.archived to null when DB has null archivedAt", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -499,6 +512,7 @@ void main() {
     test("handles multiple sessions with mixed DB/plugin archive status", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -507,6 +521,7 @@ void main() {
           time: PluginSessionTime(created: 100, updated: 200, archived: 300),
         ),
         const PluginSession(
+          branchName: null,
           id: "s2",
           projectID: "p1",
           directory: "/tmp",
@@ -515,6 +530,7 @@ void main() {
           time: PluginSessionTime(created: 100, updated: 200, archived: 400),
         ),
         const PluginSession(
+          branchName: null,
           id: "s3",
           projectID: "p1",
           directory: "/tmp",
@@ -594,6 +610,7 @@ void main() {
     test("hasWorktree is true when DB record has worktreePath", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -644,6 +661,7 @@ void main() {
     test("hasWorktree is false when DB record has null worktreePath", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -694,6 +712,7 @@ void main() {
     test("hasWorktree is false when no DB record exists", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -717,6 +736,7 @@ void main() {
     test("merges pull request metadata when session has a PR", () async {
       plugin.sessionsResult = const [
         PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -807,6 +827,7 @@ void main() {
       );
       plugin.sessionsResult = const [
         PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp/project",
@@ -818,6 +839,7 @@ void main() {
       await db.sessionDao.updateObservedSessionProjection(
         sessionId: "s1",
         directory: "/tmp/project",
+        branchName: null,
         catalogTitle: "replacement payload",
         updateCatalogTitle: true,
         updatedAt: 200,
@@ -856,6 +878,7 @@ void main() {
     test("keeps pullRequest null when session has no PR", () async {
       plugin.sessionsResult = const [
         PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -879,6 +902,7 @@ void main() {
     test("merges PR data for mixed session batches", () async {
       plugin.sessionsResult = const [
         PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -887,6 +911,7 @@ void main() {
           time: null,
         ),
         PluginSession(
+          branchName: null,
           id: "s2",
           projectID: "p1",
           directory: "/tmp",
@@ -960,6 +985,7 @@ void main() {
     test("falls back to session directory when the catalog project path is missing", () async {
       plugin.sessionsResult = const [
         PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "project-1",
           directory: "/tmp/fallback-project",
@@ -984,6 +1010,7 @@ void main() {
     test("returns original sessions when PR refresh times out", () async {
       plugin.sessionsResult = const [
         PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",
@@ -1016,6 +1043,7 @@ void main() {
     test("enriches sessions when PR refresh succeeds within timeout", () async {
       plugin.sessionsResult = const [
         PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp",

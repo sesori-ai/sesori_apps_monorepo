@@ -12,7 +12,7 @@
 - **Current stage:** Complete and merged through PR #497
 - **Follow-up:** `.plan/active/setup-aware-plugin-lifecycle/PLAN.md`
 - **Runtime default:** OpenCode remains the one-plugin default; ordered multi-plugin selection is active
-- **Catalog projection version:** 1
+- **Catalog projection version:** 2
 - **Stage 3A implementation base:** `main` at `1773691d` (audited 2026-07-15)
 - **Stage 3B implementation base:** `main` at `7c8b6440` (audited 2026-07-16)
 - **Stage 3C implementation base:** `main` at `72ac20f4` (audited 2026-07-16)

@@ -15,6 +15,7 @@ void main() {
             title: "Mapped session",
             createdAt: createdAt,
             updatedAt: updatedAt,
+            branch: "  sesori/codex-branch  ",
           ),
           _record(
             id: "session-without-cwd",
@@ -41,6 +42,7 @@ void main() {
       expect(sessions[0].directory, "/repo/app");
       expect(sessions[0].parentID, isNull);
       expect(sessions[0].title, "Mapped session");
+      expect(sessions[0].branchName, "sesori/codex-branch");
       expect(
         sessions[0].time?.created,
         createdAt.millisecondsSinceEpoch,
@@ -111,6 +113,7 @@ CodexSessionRecord _record({
   required String? title,
   DateTime? createdAt,
   DateTime? updatedAt,
+  String? branch,
 }) => CodexSessionRecord(
   id: id,
   rolloutPath: "/rollouts/$id.jsonl",
@@ -121,6 +124,7 @@ CodexSessionRecord _record({
   cliVersion: "0.142.0",
   modelProvider: "openai",
   model: "gpt-5.4-codex",
+  branch: branch,
 );
 
 class _StubSessionRolloutReader extends SessionRolloutReader {

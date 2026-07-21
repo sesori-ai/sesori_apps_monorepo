@@ -128,6 +128,7 @@ void main() {
 
     test("dedicated=true and WorktreeSuccess injects system prompt and stores worktree metadata", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo/.worktrees/session-001",
@@ -196,6 +197,7 @@ void main() {
 
     test("stores prompt defaults from creation request", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "defaults-1",
         projectID: "p1",
         directory: "/repo",
@@ -236,6 +238,7 @@ void main() {
 
     test("dedicated=false skips worktree prep and stores resolved base branch metadata", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "simple-1",
         projectID: "p1",
         directory: "/repo",
@@ -298,6 +301,7 @@ void main() {
         updatedAt: 1,
       );
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "moved-1",
         projectID: "p1",
         directory: "/moved/repo",
@@ -350,6 +354,7 @@ void main() {
       "dedicated=true and WorktreeFallback has no system prompt and stores dedicated row with null worktree fields",
       () async {
         plugin.createSessionResult = const PluginSession(
+          branchName: null,
           id: "fallback-1",
           projectID: "p1",
           directory: "/repo",
@@ -402,6 +407,7 @@ void main() {
 
     test("empty parts keep dedicated worktree metadata but skip system prompt injection", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "empty-1",
         projectID: "p1",
         directory: "/repo/.worktrees/session-empty",
@@ -514,6 +520,7 @@ void main() {
 
     test("returns mapped Session fields", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo",
@@ -555,6 +562,7 @@ void main() {
 
     test("hasWorktree is true when WorktreeSuccess", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo/.worktrees/session-001",
@@ -609,6 +617,7 @@ void main() {
 
     test("hasWorktree is false when dedicated=false", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo",
@@ -639,6 +648,7 @@ void main() {
 
     test("hasWorktree is false when WorktreeFallback", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "fallback-1",
         projectID: "p1",
         directory: "/repo",
@@ -702,6 +712,7 @@ void main() {
         worktreeName: "fix-login-bug",
       );
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo/.worktrees/fix-login-bug",
@@ -710,6 +721,7 @@ void main() {
         time: null,
       );
       plugin.renameSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo/.worktrees/fix-login-bug",
@@ -750,6 +762,7 @@ void main() {
     test("AI naming returns null — no preferred branch and no rename", () async {
       metadataService.generateResult = null;
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo/.worktrees/session-001",
@@ -789,6 +802,7 @@ void main() {
     test("no text parts — metadata generation skipped", () async {
       metadataService.lastGenerateMessage = null;
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo",
@@ -821,6 +835,7 @@ void main() {
     test("whitespace-only text parts skipped — metadata generation skipped", () async {
       metadataService.lastGenerateMessage = null;
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo",
@@ -852,6 +867,7 @@ void main() {
 
     test("command dispatched after session creation with new session ID", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "cmd-session-1",
         projectID: "p1",
         directory: "/repo",
@@ -890,6 +906,7 @@ void main() {
 
     test("dedicated worktree command carries worktree guardrail in command arguments", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "cmd-dedicated-1",
         projectID: "p1",
         directory: "/repo/.worktrees/session-001",
@@ -931,6 +948,7 @@ void main() {
     test("persists stored session before sending command", () async {
       final orderedPlugin = _OrderCheckingCommandPlugin(database: db)
         ..createSessionResult = const PluginSession(
+          branchName: null,
           id: "ordered-session-1",
           projectID: "p1",
           directory: "/repo",
@@ -987,6 +1005,7 @@ void main() {
 
     test("command-created session stores request defaults while plugin create receives null agent and model", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "cmd-defaults-1",
         projectID: "p1",
         directory: "/repo",
@@ -1056,6 +1075,7 @@ void main() {
 
     test("no command — sendCommand not called", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "no-cmd-1",
         projectID: "p1",
         directory: "/repo",
@@ -1087,6 +1107,7 @@ void main() {
 
     test("blank command is treated like no command", () async {
       plugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "blank-cmd-1",
         projectID: "p1",
         directory: "/repo",
@@ -1125,6 +1146,7 @@ void main() {
         worktreeName: "fix-login-bug",
       );
       throwingPlugin.createSessionResult = const PluginSession(
+        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/repo",

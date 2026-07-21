@@ -71,6 +71,7 @@ void main() {
           projectId: projectId,
           parentSessionId: parentStableId,
           directory: projectId,
+          branchName: null,
           catalogTitle: null,
           archivedAt: null,
           createdAt: 1,
@@ -690,6 +691,7 @@ void main() {
 }
 
 PluginSession _session(String directory, {required String id}) => PluginSession(
+  branchName: null,
   id: id,
   projectID: directory,
   directory: directory,

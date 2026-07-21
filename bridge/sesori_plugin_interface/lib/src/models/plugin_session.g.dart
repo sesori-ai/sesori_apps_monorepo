@@ -8,6 +8,7 @@ part of 'plugin_session.dart';
 
 Map<String, dynamic> _$PluginSessionToJson(_PluginSession instance) =>
     <String, dynamic>{
+      'branchName': ?instance.branchName,
       'id': instance.id,
       'projectID': instance.projectID,
       'directory': instance.directory,

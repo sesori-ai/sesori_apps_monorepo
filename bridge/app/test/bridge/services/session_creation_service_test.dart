@@ -244,6 +244,7 @@ class _FakePlugin implements NativeProjectsPluginApi {
     createCalls++;
     lastCreateDirectory = directory;
     return PluginSession(
+      branchName: null,
       id: "backend-session",
       projectID: "/repo",
       directory: directory,

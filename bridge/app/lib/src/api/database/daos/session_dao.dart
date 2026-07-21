@@ -24,6 +24,7 @@ typedef ObservedRootSession = ({
   String backendSessionId,
   String projectId,
   String directory,
+  String? branchName,
   String? catalogTitle,
   int createdAt,
   int updatedAt,
@@ -253,6 +254,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
               projectId: Value(session.projectId),
               parentSessionId: const Value(null),
               directory: Value(session.directory),
+              branchName: Value(session.branchName),
               isDedicated: const Value(false),
               archivedAt: Value(session.archivedAt),
               createdAt: Value(session.createdAt),
@@ -265,6 +267,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         onConflict: DoUpdate.withExcluded(
           (old, excluded) => SessionTableCompanion.custom(
             directory: excluded.directory,
+            branchName: coalesce([old.branchName, excluded.branchName]),
             updatedAt: excluded.updatedAt,
             projectionUpdatedAt: excluded.projectionUpdatedAt,
             catalogTitle: excluded.catalogTitle,
@@ -283,6 +286,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   Future<bool> updateObservedSessionProjection({
     required String sessionId,
     required String directory,
+    required String? branchName,
     required String? catalogTitle,
     required bool updateCatalogTitle,
     required int updatedAt,
@@ -295,11 +299,15 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
                   table.projectionUpdatedAt.isSmallerOrEqualValue(projectionUpdatedAt),
             ))
             .write(
-              SessionTableCompanion(
-                directory: Value(directory),
-                catalogTitle: updateCatalogTitle ? Value(catalogTitle) : const Value.absent(),
-                updatedAt: Value(updatedAt),
-                projectionUpdatedAt: Value(projectionUpdatedAt),
+              SessionTableCompanion.custom(
+                directory: Variable(directory),
+                branchName: coalesce([
+                  sessionTable.branchName,
+                  Variable<String>(branchName),
+                ]),
+                catalogTitle: updateCatalogTitle ? Variable<String>(catalogTitle) : null,
+                updatedAt: Variable(updatedAt),
+                projectionUpdatedAt: Variable(projectionUpdatedAt),
               ),
             );
     return updated > 0;
@@ -311,6 +319,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String projectId,
     required String parentSessionId,
     required String directory,
+    required String? branchName,
     required String? catalogTitle,
     required int? archivedAt,
     required int createdAt,
@@ -325,6 +334,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         projectId: Value(projectId),
         parentSessionId: Value(parentSessionId),
         directory: Value(directory),
+        branchName: Value(branchName),
         isDedicated: const Value(false),
         archivedAt: Value(archivedAt),
         createdAt: Value(createdAt),

@@ -260,6 +260,7 @@ PluginSession _session({
   required String projectId,
   required int createdAt,
 }) => PluginSession(
+  branchName: null,
   id: id,
   projectID: projectId,
   directory: "/tmp/$projectId",

@@ -27,7 +27,7 @@ class CatalogImportRepository {
        _catalogHydrationsDao = catalogHydrationsDao,
        _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator;
 
-  static const int projectionVersion = 1;
+  static const int projectionVersion = 2;
   static const int _responsivenessBatchSize = 512;
   static final Random _secureRandom = Random.secure();
 
@@ -427,7 +427,7 @@ class CatalogImportRepository {
       parentSessionId: parentSessionId,
       directory: existing?.directory ?? _normalizeRequiredPath(session.directory),
       worktreePath: existing?.worktreePath,
-      branchName: existing?.branchName,
+      branchName: existing?.branchName ?? session.branchName,
       isDedicated: existing?.isDedicated ?? false,
       archivedAt: existing == null ? time?.archived : existing.archivedAt,
       baseBranch: existing?.baseBranch,

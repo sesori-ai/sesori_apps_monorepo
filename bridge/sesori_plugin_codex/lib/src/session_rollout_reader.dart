@@ -5,6 +5,7 @@ import "dart:isolate";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
+        Log,
         PluginMessage,
         PluginMessagePart,
         PluginMessagePartType,
@@ -13,7 +14,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginOperationException,
         PluginToolState,
         PluginToolStatus;
+import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "api/models/codex_rollout_dto.dart";
 import "codex_config_reader.dart";
 
 /// One line of `~/.codex/session_index.jsonl`.
@@ -64,6 +67,7 @@ class CodexSessionMeta {
     required this.modelProvider,
     required this.model,
     required this.cliVersion,
+    required this.branch,
   });
 
   final String id;
@@ -76,6 +80,7 @@ class CodexSessionMeta {
   /// model — only the provider.
   final String? model;
   final String? cliVersion;
+  final String? branch;
 }
 
 /// Combined view of a codex session ready to map to [PluginSession].
@@ -90,6 +95,7 @@ class CodexSessionRecord {
     required this.cliVersion,
     required this.modelProvider,
     required this.model,
+    required this.branch,
   });
 
   final String id;
@@ -101,13 +107,14 @@ class CodexSessionRecord {
   final String? cliVersion;
   final String? modelProvider;
   final String? model;
+  final String? branch;
 }
 
 /// Reads codex's on-disk session history.
 ///
-/// All operations are read-only. Reads tolerate partial / corrupted lines
-/// (skips and logs nothing) so a single bad record never blocks the rest
-/// of a session listing.
+/// All operations are read-only. Reads tolerate partial / corrupted lines so a
+/// single bad record never blocks the rest of a session listing. Recovered
+/// decode failures remain observable through the bridge logger.
 ///
 /// CODEX_HOME resolution mirrors codex itself:
 ///   1. `$CODEX_HOME` if set.
@@ -233,30 +240,29 @@ class SessionRolloutReader {
     String? modelProvider;
     String? cliVersion;
     String? model;
+    String? branch;
 
     for (var i = 0; i < scanLimit; i++) {
       try {
-        final decoded = jsonDecode(lines[i]);
-        if (decoded is! Map) continue;
-        final map = decoded.cast<String, dynamic>();
-        final type = map["type"];
+        final line = CodexRolloutLineDto.fromJson(jsonDecodeMap(lines[i]));
+        final type = line.type;
         if (type == "session_meta") {
-          final payload = (map["payload"] as Map?)?.cast<String, dynamic>() ?? {};
-          final metaId = payload["id"];
-          if (metaId is! String || metaId.isEmpty) continue;
+          final payload = line.payload;
+          final metaId = payload?.id;
+          if (metaId == null || metaId.isEmpty) continue;
           id = metaId;
-          cwd = payload["cwd"] as String?;
-          timestamp = _tryParseDate(payload["timestamp"]);
-          modelProvider = payload["model_provider"] as String?;
-          cliVersion = payload["cli_version"] as String?;
+          cwd = payload?.cwd;
+          timestamp = _tryParseDate(payload?.timestamp);
+          modelProvider = payload?.modelProvider;
+          cliVersion = payload?.cliVersion;
+          branch = payload?.git?.branch;
         } else if (type == "turn_context") {
-          final payload = (map["payload"] as Map?)?.cast<String, dynamic>();
-          final m = payload?["model"];
+          final m = line.payload?.model;
           // Latest within the window wins — the model can change mid-session.
-          if (m is String && m.isNotEmpty) model = m;
+          if (m != null && m.isNotEmpty) model = m;
         }
-      } catch (_) {
-        // Skip bad lines.
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] skipping malformed rollout header record", error, stackTrace);
         continue;
       }
     }
@@ -269,6 +275,7 @@ class SessionRolloutReader {
       modelProvider: modelProvider,
       model: model,
       cliVersion: cliVersion,
+      branch: branch,
     );
   }
 
@@ -305,6 +312,7 @@ class SessionRolloutReader {
           cliVersion: meta?.cliVersion,
           modelProvider: meta?.modelProvider,
           model: meta?.model,
+          branch: meta?.branch,
         ),
       );
     }

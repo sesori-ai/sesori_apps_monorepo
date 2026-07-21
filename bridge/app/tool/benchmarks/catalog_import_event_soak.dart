@@ -447,6 +447,7 @@ class _CatalogImportEventSoak {
       (index) {
         final projectPath = projectPaths[index % projectPaths.length];
         return PluginSession(
+          branchName: null,
           id: _backendSessionId(index),
           projectID: projectPath,
           directory: projectPath,

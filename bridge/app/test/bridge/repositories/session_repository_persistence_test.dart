@@ -101,6 +101,7 @@ void main() {
         projectId: "project-X",
         parentSessionId: "root",
         directory: "/projects/X/child",
+        branchName: null,
         catalogTitle: "Child history",
         archivedAt: null,
         createdAt: 2,
@@ -174,6 +175,7 @@ void main() {
       await database.sessionDao.updateObservedSessionProjection(
         sessionId: "stable-id",
         directory: "/stale",
+        branchName: null,
         catalogTitle: "Stale title",
         updateCatalogTitle: true,
         updatedAt: 100,
@@ -223,6 +225,7 @@ Future<void> _insertRoot({
   await database.sessionDao.updateObservedSessionProjection(
     sessionId: sessionId,
     directory: "/projects/X",
+    branchName: null,
     catalogTitle: catalogTitle,
     updateCatalogTitle: true,
     updatedAt: updatedAt,

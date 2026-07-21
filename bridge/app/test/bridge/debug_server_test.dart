@@ -339,6 +339,7 @@ void main() {
     test("POST /sessions with body returns session list", () async {
       plugin.sessionsResult = [
         const PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "p1",
           directory: "/tmp/test",
@@ -809,6 +810,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePl
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
+    branchName: null,
     id: "",
     projectID: "",
     directory: "",
@@ -819,6 +821,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwarePl
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
+    branchName: null,
     id: "",
     projectID: "",
     directory: "",
@@ -953,6 +956,7 @@ class _BlockingMutationPlugin extends _FakeBridgePlugin {
     _mutationStarted.complete();
     await _mutationRelease.future;
     return PluginSession(
+      branchName: null,
       id: sessionId,
       projectID: "/tmp/test",
       directory: "/tmp/test",
@@ -1025,6 +1029,7 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwa
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
+    branchName: null,
     id: "",
     projectID: "",
     directory: "",
@@ -1035,6 +1040,7 @@ class _TrackingBridgePlugin implements NativeProjectsPluginApi, _SubscriptionAwa
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async => const PluginSession(
+    branchName: null,
     id: "",
     projectID: "",
     directory: "",

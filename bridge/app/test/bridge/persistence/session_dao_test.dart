@@ -132,6 +132,7 @@ void main() {
             backendSessionId: "backend-root-id",
             projectId: "/repo",
             directory: "/observed/repo",
+            branchName: "backend/root",
             catalogTitle: "Backend title",
             createdAt: 90,
             updatedAt: 300,
@@ -165,6 +166,7 @@ void main() {
             backendSessionId: "backend-root-id",
             projectId: "/repo",
             directory: "/repo/current",
+            branchName: "current/root",
             catalogTitle: "Current title",
             createdAt: 100,
             updatedAt: 300,
@@ -182,6 +184,7 @@ void main() {
             backendSessionId: "backend-root-id",
             projectId: "/repo",
             directory: "/repo/stale",
+            branchName: "stale/root",
             catalogTitle: "Stale title",
             createdAt: 50,
             updatedAt: 200,
@@ -193,6 +196,7 @@ void main() {
 
       final dto = rows["backend-root-id"];
       expect(dto?.directory, equals("/repo/current"));
+      expect(dto?.branchName, equals("current/root"));
       expect(dto?.catalogTitle, equals("Current title"));
       expect(dto?.createdAt, equals(100));
       expect(dto?.updatedAt, equals(300));

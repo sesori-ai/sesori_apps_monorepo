@@ -4,6 +4,7 @@ import "dart:io" show Directory;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "api/models/codex_thread_dto.dart";
 import "approval_registry.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
@@ -399,8 +400,9 @@ class CodexPlugin implements CodexManagedApi {
       params["modelProvider"] = model.providerID;
     }
     final result = await client.request(method: "thread/start", params: params);
-    final thread = _extractThread(result);
-    final threadId = thread?["id"] as String?;
+    final response = _threadEnvelopeFrom(result);
+    final thread = response.thread;
+    final threadId = thread?.id;
     if (threadId == null) {
       throw StateError("thread/start response missing thread.id");
     }
@@ -412,9 +414,9 @@ class CodexPlugin implements CodexManagedApi {
     // the model the user actually chose, not the global config default.
     _eventMapper.setThreadModel(
       threadId,
-      (result is Map ? result["model"] as String? : null) ?? model?.modelID,
+      response.model ?? model?.modelID,
     );
-    final resolvedDirectory = normalizeProjectDirectory(directory: (thread?["cwd"] as String?) ?? directory);
+    final resolvedDirectory = normalizeProjectDirectory(directory: thread?.cwd ?? directory);
     // Record the thread's directory BEFORE the first turn: turn/start can emit
     // notifications (e.g. a cwd-less thread/name/updated) while the rollout is
     // still unwritten, and without this the mapper would attribute those
@@ -433,11 +435,12 @@ class CodexPlugin implements CodexManagedApi {
       );
     }
     return PluginSession(
+      branchName: _usefulText(thread?.gitInfo?.branch),
       id: threadId,
       projectID: resolvedDirectory,
       directory: resolvedDirectory,
       parentID: parentSessionId,
-      title: thread?["name"] as String?,
+      title: thread?.name,
       time: _timeFromThread(thread),
     );
   }
@@ -565,14 +568,13 @@ class CodexPlugin implements CodexManagedApi {
       params: {"threadId": threadId},
     );
     _loadedThreads.add(threadId);
-    if (result is Map) {
-      _eventMapper.setThreadModel(threadId, result["model"] as String?);
-      _eventMapper.setThreadProvider(threadId, result["modelProvider"] as String?);
-    }
+    final response = _threadEnvelopeFrom(result);
+    _eventMapper.setThreadModel(threadId, response.model);
+    _eventMapper.setThreadProvider(threadId, response.modelProvider);
     // A thread resumed from a prior bridge run never re-emits `thread/started`,
     // so learn its directory here (from the resume payload, else its rollout)
     // to keep live rename events attributed to its real project.
-    final resumedCwd = _extractThread(result)?["cwd"] as String? ?? (result is Map ? result["cwd"] as String? : null);
+    final resumedCwd = response.thread?.cwd ?? response.cwd;
     _recordThreadDirectory(threadId, resumedCwd ?? _directoryForSession(threadId));
   }
 
@@ -602,19 +604,18 @@ class CodexPlugin implements CodexManagedApi {
     };
   }
 
-  Map<String, dynamic>? _extractThread(Object? result) {
-    if (result is! Map) return null;
-    final map = result.cast<String, dynamic>();
-    final thread = map["thread"];
-    if (thread is! Map) return null;
-    return thread.cast<String, dynamic>();
+  CodexThreadEnvelopeDto _threadEnvelopeFrom(Object? result) {
+    if (result is! Map) {
+      throw StateError("expected a Codex thread response object, got ${result.runtimeType}");
+    }
+    return CodexThreadEnvelopeDto.fromJson(result.cast<String, dynamic>());
   }
 
-  PluginSessionTime? _timeFromThread(Map<String, dynamic>? thread) {
+  PluginSessionTime? _timeFromThread(CodexThreadDto? thread) {
     if (thread == null) return null;
-    final createdAtSeconds = thread["createdAt"];
-    final updatedAtSeconds = thread["updatedAt"];
-    if (createdAtSeconds is! num || updatedAtSeconds is! num) return null;
+    final createdAtSeconds = thread.createdAt;
+    final updatedAtSeconds = thread.updatedAt;
+    if (createdAtSeconds == null || updatedAtSeconds == null) return null;
     return PluginSessionTime(
       created: (createdAtSeconds * 1000).round(),
       updated: (updatedAtSeconds * 1000).round(),
@@ -643,6 +644,7 @@ class CodexPlugin implements CodexManagedApi {
     );
     final directory = _directoryForSession(sessionId);
     return PluginSession(
+      branchName: null,
       id: sessionId,
       projectID: directory,
       directory: directory,
@@ -650,6 +652,11 @@ class CodexPlugin implements CodexManagedApi {
       title: title,
       time: null,
     );
+  }
+
+  String? _usefulText(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
   /// The normalized project directory for [sessionId]: the in-memory directory

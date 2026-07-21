@@ -1065,6 +1065,7 @@ PluginSession _session(
   required int updated,
 }) {
   return PluginSession(
+    branchName: null,
     id: id,
     projectID: directory,
     directory: directory,

@@ -43,6 +43,7 @@ class CodexCatalogRepository {
     final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
     final directory = normalizeProjectDirectory(directory: cwd);
     return PluginSession(
+      branchName: _usefulText(record.branch),
       id: record.id,
       projectID: directory,
       directory: directory,
@@ -56,5 +57,10 @@ class CodexCatalogRepository {
               archived: null,
             ),
     );
+  }
+
+  String? _usefulText(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }

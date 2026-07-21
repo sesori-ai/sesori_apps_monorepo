@@ -87,6 +87,7 @@ void main() {
     test("deletion discards a pending title", () async {
       plugin.sessions = const [
         PluginSession(
+          branchName: null,
           id: "s1",
           projectID: "/repo",
           directory: "/repo",
@@ -190,6 +191,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {
     renameCalls++;
     return PluginSession(
+      branchName: null,
       id: sessionId,
       projectID: "/repo",
       directory: "/repo",

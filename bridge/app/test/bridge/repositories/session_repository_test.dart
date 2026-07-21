@@ -193,7 +193,7 @@ void main() {
 
       final result = await repository.enrichSession(
         session: const Session(
-          branchName: null,
+          branchName: "backend/replacement",
           id: "s1",
           pluginId: "fake",
           projectID: "p1",
@@ -739,6 +739,7 @@ void main() {
         ),
       );
       plugin.renameSessionResult = const PluginSession(
+        branchName: null,
         id: "backend-s1",
         projectID: "p1",
         directory: "/tmp/worktree",
@@ -896,6 +897,7 @@ void main() {
         plugin.sessionsByWorktree = {
           "/moved/a": const [
             PluginSession(
+              branchName: null,
               id: "backend-live",
               // The plugin can only echo the directory it was asked about —
               // it has no notion of the bridge's stable identifier.
@@ -1215,6 +1217,7 @@ void main() {
         ..sessionsByWorktree = const {
           directory: [
             PluginSession(
+              branchName: null,
               id: "backend-root",
               projectID: directory,
               directory: directory,
@@ -1270,6 +1273,7 @@ void main() {
         ..sessionsByWorktree = const {
           "$directory/.": [
             PluginSession(
+              branchName: null,
               id: "backend-root",
               projectID: nativeProjectId,
               directory: "$directory/.",
@@ -1332,6 +1336,7 @@ void main() {
         ..sessionsByWorktree = const {
           normalizedAlias: [
             PluginSession(
+              branchName: null,
               id: "backend-root-one",
               projectID: nativeProjectId,
               directory: normalizedAlias,
@@ -1340,6 +1345,7 @@ void main() {
               time: PluginSessionTime(created: 1, updated: 2, archived: null),
             ),
             PluginSession(
+              branchName: null,
               id: "backend-root-two",
               projectID: nativeProjectId,
               directory: normalizedAlias,
@@ -1404,6 +1410,7 @@ void main() {
         ..sessionsByWorktree = const {
           healthyDirectory: [
             PluginSession(
+              branchName: null,
               id: "healthy-root",
               projectID: healthyDirectory,
               directory: healthyDirectory,
@@ -1432,6 +1439,7 @@ void main() {
 
   group("SessionRepository (bridge-derived)", () {
     PluginSession pluginSession(String directory, {required String id}) => PluginSession(
+      branchName: null,
       id: id,
       projectID: directory,
       directory: directory,
@@ -1713,6 +1721,7 @@ void main() {
         // never reaches it (ACP has no rename RPC).
         allSessions: [
           const PluginSession(
+            branchName: null,
             id: "s1",
             projectID: parent,
             directory: parent,
@@ -1818,6 +1827,7 @@ void main() {
       final plugin = _FakeDerivedPlugin(launchDirectory: "/repo", allSessions: const [])
         ..childSessions = const [
           PluginSession(
+            branchName: null,
             id: "new-backend-child",
             projectID: "/repo",
             directory: "/repo/new-child",
@@ -1854,6 +1864,7 @@ void main() {
         projectId: "/repo",
         parentSessionId: "stable-parent",
         directory: "/repo",
+        branchName: null,
         catalogTitle: "Child",
         archivedAt: null,
         createdAt: 2,
@@ -2020,6 +2031,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginMessageWithParts> messagesResult = const [];
   Map<String, PluginSessionStatus> sessionStatusesResult = const {};
   PluginSession createSessionResult = const PluginSession(
+    branchName: null,
     id: "created-session",
     projectID: "/repo",
     directory: "/repo",
@@ -2283,6 +2295,7 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {
     lastRenameSessionId = sessionId;
     return PluginSession(
+      branchName: null,
       id: sessionId,
       projectID: launchDirectory,
       directory: launchDirectory,

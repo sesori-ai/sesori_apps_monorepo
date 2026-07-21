@@ -573,6 +573,7 @@ void main() {
       final tracker = FakeActiveSessionTracker(resolvedWorktree: "/canonical-repo");
       final repository = FakeOpenCodeRepository(
         createdSession: const PluginSession(
+          branchName: null,
           id: "ses-new",
           projectID: "/repo",
           directory: "/repo/subdir",
@@ -612,6 +613,7 @@ void main() {
       final tracker = FakeActiveSessionTracker(resolvedWorktree: "/canonical-repo");
       final repository = FakeOpenCodeRepository(
         createdSession: const PluginSession(
+          branchName: null,
           id: "ses-new",
           projectID: "/repo",
           directory: "/repo/subdir",
@@ -639,6 +641,7 @@ void main() {
       final tracker = FakeActiveSessionTracker();
       final repository = FakeOpenCodeRepository(
         createdSession: const PluginSession(
+          branchName: null,
           id: "ses-new",
           projectID: "/repo",
           directory: "/repo/subdir",
@@ -2098,6 +2101,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastCreateParentSessionId = parentSessionId;
     return _createdSession ??
         const PluginSession(
+          branchName: null,
           id: "created",
           projectID: "/repo",
           directory: "/repo",
