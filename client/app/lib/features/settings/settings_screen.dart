@@ -10,10 +10,10 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/external_link.dart";
-import "../../core/legal_links.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/support_links.dart";
 import "../../core/widgets/connection_banner.dart";
+import "../../core/widgets/legal_document_sheet.dart";
 import "../../core/widgets/sesori_logo.dart";
 import "widgets/account_row.dart";
 import "widgets/appearance_picker.dart";
@@ -142,12 +142,12 @@ class _SettingsBody extends StatelessWidget {
                       _LegalRow(
                         icon: TablerRegular.file_text,
                         title: loc.settingsLegalTerms,
-                        url: LegalLinks.terms,
+                        document: LegalDocument.terms,
                       ),
                       _LegalRow(
                         icon: TablerRegular.lock,
                         title: loc.settingsLegalPrivacy,
-                        url: LegalLinks.privacy,
+                        document: LegalDocument.privacy,
                         isLast: true,
                       ),
                     ],
@@ -194,19 +194,19 @@ class _SupportRow extends StatelessWidget {
   }
 }
 
-/// A legal-document row. These are our own web pages, so they open in an
-/// in-app browser and the user returns with a single dismiss.
+/// A legal-document row. The backend serves these documents as markdown, so
+/// they open in a bottom sheet instead of handing off to a web page.
 class _LegalRow extends StatelessWidget {
   const _LegalRow({
     required this.icon,
     required this.title,
-    required this.url,
+    required this.document,
     this.isLast = false,
   });
 
   final IconData icon;
   final String title;
-  final String url;
+  final LegalDocument document;
   final bool isLast;
 
   @override
@@ -215,9 +215,7 @@ class _LegalRow extends StatelessWidget {
       icon: icon,
       title: Text(title),
       trailing: const Icon(TablerRegular.chevron_right),
-      onTap: () => unawaited(
-        openExternalLink(url: Uri.parse(url), mode: UrlLaunchMode.inAppBrowser),
-      ),
+      onTap: () => unawaited(showLegalDocumentSheet(context, document: document)),
       isLast: isLast,
     );
   }
@@ -255,7 +253,7 @@ class _AppFooter extends StatelessWidget {
             final info = snapshot.data;
             if (info == null) return const SizedBox.shrink();
             return Padding(
-              padding: const EdgeInsets.only(top: _versionGap),
+              padding: const EdgeInsetsDirectional.only(top: _versionGap),
               child: Text(
                 context.loc.settingsVersion(info.version, info.buildNumber),
                 textAlign: TextAlign.center,

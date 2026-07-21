@@ -169,6 +169,10 @@
   "settingsSectionLegal": "Legal",
   "settingsLegalTerms": "Terms of Service",
   "settingsLegalPrivacy": "Privacy Policy",
+  "legalDocumentRetry": "Retry",
+  "@legalDocumentRetry": {
+    "description": "Button that re-fetches a legal document after the load failed"
+  },
   "settingsClose": "Close settings",
   "settingsAppName": "Sesori",
   "@settingsAppName": {

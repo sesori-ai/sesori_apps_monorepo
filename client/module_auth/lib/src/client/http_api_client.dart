@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:developer" as developer;
 import "dart:io";
@@ -9,11 +10,47 @@ import "api_error.dart";
 import "api_response.dart";
 import "safe_api_client.dart";
 
+/// Timeout for [HttpApiClient.getText]. The documents it fetches are static and
+/// small, so a hung request is a failure, not slow progress.
+const _textTimeout = Duration(seconds: 15);
+
 @lazySingleton
 class HttpApiClient implements SafeApiClient {
   final http.Client _client;
 
   HttpApiClient(http.Client client) : _client = client;
+
+  /// GETs a document served as plain text (e.g. markdown) and returns the body
+  /// verbatim.
+  ///
+  /// The JSON methods below run every body through [jsonDecode]; a text
+  /// endpoint's body would fail that parse, so this one skips it. It stays off
+  /// the [SafeApiClient] interface, whose contract is JSON-shaped.
+  Future<ApiResponse<String>> getText({required Uri url}) async {
+    try {
+      final response = await _client.get(url).timeout(_textTimeout);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return ApiResponse.error(
+          ApiError.nonSuccessCode(
+            errorCode: response.statusCode,
+            rawErrorString: response.body,
+          ),
+        );
+      }
+      if (response.body.isEmpty) return ApiResponse.error(ApiError.emptyResponse());
+
+      return ApiResponse.success(response.body);
+    } on http.ClientException catch (e) {
+      return ApiResponse.error(ApiError.dartHttpClient(e));
+    } on TimeoutException catch (e) {
+      return ApiResponse.error(ApiError.dartHttpClient(e));
+    } on SocketException catch (e) {
+      return ApiResponse.error(ApiError.dartHttpClient(e));
+    } on HandshakeException catch (e) {
+      return ApiResponse.error(ApiError.dartHttpClient(e));
+    }
+  }
 
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing function

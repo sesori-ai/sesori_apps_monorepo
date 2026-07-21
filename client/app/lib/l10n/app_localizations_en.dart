@@ -211,6 +211,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLegalPrivacy => 'Privacy Policy';
 
   @override
+  String get legalDocumentRetry => 'Retry';
+
+  @override
   String get settingsClose => 'Close settings';
 
   @override

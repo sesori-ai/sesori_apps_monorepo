@@ -475,6 +475,12 @@ abstract class AppLocalizations {
   /// **'Privacy Policy'**
   String get settingsLegalPrivacy;
 
+  /// Button that re-fetches a legal document after the load failed
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get legalDocumentRetry;
+
   /// No description provided for @settingsClose.
   ///
   /// In en, this message translates to:

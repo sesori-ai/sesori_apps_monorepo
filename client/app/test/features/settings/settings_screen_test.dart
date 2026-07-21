@@ -8,7 +8,6 @@ import "package:package_info_plus/package_info_plus.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/legal_links.dart";
 import "package:sesori_mobile/core/support_links.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -32,6 +31,8 @@ class _StubAuthSession extends Mock implements AuthSession {
 class _MockAppearanceStore extends Mock implements AppearanceStore {}
 
 class _MockUrlLauncher extends Mock implements UrlLauncher {}
+
+class _MockLegalRepository extends Mock implements LegalRepository {}
 
 Widget _app({required AppearanceCubit appearance}) {
   final router = GoRouter(
@@ -72,11 +73,13 @@ void _useTallSurface(WidgetTester tester) {
 void main() {
   late AppearanceCubit appearance;
   late _MockUrlLauncher urlLauncher;
+  late _MockLegalRepository legalRepository;
 
   setUpAll(() {
     registerFallbackValue(Uri());
     registerFallbackValue(UrlLaunchMode.externalApp);
     registerFallbackValue(AppearanceMode.system);
+    registerFallbackValue(LegalDocument.terms);
   });
 
   setUp(() async {
@@ -98,6 +101,9 @@ void main() {
     urlLauncher = _MockUrlLauncher();
     when(() => urlLauncher.launch(any(), mode: any(named: "mode"))).thenAnswer((_) async => true);
     GetIt.instance.registerSingleton<UrlLauncher>(urlLauncher);
+
+    legalRepository = _MockLegalRepository();
+    GetIt.instance.registerSingleton<LegalRepository>(legalRepository);
   });
 
   tearDown(() async {
@@ -127,20 +133,44 @@ void main() {
     expect(appearance.state, AppearanceMode.dark);
   });
 
-  testWidgets("legal rows open our own pages in an in-app browser", (tester) async {
+  testWidgets("legal rows open the document in a sheet, not a browser", (tester) async {
     _useTallSurface(tester);
+    when(() => legalRepository.getMarkdown(document: any(named: "document")))
+        .thenAnswer((_) async => ApiResponse.success("# Privacy Policy\n\nHow we handle your data."));
+
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text("Privacy Policy"));
     await tester.pumpAndSettle();
 
-    verify(
-      () => urlLauncher.launch(
-        Uri.parse(LegalLinks.privacy),
-        mode: UrlLaunchMode.inAppBrowser,
-      ),
-    ).called(1);
+    verify(() => legalRepository.getMarkdown(document: LegalDocument.privacy)).called(1);
+    expect(find.text("How we handle your data."), findsOneWidget);
+    verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
+  });
+
+  testWidgets("a failed document load offers a retry that reloads it", (tester) async {
+    _useTallSurface(tester);
+    var attempt = 0;
+    when(() => legalRepository.getMarkdown(document: any(named: "document"))).thenAnswer((_) async {
+      attempt++;
+      return attempt == 1
+          ? ApiResponse.error(ApiError.dartHttpClient(Exception("offline")))
+          : ApiResponse.success("# Terms of Service\n\nThe agreement text.");
+    });
+
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Terms of Service"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Connection failed — check your network and try again."), findsOneWidget);
+
+    await tester.tap(find.text("Retry"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("The agreement text."), findsOneWidget);
   });
 
   testWidgets("support rows hand off to the channel's own app", (tester) async {
