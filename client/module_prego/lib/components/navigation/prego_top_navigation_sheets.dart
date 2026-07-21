@@ -9,21 +9,23 @@ import "../../module_prego.dart";
 enum PregoSheetTitleAlignment { center, start }
 
 /// The header of [PregoBottomSheet] — the Figma `pregoTopNavigationSheets`
-/// component: a drag [showGrabber] pill above a fixed nav row with a leading
-/// close/back button, a centred-or-leading title (+ optional [subtitle]), and
-/// trailing [actions].
+/// component: a drag [showGrabber] pill above a fixed nav row with an optional
+/// leading back button, a centred-or-leading title (+ optional [subtitle]), and
+/// trailing [actions] plus the close button.
 ///
 /// It is the sheet counterpart to [PregoTopNavigation]: same transparent bar
-/// with glass buttons ([PregoButtonsIconGlass]) and the same leading resolution,
-/// but with a drag grabber instead of a large collapsing title. It is a fixed,
-/// self-contained header — it never collapses on scroll — so a sheet body can
-/// scroll behind it (see [PregoBottomSheet]).
+/// with glass buttons ([PregoButtonsIconGlass]), but with a drag grabber instead
+/// of a large collapsing title. It is a fixed, self-contained header — it never
+/// collapses on scroll — so a sheet body can scroll behind it (see
+/// [PregoBottomSheet]).
+///
+/// The close button ([TablerRegular.x], wired to [onClose]) sits on the trailing
+/// edge, after [actions]. In-sheet navigation ([onBack]) instead shows a leading
+/// back arrow ([TablerRegular.chevron_left]) and no close.
 ///
 /// Leading resolution (first match wins):
 /// 1. an explicit [leading] widget;
-/// 2. a glass back button ([TablerRegular.chevron_left]) wired to [onBack], for
-///    in-sheet navigation (the X becomes a back arrow);
-/// 3. a glass close button ([TablerRegular.x]) wired to [onClose].
+/// 2. a glass back button wired to [onBack], for in-sheet navigation.
 ///
 /// The back/close affordances announce the platform's standard
 /// back/close tooltips so screen readers describe them without a bespoke string.
@@ -98,7 +100,7 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
   @override
   Widget build(BuildContext context) {
     final leading = _resolveLeading(context);
-    final actions = this.actions;
+    final trailing = _resolveTrailing(context);
     final isCenter = alignment == PregoSheetTitleAlignment.center;
 
     // Same layout PregoTopNavigation uses: hand NavigationToolbar a single
@@ -118,9 +120,7 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
           alignment: alignment,
           lineHeight: _titleLineHeight,
         ),
-        trailing: actions == null
-            ? null
-            : Row(mainAxisSize: MainAxisSize.min, spacing: PregoSpacing.md, children: actions),
+        trailing: trailing,
       ),
     );
 
@@ -171,24 +171,38 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
     if (leading != null) return leading;
 
     final onBack = this.onBack;
-    if (onBack != null) {
-      return PregoButtonsIconGlass(
-        icon: TablerRegular.chevron_left,
-        onPressed: onBack,
-        semanticLabel: MaterialLocalizations.of(context).backButtonTooltip,
-      );
-    }
-
-    final onClose = this.onClose;
-    if (onClose != null) {
-      return PregoButtonsIconGlass(
-        icon: TablerRegular.x,
-        onPressed: onClose,
-        semanticLabel: MaterialLocalizations.of(context).closeButtonTooltip,
-      );
-    }
+    if (onBack != null) return _backButton(context, onBack);
 
     return null;
+  }
+
+  /// Resolves the trailing bar row: [actions] followed by the close button.
+  /// In-sheet navigation ([onBack]) replaces the close with the leading back
+  /// arrow, so no close is shown then. Null when the row would be empty.
+  Widget? _resolveTrailing(BuildContext context) {
+    final onClose = this.onClose;
+    final trailingClose = onClose != null && onBack == null ? _closeButton(context, onClose) : null;
+
+    final children = [...?actions, ?trailingClose];
+    if (children.isEmpty) return null;
+
+    return Row(mainAxisSize: MainAxisSize.min, spacing: PregoSpacing.md, children: children);
+  }
+
+  Widget _backButton(BuildContext context, VoidCallback onBack) {
+    return PregoButtonsIconGlass(
+      icon: TablerRegular.chevron_left,
+      onPressed: onBack,
+      semanticLabel: MaterialLocalizations.of(context).backButtonTooltip,
+    );
+  }
+
+  Widget _closeButton(BuildContext context, VoidCallback onClose) {
+    return PregoButtonsIconGlass(
+      icon: TablerRegular.x,
+      onPressed: onClose,
+      semanticLabel: MaterialLocalizations.of(context).closeButtonTooltip,
+    );
   }
 }
 
