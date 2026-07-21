@@ -4,6 +4,7 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:path/path.dart" as p;
 
 typedef _BenchmarkOptions = ({

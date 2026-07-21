@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -41,12 +42,16 @@ class CodexRolloutApi {
     if (path == null) return const [];
     final file = File(path);
     if (!file.existsSync()) return const [];
+    final lines = file.readAsLinesSync();
     return [
-      for (final line in file.readAsLinesSync())
-        if (line.trim().isNotEmpty)
+      for (var i = 0; i < lines.length; i++)
+        if (lines[i].trim().isNotEmpty)
           (
-            entry: _decodeIndexEntry(line),
-            raw: line,
+            entry: _decodeIndexEntry(
+              lines[i],
+              warnOnMalformed: i < lines.length - 1,
+            ),
+            raw: lines[i],
           ),
     ];
   }
@@ -68,10 +73,8 @@ class CodexRolloutApi {
   List<CodexRolloutLineDto> readHeader({required String rolloutPath}) {
     final file = File(rolloutPath);
     if (!file.existsSync()) return const [];
-    final lines = file.readAsLinesSync();
-    final scanLimit = lines.length < 32 ? lines.length : 32;
     return _decodeRolloutLines(
-      lines.take(scanLimit),
+      _readPrefixLines(file: file, maxLines: 32),
       malformedWarning: "[codex] skipping malformed rollout header record",
     );
   }
@@ -79,7 +82,11 @@ class CodexRolloutApi {
   List<CodexRolloutLineDto> readTranscript({required String rolloutPath}) {
     final file = File(rolloutPath);
     if (!file.existsSync()) return const [];
-    return _decodeRolloutLines(file.readAsLinesSync());
+    return _decodeRolloutLines(
+      file.readAsLinesSync(),
+      malformedWarning: "[codex] skipping malformed rollout transcript record",
+      ignoreMalformedLastLine: true,
+    );
   }
 
   void deleteRollout({required String rolloutPath}) {
@@ -95,11 +102,16 @@ class CodexRolloutApi {
     file.writeAsStringSync(lines.isEmpty ? "" : "${lines.join("\n")}\n");
   }
 
-  CodexSessionIndexEntryDto? _decodeIndexEntry(String line) {
+  CodexSessionIndexEntryDto? _decodeIndexEntry(
+    String line, {
+    required bool warnOnMalformed,
+  }) {
     try {
       return CodexSessionIndexEntryDto.fromJson(jsonDecodeMap(line));
-    } on Object {
-      // Codex appends this file live, so a partial final line is expected.
+    } on Object catch (error, stackTrace) {
+      if (warnOnMalformed) {
+        Log.w("[codex] skipping malformed session index record", error, stackTrace);
+      }
       return null;
     }
   }
@@ -107,18 +119,44 @@ class CodexRolloutApi {
   List<CodexRolloutLineDto> _decodeRolloutLines(
     Iterable<String> lines, {
     String? malformedWarning,
+    bool ignoreMalformedLastLine = false,
   }) {
+    final source = lines.toList(growable: false);
     final decoded = <CodexRolloutLineDto>[];
-    for (final line in lines) {
+    for (var i = 0; i < source.length; i++) {
+      final line = source[i];
       if (line.trim().isEmpty) continue;
       try {
         decoded.add(CodexRolloutLineDto.fromJson(jsonDecodeMap(line)));
       } on Object catch (error, stackTrace) {
-        if (malformedWarning != null) {
+        final isExpectedPartialLine = ignoreMalformedLastLine && i == source.length - 1;
+        if (malformedWarning != null && !isExpectedPartialLine) {
           Log.w(malformedWarning, error, stackTrace);
         }
       }
     }
     return decoded;
+  }
+
+  List<String> _readPrefixLines({required File file, required int maxLines}) {
+    final bytes = <int>[];
+    final handle = file.openSync();
+    try {
+      var lineCount = 0;
+      while (lineCount < maxLines) {
+        final chunk = handle.readSync(8192);
+        if (chunk.isEmpty) break;
+        for (final byte in chunk) {
+          bytes.add(byte);
+          if (byte == 0x0A) {
+            lineCount += 1;
+            if (lineCount == maxLines) break;
+          }
+        }
+      }
+    } finally {
+      handle.closeSync();
+    }
+    return const LineSplitter().convert(utf8.decode(bytes));
   }
 }

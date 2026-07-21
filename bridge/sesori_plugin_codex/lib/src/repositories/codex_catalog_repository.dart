@@ -35,6 +35,12 @@ class CodexCatalogRepository {
       if (rolloutPath == null) continue;
       final indexEntry = indexEntries[id];
       final metadata = _readMetadata(rolloutPath);
+      if (metadata != null && metadata.id != id) {
+        Log.w(
+          "[codex] rollout session id mismatch: filename=$id header=${metadata.id}",
+        );
+        continue;
+      }
       records.add(
         CodexSessionRecord(
           id: id,
@@ -111,6 +117,7 @@ class CodexCatalogRepository {
         _rolloutApi.deleteRollout(rolloutPath: rolloutPath);
       } on Object catch (error, stackTrace) {
         Log.w("[codex] failed to delete rollout for $sessionId", error, stackTrace);
+        return;
       }
     }
 
@@ -197,6 +204,7 @@ class CodexCatalogRepository {
     }
     if (id == null) return null;
     return _CodexSessionMetadata(
+      id: id,
       cwd: cwd,
       timestamp: timestamp,
       modelProvider: modelProvider,
@@ -251,6 +259,7 @@ class CodexCatalogRepository {
 
 class _CodexSessionMetadata {
   const _CodexSessionMetadata({
+    required this.id,
     required this.cwd,
     required this.timestamp,
     required this.modelProvider,
@@ -259,6 +268,7 @@ class _CodexSessionMetadata {
     required this.branch,
   });
 
+  final String id;
   final String? cwd;
   final DateTime? timestamp;
   final String? modelProvider;

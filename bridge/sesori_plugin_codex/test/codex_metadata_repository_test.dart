@@ -2,6 +2,9 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
+import "package:codex_plugin/src/repositories/codex_message_repository.dart";
+import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:path/path.dart" as p;
 import "package:test/test.dart";
 

@@ -3,6 +3,9 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
+import "package:codex_plugin/src/repositories/codex_message_repository.dart";
+import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -67,6 +70,17 @@ void main() {
       expect(index.existsSync(), isTrue);
     });
 
+    test("readIndex warns for malformed non-final rows", () {
+      File(p.join(codexHome.path, "session_index.jsonl")).writeAsStringSync(
+        '${jsonEncode({"id": "valid"})}\nnot-json\n{"partial"',
+      );
+
+      final output = _captureWarnings(rolloutApi.readSessionIndex);
+
+      expect(output, contains("malformed session index record"));
+      expect("malformed session index record".allMatches(output), hasLength(1));
+    });
+
     test("listRolloutFiles walks the sessions tree and extracts UUIDs", () {
       _writeRollout(
         codexHome,
@@ -110,6 +124,34 @@ void main() {
       expect(meta?.git?.branch, equals("sesori/codex-branch"));
     });
 
+    test("readHeader does not read beyond its bounded scan window", () {
+      final path = p.join(codexHome.path, "bounded-header.jsonl");
+      final header = jsonEncode({
+        "type": "session_meta",
+        "payload": {"id": "session-id", "cwd": "/repo/app"},
+      });
+      File(path).writeAsBytesSync([
+        ...utf8.encode("$header\n${List.filled(31, "{}").join("\n")}\n"),
+        0xFF,
+      ]);
+
+      final lines = rolloutApi.readHeader(rolloutPath: path);
+
+      expect(lines.first.payload?.id, "session-id");
+    });
+
+    test("readTranscript warns for malformed non-final rows", () {
+      final path = p.join(codexHome.path, "malformed-transcript.jsonl");
+      File(path).writeAsStringSync('{}\nnot-json\n{"partial"');
+
+      final output = _captureWarnings(
+        () => rolloutApi.readTranscript(rolloutPath: path),
+      );
+
+      expect(output, contains("malformed rollout transcript record"));
+      expect("malformed rollout transcript record".allMatches(output), hasLength(1));
+    });
+
     test("listSessions joins index + rollout header and sorts by updatedAt", () {
       _writeRollout(
         codexHome,
@@ -146,6 +188,23 @@ void main() {
       expect(records[0].threadName, equals("Newer"));
       expect(records[1].threadName, equals("Older"));
       expect(records[0].cwd, equals("/repo/app"));
+    });
+
+    test("catalog rejects a rollout whose header id mismatches its filename", () {
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl",
+        sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        cwd: "/repo/wrong",
+      );
+
+      late final List<CodexSessionRecord> records;
+      final output = _captureWarnings(() {
+        records = catalogRepository.listSessionRecords();
+      });
+
+      expect(records, isEmpty);
+      expect(output, contains("rollout session id mismatch"));
     });
 
     test("catalog isolate enumeration keeps the main isolate responsive", () async {
@@ -330,6 +389,48 @@ void main() {
       final patch = messages[2].parts.single;
       expect(patch.tool, equals("edit"));
       expect(patch.state?.status, equals(PluginToolStatus.running));
+    });
+
+    test("readMessages clips tool output by complete Unicode code points", () {
+      final emoji = String.fromCharCode(0x1F600);
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T11-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
+        sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call",
+              "name": "exec_command",
+              "call_id": "c1",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call_output",
+              "call_id": "c1",
+              "output": "${"x" * 499}${emoji}tail",
+            },
+          }),
+        ],
+      );
+
+      final output = messageRepository
+          .readMessages(
+            rolloutPath: path,
+            sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+          )
+          .single
+          .parts
+          .single
+          .state
+          ?.output;
+
+      expect(output?.runes, hasLength(maxToolOutputLength));
+      expect(output, endsWith(emoji));
     });
   });
 
@@ -583,6 +684,30 @@ void main() {
       expect(assistant.providerID, equals("openai"));
     });
   });
+}
+
+String _captureWarnings(void Function() action) {
+  final previousLevel = Log.level;
+  final stderr = _BufferingStdout();
+  try {
+    Log.level = LogLevel.warning;
+    IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+class _BufferingStdout implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 String _writeRollout(

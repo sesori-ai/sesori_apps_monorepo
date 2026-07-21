@@ -36,6 +36,7 @@ class CodexSessionService {
 
   void detachThreadRepository() {
     _threadRepository = null;
+    _loadedThreads.clear();
   }
 
   Future<List<PluginSession>> listAllSessions() => _catalogRepository.listAllSessions();

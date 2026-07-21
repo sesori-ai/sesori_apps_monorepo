@@ -161,8 +161,6 @@ class CodexMessageRepository {
     return messages;
   }
 
-  static const int _maxToolOutputLength = 8000;
-
   PluginMessageWithParts _toolMessage({
     required String messageId,
     required String sessionId,
@@ -172,8 +170,8 @@ class CodexMessageRepository {
     required String? title,
     required String? output,
   }) {
-    final clipped = output != null && output.length > _maxToolOutputLength
-        ? output.substring(0, _maxToolOutputLength)
+    final clipped = output != null && output.runes.length > maxToolOutputLength
+        ? String.fromCharCodes(output.runes.take(maxToolOutputLength))
         : output;
     return PluginMessageWithParts(
       info: info,

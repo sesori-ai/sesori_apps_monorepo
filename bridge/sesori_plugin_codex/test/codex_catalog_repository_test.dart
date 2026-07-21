@@ -1,4 +1,7 @@
+import "dart:io";
+
 import "package:codex_plugin/src/api/codex_rollout_api.dart";
+import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:test/test.dart";
@@ -105,6 +108,17 @@ void main() {
         isEmpty,
       );
     });
+
+    test("keeps the index entry when rollout deletion fails", () {
+      final rolloutApi = _DeleteFailingRolloutApi();
+      final repository = CodexCatalogRepository(rolloutApi: rolloutApi);
+
+      repository.deleteSession(
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+      );
+
+      expect(rolloutApi.wroteIndex, isFalse);
+    });
   });
 }
 
@@ -135,4 +149,37 @@ class _StubCodexCatalogRepository extends CodexCatalogRepository {
 
   @override
   Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
+}
+
+class _DeleteFailingRolloutApi extends CodexRolloutApi {
+  _DeleteFailingRolloutApi() : super(environment: const {});
+
+  bool wroteIndex = false;
+
+  @override
+  List<String> listRolloutPaths() => [
+    "/rollout-2026-01-01T00-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl",
+  ];
+
+  @override
+  List<CodexSessionIndexLine> readSessionIndexLines() => [
+    (
+      entry: const CodexSessionIndexEntryDto(
+        id: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        threadName: "Session",
+        updatedAt: null,
+      ),
+      raw: '{"id":"019a0000-1111-2222-3333-aaaaaaaaaaaa"}',
+    ),
+  ];
+
+  @override
+  void deleteRollout({required String rolloutPath}) {
+    throw const FileSystemException("denied");
+  }
+
+  @override
+  void writeSessionIndex({required List<String> lines}) {
+    wroteIndex = true;
+  }
 }
