@@ -1,3 +1,4 @@
+import "package:flutter/cupertino.dart" show CupertinoPage;
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
@@ -52,13 +53,19 @@ extension AppRouteToGoRoute on AppRouteDef {
         ),
       );
     }
-    // Settings presents as a full-screen modal (slides up from the bottom on
-    // iOS) closed via its X button rather than a back chevron.
+    // Settings presents as a full-screen modal that slides up from the bottom
+    // and is closed via its X button rather than a back chevron.
+    //
+    // A CupertinoPage — not a MaterialPage — because only the Cupertino route
+    // honours `fullscreenDialog` with the bottom-up slide. Android's default
+    // page transition ignores the flag, so a MaterialPage would push settings
+    // in sideways like any other screen. CupertinoPageRoute ignores the
+    // platform, giving both surfaces the same modal motion.
     if (this == AppRouteDef.settings) {
       return GoRoute(
         path: path,
         routes: routes,
-        pageBuilder: (context, state) => MaterialPage<void>(
+        pageBuilder: (context, state) => CupertinoPage<void>(
           key: state.pageKey,
           fullscreenDialog: true,
           child: _buildScreen(context: context, state: state),
