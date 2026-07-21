@@ -49,7 +49,6 @@ class CodexThreadRepository {
     final created = record.createdAt;
     final updated = record.updatedAt;
     return PluginSession(
-      branchName: record.branch,
       id: record.id,
       projectID: directory,
       directory: directory,
@@ -89,7 +88,6 @@ class CodexThreadRepository {
       updatedAt: _milliseconds(thread.updatedAt),
       model: _usefulText(dto.model),
       modelProvider: _usefulText(thread.modelProvider) ?? _usefulText(dto.modelProvider),
-      branch: _usefulText(thread.gitInfo?.branch),
     );
   }
 

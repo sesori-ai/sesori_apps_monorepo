@@ -114,14 +114,12 @@ void main() {
         cwd: "/repo/app",
         timestamp: "2026-04-17T10:00:00Z",
         cliVersion: "0.121.0",
-        branch: "sesori/codex-branch",
       );
       final meta = rolloutApi.readHeader(rolloutPath: path).first.payload;
       expect(meta?.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
       expect(meta?.cwd, equals("/repo/app"));
       expect(meta?.timestamp, equals("2026-04-17T10:00:00Z"));
       expect(meta?.cliVersion, equals("0.121.0"));
-      expect(meta?.git?.branch, equals("sesori/codex-branch"));
     });
 
     test("readHeader does not read beyond its bounded scan window", () {
@@ -717,7 +715,6 @@ String _writeRollout(
   required String cwd,
   String timestamp = "2026-04-17T10:00:00Z",
   String cliVersion = "0.121.0",
-  String? branch,
   List<String> extraLines = const [],
 }) {
   final full = p.join(codexHome.path, path);
@@ -732,7 +729,6 @@ String _writeRollout(
         "cwd": cwd,
         "cli_version": cliVersion,
         "model_provider": "openai",
-        if (branch != null) "git": {"branch": branch},
       },
     }),
     ...extraLines,

@@ -52,7 +52,6 @@ class CodexCatalogRepository {
           cliVersion: metadata?.cliVersion,
           modelProvider: metadata?.modelProvider,
           model: metadata?.model,
-          branch: metadata?.branch,
         ),
       );
     }
@@ -180,7 +179,6 @@ class CodexCatalogRepository {
     String? modelProvider;
     String? cliVersion;
     String? model;
-    String? branch;
     for (final line in lines) {
       switch (line.type) {
         case CodexRolloutLineType.sessionMeta:
@@ -192,7 +190,6 @@ class CodexCatalogRepository {
           timestamp = _tryParseDate(payload?.timestamp);
           modelProvider = payload?.modelProvider;
           cliVersion = payload?.cliVersion;
-          branch = payload?.git?.branch;
         case CodexRolloutLineType.turnContext:
           final candidate = line.payload?.model;
           if (candidate != null && candidate.isNotEmpty) model = candidate;
@@ -210,7 +207,6 @@ class CodexCatalogRepository {
       modelProvider: modelProvider,
       model: model,
       cliVersion: cliVersion,
-      branch: branch,
     );
   }
 
@@ -221,7 +217,6 @@ class CodexCatalogRepository {
     final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
     final directory = normalizeProjectDirectory(directory: cwd);
     return PluginSession(
-      branchName: _usefulText(record.branch),
       id: record.id,
       projectID: directory,
       directory: directory,
@@ -246,11 +241,6 @@ class CodexCatalogRepository {
     return uuid.length == 36 ? uuid : null;
   }
 
-  String? _usefulText(String? value) {
-    final trimmed = value?.trim();
-    return trimmed == null || trimmed.isEmpty ? null : trimmed;
-  }
-
   DateTime? _tryParseDate(String? raw) {
     if (raw == null || raw.isEmpty) return null;
     return DateTime.tryParse(raw);
@@ -265,7 +255,6 @@ class _CodexSessionMetadata {
     required this.modelProvider,
     required this.model,
     required this.cliVersion,
-    required this.branch,
   });
 
   final String id;
@@ -274,5 +263,4 @@ class _CodexSessionMetadata {
   final String? modelProvider;
   final String? model;
   final String? cliVersion;
-  final String? branch;
 }

@@ -484,7 +484,7 @@ class CodexEventMapper {
       cwd: thread.directory,
     );
     return shared.Session(
-      branchName: thread.branch,
+      branchName: null,
       id: thread.id,
       pluginId: pluginId,
       projectID: projectId,

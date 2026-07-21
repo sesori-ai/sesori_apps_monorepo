@@ -177,7 +177,7 @@ $CodexThreadDtoCopyWith<$Res>? get thread {
 /// @nodoc
 mixin _$CodexThreadDto {
 
- String? get id; String? get name; String? get cwd; num? get createdAt; num? get updatedAt; String? get modelProvider; CodexThreadGitInfoDto? get gitInfo;
+ String? get id; String? get name; String? get cwd; num? get createdAt; num? get updatedAt; String? get modelProvider;
 /// Create a copy of CodexThreadDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -188,16 +188,16 @@ $CodexThreadDtoCopyWith<CodexThreadDto> get copyWith => _$CodexThreadDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.gitInfo, gitInfo) || other.gitInfo == gitInfo));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider,gitInfo);
+int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider);
 
 @override
 String toString() {
-  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider, gitInfo: $gitInfo)';
+  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider)';
 }
 
 
@@ -208,11 +208,11 @@ abstract mixin class $CodexThreadDtoCopyWith<$Res>  {
   factory $CodexThreadDtoCopyWith(CodexThreadDto value, $Res Function(CodexThreadDto) _then) = _$CodexThreadDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id, String? name, String? cwd, num? createdAt, num? updatedAt, String? modelProvider, CodexThreadGitInfoDto? gitInfo
+ String? id, String? name, String? cwd, num? createdAt, num? updatedAt, String? modelProvider
 });
 
 
-$CodexThreadGitInfoDtoCopyWith<$Res>? get gitInfo;
+
 
 }
 /// @nodoc
@@ -225,7 +225,7 @@ class _$CodexThreadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexThreadDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? name = freezed,Object? cwd = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? modelProvider = freezed,Object? gitInfo = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? name = freezed,Object? cwd = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? modelProvider = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -233,23 +233,10 @@ as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non
 as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as num?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as num?,modelProvider: freezed == modelProvider ? _self.modelProvider : modelProvider // ignore: cast_nullable_to_non_nullable
-as String?,gitInfo: freezed == gitInfo ? _self.gitInfo : gitInfo // ignore: cast_nullable_to_non_nullable
-as CodexThreadGitInfoDto?,
+as String?,
   ));
 }
-/// Create a copy of CodexThreadDto
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$CodexThreadGitInfoDtoCopyWith<$Res>? get gitInfo {
-    if (_self.gitInfo == null) {
-    return null;
-  }
 
-  return $CodexThreadGitInfoDtoCopyWith<$Res>(_self.gitInfo!, (value) {
-    return _then(_self.copyWith(gitInfo: value));
-  });
-}
 }
 
 
@@ -258,7 +245,7 @@ $CodexThreadGitInfoDtoCopyWith<$Res>? get gitInfo {
 @JsonSerializable(createToJson: false)
 
 class _CodexThreadDto implements CodexThreadDto {
-  const _CodexThreadDto({required this.id, required this.name, required this.cwd, required this.createdAt, required this.updatedAt, required this.modelProvider, required this.gitInfo});
+  const _CodexThreadDto({required this.id, required this.name, required this.cwd, required this.createdAt, required this.updatedAt, required this.modelProvider});
   factory _CodexThreadDto.fromJson(Map<String, dynamic> json) => _$CodexThreadDtoFromJson(json);
 
 @override final  String? id;
@@ -267,7 +254,6 @@ class _CodexThreadDto implements CodexThreadDto {
 @override final  num? createdAt;
 @override final  num? updatedAt;
 @override final  String? modelProvider;
-@override final  CodexThreadGitInfoDto? gitInfo;
 
 /// Create a copy of CodexThreadDto
 /// with the given fields replaced by the non-null parameter values.
@@ -279,16 +265,16 @@ _$CodexThreadDtoCopyWith<_CodexThreadDto> get copyWith => __$CodexThreadDtoCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.gitInfo, gitInfo) || other.gitInfo == gitInfo));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider,gitInfo);
+int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider);
 
 @override
 String toString() {
-  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider, gitInfo: $gitInfo)';
+  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider)';
 }
 
 
@@ -299,11 +285,11 @@ abstract mixin class _$CodexThreadDtoCopyWith<$Res> implements $CodexThreadDtoCo
   factory _$CodexThreadDtoCopyWith(_CodexThreadDto value, $Res Function(_CodexThreadDto) _then) = __$CodexThreadDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? name, String? cwd, num? createdAt, num? updatedAt, String? modelProvider, CodexThreadGitInfoDto? gitInfo
+ String? id, String? name, String? cwd, num? createdAt, num? updatedAt, String? modelProvider
 });
 
 
-@override $CodexThreadGitInfoDtoCopyWith<$Res>? get gitInfo;
+
 
 }
 /// @nodoc
@@ -316,7 +302,7 @@ class __$CodexThreadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexThreadDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? name = freezed,Object? cwd = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? modelProvider = freezed,Object? gitInfo = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? name = freezed,Object? cwd = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? modelProvider = freezed,}) {
   return _then(_CodexThreadDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -324,148 +310,6 @@ as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non
 as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as num?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as num?,modelProvider: freezed == modelProvider ? _self.modelProvider : modelProvider // ignore: cast_nullable_to_non_nullable
-as String?,gitInfo: freezed == gitInfo ? _self.gitInfo : gitInfo // ignore: cast_nullable_to_non_nullable
-as CodexThreadGitInfoDto?,
-  ));
-}
-
-/// Create a copy of CodexThreadDto
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$CodexThreadGitInfoDtoCopyWith<$Res>? get gitInfo {
-    if (_self.gitInfo == null) {
-    return null;
-  }
-
-  return $CodexThreadGitInfoDtoCopyWith<$Res>(_self.gitInfo!, (value) {
-    return _then(_self.copyWith(gitInfo: value));
-  });
-}
-}
-
-
-/// @nodoc
-mixin _$CodexThreadGitInfoDto {
-
- String? get branch;
-/// Create a copy of CodexThreadGitInfoDto
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$CodexThreadGitInfoDtoCopyWith<CodexThreadGitInfoDto> get copyWith => _$CodexThreadGitInfoDtoCopyWithImpl<CodexThreadGitInfoDto>(this as CodexThreadGitInfoDto, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadGitInfoDto&&(identical(other.branch, branch) || other.branch == branch));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,branch);
-
-@override
-String toString() {
-  return 'CodexThreadGitInfoDto(branch: $branch)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $CodexThreadGitInfoDtoCopyWith<$Res>  {
-  factory $CodexThreadGitInfoDtoCopyWith(CodexThreadGitInfoDto value, $Res Function(CodexThreadGitInfoDto) _then) = _$CodexThreadGitInfoDtoCopyWithImpl;
-@useResult
-$Res call({
- String? branch
-});
-
-
-
-
-}
-/// @nodoc
-class _$CodexThreadGitInfoDtoCopyWithImpl<$Res>
-    implements $CodexThreadGitInfoDtoCopyWith<$Res> {
-  _$CodexThreadGitInfoDtoCopyWithImpl(this._self, this._then);
-
-  final CodexThreadGitInfoDto _self;
-  final $Res Function(CodexThreadGitInfoDto) _then;
-
-/// Create a copy of CodexThreadGitInfoDto
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? branch = freezed,}) {
-  return _then(_self.copyWith(
-branch: freezed == branch ? _self.branch : branch // ignore: cast_nullable_to_non_nullable
-as String?,
-  ));
-}
-
-}
-
-
-
-/// @nodoc
-@JsonSerializable(createToJson: false)
-
-class _CodexThreadGitInfoDto implements CodexThreadGitInfoDto {
-  const _CodexThreadGitInfoDto({required this.branch});
-  factory _CodexThreadGitInfoDto.fromJson(Map<String, dynamic> json) => _$CodexThreadGitInfoDtoFromJson(json);
-
-@override final  String? branch;
-
-/// Create a copy of CodexThreadGitInfoDto
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$CodexThreadGitInfoDtoCopyWith<_CodexThreadGitInfoDto> get copyWith => __$CodexThreadGitInfoDtoCopyWithImpl<_CodexThreadGitInfoDto>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadGitInfoDto&&(identical(other.branch, branch) || other.branch == branch));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,branch);
-
-@override
-String toString() {
-  return 'CodexThreadGitInfoDto(branch: $branch)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class _$CodexThreadGitInfoDtoCopyWith<$Res> implements $CodexThreadGitInfoDtoCopyWith<$Res> {
-  factory _$CodexThreadGitInfoDtoCopyWith(_CodexThreadGitInfoDto value, $Res Function(_CodexThreadGitInfoDto) _then) = __$CodexThreadGitInfoDtoCopyWithImpl;
-@override @useResult
-$Res call({
- String? branch
-});
-
-
-
-
-}
-/// @nodoc
-class __$CodexThreadGitInfoDtoCopyWithImpl<$Res>
-    implements _$CodexThreadGitInfoDtoCopyWith<$Res> {
-  __$CodexThreadGitInfoDtoCopyWithImpl(this._self, this._then);
-
-  final _CodexThreadGitInfoDto _self;
-  final $Res Function(_CodexThreadGitInfoDto) _then;
-
-/// Create a copy of CodexThreadGitInfoDto
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? branch = freezed,}) {
-  return _then(_CodexThreadGitInfoDto(
-branch: freezed == branch ? _self.branch : branch // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

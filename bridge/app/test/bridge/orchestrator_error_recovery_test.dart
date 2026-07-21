@@ -231,7 +231,6 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
-    branchName: null,
     id: "",
     projectID: "",
     directory: "",
@@ -245,7 +244,6 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
     required String sessionId,
     required String title,
   }) async => const PluginSession(
-    branchName: null,
     id: "",
     projectID: "",
     directory: "",

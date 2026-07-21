@@ -9,7 +9,6 @@ class CodexSessionRecord {
     required this.cliVersion,
     required this.modelProvider,
     required this.model,
-    required this.branch,
   });
 
   final String id;
@@ -21,5 +20,4 @@ class CodexSessionRecord {
   final String? cliVersion;
   final String? modelProvider;
   final String? model;
-  final String? branch;
 }

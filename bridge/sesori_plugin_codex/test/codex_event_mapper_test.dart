@@ -65,7 +65,6 @@ void main() {
               "updatedAt": 1779293090,
               "status": {"type": "idle"},
               "modelProvider": "openai",
-              "gitInfo": {"branch": "  sesori/codex-branch  "},
               "cliVersion": "0.121.0",
               "source": "vscode",
             },
@@ -81,7 +80,6 @@ void main() {
       expect(session.projectID, projectCwd);
       expect(session.directory, "/repo/app");
       expect(session.title, "Plan the theme");
-      expect(session.branchName, "sesori/codex-branch");
       expect(session.time?.created, 1779293088000);
       expect(session.time?.updated, 1779293090000);
       expect(parseAsSesori(created), isA<shared.SesoriSessionCreated>());
@@ -109,7 +107,7 @@ void main() {
           const CodexServerNotification(
             method: "thread/started",
             params: {
-              "thread": {"id": "t-malformed", "gitInfo": "not-an-object"},
+              "thread": {"id": "t-malformed", "createdAt": "not-a-number"},
             },
           ),
         );

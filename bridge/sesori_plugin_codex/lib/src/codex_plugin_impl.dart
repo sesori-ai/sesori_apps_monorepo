@@ -621,7 +621,6 @@ class CodexPlugin implements CodexManagedApi {
     );
     final directory = _directoryForSession(sessionId);
     return PluginSession(
-      branchName: null,
       id: sessionId,
       projectID: directory,
       directory: directory,

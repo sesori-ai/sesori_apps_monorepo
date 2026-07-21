@@ -6,25 +6,27 @@ part of 'codex_rollout_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CodexSessionIndexEntryDto _$CodexSessionIndexEntryDtoFromJson(Map json) => _CodexSessionIndexEntryDto(
-  id: json['id'] as String?,
-  threadName: json['thread_name'] as String?,
-  updatedAt: json['updated_at'] as String?,
-);
+_CodexSessionIndexEntryDto _$CodexSessionIndexEntryDtoFromJson(Map json) =>
+    _CodexSessionIndexEntryDto(
+      id: json['id'] as String?,
+      threadName: json['thread_name'] as String?,
+      updatedAt: json['updated_at'] as String?,
+    );
 
-_CodexRolloutLineDto _$CodexRolloutLineDtoFromJson(Map json) => _CodexRolloutLineDto(
-  timestamp: json['timestamp'] as String?,
-  type: $enumDecodeNullable(
-    _$CodexRolloutLineTypeEnumMap,
-    json['type'],
-    unknownValue: CodexRolloutLineType.unknown,
-  ),
-  payload: json['payload'] == null
-      ? null
-      : CodexRolloutPayloadDto.fromJson(
-          Map<String, dynamic>.from(json['payload'] as Map),
-        ),
-);
+_CodexRolloutLineDto _$CodexRolloutLineDtoFromJson(Map json) =>
+    _CodexRolloutLineDto(
+      timestamp: json['timestamp'] as String?,
+      type: $enumDecodeNullable(
+        _$CodexRolloutLineTypeEnumMap,
+        json['type'],
+        unknownValue: CodexRolloutLineType.unknown,
+      ),
+      payload: json['payload'] == null
+          ? null
+          : CodexRolloutPayloadDto.fromJson(
+              Map<String, dynamic>.from(json['payload'] as Map),
+            ),
+    );
 
 const _$CodexRolloutLineTypeEnumMap = {
   CodexRolloutLineType.sessionMeta: 'session_meta',
@@ -33,45 +35,41 @@ const _$CodexRolloutLineTypeEnumMap = {
   CodexRolloutLineType.unknown: 'unknown',
 };
 
-_CodexRolloutPayloadDto _$CodexRolloutPayloadDtoFromJson(Map json) => _CodexRolloutPayloadDto(
-  id: json['id'] as String?,
-  cwd: json['cwd'] as String?,
-  timestamp: json['timestamp'] as String?,
-  modelProvider: json['model_provider'] as String?,
-  cliVersion: json['cli_version'] as String?,
-  model: json['model'] as String?,
-  git: json['git'] == null
-      ? null
-      : CodexRolloutGitDto.fromJson(
-          Map<String, dynamic>.from(json['git'] as Map),
-        ),
-  type: $enumDecodeNullable(
-    _$CodexRolloutPayloadTypeEnumMap,
-    json['type'],
-    unknownValue: CodexRolloutPayloadType.unknown,
-  ),
-  role: $enumDecodeNullable(
-    _$CodexRolloutRoleEnumMap,
-    json['role'],
-    unknownValue: CodexRolloutRole.unknown,
-  ),
-  content: (json['content'] as List<dynamic>?)
-      ?.map(
-        (e) => CodexRolloutContentDto.fromJson(
-          Map<String, dynamic>.from(e as Map),
-        ),
-      )
-      .toList(),
-  callId: json['call_id'] as String?,
-  name: json['name'] as String?,
-  arguments: json['arguments'] as String?,
-  output: json['output'] as String?,
-  action: json['action'] == null
-      ? null
-      : CodexRolloutActionDto.fromJson(
-          Map<String, dynamic>.from(json['action'] as Map),
-        ),
-);
+_CodexRolloutPayloadDto _$CodexRolloutPayloadDtoFromJson(Map json) =>
+    _CodexRolloutPayloadDto(
+      id: json['id'] as String?,
+      cwd: json['cwd'] as String?,
+      timestamp: json['timestamp'] as String?,
+      modelProvider: json['model_provider'] as String?,
+      cliVersion: json['cli_version'] as String?,
+      model: json['model'] as String?,
+      type: $enumDecodeNullable(
+        _$CodexRolloutPayloadTypeEnumMap,
+        json['type'],
+        unknownValue: CodexRolloutPayloadType.unknown,
+      ),
+      role: $enumDecodeNullable(
+        _$CodexRolloutRoleEnumMap,
+        json['role'],
+        unknownValue: CodexRolloutRole.unknown,
+      ),
+      content: (json['content'] as List<dynamic>?)
+          ?.map(
+            (e) => CodexRolloutContentDto.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList(),
+      callId: json['call_id'] as String?,
+      name: json['name'] as String?,
+      arguments: json['arguments'] as String?,
+      output: json['output'] as String?,
+      action: json['action'] == null
+          ? null
+          : CodexRolloutActionDto.fromJson(
+              Map<String, dynamic>.from(json['action'] as Map),
+            ),
+    );
 
 const _$CodexRolloutPayloadTypeEnumMap = {
   CodexRolloutPayloadType.functionCall: 'function_call',
@@ -86,16 +84,15 @@ const _$CodexRolloutRoleEnumMap = {
   CodexRolloutRole.unknown: 'unknown',
 };
 
-_CodexRolloutGitDto _$CodexRolloutGitDtoFromJson(Map json) => _CodexRolloutGitDto(branch: json['branch'] as String?);
-
-_CodexRolloutContentDto _$CodexRolloutContentDtoFromJson(Map json) => _CodexRolloutContentDto(
-  type: $enumDecodeNullable(
-    _$CodexRolloutContentTypeEnumMap,
-    json['type'],
-    unknownValue: CodexRolloutContentType.unknown,
-  ),
-  text: json['text'] as String?,
-);
+_CodexRolloutContentDto _$CodexRolloutContentDtoFromJson(Map json) =>
+    _CodexRolloutContentDto(
+      type: $enumDecodeNullable(
+        _$CodexRolloutContentTypeEnumMap,
+        json['type'],
+        unknownValue: CodexRolloutContentType.unknown,
+      ),
+      text: json['text'] as String?,
+    );
 
 const _$CodexRolloutContentTypeEnumMap = {
   CodexRolloutContentType.inputText: 'input_text',
@@ -106,10 +103,11 @@ const _$CodexRolloutContentTypeEnumMap = {
 _CodexRolloutActionDto _$CodexRolloutActionDtoFromJson(Map json) =>
     _CodexRolloutActionDto(query: json['query'] as String?);
 
-_CodexToolArgumentsDto _$CodexToolArgumentsDtoFromJson(Map json) => _CodexToolArgumentsDto(
-  cmd: json['cmd'],
-  command: json['command'],
-  path: json['path'],
-  filePath: json['file_path'],
-  query: json['query'],
-);
+_CodexToolArgumentsDto _$CodexToolArgumentsDtoFromJson(Map json) =>
+    _CodexToolArgumentsDto(
+      cmd: json['cmd'],
+      command: json['command'],
+      path: json['path'],
+      filePath: json['file_path'],
+      query: json['query'],
+    );

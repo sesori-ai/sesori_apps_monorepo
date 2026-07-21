@@ -68,7 +68,6 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
     @JsonKey(name: "model_provider") required String? modelProvider,
     @JsonKey(name: "cli_version") required String? cliVersion,
     required String? model,
-    required CodexRolloutGitDto? git,
     @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required CodexRolloutPayloadType? type,
     @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole? role,
     required List<CodexRolloutContentDto>? content,
@@ -80,13 +79,6 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
   }) = _CodexRolloutPayloadDto;
 
   factory CodexRolloutPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutPayloadDtoFromJson(json);
-}
-
-@Freezed(fromJson: true, toJson: false)
-sealed class CodexRolloutGitDto with _$CodexRolloutGitDto {
-  const factory CodexRolloutGitDto({required String? branch}) = _CodexRolloutGitDto;
-
-  factory CodexRolloutGitDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutGitDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)

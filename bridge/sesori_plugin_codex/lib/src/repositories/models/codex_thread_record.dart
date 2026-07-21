@@ -7,7 +7,6 @@ class CodexThreadRecord {
     required this.updatedAt,
     required this.model,
     required this.modelProvider,
-    required this.branch,
   });
 
   final String id;
@@ -17,5 +16,4 @@ class CodexThreadRecord {
   final int? updatedAt;
   final String? model;
   final String? modelProvider;
-  final String? branch;
 }

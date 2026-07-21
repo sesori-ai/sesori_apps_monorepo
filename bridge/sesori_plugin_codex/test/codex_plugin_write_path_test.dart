@@ -56,7 +56,6 @@ void main() {
               "createdAt": 1700000000,
               "updatedAt": 1700000005,
               "name": null,
-              "gitInfo": {"branch": "sesori/codex-branch"},
             },
           },
         ),
@@ -75,7 +74,6 @@ void main() {
       expect(session.id, equals("t-new"));
       expect(session.directory, equals("/work/sample"));
       expect(session.projectID, equals("/work/sample"));
-      expect(session.branchName, equals("sesori/codex-branch"));
 
       // Inspect sent frames.
       final methods = fake.sentMethods;
@@ -202,11 +200,7 @@ void main() {
       // it without a redundant resume round-trip.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(
-          result: {
-            "thread": {"id": "t-fresh"},
-          },
-        ),
+        const _Response(result: {"thread": {"id": "t-fresh"}}),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -235,11 +229,7 @@ void main() {
       // the first turn/start fails, then resume + retry must recover it.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(
-          result: {
-            "thread": {"id": "t-dropped"},
-          },
-        ),
+        const _Response(result: {"thread": {"id": "t-dropped"}}),
         const _Response(error: {"code": -32600, "message": "thread not found"}),
         const _Response(
           result: {
@@ -280,11 +270,7 @@ void main() {
       // unknown to this run, so the prompt resumes it before the turn.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(
-          result: {
-            "thread": {"id": "t-1"},
-          },
-        ),
+        const _Response(result: {"thread": {"id": "t-1"}}),
         const _Response(result: {"turnId": "u-active"}),
         const _Response(result: null),
       ]);
@@ -373,11 +359,13 @@ void main() {
       await kaPlugin.healthCheck(); // connect → starts keepalive
       await Future<void>.delayed(const Duration(milliseconds: 90));
 
-      final firedWhileConnected = kaFake.sentMethods.where((m) => m == "model/list").length;
+      final firedWhileConnected =
+          kaFake.sentMethods.where((m) => m == "model/list").length;
       expect(firedWhileConnected, greaterThanOrEqualTo(2));
 
       await kaPlugin.dispose();
-      final afterDispose = kaFake.sentMethods.where((m) => m == "model/list").length;
+      final afterDispose =
+          kaFake.sentMethods.where((m) => m == "model/list").length;
       await Future<void>.delayed(const Duration(milliseconds: 60));
       // No further keepalives once disposed.
       expect(
@@ -517,11 +505,7 @@ void main() {
     test("sendPrompt without a variant sends no effort (codex uses its default)", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(
-          result: {
-            "thread": {"id": "t-default"},
-          },
-        ),
+        const _Response(result: {"thread": {"id": "t-default"}}),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -539,11 +523,7 @@ void main() {
     test("createSession applies the variant on the first turn", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(
-          result: {
-            "thread": {"id": "t-new"},
-          },
-        ),
+        const _Response(result: {"thread": {"id": "t-new"}}),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -602,7 +582,8 @@ class _FakeAppServer {
   /// `thread/name/updated` while `turn/start` is still in flight).
   void Function(String method)? onRequest;
 
-  List<String> get sentMethods => _sent.map((f) => f.method).toList(growable: false);
+  List<String> get sentMethods =>
+      _sent.map((f) => f.method).toList(growable: false);
 
   Map<String, dynamic> sentParamsFor(String method) {
     final frame = _sent.firstWhere((f) => f.method == method);
@@ -693,7 +674,8 @@ class _SinkAdapter implements WebSocketSink {
   void add(Object? data) => _controller.add(data);
 
   @override
-  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
+  void addError(Object error, [StackTrace? stackTrace]) =>
+      _controller.addError(error, stackTrace);
 
   @override
   Future<void> addStream(Stream<Object?> stream) async {

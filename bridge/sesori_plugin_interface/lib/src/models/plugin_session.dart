@@ -7,7 +7,6 @@ part 'plugin_session.g.dart';
 @freezed
 sealed class PluginSession with _$PluginSession {
   const factory PluginSession({
-    required String? branchName,
     required String id,
     required String projectID,
     required String directory,

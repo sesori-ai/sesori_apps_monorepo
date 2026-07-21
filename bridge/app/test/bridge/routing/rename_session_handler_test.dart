@@ -72,7 +72,6 @@ void main() {
 
     test("extracts sessionId and title from typed body", () async {
       plugin.renameSessionResult = const PluginSession(
-        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/tmp",
@@ -127,7 +126,6 @@ void main() {
       );
 
       plugin.renameSessionResult = const PluginSession(
-        branchName: null,
         id: "s1",
         projectID: "p1",
         directory: "/tmp",

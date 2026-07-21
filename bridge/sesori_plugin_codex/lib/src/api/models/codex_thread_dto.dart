@@ -24,15 +24,7 @@ sealed class CodexThreadDto with _$CodexThreadDto {
     required num? createdAt,
     required num? updatedAt,
     required String? modelProvider,
-    required CodexThreadGitInfoDto? gitInfo,
   }) = _CodexThreadDto;
 
   factory CodexThreadDto.fromJson(Map<String, dynamic> json) => _$CodexThreadDtoFromJson(json);
-}
-
-@Freezed(fromJson: true, toJson: false)
-sealed class CodexThreadGitInfoDto with _$CodexThreadGitInfoDto {
-  const factory CodexThreadGitInfoDto({required String? branch}) = _CodexThreadGitInfoDto;
-
-  factory CodexThreadGitInfoDto.fromJson(Map<String, dynamic> json) => _$CodexThreadGitInfoDtoFromJson(json);
 }

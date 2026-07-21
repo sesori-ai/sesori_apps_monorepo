@@ -25,12 +25,4 @@ _CodexThreadDto _$CodexThreadDtoFromJson(Map json) => _CodexThreadDto(
   createdAt: json['createdAt'] as num?,
   updatedAt: json['updatedAt'] as num?,
   modelProvider: json['modelProvider'] as String?,
-  gitInfo: json['gitInfo'] == null
-      ? null
-      : CodexThreadGitInfoDto.fromJson(
-          Map<String, dynamic>.from(json['gitInfo'] as Map),
-        ),
 );
-
-_CodexThreadGitInfoDto _$CodexThreadGitInfoDtoFromJson(Map json) =>
-    _CodexThreadGitInfoDto(branch: json['branch'] as String?);

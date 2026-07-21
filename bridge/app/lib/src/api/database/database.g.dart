@@ -25,8 +25,8 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
 
   /// Wall-clock ms of the last recorded activity for this project. Advanced by
   /// the project-activity service from plugin activity, session evidence, and
-  /// user-facing events. The repository monotonically merges observations and
-  /// the DAO writes the resulting exact values.
+  /// user-facing events. The repository writes exact values supplied by the
+  /// service and performs no min/max itself.
   int get updatedAt;
   int get projectionUpdatedAt;
   @override

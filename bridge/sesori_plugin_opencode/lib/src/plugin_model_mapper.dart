@@ -29,7 +29,6 @@ class PluginModelMapper {
   PluginSession mapSession(Session session, {required String projectID}) {
     final time = session.time;
     return PluginSession(
-      branchName: null,
       id: session.id,
       projectID: projectID,
       directory: session.directory,

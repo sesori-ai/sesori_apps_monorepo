@@ -12,7 +12,7 @@ extension PluginSessionMapper on PluginSession {
 
   Session toSharedSessionWithId({required String sessionId, required String pluginId}) {
     return Session(
-      branchName: branchName,
+      branchName: null,
       id: sessionId,
       pluginId: pluginId,
       projectID: projectID,
@@ -46,8 +46,8 @@ Session enrichSharedSession({
   required SessionUnseenCalculator unseenCalculator,
   required bool adoptStoredProjectId,
 }) {
-  // A persisted branch is first-writer-wins, including bridge-created worktrees.
-  var result = session.copyWith(branchName: storedSession?.branchName ?? session.branchName);
+  // The stored row carries the branch created with a dedicated worktree.
+  var result = session.copyWith(branchName: session.branchName ?? storedSession?.branchName);
 
   if (storedSession != null) {
     final currentTime = session.time;

@@ -239,7 +239,6 @@ class _ImportConcurrencyBenchmark {
       (index) {
         final projectPath = projectPaths[index % projectPaths.length];
         return PluginSession(
-          branchName: null,
           id: "backend-${index.toString().padLeft(6, "0")}",
           projectID: projectPath,
           directory: projectPath,
