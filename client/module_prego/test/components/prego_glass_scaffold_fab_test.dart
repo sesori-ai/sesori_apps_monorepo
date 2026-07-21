@@ -8,17 +8,22 @@ const _fabKey = Key("fab");
 /// [Scaffold], which [PregoFloatingActionAlignment] steers without replacing —
 /// so these guard that the centred variant really lands on the page's centre
 /// line and that it does not disturb the default trailing placement.
-Widget _harness({required PregoFloatingActionAlignment alignment, double bodyHeight = 10}) {
+Widget _harness({
+  required PregoFloatingActionAlignment alignment,
+  double bodyHeight = 10,
+  double? paneWidth,
+}) {
+  final scaffold = PregoGlassScaffold(
+    title: "Title",
+    titleMode: PregoTopNavigationTitleMode.inline,
+    automaticallyImplyLeading: false,
+    floatingActionAlignment: alignment,
+    floatingActionButton: const SizedBox(key: _fabKey, width: 120, height: 52),
+    slivers: [SliverToBoxAdapter(child: SizedBox(height: bodyHeight))],
+  );
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
-    home: PregoGlassScaffold(
-      title: "Title",
-      titleMode: PregoTopNavigationTitleMode.inline,
-      automaticallyImplyLeading: false,
-      floatingActionAlignment: alignment,
-      floatingActionButton: const SizedBox(key: _fabKey, width: 120, height: 52),
-      slivers: [SliverToBoxAdapter(child: SizedBox(height: bodyHeight))],
-    ),
+    home: paneWidth == null ? scaffold : Center(child: SizedBox(width: paneWidth, child: scaffold)),
   );
 }
 
@@ -52,6 +57,21 @@ void main() {
     // Centring widens the action's box but must not move it vertically — the
     // Scaffold slot still owns clearing the keyboard and the home indicator.
     expect(tester.getRect(find.byKey(_fabKey)).top, moreOrLessEquals(endTop, epsilon: 0.5));
+  });
+
+  testWidgets("the centred alignment survives a pane narrower than its margins", (tester) async {
+    // The centring box is the pane width minus both endFloat margins — a pane
+    // narrower than that must clamp it to zero, not hand [SizedBox] a negative
+    // width and fail BoxConstraints' assert while a split pane is dragged shut.
+    await tester.pumpWidget(
+      _harness(
+        alignment: PregoFloatingActionAlignment.center,
+        paneWidth: 2 * kFloatingActionButtonMargin - 2,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("the widened centring box lets drags beside the action reach the page", (tester) async {

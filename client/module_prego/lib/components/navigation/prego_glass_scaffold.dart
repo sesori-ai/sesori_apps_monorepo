@@ -243,7 +243,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
       // rather than the window, so a narrow split-pane centres on the pane.
       PregoFloatingActionAlignment.center => LayoutBuilder(
         builder: (context, constraints) => SizedBox(
-          width: constraints.maxWidth - 2 * kFloatingActionButtonMargin,
+          width: (constraints.maxWidth - 2 * kFloatingActionButtonMargin).clamp(0.0, double.infinity),
           // heightFactor: 1 keeps the box the child's height; without it the
           // Center would expand to the full scaffold height.
           child: Center(heightFactor: 1, child: fab),
