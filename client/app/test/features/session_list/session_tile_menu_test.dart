@@ -146,7 +146,7 @@ void main() {
     expect(find.widgetWithText(InkWell, "Archive"), findsNothing);
   });
 
-  testWidgets("archiving still confirms with the undo snackbar after the row unmounts", (tester) async {
+  testWidgets("archiving closes the row before confirming with the undo snackbar", (tester) async {
     // testSession has no worktree, so Archive skips the confirm sheet and runs
     // directly. The cubit hides the row optimistically, so the row's own
     // context is unmounted long before the bridge call resolves — the entries
@@ -201,9 +201,17 @@ void main() {
     await longPressTile(tester, title: "My Session");
 
     await tester.tap(find.widgetWithText(InkWell, "Archive"));
+    await tester.pump();
+
+    // The optimistic archive has removed the session from cubit state, but the
+    // list retains its outgoing row for the closing transition.
+    expect(find.widgetWithText(SessionTile, "My Session"), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 130));
+    expect(find.widgetWithText(SessionTile, "My Session"), findsOneWidget);
+
     await tester.pumpAndSettle();
 
-    // The row is gone before the bridge call resolves…
+    // The row finishes closing before the bridge call resolves…
     expect(find.widgetWithText(SessionTile, "My Session"), findsNothing);
     expect(find.text("Session archived"), findsNothing);
 

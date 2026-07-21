@@ -204,6 +204,18 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       ],
       ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId, :final bridges) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        // Keep the list mounted at zero items so its final row can finish the
+        // closing transition before the connected-empty view takes over.
+        PregoAnimatedSliverList<Project>(
+          key: const ValueKey("project-list"),
+          items: projects,
+          itemKey: (project) => ValueKey(project.id),
+          itemBuilder: (context, _, project) => ProjectTile(
+            project: project,
+            activeSessions: activityById[project.id] ?? 0,
+            unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
+          ),
+        ),
         if (projects.isEmpty)
           // Same shape as the disconnected bodies above: the empty state joins
           // the page scroll rather than nesting one of its own.
@@ -215,22 +227,6 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
             ),
           )
         else ...[
-          // The rows carry their own padding and hairline, and the design sets
-          // them flush against each other.
-          SliverList.builder(
-            itemCount: projects.length,
-            itemBuilder: (context, index) {
-              final project = projects[index];
-              // Keyed so a recycled element can't carry one project's revealed
-              // swipe actions onto another project's row.
-              return ProjectTile(
-                key: ValueKey(project.id),
-                project: project,
-                activeSessions: activityById[project.id] ?? 0,
-                unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
-              );
-            },
-          ),
           // Clear the floating folder FAB and the home indicator.
           SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 96)),
         ],
