@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/login/email_login_sheet.dart";
@@ -27,6 +28,31 @@ Widget _buildApp(MockLoginCubit cubit) => MaterialApp(
       value: cubit,
       child: const SingleChildScrollView(child: EmailLoginSheet()),
     ),
+  ),
+);
+
+/// Hosts a button that presents the sheet via [showEmailLoginSheet], so tests
+/// can exercise the presenter rather than the sheet widget in isolation. Uses a
+/// real [GoRouter] so the sheet's `context.pop()` on success resolves, as it
+/// does in the app.
+Widget _buildPresenter(MockLoginCubit cubit) => MaterialApp.router(
+  theme: ThemeData(extensions: [PregoDesignSystem.light]),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  routerConfig: GoRouter(
+    routes: [
+      GoRoute(
+        path: "/",
+        builder: (context, state) => Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showEmailLoginSheet(context: context, cubit: cubit),
+              child: const Text("Open"),
+            ),
+          ),
+        ),
+      ),
+    ],
   ),
 );
 
@@ -79,18 +105,22 @@ void main() {
     verifyNever(() => cubit.loginWithEmail(email: any(named: "email"), password: any(named: "password")));
   });
 
-  testWidgets("submits trimmed credentials to the cubit", (tester) async {
+  testWidgets("submits trimmed credentials to the cubit and closes on success", (tester) async {
     when(
       () => cubit.loginWithEmail(email: any(named: "email"), password: any(named: "password")),
     ).thenAnswer((_) async => true);
 
-    await tester.pumpWidget(_buildApp(cubit));
+    await tester.pumpWidget(_buildPresenter(cubit));
+    await tester.tap(find.text("Open"));
+    await tester.pumpAndSettle();
 
     await _fillCredentials(tester, email: "  alex@example.com  ");
     await tester.tap(find.text("Sign in"));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     verify(() => cubit.loginWithEmail(email: "alex@example.com", password: "hunter2")).called(1);
+    // A successful sign-in pops the sheet.
+    expect(find.byType(EmailLoginSheet), findsNothing);
   });
 
   testWidgets("password is obscured until the visibility toggle is tapped", (tester) async {
@@ -114,6 +144,20 @@ void main() {
     expect(find.byType(PregoInlineAlertsNotifications), findsOneWidget);
     expect(find.text("Authentication failed"), findsOneWidget);
     expect(find.text("Sign in failed. Please try again."), findsOneWidget);
+  });
+
+  testWidgets("clears a stale provider failure when the sheet opens", (tester) async {
+    // A provider sign-in failed and the user opened the email sheet without
+    // dismissing the banner, so the shared cubit is still in LoginFailed.
+    _stubState(cubit, const LoginState.failed(reason: LoginFailedReason.browserOpenFailed));
+
+    await tester.pumpWidget(_buildPresenter(cubit));
+    await tester.tap(find.text("Open"));
+    await tester.pumpAndSettle();
+
+    // Opening the sheet stands the shared failure down so the stale provider
+    // error isn't rendered inline above the email fields before any submission.
+    verify(() => cubit.onDismissedLoginFailureError()).called(1);
   });
 
   testWidgets("disables the fields and shows progress while authenticating", (tester) async {

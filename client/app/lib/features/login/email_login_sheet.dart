@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -22,11 +23,19 @@ const double _submitGap = 30.0;
 /// The sheet owns its own failure surface: a failed sign-in renders inline,
 /// next to the form that caused it, and the login screen stands its banner down
 /// while the sheet is open so the same error isn't shown twice. Any lingering
-/// failure is cleared on dismiss so the banner doesn't surface it afterwards.
+/// failure is cleared both on open and on dismiss so the banner doesn't surface
+/// it afterwards.
 Future<void> showEmailLoginSheet({
   required BuildContext context,
   required LoginCubit cubit,
 }) async {
+  // A failed provider sign-in leaves the shared cubit in LoginFailed. Since the
+  // sheet renders failures inline, clear any pre-existing failure before opening
+  // so a stale provider error (e.g. a browser or Apple failure) isn't surfaced
+  // next to the email fields before the user has even submitted. While the sheet
+  // is up only the email form can fail, so the inline alert only ever reflects
+  // an email attempt.
+  cubit.onDismissedLoginFailureError();
   await showPregoBottomSheet<void>(
     context: context,
     title: context.loc.signInWithEmail,
@@ -89,13 +98,6 @@ class _EmailLoginSheetState extends State<EmailLoginSheet> {
     }
     if (!formState.validate()) return;
 
-    // Captured before the await: on success the login screen's listener
-    // navigates to the projects route, which can tear this modal down. Popping
-    // the navigator blindly afterwards would then pop *that* route instead, so
-    // only pop while this sheet is still the route on top.
-    final navigator = Navigator.of(context);
-    final sheetRoute = ModalRoute.of(context);
-
     final success = await context.read<LoginCubit>().loginWithEmail(
       email: _emailController.text.trim(),
       password: _passwordController.text,
@@ -106,7 +108,10 @@ class _EmailLoginSheetState extends State<EmailLoginSheet> {
 
     // Let the platform offer to save the credentials, then close the sheet.
     TextInput.finishAutofillContext();
-    if (sheetRoute?.isCurrent ?? false) navigator.pop();
+    // On success the login screen's listener navigates to the projects route,
+    // which can tear this modal down. Only pop while this sheet is still the
+    // route on top, so the pop closes this sheet and not that route.
+    if (ModalRoute.of(context)?.isCurrent ?? false) context.pop();
   }
 
   @override
