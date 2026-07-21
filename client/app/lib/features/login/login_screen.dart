@@ -135,10 +135,6 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     } finally {
       if (mounted) setState(() => _isEmailSheetOpen = false);
     }
-    if (!mounted) return;
-    if (context.read<LoginCubit>().state is LoginSuccess) {
-      context.goRoute(const AppRoute.projects());
-    }
   }
 
   @override
@@ -154,9 +150,6 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
             current is LoginSuccess || current is LoginFailed || current is LoginTimeout || current is LoginIdle,
         listener: (context, state) {
           if (state is LoginSuccess) {
-            // The email sheet must commit its autofill context before this
-            // route is replaced. It navigates after the sheet has closed.
-            if (_isEmailSheetOpen) return;
             // Relay connection is handled reactively: AuthManager emits
             // AuthState.authenticated → ConnectionService connects. The
             // connection overlay shows progress; navigation proceeds immediately.
