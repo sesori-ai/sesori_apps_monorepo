@@ -176,7 +176,7 @@ class PregoGlassScaffold extends StatefulWidget {
   final Widget? overlay;
 
   /// When set, an in-scroll refresh control opens below the top bar and pushes
-  /// the page content down while it is pulled.
+  /// the caller-provided content down while it is pulled.
   final Future<void> Function()? onRefresh;
 
   /// Page background painted behind the glass. Defaults to `bgSurface1`.
@@ -215,6 +215,11 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
   /// body offset, and [PregoTopBarInsetBuilder] consumers — listens to it, so
   /// content tracks the moving bar and is exact at rest.
   final ValueNotifier<double> _bannerHeight = ValueNotifier<double>(0);
+
+  /// The collapsing title's rendered extent, including its bottom spacing.
+  /// Used to paint the refresh indicator below the title without assuming a
+  /// fixed text scale or whether a subtitle is present.
+  double _largeTitleHeight = 0;
 
   @override
   void dispose() {
@@ -259,6 +264,11 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
     // state on synchronous teardown — writing to the disposed notifier throws.
     if (!mounted) return;
     _bannerHeight.value = height;
+  }
+
+  void _onLargeTitleHeightChanged(double height) {
+    if (!mounted) return;
+    _largeTitleHeight = height;
   }
 
   @override
@@ -328,8 +338,8 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
       slivers: [
         // The refresh sliver must receive the scroll view's leading overscroll,
         // so it precedes the bar spacer. Shift only its painted indicator below
-        // the live bar inset; the sliver itself opens at the scroll origin and
-        // pushes the spacer, large title, and caller-provided content down.
+        // the live bar and large-title insets; the sliver itself opens at the
+        // scroll origin and pushes the caller-provided content down.
         if (onRefresh != null)
           CupertinoSliverRefreshControl(
             onRefresh: onRefresh,
@@ -341,14 +351,22 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
                 triggerDistance,
                 indicatorExtent,
               );
-              // A non-extended body already begins below the bar.
-              if (!extendBehind) return indicator;
+              // A non-extended body already begins below the bar, but its
+              // collapsing title still precedes the caller-provided content.
+              if (!extendBehind) {
+                return collapsing
+                    ? Transform.translate(offset: Offset(0, _largeTitleHeight), child: indicator)
+                    : indicator;
+              }
 
               return ValueListenableBuilder<double>(
                 valueListenable: _bannerHeight,
                 child: indicator,
                 builder: (context, bannerHeight, indicator) => Transform.translate(
-                  offset: Offset(0, topPad + topNav.preferredSize.height + bannerHeight),
+                  offset: Offset(
+                    0,
+                    topPad + topNav.preferredSize.height + bannerHeight + (collapsing ? _largeTitleHeight : 0),
+                  ),
                   child: indicator,
                 ),
               );
@@ -374,6 +392,8 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
             title: widget.title,
             subtitle: widget.subtitleText,
             scrollController: _scrollController,
+            onHeightChanged: _onLargeTitleHeightChanged,
+            pinDuringOverscroll: onRefresh != null,
           ),
         ...widget.slivers,
       ],
@@ -540,7 +560,7 @@ class _AnimatedBannerSlotState extends State<_AnimatedBannerSlot> {
     //  - Align(heightFactor: 0) sizes the hidden slot to zero while keeping
     //    the retained content laid out, which is what AnimatedSize animates
     //    toward during the exit.
-    return _BannerSizeObserver(
+    return _HeightObserver(
       onHeightChanged: _onHeightChanged,
       child: ClipRect(
         child: AnimatedSize(
@@ -569,22 +589,22 @@ class _AnimatedBannerSlotState extends State<_AnimatedBannerSlot> {
 /// changes. The callback is invoked post-frame so listeners may safely call
 /// `setState`/notify — the same measure-and-report pattern as the session
 /// detail composer measurement.
-class _BannerSizeObserver extends SingleChildRenderObjectWidget {
-  const _BannerSizeObserver({required this.onHeightChanged, required super.child});
+class _HeightObserver extends SingleChildRenderObjectWidget {
+  const _HeightObserver({required this.onHeightChanged, required super.child});
 
   final ValueChanged<double> onHeightChanged;
 
   @override
-  RenderObject createRenderObject(BuildContext context) => _RenderBannerSizeObserver(onHeightChanged);
+  RenderObject createRenderObject(BuildContext context) => _RenderHeightObserver(onHeightChanged);
 
   @override
-  void updateRenderObject(BuildContext context, _RenderBannerSizeObserver renderObject) {
+  void updateRenderObject(BuildContext context, _RenderHeightObserver renderObject) {
     renderObject.onHeightChanged = onHeightChanged;
   }
 }
 
-class _RenderBannerSizeObserver extends RenderProxyBox {
-  _RenderBannerSizeObserver(this.onHeightChanged);
+class _RenderHeightObserver extends RenderProxyBox {
+  _RenderHeightObserver(this.onHeightChanged);
 
   ValueChanged<double> onHeightChanged;
   double? _lastReportedHeight;
@@ -664,10 +684,14 @@ class _LargeTitleSliver extends StatelessWidget {
   final String title;
   final String? subtitle;
   final ScrollController scrollController;
+  final ValueChanged<double> onHeightChanged;
+  final bool pinDuringOverscroll;
   const _LargeTitleSliver({
     required this.title,
     required this.subtitle,
     required this.scrollController,
+    required this.onHeightChanged,
+    required this.pinDuringOverscroll,
   });
 
   @override
@@ -676,48 +700,61 @@ class _LargeTitleSliver extends StatelessWidget {
     final subtitle = this.subtitle;
 
     return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(
-          PregoSpacing.x3l,
-          0,
-          PregoSpacing.x3l,
-          PregoSpacing.xl,
-        ),
-        child: ListenableBuilder(
-          listenable: scrollController,
-          builder: (context, _) {
-            /// 0 while the large title is fully shown, 1 once it has collapsed into the
-            /// bar. Delegates to [PregoTopNavigation.collapseProgressOf] — the single
-            /// source of truth for the collapse — so the large-title sliver fades out in
-            /// lockstep with the bar title fading in.
-            final collapseProgress = PregoTopNavigation.collapseProgressOf(scrollController);
-            // Fade via text alpha instead of an Opacity layer — no saveLayer per frame.
-            final opacity = (1 - collapseProgress).clamp(0.0, 1.0);
+      child: _HeightObserver(
+        onHeightChanged: onHeightChanged,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            PregoSpacing.x3l,
+            0,
+            PregoSpacing.x3l,
+            PregoSpacing.xl,
+          ),
+          child: ListenableBuilder(
+            listenable: scrollController,
+            builder: (context, _) {
+              /// 0 while the large title is fully shown, 1 once it has collapsed into the
+              /// bar. Delegates to [PregoTopNavigation.collapseProgressOf] — the single
+              /// source of truth for the collapse — so the large-title sliver fades out in
+              /// lockstep with the bar title fading in.
+              final collapseProgress = PregoTopNavigation.collapseProgressOf(scrollController);
+              // Fade via text alpha instead of an Opacity layer — no saveLayer per frame.
+              final opacity = (1 - collapseProgress).clamp(0.0, 1.0);
+              final scrollOffset = scrollController.hasClients && scrollController.positions.length == 1
+                  ? scrollController.offset
+                  : 0.0;
+              // The refresh sliver displaces every later sliver. Counteract its
+              // negative pull offset so the title stays fixed while the caller's
+              // content opens below it; positive offsets still collapse normally.
+              final pullOffset = pinDuringOverscroll && scrollOffset < 0 ? scrollOffset : 0.0;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: prego.textTheme.displayMd.medium.copyWith(
-                    color: prego.colors.textPrimary.withMultipliedOpacity(opacity),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (subtitle != null && subtitle.isNotEmpty)
-                  Text(
-                    subtitle,
-                    style: prego.textTheme.textMd.regular.copyWith(
-                      color: prego.colors.textSecondary.withMultipliedOpacity(opacity),
+              return Transform.translate(
+                offset: Offset(0, pullOffset),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: prego.textTheme.displayMd.medium.copyWith(
+                        color: prego.colors.textPrimary.withMultipliedOpacity(opacity),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            );
-          },
+                    if (subtitle != null && subtitle.isNotEmpty)
+                      Text(
+                        subtitle,
+                        style: prego.textTheme.textMd.regular.copyWith(
+                          color: prego.colors.textSecondary.withMultipliedOpacity(opacity),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

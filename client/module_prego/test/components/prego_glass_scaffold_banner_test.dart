@@ -17,6 +17,7 @@ Widget _banner() => const SizedBox(
 
 Widget _harness({
   required Widget? banner,
+  PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.inline,
   bool extendBodyBehindBar = true,
   bool reserveBarSpace = true,
   Future<void> Function()? onRefresh,
@@ -26,7 +27,7 @@ Widget _harness({
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     home: PregoGlassScaffold(
       title: "Title",
-      titleMode: PregoTopNavigationTitleMode.inline,
+      titleMode: titleMode,
       automaticallyImplyLeading: false,
       banner: banner,
       extendBodyBehindBar: extendBodyBehindBar,
@@ -263,6 +264,56 @@ void main() {
     expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(barBottom));
     expect(tester.getTopLeft(find.byKey(_contentKey)).dy, greaterThan(initialContentTop));
     expect(tester.getBottomRight(find.byType(GlassAppBar)).dy, barBottom);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("pull-to-refresh keeps a large title fixed and opens below it", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        banner: null,
+        titleMode: PregoTopNavigationTitleMode.collapsing,
+        onRefresh: () async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final largeTitle = find.descendant(of: find.byType(CustomScrollView), matching: find.text("Title"));
+    final initialTitleTop = tester.getTopLeft(largeTitle).dy;
+    final initialContentTop = tester.getTopLeft(find.byKey(_contentKey)).dy;
+
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_contentKey)));
+    await gesture.moveBy(const Offset(0, 80));
+    await tester.pump();
+
+    final indicator = find.byType(CupertinoActivityIndicator);
+    expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
+    expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(tester.getBottomLeft(largeTitle).dy));
+    expect(tester.getTopLeft(find.byKey(_contentKey)).dy, greaterThan(initialContentTop));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("non-extended pull-to-refresh also opens below the large title", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        banner: null,
+        titleMode: PregoTopNavigationTitleMode.collapsing,
+        extendBodyBehindBar: false,
+        onRefresh: () async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final largeTitle = find.descendant(of: find.byType(CustomScrollView), matching: find.text("Title"));
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_contentKey)));
+    await gesture.moveBy(const Offset(0, 80));
+    await tester.pump();
+
+    final indicator = find.byType(CupertinoActivityIndicator);
+    expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(tester.getBottomLeft(largeTitle).dy));
 
     await gesture.up();
     await tester.pumpAndSettle();
