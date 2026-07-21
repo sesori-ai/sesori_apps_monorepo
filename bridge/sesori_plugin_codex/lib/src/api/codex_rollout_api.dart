@@ -108,9 +108,9 @@ class CodexRolloutApi {
   }) {
     try {
       return CodexSessionIndexEntryDto.fromJson(jsonDecodeMap(line));
-    } on Object catch (error, stackTrace) {
+    } on Object {
       if (warnOnMalformed) {
-        Log.w("[codex] skipping malformed session index record", error, stackTrace);
+        Log.w("[codex] skipping malformed session index record");
       }
       return null;
     }
@@ -128,10 +128,10 @@ class CodexRolloutApi {
       if (line.trim().isEmpty) continue;
       try {
         decoded.add(CodexRolloutLineDto.fromJson(jsonDecodeMap(line)));
-      } on Object catch (error, stackTrace) {
+      } on Object {
         final isExpectedPartialLine = ignoreMalformedLastLine && i == source.length - 1;
         if (malformedWarning != null && !isExpectedPartialLine) {
-          Log.w(malformedWarning, error, stackTrace);
+          Log.w(malformedWarning);
         }
       }
     }

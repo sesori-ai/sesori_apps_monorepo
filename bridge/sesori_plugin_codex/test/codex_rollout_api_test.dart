@@ -72,13 +72,14 @@ void main() {
 
     test("readIndex warns for malformed non-final rows", () {
       File(p.join(codexHome.path, "session_index.jsonl")).writeAsStringSync(
-        '${jsonEncode({"id": "valid"})}\nnot-json\n{"partial"',
+        '${jsonEncode({"id": "valid"})}\nnot-json-secret-index-content\n{"partial"',
       );
 
       final output = _captureWarnings(rolloutApi.readSessionIndex);
 
       expect(output, contains("malformed session index record"));
       expect("malformed session index record".allMatches(output), hasLength(1));
+      expect(output, isNot(contains("secret-index-content")));
     });
 
     test("listRolloutFiles walks the sessions tree and extracts UUIDs", () {
@@ -140,14 +141,16 @@ void main() {
 
     test("readTranscript warns for malformed non-final rows", () {
       final path = p.join(codexHome.path, "malformed-transcript.jsonl");
-      File(path).writeAsStringSync('{}\nnot-json\n{"partial"');
+      File(path).writeAsStringSync('{}\nnot-json-secret-source-content\n{"partial"');
 
       final output = _captureWarnings(
         () => rolloutApi.readTranscript(rolloutPath: path),
+        level: LogLevel.verbose,
       );
 
       expect(output, contains("malformed rollout transcript record"));
       expect("malformed rollout transcript record".allMatches(output), hasLength(1));
+      expect(output, isNot(contains("secret-source-content")));
     });
 
     test("listSessions joins index + rollout header and sorts by updatedAt", () {
@@ -684,11 +687,14 @@ void main() {
   });
 }
 
-String _captureWarnings(void Function() action) {
+String _captureWarnings(
+  void Function() action, {
+  LogLevel level = LogLevel.warning,
+}) {
   final previousLevel = Log.level;
   final stderr = _BufferingStdout();
   try {
-    Log.level = LogLevel.warning;
+    Log.level = level;
     IOOverrides.runZoned(action, stderr: () => stderr);
   } finally {
     Log.level = previousLevel;
