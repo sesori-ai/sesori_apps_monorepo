@@ -20,7 +20,7 @@ dependencies:
   get_it: ^9.2.1
   http: ^1.6.0
   injectable: ^3.0.0
-  package_info_plus: ^10.2.0
+  package_info_plus: ^10.2.1
   rxdart: ^0.28.0
   # DI-call only (configureAuthDependencies) — sesori_auth types MUST NOT be
   # imported outside lib/core/di/ (see client/AGENTS.md).
