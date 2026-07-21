@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
@@ -7,9 +9,14 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/external_link.dart";
+import "../../core/legal_links.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/support_links.dart";
 import "../../core/widgets/connection_banner.dart";
+import "../../core/widgets/sesori_logo.dart";
 import "widgets/account_row.dart";
+import "widgets/appearance_picker.dart";
 import "widgets/settings_section.dart";
 
 /// Vertical inset between the nav bar and the first settings section.
@@ -97,7 +104,57 @@ class _SettingsBody extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: PregoSpacing.xl),
-                const _VersionFooter(),
+                SettingsSection(
+                  title: loc.settingsSectionAppearance,
+                  child: const AppearancePicker(),
+                ),
+                const SizedBox(height: PregoSpacing.xl),
+                SettingsSection(
+                  title: loc.settingsSectionSupport,
+                  child: PregoGroupedRows(
+                    children: [
+                      _SupportRow(
+                        icon: TablerRegular.mail,
+                        title: loc.settingsSupportEmail,
+                        url: SupportLinks.email,
+                      ),
+                      _SupportRow(
+                        icon: TablerRegular.brand_discord,
+                        title: loc.settingsSupportDiscord,
+                        url: SupportLinks.discord,
+                      ),
+                      _SupportRow(
+                        // Tabler's pinned set ships the legacy bird glyph,
+                        // not the X mark.
+                        icon: TablerRegular.brand_twitter,
+                        title: loc.settingsSupportX,
+                        url: SupportLinks.x,
+                        isLast: true,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: PregoSpacing.xl),
+                SettingsSection(
+                  title: loc.settingsSectionLegal,
+                  child: PregoGroupedRows(
+                    children: [
+                      _LegalRow(
+                        icon: TablerRegular.file_text,
+                        title: loc.settingsLegalTerms,
+                        url: LegalLinks.terms,
+                      ),
+                      _LegalRow(
+                        icon: TablerRegular.lock,
+                        title: loc.settingsLegalPrivacy,
+                        url: LegalLinks.privacy,
+                        isLast: true,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: PregoSpacing.x4l),
+                const _AppFooter(),
               ],
             ),
           ),
@@ -110,9 +167,72 @@ class _SettingsBody extends StatelessWidget {
   }
 }
 
-/// Centred "v1.2.3 (456)" footer sourced from the platform package info.
-class _VersionFooter extends StatelessWidget {
-  const _VersionFooter();
+/// A support-channel row. The destinations are apps of their own (mail client,
+/// Discord, X), so they hand off externally rather than opening in-app.
+class _SupportRow extends StatelessWidget {
+  const _SupportRow({
+    required this.icon,
+    required this.title,
+    required this.url,
+    this.isLast = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String url;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return PregoGroupedRow(
+      icon: icon,
+      title: Text(title),
+      trailing: const Icon(TablerRegular.external_link),
+      onTap: () => unawaited(openExternalLink(url: Uri.parse(url))),
+      isLast: isLast,
+    );
+  }
+}
+
+/// A legal-document row. These are our own web pages, so they open in an
+/// in-app browser and the user returns with a single dismiss.
+class _LegalRow extends StatelessWidget {
+  const _LegalRow({
+    required this.icon,
+    required this.title,
+    required this.url,
+    this.isLast = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String url;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return PregoGroupedRow(
+      icon: icon,
+      title: Text(title),
+      trailing: const Icon(TablerRegular.chevron_right),
+      onTap: () => unawaited(
+        openExternalLink(url: Uri.parse(url), mode: UrlLaunchMode.inAppBrowser),
+      ),
+      isLast: isLast,
+    );
+  }
+}
+
+/// The Figma footer: the app icon above the product name and the
+/// "v1.2.3 (456)" build line sourced from the platform package info.
+class _AppFooter extends StatelessWidget {
+  const _AppFooter();
+
+  /// Edge length of the icon's rounded square, per Figma.
+  static const double _logoSquare = 52.0;
+
+  /// Gap between the product name and the version line.
+  static const double _versionGap = PregoSpacing.lg;
 
   static final Future<PackageInfo> _packageInfo = PackageInfo.fromPlatform();
 
@@ -120,17 +240,31 @@ class _VersionFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final prego = context.prego;
 
-    return FutureBuilder<PackageInfo>(
-      future: _packageInfo,
-      builder: (context, snapshot) {
-        final info = snapshot.data;
-        if (info == null) return const SizedBox.shrink();
-        return Text(
-          context.loc.settingsVersion(info.version, info.buildNumber),
-          textAlign: TextAlign.center,
-          style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
-        );
-      },
+    return Column(
+      children: [
+        // The logo's own frame reserves the space its drop shadow needs, which
+        // doubles as the gap down to the name — as on the login screen.
+        const SesoriLogo(squareSize: _logoSquare),
+        Text(
+          context.loc.settingsAppName,
+          style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textPrimary),
+        ),
+        FutureBuilder<PackageInfo>(
+          future: _packageInfo,
+          builder: (context, snapshot) {
+            final info = snapshot.data;
+            if (info == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: _versionGap),
+              child: Text(
+                context.loc.settingsVersion(info.version, info.buildNumber),
+                textAlign: TextAlign.center,
+                style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

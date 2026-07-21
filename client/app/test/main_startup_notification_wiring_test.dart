@@ -32,6 +32,8 @@ void main() {
       events.add("notificationStartup.done");
     }
 
+    Future<void> restoreAppearance() async => events.add("restoreAppearance");
+
     void runAppFn(_) => events.add("runApp");
 
     await bootstrapSesoriApp(
@@ -40,12 +42,21 @@ void main() {
       configureDependenciesFn: configureDependencies,
       initializeDeepLinks: initializeDeepLinks,
       startNotificationStartupFn: startNotificationStartup,
+      restoreAppearanceFn: restoreAppearance,
       runAppFn: runAppFn,
     );
 
     await startupStarted.future.timeout(const Duration(seconds: 2));
 
-    expect(events, ["configureDependencies", "deepLinks", "notificationStartup.start", "runApp"]);
+    expect(events, [
+      "configureDependencies",
+      "deepLinks",
+      "notificationStartup.start",
+      // The persisted theme is restored before the first frame, so the app
+      // never launches in the wrong appearance.
+      "restoreAppearance",
+      "runApp",
+    ]);
 
     allowStartupFinish.complete();
     await Future<void>.delayed(Duration.zero);
@@ -56,6 +67,7 @@ void main() {
         "configureDependencies",
         "deepLinks",
         "notificationStartup.start",
+        "restoreAppearance",
         "runApp",
         "notificationStartup.done",
       ],

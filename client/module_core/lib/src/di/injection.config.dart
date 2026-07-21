@@ -32,12 +32,16 @@ import 'package:sesori_dart_core/src/capabilities/session/session_service.dart'
     as _i12;
 import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
+import 'package:sesori_dart_core/src/cubits/appearance/appearance_cubit.dart'
+    as _i828;
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
 import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
     as _i1037;
 import 'package:sesori_dart_core/src/platform/push_messaging_source.dart'
     as _i330;
 import 'package:sesori_dart_core/src/platform/route_dispatcher.dart' as _i951;
+import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
+    as _i209;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
     as _i205;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
@@ -121,6 +125,9 @@ extension GetItInjectableX on _i174.GetIt {
         routeDispatcher: gh<_i951.RouteDispatcher>(),
       ),
     );
+    gh.lazySingleton<_i209.AppearanceStore>(
+      () => _i209.AppearanceStore(secureStorage: gh<_i442.SecureStorage>()),
+    );
     gh.lazySingleton<_i396.NotificationPreferencesApi>(
       () =>
           _i396.NotificationPreferencesApi(storage: gh<_i442.SecureStorage>()),
@@ -181,6 +188,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i458.NotificationPreferencesRepository(
         api: gh<_i396.NotificationPreferencesApi>(),
       ),
+    );
+    gh.lazySingleton<_i828.AppearanceCubit>(
+      () => _i828.AppearanceCubit(store: gh<_i209.AppearanceStore>()),
     );
     gh.lazySingleton<_i157.SessionViewApi>(
       () => _i157.SessionViewApi(

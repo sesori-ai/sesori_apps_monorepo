@@ -15,6 +15,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "core/analytics/analytics_user_id_tracker.dart";
 import "core/di/injection.dart";
+import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
@@ -82,6 +83,7 @@ void main() async {
         foregroundNotificationDispatcher: getIt<ForegroundNotificationDispatcher>(),
         notificationOpenDispatcher: getIt<NotificationOpenDispatcher>(),
       ),
+      restoreAppearanceFn: () => getIt<AppearanceCubit>().restore(),
       runAppFn: runApp,
     );
     return;
@@ -93,6 +95,7 @@ void main() async {
     configureDependenciesFn: configureDependencies,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
     startNotificationStartupFn: () async {},
+    restoreAppearanceFn: () => getIt<AppearanceCubit>().restore(),
     runAppFn: runApp,
   );
 }
@@ -103,6 +106,7 @@ Future<void> bootstrapSesoriApp({
   required void Function() configureDependenciesFn,
   required void Function() initializeDeepLinks,
   required Future<void> Function() startNotificationStartupFn,
+  required Future<void> Function() restoreAppearanceFn,
   required void Function(Widget app) runAppFn,
 }) async {
   configureDependenciesFn();
@@ -122,6 +126,10 @@ Future<void> bootstrapSesoriApp({
       }),
     );
   }
+
+  // Awaited: the persisted theme has to be in place before the first frame,
+  // otherwise a pinned light/dark choice flashes the device theme on launch.
+  await restoreAppearanceFn();
 
   final isImpeller = ui.ImageFilter.isShaderFilterSupported;
 
@@ -213,8 +221,20 @@ class SesoriApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Above the router so the whole app — including full-screen modal routes —
+    // rebuilds when the appearance choice changes.
+    return BlocProvider<AppearanceCubit>.value(
+      value: getIt<AppearanceCubit>(),
+      child: BlocBuilder<AppearanceCubit, AppearanceMode>(
+        builder: (context, appearance) => _buildApp(themeMode: appearance.themeMode),
+      ),
+    );
+  }
+
+  Widget _buildApp({required ThemeMode themeMode}) {
     return MaterialApp.router(
       onGenerateTitle: (context) => context.loc.appTitle,
+      themeMode: themeMode,
       theme: ThemeData(
         colorScheme: PregoColors.light.toFlutterColorScheme(),
         textTheme: PregoTextTheme.light.asFlutterTextTheme(),
