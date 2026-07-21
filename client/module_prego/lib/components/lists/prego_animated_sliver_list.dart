@@ -68,7 +68,11 @@ class _PregoAnimatedSliverListState<T> extends State<PregoAnimatedSliverList<T>>
         (context, animation) => _transition(
           key: outgoingKey,
           animation: animation,
-          child: oldWidget.itemBuilder(context, index, entry.item),
+          child: ExcludeSemantics(
+            child: IgnorePointer(
+              child: oldWidget.itemBuilder(context, index, entry.item),
+            ),
+          ),
         ),
         duration: duration,
       );

@@ -4,7 +4,7 @@ import "package:theme_prego/module_prego.dart";
 
 const double _rowHeight = 80;
 
-Widget _harness(List<String> items, {bool disableAnimations = false}) {
+Widget _harness(List<String> items, {bool disableAnimations = false, VoidCallback? onTap}) {
   return MaterialApp(
     home: Builder(
       builder: (context) => MediaQuery(
@@ -14,10 +14,14 @@ Widget _harness(List<String> items, {bool disableAnimations = false}) {
             PregoAnimatedSliverList<String>(
               items: items,
               itemKey: ValueKey<String>.new,
-              itemBuilder: (context, index, item) => SizedBox(
+              itemBuilder: (context, index, item) => GestureDetector(
                 key: ValueKey("row-$item"),
-                height: _rowHeight,
-                child: Text(item),
+                behavior: HitTestBehavior.opaque,
+                onTap: onTap,
+                child: SizedBox(
+                  height: _rowHeight,
+                  child: Text(item),
+                ),
               ),
             ),
           ],
@@ -56,6 +60,23 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(find.text("A"), findsNothing);
+  });
+
+  testWidgets("an outgoing row is no longer interactive or exposed to semantics", (tester) async {
+    final semantics = tester.ensureSemantics();
+    var taps = 0;
+    void onTap() => taps++;
+
+    await tester.pumpWidget(_harness(["A"], onTap: onTap));
+    expect(find.bySemanticsLabel("A"), findsOneWidget);
+
+    await tester.pumpWidget(_harness([], onTap: onTap));
+    expect(find.text("A"), findsOneWidget);
+    expect(find.bySemanticsLabel("A"), findsNothing);
+
+    await tester.tap(find.text("A"), warnIfMissed: false);
+    expect(taps, 0);
+    semantics.dispose();
   });
 
   testWidgets("reduced motion removes a row without a transition delay", (tester) async {
