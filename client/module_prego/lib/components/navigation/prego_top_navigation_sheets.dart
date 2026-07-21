@@ -58,8 +58,10 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
   /// the affordance is owned by the enclosing modal, not this widget.
   final bool showGrabber;
 
-  /// Renders a glass close button (`x`) that invokes this callback, unless
-  /// [leading] or [onBack] takes precedence.
+  /// Renders a glass close button (`x`) on the trailing edge that invokes this
+  /// callback. It lives in the trailing slot, so [leading] does not suppress it;
+  /// only [onBack] does — in-sheet navigation replaces the close with a leading
+  /// back arrow.
   final VoidCallback? onClose;
 
   /// Renders a glass back button (`chevron-left`) that invokes this callback.
@@ -71,8 +73,9 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
   /// match the leading button.
   final List<Widget>? actions;
 
-  /// Overrides the leading slot entirely. Takes precedence over [onBack] and
-  /// [onClose].
+  /// Overrides the leading slot entirely. Takes precedence over [onBack]'s back
+  /// arrow. It governs only the leading slot, so it leaves the trailing
+  /// [onClose] button untouched.
   final Widget? leading;
 
   /// Height of the drag-grabber block above the nav row.

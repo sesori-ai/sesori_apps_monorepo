@@ -159,8 +159,11 @@ class PregoInputField extends StatelessWidget {
           onFieldSubmitted: onSubmitted,
           onChanged: onChanged,
           // Re-validate as the user fixes a rejected value, but don't scold
-          // them mid-typing before the first submit.
-          autovalidateMode: AutovalidateMode.onUserInteraction,
+          // them mid-typing before the first submit. onUserInteractionIfError
+          // only auto-validates once the field already carries an error (raised
+          // by the enclosing Form's submit-time validate()), so a first pass is
+          // never flagged keystroke-by-keystroke.
+          autovalidateMode: AutovalidateMode.onUserInteractionIfError,
           style: prego.textTheme.textMd.regular.copyWith(color: colors.textPrimary),
           cursorColor: colors.borderBrand,
           decoration: InputDecoration(

@@ -66,6 +66,37 @@ void main() {
       expect(find.text("Email is required"), findsOneWidget);
     });
 
+    testWidgets("does not flag an invalid first pass mid-typing, then revalidates after submit", (tester) async {
+      final formKey = GlobalKey<FormState>();
+      String? validate(String? value) =>
+          (value == null || !value.contains("@")) ? "Invalid email" : null;
+
+      await tester.pumpWidget(
+        _harness(
+          Form(
+            key: formKey,
+            child: PregoInputField(controller: controller, label: "Email", validator: validate),
+          ),
+        ),
+      );
+
+      // Typing an incomplete value before any submit must not scold the user.
+      await tester.enterText(find.byType(TextFormField), "alex");
+      await tester.pump();
+      expect(find.text("Invalid email"), findsNothing);
+
+      // The submit-time validate() raises the error.
+      formKey.currentState!.validate();
+      await tester.pump();
+      expect(find.text("Invalid email"), findsOneWidget);
+
+      // Once errored, the field revalidates as the user fixes it — no second
+      // submit needed to clear the message.
+      await tester.enterText(find.byType(TextFormField), "alex@example.com");
+      await tester.pump();
+      expect(find.text("Invalid email"), findsNothing);
+    });
+
     testWidgets("obscureText hides the entered value", (tester) async {
       await tester.pumpWidget(
         _harness(
