@@ -274,6 +274,15 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = widget.backgroundColor ?? context.prego.colors.bgSurface1;
+    // The status-bar icons have to contrast with this scaffold's surface, so
+    // they follow the active palette's brightness. GlassStatusBarStyle.auto
+    // would read the *device* brightness instead, which ignores an in-app
+    // appearance choice: picking Light on a phone in dark mode would leave
+    // white icons on a light surface (and the reverse).
+    final statusBarStyle = switch (context.prego.colors.brightness) {
+      Brightness.dark => GlassStatusBarStyle.light,
+      Brightness.light => GlassStatusBarStyle.dark,
+    };
     final topPad = MediaQuery.paddingOf(context).top;
     final extendBehind = widget.extendBodyBehindBar;
     final collapsing = widget.titleMode == PregoTopNavigationTitleMode.collapsing;
@@ -454,7 +463,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
     // their elements short-circuit and only GlassScaffold's layout math reruns.
     GlassScaffold buildScaffold(double bannerHeight) => GlassScaffold(
       backgroundColor: backgroundColor,
-      statusBarStyle: GlassStatusBarStyle.auto,
+      statusBarStyle: statusBarStyle,
       extendBody: extendBehind,
       topEdgeFade: false, // Disable the top edge fade -- we use our own custom gradient
       bottomEdgeFade: false, // Disable the bottom edge fade -- we use our own custom gradient
