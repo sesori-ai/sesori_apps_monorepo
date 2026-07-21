@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/cupertino.dart";
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -294,6 +296,51 @@ void main() {
 
     await gesture.up();
     await tester.pumpAndSettle();
+  });
+
+  testWidgets("large title stays fixed when pull-to-refresh becomes armed", (tester) async {
+    final refreshCompleter = Completer<void>();
+    var refreshStarted = false;
+    late StateSetter rebuildHarness;
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          rebuildHarness = setState;
+          return _harness(
+            banner: null,
+            titleMode: PregoTopNavigationTitleMode.collapsing,
+            onRefresh: () {
+              refreshStarted = true;
+              return refreshCompleter.future;
+            },
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final largeTitle = find.descendant(of: find.byType(CustomScrollView), matching: find.text("Title"));
+    final initialTitleTop = tester.getTopLeft(largeTitle).dy;
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_contentKey)));
+
+    for (var step = 0; step < 30 && !refreshStarted; step++) {
+      await gesture.moveBy(const Offset(0, 10));
+      await tester.pump();
+      expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
+    }
+    expect(refreshStarted, isTrue);
+
+    await tester.pump(); // apply the refresh sliver's held layout extent
+    expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
+
+    rebuildHarness(() {});
+    await tester.pump();
+    expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
+
+    await gesture.up();
+    refreshCompleter.complete();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(largeTitle).dy, closeTo(initialTitleTop, 1));
   });
 
   testWidgets("non-extended pull-to-refresh also opens below the large title", (tester) async {

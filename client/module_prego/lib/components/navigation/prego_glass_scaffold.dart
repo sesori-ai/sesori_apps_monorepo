@@ -1,4 +1,4 @@
-import "package:flutter/cupertino.dart" show CupertinoSliverRefreshControl;
+import "package:flutter/cupertino.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
@@ -221,6 +221,11 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
   /// fixed text scale or whether a subtitle is present.
   double _largeTitleHeight = 0;
 
+  /// Total space currently opened by the refresh sliver. Unlike the scroll
+  /// offset, this stays continuous when Cupertino converts part of the
+  /// overscroll into its held refresh extent.
+  double _refreshPulledExtent = 0;
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -344,6 +349,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
           CupertinoSliverRefreshControl(
             onRefresh: onRefresh,
             builder: (context, refreshState, pulledExtent, triggerDistance, indicatorExtent) {
+              _refreshPulledExtent = refreshState == RefreshIndicatorMode.inactive ? 0 : pulledExtent;
               final indicator = CupertinoSliverRefreshControl.buildRefreshIndicator(
                 context,
                 refreshState,
@@ -393,7 +399,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
             subtitle: widget.subtitleText,
             scrollController: _scrollController,
             onHeightChanged: _onLargeTitleHeightChanged,
-            pinDuringOverscroll: onRefresh != null,
+            pulledExtent: onRefresh == null ? null : () => _refreshPulledExtent,
           ),
         ...widget.slivers,
       ],
@@ -619,6 +625,64 @@ class _RenderHeightObserver extends RenderProxyBox {
   }
 }
 
+/// Keeps its child fixed while a preceding refresh sliver opens space.
+///
+/// The translation is read at paint time because Cupertino changes the scroll
+/// offset while converting overscroll into a held refresh extent. A widget-level
+/// transform rebuilt during that correction can observe the new scroll offset
+/// with the old sliver geometry for one frame, making the title jump.
+class _OverscrollPinnedBox extends SingleChildRenderObjectWidget {
+  const _OverscrollPinnedBox({required this.pulledExtent, required super.child});
+
+  final ValueGetter<double> pulledExtent;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderOverscrollPinnedBox(pulledExtent);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderOverscrollPinnedBox renderObject) {
+    renderObject.updatePulledExtent(pulledExtent);
+  }
+}
+
+class _RenderOverscrollPinnedBox extends RenderProxyBox {
+  _RenderOverscrollPinnedBox(this._pulledExtent);
+
+  ValueGetter<double> _pulledExtent;
+
+  void updatePulledExtent(ValueGetter<double> value) {
+    _pulledExtent = value;
+    markNeedsPaint();
+    markNeedsSemanticsUpdate();
+  }
+
+  double get _translationY => -_pulledExtent();
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) return;
+    context.paintChild(child, offset.translate(0, _translationY));
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final child = this.child;
+    if (child == null) return false;
+    final paintOffset = Offset(0, _translationY);
+    return result.addWithPaintOffset(
+      offset: paintOffset,
+      position: position,
+      hitTest: (result, transformed) => child.hitTest(result, position: transformed),
+    );
+  }
+
+  @override
+  void applyPaintTransform(RenderObject child, Matrix4 transform) {
+    transform.translateByDouble(0, _translationY, 0, 1);
+  }
+}
+
 /// Publishes the top-bar area's geometry to descendants of a
 /// [PregoGlassScaffold]: the static base inset (status bar + bar row) plus the
 /// live banner height. The listenable's identity is stable across the banner
@@ -685,77 +749,72 @@ class _LargeTitleSliver extends StatelessWidget {
   final String? subtitle;
   final ScrollController scrollController;
   final ValueChanged<double> onHeightChanged;
-  final bool pinDuringOverscroll;
+  final ValueGetter<double>? pulledExtent;
   const _LargeTitleSliver({
     required this.title,
     required this.subtitle,
     required this.scrollController,
     required this.onHeightChanged,
-    required this.pinDuringOverscroll,
+    required this.pulledExtent,
   });
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final subtitle = this.subtitle;
+    final pulledExtent = this.pulledExtent;
+
+    final titleContent = Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        PregoSpacing.x3l,
+        0,
+        PregoSpacing.x3l,
+        PregoSpacing.xl,
+      ),
+      child: ListenableBuilder(
+        listenable: scrollController,
+        builder: (context, _) {
+          /// 0 while the large title is fully shown, 1 once it has collapsed into the
+          /// bar. Delegates to [PregoTopNavigation.collapseProgressOf] — the single
+          /// source of truth for the collapse — so the large-title sliver fades out in
+          /// lockstep with the bar title fading in.
+          final collapseProgress = PregoTopNavigation.collapseProgressOf(scrollController);
+          // Fade via text alpha instead of an Opacity layer — no saveLayer per frame.
+          final opacity = (1 - collapseProgress).clamp(0.0, 1.0);
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: prego.textTheme.displayMd.medium.copyWith(
+                  color: prego.colors.textPrimary.withMultipliedOpacity(opacity),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (subtitle != null && subtitle.isNotEmpty)
+                Text(
+                  subtitle,
+                  style: prego.textTheme.textMd.regular.copyWith(
+                    color: prego.colors.textSecondary.withMultipliedOpacity(opacity),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          );
+        },
+      ),
+    );
 
     return SliverToBoxAdapter(
       child: _HeightObserver(
         onHeightChanged: onHeightChanged,
-        child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(
-            PregoSpacing.x3l,
-            0,
-            PregoSpacing.x3l,
-            PregoSpacing.xl,
-          ),
-          child: ListenableBuilder(
-            listenable: scrollController,
-            builder: (context, _) {
-              /// 0 while the large title is fully shown, 1 once it has collapsed into the
-              /// bar. Delegates to [PregoTopNavigation.collapseProgressOf] — the single
-              /// source of truth for the collapse — so the large-title sliver fades out in
-              /// lockstep with the bar title fading in.
-              final collapseProgress = PregoTopNavigation.collapseProgressOf(scrollController);
-              // Fade via text alpha instead of an Opacity layer — no saveLayer per frame.
-              final opacity = (1 - collapseProgress).clamp(0.0, 1.0);
-              final scrollOffset = scrollController.hasClients && scrollController.positions.length == 1
-                  ? scrollController.offset
-                  : 0.0;
-              // The refresh sliver displaces every later sliver. Counteract its
-              // negative pull offset so the title stays fixed while the caller's
-              // content opens below it; positive offsets still collapse normally.
-              final pullOffset = pinDuringOverscroll && scrollOffset < 0 ? scrollOffset : 0.0;
-
-              return Transform.translate(
-                offset: Offset(0, pullOffset),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: prego.textTheme.displayMd.medium.copyWith(
-                        color: prego.colors.textPrimary.withMultipliedOpacity(opacity),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (subtitle != null && subtitle.isNotEmpty)
-                      Text(
-                        subtitle,
-                        style: prego.textTheme.textMd.regular.copyWith(
-                          color: prego.colors.textSecondary.withMultipliedOpacity(opacity),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
+        child: pulledExtent == null
+            ? titleContent
+            : _OverscrollPinnedBox(pulledExtent: pulledExtent, child: titleContent),
       ),
     );
   }
