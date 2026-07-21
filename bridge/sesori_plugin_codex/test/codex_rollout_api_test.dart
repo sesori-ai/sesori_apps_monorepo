@@ -7,16 +7,22 @@ import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/codex_plugin_test_factory.dart";
+
 void main() {
-  group("SessionRolloutReader", () {
+  group("Codex rollout layers", () {
     late Directory codexHome;
-    late SessionRolloutReader reader;
+    late CodexRolloutApi rolloutApi;
+    late CodexCatalogRepository catalogRepository;
+    late CodexMessageRepository messageRepository;
 
     setUp(() {
       codexHome = Directory.systemTemp.createTempSync("codex-home-");
-      reader = SessionRolloutReader(
+      rolloutApi = CodexRolloutApi(
         environment: {"CODEX_HOME": codexHome.path},
       );
+      catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
+      messageRepository = CodexMessageRepository(rolloutApi: rolloutApi);
     });
 
     tearDown(() {
@@ -28,10 +34,10 @@ void main() {
     });
 
     test("readIndex returns empty when session_index.jsonl is missing", () {
-      expect(reader.readIndex(), isEmpty);
+      expect(rolloutApi.readSessionIndex(), isEmpty);
     });
 
-    test("readIndex parses well-formed lines and skips bad ones", () {
+    test("readIndex decodes JSON lines and skips malformed JSON", () {
       final index = File(p.join(codexHome.path, "session_index.jsonl"))
         ..writeAsStringSync(
           [
@@ -51,12 +57,13 @@ void main() {
           ].join("\n"),
         );
 
-      final entries = reader.readIndex();
-      expect(entries, hasLength(2));
+      final entries = rolloutApi.readSessionIndex();
+      expect(entries, hasLength(3));
       expect(entries[0].id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
       expect(entries[0].threadName, equals("First thread"));
-      expect(entries[0].updatedAt, isNotNull);
+      expect(entries[0].updatedAt, equals("2026-04-17T10:00:00Z"));
       expect(entries[1].threadName, equals("Second thread"));
+      expect(entries[2].id, isNull);
       expect(index.existsSync(), isTrue);
     });
 
@@ -74,14 +81,14 @@ void main() {
         cwd: "/repo/web",
       );
 
-      final files = reader.listRolloutFiles();
+      final files = rolloutApi.listRolloutPaths();
       expect(files, hasLength(2));
       expect(
-        files.map((f) => f.sessionId).toSet(),
-        equals({
-          "019a0000-1111-2222-3333-aaaaaaaaaaaa",
-          "019a0000-1111-2222-3333-bbbbbbbbbbbb",
-        }),
+        files.map(p.basename).toSet(),
+        containsAll([
+          contains("019a0000-1111-2222-3333-aaaaaaaaaaaa"),
+          contains("019a0000-1111-2222-3333-bbbbbbbbbbbb"),
+        ]),
       );
     });
 
@@ -95,13 +102,12 @@ void main() {
         cliVersion: "0.121.0",
         branch: "sesori/codex-branch",
       );
-      final meta = reader.readMeta(path);
-      expect(meta, isNotNull);
-      expect(meta!.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
-      expect(meta.cwd, equals("/repo/app"));
-      expect(meta.timestamp, isNotNull);
-      expect(meta.cliVersion, equals("0.121.0"));
-      expect(meta.branch, equals("sesori/codex-branch"));
+      final meta = rolloutApi.readHeader(rolloutPath: path).first.payload;
+      expect(meta?.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
+      expect(meta?.cwd, equals("/repo/app"));
+      expect(meta?.timestamp, equals("2026-04-17T10:00:00Z"));
+      expect(meta?.cliVersion, equals("0.121.0"));
+      expect(meta?.git?.branch, equals("sesori/codex-branch"));
     });
 
     test("listSessions joins index + rollout header and sorts by updatedAt", () {
@@ -134,7 +140,7 @@ void main() {
         ].join("\n"),
       );
 
-      final records = reader.listSessions();
+      final records = catalogRepository.listSessionRecords();
       expect(records, hasLength(2));
       // Sorted newest-first.
       expect(records[0].threadName, equals("Newer"));
@@ -142,7 +148,7 @@ void main() {
       expect(records[0].cwd, equals("/repo/app"));
     });
 
-    test("listSessionsInIsolate keeps the main isolate responsive", () async {
+    test("catalog isolate enumeration keeps the main isolate responsive", () async {
       const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       _writeRollout(
         codexHome,
@@ -175,7 +181,7 @@ void main() {
       scheduleHeartbeat();
       late final List<CodexSessionRecord> records;
       try {
-        records = await reader.listSessionsInIsolate();
+        records = await catalogRepository.listSessionRecordsInIsolate();
       } finally {
         complete = true;
       }
@@ -217,9 +223,9 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
-        path,
-        "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
       );
       expect(messages, hasLength(2));
       expect(messages[0].info, isA<PluginMessageUser>());
@@ -235,7 +241,10 @@ void main() {
       File(path).writeAsBytesSync([0xFF]);
 
       expect(
-        () => reader.readMessages(path, sessionId),
+        () => messageRepository.readMessages(
+          rolloutPath: path,
+          sessionId: sessionId,
+        ),
         throwsA(
           isA<PluginOperationException>()
               .having(
@@ -298,9 +307,9 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
-        path,
-        "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
       );
 
       // exec (completed) + web_search + apply_patch (running); the
@@ -355,12 +364,13 @@ void main() {
         timestamp: "2026-04-18T08:30:00Z",
       );
 
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
-        rolloutReader: SessionRolloutReader(
-          environment: {"CODEX_HOME": codexHome.path},
-        ),
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       // Each session carries its own rollout cwd (never the launch CWD), so the
@@ -390,12 +400,13 @@ void main() {
         timestamp: "2026-04-18T08:30:00Z",
       );
 
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
-        rolloutReader: SessionRolloutReader(
-          environment: {"CODEX_HOME": codexHome.path},
-        ),
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       final sessions = await plugin.getSessions("/work/sample-app");
@@ -437,12 +448,13 @@ void main() {
         ],
       );
 
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
-        rolloutReader: SessionRolloutReader(
-          environment: {"CODEX_HOME": codexHome.path},
-        ),
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       final messages = await plugin.getSessionMessages(
@@ -454,8 +466,8 @@ void main() {
       await plugin.dispose();
     });
 
-    test("readMeta extracts the model from turn_context", () {
-      final reader = SessionRolloutReader(
+    test("catalog repository extracts the model from turn_context", () {
+      final api = CodexRolloutApi(
         environment: {"CODEX_HOME": codexHome.path},
       );
       final path = _writeRollout(
@@ -471,14 +483,19 @@ void main() {
         ],
       );
 
-      final meta = reader.readMeta(path);
-      expect(meta?.modelProvider, equals("openai"));
-      expect(meta?.model, equals("gpt-5.2-codex"));
+      final record = CodexCatalogRepository(
+        rolloutApi: api,
+      ).listSessionRecords().single;
+      expect(record.rolloutPath, path);
+      expect(record.modelProvider, equals("openai"));
+      expect(record.model, equals("gpt-5.2-codex"));
     });
 
     test("readMessages stamps assistant model from the active turn_context", () {
-      final reader = SessionRolloutReader(
-        environment: {"CODEX_HOME": codexHome.path},
+      final repository = CodexMessageRepository(
+        rolloutApi: CodexRolloutApi(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
       );
       final path = _writeRollout(
         codexHome,
@@ -516,9 +533,9 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
-        path,
-        "019a0000-1111-2222-3333-dddddddddddd",
+      final messages = repository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-dddddddddddd",
       );
       expect(messages, hasLength(2));
       final first = messages[0].info as PluginMessageAssistant;
@@ -530,8 +547,10 @@ void main() {
     });
 
     test("readMessages falls back to config model when no turn_context", () {
-      final reader = SessionRolloutReader(
-        environment: {"CODEX_HOME": codexHome.path},
+      final repository = CodexMessageRepository(
+        rolloutApi: CodexRolloutApi(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
       );
       final path = _writeRollout(
         codexHome,
@@ -551,9 +570,9 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
-        path,
-        "019a0000-1111-2222-3333-eeeeeeeeeeee",
+      final messages = repository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
         config: const CodexConfigDefaults(
           model: "gpt-5.5",
           modelProvider: "openai",

@@ -1,6 +1,8 @@
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/api/codex_app_server_api.dart";
+import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -14,6 +16,21 @@ void main() {
   group("CodexEventMapper", () {
     const projectCwd = "/repo/app";
     final mapper = CodexEventMapper(pluginId: CodexPlugin.pluginId, projectCwd: projectCwd);
+    final appServerApi = CodexAppServerApi(
+      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+    );
+    final threadRepository = CodexThreadRepository(
+      appServerApi: appServerApi,
+    );
+
+    List<BridgeSseEvent> mapThreadStarted(
+      CodexEventMapper target,
+      CodexServerNotification notification,
+    ) {
+      final dto = appServerApi.decodeThreadStartedParams(params: notification.params);
+      final record = dto == null ? null : threadRepository.mapStartedNotification(dto: dto);
+      return record == null ? const [] : target.mapThreadStarted(record);
+    }
 
     /// Replicates `BridgeEventMapper`'s payload construction and runs the
     /// bridge's `SesoriSseEvent.fromJson`. Throwing here is exactly the bug
@@ -35,7 +52,8 @@ void main() {
     }
 
     test("thread/started → SessionCreated parseable as Session", () {
-      final events = mapper.map(
+      final events = mapThreadStarted(
+        mapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -47,7 +65,7 @@ void main() {
               "updatedAt": 1779293090,
               "status": {"type": "idle"},
               "modelProvider": "openai",
-              "gitInfo": {"branch": "sesori/codex-branch"},
+              "gitInfo": {"branch": "  sesori/codex-branch  "},
               "cliVersion": "0.121.0",
               "source": "vscode",
             },
@@ -70,7 +88,8 @@ void main() {
     });
 
     test("thread/started without an id is dropped", () {
-      final events = mapper.map(
+      final events = mapThreadStarted(
+        mapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -81,11 +100,12 @@ void main() {
       expect(events, isEmpty);
     });
 
-    test("malformed thread DTO is dropped with an observable warning", () {
+    test("thread API decode recovery drops malformed DTO with an observable warning", () {
       late List<BridgeSseEvent> events;
 
       final output = _captureWarnings(() {
-        events = mapper.map(
+        events = mapThreadStarted(
+          mapper,
           const CodexServerNotification(
             method: "thread/started",
             params: {
@@ -123,7 +143,8 @@ void main() {
       // launch dir must carry its own cwd as the project id — otherwise the
       // mobile session list (opened on the derived project) drops it as a
       // project mismatch.
-      final events = mapper.map(
+      final events = mapThreadStarted(
+        mapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -274,7 +295,8 @@ void main() {
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       // thread/started carries the provider; the mapper remembers it per thread.
-      richMapper.map(
+      mapThreadStarted(
+        richMapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -309,7 +331,8 @@ void main() {
         projectCwd: projectCwd,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
-      richMapper.map(
+      mapThreadStarted(
+        richMapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -545,7 +568,8 @@ void main() {
 
     test("regression: real bug-log payloads parse cleanly", () {
       // The exact thread/started payload from the bug report.
-      final created = mapper.map(
+      final created = mapThreadStarted(
+        mapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {

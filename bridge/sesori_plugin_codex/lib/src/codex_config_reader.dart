@@ -20,7 +20,7 @@ class CodexConfigDefaults {
 /// Reads the top-level `model` and `model_provider` keys from
 /// `~/.codex/config.toml`.
 ///
-/// CODEX_HOME resolution mirrors codex itself (and [SessionRolloutReader]):
+/// CODEX_HOME resolution mirrors codex itself (and `CodexRolloutApi`):
 ///   1. `$CODEX_HOME` if set.
 ///   2. `$HOME/.codex` (or `$USERPROFILE\.codex` on Windows).
 ///
@@ -30,8 +30,7 @@ class CodexConfigDefaults {
 /// fallback for sessions that predate `turn_context` records.
 // COMPATIBILITY 2026-06-25 (v1.1.2): Old Codex rollouts omit turn_context model metadata. Remove config fallback reads when those rollouts are unsupported.
 class CodexConfigReader {
-  CodexConfigReader({Map<String, String>? environment})
-    : _environment = environment ?? Platform.environment;
+  CodexConfigReader({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
 
   final Map<String, String> _environment;
 

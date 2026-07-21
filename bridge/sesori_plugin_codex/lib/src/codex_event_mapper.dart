@@ -2,9 +2,9 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
-import "api/models/codex_thread_dto.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
+import "repositories/models/codex_thread_record.dart";
 
 /// Translates `codex app-server` `ServerNotification` frames into
 /// bridge-neutral [BridgeSseEvent]s.
@@ -104,25 +104,21 @@ class CodexEventMapper {
   String _projectIdForThread(String threadId, {String? cwd}) =>
       normalizeProjectDirectory(directory: _threadDirectory[threadId] ?? cwd ?? projectCwd);
 
-  /// Maps a single notification to zero or more bridge events.
+  /// Maps a repository-normalized `thread/started` record.
+  List<BridgeSseEvent> mapThreadStarted(CodexThreadRecord record) {
+    setThreadProvider(record.id, record.modelProvider);
+    setThreadDirectory(record.id, record.directory);
+    return [
+      BridgeSseSessionCreated(info: _threadToSession(record).toJson()),
+    ];
+  }
+
+  /// Maps a non-thread-start notification to zero or more bridge events.
   List<BridgeSseEvent> map(CodexServerNotification notification) {
     final method = notification.method;
     final params = notification.params;
 
     switch (method) {
-      case "thread/started":
-        final envelope = _decodeThreadEnvelope(params);
-        final thread = envelope?.thread;
-        final id = thread?.id;
-        if (thread == null || id == null || id.isEmpty) return const [];
-        final provider = thread.modelProvider;
-        if (provider != null && provider.isNotEmpty) {
-          _threadProvider[id] = provider;
-        }
-        return [
-          BridgeSseSessionCreated(info: _threadToSession(thread, id).toJson()),
-        ];
-
       case "thread/name/updated":
         final threadId = params["threadId"] as String?;
         if (threadId == null) return const [];
@@ -481,12 +477,15 @@ class CodexEventMapper {
     ];
   }
 
-  /// Builds a full [shared.Session] from a codex `thread` object.
-  shared.Session _threadToSession(CodexThreadDto thread, String id) {
-    final projectId = _projectIdForThread(id, cwd: thread.cwd);
+  /// Builds a full [shared.Session] from a normalized Codex thread record.
+  shared.Session _threadToSession(CodexThreadRecord thread) {
+    final projectId = _projectIdForThread(
+      thread.id,
+      cwd: thread.directory,
+    );
     return shared.Session(
-      branchName: _usefulText(thread.gitInfo?.branch),
-      id: id,
+      branchName: thread.branch,
+      id: thread.id,
       pluginId: pluginId,
       projectID: projectId,
       directory: projectId,
@@ -518,31 +517,15 @@ class CodexEventMapper {
     );
   }
 
-  /// Codex timestamps are unix **seconds**; sesori [shared.SessionTime] is in
-  /// **milliseconds**.
-  shared.SessionTime? _threadTime(CodexThreadDto thread) {
+  shared.SessionTime? _threadTime(CodexThreadRecord thread) {
     final created = thread.createdAt;
     final updated = thread.updatedAt;
     if (created == null || updated == null) return null;
     return shared.SessionTime(
-      created: (created * 1000).round(),
-      updated: (updated * 1000).round(),
+      created: created,
+      updated: updated,
       archived: null,
     );
-  }
-
-  CodexThreadEnvelopeDto? _decodeThreadEnvelope(Map<String, dynamic> params) {
-    try {
-      return CodexThreadEnvelopeDto.fromJson(params);
-    } on Object catch (error, stackTrace) {
-      Log.w("[codex] failed to decode thread/started notification", error, stackTrace);
-      return null;
-    }
-  }
-
-  String? _usefulText(String? value) {
-    final trimmed = value?.trim();
-    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
   /// Maps a codex thread status object (`{type: idle|active, …}`) onto the

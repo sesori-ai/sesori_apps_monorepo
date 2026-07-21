@@ -55,31 +55,34 @@ Future<void> main(List<String> arguments) async {
       transcriptBytes: options.transcriptBytes,
     );
     final rssAfterFixture = ProcessInfo.currentRss;
-    final reader = SessionRolloutReader(
+    final rolloutApi = CodexRolloutApi(
       environment: {"CODEX_HOME": codexHome.path},
     );
+    final catalogRepository = CodexCatalogRepository(
+      rolloutApi: rolloutApi,
+    );
     final sessionOperation = switch (options.implementation) {
-      _Implementation.sync => "listSessions",
-      _Implementation.isolate => "listSessionsInIsolate",
+      _Implementation.sync => "listSessionRecords",
+      _Implementation.isolate => "listSessionRecordsInIsolate",
     };
 
     stderr.writeln("Running ${options.warmup} warmup iteration(s).");
     for (var i = 0; i < options.warmup; i++) {
       _validateCount(
         operation: "listRolloutFiles",
-        actual: reader.listRolloutFiles().length,
+        actual: rolloutApi.listRolloutPaths().length,
         expected: options.sessions,
       );
       _validateCount(
         operation: "readIndex",
-        actual: reader.readIndex().length,
+        actual: rolloutApi.readSessionIndex().length,
         expected: options.sessions,
       );
       _validateCount(
         operation: sessionOperation,
         actual: switch (options.implementation) {
-          _Implementation.sync => reader.listSessions().length,
-          _Implementation.isolate => (await reader.listSessionsInIsolate()).length,
+          _Implementation.sync => catalogRepository.listSessionRecords().length,
+          _Implementation.isolate => (await catalogRepository.listSessionRecordsInIsolate()).length,
         },
         expected: options.sessions,
       );
@@ -95,7 +98,7 @@ Future<void> main(List<String> arguments) async {
     stderr.writeln("Collecting ${options.samples} measured sample(s).");
     for (var i = 0; i < options.samples; i++) {
       var watch = Stopwatch()..start();
-      final rolloutFiles = reader.listRolloutFiles();
+      final rolloutFiles = rolloutApi.listRolloutPaths();
       watch.stop();
       listRolloutFilesMicros.add(watch.elapsedMicroseconds);
       _validateCount(
@@ -105,7 +108,7 @@ Future<void> main(List<String> arguments) async {
       );
 
       watch = Stopwatch()..start();
-      final indexEntries = reader.readIndex();
+      final indexEntries = rolloutApi.readSessionIndex();
       watch.stop();
       readIndexMicros.add(watch.elapsedMicroseconds);
       _validateCount(
@@ -123,8 +126,8 @@ Future<void> main(List<String> arguments) async {
 
       watch = Stopwatch()..start();
       final sessions = switch (options.implementation) {
-        _Implementation.sync => reader.listSessions(),
-        _Implementation.isolate => await reader.listSessionsInIsolate(),
+        _Implementation.sync => catalogRepository.listSessionRecords(),
+        _Implementation.isolate => await catalogRepository.listSessionRecordsInIsolate(),
       };
       watch.stop();
       listSessionsMicros.add(watch.elapsedMicroseconds);

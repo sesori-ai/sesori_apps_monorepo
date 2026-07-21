@@ -6,7 +6,7 @@ import "package:path/path.dart" as p;
 import "package:test/test.dart";
 
 void main() {
-  group("CodexMetadataRepository", () {
+  group("Codex metadata", () {
     late Directory codexHome;
     late Directory launchProject;
     late Directory otherProject;
@@ -25,18 +25,30 @@ void main() {
       }
     });
 
-    CodexMetadataRepository newRepository() => CodexMetadataRepository(
-      skillReader: CodexSkillReader(
+    ({CodexMetadataRepository metadata, CodexSessionService sessions}) newRepositories() {
+      final rolloutApi = CodexRolloutApi(
         environment: {"CODEX_HOME": codexHome.path},
-      ),
-      rolloutReader: SessionRolloutReader(
+      );
+      final configReader = CodexConfigReader(
         environment: {"CODEX_HOME": codexHome.path},
-      ),
-      configReader: CodexConfigReader(
-        environment: {"CODEX_HOME": codexHome.path},
-      ),
-      launchDirectory: launchProject.path,
-    );
+      );
+      final metadata = CodexMetadataRepository(
+        skillReader: CodexSkillReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+        configReader: configReader,
+        launchDirectory: launchProject.path,
+      );
+      return (
+        metadata: metadata,
+        sessions: CodexSessionService(
+          catalogRepository: CodexCatalogRepository(rolloutApi: rolloutApi),
+          messageRepository: CodexMessageRepository(rolloutApi: rolloutApi),
+          metadataRepository: metadata,
+          launchDirectory: launchProject.path,
+        ),
+      );
+    }
 
     group("getCommands", () {
       test("scopes project-local skills to the selected project directory", () {
@@ -52,19 +64,13 @@ void main() {
           name: "other-only",
         );
 
-        final repository = newRepository();
+        final repository = newRepositories().metadata;
         expect(
-          repository
-              .getCommands(projectId: launchProject.path)
-              .map((c) => c.name)
-              .toList(),
+          repository.getCommands(projectId: launchProject.path).map((c) => c.name).toList(),
           equals(["launch-only", "shared"]),
         );
         expect(
-          repository
-              .getCommands(projectId: otherProject.path)
-              .map((c) => c.name)
-              .toList(),
+          repository.getCommands(projectId: otherProject.path).map((c) => c.name).toList(),
           equals(["other-only", "shared"]),
         );
       });
@@ -76,7 +82,7 @@ void main() {
           name: "launch-only",
         );
 
-        final commands = newRepository().getCommands(projectId: null);
+        final commands = newRepositories().metadata.getCommands(projectId: null);
         expect(commands.map((c) => c.name).toList(), equals(["launch-only"]));
       });
 
@@ -88,9 +94,7 @@ void main() {
           description: "",
         );
 
-        final command = newRepository()
-            .getCommands(projectId: launchProject.path)
-            .single;
+        final command = newRepositories().metadata.getCommands(projectId: launchProject.path).single;
         expect(command.description, isNull);
       });
     });
@@ -115,14 +119,12 @@ void main() {
           model: "claude-x",
         );
 
-        final repository = newRepository();
-        final launchDefaults =
-            repository.resolveModelDefaults(projectId: launchProject.path);
+        final repository = newRepositories().sessions;
+        final launchDefaults = repository.resolveModelDefaults(projectId: launchProject.path);
         expect(launchDefaults.modelID, equals("gpt-5.4-codex"));
         expect(launchDefaults.providerID, equals("openai"));
 
-        final otherDefaults =
-            repository.resolveModelDefaults(projectId: otherProject.path);
+        final otherDefaults = repository.resolveModelDefaults(projectId: otherProject.path);
         expect(otherDefaults.modelID, equals("claude-x"));
         expect(otherDefaults.providerID, equals("anthropic"));
       });
@@ -147,8 +149,7 @@ void main() {
           model: "gpt-5.5",
         );
 
-        final defaults = newRepository()
-            .resolveModelDefaults(projectId: launchProject.path);
+        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
         expect(defaults.modelID, equals("gpt-5.5"));
       });
 
@@ -162,8 +163,7 @@ void main() {
           model: "gpt-5.5",
         );
 
-        final defaults = newRepository()
-            .resolveModelDefaults(projectId: otherProject.path);
+        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: otherProject.path);
         expect(defaults.modelID, isNull);
         expect(defaults.providerID, equals("openai"));
       });
@@ -178,8 +178,7 @@ void main() {
           model: "gpt-5.4-codex",
         );
 
-        final defaults = newRepository()
-            .resolveModelDefaults(projectId: launchProject.path);
+        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
         expect(defaults.modelID, equals("gpt-5.4-codex"));
       });
 
@@ -196,15 +195,13 @@ void main() {
           model: "claude-x",
         );
 
-        final defaults = newRepository()
-            .resolveModelDefaults(projectId: launchProject.path);
+        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
         expect(defaults.modelID, equals("gpt-5.5"));
         expect(defaults.providerID, equals("azure"));
       });
 
       test("no sessions and no config resolves to a null model and openai", () {
-        final defaults = newRepository()
-            .resolveModelDefaults(projectId: launchProject.path);
+        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
         expect(defaults.modelID, isNull);
         expect(defaults.providerID, equals("openai"));
       });
@@ -212,7 +209,7 @@ void main() {
 
     group("selectCatalogDefaultModel", () {
       test("the project-scoped model wins over the catalog default when in the catalog", () {
-        final selected = newRepository().selectCatalogDefaultModel(
+        final selected = newRepositories().sessions.selectCatalogDefaultModel(
           scopedModelID: "gpt-5.4-mini",
           catalogModelIds: ["gpt-5.5", "gpt-5.4-mini"],
           catalogDefaultId: "gpt-5.5",
@@ -221,7 +218,7 @@ void main() {
       });
 
       test("a scoped model missing from the catalog falls back to the catalog default", () {
-        final selected = newRepository().selectCatalogDefaultModel(
+        final selected = newRepositories().sessions.selectCatalogDefaultModel(
           scopedModelID: "retired-model",
           catalogModelIds: ["gpt-5.5", "gpt-5.4-mini"],
           catalogDefaultId: "gpt-5.5",
@@ -230,7 +227,7 @@ void main() {
       });
 
       test("no scoped model and no catalog default falls back to the first catalog model", () {
-        final selected = newRepository().selectCatalogDefaultModel(
+        final selected = newRepositories().sessions.selectCatalogDefaultModel(
           scopedModelID: null,
           catalogModelIds: ["gpt-5.5", "gpt-5.4-mini"],
           catalogDefaultId: null,
@@ -239,7 +236,7 @@ void main() {
       });
 
       test("an empty catalog resolves to null", () {
-        final selected = newRepository().selectCatalogDefaultModel(
+        final selected = newRepositories().sessions.selectCatalogDefaultModel(
           scopedModelID: "gpt-5.5",
           catalogModelIds: const [],
           catalogDefaultId: null,
