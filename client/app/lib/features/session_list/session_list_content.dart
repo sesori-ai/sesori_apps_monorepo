@@ -16,8 +16,8 @@ const _actionDispatcher = SessionListActionDispatcher();
 
 /// Pull-to-refresh handler shared by [SessionListScaffold] and
 /// [SessionListPanel]: re-fetches the session list and reports the outcome via
-/// a snackbar. Both hosts own their own scroll view (and thus their own
-/// [RefreshIndicator]), so the refresh action lives here, next to the content.
+/// a snackbar. Both hosts own their own scroll view and refresh control, so the
+/// refresh action lives here, next to the content.
 Future<void> refreshSessionList(BuildContext context) async {
   final loc = context.loc;
   final success = await context.read<SessionListCubit>().refreshSessions(waitForPrData: true);

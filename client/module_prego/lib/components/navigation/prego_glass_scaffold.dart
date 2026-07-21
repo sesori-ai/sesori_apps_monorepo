@@ -1,3 +1,4 @@
+import "package:flutter/cupertino.dart" show CupertinoSliverRefreshControl;
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
@@ -85,7 +86,7 @@ class PregoGlassScaffold extends StatefulWidget {
     this.scrollable = true,
   }) : assert(
          scrollable || onRefresh == null,
-         "onRefresh requires scrollable to be true (RefreshIndicator needs a draggable page)",
+         "onRefresh requires scrollable to be true (the refresh control needs a draggable page)",
        );
 
   /// Primary title — shown large below the bar and, once collapsed, inline.
@@ -152,7 +153,8 @@ class PregoGlassScaffold extends StatefulWidget {
   /// modal scrim such as a blocking loading indicator. Null shows nothing.
   final Widget? overlay;
 
-  /// When set, the scroll view is wrapped in a [RefreshIndicator].
+  /// When set, an in-scroll refresh control opens below the top bar and pushes
+  /// the page content down while it is pulled.
   final Future<void> Function()? onRefresh;
 
   /// Page background painted behind the glass. Defaults to `bgSurface1`.
@@ -212,6 +214,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
     final topPad = MediaQuery.paddingOf(context).top;
     final extendBehind = widget.extendBodyBehindBar;
     final collapsing = widget.titleMode == PregoTopNavigationTitleMode.collapsing;
+    final onRefresh = widget.onRefresh;
 
     // The bar. It shares this scaffold's [_scrollController] so its collapsing
     // title fades in as the large-title sliver below scrolls away.
@@ -258,10 +261,45 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
       ],
     );
 
-    Widget scrollView = CustomScrollView(
+    final scrollView = CustomScrollView(
       controller: _scrollController,
-      physics: widget.scrollable ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
+      // CupertinoSliverRefreshControl needs overscroll even on platforms whose
+      // default physics clamp at the edge. Its sliver extent is what moves the
+      // page content down during a pull instead of painting over it.
+      physics: !widget.scrollable
+          ? const NeverScrollableScrollPhysics()
+          : onRefresh != null
+          ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+          : const AlwaysScrollableScrollPhysics(),
       slivers: [
+        // The refresh sliver must receive the scroll view's leading overscroll,
+        // so it precedes the bar spacer. Shift only its painted indicator below
+        // the live bar inset; the sliver itself opens at the scroll origin and
+        // pushes the spacer, large title, and caller-provided content down.
+        if (onRefresh != null)
+          CupertinoSliverRefreshControl(
+            onRefresh: onRefresh,
+            builder: (context, refreshState, pulledExtent, triggerDistance, indicatorExtent) {
+              final indicator = CupertinoSliverRefreshControl.buildRefreshIndicator(
+                context,
+                refreshState,
+                pulledExtent,
+                triggerDistance,
+                indicatorExtent,
+              );
+              // A non-extended body already begins below the bar.
+              if (!extendBehind) return indicator;
+
+              return ValueListenableBuilder<double>(
+                valueListenable: _bannerHeight,
+                child: indicator,
+                builder: (context, bannerHeight, indicator) => Transform.translate(
+                  offset: Offset(0, topPad + topNav.preferredSize.height + bannerHeight),
+                  child: indicator,
+                ),
+              );
+            },
+          ),
         // When the body scrolls behind the bar, reserve space so the title
         // clears it. When it doesn't, GlassScaffold already insets the body
         // below the bar, so a spacer would double the gap. Skipped entirely when
@@ -286,11 +324,6 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
         ...widget.slivers,
       ],
     );
-
-    final onRefresh = widget.onRefresh;
-    if (onRefresh != null) {
-      scrollView = RefreshIndicator(onRefresh: onRefresh, child: scrollView);
-    }
 
     final overlay = widget.overlay;
 
