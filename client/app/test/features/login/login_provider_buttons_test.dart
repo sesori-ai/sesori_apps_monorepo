@@ -22,7 +22,6 @@ Widget _buildApp({
       body: LoginProviderButtons(
         isLoading: isLoading,
         loadingOption: loadingOption,
-        showEmailForm: false,
         showApple: true,
         onGithubSelected: onGithubSelected ?? () {},
         onAppleSelected: onAppleSelected ?? () {},

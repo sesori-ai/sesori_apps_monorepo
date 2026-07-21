@@ -313,7 +313,15 @@
   "emailInvalid": "Please enter a valid email",
   "passwordLabel": "Password",
   "passwordRequired": "Password is required",
-  "signIn": "Sign In",
+  "passwordShow": "Show password",
+  "@passwordShow": {
+    "description": "Accessibility label for the reveal toggle inside the password field."
+  },
+  "passwordHide": "Hide password",
+  "@passwordHide": {
+    "description": "Accessibility label for the toggle that re-masks the password field."
+  },
+  "signIn": "Sign in",
   "backToLogin": "Back to login",
   "loginAuthenticationFailedTitle": "Authentication failed",
   "loginError": "Sign in failed. Please try again.",
