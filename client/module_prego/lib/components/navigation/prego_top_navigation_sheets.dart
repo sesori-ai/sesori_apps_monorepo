@@ -174,7 +174,7 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
     if (leading != null) return leading;
 
     final onBack = this.onBack;
-    if (onBack != null) return _backButton(context, onBack);
+    if (onBack != null) return _backButton(context, onBack: onBack);
 
     return null;
   }
@@ -184,7 +184,7 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
   /// arrow, so no close is shown then. Null when the row would be empty.
   Widget? _resolveTrailing(BuildContext context) {
     final onClose = this.onClose;
-    final trailingClose = onClose != null && onBack == null ? _closeButton(context, onClose) : null;
+    final trailingClose = onClose != null && onBack == null ? _closeButton(context, onClose: onClose) : null;
 
     final children = [...?actions, ?trailingClose];
     if (children.isEmpty) return null;
@@ -192,7 +192,7 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
     return Row(mainAxisSize: MainAxisSize.min, spacing: PregoSpacing.md, children: children);
   }
 
-  Widget _backButton(BuildContext context, VoidCallback onBack) {
+  Widget _backButton(BuildContext context, {required VoidCallback onBack}) {
     return PregoButtonsIconGlass(
       icon: TablerRegular.chevron_left,
       onPressed: onBack,
@@ -200,7 +200,7 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
     );
   }
 
-  Widget _closeButton(BuildContext context, VoidCallback onClose) {
+  Widget _closeButton(BuildContext context, {required VoidCallback onClose}) {
     return PregoButtonsIconGlass(
       icon: TablerRegular.x,
       onPressed: onClose,
