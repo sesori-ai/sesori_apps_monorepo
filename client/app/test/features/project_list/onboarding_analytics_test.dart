@@ -119,7 +119,9 @@ void main() {
     );
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
     await pumpScreen(tester);
-    expect(find.text("Waiting for the bridge..."), findsOneWidget);
+    // The waiting copy appears twice on this surface — the bar's status row
+    // and the body's caption under the connection graphic.
+    expect(find.text("Waiting for the bridge..."), findsNWidgets(2));
   }
 
   /// Bridge offline with a bridge registered → the bridge-offline recovery

@@ -133,12 +133,6 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get projectListTitle;
 
-  /// App-bar title shown in place of 'Projects' while the connect-your-computer onboarding is visible (no bridge has ever been registered and none is connected).
-  ///
-  /// In en, this message translates to:
-  /// **'Connect'**
-  String get projectListConnectTitle;
-
   /// No description provided for @projectListLoadingSemantics.
   ///
   /// In en, this message translates to:

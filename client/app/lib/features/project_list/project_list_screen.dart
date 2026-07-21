@@ -79,28 +79,40 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     super.dispose();
   }
 
-  /// The scaffold's bottom-right floating action for the current [state]: the
-  /// add-project FAB once projects exist, the onboarding "Need help?" support
-  /// menu on the never-registered setup surface, and nothing otherwise — the
+  /// The scaffold's floating action for the current [state], with the
+  /// placement that action is designed for: the add-project FAB in the
+  /// trailing corner once projects exist, the onboarding "Need help?" support
+  /// menu centred on the disconnected surfaces, and nothing otherwise — the
   /// connected-but-empty state anchors its own add-project call to action at
   /// the bottom ([_ConnectedEmptyView]), so a floating pill would collide.
-  Widget? _floatingAction({required BuildContext context, required ProjectListState state}) {
+  ({Widget? action, PregoFloatingActionAlignment alignment}) _floatingAction({
+    required BuildContext context,
+    required ProjectListState state,
+  }) {
     if (state is ProjectListLoaded && state.projects.isNotEmpty) {
-      return PregoButtonsIconGlass(
-        icon: TablerRegular.folder_plus,
-        size: PregoButtonsIconGlassSize.xl,
-        iconSize: 22,
-        onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+      return (
+        action: PregoButtonsIconGlass(
+          icon: TablerRegular.folder_plus,
+          size: PregoButtonsIconGlassSize.xl,
+          iconSize: 22,
+          onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+        ),
+        alignment: PregoFloatingActionAlignment.end,
       );
     }
     // The onboarding/recovery surfaces get the same pill but report distinct
     // analytics surfaces, so help-seeking is attributable to the funnel step.
+    // It reads as the page's own closing call to action rather than a corner
+    // affordance, so the design centres it under the setup steps.
     if (state is ProjectListBridgeDisconnected) {
-      return _NeedHelpMenu(
-        surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
+      return (
+        action: _NeedHelpMenu(
+          surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
+        ),
+        alignment: PregoFloatingActionAlignment.center,
       );
     }
-    return null;
+    return (action: null, alignment: PregoFloatingActionAlignment.end);
   }
 
   @override
@@ -109,12 +121,30 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final state = context.watch<ProjectListCubit>().state;
     final isRefreshing = state is ProjectListLoaded && state.isRefreshing;
     // The connect-your-computer onboarding (no bridge ever registered, none
-    // connected) titles the screen "Connect"; every other state keeps
-    // "Projects".
+    // connected) trades the collapsing large title for the compact
+    // back-leading block, whose subtitle row reports the connection the body
+    // is waiting on. Its body is a fixed setup checklist with nothing to
+    // scroll a large title away against, and the design gives the waiting
+    // status the bar's second line. Every other state keeps the large title.
     final isConnectOnboarding = state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges;
+    final floatingAction = _floatingAction(context: context, state: state);
 
     return PregoGlassScaffold(
-      title: isConnectOnboarding ? loc.projectListConnectTitle : loc.projectListTitle,
+      title: loc.projectListTitle,
+      titleMode: isConnectOnboarding
+          ? PregoTopNavigationTitleMode.backLeading
+          : PregoTopNavigationTitleMode.collapsing,
+      // With no back button leading it, the block is the page's own title, so
+      // it takes the design's prominent weight rather than the muted one the
+      // sessions bar uses beside its back button.
+      leadingTitleEmphasis: PregoNavLeadingTitleEmphasis.prominent,
+      subtitle: isConnectOnboarding
+          ? PregoNavSubtitle(
+              text: loc.projectsOnboardingWaitingForBridge,
+              icon: TablerRegular.broadcast_off,
+              status: PregoNavStatus.error,
+            )
+          : null,
       // A loaded list hosts the top-nav connection banner; the loading and
       // bridge-disconnected states own their messaging full-screen (setup
       // onboarding or the "turn on your bridge" design), so they suppress it.
@@ -126,10 +156,11 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
           onPressed: () => context.pushRoute(const AppRoute.settings()),
         ),
       ],
-      // Bottom-right floating action, resolved per state: the add-project FAB
-      // once projects exist, the "Need help?" support menu on the onboarding
-      // and bridge-offline surfaces, and nothing while loading/errored.
-      floatingActionButton: _floatingAction(context: context, state: state),
+      // Floating action, resolved per state: the add-project FAB once projects
+      // exist, the "Need help?" support menu on the onboarding and
+      // bridge-offline surfaces, and nothing while loading/errored.
+      floatingActionButton: floatingAction.action,
+      floatingActionAlignment: floatingAction.alignment,
       onRefresh: _refreshFor(context: context, state: state),
       slivers: _buildContentSlivers(context: context, state: state, isRefreshing: isRefreshing),
     );

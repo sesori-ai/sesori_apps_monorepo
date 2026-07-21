@@ -132,19 +132,25 @@ void main() {
     expect(largeTitleAlpha(tester, "Projects"), closeTo(0, 0.001));
   });
 
-  testWidgets("the connect onboarding scrolls the page, collapsing the large title", (tester) async {
+  testWidgets("the connect onboarding hosts a back-leading bar instead of a large title", (tester) async {
     await pumpScreen(tester, hasRegisteredBridges: false);
-    expect(find.text("Waiting for the bridge..."), findsOneWidget);
+    // Still one page scroll owned by the scaffold, as on the offline body.
     expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsNothing);
 
-    final titleBefore = tester.getTopLeft(largeTitle("Connect")).dy;
-    expect(largeTitleAlpha(tester, "Connect"), closeTo(1, 0.001));
+    // The bar carries the page title over a status row reporting what the body
+    // is waiting for — so there is no large title in the scroll view to
+    // collapse, and the body's own caption is the only other copy of the text.
+    expect(find.byType(PregoNavLeadingTitle), findsOneWidget);
+    expect(largeTitle("Projects"), findsNothing);
+    expect(find.text("Projects"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.broadcast_off), findsOneWidget);
+    expect(find.text("Waiting for the bridge..."), findsNWidgets(2));
 
+    // Scrolling moves the body without disturbing the fixed bar.
+    final barBefore = tester.getTopLeft(find.byType(PregoNavLeadingTitle));
     await scrollPageUp(tester);
-
-    expect(tester.getTopLeft(largeTitle("Connect")).dy, lessThan(titleBefore));
-    expect(largeTitleAlpha(tester, "Connect"), closeTo(0, 0.001));
+    expect(tester.getTopLeft(find.byType(PregoNavLeadingTitle)), barBefore);
   });
 
   testWidgets("pulling the disconnected page down re-attempts the bridge connection", (tester) async {

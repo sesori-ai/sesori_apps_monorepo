@@ -71,7 +71,7 @@ class SessionListScaffold extends StatelessWidget {
         SessionListLoaded(repoSlug: final repoSlug?, :final repoProvider) => PregoNavSubtitle(
           text: repoSlug,
           icon: _providerIcon(repoProvider),
-          online: online,
+          status: online ? PregoNavStatus.online : PregoNavStatus.offline,
           infoMessage: repoSlug,
           infoSemanticLabel: loc.sessionListRepoInfoSemantics,
         ),
