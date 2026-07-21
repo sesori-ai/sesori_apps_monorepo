@@ -79,8 +79,11 @@ class _AppearanceOption extends StatelessWidget {
 
     return MergeSemantics(
       child: Semantics(
-        button: true,
-        selected: isSelected,
+        // The three tiles are one choice, not three independent buttons — the
+        // same semantics a [Radio] carries, so assistive technology announces
+        // the selection as mutually exclusive.
+        inMutuallyExclusiveGroup: true,
+        checked: isSelected,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,

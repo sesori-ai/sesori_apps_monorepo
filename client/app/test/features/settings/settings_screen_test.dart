@@ -133,6 +133,37 @@ void main() {
     expect(appearance.state, AppearanceMode.dark);
   });
 
+  testWidgets("the theme tiles announce as one mutually exclusive choice", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    final handle = tester.ensureSemantics();
+
+    // AppearanceMode.system is the seeded state, so System is the checked tile.
+    expect(
+      tester.getSemantics(find.text("System")),
+      matchesSemantics(
+        label: "System",
+        isInMutuallyExclusiveGroup: true,
+        hasCheckedState: true,
+        isChecked: true,
+        hasTapAction: true,
+      ),
+    );
+    expect(
+      tester.getSemantics(find.text("Light")),
+      matchesSemantics(
+        label: "Light",
+        isInMutuallyExclusiveGroup: true,
+        hasCheckedState: true,
+        hasTapAction: true,
+      ),
+    );
+
+    handle.dispose();
+  });
+
   testWidgets("legal rows open the document in a sheet, not a browser", (tester) async {
     _useTallSurface(tester);
     when(() => legalRepository.getMarkdown(document: any(named: "document")))

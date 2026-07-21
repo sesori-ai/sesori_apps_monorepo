@@ -26,9 +26,16 @@ class HttpApiClient implements SafeApiClient {
   /// The JSON methods below run every body through [jsonDecode]; a text
   /// endpoint's body would fail that parse, so this one skips it. It stays off
   /// the [SafeApiClient] interface, whose contract is JSON-shaped.
+  ///
+  /// The deadline aborts the request rather than only abandoning its future, so
+  /// a retry after a timeout does not leave the previous connection hanging.
   Future<ApiResponse<String>> getText({required Uri url}) async {
+    final deadline = Completer<void>();
+    final timer = Timer(_textTimeout, deadline.complete);
+
     try {
-      final response = await _client.get(url).timeout(_textTimeout);
+      final request = http.AbortableRequest("GET", url, abortTrigger: deadline.future);
+      final response = await http.Response.fromStream(await _client.send(request));
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return ApiResponse.error(
@@ -42,13 +49,14 @@ class HttpApiClient implements SafeApiClient {
 
       return ApiResponse.success(response.body);
     } on http.ClientException catch (e) {
-      return ApiResponse.error(ApiError.dartHttpClient(e));
-    } on TimeoutException catch (e) {
+      // Covers RequestAbortedException, which the deadline raises.
       return ApiResponse.error(ApiError.dartHttpClient(e));
     } on SocketException catch (e) {
       return ApiResponse.error(ApiError.dartHttpClient(e));
     } on HandshakeException catch (e) {
       return ApiResponse.error(ApiError.dartHttpClient(e));
+    } finally {
+      timer.cancel();
     }
   }
 
