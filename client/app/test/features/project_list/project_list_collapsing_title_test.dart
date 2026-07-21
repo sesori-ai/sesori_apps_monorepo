@@ -157,8 +157,8 @@ void main() {
     await pumpScreen(tester, hasRegisteredBridges: false);
     verifyNever(() => mockConnectionService.reconnect());
 
-    // The scaffold's RefreshIndicator now drives the reconnect that the body's
-    // own pull-to-refresh used to.
+    // The scaffold's sliver refresh control drives the reconnect that the
+    // body's own pull-to-refresh used to.
     await tester.fling(find.byType(CustomScrollView), const Offset(0, 300), 1000);
     await tester.pumpAndSettle();
 
