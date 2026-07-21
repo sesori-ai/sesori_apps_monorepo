@@ -58,56 +58,53 @@ class SessionListContent extends StatelessWidget {
       SessionListLoading() => SliverToBoxAdapter(
         child: PregoSkeletonList(semanticLabel: loc.sessionListLoadingSemantics),
       ),
-      final SessionListLoaded loaded =>
-        loaded.sessions.isEmpty
-            ? SliverFillRemaining(
-                hasScrollBody: false,
-                child: loaded.showArchived
-                    ? Center(child: Text(loc.sessionListEmptyArchived))
-                    : SessionEmptyState(projectName: projectName),
-              )
-            : SliverPadding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                sliver: SliverList.builder(
-                  itemCount: loaded.sessions.length,
-                  // Lets Flutter relocate a keyed row after the list reorders
-                  // (sessions live-sort by activity), so a swiped-open row
-                  // keeps its state with its session instead of at its old
-                  // index.
-                  findChildIndexCallback: (key) {
-                    if (key is! ValueKey<String>) return null;
-                    final index = loaded.sessions.indexWhere((session) => session.id == key.value);
-                    return index == -1 ? null : index;
-                  },
-                  itemBuilder: (_, index) {
-                    final session = loaded.sessions[index];
-                    final isArchived = session.time?.archived != null;
-                    final activityInfo = loaded.activeSessionIds[session.id];
+      final SessionListLoaded loaded => SliverMainAxisGroup(
+        slivers: [
+          // This sliver stays mounted when the list becomes empty, giving the
+          // final removed row time to close before the empty state settles in.
+          PregoAnimatedSliverList<Session>(
+            items: loaded.sessions,
+            itemKey: (session) => ValueKey(session.id),
+            itemBuilder: (_, index, session) {
+              final isArchived = session.time?.archived != null;
+              final activityInfo = loaded.activeSessionIds[session.id];
 
-                    return SessionTile(
-                      // Keyed so findChildIndexCallback above can remap this
-                      // row to its new index when the list reorders around it.
-                      key: ValueKey(session.id),
-                      session: session,
-                      isArchived: isArchived,
-                      isActive: activityInfo != null,
-                      unseen: loaded.isSessionUnseen(session: session),
-                      selected: selectedSessionId == session.id,
-                      awaitingInput: activityInfo?.awaitingInput ?? false,
-                      isRetrying: activityInfo?.isRetrying ?? false,
-                      backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
-                      onTap: () => onSessionTap(session),
-                      // The list's context, not the row's: archive/delete
-                      // unmount the row before their follow-ups run.
-                      menuEntries: () => sessionMenuEntries(context, session),
-                      onArchive: () => _actionDispatcher.handleSessionArchive(context: context, session: session),
-                      onDelete: () => _actionDispatcher.handleSessionDelete(context: context, session: session),
-                      onToggleUnread: () =>
-                          _actionDispatcher.handleSessionToggleUnread(context: context, session: session),
-                    );
-                  },
+              return Padding(
+                // Keep the list's outer breathing room attached to its first
+                // and last rows so that space collapses with the final item.
+                padding: EdgeInsetsDirectional.only(
+                  top: index == 0 ? 8 : 0,
+                  bottom: index == loaded.sessions.length - 1 ? 8 : 0,
                 ),
-              ),
+                child: SessionTile(
+                  session: session,
+                  isArchived: isArchived,
+                  isActive: activityInfo != null,
+                  unseen: loaded.isSessionUnseen(session: session),
+                  selected: selectedSessionId == session.id,
+                  awaitingInput: activityInfo?.awaitingInput ?? false,
+                  isRetrying: activityInfo?.isRetrying ?? false,
+                  backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
+                  onTap: () => onSessionTap(session),
+                  // The list's context, not the row's: archive/delete
+                  // unmount the row before their follow-ups run.
+                  menuEntries: () => sessionMenuEntries(context, session),
+                  onArchive: () => _actionDispatcher.handleSessionArchive(context: context, session: session),
+                  onDelete: () => _actionDispatcher.handleSessionDelete(context: context, session: session),
+                  onToggleUnread: () => _actionDispatcher.handleSessionToggleUnread(context: context, session: session),
+                ),
+              );
+            },
+          ),
+          if (loaded.sessions.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: loaded.showArchived
+                  ? Center(child: Text(loc.sessionListEmptyArchived))
+                  : SessionEmptyState(projectName: projectName),
+            ),
+        ],
+      ),
       SessionListStaleProject() => SliverFillRemaining(
         hasScrollBody: false,
         child: _StaleProjectView(onBack: () => _exitSessionShell(context)),
