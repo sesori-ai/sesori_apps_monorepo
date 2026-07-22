@@ -16,6 +16,7 @@ import 'package:sesori_dart_core/src/api/bridge_api.dart' as _i384;
 import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
 import 'package:sesori_dart_core/src/api/filesystem_api.dart' as _i1068;
+import 'package:sesori_dart_core/src/api/legal_api.dart' as _i835;
 import 'package:sesori_dart_core/src/api/notification_api.dart' as _i400;
 import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
     as _i396;
@@ -38,8 +39,12 @@ import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
 import 'package:sesori_dart_core/src/platform/push_messaging_source.dart'
     as _i330;
 import 'package:sesori_dart_core/src/platform/route_dispatcher.dart' as _i951;
+import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
+    as _i209;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
     as _i205;
+import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
+    as _i933;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
     as _i458;
 import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
@@ -121,6 +126,12 @@ extension GetItInjectableX on _i174.GetIt {
         routeDispatcher: gh<_i951.RouteDispatcher>(),
       ),
     );
+    gh.lazySingleton<_i209.AppearanceStore>(
+      () => _i209.AppearanceStore(secureStorage: gh<_i442.SecureStorage>()),
+    );
+    gh.lazySingleton<_i835.LegalApi>(
+      () => _i835.LegalApi(client: gh<_i442.HttpApiClient>()),
+    );
     gh.lazySingleton<_i396.NotificationPreferencesApi>(
       () =>
           _i396.NotificationPreferencesApi(storage: gh<_i442.SecureStorage>()),
@@ -176,6 +187,9 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i933.LegalRepository>(
+      () => _i933.LegalRepository(api: gh<_i835.LegalApi>()),
     );
     gh.lazySingleton<_i458.NotificationPreferencesRepository>(
       () => _i458.NotificationPreferencesRepository(

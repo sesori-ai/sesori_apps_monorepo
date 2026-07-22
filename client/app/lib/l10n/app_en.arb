@@ -149,7 +149,35 @@
   "settingsSectionAccount": "Account",
   "settingsNotificationsTitle": "Notifications",
   "settingsProfileTitle": "Profile",
+  "settingsSectionAppearance": "Appearance",
+  "settingsAppearanceLight": "Light",
+  "@settingsAppearanceLight": {
+    "description": "Theme option that always renders the app in the light theme"
+  },
+  "settingsAppearanceDark": "Dark",
+  "@settingsAppearanceDark": {
+    "description": "Theme option that always renders the app in the dark theme"
+  },
+  "settingsAppearanceSystem": "System",
+  "@settingsAppearanceSystem": {
+    "description": "Theme option that follows the device appearance setting"
+  },
+  "settingsSectionSupport": "Support",
+  "settingsSupportEmail": "Email",
+  "settingsSupportDiscord": "Discord",
+  "settingsSupportX": "DM on X",
+  "settingsSectionLegal": "Legal",
+  "settingsLegalTerms": "Terms of Service",
+  "settingsLegalPrivacy": "Privacy Policy",
+  "legalDocumentRetry": "Retry",
+  "@legalDocumentRetry": {
+    "description": "Button that re-fetches a legal document after the load failed"
+  },
   "settingsClose": "Close settings",
+  "settingsAppName": "Sesori",
+  "@settingsAppName": {
+    "description": "Product name shown under the app icon in the settings footer. Brand name; do not translate."
+  },
   "settingsVersion": "v{version} ({buildNumber})",
   "@settingsVersion": {
     "description": "App version footer at the bottom of the settings screen",

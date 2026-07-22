@@ -1,7 +1,7 @@
 ---
 description: Reviews architecture-bearing production changes, not general implementation correctness. Prefers Git scopes such as a branch, commit range, recent commits, or PR, but also accepts file-based scopes. Avoids legacy-cleanup scope creep; callers seek user guidance after two rejected passes.
 mode: subagent
-model: openai/gpt-5.6-sol
+model: openai/gpt-5.6-sol-fast
 variant: high
 temperature: 0.1
 permission:

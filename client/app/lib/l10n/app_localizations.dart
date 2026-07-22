@@ -409,11 +409,89 @@ abstract class AppLocalizations {
   /// **'Profile'**
   String get settingsProfileTitle;
 
+  /// No description provided for @settingsSectionAppearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get settingsSectionAppearance;
+
+  /// Theme option that always renders the app in the light theme
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settingsAppearanceLight;
+
+  /// Theme option that always renders the app in the dark theme
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get settingsAppearanceDark;
+
+  /// Theme option that follows the device appearance setting
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get settingsAppearanceSystem;
+
+  /// No description provided for @settingsSectionSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get settingsSectionSupport;
+
+  /// No description provided for @settingsSupportEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get settingsSupportEmail;
+
+  /// No description provided for @settingsSupportDiscord.
+  ///
+  /// In en, this message translates to:
+  /// **'Discord'**
+  String get settingsSupportDiscord;
+
+  /// No description provided for @settingsSupportX.
+  ///
+  /// In en, this message translates to:
+  /// **'DM on X'**
+  String get settingsSupportX;
+
+  /// No description provided for @settingsSectionLegal.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal'**
+  String get settingsSectionLegal;
+
+  /// No description provided for @settingsLegalTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Service'**
+  String get settingsLegalTerms;
+
+  /// No description provided for @settingsLegalPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get settingsLegalPrivacy;
+
+  /// Button that re-fetches a legal document after the load failed
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get legalDocumentRetry;
+
   /// No description provided for @settingsClose.
   ///
   /// In en, this message translates to:
   /// **'Close settings'**
   String get settingsClose;
+
+  /// Product name shown under the app icon in the settings footer. Brand name; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori'**
+  String get settingsAppName;
 
   /// App version footer at the bottom of the settings screen
   ///

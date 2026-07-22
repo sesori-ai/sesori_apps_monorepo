@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:developer" as developer;
 import "dart:io";
@@ -9,11 +10,55 @@ import "api_error.dart";
 import "api_response.dart";
 import "safe_api_client.dart";
 
+/// Timeout for [HttpApiClient.getText]. The documents it fetches are static and
+/// small, so a hung request is a failure, not slow progress.
+const _textTimeout = Duration(seconds: 15);
+
 @lazySingleton
 class HttpApiClient implements SafeApiClient {
   final http.Client _client;
 
   HttpApiClient(http.Client client) : _client = client;
+
+  /// GETs a document served as plain text (e.g. markdown) and returns the body
+  /// verbatim.
+  ///
+  /// The JSON methods below run every body through [jsonDecode]; a text
+  /// endpoint's body would fail that parse, so this one skips it. It stays off
+  /// the [SafeApiClient] interface, whose contract is JSON-shaped.
+  ///
+  /// The deadline aborts the request rather than only abandoning its future, so
+  /// a retry after a timeout does not leave the previous connection hanging.
+  Future<ApiResponse<String>> getText({required Uri url}) async {
+    final deadline = Completer<void>();
+    final timer = Timer(_textTimeout, deadline.complete);
+
+    try {
+      final request = http.AbortableRequest("GET", url, abortTrigger: deadline.future);
+      final response = await http.Response.fromStream(await _client.send(request));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return ApiResponse.error(
+          ApiError.nonSuccessCode(
+            errorCode: response.statusCode,
+            rawErrorString: response.body,
+          ),
+        );
+      }
+      if (response.body.isEmpty) return ApiResponse.error(ApiError.emptyResponse());
+
+      return ApiResponse.success(response.body);
+    } on http.ClientException catch (e) {
+      // Covers RequestAbortedException, which the deadline raises.
+      return ApiResponse.error(ApiError.dartHttpClient(e));
+    } on SocketException catch (e) {
+      return ApiResponse.error(ApiError.dartHttpClient(e));
+    } on HandshakeException catch (e) {
+      return ApiResponse.error(ApiError.dartHttpClient(e));
+    } finally {
+      timer.cancel();
+    }
+  }
 
   @override
   // ignore: no_slop_linter/prefer_specific_type, json parsing function
