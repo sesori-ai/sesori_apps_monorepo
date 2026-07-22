@@ -52,6 +52,33 @@ Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
   };
 }
 
+/// Style sheet for the legal documents (terms, privacy) the backend serves as
+/// markdown: a long-form reading layout with headings, numbered clauses and the
+/// occasional inline link.
+MarkdownStyleSheet buildLegalMarkdownStyleSheet({required PregoDesignSystem prego}) {
+  final body = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
+  return MarkdownStyleSheet(
+    h1: prego.textTheme.textXl.bold.copyWith(color: prego.colors.textPrimary),
+    h2: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
+    h3: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
+    h1Padding: const EdgeInsets.only(bottom: PregoSpacing.md),
+    h2Padding: const EdgeInsets.only(top: PregoSpacing.x2l, bottom: PregoSpacing.xxs),
+    h3Padding: const EdgeInsets.only(top: PregoSpacing.lg, bottom: PregoSpacing.xxs),
+    p: body,
+    listBullet: body,
+    strong: body.copyWith(color: prego.colors.textPrimary, fontWeight: FontWeight.w600),
+    a: body.copyWith(
+      color: prego.colors.textBrandSecondary,
+      decoration: TextDecoration.underline,
+    ),
+    code: body.copyWith(color: prego.colors.textPrimary).monospace,
+    codeblockDecoration: BoxDecoration(
+      color: prego.colors.bgQuaternary,
+      borderRadius: BorderRadius.circular(8),
+    ),
+  );
+}
+
 MarkdownStyleSheet buildAgreementMarkdownStyleSheet({required PregoDesignSystem prego}) {
   final paragraph = prego.textTheme.textSm.regular.copyWith(
     color: prego.colors.textPrimary,

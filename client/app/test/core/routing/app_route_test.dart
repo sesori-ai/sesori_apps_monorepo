@@ -1,3 +1,4 @@
+import "package:flutter/cupertino.dart" show CupertinoPage;
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -147,12 +148,14 @@ void main() {
       expect(widget, isA<ProjectListScreen>());
     });
 
+    // A CupertinoPage, so the bottom-up modal slide is the same on Android,
+    // whose default page transition ignores fullscreenDialog.
     test("settings route builds SettingsScreen inside a fullscreen-dialog page", () {
       final page = AppRouteDef.settings.toGoRoute().pageBuilder!(_FakeBuildContext(), _FakeGoRouterState());
-      expect(page, isA<MaterialPage<void>>());
-      final materialPage = page as MaterialPage<void>;
-      expect(materialPage.fullscreenDialog, isTrue);
-      expect(materialPage.child, isA<SettingsScreen>());
+      expect(page, isA<CupertinoPage<void>>());
+      final settingsPage = page as CupertinoPage<void>;
+      expect(settingsPage.fullscreenDialog, isTrue);
+      expect(settingsPage.child, isA<SettingsScreen>());
     });
 
     test("settings child routes build the notifications and profile screens", () {

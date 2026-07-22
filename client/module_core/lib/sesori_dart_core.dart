@@ -48,8 +48,11 @@ export "src/capabilities/session/session_service.dart";
 // Capabilities
 export "src/capabilities/voice/voice_api.dart";
 // Cubits
+export "src/cubits/appearance/appearance_cubit.dart";
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
 export "src/cubits/connection_overlay/connection_overlay_state.dart";
+export "src/cubits/legal/legal_document_cubit.dart";
+export "src/cubits/legal/legal_document_state.dart";
 export "src/cubits/login/login_cubit.dart";
 export "src/cubits/login/login_failed_reason.dart";
 export "src/cubits/login/login_state.dart";
@@ -90,7 +93,9 @@ export "src/platform/push_notification_message.dart";
 export "src/platform/route_dispatcher.dart";
 export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
+export "src/repositories/appearance_store.dart";
 export "src/repositories/bridge_repository.dart";
+export "src/repositories/legal_repository.dart";
 export "src/repositories/models/repo_provider.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
