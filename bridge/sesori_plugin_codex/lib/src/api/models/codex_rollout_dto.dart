@@ -1,4 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 part "codex_rollout_dto.freezed.dart";
 part "codex_rollout_dto.g.dart";
@@ -14,10 +15,18 @@ enum CodexRolloutLineType {
 }
 
 enum CodexRolloutPayloadType {
+  @JsonValue("message")
+  message,
+  @JsonValue("reasoning")
+  reasoning,
   @JsonValue("function_call")
   functionCall,
   @JsonValue("function_call_output")
   functionCallOutput,
+  @JsonValue("custom_tool_call")
+  customToolCall,
+  @JsonValue("custom_tool_call_output")
+  customToolCallOutput,
   @JsonValue("web_search_call")
   webSearchCall,
   unknown,
@@ -34,6 +43,8 @@ enum CodexRolloutContentType {
   inputText,
   @JsonValue("output_text")
   outputText,
+  @JsonValue("summary_text")
+  summaryText,
   unknown,
 }
 
@@ -70,11 +81,13 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
     required String? model,
     @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required CodexRolloutPayloadType? type,
     @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole? role,
-    required List<CodexRolloutContentDto>? content,
+    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? content,
+    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? summary,
     @JsonKey(name: "call_id") required String? callId,
     required String? name,
     required String? arguments,
-    required String? output,
+    required String? input,
+    @CodexRolloutOutputConverter() required List<CodexRolloutContentDto>? output,
     required CodexRolloutActionDto? action,
   }) = _CodexRolloutPayloadDto;
 
@@ -89,6 +102,74 @@ sealed class CodexRolloutContentDto with _$CodexRolloutContentDto {
   }) = _CodexRolloutContentDto;
 
   factory CodexRolloutContentDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutContentDtoFromJson(json);
+}
+
+/// Decodes typed rollout content without dropping an otherwise valid record
+/// when one nested item has drifted.
+class CodexRolloutContentListConverter implements JsonConverter<List<CodexRolloutContentDto>?, Object?> {
+  const CodexRolloutContentListConverter();
+
+  @override
+  List<CodexRolloutContentDto>? fromJson(Object? json) {
+    if (json == null) return null;
+    if (json is! List) {
+      Log.w("[codex] skipping malformed rollout content list");
+      return const [];
+    }
+    final content = <CodexRolloutContentDto>[];
+    for (final item in json) {
+      try {
+        content.add(
+          CodexRolloutContentDto.fromJson(
+            (item as Map).cast<String, dynamic>(),
+          ),
+        );
+      } on Object {
+        Log.w("[codex] skipping malformed rollout content item");
+      }
+    }
+    return content;
+  }
+
+  @override
+  Object? toJson(List<CodexRolloutContentDto>? object) {
+    if (object == null) return null;
+    return [
+      for (final content in object)
+        {
+          "type": switch (content.type) {
+            CodexRolloutContentType.inputText => "input_text",
+            CodexRolloutContentType.outputText => "output_text",
+            CodexRolloutContentType.summaryText => "summary_text",
+            CodexRolloutContentType.unknown => "unknown",
+            null => null,
+          },
+          "text": content.text,
+        },
+    ];
+  }
+}
+
+/// Normalizes Codex tool output across persisted rollout versions.
+///
+/// Legacy function-call records store output as a string, while current custom
+/// tool-call records store a typed content array. The DTO exposes one typed
+/// representation to the rest of the plugin.
+class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
+  const CodexRolloutOutputConverter();
+
+  @override
+  List<CodexRolloutContentDto>? fromJson(Object? json) {
+    if (json is String) {
+      return [
+        CodexRolloutContentDto(
+          type: CodexRolloutContentType.outputText,
+          text: json,
+        ),
+      ];
+    }
+    return super.fromJson(json);
+  }
 }
 
 @Freezed(fromJson: true, toJson: false)

@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
@@ -30,15 +32,17 @@ class CodexMessageRepository {
       );
     }
 
-    final toolOutputs = <String, String>{};
+    final toolOutputs = <String, String?>{};
     for (final line in lines) {
       final payload = line.payload;
-      if (payload?.type != CodexRolloutPayloadType.functionCallOutput) {
+      if (payload?.type != CodexRolloutPayloadType.functionCallOutput &&
+          payload?.type != CodexRolloutPayloadType.customToolCallOutput) {
         continue;
       }
       final callId = payload?.callId;
-      final output = payload?.output;
-      if (callId != null && output != null) toolOutputs[callId] = output;
+      if (callId != null && payload?.output != null) {
+        toolOutputs[callId] = _toolOutputText(payload?.output);
+      }
     }
 
     final messages = <PluginMessageWithParts>[];
@@ -74,10 +78,12 @@ class CodexMessageRepository {
       if (payload == null) continue;
       final messageTime = _messageTimeFrom(line.timestamp);
 
-      if (payload.type == CodexRolloutPayloadType.functionCall) {
+      if (payload.type == CodexRolloutPayloadType.functionCall ||
+          payload.type == CodexRolloutPayloadType.customToolCall) {
         final callId = payload.callId;
         final name = payload.name ?? "tool";
         final output = callId == null ? null : toolOutputs[callId];
+        final completed = callId != null && toolOutputs.containsKey(callId);
         messageCounter += 1;
         messages.add(
           _toolMessage(
@@ -85,14 +91,15 @@ class CodexMessageRepository {
             sessionId: sessionId,
             info: assistantInfo("m-$messageCounter", messageTime),
             tool: _normalizeToolName(name),
-            title: _toolCallTitle(payload.arguments),
-            status: output != null ? PluginToolStatus.completed : PluginToolStatus.running,
+            title: _toolCallTitle(payload.arguments ?? payload.input),
+            status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
             output: output,
           ),
         );
         continue;
       }
-      if (payload.type == CodexRolloutPayloadType.functionCallOutput) {
+      if (payload.type == CodexRolloutPayloadType.functionCallOutput ||
+          payload.type == CodexRolloutPayloadType.customToolCallOutput) {
         continue;
       }
       if (payload.type == CodexRolloutPayloadType.webSearchCall) {
@@ -111,17 +118,50 @@ class CodexMessageRepository {
         continue;
       }
 
+      if (payload.type == CodexRolloutPayloadType.reasoning) {
+        final reasoning = _contentTexts(
+          payload.summary,
+          acceptedTypes: const {CodexRolloutContentType.summaryText},
+        ).join();
+        if (reasoning.isEmpty) continue;
+
+        messageCounter += 1;
+        final messageId = "m-$messageCounter";
+        messages.add(
+          PluginMessageWithParts(
+            info: assistantInfo(messageId, messageTime),
+            parts: [
+              PluginMessagePart(
+                id: "$messageId-reasoning",
+                sessionID: sessionId,
+                messageID: messageId,
+                type: PluginMessagePartType.reasoning,
+                text: reasoning,
+                tool: null,
+                state: null,
+                prompt: null,
+                description: null,
+                agent: null,
+                agentName: null,
+                attempt: null,
+                retryError: null,
+              ),
+            ],
+          ),
+        );
+        continue;
+      }
+
       if (payload.role != CodexRolloutRole.user && payload.role != CodexRolloutRole.assistant) {
         continue;
       }
-      final texts = [
-        for (final content in payload.content ?? const <CodexRolloutContentDto>[])
-          if ((content.type == CodexRolloutContentType.inputText ||
-                  content.type == CodexRolloutContentType.outputText) &&
-              content.text != null &&
-              content.text!.isNotEmpty)
-            content.text!,
-      ];
+      final texts = _contentTexts(
+        payload.content,
+        acceptedTypes: const {
+          CodexRolloutContentType.inputText,
+          CodexRolloutContentType.outputText,
+        },
+      );
       if (texts.isEmpty) continue;
 
       messageCounter += 1;
@@ -159,6 +199,27 @@ class CodexMessageRepository {
       );
     }
     return messages;
+  }
+
+  String? _toolOutputText(List<CodexRolloutContentDto>? output) {
+    final texts = _contentTexts(
+      output,
+      acceptedTypes: const {
+        CodexRolloutContentType.inputText,
+        CodexRolloutContentType.outputText,
+      },
+    );
+    return texts.isEmpty ? null : texts.join();
+  }
+
+  List<String> _contentTexts(
+    List<CodexRolloutContentDto>? content, {
+    required Set<CodexRolloutContentType> acceptedTypes,
+  }) {
+    return [
+      for (final item in content ?? const <CodexRolloutContentDto>[])
+        if (item.text case final text? when acceptedTypes.contains(item.type) && text.isNotEmpty) text,
+    ];
   }
 
   PluginMessageWithParts _toolMessage({
@@ -216,10 +277,8 @@ class CodexMessageRepository {
 
   String? _toolCallTitle(String? argumentsJson) {
     if (argumentsJson == null || argumentsJson.isEmpty) return null;
-    try {
-      final arguments = CodexToolArgumentsDto.fromJson(
-        jsonDecodeMap(argumentsJson),
-      );
+    final arguments = _tryDecodeToolArguments(raw: argumentsJson);
+    if (arguments != null) {
       for (final value in [
         arguments.cmd,
         arguments.command,
@@ -230,10 +289,54 @@ class CodexMessageRepository {
         if (value is String && value.isNotEmpty) return value;
         if (value is List && value.isNotEmpty) return value.join(" ");
       }
-    } on Object {
-      // Fall through to the raw arguments.
+    }
+    final embeddedCommand = _embeddedExecCommand(source: argumentsJson);
+    if (embeddedCommand != null && embeddedCommand.isNotEmpty) {
+      return embeddedCommand;
     }
     return argumentsJson.length > 120 ? argumentsJson.substring(0, 120) : argumentsJson;
+  }
+
+  CodexToolArgumentsDto? _tryDecodeToolArguments({required String raw}) {
+    try {
+      return CodexToolArgumentsDto.fromJson(jsonDecodeMap(raw));
+    } on Object {
+      return null;
+    }
+  }
+
+  String? _embeddedExecCommand({required String source}) {
+    const marker = "tools.exec_command(";
+    final markerIndex = source.indexOf(marker);
+    if (markerIndex < 0) return null;
+
+    final argumentsStart = markerIndex + marker.length;
+    final commandMatch = RegExp(
+      r'(?:^|[,{]\s*)(?:"cmd"|cmd)\s*:\s*',
+    ).firstMatch(source.substring(argumentsStart));
+    if (commandMatch == null) return null;
+    final valueStart = argumentsStart + commandMatch.end;
+    if (valueStart >= source.length || source.codeUnitAt(valueStart) != 0x22) {
+      return null;
+    }
+
+    var escaped = false;
+    for (var index = valueStart + 1; index < source.length; index++) {
+      final codeUnit = source.codeUnitAt(index);
+      if (escaped) {
+        escaped = false;
+      } else if (codeUnit == 0x5C) {
+        escaped = true;
+      } else if (codeUnit == 0x22) {
+        try {
+          final decoded = jsonDecode(source.substring(valueStart, index + 1));
+          return decoded is String ? decoded : null;
+        } on FormatException {
+          return null;
+        }
+      }
+    }
+    return null;
   }
 
   PluginMessageTime? _messageTimeFrom(String? raw) {

@@ -309,7 +309,7 @@ $CodexRolloutPayloadDtoCopyWith<$Res>? get payload {
 /// @nodoc
 mixin _$CodexRolloutPayloadDto {
 
- String? get id; String? get cwd; String? get timestamp;@JsonKey(name: "model_provider") String? get modelProvider;@JsonKey(name: "cli_version") String? get cliVersion; String? get model;@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? get type;@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? get role; List<CodexRolloutContentDto>? get content;@JsonKey(name: "call_id") String? get callId; String? get name; String? get arguments; String? get output; CodexRolloutActionDto? get action;
+ String? get id; String? get cwd; String? get timestamp;@JsonKey(name: "model_provider") String? get modelProvider;@JsonKey(name: "cli_version") String? get cliVersion; String? get model;@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? get type;@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? get role;@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? get content;@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? get summary;@JsonKey(name: "call_id") String? get callId; String? get name; String? get arguments; String? get input;@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? get output; CodexRolloutActionDto? get action;
 /// Create a copy of CodexRolloutPayloadDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -320,16 +320,16 @@ $CodexRolloutPayloadDtoCopyWith<CodexRolloutPayloadDto> get copyWith => _$CodexR
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutPayloadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cliVersion, cliVersion) || other.cliVersion == cliVersion)&&(identical(other.model, model) || other.model == model)&&(identical(other.type, type) || other.type == type)&&(identical(other.role, role) || other.role == role)&&const DeepCollectionEquality().equals(other.content, content)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.output, output) || other.output == output)&&(identical(other.action, action) || other.action == action));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutPayloadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cliVersion, cliVersion) || other.cliVersion == cliVersion)&&(identical(other.model, model) || other.model == model)&&(identical(other.type, type) || other.type == type)&&(identical(other.role, role) || other.role == role)&&const DeepCollectionEquality().equals(other.content, content)&&const DeepCollectionEquality().equals(other.summary, summary)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.input, input) || other.input == input)&&const DeepCollectionEquality().equals(other.output, output)&&(identical(other.action, action) || other.action == action));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cwd,timestamp,modelProvider,cliVersion,model,type,role,const DeepCollectionEquality().hash(content),callId,name,arguments,output,action);
+int get hashCode => Object.hash(runtimeType,id,cwd,timestamp,modelProvider,cliVersion,model,type,role,const DeepCollectionEquality().hash(content),const DeepCollectionEquality().hash(summary),callId,name,arguments,input,const DeepCollectionEquality().hash(output),action);
 
 @override
 String toString() {
-  return 'CodexRolloutPayloadDto(id: $id, cwd: $cwd, timestamp: $timestamp, modelProvider: $modelProvider, cliVersion: $cliVersion, model: $model, type: $type, role: $role, content: $content, callId: $callId, name: $name, arguments: $arguments, output: $output, action: $action)';
+  return 'CodexRolloutPayloadDto(id: $id, cwd: $cwd, timestamp: $timestamp, modelProvider: $modelProvider, cliVersion: $cliVersion, model: $model, type: $type, role: $role, content: $content, summary: $summary, callId: $callId, name: $name, arguments: $arguments, input: $input, output: $output, action: $action)';
 }
 
 
@@ -340,7 +340,7 @@ abstract mixin class $CodexRolloutPayloadDtoCopyWith<$Res>  {
   factory $CodexRolloutPayloadDtoCopyWith(CodexRolloutPayloadDto value, $Res Function(CodexRolloutPayloadDto) _then) = _$CodexRolloutPayloadDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "cli_version") String? cliVersion, String? model,@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? type,@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? role, List<CodexRolloutContentDto>? content,@JsonKey(name: "call_id") String? callId, String? name, String? arguments, String? output, CodexRolloutActionDto? action
+ String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "cli_version") String? cliVersion, String? model,@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? type,@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? role,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? content,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? summary,@JsonKey(name: "call_id") String? callId, String? name, String? arguments, String? input,@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? output, CodexRolloutActionDto? action
 });
 
 
@@ -357,7 +357,7 @@ class _$CodexRolloutPayloadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutPayloadDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? modelProvider = freezed,Object? cliVersion = freezed,Object? model = freezed,Object? type = freezed,Object? role = freezed,Object? content = freezed,Object? callId = freezed,Object? name = freezed,Object? arguments = freezed,Object? output = freezed,Object? action = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? modelProvider = freezed,Object? cliVersion = freezed,Object? model = freezed,Object? type = freezed,Object? role = freezed,Object? content = freezed,Object? summary = freezed,Object? callId = freezed,Object? name = freezed,Object? arguments = freezed,Object? input = freezed,Object? output = freezed,Object? action = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
@@ -368,11 +368,13 @@ as String?,model: freezed == model ? _self.model : model // ignore: cast_nullabl
 as String?,type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CodexRolloutPayloadType?,role: freezed == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as CodexRolloutRole?,content: freezed == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
+as List<CodexRolloutContentDto>?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
 as List<CodexRolloutContentDto>?,callId: freezed == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,arguments: freezed == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
+as String?,input: freezed == input ? _self.input : input // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
-as String?,action: freezed == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
+as List<CodexRolloutContentDto>?,action: freezed == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
 as CodexRolloutActionDto?,
   ));
 }
@@ -397,7 +399,7 @@ $CodexRolloutActionDtoCopyWith<$Res>? get action {
 @JsonSerializable(createToJson: false)
 
 class _CodexRolloutPayloadDto implements CodexRolloutPayloadDto {
-  const _CodexRolloutPayloadDto({required this.id, required this.cwd, required this.timestamp, @JsonKey(name: "model_provider") required this.modelProvider, @JsonKey(name: "cli_version") required this.cliVersion, required this.model, @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required this.type, @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required this.role, required final  List<CodexRolloutContentDto>? content, @JsonKey(name: "call_id") required this.callId, required this.name, required this.arguments, required this.output, required this.action}): _content = content;
+  const _CodexRolloutPayloadDto({required this.id, required this.cwd, required this.timestamp, @JsonKey(name: "model_provider") required this.modelProvider, @JsonKey(name: "cli_version") required this.cliVersion, required this.model, @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required this.type, @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required this.role, @CodexRolloutContentListConverter() required final  List<CodexRolloutContentDto>? content, @CodexRolloutContentListConverter() required final  List<CodexRolloutContentDto>? summary, @JsonKey(name: "call_id") required this.callId, required this.name, required this.arguments, required this.input, @CodexRolloutOutputConverter() required final  List<CodexRolloutContentDto>? output, required this.action}): _content = content,_summary = summary,_output = output;
   factory _CodexRolloutPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutPayloadDtoFromJson(json);
 
 @override final  String? id;
@@ -409,7 +411,7 @@ class _CodexRolloutPayloadDto implements CodexRolloutPayloadDto {
 @override@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) final  CodexRolloutPayloadType? type;
 @override@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) final  CodexRolloutRole? role;
  final  List<CodexRolloutContentDto>? _content;
-@override List<CodexRolloutContentDto>? get content {
+@override@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? get content {
   final value = _content;
   if (value == null) return null;
   if (_content is EqualUnmodifiableListView) return _content;
@@ -417,10 +419,28 @@ class _CodexRolloutPayloadDto implements CodexRolloutPayloadDto {
   return EqualUnmodifiableListView(value);
 }
 
+ final  List<CodexRolloutContentDto>? _summary;
+@override@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? get summary {
+  final value = _summary;
+  if (value == null) return null;
+  if (_summary is EqualUnmodifiableListView) return _summary;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 @override@JsonKey(name: "call_id") final  String? callId;
 @override final  String? name;
 @override final  String? arguments;
-@override final  String? output;
+@override final  String? input;
+ final  List<CodexRolloutContentDto>? _output;
+@override@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? get output {
+  final value = _output;
+  if (value == null) return null;
+  if (_output is EqualUnmodifiableListView) return _output;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 @override final  CodexRolloutActionDto? action;
 
 /// Create a copy of CodexRolloutPayloadDto
@@ -433,16 +453,16 @@ _$CodexRolloutPayloadDtoCopyWith<_CodexRolloutPayloadDto> get copyWith => __$Cod
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutPayloadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cliVersion, cliVersion) || other.cliVersion == cliVersion)&&(identical(other.model, model) || other.model == model)&&(identical(other.type, type) || other.type == type)&&(identical(other.role, role) || other.role == role)&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.output, output) || other.output == output)&&(identical(other.action, action) || other.action == action));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutPayloadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cliVersion, cliVersion) || other.cliVersion == cliVersion)&&(identical(other.model, model) || other.model == model)&&(identical(other.type, type) || other.type == type)&&(identical(other.role, role) || other.role == role)&&const DeepCollectionEquality().equals(other._content, _content)&&const DeepCollectionEquality().equals(other._summary, _summary)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.input, input) || other.input == input)&&const DeepCollectionEquality().equals(other._output, _output)&&(identical(other.action, action) || other.action == action));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cwd,timestamp,modelProvider,cliVersion,model,type,role,const DeepCollectionEquality().hash(_content),callId,name,arguments,output,action);
+int get hashCode => Object.hash(runtimeType,id,cwd,timestamp,modelProvider,cliVersion,model,type,role,const DeepCollectionEquality().hash(_content),const DeepCollectionEquality().hash(_summary),callId,name,arguments,input,const DeepCollectionEquality().hash(_output),action);
 
 @override
 String toString() {
-  return 'CodexRolloutPayloadDto(id: $id, cwd: $cwd, timestamp: $timestamp, modelProvider: $modelProvider, cliVersion: $cliVersion, model: $model, type: $type, role: $role, content: $content, callId: $callId, name: $name, arguments: $arguments, output: $output, action: $action)';
+  return 'CodexRolloutPayloadDto(id: $id, cwd: $cwd, timestamp: $timestamp, modelProvider: $modelProvider, cliVersion: $cliVersion, model: $model, type: $type, role: $role, content: $content, summary: $summary, callId: $callId, name: $name, arguments: $arguments, input: $input, output: $output, action: $action)';
 }
 
 
@@ -453,7 +473,7 @@ abstract mixin class _$CodexRolloutPayloadDtoCopyWith<$Res> implements $CodexRol
   factory _$CodexRolloutPayloadDtoCopyWith(_CodexRolloutPayloadDto value, $Res Function(_CodexRolloutPayloadDto) _then) = __$CodexRolloutPayloadDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "cli_version") String? cliVersion, String? model,@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? type,@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? role, List<CodexRolloutContentDto>? content,@JsonKey(name: "call_id") String? callId, String? name, String? arguments, String? output, CodexRolloutActionDto? action
+ String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "cli_version") String? cliVersion, String? model,@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? type,@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? role,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? content,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? summary,@JsonKey(name: "call_id") String? callId, String? name, String? arguments, String? input,@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? output, CodexRolloutActionDto? action
 });
 
 
@@ -470,7 +490,7 @@ class __$CodexRolloutPayloadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutPayloadDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? modelProvider = freezed,Object? cliVersion = freezed,Object? model = freezed,Object? type = freezed,Object? role = freezed,Object? content = freezed,Object? callId = freezed,Object? name = freezed,Object? arguments = freezed,Object? output = freezed,Object? action = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? modelProvider = freezed,Object? cliVersion = freezed,Object? model = freezed,Object? type = freezed,Object? role = freezed,Object? content = freezed,Object? summary = freezed,Object? callId = freezed,Object? name = freezed,Object? arguments = freezed,Object? input = freezed,Object? output = freezed,Object? action = freezed,}) {
   return _then(_CodexRolloutPayloadDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
@@ -481,11 +501,13 @@ as String?,model: freezed == model ? _self.model : model // ignore: cast_nullabl
 as String?,type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CodexRolloutPayloadType?,role: freezed == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as CodexRolloutRole?,content: freezed == content ? _self._content : content // ignore: cast_nullable_to_non_nullable
+as List<CodexRolloutContentDto>?,summary: freezed == summary ? _self._summary : summary // ignore: cast_nullable_to_non_nullable
 as List<CodexRolloutContentDto>?,callId: freezed == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,arguments: freezed == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
-as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
-as String?,action: freezed == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
+as String?,input: freezed == input ? _self.input : input // ignore: cast_nullable_to_non_nullable
+as String?,output: freezed == output ? _self._output : output // ignore: cast_nullable_to_non_nullable
+as List<CodexRolloutContentDto>?,action: freezed == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
 as CodexRolloutActionDto?,
   ));
 }
