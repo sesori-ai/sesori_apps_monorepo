@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
@@ -18,8 +19,8 @@ class CodexRolloutApi {
   String? get codexHome {
     final explicit = _environment["CODEX_HOME"];
     if (explicit != null && explicit.isNotEmpty) return explicit;
-    final home = _environment["HOME"] ?? _environment["USERPROFILE"];
-    if (home == null || home.isEmpty) return null;
+    final home = resolveUserHomeDirectory(environment: _environment);
+    if (home == null) return null;
     return p.join(home, ".codex");
   }
 
