@@ -563,7 +563,7 @@ class ConnectionService {
         return;
       }
 
-      logd("[SSE] event: ${eventData.runtimeType}");
+      logt("[SSE] event: ${eventData.runtimeType}");
       final directory = switch (decoded["directory"]) {
         final String value => value,
         _ => null,
