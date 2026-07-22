@@ -439,6 +439,12 @@ class _FakeBridgePlugin implements BridgePlugin {
   PluginStatus get currentStatus => _status.current;
 
   @override
+  PluginWorkState get currentWorkState => PluginWorkState.idle;
+
+  @override
+  Stream<PluginWorkState> get workState => Stream.value(PluginWorkState.idle);
+
+  @override
   PluginDiagnostics describe() {
     return const PluginDiagnostics(pluginId: "fake", endpoint: "http://127.0.0.1:1", details: {});
   }

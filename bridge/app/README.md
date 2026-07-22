@@ -191,7 +191,7 @@ To disable a plugin or configure lifecycle timeouts, add a `plugins` object:
 All keys are optional. Plugins absent from `disabled` remain eligible. Timeout
 values are integer minutes; plugin-specific values override `default`, and an
 absent value falls back to 10 minutes. Values less than or equal to zero mean
-never idle-stop once the demand-start lifecycle is enabled. Unknown plugin
+never idle-stop after demand starts the plugin. Unknown plugin
 objects and disabled IDs are preserved for forward compatibility. The current
 default is derived from setup-ready plugins in display-name order; missing
 legacy `pluginId` still always means OpenCode.

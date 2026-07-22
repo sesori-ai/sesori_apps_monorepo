@@ -205,7 +205,6 @@ class _LiveListBenchmark {
       unseenCalculator: unseenCalculator,
       filesystemApi: filesystemApi,
       projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-      aggregateSourceDeadline: const Duration(seconds: 5),
     );
     final results = <Map<String, Object?>>[];
     results.add(

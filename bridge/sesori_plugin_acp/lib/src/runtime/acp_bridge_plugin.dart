@@ -39,6 +39,12 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
   BridgePluginApi get api => _plugin;
 
   @override
+  Stream<PluginWorkState> get workState => _plugin.workState;
+
+  @override
+  PluginWorkState get currentWorkState => _plugin.currentWorkState;
+
+  @override
   ServerClock get statusClock => _clock;
 
   @override

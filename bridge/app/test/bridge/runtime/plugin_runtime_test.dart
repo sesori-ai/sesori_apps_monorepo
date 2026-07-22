@@ -187,7 +187,7 @@ void main() {
     );
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
 
     final stopping = runtime.stop(pluginId: "one", intent: PluginStopIntent.safe);
     await _waitUntil(() => runtime.snapshot.single.transition == PluginRuntimeTransition.stopping);
@@ -216,7 +216,7 @@ void main() {
       if (!shutdownGate.isCompleted) shutdownGate.complete();
       await runtime.dispose();
     });
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
     final originalPlugin = factory.plugins.single;
 
     final stopping = runtime.stop(pluginId: "one", intent: PluginStopIntent.safe);
@@ -232,12 +232,329 @@ void main() {
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
   });
 
+  test("a safe stop refuses active leases and backend work", () async {
+    final operationGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+    final plugin = factory.plugins.single;
+
+    final operation = runtime.use<void>(
+      pluginId: "one",
+      operation: _TestOperation.leasedRead,
+      body: (_) => operationGate.future,
+    );
+    await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
+    final inFlight = await runtime.stop(pluginId: "one", intent: PluginStopIntent.safe);
+    expect(
+      inFlight,
+      isA<PluginRuntimeCommandConflict>().having(
+        (result) => result.reasons,
+        "reasons",
+        [PluginRuntimeConflictReason.inFlight],
+      ),
+    );
+
+    operationGate.complete();
+    await operation;
+    plugin.workStates.add(PluginWorkState.busy);
+    await _waitUntil(() => runtime.snapshot.single.workState == PluginWorkState.busy);
+    final busy = await runtime.stop(pluginId: "one", intent: PluginStopIntent.safe);
+    expect(
+      busy,
+      isA<PluginRuntimeCommandConflict>().having(
+        (result) => result.reasons,
+        "reasons",
+        [PluginRuntimeConflictReason.busy],
+      ),
+    );
+
+    plugin.workStates.add(PluginWorkState.unknown);
+    await _waitUntil(() => runtime.snapshot.single.workState == PluginWorkState.unknown);
+    final unknown = await runtime.stop(pluginId: "one", intent: PluginStopIntent.safe);
+    expect(
+      unknown,
+      isA<PluginRuntimeCommandConflict>().having(
+        (result) => result.reasons,
+        "reasons",
+        [PluginRuntimeConflictReason.workStateUnknown],
+      ),
+    );
+  });
+
+  test("safe commands ignore unknown work when no generation is live", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.workState, PluginWorkState.unknown);
+    expect(
+      await runtime.stop(pluginId: "one", intent: PluginStopIntent.safe),
+      isA<PluginRuntimeCommandCurrent>(),
+    );
+    expect(
+      await runtime.restart(pluginId: "one", intent: PluginStopIntent.safe),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+    expect(factory.startCount, 1);
+    expect(runtime.snapshot.single.workState, PluginWorkState.idle);
+  });
+
+  test("use authentication failure fences and blocks its generation", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await expectLater(
+      runtime.use<void>(
+        pluginId: "one",
+        operation: _TestOperation.authenticatedRead,
+        body: (_) => throw const PluginAuthenticationRequiredException(
+          "authenticatedRead",
+          actionHint: "Sign in locally.",
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+    await _waitUntil(
+      () =>
+          runtime.snapshot.single.state == PluginRuntimeState.blocked &&
+          runtime.snapshot.single.transition == PluginRuntimeTransition.none,
+    );
+
+    final snapshot = runtime.snapshot.single;
+    expect(snapshot.setup, const PluginSetupAuthenticationRequired(actionHint: "Sign in locally."));
+    expect(snapshot.eligible, isTrue);
+    expect(snapshot.startAllowed, isFalse);
+    expect(snapshot.workState, PluginWorkState.unknown);
+    expect(runtime.activePluginIds, isEmpty);
+    expect(factory.plugins.single.shutdownCount, 1);
+    expect(
+      await runtime.restart(pluginId: "one", intent: PluginStopIntent.force),
+      isA<PluginRuntimeCommandFailed>(),
+    );
+    expect(factory.startCount, 1);
+  });
+
+  test("useStream authentication failure fences before notifying its listener", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    final observed = Completer<PluginRuntimeSnapshot>();
+
+    runtime
+        .useStream<void>(
+          pluginId: "one",
+          operation: _TestOperation.authenticatedStream,
+          body: (_, _) => Stream<void>.error(
+            const PluginAuthenticationRequiredException(
+              "authenticatedStream",
+              actionHint: "Sign in locally.",
+            ),
+          ),
+        )
+        .listen(
+          null,
+          onError: (Object _) => observed.complete(runtime.snapshot.single),
+        );
+
+    final atNotification = await observed.future;
+    expect(atNotification.startAllowed, isFalse);
+    expect(atNotification.eligible, isTrue);
+    var bodyCalled = false;
+    await expectLater(
+      runtime.use<void>(
+        pluginId: "one",
+        operation: _TestOperation.fencedRead,
+        body: (_) async => bodyCalled = true,
+      ),
+      throwsA(isA<PluginOperationException>()),
+    );
+    expect(bodyCalled, isFalse);
+    expect(factory.startCount, 1);
+    await _waitUntil(
+      () =>
+          runtime.snapshot.single.state == PluginRuntimeState.blocked &&
+          runtime.snapshot.single.transition == PluginRuntimeTransition.none,
+    );
+  });
+
+  test("useIfActive authentication failure blocks its generation", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+
+    await expectLater(
+      runtime.useIfActive<void>(
+        pluginId: "one",
+        operation: _TestOperation.activeRead,
+        body: (_, _) => throw const PluginAuthenticationRequiredException(
+          "activeRead",
+          actionHint: "Sign in locally.",
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+    await _waitUntil(
+      () =>
+          runtime.snapshot.single.state == PluginRuntimeState.blocked &&
+          runtime.snapshot.single.transition == PluginRuntimeTransition.none,
+    );
+
+    expect(runtime.snapshot.single.setup, const PluginSetupAuthenticationRequired(actionHint: "Sign in locally."));
+    expect(runtime.snapshot.single.eligible, isTrue);
+    expect(runtime.activePluginIds, isEmpty);
+  });
+
+  test("backend event authentication failure blocks and retires its generation", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.start(pluginId: "one");
+
+    factory.api.eventsController.addError(
+      const PluginAuthenticationRequiredException(
+        "queuedTurn",
+        actionHint: "Sign in locally.",
+      ),
+    );
+    await _waitUntil(
+      () =>
+          runtime.snapshot.single.state == PluginRuntimeState.blocked &&
+          runtime.snapshot.single.transition == PluginRuntimeTransition.none,
+    );
+
+    expect(runtime.snapshot.single.setup, const PluginSetupAuthenticationRequired(actionHint: "Sign in locally."));
+    expect(runtime.snapshot.single.eligible, isTrue);
+    expect(runtime.activePluginIds, isEmpty);
+    expect(factory.plugins.single.shutdownCount, 1);
+  });
+
+  test("authentication cleanup waits for concurrent operation leases", () async {
+    final operationGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    final operation = runtime.use<String>(
+      pluginId: "one",
+      operation: _TestOperation.concurrentRead,
+      body: (_) async {
+        await operationGate.future;
+        return "complete";
+      },
+    );
+    await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
+
+    await expectLater(
+      runtime.use<void>(
+        pluginId: "one",
+        operation: _TestOperation.authenticatedRead,
+        body: (_) => throw const PluginAuthenticationRequiredException(
+          "authenticatedRead",
+          actionHint: "Sign in locally.",
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+
+    expect(factory.plugins.single.shutdownCount, 0);
+    expect(runtime.snapshot.single.startAllowed, isFalse);
+    expect(runtime.snapshot.single.leaseCount, 1);
+
+    operationGate.complete();
+    await expectLater(
+      operation,
+      throwsA(
+        isA<PluginOperationException>().having(
+          (error) => error.operation,
+          "operation",
+          _TestOperation.concurrentRead.name,
+        ),
+      ),
+    );
+    await _waitUntil(
+      () =>
+          factory.plugins.single.shutdownCount == 1 &&
+          runtime.snapshot.single.state == PluginRuntimeState.blocked &&
+          runtime.snapshot.single.transition == PluginRuntimeTransition.none,
+    );
+  });
+
+  test("stale generation authentication failure does not block its successor", () async {
+    final operationGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    final operation = runtime.use<void>(
+      pluginId: "one",
+      operation: _TestOperation.staleAuthenticatedRead,
+      body: (_) async {
+        await operationGate.future;
+        throw const PluginAuthenticationRequiredException(
+          "staleAuthenticatedRead",
+          actionHint: "Sign in locally.",
+        );
+      },
+    );
+    await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
+    expect(
+      await runtime.restart(pluginId: "one", intent: PluginStopIntent.force),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+
+    operationGate.complete();
+    await expectLater(operation, throwsA(isA<PluginAuthenticationRequiredException>()));
+    final snapshot = runtime.snapshot.single;
+    expect(snapshot.generation, 2);
+    expect(snapshot.state, PluginRuntimeState.active);
+    expect(snapshot.startAllowed, isTrue);
+    expect(snapshot.setup, isNot(isA<PluginSetupAuthenticationRequired>()));
+  });
+
+  test("shutdown bypasses authentication lease drain", () async {
+    final operationGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    final operation = runtime.use<void>(
+      pluginId: "one",
+      operation: _TestOperation.longRead,
+      body: (_) => operationGate.future,
+    );
+    await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
+
+    await expectLater(
+      runtime.use<void>(
+        pluginId: "one",
+        operation: _TestOperation.authenticatedRead,
+        body: (_) => throw const PluginAuthenticationRequiredException(
+          "authenticatedRead",
+          actionHint: "Sign in locally.",
+        ),
+      ),
+      throwsA(isA<PluginAuthenticationRequiredException>()),
+    );
+    expect(factory.plugins.single.shutdownCount, 0);
+
+    runtime.beginShutdown();
+    await runtime.dispose().timeout(const Duration(seconds: 1));
+    expect(factory.plugins.single.shutdownCount, 1);
+
+    operationGate.complete();
+    await expectLater(operation, throwsA(isA<PluginOperationException>()));
+  });
+
   test("a force stop fences an operation that completes after shutdown", () async {
     final operationGate = Completer<void>();
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
     final operation = runtime.use(
       pluginId: "one",
       operation: _TestOperation.forceFenced,
@@ -268,7 +585,7 @@ void main() {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
 
     final result = await runtime.restart(pluginId: "one", intent: PluginStopIntent.safe);
 
@@ -284,7 +601,7 @@ void main() {
     final factory = _FakeGenerationFactory(startGate: startGate.future);
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
-    final initialStart = runtime.startEager(pluginIds: const ["one"]);
+    final initialStart = runtime.start(pluginId: "one");
     await _waitUntil(() => factory.startCount == 1);
 
     final restarting = runtime.restart(pluginId: "one", intent: PluginStopIntent.force);
@@ -301,7 +618,7 @@ void main() {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
     final stoppingPlugin = factory.plugins.single;
 
     stoppingPlugin.statuses.add(const PluginStopping());
@@ -326,7 +643,7 @@ void main() {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
     final failedPlugin = factory.plugins.single;
 
     failedPlugin.statuses.add(const PluginFailed(reason: "terminal", cause: null));
@@ -358,12 +675,12 @@ void main() {
     addTearDown(runtime.dispose);
 
     await expectLater(
-      runtime.startEager(pluginIds: const ["one"]),
+      runtime.start(pluginId: "one"),
       throwsA(same(error)),
     );
   });
 
-  test("descriptor-local factory failures leave the plugin failed without aborting eager startup", () async {
+  test("descriptor-local factory failures leave the plugin failed", () async {
     final factory = _FakeGenerationFactory(
       startGate: Future<void>.value(),
       startError: const PluginGenerationStartFailedException(
@@ -374,7 +691,7 @@ void main() {
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
 
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
 
     expect(runtime.snapshot.single.state, PluginRuntimeState.failed);
     expect(runtime.activePluginIds, isEmpty);
@@ -388,7 +705,7 @@ void main() {
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
 
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
 
     expect(runtime.activePluginIds, isEmpty);
     expect(runtime.snapshot.single.state, PluginRuntimeState.failed);
@@ -402,7 +719,7 @@ void main() {
       honorAbort: false,
     );
     final runtime = _runtime(factory: factory);
-    final starting = runtime.startEager(pluginIds: const ["one"]);
+    final starting = runtime.start(pluginId: "one");
     await _waitUntil(() => factory.startCount == 1);
 
     runtime.beginShutdown();
@@ -425,7 +742,7 @@ void main() {
       ),
     );
     final runtime = _runtime(factory: factory);
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
 
     runtime.beginShutdown();
     await runtime.disposeStartedApis();
@@ -438,7 +755,7 @@ void main() {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
     addTearDown(runtime.dispose);
-    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.start(pluginId: "one");
 
     final eventFuture = runtime.backendEvents.first;
     factory.api.eventsController.add(const BridgeSseProjectUpdated());
@@ -459,6 +776,13 @@ enum _TestOperation {
   second,
   stream,
   duringStop,
+  leasedRead,
+  authenticatedRead,
+  authenticatedStream,
+  fencedRead,
+  concurrentRead,
+  staleAuthenticatedRead,
+  longRead,
   forceFenced,
   retry,
 }
@@ -556,6 +880,7 @@ class _FakePlugin implements BridgePlugin {
   _FakePlugin({required this.api, this.shutdownGate, this.shutdownError});
 
   final BehaviorSubject<PluginStatus> statuses = BehaviorSubject.seeded(const PluginReady());
+  final BehaviorSubject<PluginWorkState> workStates = BehaviorSubject.seeded(PluginWorkState.idle);
   final Future<void>? shutdownGate;
   final Object? shutdownError;
   Future<void>? _shutdownFuture;
@@ -570,6 +895,12 @@ class _FakePlugin implements BridgePlugin {
 
   @override
   Stream<PluginStatus> get status => statuses.stream;
+
+  @override
+  PluginWorkState get currentWorkState => workStates.value;
+
+  @override
+  Stream<PluginWorkState> get workState => workStates.stream;
 
   @override
   PluginDiagnostics describe() => const PluginDiagnostics(pluginId: "one", endpoint: null, details: {});
@@ -587,6 +918,7 @@ class _FakePlugin implements BridgePlugin {
     if (shutdownError case final error?) throw error;
     if (!api.eventsController.isClosed) await api.eventsController.close();
     if (!statuses.isClosed) await statuses.close();
+    if (!workStates.isClosed) await workStates.close();
   }
 }
 

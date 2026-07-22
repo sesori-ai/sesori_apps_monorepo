@@ -120,7 +120,6 @@ void main() {
         filesystemApi: FakeFilesystemApi(),
         gitCliApi: FakeGitCliApi(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-        aggregateSourceDeadline: const Duration(seconds: 5),
       );
 
       final projects = await zeroPluginRepository.getProjects();
@@ -154,7 +153,6 @@ void main() {
         filesystemApi: FakeFilesystemApi(),
         gitCliApi: FakeGitCliApi(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-        aggregateSourceDeadline: const Duration(seconds: 5),
       );
 
       defaultPluginId = "second";
@@ -163,159 +161,6 @@ void main() {
       expect(target.project.id, "second-project");
       expect(first.lastGetProjectId, isNull);
       expect(second.lastGetProjectId, "/projects/second");
-    });
-
-    test("activity reconciliation seeds native directories and preserves existing paths", () async {
-      plugin.projectsResult = const [
-        PluginProject(
-          id: "new-project",
-          directory: "/projects/new",
-          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
-        ),
-        PluginProject(
-          id: "moved-project",
-          directory: "/projects/backend-path",
-          activity: PluginProjectActivity(createdAt: 50, updatedAt: 60),
-        ),
-      ];
-      await db.projectsDao.recordOpenedProject(
-        projectId: "moved-project",
-        path: "/projects/moved",
-        displayName: null,
-        createdAt: 1,
-        updatedAt: 1,
-      );
-      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
-      addTearDown(service.dispose);
-
-      await service.reconcile(pluginId: null);
-
-      final newProject = await db.projectsDao.getProject(projectId: "new-project");
-      expect(newProject?.path, "/projects/new");
-      expect(newProject?.createdAt, 10);
-      expect(newProject?.updatedAt, 20);
-      final movedProject = await db.projectsDao.getProject(projectId: "moved-project");
-      expect(movedProject?.path, "/projects/moved");
-      expect(movedProject?.updatedAt, 60, reason: "stable native identity must retain activity after a move");
-    });
-
-    test("native activity reuses an existing path-canonical project row", () async {
-      const directory = "/projects/shared";
-      plugin.projectsResult = const [
-        PluginProject(
-          id: "native-project-id",
-          directory: directory,
-          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
-        ),
-      ];
-      await db.projectsDao.recordOpenedProject(
-        projectId: directory,
-        path: directory,
-        displayName: null,
-        createdAt: 1,
-        updatedAt: 2,
-      );
-
-      final evidence = await repo.listProjectActivityEvidence(pluginId: plugin.id);
-
-      expect(evidence.single.projectId, directory);
-      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
-    });
-
-    test("native activity atomically resolves identity against catalog import", () async {
-      const directory = "/projects/shared";
-      const nativeProjectId = "native-project-id";
-      const importedProjectId = "catalog-project-id";
-      plugin.projectsResult = const [
-        PluginProject(
-          id: nativeProjectId,
-          directory: directory,
-          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
-        ),
-      ];
-      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
-      final racingRepo = singlePluginProjectRepository(
-        gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
-        projectsDao: projectsDao,
-        sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-      );
-
-      final reconciliation = racingRepo.listProjectActivityEvidence(pluginId: plugin.id);
-      await projectsDao.snapshotTaken.future;
-      final catalogImport = db.transaction(() async {
-        final storedProjects = await db.projectsDao.getAllProjects();
-        final existing = const ProjectCatalogIdentityCalculator().calculate(
-          projectsById: {
-            for (final project in storedProjects) project.projectId: project,
-          },
-          projectsByNormalizedPath: {
-            for (final project in storedProjects) project.path: project,
-          },
-          preferredProjectId: importedProjectId,
-          observedPath: directory,
-        );
-        if (existing == null) {
-          await db.projectsDao.recordOpenedProject(
-            projectId: importedProjectId,
-            path: directory,
-            displayName: null,
-            createdAt: 1,
-            updatedAt: 2,
-          );
-        }
-      });
-      await Future<void>.delayed(Duration.zero);
-      projectsDao.releaseSnapshot.complete();
-
-      final evidence = await reconciliation;
-      await catalogImport;
-
-      final rows = await db.projectsDao.getAllProjects();
-      expect(rows, hasLength(1));
-      expect(evidence.single.projectId, rows.single.projectId);
-    });
-
-    test("native activity drops evidence and project insertion when its generation is replaced", () async {
-      plugin.projectsResult = const [
-        PluginProject(
-          id: "retired-project",
-          directory: "/projects/retired",
-          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
-        ),
-      ];
-      final runtime = createTestPluginRuntime(plugins: [plugin]);
-      final projectsDao = _BlockingSnapshotProjectsDao(database: db);
-      final generationAwareRepo = ProjectRepository(
-        runtime: runtime,
-        readDefaultEnabledPluginId: () => plugin.id,
-        projectsDao: projectsDao,
-        sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-        gitCliApi: FakeGitCliApi(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-        aggregateSourceDeadline: const Duration(seconds: 5),
-      );
-
-      final reconciliation = generationAwareRepo.listProjectActivityEvidence(pluginId: plugin.id);
-      await projectsDao.snapshotTaken.future;
-      runtime.generationCurrent = false;
-      projectsDao.releaseSnapshot.complete();
-
-      await expectLater(
-        reconciliation,
-        throwsA(
-          isA<PluginOperationException>().having(
-            (error) => error.message,
-            "message",
-            contains("generation changed"),
-          ),
-        ),
-      );
-      expect(await db.projectsDao.getProject(projectId: "retired-project"), isNull);
     });
 
     test("getProjects completes from the catalog when plugin enumeration throws", () async {
@@ -881,42 +726,6 @@ void main() {
       expect(plugin.listAllSessionsCallCount, 0);
     });
 
-    test("project activity evidence ignores tombstoned sessions", () async {
-      plugin.sessions = [
-        _session("/tmp/proj/deleted-only", id: "gone", created: 10, updated: 20),
-      ];
-      await db.sessionDao.insertSessionTombstone(
-        backendSessionId: "gone",
-        pluginId: "codex",
-        deletedAt: 1,
-      );
-
-      final result = await repo.listProjectActivityEvidence(pluginId: plugin.id);
-
-      expect(result.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
-    });
-
-    test("derived activity uses the stored native project identity for the same directory", () async {
-      const directory = "/tmp/proj/shared";
-      const nativeProjectId = "native-project-id";
-      await db.projectsDao.recordOpenedProject(
-        projectId: nativeProjectId,
-        path: directory,
-        displayName: null,
-        createdAt: 1,
-        updatedAt: 2,
-      );
-      plugin.sessions = [_session(directory, id: "derived-session", created: 10, updated: 20)];
-
-      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
-      addTearDown(service.dispose);
-      await service.reconcile(pluginId: plugin.id);
-
-      final rows = await db.projectsDao.getAllProjects();
-      expect(rows.map((project) => project.projectId), [nativeProjectId]);
-      expect(rows.single.updatedAt, 20);
-    });
-
     test("openProject records an opened folder so an empty project survives the listing", () async {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/proj/empty");
       final commit = await repo.persistOpenedProject(
@@ -1053,8 +862,8 @@ void main() {
 
       // One card (the parent), never a card named after the worktree.
       expect(result.map((p) => p.id).toSet(), {parent});
-      // Session timestamps remain reconciliation evidence. Listing preserves
-      // the existing persisted timestamp.
+      // Plugin session timestamps do not affect catalog listing; the durable
+      // activity remains authoritative.
       expect(result.single.time?.updated, persistedActivity!.updatedAt);
     });
 

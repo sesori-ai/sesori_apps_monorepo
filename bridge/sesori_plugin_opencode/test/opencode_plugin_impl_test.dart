@@ -169,6 +169,7 @@ void main() {
       expect(server.lastPromptBody?['agent'], equals('build'));
       expect(server.lastPromptBody?['variant'], equals('low'));
       expect(server.lastPromptBody?['model'], equals({"providerID": "openai", "modelID": "gpt-5.4"}));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
     });
 
     test("sendPrompt resolves tracked directory before sending", () async {
@@ -195,10 +196,110 @@ void main() {
       expect(server.lastPromptBody?.containsKey('variant'), isFalse);
     });
 
-    test("sendCommand resolves tracked directory before sending", () async {
+    test("sendPrompt marks an accepted turn busy before SSE arrives", () async {
+      final connected = Completer<void>();
+      final plugin = OpenCodePlugin(
+        serverUrl: server.baseUrl,
+        onConnected: () {
+          if (!connected.isCompleted) connected.complete();
+        },
+      );
+      addTearDown(plugin.dispose);
+      await connected.future;
+      await server.waitForSseConnection();
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+
+      await plugin.sendPrompt(
+        sessionId: "s-root",
+        parts: const [PluginPromptPart.text(text: "Continue")],
+        agent: null,
+        variant: null,
+        model: null,
+      );
+
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("sendPrompt provisional busy survives an SSE disconnect", () async {
+      final connected = Completer<void>();
+      final disconnected = Completer<void>();
+      final plugin = OpenCodePlugin(
+        serverUrl: server.baseUrl,
+        onConnected: () {
+          if (!connected.isCompleted) connected.complete();
+        },
+        onDisconnected: disconnected.complete,
+      );
+      addTearDown(plugin.dispose);
+      await connected.future;
+      await server.waitForSseConnection();
+
+      await plugin.sendPrompt(
+        sessionId: "s-root",
+        parts: const [PluginPromptPart.text(text: "Continue")],
+        agent: null,
+        variant: null,
+        model: null,
+      );
+      server.acceptSseConnections = false;
+      await server.disconnectSseClients();
+      await disconnected.future.timeout(const Duration(seconds: 1));
+
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("SSE disconnect without an accepted turn remains unknown", () async {
+      final connected = Completer<void>();
+      final disconnected = Completer<void>();
+      final plugin = OpenCodePlugin(
+        serverUrl: server.baseUrl,
+        onConnected: () {
+          if (!connected.isCompleted) connected.complete();
+        },
+        onDisconnected: disconnected.complete,
+      );
+      addTearDown(plugin.dispose);
+      await connected.future;
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+
+      server.acceptSseConnections = false;
+      await server.disconnectSseClients();
+      await disconnected.future.timeout(const Duration(seconds: 1));
+
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
+    });
+
+    test("sendPrompt failure does not mark the plugin busy", () async {
+      final connected = Completer<void>();
+      final plugin = OpenCodePlugin(
+        serverUrl: server.baseUrl,
+        onConnected: () {
+          if (!connected.isCompleted) connected.complete();
+        },
+      );
+      addTearDown(plugin.dispose);
+      await connected.future;
+      server.promptStatusCode = HttpStatus.internalServerError;
+
+      await expectLater(
+        plugin.sendPrompt(
+          sessionId: "s-root",
+          parts: const [PluginPromptPart.text(text: "Continue")],
+          agent: null,
+          variant: null,
+          model: null,
+        ),
+        throwsA(isA<PluginApiException>()),
+      );
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("sendCommand detaches with the tracked directory and marks the turn busy", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       await server.waitForSseConnection();
       server.requestLog.clear();
+      server.holdCommand = Completer<void>();
 
       await plugin.sendCommand(
         sessionId: "s-root",
@@ -221,6 +322,32 @@ void main() {
           "model": "openai/gpt-4.1",
         }),
       );
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      server.holdCommand!.complete();
+    });
+
+    test("detached sendCommand failure revokes provisional plugin busy", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server.holdCommand = Completer<void>();
+
+      await plugin.sendCommand(
+        sessionId: "s-root",
+        command: "/review-work",
+        arguments: "",
+        agent: null,
+        variant: null,
+        model: null,
+      );
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      server.commandStatusCode = HttpStatus.internalServerError;
+      server.holdCommand!.complete();
+
+      await idle.timeout(const Duration(seconds: 1));
+      expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
     test("getSessionMessages maps raw messages to plugin messages", () async {
@@ -738,6 +865,10 @@ class _FakeOpenCodeServer {
   Map<String, dynamic>? lastCommandBody;
   String? lastCommandDirectoryHeader;
   String? lastCreatedSessionParentId;
+  Completer<void>? holdCommand;
+  int promptStatusCode = HttpStatus.ok;
+  int commandStatusCode = HttpStatus.ok;
+  bool acceptSseConnections = true;
 
   /// Extra sessions appended to the `GET /session` response, so tests can
   /// stage sessions in directories the fixed fixtures don't cover.
@@ -915,6 +1046,12 @@ class _FakeOpenCodeServer {
         final rawBody = await utf8.decoder.bind(request).join();
         lastPromptBody = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
         lastPromptDirectoryHeader = request.headers.value("x-opencode-directory");
+        if (promptStatusCode != HttpStatus.ok) {
+          request.response.statusCode = promptStatusCode;
+          request.response.write("prompt failed");
+          await request.response.close();
+          return;
+        }
         await _sendJson(request.response, true);
         return;
       }
@@ -924,6 +1061,15 @@ class _FakeOpenCodeServer {
         final rawBody = await utf8.decoder.bind(request).join();
         lastCommandBody = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
         lastCommandDirectoryHeader = request.headers.value("x-opencode-directory");
+        if (holdCommand case final hold?) {
+          await hold.future;
+        }
+        if (commandStatusCode != HttpStatus.ok) {
+          request.response.statusCode = commandStatusCode;
+          request.response.write("command failed");
+          await request.response.close();
+          return;
+        }
         await _sendJson(request.response, true);
         return;
       }
@@ -1549,6 +1695,11 @@ class _FakeOpenCodeServer {
       }
 
       if (request.method == "GET" && path == "/global/event") {
+        if (!acceptSseConnections) {
+          request.response.statusCode = HttpStatus.serviceUnavailable;
+          await request.response.close();
+          return;
+        }
         request.response.statusCode = HttpStatus.ok;
         request.response.headers.contentType = ContentType("text", "event-stream");
         request.response.headers.set("cache-control", "no-cache");
@@ -1575,11 +1726,6 @@ class _FakeOpenCodeServer {
 
   Future<void> waitForSseConnection() => _firstSseClient.future;
 
-  Future<void> emitSse(Map<String, dynamic> payload) async {
-    final data = jsonEncode(payload);
-    await emitRawSse(data);
-  }
-
   Future<void> emitRawSse(String data) async {
     final futures = <Future<void>>[];
     for (final client in _sseClients) {
@@ -1589,6 +1735,13 @@ class _FakeOpenCodeServer {
     if (futures.isNotEmpty) {
       await Future.wait(futures);
     }
+  }
+
+  Future<void> disconnectSseClients() async {
+    for (final client in _sseClients) {
+      await client.close();
+    }
+    _sseClients.clear();
   }
 
   Future<void> close() async {

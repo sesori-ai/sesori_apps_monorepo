@@ -167,7 +167,6 @@ class _CatalogImportEventSoak {
           gitPathExists: ({required String gitPath}) => false,
         ),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-        aggregateSourceDeadline: const Duration(seconds: 5),
       );
       mutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
       final eventTracker = SessionEventTracker(

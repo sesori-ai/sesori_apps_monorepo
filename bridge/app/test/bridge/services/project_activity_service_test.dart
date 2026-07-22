@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_activity.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -183,32 +181,6 @@ void main() {
     expect(projects.single.time, const ProjectTime(created: 10, updated: 20));
   });
 
-  test("a hanging reconciliation does not block a project list", () async {
-    final hangingPlugin = _HangingProjectsPlugin();
-    final localService = ProjectActivityService(
-      projectRepository: singlePluginProjectRepository(
-        gitCliApi: FakeGitCliApi(),
-        plugin: hangingPlugin,
-        projectsDao: database.projectsDao,
-        sessionDao: database.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-      ),
-      now: () => now,
-    );
-    await database.projectsDao.setActivity(projectId: "stored", createdAt: 10, updatedAt: 20);
-    final reconcile = localService.reconcile(pluginId: null);
-    await hangingPlugin.reconciliationStarted.future;
-
-    final projects = await localService.getProjects().timeout(const Duration(seconds: 1));
-
-    expect(projects.single.id, "stored");
-    hangingPlugin.releaseReconciliation.complete();
-    await reconcile;
-    await localService.dispose();
-    await hangingPlugin.close();
-  });
-
   test("touches root question and permission events and skips displayed children", () async {
     await _storeSession(database: database, sessionId: "root", projectId: "project");
 
@@ -343,40 +315,6 @@ void main() {
     await subscription.cancel();
   });
 
-  test("reconcile batch-writes corrections and emits only updated advances", () async {
-    await database.projectsDao.setActivity(projectId: "created-only", createdAt: 100, updatedAt: 500);
-    await database.projectsDao.setActivity(projectId: "advanced", createdAt: 100, updatedAt: 500);
-    plugin.projectsResult = const [
-      PluginProject(
-        id: "created-only",
-        directory: "created-only",
-        activity: PluginProjectActivity(createdAt: 50, updatedAt: 400),
-      ),
-      PluginProject(
-        id: "advanced",
-        directory: "advanced",
-        activity: PluginProjectActivity(createdAt: 80, updatedAt: 600),
-      ),
-    ];
-    final changes = <ProjectActivityChange>[];
-    final subscription = service.changes.listen(changes.add);
-
-    await service.reconcile(pluginId: null);
-    await Future<void>.delayed(Duration.zero);
-
-    expect(plugin.getProjectsCallCount, 1, reason: "native reconciliation must fetch projects once, not per project");
-    expect(
-      await _activity(database: database, projectId: "created-only"),
-      const ProjectActivity(createdAt: 50, updatedAt: 500),
-    );
-    expect(
-      await _activity(database: database, projectId: "advanced"),
-      const ProjectActivity(createdAt: 80, updatedAt: 600),
-    );
-    expect(changes, [const ProjectActivityChange(projectId: "advanced", updatedAt: 600)]);
-    await subscription.cancel();
-  });
-
   test("opening preserves canonical identity and emits only timestamp changes", () async {
     plugin.currentProjectResult = const PluginProject(
       id: "canonical",
@@ -432,17 +370,4 @@ Future<ProjectActivity?> _activity({required AppDatabase database, required Stri
   final row = await database.projectsDao.getProject(projectId: projectId);
   if (row == null) return null;
   return ProjectActivity(createdAt: row.createdAt, updatedAt: row.updatedAt);
-}
-
-class _HangingProjectsPlugin extends FakeBridgePlugin {
-  final reconciliationStarted = Completer<void>();
-  final releaseReconciliation = Completer<void>();
-
-  @override
-  Future<List<PluginProject>> getProjects() async {
-    getProjectsCallCount++;
-    reconciliationStarted.complete();
-    await releaseReconciliation.future;
-    return const [];
-  }
 }

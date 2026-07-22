@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/plugin_lifecycle_test_support.dart" show createTestBridgeSettingsRepository;
 import "../../helpers/plugin_runtime_test_support.dart";
 import "routing_test_helpers.dart";
 
@@ -22,6 +23,8 @@ void main() {
       lifecycleService =
           PluginLifecycleService(
               lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+              bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+              idleTimerScheduler: const PluginIdleTimerScheduler(),
             )
             ..registerPlugins(
               plugins: const [

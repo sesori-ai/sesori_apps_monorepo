@@ -2,12 +2,12 @@
 
 ## Plan State
 
-- **Status:** Stage 11-P01 delivered; replacement stack rebuilding
+- **Status:** Stage 11-P02 delivered; replacement stack rebuilding
 - **Base:** `origin/main` at `5a91f582`
-- **Current branch:** `setup-aware-plugin-lifecycle-s11-p01`
-- **Current stage:** Stage 11-P02 rebuild
-- **Next action:** rebuild Stage 11-P02 from rewritten Stage 11-P01, verify it,
-  rewrite its branch, reopen #509, and start its monitor
+- **Current branch:** `setup-aware-plugin-lifecycle-s11-p02`
+- **Current stage:** Stage 12 rebuild
+- **Next action:** rebuild Stage 12 from rewritten Stage 11-P02, verify it,
+  rewrite its branch, reopen #510, and start its monitor
 
 ## Closed First Implementation
 
@@ -17,7 +17,7 @@ The first unmerged stack was closed before redesign:
 |---|---|---|
 | #507 | Reopened | Redesigned Stage 10 at `794e853e`; CI/review monitored |
 | #508 | Reopened | Redesigned Stage 11-P01 at `29472036`; CI/review monitored |
-| #509 | Closed | Reopen after redesigned Stage 11-P02 is implemented and verified |
+| #509 | Reopened | Redesigned Stage 11-P02 at `c0b3ed11`; CI/review monitored |
 | #510 | Closed | Reopen after redesigned Stage 12 is implemented and verified |
 | #511 | Closed | Reopen after redesigned Stage 13 is implemented on merged Settings architecture |
 
@@ -30,7 +30,7 @@ run their focused verification again.
 |---|---|---|---|
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 open and monitored |
 | [x] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 open and monitored |
-| [ ] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 closed |
+| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 open and monitored |
 | [ ] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 closed |
 | [ ] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 closed |
 
@@ -111,6 +111,50 @@ run their focused verification again.
 - Committed as `bc7d62b1`, force-pushed with lease, and reopened #508. GitHub
   again required temporarily restoring the old head solely for the reopen;
   `bc7d62b1` was restored immediately and is the monitored replacement head.
+- Follow-up review fixes fenced activity, catalog, and session projection writes
+  at their durable transaction boundaries and distinguished status-only stopping
+  from command-owned teardown. After rebasing onto the synchronized Stage 10,
+  the Stage 11-P01 production commit is `29472036` and current head is
+  `235589b3`.
+
+### 2026-07-20 — replacement Stage 11-P02
+
+- Added replay-latest plugin-owned idle/busy/unknown work state and typed
+  authentication-loss signaling across the interface, OpenCode, Codex, ACP,
+  and Cursor's inherited ACP path.
+- Extended concrete `PluginRuntime` with work-state observation, safe-stop
+  gates, authentication fencing, lease draining, and repository-mapped idle
+  policy inputs while keeping denylist ownership outside runtime mechanics.
+- Switched every setup-ready available plugin to dormant startup and wired the
+  existing numeric `idleTimeoutMins` settings so positive values schedule a
+  full safe-stop timer and non-positive values never auto-stop after demand.
+- Added lifecycle-owned ready-plugin snapshots and
+  `PluginCatalogHydrationListener` as the sole automatic import trigger. Marker
+  checks remain before runtime acquisition; headless imports remain explicit.
+- Removed startup/reconnect backend activity enumeration while preserving
+  event-driven durable activity updates.
+- Architecture review findings were fixed: ACP replay preserves typed auth
+  failures, obsolete eager-start surfaces and unused generation mapping were
+  removed, and lifecycle idle policy now consumes repository-owned settled/
+  safe-stop contracts instead of mechanical runtime command types.
+- Sequential `dart analyze --fatal-infos` passed in
+  `sesori_plugin_interface`, OpenCode, Codex, ACP, Cursor, and `bridge/app` on
+  the final combined inputs.
+- Focused interface/backend work-state and auth tests passed. Final bridge-app
+  runtime, lifecycle, hydration, catalog, event projection, and orchestrator
+  verification passed (80 tests), as did the three-plugin startup benchmark.
+- Rebased the open Stage 10 and Stage 11-P01 branches, and this in-progress
+  branch, onto `origin/main` at `5a91f582` as requested.
+- `git diff --check` passed.
+- The replacement production implementation commit is `c0b3ed11`; it was
+  force-pushed with lease and #509 was reopened using the same
+  temporary-old-head GitHub workaround. The replacement code was restored
+  immediately and monitored. The follow-up test-only code commit `1f5c7ea4`
+  removes a stale activity-readiness wait exposed by CI. These hashes identify
+  the production and test-code delivery, not the eventual PR head.
+- Follow-up runtime-safety commits `8d4fc41e` and `f69f24dc` add cancellable
+  idle timers and provisional work evidence for every accepted OpenCode/Codex
+  turn before its request lease is released.
 
 ## Delivery Rules
 

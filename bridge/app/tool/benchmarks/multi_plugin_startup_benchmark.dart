@@ -133,7 +133,9 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
       );
 
   try {
-    await runtime.startEager(pluginIds: descriptors.map((descriptor) => descriptor.id).toList());
+    await Future.wait([
+      for (final descriptor in descriptors) runtime.start(pluginId: descriptor.id),
+    ]);
     final totalMicros = stopwatch.elapsedMicroseconds;
 
     if (startupMutexRepository.acquisitionCount != 1 || bridgeInstanceService.enforcementCount != 1) {
@@ -311,7 +313,13 @@ class _FakePlugin implements BridgePlugin {
   PluginStatus get currentStatus => const PluginReady();
 
   @override
+  PluginWorkState get currentWorkState => PluginWorkState.idle;
+
+  @override
   Stream<PluginStatus> get status => _statusController.stream;
+
+  @override
+  Stream<PluginWorkState> get workState => Stream.value(PluginWorkState.idle);
 
   @override
   PluginDiagnostics describe() => PluginDiagnostics(pluginId: _api.id, endpoint: null, details: const {});

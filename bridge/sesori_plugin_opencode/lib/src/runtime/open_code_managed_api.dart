@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show NativeProjectsPluginApi;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show NativeProjectsPluginApi, PluginWorkState;
 
 /// The plugin-API object the [OpenCodePluginDescriptor] drives during `start()`.
 ///
@@ -9,6 +9,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Nativ
 /// interface — rather than the concrete `OpenCodePlugin` — lets the descriptor's
 /// API construction be a test seam without forcing real HTTP/SSE in unit tests.
 abstract interface class OpenCodeManagedApi implements NativeProjectsPluginApi {
+  Stream<PluginWorkState> get workState;
+  PluginWorkState get currentWorkState;
+
   /// Hydrates the session tracker from the server and starts the SSE stream.
   ///
   /// Idempotent: repeated calls share a single in-flight cold-start. Rethrows a

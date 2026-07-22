@@ -5,6 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../bridge/runtime/plugin_runtime.dart";
+import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
 
 typedef PluginCompositionView = ({
@@ -18,15 +19,29 @@ typedef RegisteredPluginMetadata = ({String id, String displayName});
 
 typedef PluginStartupPolicy = ({
   List<String> eligiblePluginIds,
-  List<String> eagerPluginIds,
   String? defaultPluginId,
 });
 
+class PluginIdleTimerScheduler {
+  const PluginIdleTimerScheduler();
+
+  Timer schedule({required Duration duration, required void Function() onElapsed}) {
+    return Timer(duration, onElapsed);
+  }
+}
+
 class PluginLifecycleService {
-  PluginLifecycleService({required PluginLifecycleRepository lifecycleRepository})
-    : _lifecycleRepository = lifecycleRepository;
+  PluginLifecycleService({
+    required PluginLifecycleRepository lifecycleRepository,
+    required BridgeSettingsRepository bridgeSettingsRepository,
+    required PluginIdleTimerScheduler idleTimerScheduler,
+  }) : _lifecycleRepository = lifecycleRepository,
+       _bridgeSettingsRepository = bridgeSettingsRepository,
+       _idleTimerScheduler = idleTimerScheduler;
 
   final PluginLifecycleRepository _lifecycleRepository;
+  final BridgeSettingsRepository _bridgeSettingsRepository;
+  final PluginIdleTimerScheduler _idleTimerScheduler;
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   List<String>? _eligiblePluginIds;
@@ -35,8 +50,11 @@ class PluginLifecycleService {
   Map<String, PluginMetadata> _metadataById = <String, PluginMetadata>{};
   Map<String, PluginSetupStatus>? _setupById;
   BehaviorSubject<List<PluginMetadata>>? _metadataSubject;
+  BehaviorSubject<List<String>>? _readyPluginIdsSubject;
   StreamSubscription<List<PluginLifecycleSnapshot>>? _runtimeSubscription;
   Future<void>? _disposeFuture;
+  final Map<String, ({Duration duration, Timer timer})> _idleTimers = {};
+  bool _disposing = false;
 
   void registerPlugins({required List<RegisteredPluginMetadata> plugins}) {
     if (_registeredPlugins != null) throw StateError("Plugins are already registered.");
@@ -87,8 +105,12 @@ class PluginLifecycleService {
             id: plugin.id,
             displayName: plugin.displayName,
             isDefault: plugin.id == _preferredDefaultPluginId,
-            state: PluginLifecycleState.unavailable,
-            actionHint: _actionHint(PluginLifecycleState.unavailable),
+            state: setupById[plugin.id] is PluginSetupReady
+                ? PluginLifecycleState.ready
+                : PluginLifecycleState.unavailable,
+            actionHint: setupById[plugin.id] is PluginSetupReady
+                ? _actionHint(PluginLifecycleState.ready)
+                : _actionHint(PluginLifecycleState.unavailable),
           ),
     };
     _lifecycleRepository.applyAccess(
@@ -96,10 +118,12 @@ class PluginLifecycleService {
       startAllowedPluginIds: setupReadyPluginIds.toSet(),
     );
     _metadataSubject = BehaviorSubject<List<PluginMetadata>>.seeded(_orderedMetadata());
+    _readyPluginIdsSubject = BehaviorSubject<List<String>>.seeded(
+      _buildReadyPluginIds(_lifecycleRepository.snapshot),
+    );
     _runtimeSubscription = _lifecycleRepository.snapshots.listen(_applyRuntimeSnapshots);
     return (
       eligiblePluginIds: eligiblePluginIds,
-      eagerPluginIds: setupReadyPluginIds,
       defaultPluginId: _preferredDefaultPluginId,
     );
   }
@@ -112,6 +136,7 @@ class PluginLifecycleService {
       eligiblePluginIds: eligiblePluginIds.toSet(),
       startAllowedPluginIds: setupReadyPluginIds.where(availablePluginIds.contains).toSet(),
     );
+    _applyRuntimeSnapshots(_lifecycleRepository.snapshot);
   }
 
   PluginCompositionView get compositionView {
@@ -161,22 +186,37 @@ class PluginLifecycleService {
     return subject.stream;
   }
 
+  Stream<List<String>> get readyPluginIds {
+    final subject = _readyPluginIdsSubject;
+    if (subject == null) throw StateError("Plugin lifecycle has not been initialized.");
+    return subject.stream;
+  }
+
   void _applyRuntimeSnapshots(List<PluginLifecycleSnapshot> snapshots) {
+    final setupById = _setupById;
+    if (setupById != null) {
+      _setupById = Map<String, PluginSetupStatus>.unmodifiable({
+        ...setupById,
+        for (final snapshot in snapshots) snapshot.pluginId: snapshot.setup,
+      });
+    }
     for (final snapshot in snapshots) {
       final current = _metadataById[snapshot.pluginId];
       if (current == null) continue;
       final state = switch (snapshot.state) {
-        PluginRuntimeState.active || PluginRuntimeState.starting => PluginLifecycleState.ready,
+        PluginRuntimeState.dormant ||
+        PluginRuntimeState.active ||
+        PluginRuntimeState.starting => PluginLifecycleState.ready,
         PluginRuntimeState.degraded || PluginRuntimeState.stopping => PluginLifecycleState.degraded,
         PluginRuntimeState.failed => PluginLifecycleState.failed,
-        PluginRuntimeState.disabled ||
-        PluginRuntimeState.blocked ||
-        PluginRuntimeState.dormant => PluginLifecycleState.unavailable,
+        PluginRuntimeState.disabled || PluginRuntimeState.blocked => PluginLifecycleState.unavailable,
       };
       _metadataById[snapshot.pluginId] = current.copyWith(state: state, actionHint: _actionHint(state));
     }
     final subject = _metadataSubject;
     if (subject != null && !subject.isClosed) subject.add(_orderedMetadata());
+    _publishReadyPluginIds(snapshots);
+    _syncIdleTimers(snapshots);
   }
 
   List<PluginMetadata> _orderedMetadata() {
@@ -203,10 +243,12 @@ class PluginLifecycleService {
   bool _isSelectable(PluginLifecycleSnapshot snapshot) {
     if (!snapshot.eligible) return false;
     return switch (snapshot.state) {
-      PluginRuntimeState.starting || PluginRuntimeState.active || PluginRuntimeState.degraded => true,
+      PluginRuntimeState.dormant ||
+      PluginRuntimeState.starting ||
+      PluginRuntimeState.active ||
+      PluginRuntimeState.degraded => true,
       PluginRuntimeState.disabled ||
       PluginRuntimeState.blocked ||
-      PluginRuntimeState.dormant ||
       PluginRuntimeState.stopping ||
       PluginRuntimeState.failed => false,
     };
@@ -240,6 +282,11 @@ class PluginLifecycleService {
   Future<void> dispose() => _disposeFuture ??= _dispose();
 
   Future<void> _dispose() async {
+    _disposing = true;
+    for (final entry in _idleTimers.values) {
+      entry.timer.cancel();
+    }
+    _idleTimers.clear();
     Object? firstError;
     StackTrace? firstStackTrace;
     try {
@@ -254,7 +301,102 @@ class PluginLifecycleService {
       firstError ??= error;
       firstStackTrace ??= stackTrace;
     }
+    try {
+      await _readyPluginIdsSubject?.close();
+    } on Object catch (error, stackTrace) {
+      firstError ??= error;
+      firstStackTrace ??= stackTrace;
+    }
     if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
+  }
+
+  List<String> _buildReadyPluginIds(List<PluginLifecycleSnapshot> snapshots) {
+    final byId = <String, PluginLifecycleSnapshot>{
+      for (final snapshot in snapshots) snapshot.pluginId: snapshot,
+    };
+    return List<String>.unmodifiable([
+      for (final pluginId in _requireEligiblePluginIds())
+        if (byId[pluginId] case final snapshot?)
+          if (snapshot.eligible && snapshot.startAllowed && snapshot.setup is PluginSetupReady) pluginId,
+    ]);
+  }
+
+  void _publishReadyPluginIds(List<PluginLifecycleSnapshot> snapshots) {
+    final subject = _readyPluginIdsSubject;
+    if (subject == null || subject.isClosed) return;
+    final next = _buildReadyPluginIds(snapshots);
+    final current = subject.value;
+    if (current.length == next.length) {
+      var equal = true;
+      for (var index = 0; index < current.length; index++) {
+        if (current[index] != next[index]) {
+          equal = false;
+          break;
+        }
+      }
+      if (equal) return;
+    }
+    subject.add(next);
+  }
+
+  void _syncIdleTimers(List<PluginLifecycleSnapshot> snapshots) {
+    if (_disposing) return;
+    final currentIds = snapshots.map((snapshot) => snapshot.pluginId).toSet();
+    _idleTimers.keys.where((pluginId) => !currentIds.contains(pluginId)).toList().forEach(_cancelIdleTimer);
+    for (final snapshot in snapshots) {
+      final timeoutMins = _effectiveIdleTimeoutMins(snapshot.pluginId);
+      if (timeoutMins <= 0 || !_isIdleCandidate(snapshot)) {
+        _cancelIdleTimer(snapshot.pluginId);
+        continue;
+      }
+      final duration = Duration(minutes: timeoutMins);
+      final existing = _idleTimers[snapshot.pluginId];
+      if (existing != null && existing.duration == duration) continue;
+      _cancelIdleTimer(snapshot.pluginId);
+      late final Timer timer;
+      timer = _idleTimerScheduler.schedule(
+        duration: duration,
+        onElapsed: () => unawaited(
+          _stopAfterIdleWindow(
+            pluginId: snapshot.pluginId,
+            timer: timer,
+          ),
+        ),
+      );
+      _idleTimers[snapshot.pluginId] = (duration: duration, timer: timer);
+    }
+  }
+
+  void _cancelIdleTimer(String pluginId) {
+    _idleTimers.remove(pluginId)?.timer.cancel();
+  }
+
+  bool _isIdleCandidate(PluginLifecycleSnapshot snapshot) {
+    return snapshot.eligible &&
+        snapshot.workState == PluginWorkState.idle &&
+        snapshot.leaseCount == 0 &&
+        snapshot.transitionSettled &&
+        (snapshot.state == PluginRuntimeState.active || snapshot.state == PluginRuntimeState.degraded);
+  }
+
+  int _effectiveIdleTimeoutMins(String pluginId) {
+    return _bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId);
+  }
+
+  Future<void> _stopAfterIdleWindow({
+    required String pluginId,
+    required Timer timer,
+  }) async {
+    if (_disposing || !identical(_idleTimers[pluginId]?.timer, timer)) return;
+    _idleTimers.remove(pluginId);
+    final snapshot = _lifecycleRepository.snapshot.where((entry) => entry.pluginId == pluginId).firstOrNull;
+    if (snapshot == null || _effectiveIdleTimeoutMins(pluginId) <= 0 || !_isIdleCandidate(snapshot)) return;
+    try {
+      await _lifecycleRepository.stopSafely(pluginId: pluginId);
+    } on Object catch (error, stackTrace) {
+      Log.w('Idle suspension failed for plugin "$pluginId"', error, stackTrace);
+    }
+    _syncIdleTimers(_lifecycleRepository.snapshot);
   }
 
   static String? _actionHint(PluginLifecycleState state) => switch (state) {

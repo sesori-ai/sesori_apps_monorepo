@@ -27,6 +27,8 @@ void main() {
     final lifecycleService =
         PluginLifecycleService(
             lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+            bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
           )
           ..registerPlugins(
             plugins: const [(id: "opencode", displayName: "OpenCode")],
@@ -142,7 +144,7 @@ void main() {
       expect(await laterEvent.timeout(const Duration(seconds: 2)), isA<SesoriVcsBranchUpdated>());
     });
 
-    test("startup and reconnect activity failures do not stop plugin events", () async {
+    test("a reconnect after a startup summary failure does not stop plugin events", () async {
       final harness = await _TestHarness.start(
         plugin: _ThrowingSummaryPlugin(),
       );
