@@ -17,7 +17,7 @@ class ProviderRepository {
   Future<ProviderListResponse> getProviders({required String projectId, required String pluginId}) async {
     return _runtime.use(
       pluginId: pluginId,
-      operation: "getProviders",
+      operation: _ProviderOperation.getProviders,
       body: (plugin) async {
         // The plugin reads provider config from the project's directory.
         final directory = await _projectsDao.getResolvedPath(projectId: projectId);
@@ -31,3 +31,5 @@ class ProviderRepository {
     );
   }
 }
+
+enum _ProviderOperation { getProviders }

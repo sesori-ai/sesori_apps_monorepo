@@ -138,7 +138,7 @@ class SessionRepository {
   }) async {
     final created = await _runtime.use(
       pluginId: pluginId,
-      operation: SessionOperation.createSession.name,
+      operation: SessionOperation.createSession,
       body: (plugin) => plugin.createSession(
         directory: directory,
         parentSessionId: parentSessionId,
@@ -203,7 +203,7 @@ class SessionRepository {
     );
     final updated = await _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.renameSession.name,
+      operation: SessionOperation.renameSession,
       body: (plugin) {
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         return plugin.renameSession(sessionId: binding.backendSessionId, title: title);
@@ -222,7 +222,7 @@ class SessionRepository {
         : await resolveProjectDirectory(projectId: normalizedProjectId);
     final commands = await _runtime.use(
       pluginId: pluginId,
-      operation: SessionOperation.getCommands.name,
+      operation: SessionOperation.getCommands,
       body: (plugin) => plugin.getCommands(projectId: directory),
     );
     return CommandListResponse(
@@ -244,7 +244,7 @@ class SessionRepository {
     );
     return _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.sendCommand.name,
+      operation: SessionOperation.sendCommand,
       body: (plugin) {
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         return plugin.sendCommand(
@@ -275,7 +275,7 @@ class SessionRepository {
     );
     return _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.sendPrompt.name,
+      operation: SessionOperation.sendPrompt,
       body: (plugin) {
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         return plugin.sendPrompt(
@@ -303,7 +303,7 @@ class SessionRepository {
     );
     final pluginMessages = await _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.getSessionMessages.name,
+      operation: SessionOperation.getSessionMessages,
       body: (plugin) {
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         return plugin.getSessionMessages(binding.backendSessionId);
@@ -337,7 +337,7 @@ class SessionRepository {
           _runtime.requireCurrentGeneration(
             pluginId: sourcePluginId,
             generation: sourceGeneration!,
-            operation: "setSessionTitleIfStored",
+            operation: SessionOperation.setSessionTitleIfStored,
           );
         }
         await _sessionDao.setTitle(
@@ -350,7 +350,7 @@ class SessionRepository {
           _runtime.requireCurrentGeneration(
             pluginId: sourcePluginId,
             generation: sourceGeneration!,
-            operation: "setSessionTitleIfStored",
+            operation: SessionOperation.setSessionTitleIfStored,
           );
         }
         return SessionTitleWriteResult.stored;
@@ -410,7 +410,7 @@ class SessionRepository {
     final deletionSnapshot = (await _mapCatalogSessions(rows: [binding])).single;
     await _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.deleteSession.name,
+      operation: SessionOperation.deleteSession,
       body: (plugin) async {
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         try {
@@ -481,6 +481,7 @@ class SessionRepository {
           final sourcedObservation = await _runtime
               .useIfActive(
                 pluginId: pluginId,
+                operation: SessionOperation.getProjectActivitySummaries,
                 body: (plugin, generation) async => (
                   generation: generation,
                   observation: await _collectPluginProjectActivity(
@@ -495,7 +496,7 @@ class SessionRepository {
           _runtime.requireCurrentGeneration(
             pluginId: pluginId,
             generation: generation,
-            operation: "getProjectActivitySummaries",
+            operation: SessionOperation.getProjectActivitySummaries,
           );
           await _persistActiveRootHydrations(observation: observation);
           return _mapPluginProjectActivitySummaries(observation: observation);
@@ -782,7 +783,7 @@ class SessionRepository {
     );
     return _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.archiveSession.name,
+      operation: SessionOperation.archiveSession,
       body: (plugin) {
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         return plugin.archiveSession(sessionId: binding.backendSessionId);
@@ -797,7 +798,7 @@ class SessionRepository {
     );
     return _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.abortSession.name,
+      operation: SessionOperation.abortSession,
       body: (plugin) {
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         return plugin.abortSession(sessionId: binding.backendSessionId);
@@ -812,6 +813,7 @@ class SessionRepository {
           final pluginStatuses = await _runtime
               .useIfActive(
                 pluginId: pluginId,
+                operation: SessionOperation.getSessionStatuses,
                 body: (plugin, _) => plugin.getSessionStatuses(),
               )
               .timeout(_aggregateSourceDeadline);
@@ -1018,7 +1020,7 @@ class SessionRepository {
       _runtime.requireCurrentGeneration(
         pluginId: pluginId,
         generation: generation,
-        operation: "updateObservedSessionProjection",
+        operation: SessionOperation.updateObservedSessionProjection,
       );
       final updated = await _sessionDao.updateObservedSessionProjection(
         sessionId: binding.sessionId,
@@ -1031,14 +1033,14 @@ class SessionRepository {
       _runtime.requireCurrentGeneration(
         pluginId: pluginId,
         generation: generation,
-        operation: "updateObservedSessionProjection",
+        operation: SessionOperation.updateObservedSessionProjection,
       );
       if (!updated) return null;
       final stored = (await _sessionDao.getSession(sessionId: binding.sessionId))?.toStoredSession();
       _runtime.requireCurrentGeneration(
         pluginId: pluginId,
         generation: generation,
-        operation: "updateObservedSessionProjection",
+        operation: SessionOperation.updateObservedSessionProjection,
       );
       return stored;
     });
@@ -1070,7 +1072,7 @@ class SessionRepository {
         _runtime.requireCurrentGeneration(
           pluginId: pluginId,
           generation: generation,
-          operation: "insertObservedChild",
+          operation: SessionOperation.insertObservedChild,
         );
         final updated = await _sessionDao.updateObservedSessionProjection(
           sessionId: existing.sessionId,
@@ -1083,14 +1085,14 @@ class SessionRepository {
         _runtime.requireCurrentGeneration(
           pluginId: pluginId,
           generation: generation,
-          operation: "insertObservedChild",
+          operation: SessionOperation.insertObservedChild,
         );
         if (!updated) return null;
         final stored = (await _sessionDao.getSession(sessionId: existing.sessionId))?.toStoredSession();
         _runtime.requireCurrentGeneration(
           pluginId: pluginId,
           generation: generation,
-          operation: "insertObservedChild",
+          operation: SessionOperation.insertObservedChild,
         );
         return stored;
       }
@@ -1099,7 +1101,7 @@ class SessionRepository {
       _runtime.requireCurrentGeneration(
         pluginId: pluginId,
         generation: generation,
-        operation: "insertObservedChild",
+        operation: SessionOperation.insertObservedChild,
       );
       await _sessionDao.insertObservedChild(
         sessionId: sessionId,
@@ -1117,13 +1119,13 @@ class SessionRepository {
       _runtime.requireCurrentGeneration(
         pluginId: pluginId,
         generation: generation,
-        operation: "insertObservedChild",
+        operation: SessionOperation.insertObservedChild,
       );
       final stored = (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
       _runtime.requireCurrentGeneration(
         pluginId: pluginId,
         generation: generation,
-        operation: "insertObservedChild",
+        operation: SessionOperation.insertObservedChild,
       );
       return stored;
     });
@@ -1136,7 +1138,7 @@ class SessionRepository {
     final binding = await _requireBinding(sessionId: sessionId, operation: operation);
     return _runtime.use(
       pluginId: binding.pluginId,
-      operation: operation.name,
+      operation: operation,
       body: (_) async => binding.toStoredSession(),
     );
   }
@@ -1245,7 +1247,7 @@ class SessionRepository {
   Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) {
     return _runtime.use(
       pluginId: pluginId,
-      operation: operation.name,
+      operation: operation,
       body: (_) async {},
     );
   }

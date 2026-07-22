@@ -33,7 +33,7 @@ class PermissionRepository {
     );
     return _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.getPendingPermissions.name,
+      operation: SessionOperation.getPendingPermissions,
       body: (plugin) async {
         Set<String>? tombstoned;
         if (plugin is BridgeDerivedProjectsPluginApi) {
@@ -68,7 +68,7 @@ class PermissionRepository {
     );
     return _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.replyToPermission.name,
+      operation: SessionOperation.replyToPermission,
       body: (plugin) async {
         if (plugin is BridgeDerivedProjectsPluginApi) {
           final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);

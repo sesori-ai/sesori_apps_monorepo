@@ -22,7 +22,7 @@ class AgentRepository {
   Future<Agents> getAgents({required String? projectId, required String pluginId}) async {
     return _runtime.use(
       pluginId: pluginId,
-      operation: "getAgents",
+      operation: _AgentOperation.getAgents,
       body: (plugin) async {
         // A null/blank projectId comes from the deprecated GET /agent route,
         // which carries no project context. Fall back to the bridge CWD, which
@@ -46,3 +46,5 @@ class AgentRepository {
     );
   }
 }
+
+enum _AgentOperation { getAgents }

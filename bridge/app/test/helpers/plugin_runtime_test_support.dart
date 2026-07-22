@@ -70,11 +70,11 @@ class TestPluginRuntime extends PluginRuntime {
   void requireCurrentGeneration({
     required String pluginId,
     required int generation,
-    required String operation,
+    required Enum operation,
   }) {
     if (!isCurrentGeneration(pluginId: pluginId, generation: generation)) {
       throw PluginOperationException(
-        operation,
+        operation.name,
         statusCode: 503,
         message: "plugin generation changed during operation",
       );
@@ -114,12 +114,12 @@ class TestPluginRuntime extends PluginRuntime {
   @override
   Future<T> use<T>({
     required String pluginId,
-    required String operation,
+    required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
     return body(plugin);
   }
@@ -127,13 +127,13 @@ class TestPluginRuntime extends PluginRuntime {
   @override
   Stream<T> useStream<T>({
     required String pluginId,
-    required String operation,
+    required Enum operation,
     required Stream<T> Function(BridgePluginApi api, int generation) body,
   }) {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
       return Stream.error(
-        PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is not running"),
+        PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running"),
       );
     }
     return body(plugin, 1);
@@ -142,6 +142,7 @@ class TestPluginRuntime extends PluginRuntime {
   @override
   Future<T?> useIfActive<T>({
     required String pluginId,
+    required Enum operation,
     required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     final plugin = _plugins[pluginId];
