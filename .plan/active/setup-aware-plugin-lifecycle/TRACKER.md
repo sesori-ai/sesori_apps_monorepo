@@ -16,9 +16,9 @@ The first unmerged stack was closed before redesign:
 |---|---|---|
 | #507 | Merged | Redesigned Stage 10 merged to `main` as `4ef55675` |
 | #508 | Reopened | Stage 11-P01 plus typed runtime operations at `6d0dce4f`; monitored |
-| #509 | Reopened | Stage 11-P02 plus ACP authentication recovery at `757634a4`; monitored |
-| #510 | Reopened | Stage 12 synchronized with #509 at `e0a92aeb`; monitored |
-| #511 | Reopened | Stage 13 synchronized with #510 at `1837d1b0`; monitored |
+| #509 | Reopened | Stage 11-P02 recovery hardening at `0e0952a2`; monitored |
+| #510 | Reopened | Stage 12 synchronized with #509 at `90d57dae`; monitored |
+| #511 | Reopened | Stage 13 synchronized with #510 at `b9729d7a`; monitored |
 
 Old verification results are historical evidence only; replacement stages must
 run their focused verification again.
@@ -239,6 +239,12 @@ run their focused verification again.
   retains the typed failure but clears the connection attempt so the next call
   creates a fresh client. ACP analysis and focused initialize/authentication
   tests passed, and the fix was propagated through #510-#511.
+- Follow-up review hardened both reconnect seams in `0e0952a2`: ACP keeps the
+  failed attempt single-flight through teardown so stale cleanup cannot null a
+  replacement client, and Codex retains provisional accepted-turn evidence
+  across transport reconnects until authoritative terminal/status evidence
+  arrives. Focused ACP and Codex analysis/tests passed; the fixes were
+  propagated through #510-#511.
 
 ## Delivery Rules
 
