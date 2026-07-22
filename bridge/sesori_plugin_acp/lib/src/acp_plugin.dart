@@ -272,10 +272,12 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         if (error is PluginAuthenticationRequiredException) {
           _authenticationFailure = error;
         }
-        _connectFuture = null;
         _workState.set(PluginWorkState.unknown);
         await client.dispose();
-        _client = null;
+        if (identical(_client, client)) {
+          _client = null;
+          _connectFuture = null;
+        }
         return Future<bool>.error(error);
       }
     }();

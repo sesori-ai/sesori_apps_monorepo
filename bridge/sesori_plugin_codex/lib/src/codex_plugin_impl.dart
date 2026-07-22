@@ -262,7 +262,6 @@ class CodexPlugin implements CodexManagedApi {
     _sessionService.detachThreadRepository();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
-    _provisionalAcceptedTurnThreadIds.clear();
     _turnEvidenceRevisionByThread.keys.toList().forEach(_advanceTurnEvidenceRevision);
     _workState.set(PluginWorkState.unknown);
     _onDisconnected?.call();
