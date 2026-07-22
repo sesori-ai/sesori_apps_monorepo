@@ -123,6 +123,35 @@ void main() {
     expect((cubit.state as PluginManagementReady).actionError, isNull);
   });
 
+  test("preserves an in-flight action across a refresh failure", () async {
+    const request = PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe);
+    const conflict = PluginLifecycleConflict(
+      pluginId: "plugin-a",
+      reasons: [PluginLifecycleConflictReason.busy],
+      current: testPluginA,
+    );
+    final completer = Completer<PluginManagementMutationResult>();
+    when(() => service.command(pluginId: "plugin-a", request: request)).thenAnswer((_) => completer.future);
+
+    final action = cubit.disable(pluginId: "plugin-a");
+    snapshots.add(
+      PluginManagementLoadResult.failure(
+        error: ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null),
+      ),
+    );
+    await settle();
+
+    expect(cubit.state, isA<PluginManagementReady>());
+    expect((cubit.state as PluginManagementReady).actionStatus, PluginManagementActionStatus.inProgress);
+
+    completer.complete(const PluginManagementMutationResult.conflict(conflict: conflict));
+    await action;
+
+    final current = cubit.state as PluginManagementReady;
+    expect(current.actionError, const PluginManagementActionError.conflict(conflict: conflict));
+    expect(current.pendingForceAction, PluginManagementForceAction.disable);
+  });
+
   test("surfaces non-forceable restart conflicts without inferring force", () async {
     const safeRequest = PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe);
     const forceRequest = PluginLifecycleCommandRequest.restart(mode: PluginStopMode.force);

@@ -267,6 +267,11 @@ class PluginManagementCubit extends Cubit<PluginManagementState> {
       case PluginManagementUnsupported():
         emit(const PluginManagementState.unsupported());
       case PluginManagementLoadFailure(:final error):
+        final current = state;
+        if (current is PluginManagementReady &&
+            (current.actionStatus == PluginManagementActionStatus.inProgress || current.pendingForceAction != null)) {
+          return;
+        }
         emit(PluginManagementState.failure(error: error));
     }
   }
