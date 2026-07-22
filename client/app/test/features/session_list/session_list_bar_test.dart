@@ -46,7 +46,6 @@ void main() {
               onNewSession: () {},
               onSessionTap: (_) {},
               sessionMenuEntries: (context, session) => const [],
-              onSessionSwipe: (_) {},
             ),
           ),
         ),

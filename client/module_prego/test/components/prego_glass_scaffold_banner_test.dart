@@ -1,3 +1,6 @@
+import "dart:async";
+
+import "package:flutter/cupertino.dart";
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
@@ -16,21 +19,26 @@ Widget _banner() => const SizedBox(
 
 Widget _harness({
   required Widget? banner,
+  PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.inline,
   bool extendBodyBehindBar = true,
   bool reserveBarSpace = true,
+  Future<void> Function()? onRefresh,
   List<Widget>? extraSlivers,
 }) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     home: PregoGlassScaffold(
       title: "Title",
-      titleMode: PregoTopNavigationTitleMode.inline,
+      titleMode: titleMode,
       automaticallyImplyLeading: false,
       banner: banner,
       extendBodyBehindBar: extendBodyBehindBar,
       reserveBarSpace: reserveBarSpace,
+      onRefresh: onRefresh,
       slivers: [
-        const SliverToBoxAdapter(child: SizedBox(key: _contentKey, height: 10, width: double.infinity)),
+        const SliverToBoxAdapter(
+          child: SizedBox(key: _contentKey, height: 10, width: double.infinity),
+        ),
         ...?extraSlivers,
       ],
     ),
@@ -242,6 +250,122 @@ void main() {
     expect(tester.getSize(gradientFinder).height, PregoTopNavigation.barHeight);
   });
 
+  testWidgets("pull-to-refresh opens below the bar and moves content down", (tester) async {
+    await tester.pumpWidget(_harness(banner: _banner(), onRefresh: () async {}));
+    await tester.pumpAndSettle();
+
+    final barBottom = tester.getBottomRight(find.byType(GlassAppBar)).dy;
+    final initialContentTop = tester.getTopLeft(find.byKey(_contentKey)).dy;
+
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_contentKey)));
+    await gesture.moveBy(const Offset(0, 80));
+    await tester.pump();
+
+    final indicator = find.byType(CupertinoActivityIndicator);
+    expect(indicator, findsOneWidget);
+    expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(barBottom));
+    expect(tester.getTopLeft(find.byKey(_contentKey)).dy, greaterThan(initialContentTop));
+    expect(tester.getBottomRight(find.byType(GlassAppBar)).dy, barBottom);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("pull-to-refresh keeps a large title fixed and opens below it", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        banner: null,
+        titleMode: PregoTopNavigationTitleMode.collapsing,
+        onRefresh: () async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final largeTitle = find.descendant(of: find.byType(CustomScrollView), matching: find.text("Title"));
+    final initialTitleTop = tester.getTopLeft(largeTitle).dy;
+    final initialContentTop = tester.getTopLeft(find.byKey(_contentKey)).dy;
+
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_contentKey)));
+    await gesture.moveBy(const Offset(0, 80));
+    await tester.pump();
+
+    final indicator = find.byType(CupertinoActivityIndicator);
+    expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
+    expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(tester.getBottomLeft(largeTitle).dy));
+    expect(tester.getTopLeft(find.byKey(_contentKey)).dy, greaterThan(initialContentTop));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("large title stays fixed when pull-to-refresh becomes armed", (tester) async {
+    final refreshCompleter = Completer<void>();
+    var refreshStarted = false;
+    late StateSetter rebuildHarness;
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          rebuildHarness = setState;
+          return _harness(
+            banner: null,
+            titleMode: PregoTopNavigationTitleMode.collapsing,
+            onRefresh: () {
+              refreshStarted = true;
+              return refreshCompleter.future;
+            },
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final largeTitle = find.descendant(of: find.byType(CustomScrollView), matching: find.text("Title"));
+    final initialTitleTop = tester.getTopLeft(largeTitle).dy;
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_contentKey)));
+
+    for (var step = 0; step < 30 && !refreshStarted; step++) {
+      await gesture.moveBy(const Offset(0, 10));
+      await tester.pump();
+      expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
+    }
+    expect(refreshStarted, isTrue);
+
+    await tester.pump(); // apply the refresh sliver's held layout extent
+    expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
+
+    rebuildHarness(() {});
+    await tester.pump();
+    expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
+
+    await gesture.up();
+    refreshCompleter.complete();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(largeTitle).dy, closeTo(initialTitleTop, 1));
+  });
+
+  testWidgets("non-extended pull-to-refresh also opens below the large title", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        banner: null,
+        titleMode: PregoTopNavigationTitleMode.collapsing,
+        extendBodyBehindBar: false,
+        onRefresh: () async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final largeTitle = find.descendant(of: find.byType(CustomScrollView), matching: find.text("Title"));
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_contentKey)));
+    await gesture.moveBy(const Offset(0, 80));
+    await tester.pump();
+
+    final indicator = find.byType(CupertinoActivityIndicator);
+    expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(tester.getBottomLeft(largeTitle).dy));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("the banner slot clips through a ClipRect around its AnimatedSize", (tester) async {
     await tester.pumpWidget(_harness(banner: _banner()));
     await tester.pump();
@@ -280,7 +404,9 @@ void main() {
 
     // Mid-exit the retained copy still paints in the collapsing slot, but a
     // tap inside its visible slice must fall through.
-    final slotHeight = tester.getSize(find.ancestor(of: find.byKey(_bannerKey), matching: find.byType(ClipRect)).first).height;
+    final slotHeight = tester
+        .getSize(find.ancestor(of: find.byKey(_bannerKey), matching: find.byType(ClipRect)).first)
+        .height;
     expect(slotHeight, greaterThan(0));
     await tester.tapAt(Offset(tester.getSize(find.byType(GlassAppBar)).width / 2, slotHeight / 2));
     expect(taps, 1);

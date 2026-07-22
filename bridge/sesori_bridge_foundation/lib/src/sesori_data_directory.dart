@@ -1,5 +1,13 @@
 import "dart:io" show Platform;
 
+/// Resolves the current user's home directory from platform environment values.
+String? resolveUserHomeDirectory({required Map<String, String> environment}) {
+  final home = environment["HOME"];
+  if (home != null && home.isNotEmpty) return home;
+  final userProfile = environment["USERPROFILE"];
+  return userProfile == null || userProfile.isEmpty ? null : userProfile;
+}
+
 /// The single canonical Sesori application data directory for the host bridge.
 ///
 /// `<LOCALAPPDATA>/sesori` on Windows, `<HOME>/.local/share/sesori` elsewhere.
@@ -15,8 +23,8 @@ String sesoriDataDirectory() {
     }
     return "$localAppData/sesori";
   }
-  final homeDir = Platform.environment["HOME"];
-  if (homeDir == null || homeDir.isEmpty) {
+  final homeDir = resolveUserHomeDirectory(environment: Platform.environment);
+  if (homeDir == null) {
     throw StateError("HOME environment variable not set");
   }
   return "$homeDir/.local/share/sesori";

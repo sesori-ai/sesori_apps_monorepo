@@ -41,7 +41,9 @@ void main() {
       backgroundTaskCount: backgroundTaskCount,
       onTap: () {},
       menuEntries: () => const [],
-      onSwipe: () {},
+      onArchive: () {},
+      onDelete: () {},
+      onToggleUnread: () {},
     );
   }
 

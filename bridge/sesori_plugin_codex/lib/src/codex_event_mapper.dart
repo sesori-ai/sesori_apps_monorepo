@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
+import "repositories/models/codex_thread_record.dart";
 
 /// Translates `codex app-server` `ServerNotification` frames into
 /// bridge-neutral [BridgeSseEvent]s.
@@ -103,24 +104,21 @@ class CodexEventMapper {
   String _projectIdForThread(String threadId, {String? cwd}) =>
       normalizeProjectDirectory(directory: _threadDirectory[threadId] ?? cwd ?? projectCwd);
 
-  /// Maps a single notification to zero or more bridge events.
+  /// Maps a repository-normalized `thread/started` record.
+  List<BridgeSseEvent> mapThreadStarted(CodexThreadRecord record) {
+    setThreadProvider(record.id, record.modelProvider);
+    setThreadDirectory(record.id, record.directory);
+    return [
+      BridgeSseSessionCreated(info: _threadToSession(record).toJson()),
+    ];
+  }
+
+  /// Maps a non-thread-start notification to zero or more bridge events.
   List<BridgeSseEvent> map(CodexServerNotification notification) {
     final method = notification.method;
     final params = notification.params;
 
     switch (method) {
-      case "thread/started":
-        final thread = _asMap(params["thread"]);
-        final id = thread?["id"] as String?;
-        if (thread == null || id == null || id.isEmpty) return const [];
-        final provider = thread["modelProvider"] as String?;
-        if (provider != null && provider.isNotEmpty) {
-          _threadProvider[id] = provider;
-        }
-        return [
-          BridgeSseSessionCreated(info: _threadToSession(thread, id).toJson()),
-        ];
-
       case "thread/name/updated":
         final threadId = params["threadId"] as String?;
         if (threadId == null) return const [];
@@ -439,8 +437,7 @@ class CodexEventMapper {
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
-      providerID:
-          _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
       // Live notifications carry no per-message timestamp; the rollout
       // re-fetch is authoritative and fills this in.
       time: null,
@@ -480,17 +477,20 @@ class CodexEventMapper {
     ];
   }
 
-  /// Builds a full [shared.Session] from a codex `thread` object.
-  shared.Session _threadToSession(Map<String, dynamic> thread, String id) {
-    final projectId = _projectIdForThread(id, cwd: thread["cwd"] as String?);
+  /// Builds a full [shared.Session] from a normalized Codex thread record.
+  shared.Session _threadToSession(CodexThreadRecord thread) {
+    final projectId = _projectIdForThread(
+      thread.id,
+      cwd: thread.directory,
+    );
     return shared.Session(
       branchName: null,
-      id: id,
+      id: thread.id,
       pluginId: pluginId,
       projectID: projectId,
       directory: projectId,
       parentID: null,
-      title: thread["name"] as String?,
+      title: thread.name,
       time: _threadTime(thread),
       pullRequest: null,
       promptDefaults: null,
@@ -517,15 +517,13 @@ class CodexEventMapper {
     );
   }
 
-  /// Codex timestamps are unix **seconds**; sesori [shared.SessionTime] is in
-  /// **milliseconds**.
-  shared.SessionTime? _threadTime(Map<String, dynamic> thread) {
-    final created = thread["createdAt"];
-    final updated = thread["updatedAt"];
-    if (created is! num || updated is! num) return null;
+  shared.SessionTime? _threadTime(CodexThreadRecord thread) {
+    final created = thread.createdAt;
+    final updated = thread.updatedAt;
+    if (created == null || updated == null) return null;
     return shared.SessionTime(
-      created: (created * 1000).round(),
-      updated: (updated * 1000).round(),
+      created: created,
+      updated: updated,
       archived: null,
     );
   }
@@ -536,9 +534,7 @@ class CodexEventMapper {
   shared.SessionStatus _codexStatusToSessionStatus(Object? raw) {
     final map = _asMap(raw);
     final type = (map?["type"] ?? _asMap(map?["status"])?["type"]) as String?;
-    return type == "idle"
-        ? const shared.SessionStatus.idle()
-        : const shared.SessionStatus.busy();
+    return type == "idle" ? const shared.SessionStatus.idle() : const shared.SessionStatus.busy();
   }
 
   /// Concatenates the `text` of every text-bearing entry in a codex `content`

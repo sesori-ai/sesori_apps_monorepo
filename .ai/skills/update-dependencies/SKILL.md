@@ -57,14 +57,18 @@ Sesori iOS is **Swift Package Manager only** — there is no Podfile, and CocoaP
 </android_files>
 
 <swiftpm_files>
-iOS and macOS pull native dependencies (Firebase, Google SDKs, leveldb, gRPC, etc.) via Swift Package Manager. The resolved native versions are pinned in `Package.resolved` lockfiles. With the Flutter + Xcode SPM integration, the plugin packages are registered at the **project** level, so the **build-authoritative** copies — the ones `flutter build` regenerates and the shipped build actually uses — are the project-workspace copies:
+iOS and macOS pull native dependencies (Firebase, Google SDKs, leveldb, gRPC, etc.) via Swift Package Manager. The resolved native versions are pinned in `Package.resolved` lockfiles. **All four tracked copies matter** — the project copy and the workspace copy, per platform:
 
 - `client/app/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 - `client/app/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
+- `client/app/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved`
+- `client/app/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 
-These are the two files Phase 5 refreshes and commits. The sibling `Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved` copies are NOT touched by `flutter build` (they sit stale/divergent from the project copies) — leave them alone; do not hand-edit or force-sync them.
+`flutter build --config-only` regenerates only the **project** copies. The `Runner.xcworkspace` copies are what Xcode actually consumes when a build targets the workspace — which is exactly what the iOS release lanes do (`build_app(workspace: "Runner.xcworkspace", ...)` in `client/app/ios/fastlane/Fastfile`). Leaving them stale means the shipped TestFlight/App Store build silently links the OLD native SDKs even though the PR claims to have updated them. Verified 2026-07-21: with the workspace copy stale, `xcodebuild -resolvePackageDependencies -workspace Runner.xcworkspace -scheme Runner` resolved AppCheck 11.3.0 / GoogleUtilities 8.1.1 while the project copy already said 11.3.1 / 8.1.2.
 
-These lockfiles change on most weekly runs because native SDK patch releases land continuously, **independent of pubspec.yaml**. They MUST be re-resolved every run (Phase 5) via `flutter build --config-only` — NOT `xcodebuild -resolvePackageDependencies`, which honors the existing pins and silently no-ops, leaving native deps stale. Skipping (or using the wrong resolve command) is a silent, recurring miss — e.g. one past run bumped firebase-ios-sdk but left GoogleUtilities/nanopb/promises stale; another run's bare `xcodebuild` resolve reported "no changes" while a `flutter build --config-only` picked up GTMSessionFetcher 4.5.0→5.3.0, GoogleUtilities 8.1.0→8.1.1, nanopb, and Promises.
+Both copies describe the same package graph, so after Phase 5.1 they must end up with identical `pins`.
+
+These lockfiles change on most weekly runs because native SDK patch releases land continuously, **independent of pubspec.yaml**. They MUST be re-resolved every run (Phase 5). Use `flutter build --config-only` for the project copies; a bare `xcodebuild -resolvePackageDependencies` honors whatever pins already exist and silently no-ops, so it only re-resolves the workspace copies once their lockfile has been deleted. Skipping (or using the wrong resolve command) is a silent, recurring miss — e.g. one past run bumped firebase-ios-sdk but left GoogleUtilities/nanopb/promises stale; another run's bare `xcodebuild` resolve reported "no changes" while a `flutter build --config-only` picked up GTMSessionFetcher 4.5.0→5.3.0, GoogleUtilities 8.1.0→8.1.1, nanopb, and Promises.
 </swiftpm_files>
 </project_structure>
 
@@ -89,10 +93,10 @@ sed -n '/^workspace:/,$p' client/pubspec.yaml
 ```
 </step>
 
-<step name="0.3">List the iOS/macOS SwiftPM lockfiles that Phase 5 will refresh (expect exactly two — the project-workspace copies that `flutter build` maintains; these are native deps and are in scope):
+<step name="0.3">List the iOS/macOS SwiftPM lockfiles that Phase 5 will refresh (expect exactly four — a project copy and a workspace copy per platform; these are native deps and are in scope):
 
 ```bash
-find client/app -path '*Runner.xcodeproj/project.xcworkspace*Package.resolved' -not -path '*/build/*' | sort
+git ls-files | grep 'Package.resolved'
 ```
 </step>
 </phase>
@@ -366,20 +370,43 @@ else
 fi
 ```
 
-This updates the two build-authoritative `Runner.xcodeproj/project.xcworkspace/.../Package.resolved` files (see `<swiftpm_files>`). Notes:
+This updates the two `Runner.xcodeproj/project.xcworkspace/.../Package.resolved` files (see `<swiftpm_files>`). Notes:
 
 - Run `flutter build` from `client/app`, not the `client` workspace root — `client/app` is the package that owns the `ios/`/`macos/` dirs. `flutter build` runs `flutter pub get` and regenerates the SwiftPM package itself, so there is no separate pub-get step and no stale-generated-package window to guard against.
 - These commands are macOS + Xcode only, and under `set -e` they would abort the whole run on a non-macOS host; the `command -v xcodebuild` guard lets the workflow continue and record SwiftPM as deferred instead of silently skipping.
-- Leave the sibling `Runner.xcworkspace/.../Package.resolved` copies alone — `flutter build` does not maintain them (see `<swiftpm_files>`).
+
+Then refresh the **workspace** copies, which `flutter build` does not maintain but the release lanes build against. `xcodebuild -resolvePackageDependencies` honors whatever pins already exist, so the file must be DELETED first to force a fresh resolve. Point `-clonedSourcePackagesDirPath` at a scratch dir: the shared SwiftPM clone cache can hold stale tag data and silently re-resolve the OLD versions even on a deleted lockfile.
+
+```bash
+set -e
+if command -v xcodebuild >/dev/null 2>&1; then
+  for platform in ios macos; do
+    rm -f "client/app/$platform/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+    (cd "client/app/$platform" && xcodebuild -resolvePackageDependencies \
+      -workspace Runner.xcworkspace -scheme Runner \
+      -clonedSourcePackagesDirPath "$(mktemp -d)")
+  done
+fi
+```
 </step>
 
-<step name="5.2">Verify the SwiftPM lockfiles resolved (changes here are expected on most weekly runs, in the two `Runner.xcodeproj/project.xcworkspace/.../Package.resolved` files):
+<step name="5.2">Verify the SwiftPM lockfiles resolved (changes here are expected on most weekly runs, across all four `Package.resolved` files):
 
 ```bash
 git diff --stat -- '*Package.resolved'
 ```
 
-If there are NO changes, confirm that's genuine (the native graph really was current) and not a resolve that silently failed — re-check the `flutter build --config-only` exit codes from 5.1. A `git diff` showing nothing while a resolve "succeeded" is the classic symptom of the wrong resolve command: make sure 5.1 used `flutter build`, not `xcodebuild -resolvePackageDependencies`.
+If there are NO changes, confirm that's genuine (the native graph really was current) and not a resolve that silently failed — re-check the exit codes from 5.1. A `git diff` showing nothing while a resolve "succeeded" is the classic symptom of a resolve that honored existing pins instead of re-resolving.
+
+Then assert the project and workspace copies agree per platform. They describe the same package graph, so any difference means one of them is stale and a workspace build would link different native SDKs than a project build:
+
+```bash
+for platform in ios macos; do
+  diff <(jq -S '.pins' "client/app/$platform/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved") \
+       <(jq -S '.pins' "client/app/$platform/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved") \
+    && echo "$platform: pins identical" || echo "$platform: MISMATCH — re-run 5.1"
+done
+```
 </step>
 
 <step name="5.3">Check the latest fastlane version:
@@ -473,7 +500,7 @@ Report this list at the end of the update process for visibility.
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All three workspaces (shared, bridge, client) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
 - All in-scope pubspec.lock files regenerated (bridge workspace, client workspace, and `shared/sesori_shared` = 3 lockfiles); `shared/no_slop_linter/pubspec.lock` remains untouched
-- iOS + macOS SwiftPM `Package.resolved` re-resolved via `flutter build --config-only` (the 2 authoritative `Runner.xcodeproj/project.xcworkspace` lockfiles), or recorded as deferred if no Xcode toolchain
+- iOS + macOS SwiftPM `Package.resolved` re-resolved — all 4 tracked lockfiles (project AND workspace copies, per platform), with project/workspace pins verified identical — or recorded as deferred if no Xcode toolchain
 - `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd client && make analyze)` all pass
 - `(cd shared && make test)`, `(cd bridge && make test)`, `(cd client && make test)` all pass
 - `(cd shared && make codegen)`, `(cd bridge && make codegen)`, `(cd client && make codegen)` all complete cleanly

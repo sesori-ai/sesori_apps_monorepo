@@ -13,10 +13,11 @@ void main() {
     required String title,
     String? subtitle,
     IconData? icon,
-    bool? online,
+    PregoNavStatus? status,
     String? infoMessage,
     String? infoSemanticLabel,
     double? slotHeight,
+    PregoNavLeadingTitleEmphasis emphasis = PregoNavLeadingTitleEmphasis.muted,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -31,12 +32,13 @@ void main() {
               height: slotHeight,
               child: PregoNavLeadingTitle(
                 title: title,
+                emphasis: emphasis,
                 subtitle: subtitle == null
                     ? null
                     : PregoNavSubtitle(
                         text: subtitle,
                         icon: icon,
-                        online: online,
+                        status: status,
                         infoMessage: infoMessage,
                         infoSemanticLabel: infoSemanticLabel,
                       ),
@@ -67,7 +69,7 @@ void main() {
       title: "Sesori_app_monorepo",
       subtitle: "sesori-ai/Sesori_app_mo",
       icon: TablerSolid.brand_github,
-      online: true,
+      status: PregoNavStatus.online,
       infoMessage: "sesori-ai/Sesori_app_monorepo",
       infoSemanticLabel: "Show full repository name",
     );
@@ -80,7 +82,7 @@ void main() {
   });
 
   testWidgets("renders the title alone when there is no subtitle widget", (tester) async {
-    await pumpBlock(tester, title: "Just a project", icon: TablerSolid.brand_github, online: true);
+    await pumpBlock(tester, title: "Just a project", icon: TablerSolid.brand_github, status: PregoNavStatus.online);
 
     expect(find.text("Just a project"), findsOneWidget);
     // Nothing of the row renders — the block has no second line at all.
@@ -89,17 +91,39 @@ void main() {
     expect(find.byType(PregoNavSubtitle), findsNothing);
   });
 
-  testWidgets("status dot is green when online and muted when offline", (tester) async {
-    await pumpBlock(tester, title: "P", subtitle: "org/repo", online: true);
+  testWidgets("status dot colour follows the reported status", (tester) async {
+    await pumpBlock(tester, title: "P", subtitle: "org/repo", status: PregoNavStatus.online);
     expect(dotColor(tester), PregoDesignSystem.light.colors.fgSuccessSecondary);
 
-    await pumpBlock(tester, title: "P", subtitle: "org/repo", online: false);
+    await pumpBlock(tester, title: "P", subtitle: "org/repo", status: PregoNavStatus.offline);
     expect(dotColor(tester), PregoDesignSystem.light.colors.fgDisabledSubtle);
+
+    // The bridge onboarding's waiting state, where not being connected is what
+    // the page is about.
+    await pumpBlock(tester, title: "P", subtitle: "org/repo", status: PregoNavStatus.error);
+    expect(dotColor(tester), PregoDesignSystem.light.colors.fgErrorPrimary);
   });
 
-  testWidgets("no status dot when online is null", (tester) async {
-    await pumpBlock(tester, title: "P", subtitle: "org/repo", online: null);
+  testWidgets("no status dot when the status is null", (tester) async {
+    await pumpBlock(tester, title: "P", subtitle: "org/repo");
     expect(dotFinder, findsNothing);
+  });
+
+  testWidgets("the prominent emphasis renders the title larger and in the primary colour", (tester) async {
+    await pumpBlock(tester, title: "Projects", subtitle: "Waiting for the bridge...");
+    final muted = tester.widget<Text>(find.text("Projects")).style!;
+
+    await pumpBlock(
+      tester,
+      title: "Projects",
+      subtitle: "Waiting for the bridge...",
+      emphasis: PregoNavLeadingTitleEmphasis.prominent,
+    );
+    final prominent = tester.widget<Text>(find.text("Projects")).style!;
+
+    expect(prominent.fontSize, greaterThan(muted.fontSize!));
+    expect(prominent.color, PregoDesignSystem.light.colors.textPrimary);
+    expect(muted.color, PregoDesignSystem.light.colors.textSecondary);
   });
 
   testWidgets("no chevron when there is no info message", (tester) async {
@@ -141,7 +165,7 @@ void main() {
       title: "Sesori_app_monorepo",
       subtitle: "sesori-ai/Sesori_app_monorepo",
       icon: TablerSolid.brand_github,
-      online: true,
+      status: PregoNavStatus.online,
       infoMessage: "sesori-ai/Sesori_app_monorepo",
     );
     // Intrinsic height must clear the bar with margin so platform text-metric
@@ -153,8 +177,21 @@ void main() {
       title: "Sesori_app_monorepo",
       subtitle: "sesori-ai/Sesori_app_monorepo",
       icon: TablerSolid.brand_github,
-      online: true,
+      status: PregoNavStatus.online,
       infoMessage: "sesori-ai/Sesori_app_monorepo",
+      slotHeight: PregoTopNavigation.barHeight,
+    );
+    expect(tester.takeException(), isNull);
+
+    // The prominent title line is two points taller, so it has the least head
+    // room of the two weights — check it against the real slot too.
+    await pumpBlock(
+      tester,
+      title: "Projects",
+      subtitle: "Waiting for the bridge...",
+      icon: TablerRegular.broadcast_off,
+      status: PregoNavStatus.error,
+      emphasis: PregoNavLeadingTitleEmphasis.prominent,
       slotHeight: PregoTopNavigation.barHeight,
     );
     expect(tester.takeException(), isNull);

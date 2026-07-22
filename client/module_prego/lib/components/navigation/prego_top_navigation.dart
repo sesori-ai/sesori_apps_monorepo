@@ -14,8 +14,8 @@ enum PregoTopNavigationTitleMode {
   /// Figma "Middle Title": a fixed, centred title (and subtitle).
   inline,
 
-  /// Figma "Back Leading": a fixed, muted title/subtitle block left-aligned
-  /// beside the back button.
+  /// Figma "Back Leading": a fixed title/subtitle block left-aligned beside
+  /// the back button.
   backLeading,
 }
 
@@ -40,11 +40,12 @@ enum PregoTopNavigationTitleMode {
 ///    [title] (and [subtitleText]), rendered by [PregoNavTitle].
 ///    Self-contained; use it for a standalone bar or for bodies that own
 ///    their own scroll.
-/// 3. **Back leading** ([PregoTopNavigationTitleMode.backLeading]) — a fixed,
-///    muted [title] block ([PregoNavLeadingTitle]) sitting left-aligned
-///    beside the back button instead of centred, with the caller-composed
-///    [subtitle] widget (typically a [PregoNavSubtitle]) beneath it. There is
-///    no large or centred title in this mode; [scrollController] is ignored.
+/// 3. **Back leading** ([PregoTopNavigationTitleMode.backLeading]) — a fixed
+///    [title] block ([PregoNavLeadingTitle], weighted by
+///    [leadingTitleEmphasis]) sitting left-aligned beside the back button
+///    instead of centred, with the caller-composed [subtitle] widget
+///    (typically a [PregoNavSubtitle]) beneath it. There is no large or
+///    centred title in this mode; [scrollController] is ignored.
 ///
 /// [PregoGlassScaffold] and this bar share the collapse geometry through the
 /// static [collapseProgressOf]: the bar fades its inline title *in* by that
@@ -76,6 +77,7 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
     this.subtitle,
     this.subtitleText,
     this.titleMode = PregoTopNavigationTitleMode.collapsing,
+    this.leadingTitleEmphasis = PregoNavLeadingTitleEmphasis.muted,
     this.scrollController,
     this.actions,
     this.leading,
@@ -100,6 +102,10 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
 
   /// How the bar presents its title. See the class doc for the three modes.
   final PregoTopNavigationTitleMode titleMode;
+
+  /// Weight of the back-leading title line ([PregoNavLeadingTitle.emphasis]).
+  /// Back-leading mode only.
+  final PregoNavLeadingTitleEmphasis leadingTitleEmphasis;
 
   /// Drives the collapsing title in collapsing mode: the bar fades its title in
   /// as this controller's offset crosses [collapseDistance]. Ignored in the
@@ -217,7 +223,7 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
         Expanded(
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: PregoNavLeadingTitle(title: title, subtitle: subtitle),
+            child: PregoNavLeadingTitle(title: title, subtitle: subtitle, emphasis: leadingTitleEmphasis),
           ),
         ),
         if (actions != null) ...[

@@ -2,11 +2,25 @@ import "package:flutter/material.dart";
 
 import "../../module_prego.dart";
 
+/// The connection state the [PregoNavSubtitle] status dot reports.
+enum PregoNavStatus {
+  /// Connected — a green dot.
+  online,
+
+  /// Not connected, and that is unremarkable — a muted grey dot.
+  offline,
+
+  /// Not connected, and the page is about that — a red dot. Used by the
+  /// bridge onboarding, where waiting for a connection *is* the screen.
+  error,
+}
+
 /// The contextual subtitle row of the top navigation bar's back-leading title
 /// block ([PregoNavLeadingTitle]), as instantiated on the sessions list
-/// (Figma node 2386:11558): an optional status dot, an optional leading
-/// [icon], the [text] and, when [infoMessage] is set, a chevron affordance
-/// whose tap opens a [PregoInfoPopover] with the full message.
+/// (Figma node 2386:11558) and the Projects page (node 2459:26970): an
+/// optional [status] dot, an optional leading [icon], the [text] and, when
+/// [infoMessage] is set, a chevron affordance whose tap opens a
+/// [PregoInfoPopover] with the full message.
 ///
 /// The row is self-contained — callers compose it (icon, dot, popover) and
 /// hand the finished widget to [PregoGlassScaffold.subtitle] /
@@ -17,7 +31,7 @@ class PregoNavSubtitle extends StatelessWidget {
     super.key,
     required this.text,
     this.icon,
-    this.online,
+    this.status,
     this.infoMessage,
     this.infoSemanticLabel,
   });
@@ -30,9 +44,8 @@ class PregoNavSubtitle extends StatelessWidget {
   /// glyphs.
   final IconData? icon;
 
-  /// Status dot before the row: green (`fgSuccessSecondary`) when `true`,
-  /// muted (`fgDisabledSubtle`) when `false`, absent when `null`.
-  final bool? online;
+  /// Status dot before the row; absent when `null`.
+  final PregoNavStatus? status;
 
   /// When set, the row becomes tappable: a trailing chevron-down is shown and
   /// tapping opens a [PregoInfoPopover] with this message (e.g. the
@@ -53,14 +66,14 @@ class PregoNavSubtitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final infoMessage = this.infoMessage;
-    final online = this.online;
+    final status = this.status;
     final icon = this.icon;
 
     final row = Row(
       mainAxisSize: MainAxisSize.min,
       spacing: PregoSpacing.xs,
       children: [
-        if (online != null)
+        if (status != null)
           // Decorative for screen readers (a bare box has no semantics):
           // connection changes are announced by the scaffold's banner live
           // region, so the dot never needs to speak for itself.
@@ -69,7 +82,11 @@ class PregoNavSubtitle extends StatelessWidget {
             height: _dotSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: online ? prego.colors.fgSuccessSecondary : prego.colors.fgDisabledSubtle,
+              color: switch (status) {
+                PregoNavStatus.online => prego.colors.fgSuccessSecondary,
+                PregoNavStatus.offline => prego.colors.fgDisabledSubtle,
+                PregoNavStatus.error => prego.colors.fgErrorPrimary,
+              },
             ),
           ),
         if (icon != null) Icon(icon, size: _iconSize, color: prego.colors.textSecondary),

@@ -132,10 +132,16 @@ void main() {
     await swipeOpen(tester);
 
     await tester.tap(find.text("Hide"));
+    await tester.pump();
+
+    // The hide has completed and the empty state is already entering, but the
+    // removed row remains long enough to visibly close instead of snapping out.
+    expect(find.text("Project hidden"), findsOneWidget);
+    expect(tile(), findsOneWidget);
+
     await tester.pumpAndSettle();
 
     verify(() => mockProjectRepository.hideProject(projectId: project.id)).called(1);
-    expect(find.text("Project hidden"), findsOneWidget);
     expect(tile(), findsNothing);
   });
 

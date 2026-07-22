@@ -15,7 +15,6 @@ class SessionListScaffold extends StatelessWidget {
   final String? selectedSessionId;
   final ValueChanged<Session> onSessionTap;
   final SessionMenuEntriesBuilder sessionMenuEntries;
-  final ValueChanged<Session> onSessionSwipe;
   final VoidCallback onNewSession;
   final VoidCallback? onBack;
 
@@ -25,7 +24,6 @@ class SessionListScaffold extends StatelessWidget {
     this.selectedSessionId,
     required this.onSessionTap,
     required this.sessionMenuEntries,
-    required this.onSessionSwipe,
     required this.onNewSession,
     required this.onBack,
   });
@@ -73,7 +71,7 @@ class SessionListScaffold extends StatelessWidget {
         SessionListLoaded(repoSlug: final repoSlug?, :final repoProvider) => PregoNavSubtitle(
           text: repoSlug,
           icon: _providerIcon(repoProvider),
-          online: online,
+          status: online ? PregoNavStatus.online : PregoNavStatus.offline,
           infoMessage: repoSlug,
           infoSemanticLabel: loc.sessionListRepoInfoSemantics,
         ),
@@ -111,7 +109,6 @@ class SessionListScaffold extends StatelessWidget {
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
           sessionMenuEntries: sessionMenuEntries,
-          onSessionSwipe: onSessionSwipe,
         ),
       ],
     );
