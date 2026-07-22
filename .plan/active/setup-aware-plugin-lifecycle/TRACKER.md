@@ -15,10 +15,10 @@ The first unmerged stack was closed before redesign:
 | Old PR | State | Replacement |
 |---|---|---|
 | #507 | Merged | Redesigned Stage 10 merged to `main` as `4ef55675` |
-| #508 | Reopened | Stage 11-P01 synchronized with `main` at `7e5fa5d1`; monitored |
-| #509 | Reopened | Stage 11-P02 synchronized with #508 at `fcaab2f8`; monitored |
-| #510 | Reopened | Stage 12 synchronized with #509 at `3e021de0`; monitored |
-| #511 | Reopened | Stage 13 synchronized with #510 at `234c402c`; monitored |
+| #508 | Reopened | Stage 11-P01 plus typed runtime operations at `6d0dce4f`; monitored |
+| #509 | Reopened | Stage 11-P02 synchronized with #508 at `418eddd0`; monitored |
+| #510 | Reopened | Stage 12 synchronized with #509 at `6c8ea3fa`; monitored |
+| #511 | Reopened | Stage 13 synchronized with #510 at `9aed7a75`; monitored |
 
 Old verification results are historical evidence only; replacement stages must
 run their focused verification again.
@@ -228,6 +228,12 @@ run their focused verification again.
   and all 36 focused plugin/write-path tests passed; bridge-app analysis and 71
   focused runtime/catalog/event tests passed; final module-core, mobile, and
   desktop analysis plus focused Stage 13 tests passed. #508-#511 are mergeable.
+- Human review on #508 requested enum enforcement at the runtime acquisition
+  boundary. `6d0dce4f` changes every `PluginRuntime` operation parameter to an
+  enum-typed value and defers `.name` conversion to low-level errors/logging;
+  domain repositories use scoped operation enums. Architecture review approved
+  the change, bridge-app analysis and focused runtime/repository tests passed,
+  and the merge was propagated through #509-#511.
 
 ## Delivery Rules
 
