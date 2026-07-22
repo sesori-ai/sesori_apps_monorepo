@@ -17,4 +17,10 @@ enum SessionOperation {
   replyToPermission,
   cleanupSession,
   updateSessionArchiveStatus,
+  setSessionTitleIfStored,
+  getProjectActivitySummaries,
+  getSessionStatuses,
+  updateObservedSessionProjection,
+  insertObservedChild,
+  getProjectQuestions,
 }
