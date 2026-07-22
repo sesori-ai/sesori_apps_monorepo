@@ -18,8 +18,8 @@ void main() {
     return CatalogImportService(
       repository: repository,
       knownPluginIds: const {"selected", "other"},
-      enabledPluginIds: const ["selected"],
-      emptyHydrationPolicies: const {"selected": CatalogEmptyHydrationPolicy.complete},
+      readEligiblePluginIds: () => const ["selected"],
+      readEmptyHydrationPolicy: (_) => CatalogEmptyHydrationPolicy.complete,
     );
   }
 

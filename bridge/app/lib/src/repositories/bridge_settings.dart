@@ -134,10 +134,15 @@ class BridgePluginSettings {
     );
   }
 
-  BridgePluginSettings withDefaultIdleTimeout({required int idleTimeoutMins, required bool clearOverrides}) {
+  BridgePluginSettings withDefaultIdleTimeout({
+    required int idleTimeoutMins,
+    required Set<String> clearOverridePluginIds,
+  }) {
     final entries = <String, PluginLifecycleSettings>{};
     for (final entry in settingsByPluginId.entries) {
-      final updated = clearOverrides ? entry.value.copyWithIdleTimeout(idleTimeoutMins: null) : entry.value;
+      final updated = clearOverridePluginIds.contains(entry.key)
+          ? entry.value.copyWithIdleTimeout(idleTimeoutMins: null)
+          : entry.value;
       if (!updated.isEmpty) entries[entry.key] = updated;
     }
     return BridgePluginSettings(

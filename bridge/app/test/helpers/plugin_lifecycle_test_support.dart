@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
@@ -39,7 +41,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
 
 BridgeSettingsRepository createTestBridgeSettingsRepository({
   BridgeSettings settings = const BridgeSettings(),
-}) => _TestBridgeSettingsRepository(settings: settings);
+}) => TestBridgeSettingsRepository(settings: settings);
 
 PluginRuntime runtimeForLifecycleService({required PluginLifecycleService service}) {
   final runtime = _runtimes[service];
@@ -47,13 +49,29 @@ PluginRuntime runtimeForLifecycleService({required PluginLifecycleService servic
   return runtime;
 }
 
-class _TestBridgeSettingsRepository implements BridgeSettingsRepository {
-  const _TestBridgeSettingsRepository({required this.settings});
+class TestBridgeSettingsRepository implements BridgeSettingsRepository {
+  TestBridgeSettingsRepository({required this.settings});
 
-  final BridgeSettings settings;
+  BridgeSettings settings;
+  Object? saveError;
+  Completer<void>? saveGate;
+  final Completer<void> saveStarted = Completer<void>();
+  int saveCalls = 0;
 
   @override
   BridgeSettings get currentSettings => settings;
+
+  @override
+  Future<BridgeSettings> loadSettings() async => settings;
+
+  @override
+  Future<void> saveSettings({required BridgeSettings settings}) async {
+    saveCalls++;
+    if (!saveStarted.isCompleted) saveStarted.complete();
+    await saveGate?.future;
+    if (saveError case final error?) throw error;
+    this.settings = settings;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

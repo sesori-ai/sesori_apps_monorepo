@@ -30,6 +30,32 @@ void main() {
     expect(plugins.map((plugin) => plugin.id), ["one", "two"]);
     expect(plugins.map((plugin) => plugin.isDefault), [true, false]);
     expect(plugins.map((plugin) => plugin.state), everyElement(PluginLifecycleState.ready));
+
+    final managementResponse = await harness.composition.session.router.route(
+      makeRequest("GET", "/plugin/management"),
+    );
+    expect(managementResponse.status, 200);
+    expect(
+      PluginManagementResponse.fromJson(
+        jsonDecodeMap(managementResponse.body!),
+      ).plugins.map((plugin) => plugin.setup.id),
+      ["one", "two"],
+    );
+  });
+
+  test("orchestrator alone maps management revisions to local SSE", () async {
+    final harness = await _OrchestratorHarness.create(pluginIds: const ["one"]);
+    addTearDown(harness.close);
+    final changed = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriPluginManagementChanged)
+        .cast<SesoriPluginManagementChanged>()
+        .first;
+
+    final response = await harness.lifecycleService.updateIdleTimeout(
+      request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 30),
+    );
+
+    expect((await changed).revision, response.revision);
   });
 
   test("a sourced reconnect does not enumerate projects and local events are already mapped", () async {

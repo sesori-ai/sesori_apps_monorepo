@@ -31,17 +31,17 @@ class CatalogImportService {
   CatalogImportService({
     required CatalogImportRepository repository,
     required Set<String> knownPluginIds,
-    required List<String> enabledPluginIds,
-    required Map<String, CatalogEmptyHydrationPolicy> emptyHydrationPolicies,
+    required List<String> Function() readEligiblePluginIds,
+    required CatalogEmptyHydrationPolicy Function(String pluginId) readEmptyHydrationPolicy,
   }) : _repository = repository,
        _knownPluginIds = knownPluginIds,
-       _enabledPluginIds = enabledPluginIds,
-       _emptyHydrationPolicies = emptyHydrationPolicies;
+       _readEligiblePluginIds = readEligiblePluginIds,
+       _readEmptyHydrationPolicy = readEmptyHydrationPolicy;
 
   final CatalogImportRepository _repository;
   final Set<String> _knownPluginIds;
-  final List<String> _enabledPluginIds;
-  final Map<String, CatalogEmptyHydrationPolicy> _emptyHydrationPolicies;
+  final List<String> Function() _readEligiblePluginIds;
+  final CatalogEmptyHydrationPolicy Function(String pluginId) _readEmptyHydrationPolicy;
   final StreamController<CatalogImportProgress> _progressController = StreamController<CatalogImportProgress>.broadcast(
     sync: true,
   );
@@ -54,7 +54,7 @@ class CatalogImportService {
   Stream<CatalogImportProgress> get progress => _progressController.stream;
 
   List<CatalogImportProgress> get latestStatuses => List<CatalogImportProgress>.unmodifiable([
-    for (final pluginId in _enabledPluginIds) ?_latestStatuses[pluginId],
+    for (final pluginId in _readEligiblePluginIds()) ?_latestStatuses[pluginId],
   ]);
 
   void start({required String pluginId, required CatalogImportTrigger trigger}) {
@@ -78,12 +78,13 @@ class CatalogImportService {
   }
 
   void cancel({required String pluginId}) {
-    _validateEnabledPlugin(pluginId);
+    _validateKnownPlugin(pluginId);
     final control = _controls[pluginId];
     if (control != null) {
       control.cancellationRequested = true;
       return;
     }
+    _validateEligiblePlugin(pluginId);
     if (!_repository.importEligiblePluginIds.contains(pluginId)) {
       throw CatalogImportPluginUnavailableException(pluginId: pluginId);
     }
@@ -133,7 +134,7 @@ class CatalogImportService {
       await for (final progress in _repository.importCatalog(pluginId: pluginId, control: control)) {
         if (progress case CatalogImportCommitting(
           sessionsSeen: 0,
-        ) when _emptyHydrationPolicies[pluginId] == CatalogEmptyHydrationPolicy.retry) {
+        ) when _readEmptyHydrationPolicy(pluginId) == CatalogEmptyHydrationPolicy.retry) {
           control.hydrationMarkerRequested = false;
         }
         _publish(progress);
@@ -164,18 +165,22 @@ class CatalogImportService {
   }
 
   void _validatePlugin(String pluginId) {
-    _validateEnabledPlugin(pluginId);
+    _validateEligiblePlugin(pluginId);
     if (!_repository.importEligiblePluginIds.contains(pluginId)) {
       throw CatalogImportPluginUnavailableException(pluginId: pluginId);
     }
   }
 
-  void _validateEnabledPlugin(String pluginId) {
+  void _validateEligiblePlugin(String pluginId) {
+    _validateKnownPlugin(pluginId);
+    if (!_readEligiblePluginIds().contains(pluginId)) {
+      throw CatalogImportPluginNotEnabledException(pluginId: pluginId);
+    }
+  }
+
+  void _validateKnownPlugin(String pluginId) {
     if (!_knownPluginIds.contains(pluginId)) {
       throw CatalogImportPluginUnknownException(pluginId: pluginId);
-    }
-    if (!_enabledPluginIds.contains(pluginId)) {
-      throw CatalogImportPluginNotEnabledException(pluginId: pluginId);
     }
   }
 }

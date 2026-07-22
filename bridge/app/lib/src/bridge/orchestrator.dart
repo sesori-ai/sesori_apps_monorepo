@@ -33,8 +33,11 @@ import "../repositories/catalog_import_repository.dart";
 import "../repositories/project_catalog_identity_calculator.dart";
 import "../routing/cancel_catalog_import_handler.dart";
 import "../routing/get_catalog_import_statuses_handler.dart";
+import "../routing/get_plugin_management_handler.dart";
 import "../routing/get_plugin_setup_handler.dart";
 import "../routing/get_plugins_handler.dart";
+import "../routing/patch_plugin_idle_timeout_handler.dart";
+import "../routing/post_plugin_lifecycle_command_handler.dart";
 import "../routing/start_catalog_import_handler.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/catalog_import_service.dart";
@@ -332,14 +335,10 @@ class Orchestrator {
 
     final catalogImportService = CatalogImportService(
       knownPluginIds: pluginComposition.knownPluginIds,
-      enabledPluginIds: pluginComposition.eligiblePluginIds,
-      emptyHydrationPolicies: {
-        for (final entry in pluginComposition.projectOwnershipById.entries)
-          if (pluginComposition.eligiblePluginIds.contains(entry.key))
-            entry.key: switch (entry.value) {
-              PluginProjectOwnership.native => CatalogEmptyHydrationPolicy.complete,
-              PluginProjectOwnership.bridgeDerived => CatalogEmptyHydrationPolicy.retry,
-            },
+      readEligiblePluginIds: () => _pluginLifecycleService.compositionView.eligiblePluginIds,
+      readEmptyHydrationPolicy: (pluginId) => switch (pluginComposition.projectOwnershipById[pluginId]!) {
+        PluginProjectOwnership.native => CatalogEmptyHydrationPolicy.complete,
+        PluginProjectOwnership.bridgeDerived => CatalogEmptyHydrationPolicy.retry,
       },
       repository: CatalogImportRepository(
         runtime: _pluginRuntime,
@@ -408,8 +407,11 @@ class Orchestrator {
     final router = RequestRouter(
       handlers: [
         HealthCheckHandler(healthRepository: healthRepository),
+        GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService),
+        PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
+        PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         RestartBridgeHandler(restartService: _restartService),
         GetCurrentProjectHandler(projectRepository: projectRepository),
         GetProjectsHandler(projectActivityService: projectActivityService),
@@ -489,6 +491,7 @@ class Orchestrator {
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
       sessionPromptService: sessionPromptService,
       catalogImportProgress: catalogImportService.progress,
+      pluginManagementRevisions: _pluginLifecycleService.managementRevisions,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -563,6 +566,8 @@ class OrchestratorSession {
   final CompositeSubscription _promptDefaultsSubscriptions = CompositeSubscription();
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _catalogImportSubscriptions = CompositeSubscription();
+  // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
+  final CompositeSubscription _pluginManagementSubscriptions = CompositeSubscription();
   final ProjectActivityService _projectActivityService;
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
@@ -615,6 +620,7 @@ class OrchestratorSession {
     required BridgeEventMapper mapper,
     required SessionPromptService sessionPromptService,
     required Stream<CatalogImportProgress> catalogImportProgress,
+    required Stream<int> pluginManagementRevisions,
     required StreamController<int> bytesSentController,
     required StreamController<SesoriSseEvent> localWireEventsController,
     required FailureReporter failureReporter,
@@ -664,6 +670,11 @@ class OrchestratorSession {
           _enqueueWireEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
         })
         .addTo(_catalogImportSubscriptions);
+    pluginManagementRevisions
+        .listen((revision) {
+          _enqueueWireEvent(SesoriSseEvent.pluginManagementChanged(revision: revision));
+        })
+        .addTo(_pluginManagementSubscriptions);
     _sessionPromptService.promptDefaultsChanges
         .listen((change) {
           _enqueueWireEvent(
@@ -891,6 +902,7 @@ class OrchestratorSession {
         attempt(_subscriptions.cancel),
         attempt(_promptDefaultsSubscriptions.cancel),
         attempt(_catalogImportSubscriptions.cancel),
+        attempt(_pluginManagementSubscriptions.cancel),
       ]);
       Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
       await attempt(() async {
