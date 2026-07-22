@@ -13,6 +13,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
+import "support/codex_plugin_test_factory.dart";
+
 void main() {
   group("CodexPlugin write path", () {
     late Directory codexHome;
@@ -22,16 +24,16 @@ void main() {
     setUp(() {
       codexHome = Directory.systemTemp.createTempSync("codex-home-write-");
       fake = _FakeAppServer();
-      plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
+      const serverUrl = "ws://127.0.0.1:0";
+      plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
+        projectCwd: "/work/sample",
         clientFactory: () => CodexAppServerClient(
-          serverUrl: "ws://127.0.0.1:0",
+          serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
         ),
-        rolloutReader: SessionRolloutReader(
-          environment: {"CODEX_HOME": codexHome.path},
-        ),
-        projectCwd: "/work/sample",
+        keepaliveInterval: const Duration(seconds: 30),
       );
     });
 
@@ -339,16 +341,15 @@ void main() {
 
     test("keepalive sends periodic model/list RPCs while connected, stops on dispose", () async {
       final kaFake = _FakeAppServer();
-      final kaPlugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
+      const serverUrl = "ws://127.0.0.1:0";
+      final kaPlugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
+        projectCwd: "/work/sample",
         clientFactory: () => CodexAppServerClient(
-          serverUrl: "ws://127.0.0.1:0",
+          serverUrl: serverUrl,
           channelFactory: (_) => kaFake.channel,
         ),
-        rolloutReader: SessionRolloutReader(
-          environment: {"CODEX_HOME": codexHome.path},
-        ),
-        projectCwd: "/work/sample",
         keepaliveInterval: const Duration(milliseconds: 20),
       );
       // Only `initialize` is canned; keepalive model/list calls get an error
@@ -447,29 +448,16 @@ void main() {
         })}\n",
       );
       final scopedFake = _FakeAppServer();
-      final rolloutReader = SessionRolloutReader(
+      const serverUrl = "ws://127.0.0.1:0";
+      final scopedPlugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
         environment: {"CODEX_HOME": codexHome.path},
-      );
-      final configReader = CodexConfigReader(
-        environment: {"CODEX_HOME": codexHome.path},
-      );
-      final scopedPlugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
+        projectCwd: "/work/sample",
         clientFactory: () => CodexAppServerClient(
-          serverUrl: "ws://127.0.0.1:0",
+          serverUrl: serverUrl,
           channelFactory: (_) => scopedFake.channel,
         ),
-        rolloutReader: rolloutReader,
-        configReader: configReader,
-        metadataRepository: CodexMetadataRepository(
-          skillReader: CodexSkillReader(
-            environment: {"CODEX_HOME": codexHome.path},
-          ),
-          rolloutReader: rolloutReader,
-          configReader: configReader,
-          launchDirectory: "/work/sample",
-        ),
-        projectCwd: "/work/sample",
+        keepaliveInterval: const Duration(seconds: 30),
       );
       addTearDown(scopedPlugin.dispose);
       scopedFake.respondInOrder([

@@ -13,6 +13,8 @@ import "package:path/path.dart" as p;
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
+import "support/codex_plugin_test_factory.dart";
+
 void main() {
   group("CodexPlugin", () {
     test("id returns codex", () {
@@ -27,12 +29,13 @@ void main() {
       // history so the test is hermetic.
       final tempHome = Directory.systemTemp.createTempSync("codex-home-stub-");
       try {
-        final plugin = CodexPlugin(
-          serverUrl: "ws://127.0.0.1:0",
-          rolloutReader: SessionRolloutReader(
-            environment: {"CODEX_HOME": tempHome.path},
-          ),
+        const serverUrl = "ws://127.0.0.1:0";
+        final plugin = createInjectedCodexPlugin(
+          serverUrl: serverUrl,
+          environment: {"CODEX_HOME": tempHome.path},
           projectCwd: "/repo/example",
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          keepaliveInterval: const Duration(seconds: 30),
         );
         expect(plugin.launchDirectory, equals("/repo/example"));
         expect(await plugin.listAllSessions(knownDirectories: const {}), isEmpty);
@@ -49,25 +52,13 @@ void main() {
       try {
         // Hermetic readers so the user's real ~/.codex/ doesn't leak into
         // this test.
-        final rolloutReader = SessionRolloutReader(
+        const serverUrl = "ws://127.0.0.1:0";
+        final plugin = createInjectedCodexPlugin(
+          serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
-        );
-        final configReader = CodexConfigReader(
-          environment: {"CODEX_HOME": tempHome.path},
-        );
-        final plugin = CodexPlugin(
-          serverUrl: "ws://127.0.0.1:0",
-          rolloutReader: rolloutReader,
-          configReader: configReader,
-          metadataRepository: CodexMetadataRepository(
-            skillReader: CodexSkillReader(
-              environment: {"CODEX_HOME": tempHome.path},
-            ),
-            rolloutReader: rolloutReader,
-            configReader: configReader,
-            launchDirectory: "/repo/example",
-          ),
           projectCwd: "/repo/example",
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          keepaliveInterval: const Duration(seconds: 30),
         );
         expect(await plugin.getSessions("/repo/example"), isEmpty);
         expect(await plugin.getCommands(projectId: "/repo/example"), isEmpty);
@@ -95,14 +86,15 @@ void main() {
     test("getAgents/getProviders synthesise from config + the project's own latest rollout", () async {
       final tempHome = Directory.systemTemp.createTempSync("codex-home-syn-");
       try {
-        File(p.join(tempHome.path, "config.toml"))
-            .writeAsStringSync('model = "gpt-5.5"\nmodel_provider = "openai"\n');
+        File(p.join(tempHome.path, "config.toml")).writeAsStringSync('model = "gpt-5.5"\nmodel_provider = "openai"\n');
         // A rollout whose turn_context model differs from the global config
         // default — the per-session model must win.
-        final rollout = File(p.join(
-          tempHome.path,
-          "sessions/2026/05/27/rollout-2026-05-27T10-00-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
-        ))..createSync(recursive: true);
+        final rollout = File(
+          p.join(
+            tempHome.path,
+            "sessions/2026/05/27/rollout-2026-05-27T10-00-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
+          ),
+        )..createSync(recursive: true);
         rollout.writeAsStringSync(
           "${jsonEncode({
             "type": "session_meta",
@@ -120,10 +112,12 @@ void main() {
         );
         // A NEWER rollout in a different derived project — it must not leak
         // into /repo/example's defaults.
-        final otherRollout = File(p.join(
-          tempHome.path,
-          "sessions/2026/05/28/rollout-2026-05-28T10-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
-        ))..createSync(recursive: true);
+        final otherRollout = File(
+          p.join(
+            tempHome.path,
+            "sessions/2026/05/28/rollout-2026-05-28T10-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
+          ),
+        )..createSync(recursive: true);
         otherRollout.writeAsStringSync(
           "${jsonEncode({
             "type": "session_meta",
@@ -140,25 +134,13 @@ void main() {
           })}\n",
         );
 
-        final rolloutReader = SessionRolloutReader(
+        const serverUrl = "ws://127.0.0.1:0";
+        final plugin = createInjectedCodexPlugin(
+          serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
-        );
-        final configReader = CodexConfigReader(
-          environment: {"CODEX_HOME": tempHome.path},
-        );
-        final plugin = CodexPlugin(
-          serverUrl: "ws://127.0.0.1:0",
-          rolloutReader: rolloutReader,
-          configReader: configReader,
-          metadataRepository: CodexMetadataRepository(
-            skillReader: CodexSkillReader(
-              environment: {"CODEX_HOME": tempHome.path},
-            ),
-            rolloutReader: rolloutReader,
-            configReader: configReader,
-            launchDirectory: "/repo/example",
-          ),
           projectCwd: "/repo/example",
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          keepaliveInterval: const Duration(seconds: 30),
         );
 
         final agent = (await plugin.getAgents(projectId: "/repo/example")).single;
@@ -166,8 +148,7 @@ void main() {
         expect(agent.model?.modelID, equals("gpt-5.4-codex"));
         expect(agent.model?.providerID, equals("openai"));
 
-        final providers =
-            (await plugin.getProviders(projectId: "/repo/example")).providers;
+        final providers = (await plugin.getProviders(projectId: "/repo/example")).providers;
         expect(providers.single.id, equals("openai"));
         expect(providers.single.defaultModelID, equals("gpt-5.4-codex"));
 
@@ -190,12 +171,18 @@ void main() {
 
     test("healthCheck returns true after a successful initialize handshake", () async {
       final fake = _FakeWebSocket();
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-health-");
+      addTearDown(() => tempHome.deleteSync(recursive: true));
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": tempHome.path},
+        projectCwd: "/repo/example",
         clientFactory: () => CodexAppServerClient(
-          serverUrl: "ws://127.0.0.1:0",
+          serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
         ),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       // Auto-respond to the first request with a valid initialize response.
@@ -217,12 +204,18 @@ void main() {
 
     test("healthCheck returns false when handshake errors", () async {
       final fake = _FakeWebSocket();
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-health-");
+      addTearDown(() => tempHome.deleteSync(recursive: true));
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": tempHome.path},
+        projectCwd: "/repo/example",
         clientFactory: () => CodexAppServerClient(
-          serverUrl: "ws://127.0.0.1:0",
+          serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
         ),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       fake.outgoing.first.then((Object? frame) {
@@ -393,8 +386,7 @@ class _SinkAdapter implements WebSocketSink {
   void add(Object? data) => _controller.add(data);
 
   @override
-  void addError(Object error, [StackTrace? stackTrace]) =>
-      _controller.addError(error, stackTrace);
+  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
 
   @override
   Future<void> addStream(Stream<Object?> stream) async {

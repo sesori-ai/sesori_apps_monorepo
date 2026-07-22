@@ -1,4 +1,8 @@
+import "dart:io";
+
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/api/codex_app_server_api.dart";
+import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -12,6 +16,21 @@ void main() {
   group("CodexEventMapper", () {
     const projectCwd = "/repo/app";
     final mapper = CodexEventMapper(pluginId: CodexPlugin.pluginId, projectCwd: projectCwd);
+    final appServerApi = CodexAppServerApi(
+      client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
+    );
+    final threadRepository = CodexThreadRepository(
+      appServerApi: appServerApi,
+    );
+
+    List<BridgeSseEvent> mapThreadStarted(
+      CodexEventMapper target,
+      CodexServerNotification notification,
+    ) {
+      final dto = appServerApi.decodeThreadStartedParams(params: notification.params);
+      final record = dto == null ? null : threadRepository.mapStartedNotification(dto: dto);
+      return record == null ? const [] : target.mapThreadStarted(record);
+    }
 
     /// Replicates `BridgeEventMapper`'s payload construction and runs the
     /// bridge's `SesoriSseEvent.fromJson`. Throwing here is exactly the bug
@@ -33,7 +52,8 @@ void main() {
     }
 
     test("thread/started → SessionCreated parseable as Session", () {
-      final events = mapper.map(
+      final events = mapThreadStarted(
+        mapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -66,7 +86,8 @@ void main() {
     });
 
     test("thread/started without an id is dropped", () {
-      final events = mapper.map(
+      final events = mapThreadStarted(
+        mapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -75,6 +96,25 @@ void main() {
         ),
       );
       expect(events, isEmpty);
+    });
+
+    test("thread API decode recovery drops malformed DTO with an observable warning", () {
+      late List<BridgeSseEvent> events;
+
+      final output = _captureWarnings(() {
+        events = mapThreadStarted(
+          mapper,
+          const CodexServerNotification(
+            method: "thread/started",
+            params: {
+              "thread": {"id": "t-malformed", "createdAt": "not-a-number"},
+            },
+          ),
+        );
+      });
+
+      expect(events, isEmpty);
+      expect(output, contains("failed to decode thread/started notification"));
     });
 
     test("thread/name/updated → SessionUpdated parseable as Session", () {
@@ -101,7 +141,8 @@ void main() {
       // launch dir must carry its own cwd as the project id — otherwise the
       // mobile session list (opened on the derived project) drops it as a
       // project mismatch.
-      final events = mapper.map(
+      final events = mapThreadStarted(
+        mapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -252,7 +293,8 @@ void main() {
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       // thread/started carries the provider; the mapper remembers it per thread.
-      richMapper.map(
+      mapThreadStarted(
+        richMapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -287,7 +329,8 @@ void main() {
         projectCwd: projectCwd,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
-      richMapper.map(
+      mapThreadStarted(
+        richMapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -308,9 +351,11 @@ void main() {
           },
         ),
       );
-      final assistant = shared.Message.fromJson(
-        (events[0] as BridgeSseMessageUpdated).info,
-      ) as shared.MessageAssistant;
+      final assistant =
+          shared.Message.fromJson(
+                (events[0] as BridgeSseMessageUpdated).info,
+              )
+              as shared.MessageAssistant;
       expect(assistant.modelID, equals("gpt-5.4-mini"));
       expect(assistant.providerID, equals("openai"));
 
@@ -325,9 +370,11 @@ void main() {
           },
         ),
       );
-      final assistant2 = shared.Message.fromJson(
-        (events2[0] as BridgeSseMessageUpdated).info,
-      ) as shared.MessageAssistant;
+      final assistant2 =
+          shared.Message.fromJson(
+                (events2[0] as BridgeSseMessageUpdated).info,
+              )
+              as shared.MessageAssistant;
       expect(assistant2.modelID, equals("gpt-5.5"));
     });
 
@@ -492,7 +539,10 @@ void main() {
       final events = mapper.map(
         const CodexServerNotification(
           method: "error",
-          params: {"threadId": "t-1", "error": {"message": "boom"}},
+          params: {
+            "threadId": "t-1",
+            "error": {"message": "boom"},
+          },
         ),
       );
       expect(events, hasLength(1));
@@ -516,7 +566,8 @@ void main() {
 
     test("regression: real bug-log payloads parse cleanly", () {
       // The exact thread/started payload from the bug report.
-      final created = mapper.map(
+      final created = mapThreadStarted(
+        mapper,
         const CodexServerNotification(
           method: "thread/started",
           params: {
@@ -564,4 +615,28 @@ void main() {
       expect(() => parseAsSesori(agent[0]), returnsNormally);
     });
   });
+}
+
+String _captureWarnings(void Function() action) {
+  final previousLevel = Log.level;
+  final stderr = _BufferingStdout();
+  try {
+    Log.level = LogLevel.warning;
+    IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+class _BufferingStdout implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
