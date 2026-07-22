@@ -444,7 +444,7 @@ void main() {
       expect(patch.state?.status, equals(PluginToolStatus.running));
     });
 
-    test("readMessages restores current custom tool calls and reasoning", () {
+    test("readMessages restores current calls around malformed content items", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/07/22/rollout-current-messages.jsonl",
@@ -463,7 +463,9 @@ void main() {
               "type": "reasoning",
               "id": "reasoning-1",
               "summary": [
-                {"type": "summary_text", "text": "Inspecting the workspace"},
+                {"type": "summary_text", "text": "Inspecting "},
+                42,
+                {"type": "summary_text", "text": "the workspace"},
               ],
             },
           }),
@@ -486,7 +488,9 @@ void main() {
               "type": "custom_tool_call_output",
               "call_id": "call-1",
               "output": [
-                {"type": "input_text", "text": "total 0\nfoo.dart"},
+                {"type": "input_text", "text": "total 0\n"},
+                "schema-drifted item",
+                {"type": "input_text", "text": "foo.dart"},
               ],
             },
           }),
@@ -499,6 +503,7 @@ void main() {
               "role": "assistant",
               "content": [
                 {"type": "output_text", "text": "Done"},
+                false,
               ],
             },
           }),
@@ -513,7 +518,8 @@ void main() {
         );
       }, level: LogLevel.verbose);
 
-      expect(output, isNot(contains("malformed rollout")));
+      expect(output, contains("skipping malformed rollout content item"));
+      expect(output, isNot(contains("malformed rollout transcript record")));
       expect(messages, hasLength(3));
 
       final reasoning = messages[0].parts.single;
