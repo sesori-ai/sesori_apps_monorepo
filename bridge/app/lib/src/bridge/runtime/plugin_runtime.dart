@@ -208,7 +208,7 @@ class PluginRuntime {
 
   Future<T> use<T>({
     required String pluginId,
-    required String operation,
+    required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
     final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
@@ -223,7 +223,7 @@ class PluginRuntime {
 
   Stream<T> useStream<T>({
     required String pluginId,
-    required String operation,
+    required Enum operation,
     required Stream<T> Function(BridgePluginApi api, int generation) body,
   }) {
     StreamSubscription<T>? sourceSubscription;
@@ -257,7 +257,11 @@ class PluginRuntime {
           if (error == null && !cancelled && !controller.isClosed) {
             controller.addError(cancelError, cancelStackTrace);
           } else {
-            Log.w('Plugin "$pluginId" stream cancellation failed during $operation', cancelError, cancelStackTrace);
+            Log.w(
+              'Plugin "$pluginId" stream cancellation failed during ${operation.name}',
+              cancelError,
+              cancelStackTrace,
+            );
           }
         } finally {
           releaseLease();
@@ -317,9 +321,9 @@ class PluginRuntime {
 
   Future<T?> useIfActive<T>({
     required String pluginId,
+    required Enum operation,
     required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
-    const operation = "activePluginOperation";
     final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
     if (!_isRoutable(slot)) return null;
     final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: false);
@@ -340,11 +344,11 @@ class PluginRuntime {
   void requireCurrentGeneration({
     required String pluginId,
     required int generation,
-    required String operation,
+    required Enum operation,
   }) {
     if (!isCurrentGeneration(pluginId: pluginId, generation: generation)) {
       throw PluginOperationException(
-        operation,
+        operation.name,
         statusCode: 503,
         message: "plugin generation changed during operation",
       );
@@ -651,27 +655,27 @@ class PluginRuntime {
 
   Future<_PluginLease> _acquire({
     required String pluginId,
-    required String operation,
+    required Enum operation,
     required bool startIfNeeded,
   }) async {
     if (_shuttingDown) {
-      throw PluginOperationException(operation, statusCode: 503, message: "bridge is shutting down");
+      throw PluginOperationException(operation.name, statusCode: 503, message: "bridge is shutting down");
     }
     final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
     if (!slot.eligible || !slot.startAllowed) {
-      throw PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is unavailable");
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is unavailable");
     }
     if (_blocksAcquisition(slot)) {
-      throw PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is transitioning");
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is transitioning");
     }
     if (!_isRoutable(slot) && startIfNeeded) await _ensureStarted(slot: slot);
     if (_blocksAcquisition(slot)) {
-      throw PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is transitioning");
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is transitioning");
     }
     final plugin = slot.plugin;
     final generation = slot.generation;
     if (plugin == null || generation == null || !_isRoutable(slot)) {
-      throw PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
     slot.leaseCount++;
     _publishSnapshots();
@@ -683,7 +687,7 @@ class PluginRuntime {
     _publishSnapshots();
   }
 
-  void _requireCurrentGeneration({required _PluginLease lease, required String operation}) {
+  void _requireCurrentGeneration({required _PluginLease lease, required Enum operation}) {
     requireCurrentGeneration(
       pluginId: lease.slot.registration.descriptor.id,
       generation: lease.generation,
@@ -691,7 +695,7 @@ class PluginRuntime {
     );
     if (!identical(lease.slot.plugin?.api, lease.api)) {
       throw PluginOperationException(
-        operation,
+        operation.name,
         statusCode: 503,
         message: "plugin generation changed during operation",
       );
@@ -1012,11 +1016,11 @@ class PluginRuntime {
     return slot;
   }
 
-  _PluginRuntimeSlot _requireOperationSlot({required String pluginId, required String operation}) {
+  _PluginRuntimeSlot _requireOperationSlot({required String pluginId, required Enum operation}) {
     final slot = _slots[pluginId];
     if (slot == null) {
       throw PluginOperationException(
-        operation,
+        operation.name,
         statusCode: 503,
         message: "plugin $pluginId is unknown and unavailable",
       );

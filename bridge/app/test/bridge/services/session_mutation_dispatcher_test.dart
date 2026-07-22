@@ -297,7 +297,7 @@ class _RevalidatingTestPluginRuntime extends TestPluginRuntime {
   @override
   Future<T> use<T>({
     required String pluginId,
-    required String operation,
+    required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
     final result = await body(plugin);

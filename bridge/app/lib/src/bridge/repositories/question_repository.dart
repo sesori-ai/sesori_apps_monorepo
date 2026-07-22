@@ -44,7 +44,7 @@ class QuestionRepository {
     );
     return _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.getPendingQuestions.name,
+      operation: SessionOperation.getPendingQuestions,
       body: (plugin) async {
         Set<String>? tombstoned;
         if (plugin is BridgeDerivedProjectsPluginApi) {
@@ -87,8 +87,8 @@ class QuestionRepository {
     }
     final pluginIds = _runtime.activePluginIds;
     if (pluginIds.isEmpty) {
-      throw const PluginOperationException(
-        "getProjectQuestions",
+      throw PluginOperationException(
+        SessionOperation.getProjectQuestions.name,
         statusCode: 503,
         message: "no plugins are running",
       );
@@ -99,6 +99,7 @@ class QuestionRepository {
           return await _runtime
               .useIfActive(
                 pluginId: pluginId,
+                operation: SessionOperation.getProjectQuestions,
                 body: (plugin, _) => _getPluginProjectQuestions(
                   plugin: plugin,
                   projectId: projectId,
@@ -113,8 +114,8 @@ class QuestionRepository {
       }),
     );
     if (sources.every((source) => source == null)) {
-      throw const PluginOperationException(
-        "getProjectQuestions",
+      throw PluginOperationException(
+        SessionOperation.getProjectQuestions.name,
         statusCode: 503,
         message: "all running plugins failed to get project questions",
       );
@@ -195,7 +196,7 @@ class QuestionRepository {
     );
     return _runtime.use(
       pluginId: binding.pluginId,
-      operation: SessionOperation.replyToQuestion.name,
+      operation: SessionOperation.replyToQuestion,
       body: (plugin) async {
         await _throwIfMutationTargetTombstoned(
           questionId: questionId,
@@ -226,7 +227,7 @@ class QuestionRepository {
       backendSessionId = binding.backendSessionId;
       return _runtime.use(
         pluginId: binding.pluginId,
-        operation: SessionOperation.rejectQuestion.name,
+        operation: SessionOperation.rejectQuestion,
         body: (plugin) async {
           await _throwIfMutationTargetTombstoned(
             questionId: questionId,
@@ -240,7 +241,7 @@ class QuestionRepository {
     }
     return _runtime.use(
       pluginId: _legacyMissingPluginId,
-      operation: SessionOperation.rejectQuestion.name,
+      operation: SessionOperation.rejectQuestion,
       body: (plugin) => plugin.rejectQuestion(
         questionId: questionId,
         sessionId: backendSessionId,

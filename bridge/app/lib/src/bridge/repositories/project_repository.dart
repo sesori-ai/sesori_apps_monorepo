@@ -137,10 +137,11 @@ class ProjectRepository {
   /// project id (a moved folder keeps its identity). A bridge-derived plugin
   /// prefers the normalized directory while retaining any same-path catalog id.
   Future<ProjectOpenTarget> resolveProjectOpenTarget({required String path}) async {
-    final defaultPluginId = _requireDefaultPluginId(operation: "openProject");
+    const operation = _ProjectOperation.openProject;
+    final defaultPluginId = _requireDefaultPluginId(operation: operation);
     return _runtime.use(
       pluginId: defaultPluginId,
-      operation: "openProject",
+      operation: operation,
       body: (api) async => switch (api) {
         BridgeDerivedProjectsPluginApi() => await _resolveBridgeDerivedOpenTarget(path: path),
         final NativeProjectsPluginApi plugin => await _resolveNativeOpenTarget(path: path, plugin: plugin),
@@ -274,10 +275,11 @@ class ProjectRepository {
       throw ProjectNotFoundException(projectId: projectId);
     }
     final activity = _mapActivity(await _projectsDao.getProject(projectId: projectId));
-    final defaultPluginId = _requireDefaultPluginId(operation: "renameProject");
+    const operation = _ProjectOperation.renameProject;
+    final defaultPluginId = _requireDefaultPluginId(operation: operation);
     final result = await _runtime.use<({PluginProjectOwnership ownership, PluginProject? nativeProject})>(
       pluginId: defaultPluginId,
-      operation: "renameProject",
+      operation: operation,
       body: (api) async => switch (api) {
         BridgeDerivedProjectsPluginApi() => (
           ownership: PluginProjectOwnership.bridgeDerived,
@@ -395,6 +397,7 @@ class ProjectRepository {
     final source = await _runtime
         .useIfActive<_ProjectActivitySource>(
           pluginId: pluginId,
+          operation: _ProjectOperation.listProjectActivityEvidence,
           body: (plugin, generation) => _loadProjectActivitySource(
             plugin: plugin,
             generation: generation,
@@ -537,7 +540,7 @@ class ProjectRepository {
     _runtime.requireCurrentGeneration(
       pluginId: source.pluginId,
       generation: source.generation,
-      operation: "listProjectActivityEvidence",
+      operation: _ProjectOperation.listProjectActivityEvidence,
     );
   }
 
@@ -592,11 +595,11 @@ class ProjectRepository {
     return ProjectActivity(createdAt: project.createdAt, updatedAt: project.updatedAt);
   }
 
-  String _requireDefaultPluginId({required String operation}) {
+  String _requireDefaultPluginId({required _ProjectOperation operation}) {
     final defaultPluginId = _readDefaultEnabledPluginId();
     if (defaultPluginId == null) {
       throw PluginOperationException(
-        operation,
+        operation.name,
         statusCode: 503,
         message: "no default plugin is enabled",
       );
@@ -604,6 +607,8 @@ class ProjectRepository {
     return defaultPluginId;
   }
 }
+
+enum _ProjectOperation { openProject, renameProject, listProjectActivityEvidence }
 
 sealed class _ProjectActivitySource {
   const _ProjectActivitySource({required this.pluginId, required this.generation});

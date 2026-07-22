@@ -62,12 +62,12 @@ class BenchmarkPluginRuntime extends PluginRuntime {
   @override
   Future<T> use<T>({
     required String pluginId,
-    required String operation,
+    required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw PluginOperationException(operation, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
     return body(plugin);
   }
@@ -75,16 +75,17 @@ class BenchmarkPluginRuntime extends PluginRuntime {
   @override
   Stream<T> useStream<T>({
     required String pluginId,
-    required String operation,
+    required Enum operation,
     required Stream<T> Function(BridgePluginApi api, int generation) body,
   }) {
     final plugin = _plugins[pluginId];
-    return plugin == null ? Stream.error(PluginOperationException(operation, statusCode: 503)) : body(plugin, 1);
+    return plugin == null ? Stream.error(PluginOperationException(operation.name, statusCode: 503)) : body(plugin, 1);
   }
 
   @override
   Future<T?> useIfActive<T>({
     required String pluginId,
+    required Enum operation,
     required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     final plugin = _plugins[pluginId];

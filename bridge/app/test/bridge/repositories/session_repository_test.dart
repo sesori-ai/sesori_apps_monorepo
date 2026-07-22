@@ -2142,9 +2142,10 @@ class _GenerationReplacingRuntime extends TestPluginRuntime {
   @override
   Future<T?> useIfActive<T>({
     required String pluginId,
+    required Enum operation,
     required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
-    final result = await super.useIfActive(pluginId: pluginId, body: body);
+    final result = await super.useIfActive(pluginId: pluginId, operation: operation, body: body);
     observationCollected.complete();
     await _replacement.future;
     return result;
