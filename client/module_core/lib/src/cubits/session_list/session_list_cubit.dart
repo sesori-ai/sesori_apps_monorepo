@@ -104,7 +104,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   void _handleEvent(SseEvent event) {
     try {
       if (isClosed) return;
-      logd("[SessionList] event received: ${event.data.runtimeType}");
+      logt("[SessionList] event received: ${event.data.runtimeType}");
       final data = event.data;
       switch (data) {
         case SesoriSessionCreated(:final info):
@@ -290,7 +290,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     }
 
     _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
-    logd("[SessionList] session.updated updated id=${session.id}");
+    logt("[SessionList] session.updated updated id=${session.id}");
     _emitFiltered();
   }
 
