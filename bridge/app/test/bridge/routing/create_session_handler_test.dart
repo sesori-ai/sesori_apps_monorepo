@@ -1117,7 +1117,7 @@ void main() {
       expect(plugin.lastSendCommandSessionId, isNull);
     });
 
-    test("rename fails — session still returned successfully", () async {
+    test("plugin rename failure keeps the stored generated title", () async {
       final throwingPlugin = _ThrowingRenameSessionPlugin();
       metadataService.generateResult = const bridge_metadata.SessionMetadata(
         title: "Fix Login Bug",
@@ -1166,6 +1166,8 @@ void main() {
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
+      expect(result.title, "Fix Login Bug");
+      expect((await db.sessionDao.getSession(sessionId: result.id))?.title, "Fix Login Bug");
       await throwingPlugin.close();
     });
   });

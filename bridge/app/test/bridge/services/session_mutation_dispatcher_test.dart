@@ -69,6 +69,65 @@ void main() {
       expect(plugin.renameCalls, isZero);
     });
 
+    test("returns the stored title while plugin propagation remains serialized", () async {
+      final renameStarted = Completer<void>();
+      final releaseRename = Completer<void>();
+      final deleteStarted = Completer<void>();
+      plugin
+        ..renameStarted = renameStarted
+        ..releaseRename = releaseRename.future
+        ..deleteStarted = deleteStarted;
+      await insertSession();
+
+      final rename = dispatcher.renameSession(sessionId: "s1", title: "Stored title");
+      await renameStarted.future;
+      Future<void>? deletion;
+      try {
+        final renamed = await rename.timeout(const Duration(milliseconds: 100));
+        deletion = dispatcher.deleteSession(sessionId: "s1");
+        await Future<void>.delayed(Duration.zero);
+
+        expect(renamed.title, "Stored title");
+        expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Stored title");
+        expect(deleteStarted.isCompleted, isFalse);
+      } finally {
+        releaseRename.complete();
+      }
+      await deletion;
+      expect(deleteStarted.isCompleted, isTrue);
+    });
+
+    test("keeps the stored title when plugin propagation fails", () async {
+      plugin.renameError = StateError("rename failed");
+      await insertSession();
+
+      final renamed = await dispatcher.renameSession(sessionId: "s1", title: "Stored title");
+
+      expect(renamed.title, "Stored title");
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Stored title");
+      expect(plugin.renameCalls, 1);
+    });
+
+    test("does not let an older plugin title event overwrite a newer rename", () async {
+      final renameStarted = Completer<void>();
+      final releaseRename = Completer<void>();
+      plugin
+        ..renameStarted = renameStarted
+        ..releaseRename = releaseRename.future;
+      await insertSession();
+
+      await dispatcher.renameSession(sessionId: "s1", title: "First title");
+      await renameStarted.future;
+      final newerRename = dispatcher.renameSession(sessionId: "s1", title: "Newer title");
+      final staleEvent = dispatcher.captureTitle(sessionId: "s1", title: "First title");
+
+      releaseRename.complete();
+      await newerRename;
+      await staleEvent;
+
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Newer title");
+    });
+
     test("applies a pending null by removing the stored title copy", () async {
       await dispatcher.captureTitle(sessionId: "s1", title: null);
       await insertSession();
@@ -169,6 +228,9 @@ void main() {
 }
 
 class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
+  Completer<void>? renameStarted;
+  Future<void>? releaseRename;
+  Object? renameError;
   Completer<void>? deleteStarted;
   Future<void>? releaseDelete;
   int renameCalls = 0;
@@ -189,6 +251,9 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {
     renameCalls++;
+    if (renameStarted case final started? when !started.isCompleted) started.complete();
+    if (releaseRename case final release?) await release;
+    if (renameError case final error?) throw error;
     return PluginSession(
       id: sessionId,
       projectID: "/repo",
