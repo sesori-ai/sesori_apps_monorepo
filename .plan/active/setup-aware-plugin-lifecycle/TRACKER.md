@@ -2,11 +2,11 @@
 
 ## Plan State
 
-- **Status:** replacement stack delivered; all five PRs reopened and monitored
-- **Base:** `origin/main` at `5a91f582`
+- **Status:** Stage 10 merged; Stages 11-13 remain open and monitored
+- **Base:** synchronized with `origin/main` at `4ef55675`
 - **Current branch:** `setup-aware-plugin-lifecycle-s13-p01`
 - **Current stage:** Stage 13 delivered
-- **Next action:** monitor CI and review activity across #507-#511
+- **Next action:** monitor CI and review activity across #508-#511
 
 ## Closed First Implementation
 
@@ -14,11 +14,11 @@ The first unmerged stack was closed before redesign:
 
 | Old PR | State | Replacement |
 |---|---|---|
-| #507 | Reopened | Redesigned Stage 10 at `794e853e`; CI/review monitored |
-| #508 | Reopened | Redesigned Stage 11-P01 at `29472036`; CI/review monitored |
-| #509 | Reopened | Redesigned Stage 11-P02 at `c0b3ed11`; CI/review monitored |
-| #510 | Reopened | Redesigned Stage 12 plus CI fixture fix at `bf0433b8`; CI/review monitored |
-| #511 | Reopened | Redesigned Stage 13 at `167a3ee7`; CI/review monitored |
+| #507 | Merged | Redesigned Stage 10 merged to `main` as `4ef55675` |
+| #508 | Reopened | Stage 11-P01 synchronized with `main` at `7e5fa5d1`; monitored |
+| #509 | Reopened | Stage 11-P02 synchronized with #508 at `fcaab2f8`; monitored |
+| #510 | Reopened | Stage 12 synchronized with #509 at `3e021de0`; monitored |
+| #511 | Reopened | Stage 13 synchronized with #510 at `234c402c`; monitored |
 
 Old verification results are historical evidence only; replacement stages must
 run their focused verification again.
@@ -27,7 +27,7 @@ run their focused verification again.
 
 | Done | Stage | Branch | PR state |
 |---|---|---|---|
-| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 open and monitored |
+| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
 | [x] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 open and monitored |
 | [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 open and monitored |
 | [x] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 open and monitored |
@@ -220,6 +220,14 @@ run their focused verification again.
 - Committed as `167a3ee7`, force-pushed with lease, and reopened #511 through
   the temporary-old-head GitHub workaround; the verified replacement head was
   restored immediately and is monitored.
+- After #507 squash-merged as `4ef55675`, merged `main` into #508 and propagated
+  that merge through #509-#511 without rebasing. The only semantic conflict was
+  Codex's transient work evidence against the newly merged session-layering
+  architecture; the resolution preserved `CodexSessionService` ownership while
+  retaining accepted-turn fencing and work-state publication. Codex analysis
+  and all 36 focused plugin/write-path tests passed; bridge-app analysis and 71
+  focused runtime/catalog/event tests passed; final module-core, mobile, and
+  desktop analysis plus focused Stage 13 tests passed. #508-#511 are mergeable.
 
 ## Delivery Rules
 
