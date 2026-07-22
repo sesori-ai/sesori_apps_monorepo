@@ -38,6 +38,8 @@ import "services/codex_session_service.dart";
 /// Approval/permission flows still throw — those land in Phase 5.
 class CodexPlugin implements CodexManagedApi {
   static const String pluginId = "codex";
+  static const int _renameMaxAttempts = 5;
+  static const Duration _renameRetryDelay = Duration(milliseconds: 100);
 
   final String _serverUrl;
   // Passed to the default client built in [_createClient]; retained for future
@@ -585,6 +587,14 @@ class CodexPlugin implements CodexManagedApi {
         (error.code == -32600 && message.contains("not found"));
   }
 
+  bool _isEmptyRollout(CodexRpcException error) {
+    final message = error.message.toLowerCase();
+    return error.code == -32603 &&
+        message.contains("failed to read session metadata") &&
+        message.contains("rollout") &&
+        message.contains(" is empty");
+  }
+
   Map<String, dynamic>? _promptPartToUserInput(PluginPromptPart part) {
     return switch (part) {
       PluginPromptPartText(:final text) => {
@@ -615,10 +625,25 @@ class CodexPlugin implements CodexManagedApi {
     required String title,
   }) async {
     final client = await _connectedClient();
-    await client.request(
-      method: "thread/name/set",
-      params: {"threadId": sessionId, "name": title},
-    );
+    for (var attempt = 1; ; attempt++) {
+      try {
+        await client.request(
+          method: "thread/name/set",
+          params: {"threadId": sessionId, "name": title},
+        );
+        break;
+      } on CodexRpcException catch (error) {
+        // thread/start can return after creating the rollout but before its
+        // initial session metadata has been flushed. Retry only that transient
+        // app-server failure; unrelated rename failures remain immediate.
+        if (attempt >= _renameMaxAttempts || !_isEmptyRollout(error)) rethrow;
+        Log.d(
+          "Codex rollout metadata is not ready for session $sessionId; "
+          "retrying rename ($attempt/$_renameMaxAttempts)",
+        );
+        await Future<void>.delayed(_renameRetryDelay);
+      }
+    }
     final directory = _directoryForSession(sessionId);
     return PluginSession(
       id: sessionId,

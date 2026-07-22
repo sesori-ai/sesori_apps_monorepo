@@ -165,6 +165,71 @@ void main() {
       expect(renamed.directory, equals("/work/sample/packages/core"));
     });
 
+    test("renameSession retries while a fresh rollout is empty", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-empty-rollout"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-1"}),
+        const _Response(
+          error: {
+            "code": -32603,
+            "message":
+                "failed to set thread name: Fatal error: failed to update thread metadata "
+                "t-empty-rollout: thread-store internal error: failed to read session metadata "
+                "/tmp/rollout-t-empty-rollout.jsonl: rollout at "
+                "/tmp/rollout-t-empty-rollout.jsonl is empty",
+          },
+        ),
+        const _Response(result: {}),
+      ]);
+
+      await plugin.createSession(
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "start")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final renamed = await plugin.renameSession(
+        sessionId: "t-empty-rollout",
+        title: "Renamed",
+      );
+
+      expect(renamed.title, equals("Renamed"));
+      expect(fake.sentMethods.where((method) => method == "thread/name/set"), hasLength(2));
+    });
+
+    test("renameSession does not retry unrelated RPC failures", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          error: {
+            "code": -32603,
+            "message": "failed to set thread name: state database is unavailable",
+          },
+        ),
+        const _Response(result: {}),
+      ]);
+
+      await expectLater(
+        plugin.renameSession(sessionId: "t-failed", title: "Renamed"),
+        throwsA(
+          isA<CodexRpcException>().having(
+            (error) => error.message,
+            "message",
+            contains("state database is unavailable"),
+          ),
+        ),
+      );
+
+      expect(fake.sentMethods.where((method) => method == "thread/name/set"), hasLength(1));
+    });
+
     test("sendPrompt resumes a thread from a prior run before the turn", () async {
       // `t-existing` was never started in this plugin instance, so the
       // app-server has not loaded it — the plugin must resume it on demand
