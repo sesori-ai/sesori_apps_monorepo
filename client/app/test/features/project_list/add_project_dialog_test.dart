@@ -540,6 +540,11 @@ void main() {
           gitAction: OpenProjectGitAction.promptIfNeeded,
         ),
       ).called(1);
+
+      // The confirmation outlives the sheet, so it has to be raised on the
+      // screen's messenger rather than the one the sheet hosts for itself.
+      expect(_addButton, findsNothing);
+      expect(find.text("Project discovered"), findsOneWidget);
     });
 
     testWidgets("non-Git folder prompt can enable Git before opening", (tester) async {

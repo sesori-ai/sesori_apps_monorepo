@@ -58,6 +58,11 @@ class AddProjectDialog extends StatefulWidget {
 }
 
 class _AddProjectDialogState extends State<AddProjectDialog> {
+  /// The messenger this sheet presents its own messages on — see
+  /// [_showSnackBar]. Keyed because it is built below this state, so
+  /// `ScaffoldMessenger.of` from here would find the screen's instead.
+  final GlobalKey<ScaffoldMessengerState> _messengerKey = GlobalKey();
+
   /// The folder the bridge started us in. Everything above it is out of scope
   /// for the browser, so it is also where the back button stops.
   String? _rootPath;
@@ -207,8 +212,13 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     final loc = context.loc;
     switch (outcome) {
       case OpenProjectOutcome.success:
+        // This one outlives the sheet, so it goes to the screen underneath
+        // rather than the sheet's own messenger — captured before the pop.
+        final messenger = ScaffoldMessenger.of(context);
         _dismissDialog();
-        _showSnackBar(loc.projectDiscovered);
+        messenger.showSnackBar(
+          SnackBar(content: Text(loc.projectDiscovered), duration: kSnackBarDuration),
+        );
       case OpenProjectOutcome.gitChoiceRequired:
         final choice = await _showGitChoiceDialog();
         if (!mounted || choice == null) return;
@@ -293,8 +303,14 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     );
   }
 
+  /// Shows [message] over the sheet, on the messenger the sheet hosts itself.
+  ///
+  /// The screen's messenger presents inside the screen's scaffold, which this
+  /// modal route covers — a message raised while the sheet is open would be
+  /// painted underneath it and never seen. Messages that outlive the sheet
+  /// still belong to the screen: see [_onAdd]'s success case.
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    _messengerKey.currentState?.showSnackBar(
       SnackBar(content: Text(message), duration: kSnackBarDuration),
     );
   }
@@ -328,41 +344,54 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
       handleBottomSafeArea: false,
       child: SizedBox(
         height: bodyHeight,
-        // Transparent Material so the rows' ink paints on top of the sheet
-        // surface instead of behind it on the modal's transparent Material.
-        child: Material(
-          type: MaterialType.transparency,
-          child: Column(
-            children: [
-              const _FilesystemAccessBanner(),
-              Expanded(
-                // The listing runs to the bottom edge and the actions float
-                // over it, so folders scroll behind them and dissolve into the
-                // menu's fade rather than stopping at a hard edge.
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: _buildListing(
-                        loc: loc,
-                        bottomInset: _ActionMenu.reservedExtent(context: context),
-                      ),
+        // The sheet hosts its own messenger, so the messages it raises present
+        // over it instead of behind the modal route: see [_showSnackBar]. The
+        // scaffold is what that messenger presents into — transparent, so the
+        // sheet keeps painting its own surface, and not keyboard-aware, since
+        // nothing here is typed into (naming happens in its own sheet).
+        child: ScaffoldMessenger(
+          key: _messengerKey,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            resizeToAvoidBottomInset: false,
+            // Transparent Material so the rows' ink paints on top of the sheet
+            // surface instead of behind it on the modal's transparent Material.
+            body: Material(
+              type: MaterialType.transparency,
+              child: Column(
+                children: [
+                  const _FilesystemAccessBanner(),
+                  Expanded(
+                    // The listing runs to the bottom edge and the actions float
+                    // over it, so folders scroll behind them and dissolve into
+                    // the menu's fade rather than stopping at a hard edge.
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: _buildListing(
+                            loc: loc,
+                            bottomInset: _ActionMenu.reservedExtent(context: context),
+                          ),
+                        ),
+                        PositionedDirectional(
+                          start: 0,
+                          end: 0,
+                          bottom: 0,
+                          child: _ActionMenu(
+                            onAdd: _inFlight != null || _currentPath.isEmpty ? null : _onAdd,
+                            // Creating a folder needs somewhere to put it, and
+                            // the starting folder is not it: see
+                            // [AddProjectDialog].
+                            onCreateFolder: _inFlight != null || _isAtRoot ? null : _onCreateFolder,
+                            inFlight: _inFlight,
+                          ),
+                        ),
+                      ],
                     ),
-                    PositionedDirectional(
-                      start: 0,
-                      end: 0,
-                      bottom: 0,
-                      child: _ActionMenu(
-                        onAdd: _inFlight != null || _currentPath.isEmpty ? null : _onAdd,
-                        // Creating a folder needs somewhere to put it, and the
-                        // starting folder is not it: see [AddProjectDialog].
-                        onCreateFolder: _inFlight != null || _isAtRoot ? null : _onCreateFolder,
-                        inFlight: _inFlight,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
