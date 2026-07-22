@@ -30,15 +30,17 @@ class CodexMessageRepository {
       );
     }
 
-    final toolOutputs = <String, String>{};
+    final toolOutputs = <String, String?>{};
     for (final line in lines) {
       final payload = line.payload;
-      if (payload?.type != CodexRolloutPayloadType.functionCallOutput) {
+      if (payload?.type != CodexRolloutPayloadType.functionCallOutput &&
+          payload?.type != CodexRolloutPayloadType.customToolCallOutput) {
         continue;
       }
       final callId = payload?.callId;
-      final output = payload?.output;
-      if (callId != null && output != null) toolOutputs[callId] = output;
+      if (callId != null && payload?.output != null) {
+        toolOutputs[callId] = _toolOutputText(payload?.output);
+      }
     }
 
     final messages = <PluginMessageWithParts>[];
@@ -74,10 +76,12 @@ class CodexMessageRepository {
       if (payload == null) continue;
       final messageTime = _messageTimeFrom(line.timestamp);
 
-      if (payload.type == CodexRolloutPayloadType.functionCall) {
+      if (payload.type == CodexRolloutPayloadType.functionCall ||
+          payload.type == CodexRolloutPayloadType.customToolCall) {
         final callId = payload.callId;
         final name = payload.name ?? "tool";
         final output = callId == null ? null : toolOutputs[callId];
+        final completed = callId != null && toolOutputs.containsKey(callId);
         messageCounter += 1;
         messages.add(
           _toolMessage(
@@ -85,14 +89,15 @@ class CodexMessageRepository {
             sessionId: sessionId,
             info: assistantInfo("m-$messageCounter", messageTime),
             tool: _normalizeToolName(name),
-            title: _toolCallTitle(payload.arguments),
-            status: output != null ? PluginToolStatus.completed : PluginToolStatus.running,
+            title: _toolCallTitle(payload.arguments ?? payload.input),
+            status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
             output: output,
           ),
         );
         continue;
       }
-      if (payload.type == CodexRolloutPayloadType.functionCallOutput) {
+      if (payload.type == CodexRolloutPayloadType.functionCallOutput ||
+          payload.type == CodexRolloutPayloadType.customToolCallOutput) {
         continue;
       }
       if (payload.type == CodexRolloutPayloadType.webSearchCall) {
@@ -111,17 +116,50 @@ class CodexMessageRepository {
         continue;
       }
 
+      if (payload.type == CodexRolloutPayloadType.reasoning) {
+        final reasoning = _contentTexts(
+          payload.summary,
+          acceptedTypes: const {CodexRolloutContentType.summaryText},
+        ).join();
+        if (reasoning.isEmpty) continue;
+
+        messageCounter += 1;
+        final messageId = "m-$messageCounter";
+        messages.add(
+          PluginMessageWithParts(
+            info: assistantInfo(messageId, messageTime),
+            parts: [
+              PluginMessagePart(
+                id: "$messageId-reasoning",
+                sessionID: sessionId,
+                messageID: messageId,
+                type: PluginMessagePartType.reasoning,
+                text: reasoning,
+                tool: null,
+                state: null,
+                prompt: null,
+                description: null,
+                agent: null,
+                agentName: null,
+                attempt: null,
+                retryError: null,
+              ),
+            ],
+          ),
+        );
+        continue;
+      }
+
       if (payload.role != CodexRolloutRole.user && payload.role != CodexRolloutRole.assistant) {
         continue;
       }
-      final texts = [
-        for (final content in payload.content ?? const <CodexRolloutContentDto>[])
-          if ((content.type == CodexRolloutContentType.inputText ||
-                  content.type == CodexRolloutContentType.outputText) &&
-              content.text != null &&
-              content.text!.isNotEmpty)
-            content.text!,
-      ];
+      final texts = _contentTexts(
+        payload.content,
+        acceptedTypes: const {
+          CodexRolloutContentType.inputText,
+          CodexRolloutContentType.outputText,
+        },
+      );
       if (texts.isEmpty) continue;
 
       messageCounter += 1;
@@ -159,6 +197,49 @@ class CodexMessageRepository {
       );
     }
     return messages;
+  }
+
+  String? _toolOutputText(Object? output) {
+    if (output is String) return output;
+    final texts = _contentTexts(
+      output,
+      acceptedTypes: const {
+        CodexRolloutContentType.inputText,
+        CodexRolloutContentType.outputText,
+      },
+    );
+    return texts.isEmpty ? null : texts.join();
+  }
+
+  List<String> _contentTexts(
+    Object? raw, {
+    required Set<CodexRolloutContentType> acceptedTypes,
+  }) {
+    if (raw is! List) return const [];
+    final texts = <String>[];
+    for (final item in raw) {
+      if (item is String) {
+        if (item.isNotEmpty) texts.add(item);
+        continue;
+      }
+      if (item is! Map) continue;
+      try {
+        final content = CodexRolloutContentDto.fromJson(
+          item.cast<String, dynamic>(),
+        );
+        final text = content.text;
+        if (acceptedTypes.contains(content.type) && text != null && text.isNotEmpty) {
+          texts.add(text);
+        }
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "[codex] skipping malformed rollout content item",
+          error,
+          stackTrace,
+        );
+      }
+    }
+    return texts;
   }
 
   PluginMessageWithParts _toolMessage({

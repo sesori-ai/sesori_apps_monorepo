@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
@@ -151,6 +152,57 @@ void main() {
       expect(output, contains("malformed rollout transcript record"));
       expect("malformed rollout transcript record".allMatches(output), hasLength(1));
       expect(output, isNot(contains("secret-source-content")));
+    });
+
+    test("current structured rollout records are not reported as malformed", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/07/22/rollout-current.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        cwd: "/repo/app",
+        cliVersion: "0.144.1",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "custom_tool_call_output",
+              "call_id": "call-1",
+              "output": [
+                {"type": "input_text", "text": "command output"},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "reasoning",
+              "id": "reasoning-1",
+              "summary": [
+                {"type": "summary_text", "text": "Checking the result"},
+              ],
+            },
+          }),
+        ],
+      );
+
+      late List<CodexRolloutLineDto> header;
+      late List<CodexRolloutLineDto> transcript;
+      final output = _captureWarnings(() {
+        header = rolloutApi.readHeader(rolloutPath: path);
+        transcript = rolloutApi.readTranscript(rolloutPath: path);
+      }, level: LogLevel.verbose);
+
+      expect(output, isNot(contains("malformed rollout")));
+      expect(header, hasLength(3));
+      expect(transcript, hasLength(3));
+      expect(
+        transcript[1].payload?.type,
+        CodexRolloutPayloadType.customToolCallOutput,
+      );
+      expect(
+        transcript[2].payload?.type,
+        CodexRolloutPayloadType.reasoning,
+      );
     });
 
     test("listSessions joins index + rollout header and sorts by updatedAt", () {
@@ -390,6 +442,94 @@ void main() {
       final patch = messages[2].parts.single;
       expect(patch.tool, equals("edit"));
       expect(patch.state?.status, equals(PluginToolStatus.running));
+    });
+
+    test("readMessages restores current custom tool calls and reasoning", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/07/22/rollout-current-messages.jsonl",
+        sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        cwd: "/repo/app",
+        cliVersion: "0.144.1",
+        extraLines: [
+          jsonEncode({
+            "type": "turn_context",
+            "payload": {"model": "gpt-5.4"},
+          }),
+          jsonEncode({
+            "timestamp": "2026-07-22T10:00:01Z",
+            "type": "response_item",
+            "payload": {
+              "type": "reasoning",
+              "id": "reasoning-1",
+              "summary": [
+                {"type": "summary_text", "text": "Inspecting the workspace"},
+              ],
+            },
+          }),
+          jsonEncode({
+            "timestamp": "2026-07-22T10:00:02Z",
+            "type": "response_item",
+            "payload": {
+              "type": "custom_tool_call",
+              "id": "tool-1",
+              "status": "completed",
+              "call_id": "call-1",
+              "name": "exec",
+              "input": jsonEncode({"cmd": "ls -la"}),
+            },
+          }),
+          jsonEncode({
+            "timestamp": "2026-07-22T10:00:03Z",
+            "type": "response_item",
+            "payload": {
+              "type": "custom_tool_call_output",
+              "call_id": "call-1",
+              "output": [
+                {"type": "input_text", "text": "total 0\nfoo.dart"},
+              ],
+            },
+          }),
+          jsonEncode({
+            "timestamp": "2026-07-22T10:00:04Z",
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "message-1",
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "Done"},
+              ],
+            },
+          }),
+        ],
+      );
+
+      late List<PluginMessageWithParts> messages;
+      final output = _captureWarnings(() {
+        messages = messageRepository.readMessages(
+          rolloutPath: path,
+          sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        );
+      }, level: LogLevel.verbose);
+
+      expect(output, isNot(contains("malformed rollout")));
+      expect(messages, hasLength(3));
+
+      final reasoning = messages[0].parts.single;
+      expect(reasoning.type, PluginMessagePartType.reasoning);
+      expect(reasoning.text, "Inspecting the workspace");
+
+      final tool = messages[1].parts.single;
+      expect(tool.type, PluginMessagePartType.tool);
+      expect(tool.tool, "shell");
+      expect(tool.state?.status, PluginToolStatus.completed);
+      expect(tool.state?.title, "ls -la");
+      expect(tool.state?.output, contains("foo.dart"));
+
+      final assistant = messages[2];
+      expect(assistant.parts.single.text, "Done");
+      expect((assistant.info as PluginMessageAssistant).modelID, "gpt-5.4");
     });
 
     test("readMessages clips tool output by complete Unicode code points", () {

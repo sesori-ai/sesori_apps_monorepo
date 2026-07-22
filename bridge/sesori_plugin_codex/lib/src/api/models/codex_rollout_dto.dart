@@ -14,10 +14,16 @@ enum CodexRolloutLineType {
 }
 
 enum CodexRolloutPayloadType {
+  message,
+  reasoning,
   @JsonValue("function_call")
   functionCall,
   @JsonValue("function_call_output")
   functionCallOutput,
+  @JsonValue("custom_tool_call")
+  customToolCall,
+  @JsonValue("custom_tool_call_output")
+  customToolCallOutput,
   @JsonValue("web_search_call")
   webSearchCall,
   unknown,
@@ -34,6 +40,8 @@ enum CodexRolloutContentType {
   inputText,
   @JsonValue("output_text")
   outputText,
+  @JsonValue("summary_text")
+  summaryText,
   unknown,
 }
 
@@ -70,11 +78,17 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
     required String? model,
     @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required CodexRolloutPayloadType? type,
     @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole? role,
-    required List<CodexRolloutContentDto>? content,
+    // Payload variants reuse these fields with different shapes. In
+    // particular, codex 0.144.x custom tool outputs are typed content arrays,
+    // while legacy function outputs are strings. Preserve the wire value here
+    // and narrow it in the repository after inspecting the payload type.
+    required Object? content,
+    required Object? summary,
     @JsonKey(name: "call_id") required String? callId,
     required String? name,
     required String? arguments,
-    required String? output,
+    required String? input,
+    required Object? output,
     required CodexRolloutActionDto? action,
   }) = _CodexRolloutPayloadDto;
 

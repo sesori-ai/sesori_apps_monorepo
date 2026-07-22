@@ -53,17 +53,13 @@ _CodexRolloutPayloadDto _$CodexRolloutPayloadDtoFromJson(Map json) =>
         json['role'],
         unknownValue: CodexRolloutRole.unknown,
       ),
-      content: (json['content'] as List<dynamic>?)
-          ?.map(
-            (e) => CodexRolloutContentDto.fromJson(
-              Map<String, dynamic>.from(e as Map),
-            ),
-          )
-          .toList(),
+      content: json['content'],
+      summary: json['summary'],
       callId: json['call_id'] as String?,
       name: json['name'] as String?,
       arguments: json['arguments'] as String?,
-      output: json['output'] as String?,
+      input: json['input'] as String?,
+      output: json['output'],
       action: json['action'] == null
           ? null
           : CodexRolloutActionDto.fromJson(
@@ -72,8 +68,12 @@ _CodexRolloutPayloadDto _$CodexRolloutPayloadDtoFromJson(Map json) =>
     );
 
 const _$CodexRolloutPayloadTypeEnumMap = {
+  CodexRolloutPayloadType.message: 'message',
+  CodexRolloutPayloadType.reasoning: 'reasoning',
   CodexRolloutPayloadType.functionCall: 'function_call',
   CodexRolloutPayloadType.functionCallOutput: 'function_call_output',
+  CodexRolloutPayloadType.customToolCall: 'custom_tool_call',
+  CodexRolloutPayloadType.customToolCallOutput: 'custom_tool_call_output',
   CodexRolloutPayloadType.webSearchCall: 'web_search_call',
   CodexRolloutPayloadType.unknown: 'unknown',
 };
@@ -97,6 +97,7 @@ _CodexRolloutContentDto _$CodexRolloutContentDtoFromJson(Map json) =>
 const _$CodexRolloutContentTypeEnumMap = {
   CodexRolloutContentType.inputText: 'input_text',
   CodexRolloutContentType.outputText: 'output_text',
+  CodexRolloutContentType.summaryText: 'summary_text',
   CodexRolloutContentType.unknown: 'unknown',
 };
 
