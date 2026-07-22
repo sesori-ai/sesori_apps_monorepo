@@ -435,7 +435,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Delete"));
+    await tester.tap(find.text("Delete").hitTestable());
     await tester.pumpAndSettle();
 
     final uri = Uri.parse(harness.currentLocation);
@@ -488,7 +488,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Delete"));
+    await tester.tap(find.text("Delete").hitTestable());
     await tester.pumpAndSettle();
 
     expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");

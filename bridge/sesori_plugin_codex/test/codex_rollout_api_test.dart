@@ -3,20 +3,29 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
+import "package:codex_plugin/src/repositories/codex_message_repository.dart";
+import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/codex_plugin_test_factory.dart";
+
 void main() {
-  group("SessionRolloutReader", () {
+  group("Codex rollout layers", () {
     late Directory codexHome;
-    late SessionRolloutReader reader;
+    late CodexRolloutApi rolloutApi;
+    late CodexCatalogRepository catalogRepository;
+    late CodexMessageRepository messageRepository;
 
     setUp(() {
       codexHome = Directory.systemTemp.createTempSync("codex-home-");
-      reader = SessionRolloutReader(
+      rolloutApi = CodexRolloutApi(
         environment: {"CODEX_HOME": codexHome.path},
       );
+      catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
+      messageRepository = CodexMessageRepository(rolloutApi: rolloutApi);
     });
 
     tearDown(() {
@@ -28,10 +37,10 @@ void main() {
     });
 
     test("readIndex returns empty when session_index.jsonl is missing", () {
-      expect(reader.readIndex(), isEmpty);
+      expect(rolloutApi.readSessionIndex(), isEmpty);
     });
 
-    test("readIndex parses well-formed lines and skips bad ones", () {
+    test("readIndex decodes JSON lines and skips malformed JSON", () {
       final index = File(p.join(codexHome.path, "session_index.jsonl"))
         ..writeAsStringSync(
           [
@@ -51,13 +60,26 @@ void main() {
           ].join("\n"),
         );
 
-      final entries = reader.readIndex();
-      expect(entries, hasLength(2));
+      final entries = rolloutApi.readSessionIndex();
+      expect(entries, hasLength(3));
       expect(entries[0].id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
       expect(entries[0].threadName, equals("First thread"));
-      expect(entries[0].updatedAt, isNotNull);
+      expect(entries[0].updatedAt, equals("2026-04-17T10:00:00Z"));
       expect(entries[1].threadName, equals("Second thread"));
+      expect(entries[2].id, isNull);
       expect(index.existsSync(), isTrue);
+    });
+
+    test("readIndex warns for malformed non-final rows", () {
+      File(p.join(codexHome.path, "session_index.jsonl")).writeAsStringSync(
+        '${jsonEncode({"id": "valid"})}\nnot-json-secret-index-content\n{"partial"',
+      );
+
+      final output = _captureWarnings(rolloutApi.readSessionIndex);
+
+      expect(output, contains("malformed session index record"));
+      expect("malformed session index record".allMatches(output), hasLength(1));
+      expect(output, isNot(contains("secret-index-content")));
     });
 
     test("listRolloutFiles walks the sessions tree and extracts UUIDs", () {
@@ -74,14 +96,14 @@ void main() {
         cwd: "/repo/web",
       );
 
-      final files = reader.listRolloutFiles();
+      final files = rolloutApi.listRolloutPaths();
       expect(files, hasLength(2));
       expect(
-        files.map((f) => f.sessionId).toSet(),
-        equals({
-          "019a0000-1111-2222-3333-aaaaaaaaaaaa",
-          "019a0000-1111-2222-3333-bbbbbbbbbbbb",
-        }),
+        files.map(p.basename).toSet(),
+        containsAll([
+          contains("019a0000-1111-2222-3333-aaaaaaaaaaaa"),
+          contains("019a0000-1111-2222-3333-bbbbbbbbbbbb"),
+        ]),
       );
     });
 
@@ -94,12 +116,41 @@ void main() {
         timestamp: "2026-04-17T10:00:00Z",
         cliVersion: "0.121.0",
       );
-      final meta = reader.readMeta(path);
-      expect(meta, isNotNull);
-      expect(meta!.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
-      expect(meta.cwd, equals("/repo/app"));
-      expect(meta.timestamp, isNotNull);
-      expect(meta.cliVersion, equals("0.121.0"));
+      final meta = rolloutApi.readHeader(rolloutPath: path).first.payload;
+      expect(meta?.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
+      expect(meta?.cwd, equals("/repo/app"));
+      expect(meta?.timestamp, equals("2026-04-17T10:00:00Z"));
+      expect(meta?.cliVersion, equals("0.121.0"));
+    });
+
+    test("readHeader does not read beyond its bounded scan window", () {
+      final path = p.join(codexHome.path, "bounded-header.jsonl");
+      final header = jsonEncode({
+        "type": "session_meta",
+        "payload": {"id": "session-id", "cwd": "/repo/app"},
+      });
+      File(path).writeAsBytesSync([
+        ...utf8.encode("$header\n${List.filled(31, "{}").join("\n")}\n"),
+        0xFF,
+      ]);
+
+      final lines = rolloutApi.readHeader(rolloutPath: path);
+
+      expect(lines.first.payload?.id, "session-id");
+    });
+
+    test("readTranscript warns for malformed non-final rows", () {
+      final path = p.join(codexHome.path, "malformed-transcript.jsonl");
+      File(path).writeAsStringSync('{}\nnot-json-secret-source-content\n{"partial"');
+
+      final output = _captureWarnings(
+        () => rolloutApi.readTranscript(rolloutPath: path),
+        level: LogLevel.verbose,
+      );
+
+      expect(output, contains("malformed rollout transcript record"));
+      expect("malformed rollout transcript record".allMatches(output), hasLength(1));
+      expect(output, isNot(contains("secret-source-content")));
     });
 
     test("listSessions joins index + rollout header and sorts by updatedAt", () {
@@ -132,7 +183,7 @@ void main() {
         ].join("\n"),
       );
 
-      final records = reader.listSessions();
+      final records = catalogRepository.listSessionRecords();
       expect(records, hasLength(2));
       // Sorted newest-first.
       expect(records[0].threadName, equals("Newer"));
@@ -140,7 +191,24 @@ void main() {
       expect(records[0].cwd, equals("/repo/app"));
     });
 
-    test("listSessionsInIsolate keeps the main isolate responsive", () async {
+    test("catalog rejects a rollout whose header id mismatches its filename", () {
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl",
+        sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        cwd: "/repo/wrong",
+      );
+
+      late final List<CodexSessionRecord> records;
+      final output = _captureWarnings(() {
+        records = catalogRepository.listSessionRecords();
+      });
+
+      expect(records, isEmpty);
+      expect(output, contains("rollout session id mismatch"));
+    });
+
+    test("catalog isolate enumeration keeps the main isolate responsive", () async {
       const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       _writeRollout(
         codexHome,
@@ -173,7 +241,7 @@ void main() {
       scheduleHeartbeat();
       late final List<CodexSessionRecord> records;
       try {
-        records = await reader.listSessionsInIsolate();
+        records = await catalogRepository.listSessionRecordsInIsolate();
       } finally {
         complete = true;
       }
@@ -215,9 +283,9 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
-        path,
-        "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
       );
       expect(messages, hasLength(2));
       expect(messages[0].info, isA<PluginMessageUser>());
@@ -233,7 +301,10 @@ void main() {
       File(path).writeAsBytesSync([0xFF]);
 
       expect(
-        () => reader.readMessages(path, sessionId),
+        () => messageRepository.readMessages(
+          rolloutPath: path,
+          sessionId: sessionId,
+        ),
         throwsA(
           isA<PluginOperationException>()
               .having(
@@ -296,9 +367,9 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
-        path,
-        "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
       );
 
       // exec (completed) + web_search + apply_patch (running); the
@@ -319,6 +390,48 @@ void main() {
       final patch = messages[2].parts.single;
       expect(patch.tool, equals("edit"));
       expect(patch.state?.status, equals(PluginToolStatus.running));
+    });
+
+    test("readMessages clips tool output by complete Unicode code points", () {
+      final emoji = String.fromCharCode(0x1F600);
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T11-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
+        sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call",
+              "name": "exec_command",
+              "call_id": "c1",
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call_output",
+              "call_id": "c1",
+              "output": "${"x" * 499}${emoji}tail",
+            },
+          }),
+        ],
+      );
+
+      final output = messageRepository
+          .readMessages(
+            rolloutPath: path,
+            sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+          )
+          .single
+          .parts
+          .single
+          .state
+          ?.output;
+
+      expect(output?.runes, hasLength(maxToolOutputLength));
+      expect(output, endsWith(emoji));
     });
   });
 
@@ -353,12 +466,13 @@ void main() {
         timestamp: "2026-04-18T08:30:00Z",
       );
 
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
-        rolloutReader: SessionRolloutReader(
-          environment: {"CODEX_HOME": codexHome.path},
-        ),
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       // Each session carries its own rollout cwd (never the launch CWD), so the
@@ -388,12 +502,13 @@ void main() {
         timestamp: "2026-04-18T08:30:00Z",
       );
 
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
-        rolloutReader: SessionRolloutReader(
-          environment: {"CODEX_HOME": codexHome.path},
-        ),
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       final sessions = await plugin.getSessions("/work/sample-app");
@@ -435,12 +550,13 @@ void main() {
         ],
       );
 
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
-        rolloutReader: SessionRolloutReader(
-          environment: {"CODEX_HOME": codexHome.path},
-        ),
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": codexHome.path},
         projectCwd: "/work/sample-app",
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       final messages = await plugin.getSessionMessages(
@@ -452,8 +568,8 @@ void main() {
       await plugin.dispose();
     });
 
-    test("readMeta extracts the model from turn_context", () {
-      final reader = SessionRolloutReader(
+    test("catalog repository extracts the model from turn_context", () {
+      final api = CodexRolloutApi(
         environment: {"CODEX_HOME": codexHome.path},
       );
       final path = _writeRollout(
@@ -469,14 +585,19 @@ void main() {
         ],
       );
 
-      final meta = reader.readMeta(path);
-      expect(meta?.modelProvider, equals("openai"));
-      expect(meta?.model, equals("gpt-5.2-codex"));
+      final record = CodexCatalogRepository(
+        rolloutApi: api,
+      ).listSessionRecords().single;
+      expect(record.rolloutPath, path);
+      expect(record.modelProvider, equals("openai"));
+      expect(record.model, equals("gpt-5.2-codex"));
     });
 
     test("readMessages stamps assistant model from the active turn_context", () {
-      final reader = SessionRolloutReader(
-        environment: {"CODEX_HOME": codexHome.path},
+      final repository = CodexMessageRepository(
+        rolloutApi: CodexRolloutApi(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
       );
       final path = _writeRollout(
         codexHome,
@@ -514,9 +635,9 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
-        path,
-        "019a0000-1111-2222-3333-dddddddddddd",
+      final messages = repository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-dddddddddddd",
       );
       expect(messages, hasLength(2));
       final first = messages[0].info as PluginMessageAssistant;
@@ -528,8 +649,10 @@ void main() {
     });
 
     test("readMessages falls back to config model when no turn_context", () {
-      final reader = SessionRolloutReader(
-        environment: {"CODEX_HOME": codexHome.path},
+      final repository = CodexMessageRepository(
+        rolloutApi: CodexRolloutApi(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
       );
       final path = _writeRollout(
         codexHome,
@@ -549,9 +672,9 @@ void main() {
         ],
       );
 
-      final messages = reader.readMessages(
-        path,
-        "019a0000-1111-2222-3333-eeeeeeeeeeee",
+      final messages = repository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
         config: const CodexConfigDefaults(
           model: "gpt-5.5",
           modelProvider: "openai",
@@ -562,6 +685,33 @@ void main() {
       expect(assistant.providerID, equals("openai"));
     });
   });
+}
+
+String _captureWarnings(
+  void Function() action, {
+  LogLevel level = LogLevel.warning,
+}) {
+  final previousLevel = Log.level;
+  final stderr = _BufferingStdout();
+  try {
+    Log.level = level;
+    IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+class _BufferingStdout implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 String _writeRollout(

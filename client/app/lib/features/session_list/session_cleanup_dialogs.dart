@@ -1,4 +1,4 @@
-part of "session_list_screen.dart";
+part of "session_list_action_dispatcher.dart";
 
 // -----------------------------------------------------------------------------
 // Delete session bottom sheet

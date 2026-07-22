@@ -164,6 +164,10 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       },
       child: PregoGlassScaffold(
         title: loc.sessionListNewSession,
+        // The options own their scroll while the composer remains fixed, so
+        // use the full viewport behind a fixed title just like session chat.
+        titleMode: PregoTopNavigationTitleMode.inline,
+        reserveBarSpace: false,
         scrollable: false,
         banner: ConnectionBanner.maybeFor(context),
         // The loading scrim must dim the body while the glass back button
@@ -181,20 +185,23 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
               )
             : null,
         slivers: [
-          // A single fill-remaining sliver pins the composer to the bottom while
-          // the variable-height plugin and worktree options scroll above it.
+          // Fill the viewport behind the bar so the variable-height options can
+          // shrink and scroll without pushing the pinned composer off-screen.
           // With the scaffold's keyboard resize (Scaffold default), the
           // composer rides above the keyboard when the field is focused.
           SliverFillRemaining(
-            hasScrollBody: false,
+            hasScrollBody: true,
             child: AbsorbPointer(
               absorbing: isSending,
               child: Column(
                 children: [
                   Expanded(
-                    child: SingleChildScrollView(
-                      key: const Key("new_session_options_scroll"),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: PregoTopBarInsetBuilder(
+                      builder: (context, topInset, child) => SingleChildScrollView(
+                        key: const Key("new_session_options_scroll"),
+                        padding: EdgeInsetsDirectional.fromSTEB(16, topInset + 8, 16, 8),
+                        child: child,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

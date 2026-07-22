@@ -14,6 +14,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Plugi
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
+import "support/codex_plugin_test_factory.dart";
+
 void main() {
   group("CodexPlugin", () {
     test("id returns codex", () {
@@ -28,12 +30,13 @@ void main() {
       // history so the test is hermetic.
       final tempHome = Directory.systemTemp.createTempSync("codex-home-stub-");
       try {
-        final plugin = CodexPlugin(
-          serverUrl: "ws://127.0.0.1:0",
-          rolloutReader: SessionRolloutReader(
-            environment: {"CODEX_HOME": tempHome.path},
-          ),
+        const serverUrl = "ws://127.0.0.1:0";
+        final plugin = createInjectedCodexPlugin(
+          serverUrl: serverUrl,
+          environment: {"CODEX_HOME": tempHome.path},
           projectCwd: "/repo/example",
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          keepaliveInterval: const Duration(seconds: 30),
         );
         expect(plugin.launchDirectory, equals("/repo/example"));
         expect(await plugin.listAllSessions(knownDirectories: const {}), isEmpty);
@@ -50,25 +53,13 @@ void main() {
       try {
         // Hermetic readers so the user's real ~/.codex/ doesn't leak into
         // this test.
-        final rolloutReader = SessionRolloutReader(
+        const serverUrl = "ws://127.0.0.1:0";
+        final plugin = createInjectedCodexPlugin(
+          serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
-        );
-        final configReader = CodexConfigReader(
-          environment: {"CODEX_HOME": tempHome.path},
-        );
-        final plugin = CodexPlugin(
-          serverUrl: "ws://127.0.0.1:0",
-          rolloutReader: rolloutReader,
-          configReader: configReader,
-          metadataRepository: CodexMetadataRepository(
-            skillReader: CodexSkillReader(
-              environment: {"CODEX_HOME": tempHome.path},
-            ),
-            rolloutReader: rolloutReader,
-            configReader: configReader,
-            launchDirectory: "/repo/example",
-          ),
           projectCwd: "/repo/example",
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          keepaliveInterval: const Duration(seconds: 30),
         );
         expect(await plugin.getSessions("/repo/example"), isEmpty);
         expect(await plugin.getCommands(projectId: "/repo/example"), isEmpty);
@@ -144,25 +135,13 @@ void main() {
           })}\n",
         );
 
-        final rolloutReader = SessionRolloutReader(
+        const serverUrl = "ws://127.0.0.1:0";
+        final plugin = createInjectedCodexPlugin(
+          serverUrl: serverUrl,
           environment: {"CODEX_HOME": tempHome.path},
-        );
-        final configReader = CodexConfigReader(
-          environment: {"CODEX_HOME": tempHome.path},
-        );
-        final plugin = CodexPlugin(
-          serverUrl: "ws://127.0.0.1:0",
-          rolloutReader: rolloutReader,
-          configReader: configReader,
-          metadataRepository: CodexMetadataRepository(
-            skillReader: CodexSkillReader(
-              environment: {"CODEX_HOME": tempHome.path},
-            ),
-            rolloutReader: rolloutReader,
-            configReader: configReader,
-            launchDirectory: "/repo/example",
-          ),
           projectCwd: "/repo/example",
+          clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+          keepaliveInterval: const Duration(seconds: 30),
         );
 
         final agent = (await plugin.getAgents(projectId: "/repo/example")).single;
@@ -193,12 +172,18 @@ void main() {
 
     test("healthCheck returns true after a successful initialize handshake", () async {
       final fake = _FakeWebSocket();
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-health-");
+      addTearDown(() => tempHome.deleteSync(recursive: true));
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": tempHome.path},
+        projectCwd: "/repo/example",
         clientFactory: () => CodexAppServerClient(
-          serverUrl: "ws://127.0.0.1:0",
+          serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
         ),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       // Auto-respond to the first request with a valid initialize response.
@@ -220,12 +205,18 @@ void main() {
 
     test("healthCheck returns false when handshake errors", () async {
       final fake = _FakeWebSocket();
-      final plugin = CodexPlugin(
-        serverUrl: "ws://127.0.0.1:0",
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-health-");
+      addTearDown(() => tempHome.deleteSync(recursive: true));
+      const serverUrl = "ws://127.0.0.1:0";
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: serverUrl,
+        environment: {"CODEX_HOME": tempHome.path},
+        projectCwd: "/repo/example",
         clientFactory: () => CodexAppServerClient(
-          serverUrl: "ws://127.0.0.1:0",
+          serverUrl: serverUrl,
           channelFactory: (_) => fake.channel,
         ),
+        keepaliveInterval: const Duration(seconds: 30),
       );
 
       fake.outgoing.first.then((Object? frame) {
