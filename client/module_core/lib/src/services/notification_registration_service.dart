@@ -70,6 +70,11 @@ class NotificationRegistrationService {
     return _enqueueSync(_unregisterCurrentDevice);
   }
 
+  /// Restores push registration when local auth remains after logout fails.
+  Future<void> resumeRegistrationAfterFailedLogout() {
+    return _enqueueSync(_resumeRegistrationAfterFailedLogout);
+  }
+
   Future<void> _syncForState({required AuthState state}) async {
     switch (state) {
       case AuthAuthenticated():
@@ -126,6 +131,14 @@ class NotificationRegistrationService {
         logw("Failed to unregister push token during logout", error, stackTrace);
       }
     }
+  }
+
+  Future<void> _resumeRegistrationAfterFailedLogout() async {
+    if (_authSession.currentState is! AuthAuthenticated) return;
+
+    _registrationSuspended = false;
+    _unauthenticatedObservedWhileSuspended = false;
+    await _registerCurrentToken();
   }
 
   Future<void> _deleteLocalToken() async {

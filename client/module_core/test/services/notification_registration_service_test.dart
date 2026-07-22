@@ -197,6 +197,25 @@ void main() {
       expect(repository.unregisteredTokens, equals(["token-1"]));
     });
 
+    test("failed logout resumes registration for the authenticated user", () async {
+      await service.start();
+      await service.unregisterCurrentDevice();
+
+      await service.resumeRegistrationAfterFailedLogout();
+      pushMessagingSource.emitTokenRefresh("token-2");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        repository.registeredTokens,
+        equals([
+          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
+          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
+          const RegisteredToken(token: "token-2", platform: DevicePlatform.android),
+        ]),
+      );
+      expect(repository.unregisteredTokens, equals(["token-1", "token-1"]));
+    });
+
     test("keeps listening after an initial sync failure", () async {
       repository.failNextRegisterToken = true;
 

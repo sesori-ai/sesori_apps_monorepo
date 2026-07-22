@@ -32,6 +32,9 @@ void main() {
       when(() => authSession.currentState).thenAnswer((_) => authStates.value);
       when(() => authSession.authStateStream).thenAnswer((_) => authStates);
       when(() => notificationRegistrationService.unregisterCurrentDevice()).thenAnswer((_) async {});
+      when(
+        () => notificationRegistrationService.resumeRegistrationAfterFailedLogout(),
+      ).thenAnswer((_) async {});
     });
 
     tearDown(() => authStates.close());
@@ -116,7 +119,11 @@ void main() {
       await cubit.logout();
 
       expect(await futureStatuses, [SettingsLogoutStatus.inProgress, SettingsLogoutStatus.failure]);
-      verify(() => authSession.logoutCurrentDevice()).called(1);
+      verifyInOrder([
+        () => notificationRegistrationService.unregisterCurrentDevice(),
+        () => authSession.logoutCurrentDevice(),
+        () => notificationRegistrationService.resumeRegistrationAfterFailedLogout(),
+      ]);
     });
 
     test("ignores duplicate logout calls while already in progress", () async {
