@@ -3,6 +3,21 @@ import "package:test/test.dart";
 
 void main() {
   group("AppRoute", () {
+    test("plugin settings maps to its dedicated path", () {
+      const route = AppRoute.settingsPlugins();
+
+      expect(route.def, AppRouteDef.settingsPlugins);
+      expect(route.buildPath(), "/settings/plugins");
+      expect(
+        AppRoute.fromDef(
+          def: AppRouteDef.settingsPlugins,
+          pathParams: const {},
+          queryParams: const {},
+        ),
+        isA<AppRouteSettingsPlugins>(),
+      );
+    });
+
     test("sessions round-trips the known worktree capability", () {
       const route = AppRoute.sessions(
         projectId: "project-1",

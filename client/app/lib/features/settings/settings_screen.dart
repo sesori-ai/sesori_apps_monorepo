@@ -92,6 +92,12 @@ class _SettingsBody extends StatelessWidget {
                       title: Text(loc.settingsNotificationsTitle),
                       trailing: const Icon(TablerRegular.chevron_right),
                       onTap: () => context.pushRoute(const AppRoute.settingsNotifications()),
+                    ),
+                    PregoGroupedRow(
+                      icon: TablerRegular.plug,
+                      title: Text(loc.pluginSettingsTitle),
+                      trailing: const Icon(TablerRegular.chevron_right),
+                      onTap: () => context.pushRoute(const AppRoute.settingsPlugins()),
                       isLast: true,
                     ),
                   ],

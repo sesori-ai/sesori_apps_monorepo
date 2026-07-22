@@ -2,12 +2,11 @@
 
 ## Plan State
 
-- **Status:** Stage 12 delivered; replacement stack rebuilding
-- **Base:** `origin/main` at `5a91f582`
-- **Current branch:** `setup-aware-plugin-lifecycle-s12-p01`
-- **Current stage:** Stage 13 rebuild
-- **Next action:** rebuild Stage 13 from rewritten Stage 12, verify it,
-  rewrite its branch, reopen #511, and start its monitor
+- **Status:** Stage 10 merged; Stages 11-13 remain open and monitored
+- **Base:** synchronized with `origin/main` at `4ef55675`
+- **Current branch:** `setup-aware-plugin-lifecycle-s13-p01`
+- **Current stage:** Stage 13 delivered
+- **Next action:** monitor CI and review activity across #508-#511
 
 ## Closed First Implementation
 
@@ -15,11 +14,11 @@ The first unmerged stack was closed before redesign:
 
 | Old PR | State | Replacement |
 |---|---|---|
-| #507 | Reopened | Redesigned Stage 10 at `794e853e`; CI/review monitored |
-| #508 | Reopened | Redesigned Stage 11-P01 at `29472036`; CI/review monitored |
-| #509 | Reopened | Redesigned Stage 11-P02 at `c0b3ed11`; CI/review monitored |
-| #510 | Reopened | Redesigned Stage 12 at `c4104e73`; CI/review monitored |
-| #511 | Closed | Reopen after redesigned Stage 13 is implemented on merged Settings architecture |
+| #507 | Merged | Redesigned Stage 10 merged to `main` as `4ef55675` |
+| #508 | Reopened | Stage 11-P01 plus typed runtime operations at `6d0dce4f`; monitored |
+| #509 | Reopened | Stage 11-P02 recovery hardening at `0e0952a2`; monitored |
+| #510 | Reopened | Stage 12 synchronized with #509 at `90d57dae`; monitored |
+| #511 | Reopened | Stage 13 synchronized with #510 at `b9729d7a`; monitored |
 
 Old verification results are historical evidence only; replacement stages must
 run their focused verification again.
@@ -28,11 +27,11 @@ run their focused verification again.
 
 | Done | Stage | Branch | PR state |
 |---|---|---|---|
-| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 open and monitored |
+| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
 | [x] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 open and monitored |
 | [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 open and monitored |
 | [x] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 open and monitored |
-| [ ] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 closed |
+| [x] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 open and monitored |
 
 ## Locked Redesign Deltas
 
@@ -188,6 +187,64 @@ run their focused verification again.
 - Committed as `c4104e73`, force-pushed with lease, and reopened #510 through
   the temporary-old-head GitHub workaround; the verified replacement head was
   restored immediately and is monitored.
+- CI exposed a setup-route fixture that registered a setup-blocked plugin
+  without a matching runtime snapshot. `bf0433b8` makes the test runtime model
+  blocked setup honestly; the focused route test and bridge analyzer passed,
+  and the rerun bridge test job passed. The remaining CLA failure is a GitHub
+  503 after the action confirmed all contributors are signed.
+
+### 2026-07-20 — replacement Stage 13
+
+- Added nullable bridge identity to plugin discovery. New bridges return the
+  registered bridge ID while older bridges decode as `null` without breaking
+  discovery.
+- Added module-core management transport, typed unsupported/not-found/conflict
+  results, revision-monotonic orchestration, reconnect/SSE coalesced refresh,
+  and explicit safe-to-force cubit state.
+- Added secure per-bridge new-session plugin preferences through a dedicated
+  API, repository, and `NewSessionPluginService`. Missing bridge identity skips
+  persistence; read/write failures are logged and never block creation.
+- Added the `/settings/plugins` Prego sub-page, a Plugins landing row, numeric
+  global/per-plugin timeout controls, lifecycle actions, status presentation,
+  and explicit force confirmation. No desktop route or screen was added.
+- Generated shared Freezed/JSON, module-core Freezed/Injectable, and mobile
+  localization outputs from source.
+- Sequential `dart analyze --fatal-infos` passed in `sesori_shared`,
+  `bridge/app`, `client/module_core`, `client/app`, and `client/desktop`.
+- Focused shared/bridge contract and route tests passed; 97 focused module-core
+  management, preference, reconnect, new-session, and route tests passed; 65
+  focused mobile settings, new-session, and route tests passed. The final
+  Plugins-copy regeneration was covered by 6 settings tests.
+- Architecture review approved the combined Stage 13 working-tree scope with
+  no findings. `git diff --check` passed.
+- Committed as `167a3ee7`, force-pushed with lease, and reopened #511 through
+  the temporary-old-head GitHub workaround; the verified replacement head was
+  restored immediately and is monitored.
+- After #507 squash-merged as `4ef55675`, merged `main` into #508 and propagated
+  that merge through #509-#511 without rebasing. The only semantic conflict was
+  Codex's transient work evidence against the newly merged session-layering
+  architecture; the resolution preserved `CodexSessionService` ownership while
+  retaining accepted-turn fencing and work-state publication. Codex analysis
+  and all 36 focused plugin/write-path tests passed; bridge-app analysis and 71
+  focused runtime/catalog/event tests passed; final module-core, mobile, and
+  desktop analysis plus focused Stage 13 tests passed. #508-#511 are mergeable.
+- Human review on #508 requested enum enforcement at the runtime acquisition
+  boundary. `6d0dce4f` changes every `PluginRuntime` operation parameter to an
+  enum-typed value and defers `.name` conversion to low-level errors/logging;
+  domain repositories use scoped operation enums. Architecture review approved
+  the change, bridge-app analysis and focused runtime/repository tests passed,
+  and the merge was propagated through #509-#511.
+- Review on #509 found that an ACP authentication failure retained a completed
+  connection future and prevented recovery after local login. `757634a4`
+  retains the typed failure but clears the connection attempt so the next call
+  creates a fresh client. ACP analysis and focused initialize/authentication
+  tests passed, and the fix was propagated through #510-#511.
+- Follow-up review hardened both reconnect seams in `0e0952a2`: ACP keeps the
+  failed attempt single-flight through teardown so stale cleanup cannot null a
+  replacement client, and Codex retains provisional accepted-turn evidence
+  across transport reconnects until authoritative terminal/status evidence
+  arrives. Focused ACP and Codex analysis/tests passed; the fixes were
+  propagated through #510-#511.
 
 ## Delivery Rules
 

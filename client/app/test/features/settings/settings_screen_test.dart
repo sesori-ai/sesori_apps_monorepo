@@ -41,6 +41,10 @@ Widget _app() {
         path: "/settings/profile",
         builder: (context, state) => const Scaffold(body: Text("profile-route")),
       ),
+      GoRoute(
+        path: "/settings/plugins",
+        builder: (context, state) => const Scaffold(body: Text("plugins-route")),
+      ),
     ],
   );
 
@@ -80,5 +84,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("profile-route"), findsOneWidget);
+  });
+
+  testWidgets("plugins landing row navigates to plugin settings", (tester) async {
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Plugins"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("plugins-route"), findsOneWidget);
   });
 }

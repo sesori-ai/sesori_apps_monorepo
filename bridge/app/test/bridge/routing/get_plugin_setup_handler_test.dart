@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/routing/get_plugin_setup_handler.dart";
@@ -50,7 +51,10 @@ void main() {
             );
       await Future<void>.delayed(Duration.zero);
       handler = GetPluginSetupHandler(lifecycleService: lifecycleService);
-      selectableHandler = GetPluginsHandler(lifecycleService: lifecycleService);
+      selectableHandler = GetPluginsHandler(
+        bridgeIdProvider: const _TestBridgeIdProvider(),
+        lifecycleService: lifecycleService,
+      );
     });
 
     tearDown(() async {
@@ -89,9 +93,17 @@ void main() {
       );
 
       expect(response.plugins.map((plugin) => plugin.id), ["ready"]);
+      expect(response.bridgeId, "bridge-1");
       expect(response.plugins.single.isDefault, isTrue);
     });
   });
+}
+
+class _TestBridgeIdProvider implements BridgeIdProvider {
+  const _TestBridgeIdProvider();
+
+  @override
+  String? get bridgeId => "bridge-1";
 }
 
 class _TestPluginApi extends NativeProjectsPluginApi {

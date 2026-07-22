@@ -1,13 +1,16 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../auth/bridge_id_provider.dart";
 import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
 
 class GetPluginsHandler extends GetRequestHandler<PluginListResponse> {
-  GetPluginsHandler({required PluginLifecycleService lifecycleService})
-    : _lifecycleService = lifecycleService,
+  GetPluginsHandler({required BridgeIdProvider bridgeIdProvider, required PluginLifecycleService lifecycleService})
+    : _bridgeIdProvider = bridgeIdProvider,
+      _lifecycleService = lifecycleService,
       super("/plugin");
 
+  final BridgeIdProvider _bridgeIdProvider;
   final PluginLifecycleService _lifecycleService;
 
   @override
@@ -17,6 +20,9 @@ class GetPluginsHandler extends GetRequestHandler<PluginListResponse> {
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    return PluginListResponse(plugins: _lifecycleService.selectableMetadataSnapshot);
+    return PluginListResponse(
+      bridgeId: _bridgeIdProvider.bridgeId,
+      plugins: _lifecycleService.selectableMetadataSnapshot,
+    );
   }
 }

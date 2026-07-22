@@ -181,6 +181,190 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsClose => 'Close settings';
 
   @override
+  String get pluginSettingsTitle => 'Plugins';
+
+  @override
+  String get pluginSettingsDescription =>
+      'Manage which coding tools Sesori can use and how long they stay running while idle.';
+
+  @override
+  String get pluginSettingsLoading => 'Loading coding tools';
+
+  @override
+  String get pluginSettingsUnsupportedTitle => 'Update your bridge to manage coding tools';
+
+  @override
+  String get pluginSettingsUnsupportedDescription =>
+      'This older bridge still supports existing sessions, but it does not offer remote coding tool controls.';
+
+  @override
+  String get pluginSettingsLoadFailed => 'Could not load coding tools';
+
+  @override
+  String get pluginSettingsLoadFailedDescription => 'Check your bridge connection and try again.';
+
+  @override
+  String get pluginSettingsRetry => 'Retry';
+
+  @override
+  String get pluginSettingsIdleTimeoutSection => 'Idle timeout';
+
+  @override
+  String get pluginSettingsGlobalIdleTimeout => 'Global idle timeout';
+
+  @override
+  String get pluginSettingsGlobalIdleTimeoutDescription => 'Applies to every coding tool and clears custom overrides.';
+
+  @override
+  String get pluginSettingsRegistrationsSection => 'Registered coding tools';
+
+  @override
+  String get pluginSettingsDefaultBadge => 'Default';
+
+  @override
+  String get pluginSettingsSetupStatus => 'Setup';
+
+  @override
+  String get pluginSettingsRuntimeStatus => 'Runtime';
+
+  @override
+  String get pluginSettingsWorkStatus => 'Work';
+
+  @override
+  String get pluginSettingsEligibility => 'Eligibility';
+
+  @override
+  String get pluginSettingsEligible => 'Eligible';
+
+  @override
+  String get pluginSettingsNotEligible => 'Not eligible';
+
+  @override
+  String get pluginSettingsEffectiveIdleTimeout => 'Effective idle timeout';
+
+  @override
+  String get pluginSettingsCustomIdleTimeout => 'Custom override';
+
+  @override
+  String get pluginSettingsUsesGlobalIdleTimeout => 'Uses the global timeout';
+
+  @override
+  String pluginSettingsTimeoutMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get pluginSettingsRefreshSetup => 'Check setup';
+
+  @override
+  String get pluginSettingsRestart => 'Restart';
+
+  @override
+  String get pluginSettingsSetOverride => 'Set override';
+
+  @override
+  String get pluginSettingsClearOverride => 'Clear override';
+
+  @override
+  String get pluginSettingsGlobalTimeoutDialogTitle => 'Set the global idle timeout';
+
+  @override
+  String pluginSettingsOverrideDialogTitle(String pluginName) {
+    return 'Set the idle timeout for $pluginName';
+  }
+
+  @override
+  String get pluginSettingsIdleTimeoutField => 'Idle timeout';
+
+  @override
+  String get pluginSettingsMinutesUnit => 'minutes';
+
+  @override
+  String get pluginSettingsSave => 'Save';
+
+  @override
+  String get pluginSettingsCancel => 'Cancel';
+
+  @override
+  String get pluginSettingsActionFailedTitle => 'Coding tool action failed';
+
+  @override
+  String get pluginSettingsActionFailed => 'The request failed. Try again.';
+
+  @override
+  String get pluginSettingsInvalidIdleTimeout => 'Enter an idle timeout as a whole number.';
+
+  @override
+  String get pluginSettingsActionNotFound => 'This coding tool is no longer registered. Refresh and try again.';
+
+  @override
+  String get pluginSettingsActionConflict => 'The coding tool cannot perform that action in its current state.';
+
+  @override
+  String get pluginSettingsDismissError => 'Dismiss error';
+
+  @override
+  String get pluginSettingsForceDisableTitle => 'Force disable this coding tool?';
+
+  @override
+  String get pluginSettingsForceRestartTitle => 'Force restart this coding tool?';
+
+  @override
+  String get pluginSettingsForceDescription =>
+      'The tool is busy or its work state is uncertain. Forcing this action may interrupt active work.';
+
+  @override
+  String get pluginSettingsForceAction => 'Force';
+
+  @override
+  String get pluginSettingsSetupNotInspected => 'Not checked';
+
+  @override
+  String get pluginSettingsSetupReady => 'Ready';
+
+  @override
+  String get pluginSettingsSetupRuntimeMissing => 'Runtime missing';
+
+  @override
+  String get pluginSettingsSetupAuthenticationRequired => 'Authentication required';
+
+  @override
+  String get pluginSettingsSetupUnavailable => 'Unavailable';
+
+  @override
+  String get pluginSettingsStatusDisabled => 'Disabled';
+
+  @override
+  String get pluginSettingsStatusBlocked => 'Blocked';
+
+  @override
+  String get pluginSettingsStatusDormant => 'Ready when needed';
+
+  @override
+  String get pluginSettingsStatusStarting => 'Starting';
+
+  @override
+  String get pluginSettingsStatusActive => 'Active';
+
+  @override
+  String get pluginSettingsStatusDegraded => 'Needs attention';
+
+  @override
+  String get pluginSettingsStatusStopping => 'Stopping';
+
+  @override
+  String get pluginSettingsStatusFailed => 'Failed';
+
+  @override
+  String get pluginSettingsStatusUnknown => 'Unknown';
+
+  @override
+  String get pluginSettingsWorkIdle => 'Idle';
+
+  @override
+  String get pluginSettingsWorkBusy => 'Busy';
+
+  @override
   String settingsVersion(String version, String buildNumber) {
     return 'v$version ($buildNumber)';
   }

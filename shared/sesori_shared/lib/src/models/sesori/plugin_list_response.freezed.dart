@@ -161,7 +161,7 @@ as String?,
 /// @nodoc
 mixin _$PluginListResponse {
 
- List<PluginMetadata> get plugins;
+ String? get bridgeId; List<PluginMetadata> get plugins;
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -174,16 +174,16 @@ $PluginListResponseCopyWith<PluginListResponse> get copyWith => _$PluginListResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, plugins));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&const DeepCollectionEquality().equals(other.plugins, plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(plugins));
+int get hashCode => Object.hash(runtimeType,bridgeId,const DeepCollectionEquality().hash(plugins));
 
 @override
 String toString() {
-  return 'PluginListResponse(plugins: $plugins)';
+  return 'PluginListResponse(bridgeId: $bridgeId, plugins: $plugins)';
 }
 
 
@@ -194,7 +194,7 @@ abstract mixin class $PluginListResponseCopyWith<$Res>  {
   factory $PluginListResponseCopyWith(PluginListResponse value, $Res Function(PluginListResponse) _then) = _$PluginListResponseCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> plugins
+ String? bridgeId, List<PluginMetadata> plugins
 });
 
 
@@ -211,9 +211,10 @@ class _$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? bridgeId = freezed,Object? plugins = null,}) {
   return _then(_self.copyWith(
-plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
+bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,
   ));
 }
@@ -226,9 +227,10 @@ as List<PluginMetadata>,
 @JsonSerializable()
 
 class _PluginListResponse implements PluginListResponse {
-  const _PluginListResponse({required final  List<PluginMetadata> plugins}): _plugins = plugins;
+  const _PluginListResponse({required this.bridgeId, required final  List<PluginMetadata> plugins}): _plugins = plugins;
   factory _PluginListResponse.fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);
 
+@override final  String? bridgeId;
  final  List<PluginMetadata> _plugins;
 @override List<PluginMetadata> get plugins {
   if (_plugins is EqualUnmodifiableListView) return _plugins;
@@ -250,16 +252,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other._plugins, _plugins));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&const DeepCollectionEquality().equals(other._plugins, _plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins));
+int get hashCode => Object.hash(runtimeType,bridgeId,const DeepCollectionEquality().hash(_plugins));
 
 @override
 String toString() {
-  return 'PluginListResponse(plugins: $plugins)';
+  return 'PluginListResponse(bridgeId: $bridgeId, plugins: $plugins)';
 }
 
 
@@ -270,7 +272,7 @@ abstract mixin class _$PluginListResponseCopyWith<$Res> implements $PluginListRe
   factory _$PluginListResponseCopyWith(_PluginListResponse value, $Res Function(_PluginListResponse) _then) = __$PluginListResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<PluginMetadata> plugins
+ String? bridgeId, List<PluginMetadata> plugins
 });
 
 
@@ -287,9 +289,10 @@ class __$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? plugins = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? bridgeId = freezed,Object? plugins = null,}) {
   return _then(_PluginListResponse(
-plugins: null == plugins ? _self._plugins : plugins // ignore: cast_nullable_to_non_nullable
+bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,plugins: null == plugins ? _self._plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,
   ));
 }

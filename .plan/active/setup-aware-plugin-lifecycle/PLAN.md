@@ -3,11 +3,11 @@
 ## Status
 
 - **Plan slug:** `setup-aware-plugin-lifecycle`
-- **Status:** redesign approved; implementation stack is being rebuilt
-- **Implementation base:** latest `origin/main` at `5a91f582`
+- **Status:** replacement implementation delivered; Stage 10 merged and the remaining stack is monitored
+- **Implementation base:** synchronized with `origin/main` at `4ef55675`
 - **Predecessor:** parallel-plugin Stages 0-9 and bridge-app-onboarding W02 are merged
-- **Delivery:** five stacked PRs; the old unmerged PRs #507-#511 are closed and
-  are reopened only after their replacement stage is implemented and verified
+- **Delivery:** five stacked PRs; #507 is merged and #508-#511 remain open with
+  their verified replacements and active monitoring
 
 This plan replaces the first unmerged implementation. Nothing introduced only
 by that implementation needs compatibility handling. Released contracts still

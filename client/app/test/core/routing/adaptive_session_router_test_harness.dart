@@ -87,6 +87,7 @@ class AdaptiveSessionRouterTestHarness {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         const PluginListResponse(
+          bridgeId: null,
           plugins: [
             PluginMetadata(
               id: "plugin-1",
@@ -200,6 +201,12 @@ class AdaptiveSessionRouterTestHarness {
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectRepository>(projectRepository);
     getIt.registerSingleton<PluginRepository>(pluginRepository);
+    getIt.registerSingleton<NewSessionPluginService>(
+      NewSessionPluginService(
+        pluginRepository: pluginRepository,
+        pluginPreferenceRepository: MockPluginPreferenceRepository(),
+      ),
+    );
     registerListServices(
       projectRepository: projectRepository,
     );

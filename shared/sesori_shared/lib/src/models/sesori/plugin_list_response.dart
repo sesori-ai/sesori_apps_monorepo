@@ -26,6 +26,7 @@ sealed class PluginMetadata with _$PluginMetadata {
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginListResponse with _$PluginListResponse {
   const factory PluginListResponse({
+    required String? bridgeId,
     required List<PluginMetadata> plugins,
   }) = _PluginListResponse;
 
