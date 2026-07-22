@@ -10,6 +10,8 @@ abstract interface class PushMessagingSource {
 
   Future<String?> getToken();
 
+  Future<void> deleteToken();
+
   Stream<String> get tokenRefreshStream;
 
   Stream<PushNotificationMessage> get foregroundMessageStream;

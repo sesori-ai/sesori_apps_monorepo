@@ -27,6 +27,8 @@ class _StubAuthSession extends Mock implements AuthSession {
   AuthState get currentState => _authState.value;
 }
 
+class _MockNotificationRegistrationService extends Mock implements NotificationRegistrationService {}
+
 Widget _app() {
   final router = GoRouter(
     routes: [
@@ -64,6 +66,9 @@ void main() {
 
     await GetIt.instance.reset();
     GetIt.instance.registerSingleton<AuthSession>(_StubAuthSession());
+    GetIt.instance.registerSingleton<NotificationRegistrationService>(
+      _MockNotificationRegistrationService(),
+    );
   });
 
   tearDown(() async {

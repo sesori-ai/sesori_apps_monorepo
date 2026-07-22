@@ -110,6 +110,9 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   }
 
   @override
+  Future<void> deleteToken() => _messaging.deleteToken();
+
+  @override
   Future<NotificationOpenRequest?> getInitialNotificationOpen() async {
     if (_initialNotificationOpenConsumed) {
       return null;

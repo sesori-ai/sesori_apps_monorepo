@@ -175,6 +175,9 @@ class FakePushMessagingSource implements PushMessagingSource {
   Future<String?> getToken() async => null;
 
   @override
+  Future<void> deleteToken() async {}
+
+  @override
   Future<void> initialize() async {}
 
   @override

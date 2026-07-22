@@ -17,13 +17,16 @@ void main() {
     late FakeAuthSession authSession;
     late FakePushMessagingSource pushMessagingSource;
     late NotificationRegistrationService service;
+    late List<String> operations;
 
     setUp(() {
-      repository = RecordingNotificationRepository();
+      operations = <String>[];
+      repository = RecordingNotificationRepository(operations: operations);
       authSession = FakeAuthSession(initialState: _authenticatedState());
       pushMessagingSource = FakePushMessagingSource(
         initialToken: "token-1",
         devicePlatform: DevicePlatform.android,
+        operations: operations,
       );
       service = NotificationRegistrationService(
         repository: repository,
@@ -38,7 +41,7 @@ void main() {
       await pushMessagingSource.dispose();
     });
 
-    test("auth state and token refresh drive registration pipeline only", () async {
+    test("auth state and token refresh keep server and local registration in sync", () async {
       await service.start();
 
       expect(
@@ -67,38 +70,45 @@ void main() {
       authSession.emit(const AuthState.unauthenticated());
       await Future<void>.delayed(Duration.zero);
 
-      expect(repository.unregisteredTokens, equals(["token-1", "token-2"]));
+      expect(repository.unregisteredTokens, equals(["token-1"]));
+      expect(pushMessagingSource.deleteTokenCalls, 1);
+      expect(pushMessagingSource.currentToken, isNull);
     });
 
-    test("unauthenticated refresh does not register until auth returns", () async {
+    test("unauthenticated refresh is deleted until auth returns", () async {
       authSession.emit(const AuthState.unauthenticated());
       await service.start();
       await Future<void>.delayed(Duration.zero);
 
       expect(repository.registeredTokens, isEmpty);
+      expect(pushMessagingSource.deleteTokenCalls, 1);
 
       pushMessagingSource.currentToken = "token-2";
       pushMessagingSource.emitTokenRefresh("token-2");
       await Future<void>.delayed(Duration.zero);
 
       expect(repository.registeredTokens, isEmpty);
+      expect(pushMessagingSource.deleteTokenCalls, 2);
+      expect(pushMessagingSource.currentToken, isNull);
 
+      pushMessagingSource.currentToken = "token-3";
       authSession.emit(_authenticatedState());
       await Future<void>.delayed(Duration.zero);
 
       expect(
         repository.registeredTokens,
         equals([
-          const RegisteredToken(token: "token-2", platform: DevicePlatform.android),
+          const RegisteredToken(token: "token-3", platform: DevicePlatform.android),
         ]),
       );
     });
 
-    test("unauthenticated startup unregisters the current device token after restart", () async {
+    test("unauthenticated startup deletes the current local token after restart", () async {
       authSession = FakeAuthSession(initialState: const AuthState.unauthenticated());
       pushMessagingSource = FakePushMessagingSource(
         initialToken: "token-1",
         devicePlatform: DevicePlatform.android,
+        operations: operations,
       );
       service = NotificationRegistrationService(
         repository: repository,
@@ -109,6 +119,81 @@ void main() {
       await service.start();
 
       expect(repository.registeredTokens, isEmpty);
+      expect(repository.unregisteredTokens, isEmpty);
+      expect(pushMessagingSource.deleteTokenCalls, 1);
+      expect(pushMessagingSource.currentToken, isNull);
+    });
+
+    test("logout cleanup unregisters remotely before auth deletes the local token", () async {
+      await service.start();
+      operations.clear();
+
+      await service.unregisterCurrentDevice();
+
+      expect(operations, equals(["unregister:token-1"]));
+      expect(repository.unregisteredTokens, equals(["token-1"]));
+      expect(pushMessagingSource.deleteTokenCalls, 0);
+
+      pushMessagingSource.emitTokenRefresh("token-2");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        repository.registeredTokens,
+        equals([
+          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
+        ]),
+      );
+      expect(pushMessagingSource.deleteTokenCalls, 0);
+
+      authSession.emit(const AuthState.unauthenticated());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(operations, equals(["unregister:token-1", "delete-local"]));
+      expect(pushMessagingSource.deleteTokenCalls, 1);
+    });
+
+    test("unauthenticated cleanup retries local deletion after failures", () async {
+      await service.start();
+      repository.failNextUnregisterToken = true;
+      pushMessagingSource.failNextDeleteToken = true;
+
+      await service.unregisterCurrentDevice();
+
+      expect(repository.unregisteredTokens, equals(["token-1"]));
+      expect(pushMessagingSource.deleteTokenCalls, 0);
+
+      authSession.emit(const AuthState.unauthenticated());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(pushMessagingSource.deleteTokenCalls, 1);
+
+      pushMessagingSource.emitTokenRefresh("token-2");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(pushMessagingSource.deleteTokenCalls, 2);
+      expect(pushMessagingSource.currentToken, isNull);
+    });
+
+    test("queued authenticated work cannot clear logout suspension", () async {
+      await service.start();
+      final tokenCompleter = Completer<String?>();
+      pushMessagingSource.tokenFuture = tokenCompleter.future;
+
+      authSession.emit(_authenticatedState());
+      await Future<void>.delayed(Duration.zero);
+      final cleanupFuture = service.unregisterCurrentDevice();
+      pushMessagingSource.emitTokenRefresh("token-2");
+
+      tokenCompleter.complete("token-1");
+      await cleanupFuture;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        repository.registeredTokens,
+        equals([
+          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
+        ]),
+      );
       expect(repository.unregisteredTokens, equals(["token-1"]));
     });
 
@@ -121,6 +206,7 @@ void main() {
 
       authSession.emit(const AuthState.unauthenticated());
       await Future<void>.delayed(Duration.zero);
+      pushMessagingSource.currentToken = "token-1";
       authSession.emit(_authenticatedState());
       await Future<void>.delayed(Duration.zero);
 
@@ -134,7 +220,7 @@ void main() {
       pushMessagingSource.emitTokenRefresh("token-2");
       await Future<void>.delayed(Duration.zero);
 
-      expect(repository.unregisteredTokens, equals(["token-1", "token-1"]));
+      expect(repository.unregisteredTokens, equals(["token-1"]));
       expect(
         repository.registeredTokens,
         equals([
@@ -161,7 +247,8 @@ void main() {
           const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
         ]),
       );
-      expect(repository.unregisteredTokens, equals(["token-1"]));
+      expect(repository.unregisteredTokens, isEmpty);
+      expect(pushMessagingSource.deleteTokenCalls, 1);
     });
 
     test("processes the first changed auth snapshot after startup sync", () async {
@@ -183,7 +270,8 @@ void main() {
           const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
         ]),
       );
-      expect(repository.unregisteredTokens, equals(["token-1"]));
+      expect(repository.unregisteredTokens, isEmpty);
+      expect(pushMessagingSource.deleteTokenCalls, 1);
     });
   });
 }
@@ -191,7 +279,11 @@ void main() {
 class RecordingNotificationRepository implements NotificationRepository {
   final List<RegisteredToken> registeredTokens = <RegisteredToken>[];
   final List<String> unregisteredTokens = <String>[];
+  final List<String> operations;
   bool failNextRegisterToken = false;
+  bool failNextUnregisterToken = false;
+
+  RecordingNotificationRepository({required this.operations});
 
   @override
   Future<void> registerToken({required String token, required DevicePlatform platform}) async {
@@ -200,11 +292,17 @@ class RecordingNotificationRepository implements NotificationRepository {
       throw StateError("register token failed");
     }
     registeredTokens.add(RegisteredToken(token: token, platform: platform));
+    operations.add("register:$token");
   }
 
   @override
   Future<void> unregisterToken({required String token}) async {
     unregisteredTokens.add(token);
+    operations.add("unregister:$token");
+    if (failNextUnregisterToken) {
+      failNextUnregisterToken = false;
+      throw StateError("unregister token failed");
+    }
   }
 }
 
@@ -277,11 +375,18 @@ class FakePushMessagingSource implements PushMessagingSource {
 
   @override
   final DevicePlatform devicePlatform;
+  final List<String> operations;
 
   String? currentToken;
   Future<String?>? tokenFuture;
+  int deleteTokenCalls = 0;
+  bool failNextDeleteToken = false;
 
-  FakePushMessagingSource({required String? initialToken, required this.devicePlatform}) : currentToken = initialToken;
+  FakePushMessagingSource({
+    required String? initialToken,
+    required this.devicePlatform,
+    required this.operations,
+  }) : currentToken = initialToken;
 
   @override
   Stream<PushNotificationMessage> get foregroundMessageStream => _foregroundMessageController.stream;
@@ -291,6 +396,17 @@ class FakePushMessagingSource implements PushMessagingSource {
 
   @override
   Future<String?> getToken() async => tokenFuture ?? currentToken;
+
+  @override
+  Future<void> deleteToken() async {
+    deleteTokenCalls++;
+    operations.add("delete-local");
+    if (failNextDeleteToken) {
+      failNextDeleteToken = false;
+      throw StateError("delete token failed");
+    }
+    currentToken = null;
+  }
 
   @override
   Future<void> initialize() async {}
