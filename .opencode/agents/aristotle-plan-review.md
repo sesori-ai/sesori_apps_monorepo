@@ -1,7 +1,7 @@
 ---
 description: Reviews an architecture-bearing development plan against strict Sesori architectural rules. The caller fixes findings directly without re-reviewing those fixes. A plan may be reviewed again after a too-vague rejection or considerable changes caused by new findings or user requests.
 mode: subagent
-model: openai/gpt-5.6-sol
+model: openai/gpt-5.6-sol-fast
 variant: high
 temperature: 0.1
 permission:
