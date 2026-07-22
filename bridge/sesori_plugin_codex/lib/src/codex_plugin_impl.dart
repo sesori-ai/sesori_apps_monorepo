@@ -38,8 +38,8 @@ import "services/codex_session_service.dart";
 /// Approval/permission flows still throw — those land in Phase 5.
 class CodexPlugin implements CodexManagedApi {
   static const String pluginId = "codex";
-  static const int _renameMaxAttempts = 5;
   static const Duration _renameRetryDelay = Duration(milliseconds: 100);
+  static const Duration _renameRetryTimeout = Duration(seconds: 2);
 
   final String _serverUrl;
   // Passed to the default client built in [_createClient]; retained for future
@@ -625,6 +625,7 @@ class CodexPlugin implements CodexManagedApi {
     required String title,
   }) async {
     final client = await _connectedClient();
+    final retryStopwatch = Stopwatch();
     for (var attempt = 1; ; attempt++) {
       try {
         await client.request(
@@ -636,10 +637,12 @@ class CodexPlugin implements CodexManagedApi {
         // thread/start can return after creating the rollout but before its
         // initial session metadata has been flushed. Retry only that transient
         // app-server failure; unrelated rename failures remain immediate.
-        if (attempt >= _renameMaxAttempts || !_isEmptyRollout(error)) rethrow;
+        if (!_isEmptyRollout(error)) rethrow;
+        if (!retryStopwatch.isRunning) retryStopwatch.start();
+        if (retryStopwatch.elapsed + _renameRetryDelay > _renameRetryTimeout) rethrow;
         Log.d(
           "Codex rollout metadata is not ready for session $sessionId; "
-          "retrying rename ($attempt/$_renameMaxAttempts)",
+          "retrying rename after attempt $attempt",
         );
         await Future<void>.delayed(_renameRetryDelay);
       }

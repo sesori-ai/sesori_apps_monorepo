@@ -165,7 +165,17 @@ void main() {
       expect(renamed.directory, equals("/work/sample/packages/core"));
     });
 
-    test("renameSession retries while a fresh rollout is empty", () async {
+    test("renameSession retries beyond the initial rollout flush window", () async {
+      const emptyRolloutResponse = _Response(
+        error: {
+          "code": -32603,
+          "message":
+              "failed to set thread name: Fatal error: failed to update thread metadata "
+              "t-empty-rollout: thread-store internal error: failed to read session metadata "
+              "/tmp/rollout-t-empty-rollout.jsonl: rollout at "
+              "/tmp/rollout-t-empty-rollout.jsonl is empty",
+        },
+      );
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -174,16 +184,12 @@ void main() {
           },
         ),
         const _Response(result: {"turnId": "u-1"}),
-        const _Response(
-          error: {
-            "code": -32603,
-            "message":
-                "failed to set thread name: Fatal error: failed to update thread metadata "
-                "t-empty-rollout: thread-store internal error: failed to read session metadata "
-                "/tmp/rollout-t-empty-rollout.jsonl: rollout at "
-                "/tmp/rollout-t-empty-rollout.jsonl is empty",
-          },
-        ),
+        emptyRolloutResponse,
+        emptyRolloutResponse,
+        emptyRolloutResponse,
+        emptyRolloutResponse,
+        emptyRolloutResponse,
+        emptyRolloutResponse,
         const _Response(result: {}),
       ]);
 
@@ -201,7 +207,7 @@ void main() {
       );
 
       expect(renamed.title, equals("Renamed"));
-      expect(fake.sentMethods.where((method) => method == "thread/name/set"), hasLength(2));
+      expect(fake.sentMethods.where((method) => method == "thread/name/set"), hasLength(7));
     });
 
     test("renameSession does not retry unrelated RPC failures", () async {
