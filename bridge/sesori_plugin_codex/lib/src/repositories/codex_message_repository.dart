@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
@@ -275,10 +277,8 @@ class CodexMessageRepository {
 
   String? _toolCallTitle(String? argumentsJson) {
     if (argumentsJson == null || argumentsJson.isEmpty) return null;
-    try {
-      final arguments = CodexToolArgumentsDto.fromJson(
-        jsonDecodeMap(argumentsJson),
-      );
+    final arguments = _tryDecodeToolArguments(raw: argumentsJson);
+    if (arguments != null) {
       for (final value in [
         arguments.cmd,
         arguments.command,
@@ -289,10 +289,54 @@ class CodexMessageRepository {
         if (value is String && value.isNotEmpty) return value;
         if (value is List && value.isNotEmpty) return value.join(" ");
       }
-    } on Object {
-      // Fall through to the raw arguments.
+    }
+    final embeddedCommand = _embeddedExecCommand(source: argumentsJson);
+    if (embeddedCommand != null && embeddedCommand.isNotEmpty) {
+      return embeddedCommand;
     }
     return argumentsJson.length > 120 ? argumentsJson.substring(0, 120) : argumentsJson;
+  }
+
+  CodexToolArgumentsDto? _tryDecodeToolArguments({required String raw}) {
+    try {
+      return CodexToolArgumentsDto.fromJson(jsonDecodeMap(raw));
+    } on Object {
+      return null;
+    }
+  }
+
+  String? _embeddedExecCommand({required String source}) {
+    const marker = "tools.exec_command(";
+    final markerIndex = source.indexOf(marker);
+    if (markerIndex < 0) return null;
+
+    final argumentsStart = markerIndex + marker.length;
+    final commandMatch = RegExp(
+      r'(?:^|[,{]\s*)(?:"cmd"|cmd)\s*:\s*',
+    ).firstMatch(source.substring(argumentsStart));
+    if (commandMatch == null) return null;
+    final valueStart = argumentsStart + commandMatch.end;
+    if (valueStart >= source.length || source.codeUnitAt(valueStart) != 0x22) {
+      return null;
+    }
+
+    var escaped = false;
+    for (var index = valueStart + 1; index < source.length; index++) {
+      final codeUnit = source.codeUnitAt(index);
+      if (escaped) {
+        escaped = false;
+      } else if (codeUnit == 0x5C) {
+        escaped = true;
+      } else if (codeUnit == 0x22) {
+        try {
+          final decoded = jsonDecode(source.substring(valueStart, index + 1));
+          return decoded is String ? decoded : null;
+        } on FormatException {
+          return null;
+        }
+      }
+    }
+    return null;
   }
 
   PluginMessageTime? _messageTimeFrom(String? raw) {

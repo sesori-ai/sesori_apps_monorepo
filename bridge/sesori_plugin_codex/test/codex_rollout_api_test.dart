@@ -476,7 +476,7 @@ void main() {
               "status": "completed",
               "call_id": "call-1",
               "name": "exec",
-              "input": jsonEncode({"cmd": "ls -la"}),
+              "input": 'const r = await tools.exec_command({cmd:"ls -la"}); text(r.output);',
             },
           }),
           jsonEncode({
