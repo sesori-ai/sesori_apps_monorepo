@@ -16,9 +16,9 @@ The first unmerged stack was closed before redesign:
 |---|---|---|
 | #507 | Merged | Redesigned Stage 10 merged to `main` as `4ef55675` |
 | #508 | Reopened | Stage 11-P01 plus typed runtime operations at `6d0dce4f`; monitored |
-| #509 | Reopened | Stage 11-P02 synchronized with #508 at `418eddd0`; monitored |
-| #510 | Reopened | Stage 12 synchronized with #509 at `6c8ea3fa`; monitored |
-| #511 | Reopened | Stage 13 synchronized with #510 at `9aed7a75`; monitored |
+| #509 | Reopened | Stage 11-P02 plus ACP authentication recovery at `757634a4`; monitored |
+| #510 | Reopened | Stage 12 synchronized with #509 at `e0a92aeb`; monitored |
+| #511 | Reopened | Stage 13 synchronized with #510 at `1837d1b0`; monitored |
 
 Old verification results are historical evidence only; replacement stages must
 run their focused verification again.
@@ -234,6 +234,11 @@ run their focused verification again.
   domain repositories use scoped operation enums. Architecture review approved
   the change, bridge-app analysis and focused runtime/repository tests passed,
   and the merge was propagated through #509-#511.
+- Review on #509 found that an ACP authentication failure retained a completed
+  connection future and prevented recovery after local login. `757634a4`
+  retains the typed failure but clears the connection attempt so the next call
+  creates a fresh client. ACP analysis and focused initialize/authentication
+  tests passed, and the fix was propagated through #510-#511.
 
 ## Delivery Rules
 
