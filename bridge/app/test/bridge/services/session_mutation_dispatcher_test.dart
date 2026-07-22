@@ -108,7 +108,7 @@ void main() {
       expect(plugin.renameCalls, 1);
     });
 
-    test("does not let an older plugin title event overwrite a newer rename", () async {
+    test("suppresses an older rename event without blocking later backend titles", () async {
       final renameStarted = Completer<void>();
       final releaseRename = Completer<void>();
       plugin
@@ -126,6 +126,9 @@ void main() {
       await staleEvent;
 
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Newer title");
+
+      await dispatcher.captureTitle(sessionId: "s1", title: "External title");
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "External title");
     });
 
     test("applies a pending null by removing the stored title copy", () async {

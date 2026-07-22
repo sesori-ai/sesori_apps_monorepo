@@ -670,6 +670,7 @@ class OrchestratorSession {
   Stream<int> get bytesSent => _bytesSentController.stream;
   Stream<SesoriSseEvent> get localWireEvents => _localWireEventsController.stream;
   RequestRouter get router => _router;
+  Future<void> drainRoutedMutations() => _sessionMutationDispatcher.drain();
 
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);

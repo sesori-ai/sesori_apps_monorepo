@@ -11,8 +11,10 @@ class SessionMutationDispatcher {
   final SessionRepository _sessionRepository;
   final StreamController<Session> _deletedSessionsController = StreamController<Session>.broadcast(sync: true);
   final Map<String, String?> _pendingTitles = {};
-  // Explicit DB-backed renames win over delayed backend title events.
-  final Map<String, String> _authoritativeTitles = {};
+  // Tracks local renames until their matching backend title event arrives.
+  final Map<String, String> _renameTitlesAwaitingEvents = {};
+  // Each superseded local title consumes at most one delayed backend event.
+  final Map<String, Set<String>> _supersededRenameTitles = {};
   Future<void> _tail = Future<void>.value();
   bool _disposed = false;
 
@@ -22,7 +24,12 @@ class SessionMutationDispatcher {
 
   Future<void> captureTitle({required String sessionId, required String? title}) {
     return _serialized(() async {
-      if (_authoritativeTitles.containsKey(sessionId) && _authoritativeTitles[sessionId] != title) return;
+      final superseded = _supersededRenameTitles[sessionId];
+      if (superseded?.remove(title) ?? false) {
+        if (superseded!.isEmpty) _supersededRenameTitles.remove(sessionId);
+        return;
+      }
+      _renameTitlesAwaitingEvents.remove(sessionId);
       await _captureTitle(sessionId: sessionId, title: title);
     });
   }
@@ -42,7 +49,14 @@ class SessionMutationDispatcher {
               message: "session $sessionId was not found",
             );
           }
-          _authoritativeTitles[sessionId] = title;
+          final previousTitle = _renameTitlesAwaitingEvents[sessionId];
+          if (previousTitle != null && previousTitle != title) {
+            (_supersededRenameTitles[sessionId] ??= {}).add(previousTitle);
+          }
+          _renameTitlesAwaitingEvents[sessionId] = title;
+          final superseded = _supersededRenameTitles[sessionId];
+          superseded?.remove(title);
+          if (superseded?.isEmpty ?? false) _supersededRenameTitles.remove(sessionId);
           persistedResult.complete(renamed);
         } catch (error, stackTrace) {
           persistedResult.completeError(error, stackTrace);
@@ -51,6 +65,9 @@ class SessionMutationDispatcher {
         try {
           await _sessionRepository.renameSession(sessionId: sessionId, title: title);
         } catch (error, stackTrace) {
+          if (_renameTitlesAwaitingEvents[sessionId] == title) {
+            _renameTitlesAwaitingEvents.remove(sessionId);
+          }
           Log.w("Could not propagate title for session $sessionId to its plugin", error, stackTrace);
         }
       }),
@@ -74,16 +91,20 @@ class SessionMutationDispatcher {
     return _serialized(() async {
       final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);
       _pendingTitles.remove(sessionId);
-      _authoritativeTitles.remove(sessionId);
+      _renameTitlesAwaitingEvents.remove(sessionId);
+      _supersededRenameTitles.remove(sessionId);
       _deletedSessionsController.add(deleted);
     });
   }
+
+  Future<void> drain() => _serialized(() async {});
 
   Future<void> dispose() {
     if (_disposed) return Future.value();
     _disposed = true;
     return _serialized(() async {
-      _authoritativeTitles.clear();
+      _renameTitlesAwaitingEvents.clear();
+      _supersededRenameTitles.clear();
       await _deletedSessionsController.close();
     });
   }

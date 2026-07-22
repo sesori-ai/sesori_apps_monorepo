@@ -15,6 +15,7 @@ class DebugServer {
   final FailureReporter _failureReporter;
   final BridgeRestartService _restartService;
   final Future<void> Function() _restartHandoff;
+  final Future<void> Function() _drainRoutedMutations;
   final int port;
   final List<HttpResponse> _sseClients = [];
   // ignore: cancel_subscriptions - cancelled by the failure-isolated drain.
@@ -37,11 +38,13 @@ class DebugServer {
     required FailureReporter failureReporter,
     required BridgeRestartService restartService,
     required Future<void> Function() restartHandoff,
+    required Future<void> Function() drainRoutedMutations,
   }) : _localWireEvents = localWireEvents,
        _router = router,
        _failureReporter = failureReporter,
        _restartService = restartService,
-       _restartHandoff = restartHandoff;
+       _restartHandoff = restartHandoff,
+       _drainRoutedMutations = drainRoutedMutations;
 
   int? get boundPort => _server?.port;
   RequestRouter get router => _router;
@@ -109,6 +112,7 @@ class DebugServer {
         await _serverClose;
       }),
     ]);
+    await attempt(_drainRoutedMutations);
     if (firstError != null) {
       Error.throwWithStackTrace(firstError!, firstStackTrace!);
     }
