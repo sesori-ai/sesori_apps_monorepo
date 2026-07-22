@@ -14,21 +14,42 @@ void main() {
     );
     addTearDown(runtime.dispose);
 
-    final unavailable = isA<PluginOperationException>()
+    Matcher unavailableFor(String operation) => isA<PluginOperationException>()
+        .having((error) => error.operation, "operation", operation)
         .having((error) => error.statusCode, "statusCode", 503)
         .having((error) => error.message, "message", contains("unknown"));
 
     await expectLater(
-      runtime.use(pluginId: "removed-plugin", operation: "read", body: (_) async {}),
-      throwsA(unavailable),
+      runtime.use(pluginId: "removed-plugin", operation: _TestOperation.read, body: (_) async {}),
+      throwsA(unavailableFor("read")),
     );
     await expectLater(
       runtime.useStream<int>(
         pluginId: "removed-plugin",
-        operation: "watch",
+        operation: _TestOperation.watch,
         body: (_, _) => const Stream<int>.empty(),
       ),
-      emitsError(unavailable),
+      emitsError(unavailableFor("watch")),
+    );
+    await expectLater(
+      runtime.useIfActive<void>(
+        pluginId: "removed-plugin",
+        operation: _TestOperation.activeRead,
+        body: (_, _) async {},
+      ),
+      throwsA(unavailableFor("activeRead")),
+    );
+    expect(
+      () => runtime.requireCurrentGeneration(
+        pluginId: "removed-plugin",
+        generation: 1,
+        operation: _TestOperation.directFence,
+      ),
+      throwsA(
+        isA<PluginOperationException>()
+            .having((error) => error.operation, "operation", "directFence")
+            .having((error) => error.statusCode, "statusCode", 503),
+      ),
     );
   });
 
@@ -41,12 +62,12 @@ void main() {
 
     final first = runtime.use(
       pluginId: "one",
-      operation: "first",
+      operation: _TestOperation.first,
       body: (_) => operationGate.future,
     );
     final second = runtime.use(
       pluginId: "one",
-      operation: "second",
+      operation: _TestOperation.second,
       body: (_) => operationGate.future,
     );
     await Future<void>.delayed(Duration.zero);
@@ -70,7 +91,7 @@ void main() {
     final subscription = runtime
         .useStream(
           pluginId: "one",
-          operation: "stream",
+          operation: _TestOperation.stream,
           body: (_, _) => source.stream,
         )
         .listen((_) {});
@@ -93,7 +114,7 @@ void main() {
     final completion = expectLater(
       runtime.useStream(
         pluginId: "one",
-        operation: "stream",
+        operation: _TestOperation.stream,
         body: (_, _) => source.stream,
       ),
       emitsError(same(error)),
@@ -119,7 +140,7 @@ void main() {
     final subscription = runtime
         .useStream(
           pluginId: "one",
-          operation: "stream",
+          operation: _TestOperation.stream,
           body: (_, _) => source.stream,
         )
         .listen((_) {});
@@ -140,7 +161,7 @@ void main() {
     final subscription = runtime
         .useStream(
           pluginId: "one",
-          operation: "stream",
+          operation: _TestOperation.stream,
           body: (_, _) {
             bodyCalled = true;
             return const Stream<int>.empty();
@@ -172,7 +193,7 @@ void main() {
     await _waitUntil(() => runtime.snapshot.single.transition == PluginRuntimeTransition.stopping);
 
     await expectLater(
-      runtime.use(pluginId: "one", operation: "duringStop", body: (_) async {}),
+      runtime.use(pluginId: "one", operation: _TestOperation.duringStop, body: (_) async {}),
       throwsA(isA<PluginOperationException>()),
     );
 
@@ -195,7 +216,7 @@ void main() {
     await _waitUntil(() => runtime.snapshot.single.accessGate == PluginRuntimeAccessGate.draining);
 
     await expectLater(
-      runtime.use(pluginId: "one", operation: "duringDisable", body: (_) async {}),
+      runtime.use(pluginId: "one", operation: _TestOperation.duringDisable, body: (_) async {}),
       throwsA(isA<PluginOperationException>()),
     );
     shutdownGate.complete();
@@ -216,7 +237,7 @@ void main() {
     await runtime.start(pluginId: "one");
     final operation = runtime.use<void>(
       pluginId: "one",
-      operation: "leasedRead",
+      operation: _TestOperation.leasedRead,
       body: (_) => operationGate.future,
     );
     await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
@@ -311,7 +332,7 @@ void main() {
 
     final operation = runtime.use<void>(
       pluginId: "one",
-      operation: "leasedRead",
+      operation: _TestOperation.leasedRead,
       body: (_) => operationGate.future,
     );
     await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
@@ -379,7 +400,7 @@ void main() {
     await expectLater(
       runtime.use<void>(
         pluginId: "one",
-        operation: "authenticatedRead",
+        operation: _TestOperation.authenticatedRead,
         body: (_) => throw const PluginAuthenticationRequiredException(
           "authenticatedRead",
           actionHint: "Sign in locally.",
@@ -416,7 +437,7 @@ void main() {
     runtime
         .useStream<void>(
           pluginId: "one",
-          operation: "authenticatedStream",
+          operation: _TestOperation.authenticatedStream,
           body: (_, _) => Stream<void>.error(
             const PluginAuthenticationRequiredException(
               "authenticatedStream",
@@ -436,7 +457,7 @@ void main() {
     await expectLater(
       runtime.use<void>(
         pluginId: "one",
-        operation: "fencedRead",
+        operation: _TestOperation.fencedRead,
         body: (_) async => bodyCalled = true,
       ),
       throwsA(isA<PluginOperationException>()),
@@ -459,6 +480,7 @@ void main() {
     await expectLater(
       runtime.useIfActive<void>(
         pluginId: "one",
+        operation: _TestOperation.activeRead,
         body: (_, _) => throw const PluginAuthenticationRequiredException(
           "activeRead",
           actionHint: "Sign in locally.",
@@ -509,7 +531,7 @@ void main() {
 
     final operation = runtime.use<String>(
       pluginId: "one",
-      operation: "concurrentRead",
+      operation: _TestOperation.concurrentRead,
       body: (_) async {
         await operationGate.future;
         return "complete";
@@ -520,7 +542,7 @@ void main() {
     await expectLater(
       runtime.use<void>(
         pluginId: "one",
-        operation: "authenticatedRead",
+        operation: _TestOperation.authenticatedRead,
         body: (_) => throw const PluginAuthenticationRequiredException(
           "authenticatedRead",
           actionHint: "Sign in locally.",
@@ -534,7 +556,16 @@ void main() {
     expect(runtime.snapshot.single.leaseCount, 1);
 
     operationGate.complete();
-    expect(await operation, "complete");
+    await expectLater(
+      operation,
+      throwsA(
+        isA<PluginOperationException>().having(
+          (error) => error.operation,
+          "operation",
+          _TestOperation.concurrentRead.name,
+        ),
+      ),
+    );
     await _waitUntil(
       () =>
           factory.plugins.single.shutdownCount == 1 &&
@@ -551,7 +582,7 @@ void main() {
 
     final operation = runtime.use<void>(
       pluginId: "one",
-      operation: "staleAuthenticatedRead",
+      operation: _TestOperation.staleAuthenticatedRead,
       body: (_) async {
         await operationGate.future;
         throw const PluginAuthenticationRequiredException(
@@ -582,7 +613,7 @@ void main() {
     addTearDown(runtime.dispose);
     final operation = runtime.use<void>(
       pluginId: "one",
-      operation: "longRead",
+      operation: _TestOperation.longRead,
       body: (_) => operationGate.future,
     );
     await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
@@ -590,7 +621,7 @@ void main() {
     await expectLater(
       runtime.use<void>(
         pluginId: "one",
-        operation: "authenticatedRead",
+        operation: _TestOperation.authenticatedRead,
         body: (_) => throw const PluginAuthenticationRequiredException(
           "authenticatedRead",
           actionHint: "Sign in locally.",
@@ -616,7 +647,7 @@ void main() {
     await runtime.start(pluginId: "one");
     final operation = runtime.use(
       pluginId: "one",
-      operation: "forceFenced",
+      operation: _TestOperation.forceFenced,
       body: (_) => operationGate.future,
     );
     await _waitUntil(() => runtime.snapshot.single.leaseCount == 1);
@@ -627,7 +658,16 @@ void main() {
     );
     operationGate.complete();
 
-    await expectLater(operation, throwsA(isA<PluginOperationException>()));
+    await expectLater(
+      operation,
+      throwsA(
+        isA<PluginOperationException>().having(
+          (error) => error.operation,
+          "operation",
+          "forceFenced",
+        ),
+      ),
+    );
     expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
   });
 
@@ -705,7 +745,7 @@ void main() {
 
     final result = await runtime.use(
       pluginId: "one",
-      operation: "retry",
+      operation: _TestOperation.retry,
       body: (_) async => "retried",
     );
 
@@ -838,6 +878,7 @@ void main() {
     var bodyCalled = false;
     final result = await runtime.useIfActive<bool>(
       pluginId: "one",
+      operation: _TestOperation.nonReadyRead,
       body: (_, _) async {
         bodyCalled = true;
         return true;
@@ -880,6 +921,28 @@ void main() {
     expect(result["one"], isNot(isA<PluginSetupRuntimeMissing>()));
     expect(runtime.snapshot.single.setup, isNot(isA<PluginSetupRuntimeMissing>()));
   });
+}
+
+enum _TestOperation {
+  read,
+  watch,
+  activeRead,
+  directFence,
+  first,
+  second,
+  stream,
+  duringStop,
+  duringDisable,
+  leasedRead,
+  authenticatedRead,
+  authenticatedStream,
+  fencedRead,
+  concurrentRead,
+  staleAuthenticatedRead,
+  longRead,
+  forceFenced,
+  retry,
+  nonReadyRead,
 }
 
 PluginRuntime _runtime({

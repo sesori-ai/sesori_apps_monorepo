@@ -191,7 +191,7 @@ class WorktreeRepository {
       _runtime
           .use(
             pluginId: pluginId,
-            operation: "deleteWorkspace",
+            operation: _WorktreeOperation.deleteWorkspace,
             body: (plugin) => plugin.deleteWorkspace(
               projectId: projectPath,
               worktreePath: worktreePath,
@@ -249,3 +249,5 @@ class WorktreeRepository {
     return _gitApi.resolveDefaultBranch(projectPath: projectPath);
   }
 }
+
+enum _WorktreeOperation { deleteWorkspace }

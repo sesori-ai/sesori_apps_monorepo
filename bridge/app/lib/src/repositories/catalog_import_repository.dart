@@ -57,7 +57,7 @@ class CatalogImportRepository {
     try {
       await for (final event in _runtime.useStream<Object>(
         pluginId: pluginId,
-        operation: "importCatalog",
+        operation: _CatalogOperation.importCatalog,
         body: (plugin, generation) => _enumerateCatalog(
           pluginId: pluginId,
           generation: generation,
@@ -82,7 +82,7 @@ class CatalogImportRepository {
                 _runtime.requireCurrentGeneration(
                   pluginId: pluginId,
                   generation: ready.generation,
-                  operation: "importCatalog",
+                  operation: _CatalogOperation.importCatalog,
                 );
                 result = await _publishCatalog(observation: ready, control: control);
               }
@@ -327,7 +327,7 @@ class CatalogImportRepository {
       _runtime.requireCurrentGeneration(
         pluginId: pluginId,
         generation: observation.generation,
-        operation: "importCatalog",
+        operation: _CatalogOperation.importCatalog,
       );
     }
 
@@ -637,6 +637,8 @@ class CatalogImportRepository {
     return trimmed == null || trimmed.isEmpty ? null : value;
   }
 }
+
+enum _CatalogOperation { importCatalog }
 
 class _ObservedProject {
   _ObservedProject({
