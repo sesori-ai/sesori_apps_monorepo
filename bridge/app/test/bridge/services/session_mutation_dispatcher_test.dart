@@ -148,6 +148,10 @@ void main() {
 
       await dispatcher.captureTitle(sessionId: "s1", title: "Newer title");
       await dispatcher.captureTitle(sessionId: "s1", title: "External title");
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Newer title");
+
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await dispatcher.captureTitle(sessionId: "s1", title: "External title");
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "External title");
     });
 

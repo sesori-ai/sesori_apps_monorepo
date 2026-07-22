@@ -13,7 +13,7 @@ class SessionMutationDispatcher {
   final SessionRepository _sessionRepository;
   final StreamController<Session> _deletedSessionsController = StreamController<Session>.broadcast(sync: true);
   final Map<String, String?> _pendingTitles = {};
-  final Map<String, ({String title, DateTime? expiresAt})> _backendTitleGuards = {};
+  final Map<String, ({DateTime? expiresAt, Object token})> _backendTitleGuards = {};
   Future<void> _tail = Future<void>.value();
   Future<void> _backendTail = Future<void>.value();
   bool _disposed = false;
@@ -27,7 +27,7 @@ class SessionMutationDispatcher {
       final guard = _backendTitleGuards[sessionId];
       if (guard != null) {
         final active = guard.expiresAt == null || DateTime.now().isBefore(guard.expiresAt!);
-        if (active && guard.title != title) return;
+        if (active) return;
         _backendTitleGuards.remove(sessionId);
       }
       await _captureTitle(sessionId: sessionId, title: title);
@@ -47,9 +47,10 @@ class SessionMutationDispatcher {
           message: "session $sessionId was not found",
         );
       }
-      _backendTitleGuards[sessionId] = (title: title, expiresAt: null);
+      final guardToken = Object();
+      _backendTitleGuards[sessionId] = (expiresAt: null, token: guardToken);
       unawaited(
-        _serializedBackend(() => _propagateTitle(sessionId: sessionId, title: title)),
+        _serializedBackend(() => _propagateTitle(sessionId: sessionId, title: title, guardToken: guardToken)),
       );
       return renamed;
     });
@@ -88,18 +89,27 @@ class SessionMutationDispatcher {
     });
   }
 
-  Future<void> _propagateTitle({required String sessionId, required String title}) async {
+  Future<void> _propagateTitle({
+    required String sessionId,
+    required String title,
+    required Object guardToken,
+  }) async {
     try {
       await _sessionRepository.renameSession(sessionId: sessionId, title: title);
     } catch (error, stackTrace) {
       Log.w("Could not propagate title for session $sessionId to its plugin", error, stackTrace);
     } finally {
       final guard = _backendTitleGuards[sessionId];
-      if (guard?.title == title && guard?.expiresAt == null) {
+      if (identical(guard?.token, guardToken) && guard?.expiresAt == null) {
         _backendTitleGuards[sessionId] = (
-          title: title,
           expiresAt: DateTime.now().add(_backendTitleGuardDuration),
+          token: guardToken,
         );
+        Timer(_backendTitleGuardDuration, () {
+          if (identical(_backendTitleGuards[sessionId]?.token, guardToken)) {
+            _backendTitleGuards.remove(sessionId);
+          }
+        });
       }
     }
   }
