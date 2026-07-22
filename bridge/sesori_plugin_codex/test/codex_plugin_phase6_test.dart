@@ -7,9 +7,10 @@ import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:path/path.dart" as p;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show PluginCommandSource;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginCommandSource;
 import "package:test/test.dart";
+
+import "support/codex_plugin_test_factory.dart";
 
 void main() {
   group("CodexPlugin Phase 6 polish", () {
@@ -31,23 +32,13 @@ void main() {
     });
 
     CodexPlugin newPlugin() {
-      final rolloutReader = SessionRolloutReader(
-        environment: {"CODEX_HOME": codexHome.path},
-      );
-      return CodexPlugin(
+      const serverUrl = "ws://127.0.0.1:0";
+      return createInjectedCodexPlugin(
         serverUrl: "ws://127.0.0.1:0",
-        rolloutReader: rolloutReader,
-        metadataRepository: CodexMetadataRepository(
-          skillReader: CodexSkillReader(
-            environment: {"CODEX_HOME": codexHome.path},
-          ),
-          rolloutReader: rolloutReader,
-          configReader: CodexConfigReader(
-            environment: {"CODEX_HOME": codexHome.path},
-          ),
-          launchDirectory: projectCwd.path,
-        ),
+        environment: {"CODEX_HOME": codexHome.path},
         projectCwd: projectCwd.path,
+        clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
+        keepaliveInterval: const Duration(seconds: 30),
       );
     }
 
@@ -156,17 +147,19 @@ void main() {
         isTrue,
       );
       // Index has only the survivor left.
-      final indexLines = File(p.join(codexHome.path, "session_index.jsonl"))
-          .readAsLinesSync()
-          .where((l) => l.trim().isNotEmpty)
-          .toList();
+      final indexLines = File(
+        p.join(codexHome.path, "session_index.jsonl"),
+      ).readAsLinesSync().where((l) => l.trim().isNotEmpty).toList();
       expect(indexLines, hasLength(1));
       expect(indexLines.single, contains("Survivor"));
       // Listing sessions reflects the delete.
       final remaining = await plugin.getSessions(projectCwd.path);
-      expect(remaining.map((s) => s.id).toList(), equals([
-        "019a0000-1111-2222-3333-bbbbbbbbbbbb",
-      ]));
+      expect(
+        remaining.map((s) => s.id).toList(),
+        equals([
+          "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        ]),
+      );
       await plugin.dispose();
     });
 

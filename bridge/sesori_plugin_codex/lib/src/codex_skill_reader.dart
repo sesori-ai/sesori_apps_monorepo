@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 
 /// A single codex skill discovered on disk.
 class CodexSkill {
@@ -30,16 +31,15 @@ enum CodexSkillSource { user, project }
 ///
 /// Project-local skills win when names collide.
 class CodexSkillReader {
-  CodexSkillReader({Map<String, String>? environment})
-    : _environment = environment ?? Platform.environment;
+  CodexSkillReader({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
 
   final Map<String, String> _environment;
 
   String? get _codexHome {
     final explicit = _environment["CODEX_HOME"];
     if (explicit != null && explicit.isNotEmpty) return explicit;
-    final home = _environment["HOME"] ?? _environment["USERPROFILE"];
-    if (home == null || home.isEmpty) return null;
+    final home = resolveUserHomeDirectory(environment: _environment);
+    if (home == null) return null;
     return p.join(home, ".codex");
   }
 

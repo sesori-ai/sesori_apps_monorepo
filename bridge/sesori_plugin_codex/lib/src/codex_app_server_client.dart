@@ -51,8 +51,8 @@ class CodexRpcException implements Exception {
 ///
 /// Codex's `ServerNotification` is a tagged union: every notification has
 /// a `method` (e.g. `"thread/started"`, `"item/agentMessage/delta"`) and
-/// a free-form `params` object. We keep the raw map here and let upper
-/// layers (event mapper in later phases) decode it.
+/// a free-form `params` object. We keep the raw map here and let endpoint APIs
+/// decode typed notifications where Codex exposes structured payloads.
 class CodexServerNotification {
   const CodexServerNotification({required this.method, required this.params});
 
@@ -129,10 +129,8 @@ class CodexAppServerClient {
   int _nextId = 1;
 
   final Map<Object, Completer<dynamic>> _pending = {};
-  final StreamController<CodexServerNotification> _notifications =
-      StreamController.broadcast();
-  final StreamController<CodexServerRequest> _serverRequests =
-      StreamController.broadcast();
+  final StreamController<CodexServerNotification> _notifications = StreamController.broadcast();
+  final StreamController<CodexServerRequest> _serverRequests = StreamController.broadcast();
 
   /// Server-originated notifications (broadcast).
   Stream<CodexServerNotification> get notifications => _notifications.stream;
@@ -362,8 +360,7 @@ class CodexAppServerClient {
     caseSensitive: false,
   );
 
-  String _redactForLog(String frame) =>
-      frame.replaceAllMapped(_secretKeyValue, (m) => '${m.group(1)}"***"');
+  String _redactForLog(String frame) => frame.replaceAllMapped(_secretKeyValue, (m) => '${m.group(1)}"***"');
 
   void _handleSocketError(Object error, StackTrace stack) {
     Log.w("[codex][ws] socket error: ${_redactForLog("$error")}");

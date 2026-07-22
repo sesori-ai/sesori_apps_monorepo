@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 
 /// Top-level defaults read from `~/.codex/config.toml`.
 ///
@@ -20,7 +21,7 @@ class CodexConfigDefaults {
 /// Reads the top-level `model` and `model_provider` keys from
 /// `~/.codex/config.toml`.
 ///
-/// CODEX_HOME resolution mirrors codex itself (and [SessionRolloutReader]):
+/// CODEX_HOME resolution mirrors codex itself (and `CodexRolloutApi`):
 ///   1. `$CODEX_HOME` if set.
 ///   2. `$HOME/.codex` (or `$USERPROFILE\.codex` on Windows).
 ///
@@ -30,16 +31,15 @@ class CodexConfigDefaults {
 /// fallback for sessions that predate `turn_context` records.
 // COMPATIBILITY 2026-06-25 (v1.1.2): Old Codex rollouts omit turn_context model metadata. Remove config fallback reads when those rollouts are unsupported.
 class CodexConfigReader {
-  CodexConfigReader({Map<String, String>? environment})
-    : _environment = environment ?? Platform.environment;
+  CodexConfigReader({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
 
   final Map<String, String> _environment;
 
   String? get _codexHome {
     final explicit = _environment["CODEX_HOME"];
     if (explicit != null && explicit.isNotEmpty) return explicit;
-    final home = _environment["HOME"] ?? _environment["USERPROFILE"];
-    if (home == null || home.isEmpty) return null;
+    final home = resolveUserHomeDirectory(environment: _environment);
+    if (home == null) return null;
     return p.join(home, ".codex");
   }
 

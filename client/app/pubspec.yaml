@@ -37,7 +37,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.9
-  liquid_glass_widgets: ^0.21.5
+  liquid_glass_widgets: ^0.22.1
   http: ^1.6.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
@@ -63,24 +63,20 @@ dependencies:
   flutter_secure_storage: ^10.3.1
   app_links: ^7.2.1
   url_launcher: ^6.3.2
-  share_plus: ^13.2.0
+  share_plus: ^13.2.1
   universal_platform: ^1.1.0
   device_info_plus: ^13.2.0
-  package_info_plus: ^10.2.0
+  package_info_plus: ^10.2.1
   record: ^7.1.1
   path: any
   path_provider: ^2.1.6
   re_highlight: ^0.0.3
   wakelock_plus: ^1.6.1
-  firebase_core: ^4.12.0
-  # Held below 12.4.4 / 5.2.5 / 16.4.2: those releases switched their base
-  # class to FirebasePlugin, which no published firebase_core_platform_interface
-  # provides yet, so they fail to compile against firebase_core 4.12.0. Remove
-  # the upper bounds once a firebase_core release ships the FirebasePlugin base.
-  firebase_analytics: ">=12.4.3 <12.4.4"
-  firebase_crashlytics: ">=5.2.4 <5.2.5"
-  firebase_messaging: ">=16.4.1 <16.4.2"
-  flutter_local_notifications: ^22.0.1
+  firebase_core: ^4.12.1
+  firebase_analytics: ^12.4.5
+  firebase_crashlytics: ^5.2.6
+  firebase_messaging: ^16.4.3
+  flutter_local_notifications: ^22.1.0
   flutter_svg: ^2.3.0
   cue: ^0.3.1
   sign_in_with_apple: ^8.1.0

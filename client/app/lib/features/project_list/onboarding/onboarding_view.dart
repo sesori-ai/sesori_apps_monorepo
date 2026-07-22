@@ -117,23 +117,23 @@ class _ConnectBridgeChecklist extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: PregoSpacing.x4l),
+        const SizedBox(height: PregoSpacing.x6l),
         const Center(
           child: ExcludeSemantics(child: ConnectionGraphic.connectionOff()),
         ),
-        const SizedBox(height: PregoSpacing.lg),
+        const SizedBox(height: PregoSpacing.sm),
         Text(
           loc.projectsOnboardingWaitingForBridge,
           textAlign: TextAlign.center,
           style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),
-        const SizedBox(height: PregoSpacing.x4l),
+        const SizedBox(height: PregoSpacing.x5l),
         Text(
           loc.projectsOnboardingRunOnComputer,
           textAlign: TextAlign.center,
           style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
         ),
-        const SizedBox(height: PregoSpacing.lg),
+        const SizedBox(height: PregoSpacing.xl),
         // Step 1 — install: the OS segmented control drives the install-command
         // box; the numbered step label with its info popover sits between them.
         Padding(
@@ -146,7 +146,7 @@ class _ConnectBridgeChecklist extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: PregoSpacing.x2l),
+        const SizedBox(height: PregoSpacing.xl),
         // Step 2 — start: a single, platform-independent command box.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
@@ -172,10 +172,10 @@ class _ConnectBridgeChecklist extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: PregoSpacing.x3l),
+        const SizedBox(height: PregoSpacing.xl),
         const _WhyBridgeButton(surface: OnboardingSurface.connectSetup),
-        // Bottom breathing room so the last command box can be scrolled clear of
-        // the "Need help?" button pinned in the bottom-right corner.
+        // Bottom breathing room so the last command box can be scrolled clear
+        // of the "Need help?" button pinned centred at the bottom of the page.
         const SizedBox(height: PregoSpacing.x6l),
       ],
     );
@@ -254,10 +254,9 @@ class _InfoLabel extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: toggle,
-              // 40×40 hit area (matching [_CommandIconButton]) keeps the tap
-              // target comfortably above the touch-target minimum while the
-              // 16px glyph stays visually snug against the step title via the
-              // small leading inset.
+              // 40×40 hit area keeps the tap target comfortably above the
+              // touch-target minimum while the 12px glyph stays visually snug
+              // against the step title via the small leading inset.
               child: SizedBox(
                 width: 40,
                 height: 40,
@@ -265,7 +264,7 @@ class _InfoLabel extends StatelessWidget {
                   alignment: AlignmentDirectional.centerStart,
                   child: Padding(
                     padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                    child: Icon(TablerRegular.info_circle, size: 16, color: prego.colors.textSecondary),
+                    child: Icon(TablerRegular.info_circle, size: 12, color: prego.colors.textSecondary),
                   ),
                 ),
               ),
@@ -472,10 +471,10 @@ class _InstallCommandBoxesState extends State<_InstallCommandBoxes> {
           selectedIndex: _selectedOs,
           onChanged: (index) => setState(() => _selectedOs = index),
         ),
-        const SizedBox(height: PregoSpacing.lg),
+        const SizedBox(height: PregoSpacing.xl),
         if (widget.stepHeader case final stepHeader?) ...[
           stepHeader,
-          const SizedBox(height: PregoSpacing.lg),
+          const SizedBox(height: PregoSpacing.xl),
         ],
         // Keyed by platform so switching groups remounts the box and resets its
         // method tab to the group's first entry (curl / native).
@@ -687,7 +686,9 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
           onTap: selected ? null : () => setState(() => _selectedIndex = index),
           borderRadius: BorderRadius.circular(PregoRadius.sm),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.md),
+            // 40px-tall tab: the 20px label line with 10px above and below —
+            // off the spacing scale, so it is written out.
+            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: 10),
             // The selected tab reads as the active method (brand color); the
             // rest stay quiet in the tertiary text color. Both are bold to match
             // the Figma tab strip.
@@ -816,11 +817,10 @@ class _CommandActionRowState extends State<_CommandActionRow> {
         color: colors.bgSurface2,
         border: widget.topDivider ? Border(top: BorderSide(color: colors.borderSecondary)) : null,
       ),
-      padding: const EdgeInsetsDirectional.only(
-        start: PregoSpacing.lg,
-        top: PregoSpacing.sm,
-        bottom: PregoSpacing.sm,
-      ),
+      // Figma insets the command 20px from the box edge and lets the action
+      // buttons set the row's 44px height, so the row adds no padding of its
+      // own above or below.
+      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.x2l),
       child: Row(
         children: [
           Expanded(
@@ -867,9 +867,11 @@ class _CommandActionRowState extends State<_CommandActionRow> {
   }
 }
 
-/// A 40×40 tap target rendering [icon] over the command surface, used for the
-/// copy and share actions. Transparent [Material] so the ripple paints on top
-/// of the surface fill rather than behind it on the Scaffold's Material.
+/// A 40×44 tap target rendering [icon] over the command surface, used for the
+/// copy and share actions. Its height is what sets the command row's, so it
+/// carries the box's full 44px inner height rather than the row padding it.
+/// Transparent [Material] so the ripple paints on top of the surface fill
+/// rather than behind it on the Scaffold's Material.
 class _CommandIconButton extends StatelessWidget {
   const _CommandIconButton({required this.icon, required this.label, required this.onTap});
 
@@ -890,7 +892,7 @@ class _CommandIconButton extends StatelessWidget {
           radius: 22,
           child: SizedBox(
             width: 40,
-            height: 40,
+            height: 44,
             child: Center(
               child: Icon(icon, size: 18, color: colors.textSecondary),
             ),
