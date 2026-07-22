@@ -1,6 +1,6 @@
 # Sesori Bridge
 
-Dart workspace containing the headless Sesori Bridge CLI and its plugin system. One bridge can connect ordered enabled AI-assistant plugins to mobile and desktop clients over an encrypted WebSocket relay.
+Dart workspace containing the headless Sesori Bridge CLI and its plugin system. One bridge can connect independently eligible AI-assistant plugins to mobile and desktop clients over an encrypted WebSocket relay.
 
 The bridge itself is plugin-agnostic: it knows how to authenticate, relay, encrypt, and route traffic, but all backend-specific logic (how to spawn the assistant, what its health endpoint looks like, how to parse its events) lives in plugins.
 
@@ -19,7 +19,7 @@ Clients <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [
 | `sesori_plugin_codex` | Codex backend implementation |
 | `sesori_plugin_acp` | Shared ACP protocol plugin base |
 | `sesori_plugin_cursor` | Cursor implementation over ACP |
-| `app` | CLI entry point: auth, relay, encryption, catalog, request routing, and ordered plugin composition |
+| `app` | CLI entry point: auth, relay, encryption, catalog, request routing, and plugin composition |
 
 ## Quick Start
 
@@ -108,21 +108,24 @@ local cross-compilation.
 
 ## Parallel Plugins And Catalog
 
-`--plugin` is repeatable and order-preserving. Repeated CLI values override the
-ordered `enabledPlugins` array in bridge settings; if neither is set, OpenCode
-is the sole enabled/default plugin. The first enabled plugin is the current
-default for new clients. This default is separate from legacy missing identity:
-released payloads without `pluginId` always mean OpenCode, not the first enabled
-plugin.
+Every registered plugin is eligible unless its ID appears in
+`plugins.disabled` in bridge settings. Setup-ready plugins start independently,
+and the first operational plugin in case-insensitive display-name order is the
+current default for new clients. This default is separate from legacy missing
+identity: released payloads without `pluginId` always mean OpenCode, not the
+current default.
 
 ```bash
-sesori-bridge --plugin opencode --plugin codex
-sesori-bridge --plugin opencode --plugin codex --import-plugin codex
+sesori-bridge config plugins
+sesori-bridge config plugins disable cursor
+sesori-bridge --import-plugin codex
 ```
 
-Plugins are probed, provisioned, started, monitored, failed, and stopped
-independently. A plugin failure disables controls routed to that plugin but does
-not stop the relay, catalog browsing, or another plugin.
+Eligible plugins are inspected without installing anything. Ready plugins may
+resolve a compatible PATH binary or an existing pinned managed runtime before
+they are started, monitored, failed, and stopped independently. A plugin failure
+disables controls routed to that plugin but does not stop the relay, catalog
+browsing, or another plugin.
 
 Normal project, root-session, session-detail, and child reads use the durable
 database catalog only. Import is a non-destructive observation of one plugin:
@@ -159,18 +162,20 @@ For a concrete example, see `sesori_plugin_opencode`.
 
 ### Plugin lifecycle at a glance
 
-The bridge resolves and validates the complete ordered plugin set before I/O.
-It probes availability concurrently, acquires the startup mutex once, provisions
-available plugins sequentially in order, and registers each start as soon as
-that plugin's provisioning settles. Starts may overlap later provisioning and
-other starts. Each plugin is responsible for:
+The bridge validates every registered plugin's CLI configuration before I/O,
+loads the denylist, and inspects setup concurrently for eligible plugins. It
+then probes ready plugins, acquires the startup mutex once, resolves existing
+runtimes sequentially in display-name order, and registers each start as soon as
+its resolution settles. Starts may overlap later resolutions and other starts.
+Each plugin is responsible for:
 
 - Starting (or attaching to) its backend server.
 - Publishing `Ready` / `Degraded` / `Failed` / `Restarting` status transitions.
 - Gracefully shutting down when the bridge exits.
 
-The bridge lifecycle service publishes one ordered enabled/default/operational
-view. A terminal plugin failure removes only that plugin API from routing. The
+The bridge lifecycle service publishes one alphabetically ordered
+eligible/default/operational view. A terminal plugin failure removes only that
+plugin API from routing. The
 bridge handles relay connection, encryption, catalog routing, and sourced SSE
 multiplexing; it never knows a backend's command line, health endpoint, or event
 format.

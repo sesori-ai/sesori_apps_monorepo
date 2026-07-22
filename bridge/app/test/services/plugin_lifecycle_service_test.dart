@@ -11,13 +11,22 @@ void main() {
   const shutdownBudget = Duration(seconds: 1);
 
   PluginLifecycleService createService() {
-    return PluginLifecycleService()..registerSelection(
-      knownPluginIds: {"one", "two", "known-disabled"},
-      enabledPlugins: const [
-        (id: "one", displayName: "One", isDefault: true),
-        (id: "two", displayName: "Two", isDefault: false),
-      ],
-    );
+    return PluginLifecycleService()
+      ..registerPlugins(
+        plugins: const [
+          (id: "one", displayName: "One"),
+          (id: "two", displayName: "Two"),
+          (id: "known-disabled", displayName: "Known Disabled"),
+        ],
+      )
+      ..initialize(
+        disabledPluginIds: const {"known-disabled"},
+        setupById: const {
+          "one": PluginSetupReady(),
+          "two": PluginSetupReady(),
+          "known-disabled": PluginSetupNotInspected(),
+        },
+      );
   }
 
   test("publishes ordered selection and isolates unavailable plugins", () {
@@ -25,10 +34,95 @@ void main() {
 
     expect(service.compositionView.knownPluginIds, {"one", "two", "known-disabled"});
     expect(service.compositionView.enabledPluginIds, ["one", "two"]);
-    expect(service.compositionView.defaultEnabledPluginId, "one");
+    expect(
+      service.compositionView.defaultEnabledPluginId,
+      isNull,
+      reason: "a default is routable only after a plugin starts successfully",
+    );
     expect(service.metadataSnapshot.map((plugin) => plugin.id), ["one", "two"]);
     expect(service.metadataSnapshot.last.state, PluginLifecycleState.unavailable);
     expect(service.metadataSnapshot.last.actionHint, isNot(contains("descriptor-secret")));
+  });
+
+  test("eligibility follows the denylist and ordering follows display name", () async {
+    final service = PluginLifecycleService()
+      ..registerPlugins(
+        plugins: const [
+          (id: "blocked", displayName: "Blocked"),
+          (id: "two", displayName: "Two"),
+          (id: "one", displayName: "One"),
+        ],
+      );
+    addTearDown(service.dispose);
+
+    final selection = service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {
+        "blocked": PluginSetupAuthenticationRequired(actionHint: "Authenticate this plugin."),
+        "two": PluginSetupReady(),
+        "one": PluginSetupReady(),
+      },
+    );
+
+    expect(selection.enabledPluginIds, ["blocked", "one", "two"]);
+    expect(selection.eagerPluginIds, ["one", "two"]);
+    expect(selection.defaultPluginId, "one");
+    expect(service.metadataSnapshot.map((plugin) => plugin.id), ["blocked", "one", "two"]);
+    expect(service.selectableMetadataSnapshot, isEmpty, reason: "choices are published only after startup succeeds");
+    expect(service.setupSnapshot.plugins.map((plugin) => plugin.id), ["blocked", "one", "two"]);
+    expect(service.setupSnapshot.plugins.first.state, PluginSetupState.authenticationRequired);
+  });
+
+  test("denied plugins remain visible as not inspected but are not eligible", () async {
+    final service = PluginLifecycleService()
+      ..registerPlugins(
+        plugins: const [
+          (id: "cursor", displayName: "Cursor"),
+          (id: "opencode", displayName: "OpenCode"),
+        ],
+      );
+    addTearDown(service.dispose);
+
+    final selection = service.initialize(
+      disabledPluginIds: const {"cursor", "future-plugin"},
+      setupById: const {
+        "opencode": PluginSetupReady(),
+        "cursor": PluginSetupNotInspected(),
+      },
+    );
+
+    expect(selection.enabledPluginIds, ["opencode"]);
+    expect(selection.eagerPluginIds, ["opencode"]);
+    expect(selection.defaultPluginId, "opencode");
+    expect(service.setupSnapshot.plugins.first.state, PluginSetupState.notInspected);
+  });
+
+  test("supports a zero-routable-plugin bridge when no setup is usable", () async {
+    final service = PluginLifecycleService()
+      ..registerPlugins(
+        plugins: const [
+          (id: "opencode", displayName: "OpenCode"),
+          (id: "cursor", displayName: "Cursor"),
+        ],
+      );
+    addTearDown(service.dispose);
+
+    final selection = service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {
+        "opencode": PluginSetupRuntimeMissing(actionHint: "Fix OpenCode."),
+        "cursor": PluginSetupUnknown(actionHint: "Retry Cursor setup detection."),
+      },
+    );
+
+    expect(selection.enabledPluginIds, ["cursor", "opencode"]);
+    expect(selection.eagerPluginIds, isEmpty);
+    expect(selection.defaultPluginId, isNull);
+    expect(service.compositionView.enabledPluginIds, ["cursor", "opencode"]);
+    expect(service.compositionView.defaultEnabledPluginId, isNull);
+    expect(service.compositionView.operationalPlugins, isEmpty);
+    expect(service.metadataSnapshot, hasLength(2));
+    expect(service.setupSnapshot.plugins, hasLength(2));
   });
 
   test("post-start terminal failure is logged locally and omitted from metadata", () async {
@@ -57,6 +151,7 @@ void main() {
     );
     expect(service.compositionView.operationalPlugins, isNot(contains("one")));
     expect(service.metadataSnapshot.first.state, PluginLifecycleState.failed);
+    expect(service.selectableMetadataSnapshot, isEmpty);
     expect(service.metadataSnapshot.first.actionHint, isNot(contains("raw failure secret")));
     expect(logs.join("\n"), allOf(contains('Plugin "one"'), contains("raw failure secret"), contains("socket closed")));
     await service.dispose();
@@ -78,6 +173,30 @@ void main() {
     expect(plugin.apiImpl.disposeCalls, 1);
     await service.dispose();
     expect(plugin.shutdownCalls, 1);
+  });
+
+  test("composition and plugin discovery share the first routable default", () async {
+    final service = createService();
+    final wrong = _FakeLifecyclePlugin(id: "wrong", status: const PluginReady());
+    final two = _FakeLifecyclePlugin(id: "two", status: const PluginReady());
+
+    await Future.wait([
+      service.registerStart(
+        id: "one",
+        startFuture: Future.value(wrong),
+        shutdownBudget: shutdownBudget,
+      ),
+      service.registerStart(
+        id: "two",
+        startFuture: Future.value(two),
+        shutdownBudget: shutdownBudget,
+      ),
+    ]);
+
+    expect(service.compositionView.defaultEnabledPluginId, "two");
+    expect(service.selectableMetadataSnapshot.map((plugin) => plugin.id), ["two"]);
+    expect(service.selectableMetadataSnapshot.single.isDefault, isTrue);
+    await service.dispose();
   });
 
   test("ordinary start failure is logged with its plugin id and omitted from metadata", () async {

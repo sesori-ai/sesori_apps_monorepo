@@ -3,1248 +3,625 @@
 ## Status
 
 - **Plan slug:** `setup-aware-plugin-lifecycle`
-- **Status:** Corrected after the second architecture review and re-audited after
-  bridge-app-onboarding W02; ready to implement after this plan lands
-- **Generated:** 2026-07-18
-- **Implementation base:** monorepo `main`
-- **Initial audited tip:** `c491d7c40a0ef86c7bfeabf71ccbe1b9009849b0`
-- **Post-W02 audited tip:** `2acd7b876667c4abeb7613ae6e46d0010a1241be`
-- **Predecessor:** completed parallel-plugin Stages 0-9, merged through PR #497
-- **Entry dependency:** satisfied — bridge-app-onboarding W02 merged through
-  PR #504 at the post-W02 audited tip
+- **Status:** redesign approved; implementation stack is being rebuilt
+- **Implementation base:** latest `origin/main` at `5a91f582`
+- **Predecessor:** parallel-plugin Stages 0-9 and bridge-app-onboarding W02 are merged
+- **Delivery:** five stacked PRs; the old unmerged PRs #507-#511 are closed and
+  are reopened only after their replacement stage is implemented and verified
 
-The audited SHAs are staleness metadata, not implementation branch points.
-Every implementation PR starts from the then-current `main` after checking drift
-from this plan and from any other active plan touching bridge startup,
-`Orchestrator`, session repositories, shared plugin contracts, or client plugin
-selection.
+This plan replaces the first unmerged implementation. Nothing introduced only
+by that implementation needs compatibility handling. Released contracts still
+receive ordinary app/bridge compatibility treatment.
 
 ## Goal
 
-Make a large plugin ecosystem cheap and controllable:
+Make every bundled backend plugin automatically discoverable and cheap to keep
+available:
 
-- discover whether each registered backend runtime is installed and authenticated
-  without starting, installing, or logging in the plugin;
-- automatically enable setup-ready plugins when the bridge is in automatic
-  selection mode;
-- keep enabled plugins dormant until an operation needs them, then start them
-  once and stop them after a user-configurable idle period;
-- let the phone enable/start, disable/stop, and safely or forcibly restart one
-  plugin without restarting the bridge;
-- keep the bridge, durable catalog, relay, and plugin-management API available
-  with zero enabled or active plugins; and
-- preserve headless operation and compatibility with released clients and
-  bridges throughout delivery.
+- setup inspection never installs, logs in, or starts a backend;
+- one durable denylist is the only plugin-eligibility preference;
+- eligible plugins start only for concrete demand and stop after configurable
+  confirmed idle time;
+- the bridge, relay, catalog, setup API, and management API remain available
+  with zero usable plugins;
+- headless clients and the redesigned mobile Settings surface can inspect and
+  control the same lifecycle seam; and
+- backend-specific setup, activity, authentication, and launch behavior stays
+  inside the owning plugin package.
 
-The bridge continues to bundle registered plugin implementations. “Installed”
-in this plan means that the backend runtime/CLI needed by a descriptor is
-already present. Installing runtimes and authenticating backends from the phone
-are product direction but belong to a separate future plan.
+## Locked Product Decisions
 
-## Success Criteria
+### Eligibility and configuration
 
-1. A descriptor can inspect setup through a bounded, read-only contract and
-   report ready, runtime missing, authentication required, unavailable, or
-   unknown without provisioning, starting, opening a login flow, or exposing
-   credentials.
-2. With no durable phone override, no explicit local plugin list, and no
-   `--plugin` flags, the bridge derives the enabled set from every setup-ready
-   registered plugin in stable registry order. Explicit local configuration and
-   CLI behavior remain unchanged until a phone deliberately claims durable
-   selection authority.
-3. A durable phone override wins across bridge restarts even when old
-   `--plugin` arguments are replayed. A local config command clears that remote
-   override and reveals the unchanged local CLI/settings/automatic policy.
-4. The bridge starts and connects with zero enabled or active plugins. Database
-   catalog browsing, bridge health, setup inspection, and lifecycle control
-   remain available; plugin-backed operations fail with an explicit setup or
-   enablement result rather than stopping the bridge.
-5. Every plugin-backed operation that actually needs a backend acquires its
-   plugin generation. Concurrent callers share one start, in-flight work holds a
-   lease, and catalog-only reads never activate plugins.
-6. A setup-ready enabled plugin becomes dormant after it has no operation
-   leases, reports no active work, and remains inactive for its effective idle
-   policy. Each plugin supports `suspendAfter(duration)` or `alwaysOn`; the
-   inherited default is ten minutes. Headless configuration may override one
-   plugin, while the first mobile UI applies one policy to all plugins.
-7. Unknown activity or an unsettled start/stop/restart blocks automatic and
-   ordinary manual shutdown. A confirmed force operation may interrupt work,
-   remains observable, and cannot leave a stale generation routed or emitting
-   events.
-8. Phone enablement immediately persists the remote override and attempts a hot
-   start. Phone disablement safely stops and makes the plugin ineligible; a
-   confirmed force disable may interrupt work. Restart preserves enablement and
-   replaces only that plugin generation.
-9. A plugin that becomes logged out is setup-blocked and unavailable for every
-   backend operation, including transcript retrieval and import. Its durable
-   catalog remains browseable, and an explicit user enablement preference is not
-   silently rewritten.
-10. Existing automatic catalog hydration checks the durable marker before
-    activation, activates only when an import is actually required, and releases
-    its lease afterward. Startup/reconnect activity reconciliation does not wake
-    every dormant plugin or restore continuous plugin enumeration.
-11. Old clients continue browsing and controlling supported sessions through a
-    new bridge. New clients talking to an old bridge hide or disable unsupported
-    lifecycle controls and retain existing plugin-selection behavior.
-12. Every implementation PR is independently releasable: it either preserves
-    shipped behavior or completes a user-visible stage, passes directly relevant
-    analysis/tests, and leaves no partially routed lifecycle mode enabled.
+- Remove repeated `--plugin`, `enabledPlugins`, `remoteEnabledPlugins`, selection
+  authority, user-defined plugin order, remote reset, and the legacy automatic
+  OpenCode provisioning fallback.
+- `--plugin` is an ordinary unknown option. There is no compatibility parser.
+- Register every bundled plugin's namespaced runtime options on `run`. An
+  explicitly supplied invalid value remains a fatal CLI usage error even when
+  that plugin is denied.
+- Eligibility is exactly `plugin id not in plugins.disabled`.
+- Unknown disabled IDs and unknown plugin configuration objects survive a
+  current bridge rewrite. Local config commands reject unknown IDs to catch
+  typos.
+- Existing allowlist values are ignored and removed on a later canonical write;
+  they are not migrated into the denylist.
+- Local `config plugins` mutations require bridge restart. Authenticated
+  management API mutations apply live.
 
-## Terms And Locked Product Decisions
+### Setup and installation
 
-| Term | Meaning |
-|---|---|
-| **Registered** | A descriptor implementation is bundled in this bridge build. |
-| **Setup-ready** | The descriptor found the runtime and sufficient backend authentication for activation. A plugin with no installation or login requirement may report ready directly. |
-| **Enabled** | Current policy permits Sesori to use the plugin. Enablement is durable eligibility, not proof that a process is resident. |
-| **Active** | One live plugin generation has been started and not yet stopped. |
-| **Operational** | The active generation can currently serve backend operations. |
-| **Dormant** | Enabled and setup-ready, but intentionally not active. A routed backend operation may wake it. |
-| **Blocked** | Enabled by explicit preference but not setup-ready, unavailable, or failed. Catalog data remains. |
+- Inspect every eligible registration at startup. Denied plugins are not
+  probed and report `notInspected` until explicit refresh or enable.
+- Setup states are `notInspected`, `ready`, `runtimeMissing`,
+  `authenticationRequired`, `unavailable`, and `unknown`.
+- Remove `canProvision` from current domain and wire models.
+- No lifecycle path downloads or installs a runtime. Existing low-level pinned,
+  checksummed downloader primitives may remain, but are unreachable from this
+  lifecycle plan.
+- No polling and no hidden probe on an ordinary operation against a blocked
+  plugin. Recovery requires enable, explicit refresh, restart, or bridge
+  restart.
+- `GET /plugin/setup` returns the current snapshot only and never activates or
+  probes. Explicit refresh is allowed while the plugin is denied.
 
-Locked decisions from the user interview:
+### Ordering and defaults
 
-- Automatic mode derives all setup-ready plugins in stable order.
-- Phone selection is durable and overrides replayed CLI selection until a local
-  reset explicitly returns authority.
-- Phone enable/start and disable/stop are one user action each; runtime state is
-  still shown so an enabled plugin may visibly be dormant after idle shutdown.
-- Restart remains a separate action.
-- Safe stop/restart is the default; a separate confirmation allows force.
-- Idle policy is per-plugin-capable from the start: `suspendAfter(duration)` or
-  `alwaysOn`. The default is ten minutes. Headless configuration/API may set
-  individual overrides; the first mobile UI exposes only one apply-to-all
-  control, where `Never` maps to `alwaysOn` for every plugin.
-- Any targeted backend operation wakes an eligible dormant plugin. Catalog-only
-  reads and management/status reads do not.
-- Backend runtime installation and backend login from the phone are separate
-  future-plan work.
-- Mobile ships first while business logic remains in shared `module_core` so a
-  desktop surface can adopt it later without moving ownership.
-- Bridge-app-onboarding W02 must be complete before implementation; PR #504 now
-  satisfies that dependency.
+- All plugin lists use case-insensitive display-name order with plugin ID as the
+  deterministic tie-breaker.
+- The bridge default is the first currently selectable plugin in that order.
+- No default or last-used plugin is persisted by the bridge.
+- The mobile new-session chooser persists last-used plugin per client and
+  bridge. It uses that plugin when still routable and otherwise uses the
+  bridge-derived default.
 
-## Scope
+### Residency and idle behavior
 
-### In Scope
+- Every setup-ready plugin starts dormant after bridge startup.
+- A concrete plugin operation, marker-missing catalog hydration, or live enable
+  starts it. Reads served only from the durable catalog never start it.
+- The hardcoded idle fallback is 10 minutes.
+- `plugins.default.idleTimeoutMins` overrides that fallback.
+- `plugins.<id>.idleTimeoutMins` overrides the effective default for one plugin.
+- Any integer is accepted and preserved exactly. Values `<= 0` mean demand-start
+  and never idle-stop; they do not mean eager startup.
+- Automatic hydration is real demand. A plugin configured `<= 0` remains
+  resident after hydration.
+- Applying one timeout to all plugins sets the default and removes every known
+  per-plugin timeout override while preserving unrelated unknown fields.
+- Safe automatic or manual stop requires no operation lease, affirmative plugin
+  idle state, and no unsettled lifecycle transition or event handoff.
 
-- A setup-inspection contract on `BridgePluginDescriptor`, implemented by the
-  OpenCode, Codex, and Cursor descriptors without backend details crossing the
-  interface.
-- A generic setup result rich enough to distinguish missing runtime,
-  authentication required, blocked/unavailable, transient unknown, and ready.
-- Stable automatic selection, explicit local selection, and durable remote
-  selection authority with an exact local reset path.
-- A bridge that runs with no selected, enabled, or active plugin.
-- Dynamic per-plugin setup inspection, provisioning, start, sourced events,
-  status, safe/force stop, restart, disposal, and generation fencing.
-- An operation lease/acquisition seam used by every plugin-backed repository and
-  import path, with no activation from database-only catalog reads.
-- Plugin-owned generic busy/idle/unknown activity reporting plus bridge-owned
-  in-flight lease accounting and per-plugin effective idle policy.
-- Dynamic event attachment and per-plugin ordering across repeated generations.
-- Additive headless HTTP/SSE control and status APIs.
-- Durable bridge settings for remote selection authority, a default idle policy,
-  and optional per-plugin idle-policy overrides.
-- Mobile settings/control UI through module-core API -> repository -> service or
-  cubit -> thin Flutter screen ownership.
-- Compatibility handling, focused verification, and removal or narrowing of
-  automatic enumeration paths that would defeat dormancy.
+### Live management
 
-### Non-Goals
+- Live enable removes the deny entry, persists intent, inspects setup, and
+  starts/retries the plugin when ready even if it was already eligible.
+- A non-ready enable remains durably eligible and returns blocked state without
+  installing anything.
+- Live disable safely stops first and then persists the deny entry. A confirmed
+  force request may interrupt work. Failed persistence restores live eligibility
+  and remains observable.
+- Restart preserves eligibility and re-inspects setup before replacing the
+  generation. Non-ready setup returns the current blocked snapshot.
+- Refresh updates setup facts only; newly ready plugins remain dormant.
+- Management revision and `plugin.management.changed` SSE invalidation remain
+  process-local. Consumers coalesce a fresh management GET and never poll.
 
-- Downloading/installing a backend runtime from the phone.
-- Starting a backend login, entering credentials, opening a provider URL, or
-  completing OAuth/device-code authentication from the phone.
-- Downloading plugin implementation code or loading third-party executable
-  extensions into the bridge process.
-- Moving a live session between plugins.
-- Periodically polling setup/authentication state when no management request or
-  activation attempt needs it.
-- Treating a transient setup probe failure as logout or rewriting an explicit
-  enablement preference automatically.
-- Persisting process IDs, operation leases, idle timers, or active generations
-  across bridge process restarts.
-- Keeping a plugin alive merely to mirror direct harness activity; external
-  work remains import-driven.
-- Per-plugin idle controls in the first mobile UI, arbitrary timeout entry,
-  analytics, cost metering, or a general job scheduler.
-- Desktop lifecycle-control UI in this plan.
-- Broad auth, terminal, onboarding, catalog, or client-state refactors unrelated
-  to dynamic plugin ownership.
+### Client settings
 
-## Audited Current Behavior
+- Add Plugins as a dedicated sub-page of the merged redesigned Settings screen.
+- The mobile shell remains thin and uses Prego settings/grouped-row primitives.
+- Shared client ownership remains API -> repository -> service -> cubit.
+- The page shows all registrations, setup/runtime/work status, eligibility,
+  effective timeout, global timeout, per-plugin override, refresh, restart, and
+  safe disable with explicit force confirmation.
+- The page does not expose runtime installation or backend login.
+- Desktop compiles against shared module-core changes but gets no plugin settings
+  UI in this plan.
 
-- `bridge/app/lib/src/bridge/runtime/plugin_registry.dart` registers OpenCode,
-  Codex, and Cursor descriptors at compile time. Registration is inert.
-- `PluginSelector` resolves CLI values, then persisted `enabledPlugins`, then the
-  sole OpenCode fallback before the full parser and runtime exist. Only selected
-  descriptors contribute parsed configs.
-- `BridgePluginDescriptor.checkAvailability` means “may attempt startup,” not
-  “already installed and logged in.” OpenCode and Codex report available with
-  default config because `ensureRuntime` may download a managed runtime; Cursor
-  performs a real binary probe.
-- `BridgeRuntimeRunner` probes selected descriptors, provisions and starts them,
-  then constructs one fixed `PluginLifecycleService` composition. It exits when
-  no selected descriptor is available.
-- `PluginLifecycleService.registerSelection` is one-shot, requires a non-empty
-  list and exactly one default, and removes failed APIs from one mutable
-  operational map. It cannot create a later generation.
-- `Orchestrator.create` snapshots enabled IDs, builds plugin event listeners for
-  the then-operational APIs, and injects the operational map into repositories.
-- `SessionRepository`, `ProjectRepository`, agent/provider/question/permission/
-  worktree repositories, and `CatalogImportRepository` access that map directly.
-  Missing entries become “plugin is not running” rather than activating a
-  dormant plugin.
-- `CatalogImportService` receives fixed enabled IDs and starts one automatic
-  marker-gated import for each startup-operational plugin.
-- Project activity reconciliation runs at bridge startup and plugin
-  `server.connected`; derived plugins may enumerate all sessions even after
-  hydration. Native active-root compatibility may enumerate a project’s roots.
-- `GET /plugin` returns only selected plugin metadata. Shared
-  `PluginLifecycleState` has unavailable/ready/degraded/failed but does not
-  separate setup, enablement, dormancy, active generation, or selection
-  authority.
-- The client has only `PluginApi.listPlugins`; plugin metadata is consumed by the
-  new-session chooser. There is no lifecycle settings repository/cubit/screen.
-- `BridgeSettings.enabledPlugins` is nullable and ordered. CLI currently wins,
-  and the settings repository has no plugin-selection or idle-timeout update
-  operation.
-- The completed parallel-plugin architecture makes project/root/detail/child
-  catalog reads database-only, so keeping those reads online with zero plugins
-  does not require a fallback backend.
-- Bridge-app-onboarding W02 is merged through PR #504. Its
-  `BridgeRuntimeRunner.shouldRunAppOnboarding` gate runs the bounded checkpoint
-  only for standalone interactive startup after concurrent enabled-plugin
-  availability leaves at least one available descriptor and before predecessor
-  wait, startup mutex, provisioning, or plugin start. The post-merge audit found
-  no lifecycle-boundary change; Stage 10 deliberately widens only the
-  availability part of that gate when zero-plugin startup becomes valid.
+## Durable Configuration
 
-## Architecture And Ownership
+The exact optional shape is:
 
-### 1. Setup inspection remains descriptor-owned
-
-Add a read-only method to `BridgePluginDescriptor`, because the descriptor exists
-before a live `BridgePluginApi`:
-
-```dart
-Future<PluginSetupStatus> inspectSetup({
-  required PluginConfig config,
-  required HostProcessService processes,
-  required Map<String, String> environment,
-});
-```
-
-`PluginSetupStatus` is sealed because variants carry different guidance and
-provisionability. The exact source names may change during implementation, but
-the domain variants are fixed:
-
-- ready;
-- runtime missing, including whether existing bridge provisioning can install it
-  after an explicit enable;
-- authentication required;
-- unavailable/unsupported with an actionable message; and
-- unknown after a timeout, transient command failure, or ambiguous result.
-
-The inspection contract never installs, logs in, opens a browser, starts the
-long-lived backend, mutates credentials, or returns account/token details. A
-bounded short-lived noninteractive status command is allowed. A plugin without a
-reliable check returns unknown and is not automatically enabled.
-
-The first implementations are concrete and stay inside their plugin packages:
-
-- OpenCode reuses its existing bounded executable/version resolver. A usable
-  existing executable is setup-ready because OpenCode has no bridge-start login
-  prerequisite; provider credentials remain an operation/provider concern. A
-  missing default executable is `runtimeMissing(canProvision: true)`, while a
-  missing explicit `--opencode-bin` is not silently replaced.
-- Codex first resolves a usable existing executable, then runs bounded
-  `codex login status`. Its explicit logged-in result is ready, its explicit
-  logged-out result is authentication-required, and unrecognized output,
-  timeout, or command failure is unknown. A missing default executable is
-  provisionable; a missing explicit override is not.
-- Cursor first reuses its current bounded `cursor-agent --version` CalVer gate,
-  then runs bounded `cursor-agent status` (or accepts a non-empty
-  `CURSOR_API_KEY` already supplied to the process). Explicit logged-out output
-  is authentication-required; unrecognized output is unknown. Cursor runtime
-  installation remains external and therefore is never bridge-provisionable.
-
-Probe output is classified and discarded inside the descriptor. Account names,
-credential paths, tokens, and raw command output never cross the descriptor
-contract or enter the management DTO. Tests pin classification against the
-targeted runtime versions rather than teaching bridge core their output strings.
-
-Keep `checkAvailability` and `ensureRuntime` separate. `ensureRuntime` gains a
-required generic `RuntimeProvisionMode` (`existingOnly` or `allowInstall`) so it
-can still resolve an existing launch path without downloading. Only explicit
-local CLI/settings selection and the dated OpenCode fallback use
-`allowInstall`. Automatic and remote/phone selection always use `existingOnly`.
-If phone enablement finds a missing runtime, it persists the explicit preference
-and returns setup-blocked status; it does **not** invoke installation. This is
-the hard boundary between this plan and the deferred phone-install plan.
-
-The bridge constructs default `PluginConfig` values directly from declared
-`PluginOption` defaults for unselected descriptors. It does not register every
-plugin’s options merely to inspect setup, and it does not make disabled-plugin
-flags appear in ordinary focused CLI help.
-
-### 2. Selection policy, parse-time configuration, and durable authority
-
-`plugin_registry.dart` adds the exact pre-parser record
-`PluginBootstrapSelection`:
-
-```dart
-enum LocalPluginSelectionSource { cli, settings, automatic }
-
-typedef PluginBootstrapSelection = ({
-  LocalPluginSelectionSource localSource,
-  List<String> localPluginIds,
-  List<String>? remotePluginIds,
-  List<String> parserPluginIds,
-});
-```
-
-`remotePluginIds == null` means no remote authority; an empty list is a valid
-remote selection. `localPluginIds` is empty only for automatic mode.
-`parserPluginIds` is the stable de-duplicated union of raw CLI ids, the selected
-local-settings ids, remote ids, and the OpenCode help fallback when all three are
-absent. This accepts a replayed launch script's namespaced flags while remote
-authority controls runtime eligibility; it does not register every known
-plugin's flags in ordinary focused help.
-
-`PluginCliOptionsMapper` adds `defaultsFor(options:)`. `RunCommand` creates a
-`PluginConfig` for every registered descriptor from declared defaults, overlays
-parsed values only for `parserPluginIds`, and calls every descriptor's pure
-`validateConfig` before authentication or startup locking. `BridgeCliOptions`
-replaces `enabledPluginIds` with the required `bootstrapSelection`; runtime
-selection is not falsely finalized at parse time.
-
-Final local precedence remains:
-
-```text
-local policy = CLI --plugin values
-            ?? persisted enabledPlugins
-            ?? automatic setup-ready registry order
-```
-
-`PluginLifecycleService` materializes one `EffectivePluginSelection` in
-`plugin_lifecycle_service.dart` with ordered enabled ids, a nullable default id,
-selection authority, and per-id provisioning mode. A separately persisted
-`remoteEnabledPlugins` list wins over the local policy across standalone
-successors and supervised respawns. The first remote enable/disable seeds that
-list from the current effective order. The exact local recovery command is
-`sesori-bridge config plugins reset-remote`; it removes only
-`remoteEnabledPlugins`, reports that restart is required, and leaves CLI args and
-`enabledPlugins` untouched.
-
-Automatic mode is derived rather than persisted. A management refresh
-recomputes automatic membership; otherwise newly installed/authenticated plugins
-appear on the next bridge start. Stable registry order chooses the nullable
-default. The fixed legacy missing-plugin identity remains OpenCode and never
-means “current default.”
-
-For the first release, preserve released unset-selection bootstrap behavior with
-a dated compatibility exception: if automatic inspection finds no ready plugin,
-select only provisionable OpenCode with `allowInstall`. Explicit remote empty
-selection bypasses this fallback and produces a zero-plugin bridge. Remove the
-fallback only in the separate phone install/login work after supported clients
-can recover an unconfigured machine without local terminal intervention.
-
-### 3. Ordered startup and zero-plugin phase model
-
-The final startup flow is explicit:
-
-```text
-raw argv + read-only BridgeSettings peek
-  -> PluginSelector builds PluginBootstrapSelection
-  -> full parser registers parserPluginIds only
-  -> default PluginConfig for every descriptor + parsed overlays + pure validation
-  -> Sesori authentication / identity resolution
-  -> setup inspection (S10 runner-owned; S11+ `PluginRuntimeApi.inspectSetup`)
-  -> PluginLifecycleService resolves remote/local/automatic effective selection
-  -> checkAvailability for effective candidates
-  -> bridge-app-onboarding W02 checkpoint (standalone interactive only; runs even
-     when the effective set is empty)
-  -> predecessor wait and cross-instance start gate
-  -> register every descriptor/config, apply eligibility/default, start only the
-     generations required by the current stage/policy
-  -> compose database, relay, management API, and Orchestrator even with no default
-```
-
-Stage 10 performs the same ordering with the existing eager starter; S11-P01
-moves inspection/start mechanics behind `PluginRuntimeApi` without changing
-results.
-S11-P02 starts `alwaysOn` plugins and the dated fallback eagerly while ordinary
-`suspendAfter` plugins begin dormant.
-
-This is the exact W02 integration delta from current `main`: S10 removes the
-early `availableDescriptors.isEmpty` exit and removes `hasAvailablePlugins` from
-`shouldRunAppOnboarding`, while preserving its standalone + interactive checks
-and its position before predecessor wait/startup locking. A bridge that will now
-continue with an empty effective set still offers the bounded onboarding
-checkpoint; supervised and noninteractive runs still skip it.
-
-The S10 ownership transition is explicit, not an unnamed temporary boundary.
-After auth, `BridgeRuntimeRunner` calls every descriptor's `inspectSetup` with
-the validated config, shared `BridgeHostProcessService`, and environment in one
-bounded `Future.wait`; it freezes the result map and calls:
-
-```dart
-PluginLifecycleService.initialize({
-  required PluginBootstrapSelection bootstrap,
-  required BridgeSettings settings,
-  required Map<String, PluginSetupStatus> setupById,
-});
-```
-
-The service stores that immutable map, resolves selection, and exposes
-`setupSnapshot` for `GetPluginSetupHandler`. S11-P01 changes only the producer:
-`BridgeRuntimeRunner` obtains the same map from
-`PluginLifecycleRepository.inspect`, which delegates to
-`PluginRuntimeApi.inspectSetup`, then calls the unchanged `initialize`
-signature. S10 constructs `PluginLifecycleService()` with no repository
-dependency; S11-P01 adds the final repository/settings/clock constructor shown
-below when those owners exist. No setup owner is invented between releases.
-
-The nullable default is represented honestly as `String?`, never an empty
-string. `PluginLifecycleService`, `PluginRuntimeApi`, `ProjectRepository` and the
-`GET /plugin` mapper are the only default consumers. Default-targeted project
-open/rename returns a typed 503 when null; catalog/health/setup/management routes
-do not require a default. `CatalogImportService` accepts an empty effective list,
-and the client already treats an empty `PluginListResponse.plugins` as “no new
-session target” rather than a bridge connection failure.
-
-### 4. Exact runtime boundary and dependency ownership
-
-The one-shot runner is replaced by named owners; no new class is a test-only
-interface or a repository peer dependency.
-
-#### Foundation start capability and Layer-5 implementation
-
-`bridge/app/lib/src/bridge/foundation/plugin_generation_starter.dart` defines
-`PluginGenerationStarter`, a narrow cross-layer capability whose `start(...)`
-stream emits provision progress and one terminal started `BridgePlugin`. It is
-defined below the API layer because request-time `PluginRuntimeApi` must not import
-runner/services. This is the permitted shared-layer-interface case, not a 1:1
-testability wrapper.
-
-```dart
-abstract interface class PluginGenerationStarter {
-  Stream<PluginGenerationStartEvent> start({
-    required BridgePluginDescriptor descriptor,
-    required PluginConfig config,
-    required RuntimeProvisionMode provisionMode,
-    required StartAbortSignal startAborted,
-  });
+```json
+{
+  "plugins": {
+    "disabled": ["cursor"],
+    "default": {
+      "idleTimeoutMins": 30
+    },
+    "opencode": {
+      "idleTimeoutMins": 0
+    }
+  }
 }
 ```
 
-`PluginGenerationStartEvent` is sealed with `progress(event:)` and terminal
-`started(plugin:)` variants; startup failures remain stream errors using the
-existing typed exceptions.
+- The entire `plugins` root is omitted from a newly created default config.
+- Missing `disabled` means an empty denylist.
+- Missing timeout fields inherit through plugin -> default -> hardcoded 10.
+- Empty strings are invalid IDs, duplicates are canonicalized, and writes use a
+  deterministic ID order.
+- A malformed `plugins` root or `disabled` list fails a bridge run rather than
+  silently enabling plugins. Malformed timeout fields are reported, removed at
+  that scope, and fall back without discarding the denylist or unknown entries.
+- `BridgeSettingsRepository` remains the sole settings owner and preserves raw
+  unknown plugin entries/fields while updating known values.
 
-`bridge/app/lib/src/bridge/runtime/bridge_plugin_generation_starter.dart` adds
-the sole production `BridgePluginGenerationStarter`. Its required constructor
-collaborators are:
-
-```dart
-BridgePluginGenerationStarter({
-  required ManagedRuntimePaths managedRuntimePaths,
-  required ProcessIdentity currentBridgeIdentity,
-  required String ownerSessionId,
-  required StartupMutexRepository startupMutexRepository,
-  required BridgeInstanceService bridgeInstanceService,
-  required ProcessRepository processRepository,
-  required RuntimeFileApi runtimeFileApi,
-  required ServerClock clock,
-  required Map<String, String> environment,
-  required ProcessUser? currentUser,
-});
-```
-
-This adapter owns the exact mechanics currently embedded in
-`BridgeRuntimeRunner.startPluginsUnderStartupMutex`: two-attempt startup-lock
-contention handling, single-live-bridge enforcement, state-directory creation,
-fresh per-generation `BridgePluginHostImpl` construction,
-`ensureRuntime(mode:)`, `provisionedRuntimePath`, and
-`descriptor.start(host)` while the cross-instance mutex remains held. It
-consumes the supplied `StartAbortSignal`; it never creates or owns its write
-side. It caches only state-directory `RuntimeFileApi` instances; hosts, live
-plugins, and generations are never reused. `BridgeRuntimeRunner` constructs this
-adapter after authentication/identity resolution and keeps predecessor waiting
-and the W02 checkpoint outside it.
-
-#### Layer 1: `PluginRuntimeApi`
-
-`bridge/app/lib/src/api/plugin_runtime_api.dart` adds concrete
-`PluginRuntimeApi` and
-its internal sealed result/snapshot types. Its constructor is complete:
-
-```dart
-PluginRuntimeApi({
-  required List<PluginRuntimeRegistration> registrations,
-  required PluginGenerationStarter generationStarter,
-  required HostProcessService setupProcesses,
-  required Map<String, String> environment,
-  required ServerClock clock,
-  required Duration shutdownBudget,
-});
-```
-
-Each immutable `PluginRuntimeRegistration` contains exactly one descriptor and
-its validated config. The descriptor also declares
-`PluginProjectOwnership.native` or `.bridgeDerived`; this small enum is added to
-`BridgePluginDescriptor` because dormant/blocked registrations need the same
-generic project-ownership fact before a live API subtype exists. On start,
-`PluginRuntimeApi` verifies the returned `NativeProjectsPluginApi` or
-`BridgeDerivedProjectsPluginApi` matches that declaration.
-
-The public mechanical surface is fixed:
-
-```dart
-Future<Map<String, PluginSetupStatus>> inspectSetup({required Set<String>? pluginIds});
-void applySelection({
-  required List<PluginRuntimeEligibility> entries,
-  required String? defaultPluginId,
-});
-Future<void> startEager({required List<String> pluginIds});
-Future<T> use<T>({
-  required String pluginId,
-  required String operation,
-  required Future<T> Function(BridgePluginApi api) body,
-});
-Stream<T> useStream<T>({
-  required String pluginId,
-  required String operation,
-  required Stream<T> Function(BridgePluginApi api) body,
-});
-Future<T?> useIfActive<T>({
-  required String pluginId,
-  required Future<T> Function(BridgePluginApi api) body,
-});
-Future<PluginRuntimeCommandResult> start({required String pluginId});
-Future<PluginRuntimeCommandResult> stop({
-  required String pluginId,
-  required PluginStopIntent intent,
-});
-Future<PluginRuntimeCommandResult> disable({
-  required String pluginId,
-  required PluginStopIntent intent,
-  required Future<void> Function() persistSelection,
-});
-Future<PluginRuntimeCommandResult> restart({required String pluginId, required PluginStopIntent intent});
-void beginShutdown();
-Future<void> disposeStartedApis();
-Future<void> dispose();
-```
-
-It exposes replay-latest `snapshots`, source-attributed `backendEvents`, and
-`provisionProgress` streams. It owns registered slots, enabled/provision-mode
-enforcement, one start future per plugin, generation numbers, operation/event
-subscription counts, status/work-state subscriptions, raw backend-event
-subscriptions, bounded stop, and process-shutdown disposal. It does not read or
-write bridge settings, choose automatic membership, schedule idle timers, map
-wire DTOs, or emit phone SSE.
-
-`PluginRuntimeSnapshot` contains plugin id/project ownership, latest setup
-status, eligibility and provisioning mode, nullable generation, runtime state,
-work state, lease count, and transition kind. `PluginRuntimeCommandResult` is
-sealed as `applied(snapshot:)`, `current(snapshot:)`,
-`conflict(snapshot:, reasons:)`, or `failed(snapshot:, message:)`; it carries no
-backend-specific payload. `stop` is suspension and always retains eligibility.
-`disable` is a callback-scoped transition: while its per-plugin transition lock
-is held, it blocks acquisitions, passes the safe/force gate, stops/fences, marks
-live eligibility disabled, awaits the supplied durable-selection write, and only
-then unlocks. If that write throws, it restores prior eligibility as dormant and
-returns failure without automatically restarting.
-
-`PluginRuntimeApi` creates and retains one fresh `StartAbortController` in each
-starting slot, passes only `controller.signal` to `PluginGenerationStarter`, and
-clears it after that start settles. Force stop/restart and process shutdown call
-the retained controller's `abort()` before waiting for settlement. Ordinary safe
-stop never aborts a start; it reports `transitioning` until that start settles.
-
-`use` increments a generation lease before invoking `body` and releases in
-`finally`. `useStream` retains the lease until stream completion, error, or
-cancellation; this is required for catalog import. `useIfActive` never starts a
-generation and returns null when none is routable. All three reject disabled or
-setup-blocked slots with typed plugin-operation errors. Plugin API results are
-returned only if the captured generation remains current; repository durable
-writes happen after that success so a forced/stale completion cannot publish a
-successor's result.
-
-#### Layer 2 and Layer 3
-
-`bridge/app/lib/src/repositories/plugin_lifecycle_repository.dart` adds
-`PluginLifecycleRepository({required PluginRuntimeApi runtimeApi})`. It maps setup and
-runtime snapshots into bridge-domain lifecycle records and delegates inspect,
-eligibility, start, safe/force stop, and restart. It has no settings dependency.
-
-Its public methods mirror the policy use cases without exposing
-`BridgePluginApi`: `inspect({required Set<String>? pluginIds})`,
-`applySelection({required EffectivePluginSelection selection})`,
-`start({required String pluginId})`,
-`stop({required String pluginId, required PluginStopIntent intent})`,
-`disable({required String pluginId, required PluginStopIntent intent, required Future<void> Function() persistSelection})`,
-and `restart({required String pluginId, required PluginStopIntent intent})`, plus
-replay-latest `snapshots` and a synchronous `snapshot` getter.
-
-The existing `BridgeSettingsRepository` remains the **only** Layer-2 settings
-owner. It gains atomic in-process read-modify-write methods for
-`remoteEnabledPlugins`, the default idle policy, and plugin overrides. It never
-depends on `PluginLifecycleRepository`.
-
-For disable, `PluginLifecycleService` supplies a one-shot
-`persistSelection` closure that invokes `BridgeSettingsRepository`; the closure
-passes through `PluginLifecycleRepository` into `PluginRuntimeApi.disable` so the
-API can keep its per-plugin transition lock across the durable commit. Neither
-repository stores or depends on its peer, and the runtime API knows only whether
-the callback succeeded. This is the same callback-scoped-lock pattern preferred
-for a single protected operation.
-
-`PluginLifecycleService` becomes the Layer-3 policy owner with this constructor:
-
-```dart
-PluginLifecycleService({
-  required PluginLifecycleRepository lifecycleRepository,
-  required BridgeSettingsRepository bridgeSettingsRepository,
-  required ServerClock clock,
-});
-```
-
-It owns selection precedence, effective/default order, setup gating, the dated
-fallback, provisioning mode, one short global management-command queue for
-settings consistency, per-plugin idle timers, safe/force policy, remote
-mutations, monotonically increasing process-local management revision, and
-public status snapshots. The global queue serializes rare settings mutations
-from multiple clients; start/stop locks, leases, backend operations, and idle
-timers remain independent per plugin. A failed settings write is observable and
-returns the runtime API's already rolled-back snapshot; the service does not
-perform a second eligibility transition.
-
-Its public use cases are
-`initialize({required PluginBootstrapSelection bootstrap, required BridgeSettings settings, required Map<String, PluginSetupStatus> setupById})`,
-`refreshSetup({required String? pluginId})`,
-`enable({required String pluginId})`,
-`disable({required String pluginId, required PluginStopIntent intent})`,
-`restart({required String pluginId, required PluginStopIntent intent})`,
-`updateOrder({required List<String> pluginIds})`, and
-`updateIdlePolicy({required PluginIdlePolicyUpdate update})`. Each returns the
-current management snapshot or a typed conflict/failure.
-`managementSnapshots` is replay-latest and carries the process-local revision.
-S12 also exposes replay-latest `catalogHydrationReadyPluginIds`, containing the
-complete enabled/setup-ready id list in registry order for the sole hydration
-listener; it is an internal service stream, not a wire contract.
-
-`BridgeRuntimeRunner` is still the Layer-5 process composer. It constructs one
-shared settings repository, starter, runtime, lifecycle repository and lifecycle
-service; wires shutdown phases to `PluginRuntimeApi`; and performs initial
-inspection/selection/start. `Orchestrator` receives the same `PluginRuntimeApi` and
-`PluginLifecycleService` instances, injects runtime into plugin-backed
-repositories, and subscribes once to dynamic backend events and once to
-lifecycle snapshots. `DebugServer` continues to reuse its router.
-
-S11-P01 performs this mechanical cutover while calling `startEager` for the
-current effective list and using an effective `alwaysOn` policy. S11-P02 alone
-enables dormant starts and idle shutdown. There is no release where a reachable
-plugin operation still reads the old static map.
-
-### 5. Acquisition, generation, event, and shutdown flow
+Local commands are:
 
 ```text
-targeted handler -> service -> owning repository -> PluginRuntimeApi.use/useStream
-  -> reject disabled or setup-blocked
-  -> join one in-flight start or ask PluginGenerationStarter for one generation
-  -> attach status/work/backend-event subscriptions
-  -> invoke BridgePluginApi under a generation lease
-  -> fence result against generation -> release in finally
-
-plugin backend event -> generation check -> PluginRuntimeApi.backendEvents
-  -> one PluginEventListener -> SessionEventDispatcher
-  -> Orchestrator per-plugin ordered tail -> shared Sesori SSE
-
-PluginStatus / PluginWorkState -> PluginRuntimeApi snapshot
-  -> PluginLifecycleRepository -> PluginLifecycleService policy/revision
-  -> Orchestrator maps management invalidation SSE
-
-bridge shutdown signal -> PluginRuntimeApi.beginShutdown + import/session cancellation
-  -> drain imports and routed requests -> disposeStartedApis
-  -> cancel generation subscriptions + BridgePlugin.shutdown -> dispose subjects
-  -> close Orchestrator/database/relay shared resources
+sesori-bridge config plugins
+sesori-bridge config plugins enable <id>
+sesori-bridge config plugins disable <id>
 ```
 
-Starts/stops/restarts serialize per plugin; different plugin slots remain
-independent. Concurrent acquisitions join one start. Every event/status/work
-callback captures a generation number and is ignored after fencing. Stop cancels
-and awaits that generation's source subscriptions before a successor is
-routable. Events accepted before cancellation are immutable bridge-pipeline
-input and retain per-plugin order; they never call the stopped API. A terminal
-failure fences only that generation. A later routed operation may retry if
-eligibility and setup still allow it.
+Listing shows known plugins alphabetically and separately identifies preserved
+unknown disabled IDs. Mutations print that restart is required.
 
-`BridgePlugin` gains replay-latest `PluginWorkState` (`idle`, `busy`, `unknown`)
-plus a synchronous current value. OpenCode derives it from
-`ActiveSessionTracker`; Codex derives it from active-turn/session status; ACP
-(and therefore Cursor) derives it from queued/in-flight prompt counts. Each
-starts unknown until its initial transport/status baseline is trustworthy,
-becomes busy if any backend work is active, and returns idle only on affirmative
-plugin-owned evidence. Backend-specific states never leave those packages.
+## Architecture
 
-An authoritative backend authentication failure is surfaced as the new generic
-`PluginAuthenticationRequiredException` from the plugin package. `PluginRuntimeApi`
-fences new acquisitions, records authentication-required setup, and requests a
-safe generation stop; bridge core never parses backend error text. OpenCode has
-no global start-auth requirement, while Codex and ACP/Cursor map only reliable
-backend evidence to this exception. Ambiguous failures remain unknown/failed.
+### Touched workspaces
 
-#### Method-level migration matrix
+- `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, and the
+  OpenCode, Codex, ACP, and Cursor plugin packages own generic setup/runtime
+  contracts and concrete backend evidence.
+- `bridge/app` owns configuration, composition, lifecycle policy, runtime slots,
+  persistence coordination, routes, catalog triggers, and shutdown.
+- `shared/sesori_shared` owns setup/management DTOs, the additive lifecycle SSE,
+  and plugin-list bridge identity.
+- `client/module_core` owns transport, persistence APIs/repositories, reactive
+  management logic, new-session preference, and cubits.
+- `client/app` owns redesigned mobile routes and Prego presentation.
+- `client/desktop` receives no plugin UI; it is a downstream analysis target.
 
-| Owner and methods | Activation rule | Lease and completion rule |
-|---|---|---|
-| `SessionRepository.createSession`, `renameSession`, `getCommands`, `sendCommand`, `sendPrompt`, `getSessionMessages`, `deleteSession`, `notifySessionArchived`, `abortSession` | `use` the request or stored binding's plugin; all are concrete backend operations | Prime derived-directory state inside the callback. Hold through the backend call(s); map and perform durable projection/tombstone writes only after a current-generation success. Release in `finally`, including not-found/error paths. |
-| `SessionRepository.ensurePluginAvailable` -> `ensurePluginRoutable`, and `requireActiveStoredSession` -> `requireRoutableStoredSession` | Acquire/release once to fail before session/worktree side effects; later repository backend calls reacquire and normally reuse the same idle generation | No API escapes the repository. The default ten-minute timer prevents churn between the preflight and the actual call; correctness does not rely on that timer because the actual call reacquires. |
-| `SessionRepository.getProjectActivitySummaries`, `getSessionStatuses`, `_hydrateActiveRootBindings` | Iterate runtime active ids and `useIfActive`; never start dormant plugins | One bounded lease per active source. Timeout/error releases and reports that source unavailable; native active-root compatibility remains inside the same active lease. |
-| All other public `SessionRepository` catalog/projection methods (`getSessionsForProject`, enrichment, stored-session/path/child reads, unseen/title/archive rows, binding projection, prompt defaults) | Database/git only; no runtime acquisition | Unchanged durable behavior. |
-| `ProjectRepository.resolveProjectOpenTarget`, `renameProject` | `use` nullable effective default; a missing default is typed 503 | Hold through native/derived decision and backend call. `ProjectOpenTarget` gains `PluginProjectOwnership`, so `persistOpenedProject` is database-only and never re-reads a live API. |
-| `ProjectRepository.listProjectActivityEvidence` and `ProjectActivityService.reconcile` plus Orchestrator startup/`server.connected` calls | Removed in S11-P02 | Durable catalog plus accepted live events own activity. `getProjects`, `getProject`, base-branch, remote, unseen and activity-row methods remain database/git only. |
-| `AgentRepository.getAgents`; `ProviderRepository.getProviders` | `use` explicit plugin id | Resolve project path and complete plugin query/mapping within one callback; release on every result/error. |
-| `QuestionRepository.getPendingQuestions`, `replyToQuestion`, `rejectQuestion` | Binding-derived `use`; the legacy null-session reject uses fixed OpenCode identity | Hold across tombstone checks and every backend call in that operation. Explicit auth/setup failure is preserved. |
-| `QuestionRepository.getProjectQuestions` | Aggregate only `useIfActive` sources; do not wake all enabled plugins | One deadline-bound lease per active source, including derived enumeration and pending-question fan-out. All failed sources -> existing typed 503. |
-| `PermissionRepository.getPendingPermissions`, `replyToPermission` | Binding-derived `use` | Hold across tombstone/pending validation and reply; release in `finally`. |
-| `WorktreeRepository.removeWorktree` backend `deleteWorkspace` | After successful git removal, start one observable best-effort `use` for that plugin | The fire-and-forget future owns its lease to completion and logs recovered failure; the user response still follows git removal semantics. |
-| `CatalogImportRepository.importCatalog` | `useStream` explicit plugin id | Lease spans enumeration, cancellation checks and atomic publication; cancellation/error releases. `getHydrationCompletion` stays database-only. |
-| `CatalogImportService._run` | Check hydration marker before calling the acquisition stream | Marker hit never starts. Missing marker or explicit/headless import acquires. Fixed operational-id checks are replaced by lifecycle-repository eligibility/setup results. |
-| `PermissionAutoApprovalService.approvePending` | Activity discovery sees active generations only; each concrete permission read/reply then uses its binding and may wake that one plugin | Existing errors remain observable; no scan wakes every plugin. |
-| `PluginEventListener`, `SessionEventDispatcher`, `Orchestrator` | Runtime owns one raw subscription per active generation; one dynamic listener consumes all generations | Source cancellation/fencing occurs before successor routing; existing dispatcher and Orchestrator tails preserve per-plugin event order. |
-| `HealthRepository`, `GetPluginsHandler`, setup/management handlers, and all database catalog handlers | Management/database only; never acquire | Read lifecycle snapshots or DAOs. Dormant, blocked and zero-plugin states remain inspectable. |
+### Descriptor-owned setup
 
-Aggregate status and project-summary reads therefore do not wake all plugins.
-Only a request naming a plugin, a stored session binding, an explicit import, or
-the nullable default for a concrete project operation may acquire.
+`BridgePluginDescriptor.inspectSetup(...)` is read-only and receives validated
+plugin config, bounded host-process access, environment, and read-only state
+directory. Concrete OpenCode, Codex, and Cursor descriptors classify their own
+runtime and authentication evidence and return only generic setup status and a
+sanitized nullable action hint.
 
-### 6. Busy state, idle shutdown, and force
+Probe output is bounded and discarded inside the plugin package. Tokens,
+accounts, credential paths, and raw command output never cross the descriptor
+contract. Ambiguous output, timeout, or command failure maps to `unknown`.
 
-Add generic plugin-owned work state to the live lifecycle contract: idle, busy,
-or unknown. Plugins map backend-specific turns/process/input semantics internally.
-Unknown is conservative and blocks automatic or ordinary manual stop.
+Runtime start resolves only an already-present executable. The old
+`RuntimeProvisionMode`, setup `canProvision`, and automatic install path are
+removed. A missing executable is setup-blocked rather than downloaded.
 
-The bridge separately counts operation leases and lifecycle transitions. Idle
-settings use the shared sealed `PluginIdlePolicy` rather than a sentinel
-duration:
+The concrete Stage 10 data flow is:
 
-- `suspendAfter(preset)` accepts exactly ten, thirty, or sixty minutes; and
-- `alwaysOn` keeps that enabled plugin resident until disable, restart, failure,
-  setup loss, or whole-bridge shutdown.
+```text
+RunCommand
+  -> registers every knownPlugins descriptor option through PluginCliOptionsMapper
+  -> parses/validates Map<pluginId, PluginConfig>
+BridgeSettingsRepository.loadSettings
+  -> BridgePluginSettings(disabled ids, default entry, plugin entries, passthrough)
+BridgeRuntimeRunner
+  -> PluginLifecycleService.registerPlugins(alphabetical metadata)
+  -> inspectSetup only for ids absent from disabledPluginIds
+  -> fill denied ids with PluginSetupNotInspected
+  -> PluginLifecycleService.initialize(disabled ids, setup map)
+  -> check existing-runtime availability only for setup-ready eligible ids
+  -> compose zero or more eager Stage-10 starts and every non-plugin subsystem
+GetPluginSetupHandler / GetPluginsHandler
+  -> immutable lifecycle snapshots; never descriptor calls
+```
 
-Settings persist one inherited default plus optional plugin-id overrides. The
-default is `suspendAfter(10 minutes)`. Headless config/API can set or clear an
-override. A global apply-to-all update changes the default and clears every
-override, so the mobile control truthfully governs all registered plugins. A new
-plugin inherits the current default without a settings migration.
+`BridgePluginSettings` in `bridge_settings.dart` owns typed known values and raw
+passthrough maps. `PluginLifecycleSettings` is the same optional object shape for
+`default` and each plugin and currently contains nullable `idleTimeoutMins`.
+`BridgeSettingsRepository` is the only JSON read/repair/write owner.
+`BridgeConfigService` remains the local config use-case owner; CLI command
+classes only parse arguments, invoke it, and render results.
 
-An active plugin using `suspendAfter` becomes an idle-shutdown candidate only
-when:
+### Startup and zero-plugin composition
 
-- no operation lease exists;
-- the live plugin reports idle;
-- no start, stop, restart, import publication, or event drain is unsettled; and
-- its effective policy is not `alwaysOn`.
+```text
+full CLI parser registers every plugin option
+  -> parse and validate one PluginConfig per registered descriptor
+  -> authenticate and resolve bridge identity/settings
+  -> mark denied registrations notInspected
+  -> inspect eligible registrations concurrently and read-only
+  -> derive eligible/setup/default state alphabetically
+  -> run the bounded standalone onboarding checkpoint
+  -> predecessor wait and single-live-bridge gate
+  -> compose every registration as a dormant runtime slot
+  -> compose database, relay, catalog, setup and management routes even when no slot is routable
+```
 
-Any new lease or transition from idle to busy/unknown cancels the timer; a later
-affirmative idle transition starts a fresh full interval. Arbitrary backend
-events, including heartbeats, never reset inactivity. An event only blocks stop
-while its current source/drain hand-off is unsettled; if it represents work, the
-plugin must report that through `PluginWorkState`. After the effective duration,
-the service safely shuts down that generation and publishes dormant state
-without disabling the plugin.
+The onboarding checkpoint remains standalone/interactive and no longer depends
+on at least one usable plugin. Project operations that still require a default
+return the existing typed unavailable response when none exists.
 
-Ordinary phone disable/restart uses the same atomic runtime safe gate. Safe
-disable changes eligibility only after the gate succeeds; a conflict leaves the
-durable and live selection unchanged. On success the service stops/fences first,
-marks live eligibility disabled, persists the new remote list through the
-runtime API's callback-scoped transition, and only then releases the per-plugin
-lock. A failed persistence write restores the last durable eligibility as
-dormant without restarting automatically. A force request is a separate
-confirmed action, signals the `PluginRuntimeApi`-owned in-flight start controller,
-closes new leases, gives imports/operations one bounded drain, invokes bounded
-shutdown, and records any interruption/failure. Force never deletes catalog data.
+### Runtime boundary
 
-### 7. Setup loss and recovery
+Concrete `PluginRuntime` owns the mechanical runtime state machine: registered
+slots, one joined start per plugin, generation numbers, start abort controllers,
+operation/event subscriptions, leases, applied access gates, and bounded
+generation shutdown. It never reads settings, derives eligibility/setup policy,
+chooses idle behavior, or persists decisions.
 
-Setup is inspected at startup, on explicit management refresh, before enable or
-restart, and after a backend failure indicates setup/authentication may have
-changed. There is no background polling timer.
+`PluginLifecycleRepository` maps generic runtime/setup snapshots without owning
+settings. `PluginLifecycleService` owns denylist policy, derived default,
+effective timeout, setup refresh, safe/force commands, idle timers, management
+revision, and lifecycle snapshots. `BridgeRuntimeRunner` remains the Layer-5
+composer. `Orchestrator` owns management SSE emission and dynamic backend-event
+routing.
 
-If an active or enabled plugin becomes unauthenticated:
+Every plugin-backed operation uses `PluginRuntime.use`, `useStream`, or
+`useIfActive`. Catalog-only reads never acquire. Aggregate status reads inspect
+active generations only. A generation result or event is accepted only while
+its captured generation remains current.
 
-- publish authentication-required and unavailable-for-new-session status;
-- reject all backend operations, including message history and import, rather
-  than guessing which reads remain usable;
-- preserve database-only catalog browsing;
-- preserve explicit enablement preference;
-- stop the active generation safely when possible, using failed/degraded cleanup
-  if the backend already rejected operations; and
-- allow a later explicit refresh or routed operation to re-inspect and activate
-  after the user logs in externally.
+Concrete `PluginGenerationFactory` lives at
+`bridge/app/lib/src/bridge/runtime/plugin_generation_factory.dart`; there is no
+one-implementation interface. It accepts one immutable
+`PluginRuntimeRegistration` (descriptor, validated config, state directory) and
+a start-abort signal, then emits progress plus one started plugin. Its required
+constructor dependencies are `ManagedRuntimePaths`, current `ProcessIdentity`,
+owner session ID, `StartupMutexRepository`, `BridgeInstanceService`,
+`ProcessRepository`, root `RuntimeFileApi`, `ServerClock`, environment, and
+nullable current `ProcessUser`. It constructs a fresh `BridgePluginHostImpl` and
+plugin state `RuntimeFileApi` per generation; it owns the existing startup mutex,
+single-live-bridge check, existing-runtime resolution, and descriptor start.
 
-Automatic-mode membership follows current setup readiness because it has no
-explicit preference to preserve. Unknown/transient inspection does not rewrite
-durable state.
+`PluginRuntime` lives at
+`bridge/app/lib/src/bridge/runtime/plugin_runtime.dart` and is constructed with
+required registrations, concrete `PluginGenerationFactory`, setup process
+service, environment, clock, and shutdown budget. It owns slots, generations,
+subscriptions, leases, transition locks, and abort controllers.
+`PluginLifecycleRepository` at
+`bridge/app/lib/src/repositories/plugin_lifecycle_repository.dart` depends only
+on that concrete runtime and maps mechanical snapshots/results.
+`PluginLifecycleService` is
+the Layer-3 policy owner. In Stage 11-P01 it depends on the lifecycle repository;
+Stage 11-P02 adds the shared `BridgeSettingsRepository` and `ServerClock` when
+idle policy first needs them. `BridgeRuntimeRunner` constructs every owner and
+injects the same instances into `Orchestrator` and `DebugServer`.
 
-### 8. Catalog hydration and activity reconciliation
+The Stage 11-P01 method migration is complete before the branch is done:
 
-Automatic hydration first checks the database marker without acquiring a plugin.
-Only a missing current-version marker acquires, imports, and releases that
-plugin. Explicit import does the same regardless of marker and keeps its lease
-until enumeration/publication settles or cancellation drains.
+| Consumer | Acquisition |
+|---|---|
+| `SessionRepository` concrete backend operations | `use` the request or persisted binding's plugin; durable writes occur only after a current-generation result. |
+| `SessionRepository` aggregate activity/status reads | `useIfActive`; never wake every plugin. |
+| `ProjectRepository` open/rename | `use` the live nullable derived default; missing default remains typed unavailable. |
+| `AgentRepository`, `ProviderRepository` | `use` the explicit plugin ID. |
+| `QuestionRepository`, `PermissionRepository` | `use` the persisted session binding; aggregate project questions use active generations only. |
+| `WorktreeRepository` backend cleanup | observable best-effort `use` after git success; its future retains the lease and logs recovered failure. |
+| `CatalogImportRepository` | `useStream` for enumeration through atomic publication/cancellation. |
+| `PluginEventListener`, `SessionEventDispatcher` | one generation-attributed runtime event stream; no startup API-map subscriptions. |
 
-S12 makes
-`PluginCatalogHydrationListener({required Stream<List<String>> readyPluginIds, required CatalogImportService catalogImportService})`
-the **sole** automatic-hydration trigger. `PluginLifecycleService` owns that
-replay-latest stream; every emission is the complete enabled/setup-ready id list
-in registry order. The listener treats its first emission as additions from an
-empty set and later invokes marker-gated hydration only for newly added ids, so
-startup, hot enable, and an automatic refresh that makes a plugin ready share one
-path. S12 removes `BridgeRuntimeRunner.startCatalogImports` and its inline
-automatic loop. Explicit/headless import handlers remain direct user triggers
-because they intentionally bypass the hydration marker.
+Stage 11-P01 is independently coherent: every eligible setup-ready plugin still
+starts eagerly and remains resident, matching Stage 10 while all backend access
+and events move behind the dynamic boundary. Stage 11-P02 alone switches initial
+residency to dormant and enables idle stop.
 
-Remove the assumption that bridge startup/reconnect must reconcile project
-activity through every plugin. Dormant plugins stay dormant; known-session events
-from active plugins update catalog state, explicit import discovers external
-work, and the native active-root compatibility path runs only inside an already
-active generation. This aligns actual plugin I/O with the database-owned catalog
-direction completed in Stage 9.
+The exact operation path is:
 
-### 9. Headless contracts and mobile ownership
+```text
+handler -> service -> owning repository -> PluginRuntime.use/useStream
+  -> per-plugin transition lock checks eligibility and setup
+  -> join or start one generation
+  -> increment lease before API escapes the lock
+  -> run callback/stream
+  -> verify captured generation before accepting result/publication
+  -> release lease in finally/cancel/error
+```
 
-Keep `GET /plugin` compatible for existing new-session clients. It continues to
-return only enabled, setup-ready choices. Dormant choices map to existing
-`PluginLifecycleState.ready`, so an old client can select one and wake it
-transparently. Disabled/setup-blocked registrations are absent. An empty list is
-valid. The existing `PluginMetadata` shape and legacy OpenCode attribution do not
-change.
+The exact stop/replace path is:
 
-#### Shared setup and management models
+```text
+acquire per-plugin transition lock and fence new acquisitions
+  -> safe: require zero leases + idle work + settled transition/event handoff
+     force: abort a start, reject new leases, grant bounded drain
+  -> increment/fence generation
+  -> cancel and await source status/work/backend-event subscriptions
+  -> bounded plugin shutdown
+  -> publish dormant/disabled/failed snapshot
+  -> release transition lock
+```
 
-Stage 10 adds
-`shared/sesori_shared/lib/src/models/sesori/plugin_setup_response.dart`:
+Process shutdown first calls `PluginRuntime.beginShutdown`, then drains
+imports and routed requests, disposes started APIs, closes runtime streams, and
+only then closes Orchestrator/database/relay resources. Late starts observe the
+shutdown fence and are disposed rather than routed.
 
-- `PluginSetupState`: `ready`, `runtimeMissing`,
-  `authenticationRequired`, `unavailable`, `unknown` (unknown enum fallback is
-  `unknown`);
-- `PluginSetupMetadata`: id, display name, state, `canProvision`,
-  and nullable plugin-authored action hint; and
-- `PluginSetupResponse`: stable registry-ordered list.
+### Work state, idle timers, and authentication loss
 
-Authentication-required plus the action hint is sufficient for this plan. No
-login capability is declared until the deferred phone-login flow has a concrete
-consumer and trust design.
+Live plugins expose generic replay-latest work state: `idle`, `busy`, or
+`unknown`. Concrete plugins derive it from backend-specific evidence. Unknown
+is conservative and blocks safe stop.
 
-Stage 11 adds the shared sealed `PluginIdlePolicy` in
-`shared/sesori_shared/lib/src/models/sesori/plugin_idle_policy.dart`:
-`suspendAfter(preset:)` or `alwaysOn()`, where the closed preset enum is
-`tenMinutes`, `thirtyMinutes`, or `sixtyMinutes`. Bridge settings reuse this
-domain type rather than creating a wire-identical record.
+For a positive effective timeout, the lifecycle service starts a full timer only
+while work is idle, leases are zero, and transitions are settled. New work,
+unknown/busy state, or a transition cancels it. Expiry attempts the same safe
+stop gate and leaves eligibility unchanged.
 
-Stage 12 adds
+An authoritative plugin-owned authentication failure fences new acquisitions,
+marks setup authentication-required, drains existing leases where safe, and
+stops that generation. Durable catalog reads remain available. Recovery is
+explicit; the denylist is never rewritten because of setup loss.
+
+Stage 11-P02 introduces
+`PluginCatalogHydrationListener({required Stream<List<String>> readyPluginIds,
+required CatalogImportService catalogImportService})` as the sole automatic
+trigger; no inline runner hydration remains. Its first complete emission models
+startup additions. `CatalogImportService` checks the durable marker before
+`CatalogImportRepository.useStream` acquires. Stage 12 keeps the same listener
+and widens the existing ready-ID stream to emit additions after live
+enable/refresh. Explicit import handlers remain direct user triggers and
+intentionally bypass the automatic marker gate.
+
+### Headless contracts
+
+`GET /plugin` remains the released new-session discovery seam. It returns only
+eligible, setup-ready, routable choices in alphabetical order. Dormant choices
+remain `ready` because request-time activation is transparent. Stage 13 adds a
+nullable `bridgeId` to this response together with its client consumer so a new
+client can key its local favorite; old bridges decode as null and new bridges
+remain readable by older clients.
+
+New lifecycle routes are:
+
+| Method/path | Behavior |
+|---|---|
+| `GET /plugin/setup` | Alphabetical snapshot of every registration; no probe or activation. |
+| `GET /plugin/management` | Current revision, nullable derived default ID, default timeout, and all registration rows. |
+| `POST /plugin/:id/command` | Typed enable, disable, restart, or refresh request. |
+| `PATCH /plugin/idle-timeout` | Typed apply-all, set-override, or clear-override request. |
+
+The management response has no authority, persisted order, serialized `enabled`,
+or per-row `isDefault`. Each alphabetical row carries setup, runtime state, work
+state, effective `idleTimeoutMins`, `hasIdleTimeoutOverride`, and nullable action
+hint. `PluginRuntimeState.isEnabled` and routability are derived helpers that
+fail closed for unknown state.
+
+Malformed requests are 400, unknown IDs are 404, safe/transition conflicts are
+409 with typed current state, and unexpected mechanical failures are 500 while
+remaining visible in lifecycle state/logging. Force is never inferred or used as
+a missing-value default.
+
+Stage 12 shared models live in
 `shared/sesori_shared/lib/src/models/sesori/plugin_management.dart`:
 
-- enums `PluginSelectionAuthority` (`automatic`, `localCli`, `localSettings`,
-  `remote`), `PluginRuntimeState` (`disabled`, `blocked`, `dormant`, `starting`,
-  `active`, `degraded`, `stopping`, `failed`, `unknown`),
-  `PluginManagementWorkState` (`idle`, `busy`, `unknown`),
-  `PluginStopMode` (`safe`, `force`), and generic
-  `PluginLifecycleConflictReason` (`inFlight`, `busy`, `workStateUnknown`,
-  `transitioning`, `notEnabled`);
-- `PluginManagementMetadata`: setup metadata, effective enablement/default,
-  runtime/work state, effective idle policy, `hasIdleOverride`, and nullable
-  action hint;
-- `PluginManagementResponse`: process-local revision, authority, ordered plugin
-  list, and default idle policy;
-- sealed `PluginLifecycleCommandRequest`: `enable`, `disable(mode:)`,
-  `restart(mode:)`, or `refreshSetup`; missing stop mode defaults safely to
-  `safe`, while an unknown value is invalid JSON and never becomes force;
-- `PluginOrderRequest` containing the complete current enabled-id permutation;
-- sealed `PluginIdlePolicyUpdateRequest`: `applyAll(policy:)`,
-  `setOverride(pluginId:, policy:)`, or `clearOverride(pluginId:)`; and
-- `PluginLifecycleConflict`: plugin id, generic reason list, and current
-  `PluginManagementResponse`.
+- `PluginRuntimeState`, `PluginManagementWorkState`, `PluginStopMode`, and
+  `PluginLifecycleConflictReason` enums;
+- `PluginManagementMetadata` and `PluginManagementResponse`;
+- sealed `PluginLifecycleCommandRequest` variants;
+- sealed `PluginIdleTimeoutUpdateRequest` variants; and
+- `PluginLifecycleConflict` carrying current state.
 
-Every model is Freezed, exported from `sesori_shared.dart`, omits nullable keys
-through package defaults, and is generated rather than hand-edited. The bridge
-maps plugin-interface setup/work types to these wire types in
-`PluginLifecycleRepository`; `PluginLifecycleService` adds policy/authority and
-returns the final response. No shared/client class switches on a concrete plugin
-id.
+The handlers are `get_plugin_management_handler.dart`,
+`post_plugin_lifecycle_command_handler.dart`, and
+`patch_plugin_idle_timeout_handler.dart` under `bridge/app/lib/src/routing/`.
+They depend only on `PluginLifecycleService`, parse generated shared models, and
+map typed service exceptions to HTTP status. `GetPluginSetupHandler` remains the
+separate snapshot handler.
 
-#### Exact headless routes
+`PluginLifecycleService` exposes `managementSnapshot`, replay-latest
+`managementSnapshots`, `managementRevisions`, `command(pluginId, request)`, and
+`updateIdleTimeout(request)`. It owns one short global settings-mutation tail and
+one active-command record per plugin. Equal commands join. A different command
+for the same transitioning plugin returns a typed `transitioning` 409. Different
+plugins can start/stop concurrently; only shared config writes enter the global
+tail.
 
-| Method and path | Handler | Request / success | Error semantics |
-|---|---|---|---|
-| `GET /plugin/setup` | `GetPluginSetupHandler` in `lib/src/routing/get_plugin_setup_handler.dart` | `PluginSetupResponse`; read-only snapshot, no activation | Setup probe failures appear as `unknown` entries; only unexpected handler failure is 500. |
-| `GET /plugin/management` | `GetPluginManagementHandler` in `lib/src/routing/get_plugin_management_handler.dart` | `PluginManagementResponse`; all registered plugins, no activation | 500 only for unexpected failure. Old bridges naturally return 404. |
-| `POST /plugin/:id/command` | `PostPluginLifecycleCommandHandler` in `lib/src/routing/post_plugin_lifecycle_command_handler.dart` | `PluginLifecycleCommandRequest` -> current `PluginManagementResponse` | 400 malformed/invalid force value; 404 unknown id; safe conflict or restart-while-disabled is 409 JSON `PluginLifecycleConflict`; unexpected mechanical failure is 500 and remains in the lifecycle snapshot/log. |
-| `PATCH /plugin/order` | `PatchPluginOrderHandler` in `lib/src/routing/patch_plugin_order_handler.dart` | `PluginOrderRequest` -> current response | 400 unless ids are a duplicate-free permutation of currently enabled ids; success claims remote authority and persists order/default. |
-| `PATCH /plugin/idle-policy` | `PatchPluginIdlePolicyHandler` in `lib/src/routing/patch_plugin_idle_policy_handler.dart` | `PluginIdlePolicyUpdateRequest` -> current response | 400 unknown id/invalid policy; apply-all updates default and clears every override atomically. |
+Disable uses explicit downward state transitions; no lower layer invokes a
+settings callback:
 
-Enable/disable are idempotent and are the only command variants that mutate
-remote selection authority. Enable persists first, marks eligible, re-inspects,
-and starts immediately only when existing setup is ready; missing runtime/auth
-returns 200 with enabled-but-blocked status and does not provision. Safe disable
-leaves selection untouched on 409; success performs the locked
-stop-disable-persist sequence above. Restart
-preserves selection. Refresh re-inspects without polling and, in automatic mode,
-recomputes membership. Repeated equal transitions join or return the current
-snapshot; conflicting transitions return generic 409.
+```text
+service command slot -> repository applies accessGate=draining
+  -> runtime safe/force gate, stop, and fence generation
+  -> conflict: repository restores accessGate=enabled; no durable write
+  -> success: service persists denylist through BridgeSettingsRepository
+     -> commit: repository applies accessGate=disabled; publish revision
+     -> failure: repository restores accessGate=enabled/dormant without restart;
+        return explicit failure
+```
 
-These handlers are registered in `Orchestrator`'s existing `RequestRouter`, so
-remote calls use the existing authenticated relay connection and E2E-encrypted
-request seam. The same router instance remains available on the optional
-loopback debug server for headless local control; no unauthenticated network
-listener is added.
+Enable persists removal from the denylist in the settings tail, applies live
+eligibility, inspects, then starts if ready. Restart and refresh use the same
+per-plugin command serialization. Revision advances only after a materially new
+final snapshot is queryable, and Orchestrator alone maps it to SSE.
 
-`SesoriSseEvent` gains only
-`plugin.management.changed({required int revision})`. `Orchestrator`, and no
-lower layer, emits it when `PluginLifecycleService` advances revision. It carries
-no credentials or backend payload; clients coalesce a `GET /plugin/management`.
-Revision is comparable only within one live bridge process and resets on
-reconnect, where GET is authoritative. Released clients may report-and-drop this
-unknown additive event under their existing parser, but all prior session flows
-continue; the event is emitted only on lifecycle/work/setup transitions, never a
-polling cadence.
+### Client ownership
 
-#### Exact module-core and mobile ownership
+`client/module_core` adds the management API/repository/service/cubit and a
+small secure-storage-backed plugin preference repository. Management refresh is
+triggered by connection/reconnect and the lifecycle invalidation SSE, with one
+coalesced refresh tail and no polling.
 
-Stage 13 **extends**, rather than replaces, current `PluginApi` and
-`PluginRepository`:
+The preference repository keys a nullable last-used plugin ID by the connected
+bridge ID returned by `GET /plugin`. Layer-3 `NewSessionPluginService` combines
+plugin discovery and that preference: it prefers the saved ID only when
+routable, otherwise uses the response's derived default, and records a valid
+choice when session creation is submitted. Persistence failure is logged and
+never blocks creation. When an older bridge omits its ID, the service uses the
+bridge default and does not invent a cross-bridge key.
 
-- `PluginApi` (`client/module_core/lib/src/api/plugin_api.dart`) adds
-  `getManagement`, `command`, `updateOrder`, and `updateIdlePolicy` over
+`client/app` adds a Plugins row to the redesigned Settings landing page and a
+dedicated Prego `PluginSettingsScreen`. Business decisions, command convergence,
+and force intent remain in module-core. All copy is localized.
+
+The concrete client classes are:
+
+- Layer 1 `PluginApi` (`client/module_core/lib/src/api/plugin_api.dart`) for
+  discovery, management, commands, and timeout requests through
   `RelayHttpApiClient`.
-- `PluginRepository` parses management 404 into the sealed
-  `PluginManagementLoadResult.unsupported`, parses 409 JSON into
-  `PluginLifecycleConflictException`, and otherwise returns shared DTOs without
-  a duplicate record model. That result/exception lives in
-  `client/module_core/lib/src/repositories/models/plugin_management_result.dart`.
-- New `PluginManagementService` in
-  `client/module_core/lib/src/services/plugin_management_service.dart` has the
-  constructor
-  `PluginManagementService({required PluginRepository pluginRepository, required ConnectionService connectionService})`.
-  It owns initial
-  GET, one coalesced refresh tail, command publication, connection/reconnect
-  refresh, and filtering `plugin.management.changed`; it exposes replay-latest
-  supported/unsupported/failure snapshots. It never polls.
-- New pure-Dart `PluginManagementCubit` and `PluginManagementState` under
-  `client/module_core/lib/src/cubits/plugin_management/` depend only on
-  `PluginManagementService`. The cubit owns loading/action state and the UI
-  decision to show force confirmation after a typed safe conflict; it never
-  calls API/transport or another cubit.
-- `PluginApi`, `PluginRepository`, and `PluginManagementService` are registered
-  by `configureCoreDependencies`; the cubit is constructed in `BlocProvider`.
+- Layer 1 `PluginPreferenceApi`
+  (`client/module_core/lib/src/api/plugin_preference_api.dart`) constructed with
+  required `SecureStorage`; it owns encoded per-bridge storage keys and raw
+  reads/writes/deletes.
+- Layer 2 `PluginRepository` maps management 404 and typed 409 conflicts while
+  otherwise returning shared DTOs.
+- Layer 2 `PluginPreferenceRepository` depends only on `PluginPreferenceApi` and
+  exposes typed read/write of a nullable plugin ID.
+- Layer 3 `PluginManagementService({required PluginRepository
+  pluginRepository, required ConnectionService connectionService})` owns initial
+  GET, one coalesced refresh tail, mutation publication, and subscriptions to
+  `ConnectionService.status` and `ConnectionService.events`. Connected state and
+  `plugin.management.changed` are symmetric staleness triggers.
+- Layer 4 `PluginManagementCubit({required PluginManagementService service})`
+  owns loading/action state, integer input validation, and typed safe-to-force
+  confirmation. It calls no API directly.
+- Layer 3 `NewSessionPluginService({required PluginRepository pluginRepository,
+  required PluginPreferenceRepository pluginPreferenceRepository})` resolves
+  discovery plus saved/default selection and owns the observable unawaited write
+  when valid creation is submitted.
+- Existing `NewSessionCubit` receives required `NewSessionPluginService`, invokes
+  those use cases, and only maps results to composer state.
 
-The mobile shell owns presentation in
-`client/app/lib/features/settings/plugins/plugin_settings_section.dart`, not
-`module_app_ui` and not desktop. Existing `SettingsScreen` adds a
-`BlocProvider(create: (_) => PluginManagementCubit(service:
-getIt<PluginManagementService>()))` and renders that section; no shared
-`AppRoute` or desktop router changes are needed for a mobile-first settings
-surface. The section shows one generic row per registration,
-enable/disable/restart/setup-refresh, “Make default” plus up/down ordering for
-enabled rows, and one apply-all selector (10m, 30m, 60m, Never). A generic
-custom-policy badge appears when any override exists; choosing a global value
-clears overrides. A management 404 renders a concise unsupported-old-bridge
-state while ordinary `PluginRepository.listPlugins` continues its existing
-OpenCode fallback. All copy is localized in `app_en.arb`; Flutter holds no
-lifecycle decisions or plugin-id checks.
+`configureCoreDependencies` registers both APIs, both repositories, and the
+service; cubits remain `BlocProvider`-constructed. `client/app` adds
+`AppRouteDef.settingsPlugins`, `AppRoute.settingsPlugins()`, the route mapping in
+`app_router.dart`, a Plugins landing row in `settings_screen.dart`, and
+`features/settings/plugin_settings_screen.dart`. The screen resolves the service
+through DI, watches the cubit, and composes only Prego widgets and localized
+copy.
 
-## Backward Compatibility And Release Safety
+### Concurrent management invariants
 
-### Wire compatibility
+- Runtime transition locks are per plugin and own start/stop/restart fencing.
+- The lifecycle service settings tail serializes denylist and timeout
+  read-modify-write operations across all clients, preventing lost updates.
+- Equal commands join; conflicting same-plugin commands fail while unrelated
+  plugin transitions proceed.
+- Setup results apply only if the command/generation that requested them is
+  still current.
+- No durable write publishes success before commit. A recovered failed write
+  returns explicit failure and leaves a truthful live snapshot.
+- Event/status/work callbacks capture generation and are ignored after fencing.
+- Management revision is monotonic within one process and publishes only after
+  the identified state is queryable.
 
-- Existing `PluginMetadata` and `PluginListResponse` are not widened; dormant
-  maps to their existing ready state and blocked registrations are omitted.
-- New setup/management DTO enums use unknown fallbacks only for read-side state;
-  command enums reject unknown values and force can never be a default.
-- New management endpoints avoid changing `GET /plugin` from “enabled
-  choices” to “every registered descriptor,” preventing old choosers from showing
-  disabled plugins unexpectedly.
-- New mobile clients treat management-route 404 as unsupported and explain the
-  limitation; existing new-session selection remains available.
-- Old clients see dormant enabled plugins as routable; request-time activation is
-  transparent. Setup-blocked plugins remain unavailable.
-- The additive lifecycle SSE is best-effort for old clients: their current
-  parser reports and drops unknown variants without terminating the connection.
-- Missing legacy `pluginId` continues to mean OpenCode in both directions.
+## Compatibility Boundary
 
-### Settings and downgrade behavior
+- No adapter, dual write, or migration is retained for unmerged
+  `remoteEnabledPlugins`, authority/order DTOs, preset idle policy, old
+  management response, or the abandoned first client screen.
+- Released `GET /plugin`, session attribution, and plugin-specific namespaced
+  flags remain compatible except for the explicitly approved removal of
+  `--plugin`, `enabledPlugins`, and automatic managed-runtime installation.
+- New client -> released old bridge: management 404 is an unsupported state;
+  ordinary plugin discovery/session flows continue. Missing bridge ID disables
+  local favorite persistence.
+- Released old client -> new bridge: extra response fields/events are additive;
+  dormant choices activate transparently.
+- Downgrading to an older bridge may ignore the new `plugins` root and therefore
+  lose denylist enforcement for that run. The new bridge does not mirror legacy
+  allowlists.
 
-- Existing `enabledPlugins` and CLI behavior remain untouched until a phone
-  creates the separate remote override.
-- `BridgeSettings` persists exact additive keys `remoteEnabledPlugins`,
-  `pluginIdlePolicy`, and `pluginIdlePolicyOverrides`. Missing keys decode to no
-  remote authority, `suspendAfter(tenMinutes)`, and no overrides. Empty remote
-  selection remains distinct from absence.
-- Older bridges ignore these keys and therefore restore CLI/`enabledPlugins`
-  precedence while downgraded. An old bridge config rewrite can drop unknown
-  keys, so downgrade may intentionally clear remote/idle policy; the new mobile
-  UI surfaces old-bridge unsupported rather than pretending those controls
-  remain authoritative.
-- A local reset clears only remote authority and never rewrites the user’s
-  original CLI or `enabledPlugins` choice.
-- Idle policy defaults honestly when absent. Existing config files require no
-  rewrite merely to add it; missing per-plugin entries inherit the default.
+## Per-Stage Production File Ledger
 
-### Every PR remains releasable
+Generated Freezed/JSON/Injectable/localization companions are regenerated from
+the listed source files and committed with their stage.
 
-1. Contract/model additions ship only with defaults and no behavior activation.
-2. Mechanical runtime refactoring initially preserves eager startup and existing
-   routing; it may merge independently without changing product behavior.
-3. Dormancy activates only after all reachable plugin operations and dynamic
-   event subscriptions use the acquisition seam.
-4. Headless lifecycle APIs are additive and useful before mobile adoption.
-5. Mobile controls ship only with old-bridge graceful degradation and never
-   become required for ordinary session creation.
-6. No PR leaves generated sources stale, exposes a route without an owner, or
-   changes the default timeout before safe-stop evidence passes.
+### Stage 10 / PR #507 files
 
-## Value-Bearing Stages
-
-### Stage 10 — Setup-Aware Automatic Plugins
-
-**User value:** a bridge with no manual plugin list detects already installed and
-authenticated backends, enables them in stable order, exposes why other backends
-are unavailable, and remains useful with zero active plugins.
-
-Implementation includes:
-
-- descriptor setup inspection and implementations for current plugins;
-- default-config inspection for unselected descriptors;
-- typed automatic/local/remote-ready selection model, with remote authority not
-  yet exposed to clients;
-- zero-plugin runtime/orchestrator support;
-- all-registered setup/status headless read API;
-- compatible `GET /plugin` behavior and OpenCode transition fallback; and
-- re-integration of the completed bridge onboarding checkpoint after setup
-  selection settles, including zero-plugin startup.
-
-Release gate:
-
-- Explicit CLI and `enabledPlugins` starts behave exactly as before.
-- Automatic inspection never downloads or logs in a plugin; only the dated
-  no-ready OpenCode compatibility fallback may provision that one runtime.
-- A failed/unknown setup check cannot prevent the relay/catalog from starting.
-- Old/new bridge-client combinations retain session browsing and creation where
-  they worked before.
-
-### Stage 11 — Transient On-Demand Runtime
-
-**User value:** enabled plugins consume process, memory, connection and event
-resources only while needed, wake transparently for real operations, and suspend
-after the configured idle period.
-
-Delivery may use two PRs, both releasable:
-
-1. Route eager startup and every plugin-backed operation/event through the new
-   runtime acquisition/generation boundary while retaining eager activation and
-   an effective `alwaysOn` compatibility policy.
-2. Enable demand activation, dynamic events, marker-before-activation imports,
-   conservative busy state, per-plugin-capable idle policies with an inherited
-   ten-minute default, and removal of startup/reconnect enumeration that wakes
-   dormant plugins.
-
-Release gate:
-
-- The migration PR has no product behavior change.
-- The cutover has no reachable static-map bypass and no ordinary/safe stop can
-  remove an operation's generation before completion; confirmed force may.
-- Stopping one plugin never disconnects relay/catalog/other plugins.
-- Existing clients transparently wake dormant plugins.
-
-### Stage 12 — Headless Hot Lifecycle Control
-
-**User value:** the same API seam used by future clients and automation can
-inspect, enable/start, disable/stop, restart, refresh setup, set the global idle
-policy or one plugin's override/`alwaysOn` policy, and safely force one plugin
-without restarting the bridge.
-
-Implementation includes:
-
-- management status and command handlers;
-- Layer-2 runtime lifecycle repository plus the existing independent settings
-  repository, coordinated by the Layer-3 lifecycle service;
-- durable phone/remote selection authority, even though the initial caller may
-  be debug/headless API tooling;
-- local authority-reset config command;
-- safe/force conflict and failure responses;
-- lifecycle/setup SSE; and
-- multi-client command serialization and status convergence.
-
-Release gate:
-
-- APIs are additive and authenticated through the existing E2E bridge request
-  seam.
-- Repeated commands are idempotent or return the current transition.
-- Restart/disable cannot silently interrupt active work without force.
-- Remote empty selection leaves the bridge online and browseable.
-
-### Stage 13 — Mobile Plugin Control
-
-**User value:** phone users can manage plugin eligibility/runtime and apply one
-idle policy to every plugin, with clear setup, dormant, busy, blocked and failure
-state.
-
-Implementation includes:
-
-- the locked module-core API -> repository -> `PluginManagementService` ->
-  `PluginManagementCubit` flow;
-- a mobile settings section and plugin rows;
-- enable/start, disable/stop, restart, setup refresh and safe/force confirmation;
-- default/order and global apply-to-all idle controls, without per-plugin idle
-  configuration;
-- reconnect/SSE convergence; and
-- unsupported-old-bridge degradation.
-
-Release gate:
-
-- The app remains releasable against old bridges; unsupported controls are
-  hidden or explained rather than failing startup/session screens.
-- The bridge remains releasable before the app UI ships because Stage 12 is
-  headless and additive.
-- No backend-specific auth/install UI is implied by generic action hints.
-
-## Per-PR Production File Ledger And Cutover Gates
-
-Tests mirror the named owners below. Freezed/JSON/Injectable/localization
-companions are generated from their source files and are never hand-edited.
-Before each PR, re-audit current `main`; a renamed file updates this ledger
-without changing the owner or boundary.
-
-### S10-P01 — setup-aware selection and zero-plugin bridge
-
-| Workspace | Exact production files / classes | Before -> after and release gate |
-|---|---|---|
-| `bridge/sesori_plugin_interface` | New `lib/src/lifecycle/plugin_setup_status.dart`, `plugin_project_ownership.dart`, `runtime_provision_mode.dart`; modify `bridge_plugin_descriptor.dart` and `lib/sesori_plugin_interface.dart` | Descriptor has only availability/provision/start -> adds read-only setup, pre-start project ownership, and install policy. Gate: every implementor compiles and setup inspection cannot invoke provision/start. |
-| OpenCode/Codex/Cursor plugin packages | `sesori_plugin_opencode/lib/src/runtime/open_code_plugin_descriptor.dart`; `sesori_plugin_codex/lib/src/runtime/codex_plugin_descriptor.dart`; `sesori_plugin_cursor/lib/src/runtime/cursor_plugin_descriptor.dart` | Startup-oriented availability only -> exact existing-runtime/auth classification above. Gate: real targeted CLI probes are bounded, redact output, and preserve explicit local startup/provision behavior. |
-| `shared/sesori_shared` | New `lib/src/models/sesori/plugin_setup_response.dart`; modify `lib/sesori_shared.dart` | No setup wire model -> additive generic setup response. Gate: generated decode uses unknown setup fallback and contains no backend/account data. |
-| `bridge/app` CLI/startup | `bin/bridge.dart`; `lib/src/bridge/runtime/plugin_registry.dart`, `plugin_cli_options_mapper.dart`, `bridge_cli_options.dart`, `bridge_runtime_runner.dart`; `lib/src/repositories/bridge_settings.dart`, `bridge_settings_repository.dart`; `lib/src/services/plugin_lifecycle_service.dart` | Plugin set finalized before parser/auth and non-empty -> bootstrap selection/default configs, post-auth effective selection, nullable default and zero set. Gate: CLI/settings explicit runs are byte-for-behavior compatible; automatic mode follows setup order plus the documented one-plugin fallback. |
-| `bridge/app` composition/routes | `lib/src/bridge/orchestrator.dart`; `lib/src/bridge/repositories/project_repository.dart`; `lib/src/services/catalog_import_service.dart`; new `lib/src/routing/get_plugin_setup_handler.dart`; modify `lib/src/routing/get_plugins_handler.dart` | Orchestrator/default/import assume non-empty -> relay, database, catalog, setup and health compose empty. Gate: default-targeted routes fail explicitly while catalog routes and W02 remain online. |
-
-### S11-P01 — dynamic boundary under unchanged eager behavior
-
-| Workspace | Exact production files / classes | Before -> after and release gate |
-|---|---|---|
-| `bridge/app` foundation/API/lifecycle | New `lib/src/bridge/foundation/plugin_generation_starter.dart`, `lib/src/bridge/runtime/bridge_plugin_generation_starter.dart`, `lib/src/api/plugin_runtime_api.dart`, `lib/src/repositories/plugin_lifecycle_repository.dart`; modify `lib/src/bridge/runtime/bridge_runtime_runner.dart`, `lib/src/services/plugin_lifecycle_service.dart` | Runner/static map owns starts -> named generation starter + runtime API + repository + policy service. Gate: `startEager` and effective `alwaysOn` preserve startup, provisioning order/output, failure isolation and shutdown. |
-| `bridge/app` routing/event composition | `lib/src/bridge/orchestrator.dart`; `lib/src/listeners/plugin_event_listener.dart`; `lib/src/bridge/services/session_event_dispatcher.dart`; `lib/src/bridge/runtime/bridge_runtime.dart` | One listener/static API per startup plugin -> one sourced runtime stream with generation attribution and existing per-plugin ordering. Gate: same externally visible session SSE and no listener survives its generation. |
-| `bridge/app` plugin-backed repositories | `lib/src/bridge/repositories/session_repository.dart`, `project_repository.dart`, `agent_repository.dart`, `provider_repository.dart`, `question_repository.dart`, `permission_repository.dart`, `worktree_repository.dart`; `lib/src/repositories/catalog_import_repository.dart` | Direct `Map<String, BridgePluginApi>` reads -> `PluginRuntimeApi.use`, `useStream`, or `useIfActive` according to the matrix. Gate: repository search finds no static operational map and every callback releases on success/error/cancel. |
-| `bridge/app` affected services | `lib/src/bridge/services/session_creation_service.dart`, `session_lifecycle_service.dart`, `permission_auto_approval_service.dart`, `project_activity_service.dart`; `lib/src/services/catalog_import_service.dart` | “is running” preconditions/fixed ids -> routable preflight, active-only aggregates and runtime-backed import. Gate: behavior remains eager and current route responses stay compatible. |
-
-### S11-P02 — demand activation and idle suspension
-
-| Workspace | Exact production files / classes | Before -> after and release gate |
-|---|---|---|
-| `shared/sesori_shared` | New `lib/src/models/sesori/plugin_idle_policy.dart`; modify `lib/sesori_shared.dart` | No shared idle policy -> one typed 10/30/60/always-on domain model reused by persisted bridge settings and later clients. Gate: generated round-trip has no sentinel duration. |
-| Plugin lifecycle contract | New `bridge/sesori_plugin_interface/lib/src/lifecycle/plugin_work_state.dart` and `plugin_authentication_required_exception.dart`; modify `lifecycle/bridge_plugin.dart`, `steady_plugin_lifecycle.dart`, and `lib/sesori_plugin_interface.dart` | Lifecycle status has no generic work truth -> replay-latest idle/busy/unknown and authoritative auth-loss exception. Gate: unknown blocks stop and no core backend-string parsing exists. |
-| Plugin implementations | OpenCode `lib/src/active_session_tracker.dart`, `runtime/open_code_bridge_plugin.dart`, `opencode_plugin_impl.dart`; Codex `lib/src/codex_plugin_impl.dart`, `runtime/codex_bridge_plugin.dart`; ACP `lib/src/acp_plugin.dart`, `runtime/acp_bridge_plugin.dart`; Cursor `lib/src/cursor_plugin_impl.dart` only if its inherited mapping needs an override | Core can only infer activity from API calls -> each plugin owns aggregate work state and reliable auth mapping. Gate: real busy work never reports idle; ambiguous/disconnected state is unknown. |
-| Runtime/policy/settings | `bridge/app/lib/src/api/plugin_runtime_api.dart`; `lib/src/repositories/plugin_lifecycle_repository.dart`, `bridge_settings.dart`, `bridge_settings_repository.dart`; `lib/src/services/plugin_lifecycle_service.dart`; `lib/src/bridge/runtime/bridge_runtime_runner.dart` | Eager/always-on -> dormant acquisition, typed 10/30/60/never policy, inherited default/overrides, timer cancellation and bounded safe stop. Gate: dormancy is enabled only after S11-P01 inventory passes. |
-| Import/activity/event cleanup | `bridge/app/lib/src/repositories/catalog_import_repository.dart`; `lib/src/services/catalog_import_service.dart`; `lib/src/bridge/repositories/session_repository.dart`, `project_repository.dart`; `lib/src/bridge/services/project_activity_service.dart`; `lib/src/bridge/orchestrator.dart` | Startup import/activity may enumerate active set -> marker-before-acquire, active-only native hydration, no startup/reconnect full reconciliation. Gate: completed marker and aggregate reads produce zero starts. |
-
-### S12-P01 — headless hot lifecycle control
-
-| Workspace | Exact production files / classes | Before -> after and release gate |
-|---|---|---|
-| `shared/sesori_shared` | New `lib/src/models/sesori/plugin_management.dart`; modify `lib/src/models/sesori/sesori_sse_event.dart`, `lib/sesori_shared.dart` | No management commands/status -> additive DTOs, typed conflict and one invalidation event. Gate: safe is the missing-mode default; force requires explicit valid wire value. |
-| `client/module_core` shared-union exhaustiveness | Modify `lib/src/capabilities/server_connection/models/sse_event.dart`, `lib/src/services/sse_event_tracker.dart`, `lib/src/cubits/session_list/session_list_cubit.dart`, `lib/src/cubits/session_detail/session_detail_cubit.dart` | Existing exhaustive switches do not know the new system event -> classify it as non-session/no-op so the shared contract PR compiles before mobile management consumes it. Gate: no existing screen refreshes or changes behavior. |
-| Bridge settings/CLI | `bridge/app/lib/src/repositories/bridge_settings.dart`, `bridge_settings_repository.dart`; `lib/src/services/bridge_config_service.dart`; `bin/bridge.dart`; `lib/src/bridge/runtime/plugin_registry.dart`, `bridge_cli_options.dart`, `bridge_runtime_runner.dart` | Local policy only -> nullable/empty remote authority and exact `config plugins reset-remote`. Gate: no phone action provisions; reset preserves local policy. |
-| Bridge policy and triggers | `bridge/app/lib/src/api/plugin_runtime_api.dart`; `lib/src/repositories/plugin_lifecycle_repository.dart`; `lib/src/services/plugin_lifecycle_service.dart`; new `lib/src/listeners/plugin_catalog_hydration_listener.dart`; modify `lib/src/services/catalog_import_service.dart`, `lib/src/bridge/runtime/bridge_runtime_runner.dart`, `lib/src/bridge/orchestrator.dart` | Runner-only startup trigger -> one replay-latest listener owns startup, hot-enable, and automatic-refresh hydration; explicit/headless imports remain direct. Gate: remove inline `startCatalogImports`; one plugin command cannot stop relay/catalog/peers; failed persistence rolls back eligibility. |
-| Bridge routes/SSE | New `bridge/app/lib/src/routing/get_plugin_management_handler.dart`, `post_plugin_lifecycle_command_handler.dart`, `patch_plugin_order_handler.dart`, `patch_plugin_idle_policy_handler.dart`; modify `lib/src/bridge/orchestrator.dart` | Setup read only -> exact management routes and Orchestrator-owned invalidation SSE. Gate: router integration proves 400/404/409/500 mappings and debug server shares the instances. |
-
-### S13-P01 — module-core and mobile management
-
-| Workspace | Exact production files / classes | Before -> after and release gate |
-|---|---|---|
-| `client/module_core` API/repository/service | `lib/src/api/plugin_api.dart`; `lib/src/repositories/plugin_repository.dart`; new `lib/src/repositories/models/plugin_management_result.dart`, `lib/src/services/plugin_management_service.dart`; modify `lib/src/di/injection.dart`, `lib/sesori_dart_core.dart` | Discovery GET only -> typed management commands, 404/409 mapping and reconnect/SSE convergence. Gate: pure-Dart service never polls and existing list fallback is unchanged. |
-| `client/module_core` state | New `lib/src/cubits/plugin_management/plugin_management_cubit.dart`, `plugin_management_state.dart` | No lifecycle state -> service-only cubit with typed confirmation state. Gate: cubit requires typed conflict before exposing force intent. |
-| `client/app` thin presentation | New `lib/features/settings/plugins/plugin_settings_section.dart`; modify `lib/features/settings/settings_screen.dart`, `lib/l10n/app_en.arb` | Account/notification settings only -> generic mobile plugin management and apply-all idle selector in the existing settings route. Gate: old bridge shows unsupported without affecting session screens; no plugin-id condition or business rule exists in Flutter. |
-
-Because S10/S12 touch shared wire source and S13 consumes it, generated files are
-committed in the same PR as their source. Because S13 changes `module_core`, its
-verification includes both mobile and desktop compilation even though desktop
-gets no UI/source change.
-
-## Verification Strategy
-
-Tests are added only where they provide meaningful confidence in a security,
-concurrency, compatibility, persistence, or user-decision boundary. Do not add
-tests for pass-through constructors, getters, generated equality, every enum
-case, or duplicated fake-plugin permutations merely to increase counts.
-
-High-value automated coverage:
-
-- Setup inspection cannot provision/start/login and correctly distinguishes a
-  real ready/missing/auth-required/unknown outcome for each current descriptor.
-- Selection precedence, durable remote authority/reset, explicit empty remote
-  selection, stable default and settings downgrade decoding.
-- One start for concurrent acquisitions; lease retention; generation fencing;
-  failure then retry; safe conflict; force interruption; idle timer cancellation;
-  `Never`; and one plugin stopping independently.
-- A representative integration route from each materially different category:
-  stored-session binding, explicit plugin/project operation, aggregate management
-  read, import, and dynamic event delivery. Avoid one test per thin handler when
-  a router/service integration proves the boundary.
-- Marker-complete hydration does not activate; missing-marker import holds a
-  lease; dormant plugins are not enumerated by startup/reconnect activity.
-- Old/new DTO and route compatibility, especially dormant routability and old
-  bridge management 404.
-- Mobile enable/disable/restart conflict/force and unsupported-bridge states,
-  using cubit tests for business decisions and only focused widget tests for
-  interactions that cubit tests cannot prove.
-
-Per-PR verification runs only owning-package analysis and directly affected
-tests. Shared contract changes also run generated-code checks and affected
-module analysis. The final stage runs the complete directly affected bridge,
-shared, module-core and mobile suites once; it does not duplicate CI’s unrelated
-workspace matrix.
-
-Manual release checks focus on behavior automation cannot prove cheaply:
-
-- real OpenCode/Codex/Cursor setup inspection without changing credentials;
-- process/RSS observation across start, ten-minute idle stop, wake and restart;
-- safe conflict and confirmed force during real active work;
-- phone control through a relay disconnect/reconnect; and
-- standalone and supervised bridge behavior with zero enabled plugins.
-
-## Risks And Mitigations
-
-| Risk | Mitigation |
+| Workspace | Production files/classes |
 |---|---|
-| “Logged out” is inferred from a transient failure | Preserve an explicit unknown state; only plugin-owned reliable evidence returns authentication-required. |
-| Auto mode downloads every runtime | `inspectSetup` is separate from availability/provisioning and may not mutate. |
-| Idle stop races a request or event | Operation leases, generic work state, per-plugin serialization and generation fencing. |
-| Aggregate reads wake all plugins | Management snapshots are local; only concrete backend operations acquire. |
-| One plugin failure stops the bridge | Zero-plugin operation and independent slots remain release gates. |
-| Phone override makes CLI recovery confusing | Preserve local policy separately and provide an explicit local reset. |
-| Old clients cannot understand dormancy | Keep dormant enabled plugins transparently routable through existing metadata semantics. |
-| Onboarding startup order becomes stale | W02 is merged and the `2acd7b87` runner order is audited; S10 has one explicit zero-plugin gate delta and rechecks later main drift before implementation. |
-| Broad lifecycle migration creates a half-cutover | First PR preserves eager behavior; dormancy enables only after the operation inventory is complete. |
-| Tests expand without confidence | Require each new test to name the race, compatibility contract, persisted decision, or user interaction it proves. |
+| Plugin interface/foundation | `sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`, `plugin_setup_status.dart`, `plugin_project_ownership.dart`, exports; `sesori_bridge_foundation/lib/src/host_process_command_executor.dart` for bounded probes. |
+| Concrete plugins | OpenCode/Codex/Cursor descriptor setup implementations under each package's `lib/src/runtime/*_plugin_descriptor.dart`; ACP only where Cursor setup shares behavior. |
+| Shared | `plugin_setup_response.dart`, `sesori_shared.dart`. |
+| Bridge config/CLI | `bridge/app/bin/bridge.dart`; `bridge_settings.dart`, `bridge_settings_repository.dart`; `bridge_config_service.dart`; `plugin_registry.dart`, `plugin_cli_options_mapper.dart`, `bridge_cli_options.dart`. Delete `plugin_bootstrap_selection.dart`. |
+| Bridge startup/policy/routes | `bridge_runtime_runner.dart`, `plugin_lifecycle_service.dart`, `orchestrator.dart`, `project_repository.dart`, `catalog_import_service.dart`, `get_plugin_setup_handler.dart`, `get_plugins_handler.dart`. |
 
-## Deferred Follow-Up: Phone Installation And Login
+### Stage 11-P01 / PR #508 files
 
-VISION and ROADMAP record a later workstream where the phone can initiate a
-plugin-owned backend runtime installation and backend authentication flow. That
-future plan depends on this plan’s setup statuses, zero-plugin bridge, dynamic
-activation, progress/status API, durable authority and mobile management screen.
+| Workspace | Production files/classes |
+|---|---|
+| Mechanical runtime | Add concrete `plugin_generation_factory.dart`, `plugin_runtime.dart`, and `plugin_lifecycle_repository.dart`; modify `bridge_runtime_runner.dart` and `plugin_lifecycle_service.dart`. |
+| Event composition | `orchestrator.dart`, `plugin_event_listener.dart`, `session_event_dispatcher.dart`, `bridge_runtime.dart`. |
+| Plugin-backed repositories | `session_repository.dart`, `project_repository.dart`, `agent_repository.dart`, `provider_repository.dart`, `question_repository.dart`, `permission_repository.dart`, `worktree_repository.dart`, `catalog_import_repository.dart`. |
+| Owning services | `session_creation_service.dart`, `session_lifecycle_service.dart`, `permission_auto_approval_service.dart`, `project_activity_service.dart`, `catalog_import_service.dart`. |
 
-The future plan must separately decide:
+### Stage 11-P02 / PR #509 files
 
-- which descriptors support managed installation and how Cursor-like external
-  installers are handled;
-- noninteractive OAuth/device-code/browser flows versus credentials that must
-  remain local;
-- secret entry, storage, redaction, cancellation and trust posture;
-- install/login progress across relay reconnects; and
-- how setup readiness is re-inspected after completion.
+| Workspace | Production files/classes |
+|---|---|
+| Plugin contract | Add `plugin_work_state.dart` and `plugin_authentication_required_exception.dart`; modify `bridge_plugin.dart`, steady lifecycle, and exports. |
+| Plugin implementations | OpenCode active-session tracker/plugin, Codex plugin, ACP plugin, and Cursor adapter map concrete work/auth evidence. |
+| Bridge policy/settings | `plugin_runtime.dart`, `plugin_lifecycle_repository.dart`, `plugin_lifecycle_service.dart`, `bridge_settings.dart`, `bridge_settings_repository.dart`, `bridge_runtime_runner.dart`. |
+| Dormancy cleanup | Add `plugin_catalog_hydration_listener.dart`; modify `catalog_import_repository.dart`, `catalog_import_service.dart`, session/project repositories, `project_activity_service.dart`, `orchestrator.dart`. |
 
-No implementation detail for those flows is locked here.
+### Stage 12 / PR #510 files
+
+| Workspace | Production files/classes |
+|---|---|
+| Shared | Add `plugin_management.dart`; modify `sesori_sse_event.dart` and barrel exports. |
+| Bridge settings/policy | `bridge_settings.dart`, `bridge_settings_repository.dart`, `plugin_runtime.dart`, `plugin_lifecycle_repository.dart`, `plugin_lifecycle_service.dart`. |
+| Triggers/composition | Keep `plugin_catalog_hydration_listener.dart`; widen its ready-ID source through `plugin_lifecycle_service.dart`; modify `catalog_import_service.dart`, `bridge_runtime_runner.dart`, `orchestrator.dart`. |
+| Routes | Add `get_plugin_management_handler.dart`, `post_plugin_lifecycle_command_handler.dart`, `patch_plugin_idle_timeout_handler.dart`; wire the same instances into relay/debug routing. |
+| Client exhaustive switches | Only minimum `SseEvent`/tracker changes needed for the additive invalidation event; no management feature yet. |
+
+### Stage 13 / PR #511 files
+
+| Workspace | Production files/classes |
+|---|---|
+| Shared and module-core transport/persistence | Add nullable `bridgeId` to `plugin_list_response.dart`; modify `plugin_api.dart`, add `plugin_preference_api.dart`, `plugin_repository.dart`, management result models, add `plugin_preference_repository.dart`, DI source, barrel exports. |
+| Module-core orchestration/state | Add `plugin_management_service.dart`, `new_session_plugin_service.dart`, `cubits/plugin_management/*`; modify `new_session_cubit.dart`. |
+| Mobile routing/presentation | `app_routes.dart`, `app_router.dart`, `settings_screen.dart`, add `plugin_settings_screen.dart`, `app_en.arb`. |
+| Downstream | Desktop/module-core exhaustive compilation only; no desktop route or screen. |
+
+## Delivery Stages
+
+### Stage 10 / PR #507 — setup discovery and denylist
+
+- config model/repository and local plugin commands;
+- unconditional plugin CLI option registration;
+- descriptor setup states/probes without installation;
+- alphabetical eligibility/default and zero-plugin startup;
+- snapshot setup API and compatible plugin list.
+
+### Stage 11-P01 / PR #508 — dynamic runtime boundary
+
+- generation starter, runtime API, lifecycle repository;
+- migrate every backend operation and dynamic event source to acquisition;
+- retain generation fencing, independent failure, and zero-plugin composition.
+
+### Stage 11-P02 / PR #509 — dormant runtime and numeric idle timeout
+
+- plugin-owned work state and authentication-loss signal;
+- all-ready-dormant startup, demand activation, marker-before-hydration;
+- numeric default/override config and safe idle suspension;
+- remove startup/reconnect enumeration that wakes dormant plugins.
+
+### Stage 12 / PR #510 — headless management
+
+- simplified management DTOs/routes, safe/force commands, revision/SSE;
+- live denylist mutations and setup refresh;
+- numeric idle-timeout updates and one hydration listener.
+
+### Stage 13 / PR #511 — redesigned mobile plugin settings
+
+- module-core API -> repository -> service -> cubit and preference storage;
+- per-bridge last-used new-session choice;
+- Settings landing row and dedicated Plugins sub-page using merged Prego
+  settings primitives;
+- focused interaction, conflict/force, reconnect, and route tests.
+
+Each branch is rebuilt from its predecessor after #507 starts at latest
+`origin/main`. Histories may be force-with-lease rewritten as explicitly
+approved. A closed PR is reopened only after its replacement stage passes
+focused verification.
+
+## Verification
+
+- Run code generation only from source models; never edit generated output.
+- Run `dart analyze --fatal-infos` sequentially in every changed Dart/Flutter
+  package.
+- Run directly affected setup/config/runtime/lifecycle/routing tests per bridge
+  stage, plus affected plugin package tests.
+- Shared wire changes run shared tests and downstream module analysis.
+- Client stage runs focused module-core and Flutter settings/new-session tests,
+  then mobile and desktop fatal analysis.
+- Do not rerun unchanged passing commands. CI supplies the full repository matrix.
+
+## Deferred Installation
+
+Phone-requested managed runtime installation remains a separate draft. This
+plan exposes setup truth but no install command, progress model, or login flow.

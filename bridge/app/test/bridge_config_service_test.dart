@@ -19,32 +19,86 @@ void main() {
 
       final configFilePath = await service.openConfigFile();
 
-      expect(bridgeSettingsRepository.loadSettingsCallCount, equals(1));
+      expect(bridgeSettingsRepository.ensureConfigExistsCallCount, equals(1));
       expect(defaultEditorRepository.openedPaths, equals(['/tmp/custom-config.json']));
       expect(configFilePath, equals('/tmp/custom-config.json'));
+    });
+
+    test('lists known and preserved unknown disabled plugins', () async {
+      final repository = _FakeBridgeSettingsRepository(
+        configFilePath: '/tmp/config.json',
+        settings: const BridgeSettings(
+          plugins: BridgePluginSettings(disabledPluginIds: {'cursor', 'future'}),
+        ),
+      );
+      final service = BridgeConfigService(
+        bridgeSettingsRepository: repository,
+        defaultEditorRepository: _FakeDefaultEditorRepository(),
+      );
+
+      final snapshot = await service.listPlugins(knownPluginIds: const ['cursor', 'opencode']);
+
+      expect(snapshot.plugins, [
+        (pluginId: 'cursor', enabled: false),
+        (pluginId: 'opencode', enabled: true),
+      ]);
+      expect(snapshot.unknownDisabledPluginIds, ['future']);
+    });
+
+    test('rejects unknown plugin mutations before persistence', () async {
+      final repository = _FakeBridgeSettingsRepository(configFilePath: '/tmp/config.json');
+      final service = BridgeConfigService(
+        bridgeSettingsRepository: repository,
+        defaultEditorRepository: _FakeDefaultEditorRepository(),
+      );
+
+      await expectLater(
+        service.setPluginEnabled(pluginId: 'typo', enabled: false, knownPluginIds: const {'opencode'}),
+        throwsA(isA<UnknownPluginConfigException>()),
+      );
+      expect(repository.pluginUpdates, isEmpty);
     });
   });
 }
 
 class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
-  _FakeBridgeSettingsRepository({required this.configFilePath});
+  _FakeBridgeSettingsRepository({
+    required this.configFilePath,
+    this.settings = const BridgeSettings(),
+  });
 
   @override
   final String configFilePath;
 
-  int loadSettingsCallCount = 0;
+  BridgeSettings settings;
+  int ensureConfigExistsCallCount = 0;
+  final List<({String pluginId, bool disabled})> pluginUpdates = [];
 
   @override
-  Future<BridgeSettings> loadSettings() async {
-    loadSettingsCallCount += 1;
-    return const BridgeSettings();
+  BridgeSettings get currentSettings => settings;
+
+  @override
+  Future<void> ensureConfigExists() async {
+    ensureConfigExistsCallCount += 1;
   }
 
   @override
-  Future<BridgeSettings> peekSettings() async => const BridgeSettings();
+  Future<BridgeSettings> loadSettings() async {
+    return settings;
+  }
 
   @override
-  Future<void> saveSettings({required BridgeSettings settings}) async {}
+  Future<void> saveSettings({required BridgeSettings settings}) async {
+    this.settings = settings;
+  }
+
+  @override
+  Future<BridgeSettings> updatePluginDisabled({required String pluginId, required bool disabled}) async {
+    pluginUpdates.add((pluginId: pluginId, disabled: disabled));
+    return settings = settings.copyWith(
+      plugins: settings.plugins.withPluginDisabled(pluginId: pluginId, disabled: disabled),
+    );
+  }
 
   @override
   Future<void> updateReleaseTrack({required ReleaseTrack track}) async {}

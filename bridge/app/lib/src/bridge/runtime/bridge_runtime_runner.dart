@@ -15,6 +15,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         Console,
         Log,
         PluginConfig,
+        PluginSetupNotInspected,
+        PluginSetupStatus,
+        PluginSetupUnknown,
         PluginStartAbortedException,
         PluginUnavailable,
         ProcessIdentity,
@@ -190,7 +193,12 @@ class BridgeRuntimeRunner {
     required Map<String, PluginConfig> pluginConfigs,
   }) async {
     final startAbortController = StartAbortController();
-    final pluginLifecycleService = PluginLifecycleService();
+    final pluginLifecycleService = PluginLifecycleService()
+      ..registerPlugins(
+        plugins: [
+          for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
+        ],
+      );
     BridgeRuntime? runtime;
     DebugServer? debugServer;
     CatalogImportConsoleListener? catalogImportConsoleListener;
@@ -443,15 +451,16 @@ class BridgeRuntimeRunner {
         return 1;
       }
 
-      // Resolve settings once at the composition root. Constructing settings
-      // access (BridgeSettingsApi reads HOME) or reading the config can throw;
-      // a settings failure must never block the bridge from starting.
-      var bridgeSettings = const BridgeSettings();
+      // Plugin denylist failure cannot safely degrade to an empty denylist: that
+      // could start a backend the user explicitly disabled.
+      final BridgeSettings bridgeSettings;
       try {
         final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
         bridgeSettings = await settingsRepository.loadSettings();
       } on Object catch (error, stackTrace) {
-        Log.w("Failed to resolve bridge settings; using defaults", error, stackTrace);
+        Log.e("Failed to resolve bridge settings", error, stackTrace);
+        Console.error("Bridge configuration is invalid or unreadable. Repair it with `sesori-bridge config edit`.");
+        return 1;
       }
       final releaseTrack = bridgeSettings.releaseTrack;
       if (bridgeSettings.yolo) {
@@ -555,21 +564,6 @@ class BridgeRuntimeRunner {
       );
       final ownerSessionId = _buildOwnerSessionId(currentBridgeIdentity: currentBridgeIdentity);
 
-      final descriptors = [
-        for (final pluginId in options.enabledPluginIds)
-          knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId),
-      ];
-      pluginLifecycleService.registerSelection(
-        knownPluginIds: {for (final descriptor in knownPlugins) descriptor.id},
-        enabledPlugins: [
-          for (var index = 0; index < descriptors.length; index++)
-            (
-              id: descriptors[index].id,
-              displayName: descriptors[index].displayName,
-              isDefault: index == 0,
-            ),
-        ],
-      );
       final hostProcessService = BridgeHostProcessService(
         processStarter: io.Process.start,
         processRepository: processRepository,
@@ -578,6 +572,67 @@ class BridgeRuntimeRunner {
         isWindows: io.Platform.isWindows,
         platform: io.Platform.operatingSystem,
       );
+      final setupResults = await Future.wait(
+        knownPlugins.map((descriptor) async {
+          if (bridgeSettings.plugins.isDisabled(pluginId: descriptor.id)) {
+            return (
+              id: descriptor.id,
+              setup: const PluginSetupNotInspected() as PluginSetupStatus,
+              error: null,
+              stackTrace: null,
+            );
+          }
+          try {
+            return (
+              id: descriptor.id,
+              setup: await descriptor.inspectSetup(
+                config: pluginConfigs[descriptor.id]!,
+                processes: hostProcessService,
+                environment: environment,
+                stateDirectory: pluginStateDirectoryPath(
+                  paths: managedRuntimePaths,
+                  pluginId: descriptor.id,
+                  stateStorage: descriptor.stateStorage,
+                ),
+              ),
+              error: null,
+              stackTrace: null,
+            );
+          } on Object catch (error, stackTrace) {
+            return (
+              id: descriptor.id,
+              setup: const PluginSetupUnknown(
+                actionHint: "Plugin setup could not be determined. Check the bridge console and retry.",
+              ),
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }
+        }),
+      );
+      final setupById = Map<String, PluginSetupStatus>.unmodifiable({
+        for (final result in setupResults) result.id: result.setup,
+      });
+      for (final result in setupResults) {
+        final error = result.error;
+        if (error != null) {
+          Log.w('Plugin "${result.id}" setup inspection failed', error, result.stackTrace);
+        }
+      }
+      final effectiveSelection = pluginLifecycleService.initialize(
+        disabledPluginIds: bridgeSettings.plugins.disabledPluginIds,
+        setupById: setupById,
+      );
+      for (final importPluginId in options.importPluginIds) {
+        if (!effectiveSelection.enabledPluginIds.contains(importPluginId)) {
+          Console.error('Cannot import plugin "$importPluginId" because it is not enabled.');
+          return 1;
+        }
+      }
+      final descriptors = [
+        for (final pluginId in effectiveSelection.eagerPluginIds)
+          knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId),
+      ];
       final availabilityResults = await Future.wait(
         descriptors.map((descriptor) async {
           try {
@@ -617,11 +672,7 @@ class BridgeRuntimeRunner {
       final runAppOnboarding = shouldRunAppOnboarding(
         isSupervised: options.isSupervised,
         isInteractive: terminalPromptApi.isInteractive,
-        hasAvailablePlugins: availableDescriptors.isNotEmpty,
       );
-      if (availableDescriptors.isEmpty) {
-        return 1;
-      }
       if (runAppOnboarding) {
         await AppClientOnboardingService(
           statusRepository: AppClientStatusRepository(
@@ -685,7 +736,7 @@ class BridgeRuntimeRunner {
         Log.i("Plugin start aborted as requested.");
         return 0;
       }
-      for (final pluginId in options.enabledPluginIds) {
+      for (final pluginId in effectiveSelection.enabledPluginIds) {
         final plugin = startedPlugins[pluginId];
         if (plugin != null) Console.message("Target [$pluginId]: ${plugin.describe().endpoint ?? pluginId}");
       }
@@ -797,7 +848,7 @@ class BridgeRuntimeRunner {
       startCatalogImports(
         service: activeRuntime.catalogImportService,
         pluginIds: [
-          for (final pluginId in options.enabledPluginIds)
+          for (final pluginId in effectiveSelection.enabledPluginIds)
             if (pluginLifecycleService.compositionView.operationalPlugins.containsKey(pluginId)) pluginId,
         ],
         headlessPluginIds: options.importPluginIds,
@@ -899,8 +950,7 @@ class BridgeRuntimeRunner {
   static bool shouldRunAppOnboarding({
     required bool isSupervised,
     required bool isInteractive,
-    required bool hasAvailablePlugins,
-  }) => !isSupervised && isInteractive && hasAvailablePlugins;
+  }) => !isSupervised && isInteractive;
 
   @visibleForTesting
   static void startCatalogImports({

@@ -2,7 +2,7 @@
 
 Native CLI tool written in Dart, compiled to a platform bundle, that runs headlessly and bridges local AI assistant backends to mobile and desktop clients over an encrypted WebSocket relay.
 
-The bridge authenticates with OAuth PKCE, loads the ordered enabled plugins,
+The bridge authenticates with OAuth PKCE, loads eligible setup-ready plugins,
 connects to the relay, performs an X25519 key exchange with each connecting
 client, and routes encrypted requests and responses. All traffic is end-to-end
 encrypted; the relay server only ever sees ciphertext. Each plugin owns its
@@ -106,9 +106,9 @@ If you used the npm bootstrap path, `npm uninstall @sesori/bridge` does not remo
 Clients <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Plugins] -> AI assistant backends
 ```
 
-1. The bridge resolves repeated `--plugin` values, otherwise persisted `enabledPlugins`, otherwise the OpenCode fallback.
+1. The bridge loads `plugins.disabled`; every registered plugin not in that denylist is eligible.
 2. The bridge authenticates with the auth backend (OAuth PKCE).
-3. It probes descriptors concurrently, provisions available plugins in configured order under one startup mutex, and starts each plugin as its provisioning settles.
+3. It inspects eligible descriptors concurrently without installing anything, probes setup-ready plugins, resolves existing runtimes under one startup mutex, and starts each ready plugin as its resolution settles.
 4. The bridge connects to the relay WebSocket with role `"bridge"`.
 5. The client connects to the same relay, grouped by user ID.
 6. Key exchange: the client sends its X25519 public key; the bridge derives a shared secret via HKDF-SHA256 and sends an encrypted ready message containing the room key.
@@ -126,8 +126,7 @@ Bridge core flags:
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--relay` | `wss://relay.sesori.com` | Relay server URL |
-| `--plugin` | `enabledPlugins`, then `opencode` | Plugin backend to run. Repeat in the desired order; CLI selection overrides settings. |
-| `--import-plugin` | *(none)* | Start an import for this enabled plugin after startup. Repeatable. |
+| `--import-plugin` | *(none)* | Start an import for this eligible plugin after startup. Repeatable. |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
 | `--log-level` | `info` | Minimum **diagnostic log** level (written to stderr): `verbose`, `debug`, `info`, `warning`, `error` |
@@ -135,9 +134,8 @@ Bridge core flags:
 
 > `--log-level` controls **diagnostic logging only**. Logs are written to stderr and can be silenced freely. User-facing messages — login prompts, the authorization URL and code, startup status, "Authenticated as…" — are written to stdout and are **always shown regardless of `--log-level`**, so the bridge stays operable even with logging disabled (`--log-level error`, or redirecting stderr with `2>/dev/null`).
 
-Every enabled plugin contributes its namespaced options after selection is
-resolved. Run `--help` with the desired repeated `--plugin` values to see their
-combined options. The OpenCode plugin adds:
+Every registered plugin always contributes its namespaced options. Run `--help`
+to see their combined options. The OpenCode plugin adds:
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -157,6 +155,9 @@ In addition to flags, the bridge supports subcommands:
 | `help` | Show the help message (also available via `--help` or `-h`) |
 | `config track [stable\|internal]` | Show or set the update track. With no argument, prints the current track. |
 | `config yolo [on\|off]` | Show or set automatic permission approval. With no argument, prints the current mode. |
+| `config plugins` | List known plugin eligibility and preserved unknown disabled IDs. |
+| `config plugins enable <id>` | Remove a known plugin from the denylist. Restart the bridge to apply. |
+| `config plugins disable <id>` | Add a known plugin to the denylist. Restart the bridge to apply. |
 | `config edit` | Open the bridge configuration file in your default editor |
 | `logout` | Clear stored authentication tokens. You will be asked to log in again on next start. |
 
@@ -175,17 +176,25 @@ without sending the request to connected clients. The bridge prints a warning
 at startup whenever this mode is active. Use `sesori-bridge config yolo on` or
 `sesori-bridge config yolo off` to change it without editing the file directly.
 
-To persist ordered plugin selection, add `enabledPlugins` to the same file:
+To disable a plugin or configure lifecycle timeouts, add a `plugins` object:
 
 ```json
 {
-  "enabledPlugins": ["opencode", "codex"]
+  "plugins": {
+    "disabled": ["cursor"],
+    "default": {"idleTimeoutMins": 30},
+    "opencode": {"idleTimeoutMins": 0}
+  }
 }
 ```
 
-The first entry is the current default plugin. It is not the fallback for old
-payloads: missing legacy `pluginId` always means OpenCode. Duplicate, unknown,
-or explicitly empty selections are rejected.
+All keys are optional. Plugins absent from `disabled` remain eligible. Timeout
+values are integer minutes; plugin-specific values override `default`, and an
+absent value falls back to 10 minutes. Values less than or equal to zero mean
+never idle-stop once the demand-start lifecycle is enabled. Unknown plugin
+objects and disabled IDs are preserved for forward compatibility. The current
+default is derived from setup-ready plugins in display-name order; missing
+legacy `pluginId` still always means OpenCode.
 
 ## Examples
 
@@ -196,11 +205,11 @@ or explicitly empty selections are rejected.
 # Use a custom auth backend
 ./dist/bridge-macos-arm64 --auth-backend https://my-auth.example.com
 
-# Run OpenCode and Codex in order
-./dist/bridge-macos-arm64 --plugin opencode --plugin codex
+# Disable Cursor for subsequent bridge starts
+./dist/bridge-macos-arm64 config plugins disable cursor
 
-# Run both and import Codex after startup
-./dist/bridge-macos-arm64 --plugin opencode --plugin codex --import-plugin codex
+# Import Codex after startup
+./dist/bridge-macos-arm64 --import-plugin codex
 
 # Log out (clear stored tokens)
 ./dist/bridge-macos-arm64 logout

@@ -10,6 +10,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         Log,
         NativeProjectsPluginApi,
         PluginOperationException,
+        PluginProjectOwnership,
         PluginSessionTime;
 import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
 
@@ -33,7 +34,7 @@ class ProjectRepository {
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
 
   final Map<String, BridgePluginApi> _operationalPlugins;
-  final String _defaultEnabledPluginId;
+  final String? Function() _readDefaultEnabledPluginId;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final SessionUnseenCalculator _unseenCalculator;
@@ -44,7 +45,7 @@ class ProjectRepository {
 
   ProjectRepository({
     required Map<String, BridgePluginApi> operationalPlugins,
-    required String defaultEnabledPluginId,
+    required String? Function() readDefaultEnabledPluginId,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required SessionUnseenCalculator unseenCalculator,
@@ -53,7 +54,7 @@ class ProjectRepository {
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
     required Duration aggregateSourceDeadline,
   }) : _operationalPlugins = operationalPlugins,
-       _defaultEnabledPluginId = defaultEnabledPluginId,
+       _readDefaultEnabledPluginId = readDefaultEnabledPluginId,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _unseenCalculator = unseenCalculator,
@@ -158,6 +159,7 @@ class ProjectRepository {
             supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: canonical),
           ),
           path: canonical,
+          projectOwnership: PluginProjectOwnership.bridgeDerived,
         );
       case final NativeProjectsPluginApi plugin:
         final openedPath = normalizeProjectDirectory(directory: path);
@@ -184,6 +186,7 @@ class ProjectRepository {
               )
               .copyWith(id: existing?.projectId ?? pluginProject.id),
           path: openedPath,
+          projectOwnership: PluginProjectOwnership.native,
         );
     }
   }
@@ -220,6 +223,7 @@ class ProjectRepository {
           : ProjectOpenTarget(
               project: target.project.copyWith(id: existing.projectId),
               path: target.path,
+              projectOwnership: target.projectOwnership,
             );
       final currentActivity = _mapActivity(existing);
       final committedActivity = ProjectActivity(
@@ -229,9 +233,7 @@ class ProjectRepository {
       await _projectsDao.recordOpenedProject(
         projectId: committedTarget.projectId,
         path: committedTarget.path,
-        displayName: _operationalPlugins[_defaultEnabledPluginId] is NativeProjectsPluginApi
-            ? committedTarget.project.name
-            : null,
+        displayName: target.projectOwnership == PluginProjectOwnership.native ? committedTarget.project.name : null,
         createdAt: committedActivity.createdAt,
         updatedAt: committedActivity.updatedAt,
       );
@@ -509,23 +511,37 @@ class ProjectRepository {
   }
 
   BridgePluginApi _requireDefaultPlugin({required String operation}) {
-    final plugin = _operationalPlugins[_defaultEnabledPluginId];
+    final defaultPluginId = _readDefaultEnabledPluginId();
+    if (defaultPluginId == null) {
+      throw PluginOperationException(
+        operation,
+        statusCode: 503,
+        message: "no default plugin is enabled",
+      );
+    }
+    final plugin = _operationalPlugins[defaultPluginId];
     if (plugin != null) return plugin;
     throw PluginOperationException(
       operation,
       statusCode: 503,
-      message: "plugin $_defaultEnabledPluginId is not running",
+      message: "plugin $defaultPluginId is not running",
     );
   }
 }
 
 /// Canonical target returned by [ProjectRepository.resolveProjectOpenTarget].
 class ProjectOpenTarget {
-  const ProjectOpenTarget({required this.project, required this.path});
+  const ProjectOpenTarget({
+    required this.project,
+    required this.path,
+    required this.projectOwnership,
+  });
 
   final Project project;
   String get projectId => project.id;
 
   /// Live directory where the project currently resides on disk.
   final String path;
+
+  final PluginProjectOwnership projectOwnership;
 }

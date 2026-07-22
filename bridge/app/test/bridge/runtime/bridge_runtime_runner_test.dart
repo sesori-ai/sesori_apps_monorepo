@@ -23,23 +23,21 @@ void main() {
   });
 
   group("BridgeRuntimeRunner.shouldRunAppOnboarding", () {
-    test("runs only for an interactive standalone start with an available plugin", () {
+    test("runs for an interactive standalone start even without a plugin", () {
       expect(
         BridgeRuntimeRunner.shouldRunAppOnboarding(
           isSupervised: false,
           isInteractive: true,
-          hasAvailablePlugins: true,
         ),
         isTrue,
       );
     });
 
-    test("skips supervised, noninteractive, and all-plugin-unavailable starts", () {
+    test("skips supervised and noninteractive starts", () {
       expect(
         BridgeRuntimeRunner.shouldRunAppOnboarding(
           isSupervised: true,
           isInteractive: true,
-          hasAvailablePlugins: true,
         ),
         isFalse,
       );
@@ -47,15 +45,6 @@ void main() {
         BridgeRuntimeRunner.shouldRunAppOnboarding(
           isSupervised: false,
           isInteractive: false,
-          hasAvailablePlugins: true,
-        ),
-        isFalse,
-      );
-      expect(
-        BridgeRuntimeRunner.shouldRunAppOnboarding(
-          isSupervised: false,
-          isInteractive: true,
-          hasAvailablePlugins: false,
         ),
         isFalse,
       );

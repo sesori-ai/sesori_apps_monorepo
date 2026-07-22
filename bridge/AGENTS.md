@@ -42,9 +42,15 @@ When changing shared types, update in this order.
 
 Decide placement by audience: a primitive used by **both** the app and plugins (download, extract, checksum, version, platform target, command execution) belongs in `sesori_bridge_foundation`, not `sesori_plugin_runtime` (which is plugin-only supervision). Do not duplicate these per consumer; map their neutral results into a consumer's own vocabulary at that consumer's boundary (e.g. `UpdateArtifactRepository` maps `DownloadException` → `UpdateResult`).
 
-## Plugin Runtime Provisioning (`ensureRuntime`)
+## Plugin Runtime Resolution (`ensureRuntime`)
 
-`BridgePluginDescriptor` has an `ensureRuntime({host})` phase that runs **after** concurrent `checkAvailability` probes and **immediately before** that descriptor's `start()`, under the bridge's one cross-instance startup mutex (so two bridges never install the same managed runtime at once). Enabled plugins provision sequentially in configured order; each `start()` is registered as soon as its provisioning settles, so starts can overlap later provisioning and other starts. It returns a `Stream<RuntimeProvisionProgress>` whose terminal event is `ProvisionReady(binaryPath)` or `ProvisionFailed(message)`. The default is a no-op (remote/attach plugins need no runtime).
+`BridgePluginDescriptor.ensureRuntime({host})` runs immediately before a
+descriptor start under the cross-instance startup mutex. It may resolve a
+sufficiently recent PATH binary or an already-present pinned managed runtime,
+but must never download, install, sweep, or otherwise mutate runtime files.
+Missing runtimes remain setup-blocked. The stream terminates with
+`ProvisionReady(binaryPath)` or `ProvisionFailed(message)`; the default is a
+no-op for remote/attach plugins.
 
 - The runner consumes the stream, renders progress (`RuntimeProvisionFormatter`), and records `ProvisionReady.binaryPath` on the host (`PluginHost.provisionedRuntimePath`) for `start()` to launch.
 - **`ProvisionFailed` is non-fatal**: the bridge proceeds to `start()`, which can return a degraded plugin. A terminal `PluginFailed` removes only that plugin from operational routing; the relay, catalog, phones, and other plugins stay active. A restart re-attempts provisioning.
@@ -74,10 +80,11 @@ migration/snapshot; never fold them into the merged version.
 - Plugin implementations must implement the full `BridgePluginApi` surface — no partial implementations
 - SSE events use sealed classes (see `bridge_sse_event.dart`)
 - Pure Dart only — no Flutter dependencies anywhere in this workspace
-- Repeated `--plugin` values and persisted `enabledPlugins` are ordered. The
-  first enabled plugin is the current default; the OpenCode legacy identity is
-  only for released payloads that omit `pluginId` and must never be replaced by
-  "first enabled".
+- `plugins.disabled` is the sole persisted plugin eligibility policy. Every
+  other registered plugin is eligible; setup determines whether it is blocked
+  or routable. Presentation/default order is case-insensitive display name with
+  plugin ID as a tie-breaker. The OpenCode legacy identity is only for released
+  payloads that omit `pluginId` and must never be replaced by "first enabled".
 - Project/root/detail/child catalog reads are database-only. Import is explicit,
   non-destructive, and per plugin; reads during import return the last committed
   catalog.

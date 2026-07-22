@@ -13,16 +13,12 @@ Future<PluginLifecycleService> createPluginLifecycleService({
   required List<BridgePluginApi> plugins,
 }) async {
   final service = PluginLifecycleService()
-    ..registerSelection(
-      knownPluginIds: plugins.map((plugin) => plugin.id).toSet(),
-      enabledPlugins: [
-        for (var index = 0; index < plugins.length; index++)
-          (
-            id: plugins[index].id,
-            displayName: plugins[index].id,
-            isDefault: index == 0,
-          ),
-      ],
+    ..registerPlugins(
+      plugins: [for (final plugin in plugins) (id: plugin.id, displayName: plugin.id)],
+    )
+    ..initialize(
+      disabledPluginIds: const {},
+      setupById: {for (final plugin in plugins) plugin.id: const PluginSetupReady()},
     );
   await Future.wait([
     for (final plugin in plugins)

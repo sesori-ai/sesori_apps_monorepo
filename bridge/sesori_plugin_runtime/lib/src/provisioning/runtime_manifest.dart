@@ -1,3 +1,4 @@
+import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 
 /// One platform's pinned release archive for a managed runtime: the asset name,
@@ -72,4 +73,11 @@ abstract class RuntimeManifest {
 
   /// The download URL for [asset] at [bundledVersion].
   String downloadUrlFor({required RuntimeAsset asset});
+
+  /// Expected path of this manifest's pinned managed binary under a plugin
+  /// state root. Computing the path is read-only and does not imply that the
+  /// runtime is installed or valid.
+  String managedBinaryPath({required String stateDirectory}) {
+    return p.join(stateDirectory, runtimeId, bundledVersion.toString(), binaryFileName);
+  }
 }

@@ -71,6 +71,16 @@ void main() {
       );
     });
 
+    test("an intentionally empty plugin set is unavailable rather than vacuously healthy", () async {
+      pluginMetadata.add(const <PluginMetadata>[]);
+      await pump();
+
+      expect(
+        client.sentMessages.whereType<ControlStatus>().single.plugin,
+        ControlPluginHealthState.unavailable,
+      );
+    });
+
     test("relay connection transitions push mapped statuses", () async {
       relayState.add(const RelayConnecting());
       relayState.add(const RelayConnected());

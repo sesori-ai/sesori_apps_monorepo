@@ -65,7 +65,7 @@ import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
-    show BridgePluginDescriptor, Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
+    show Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
@@ -77,23 +77,14 @@ class RunCommand extends cli.Command<void> {
   @override
   final description = 'Run the Sesori bridge (default)';
 
-  final List<BridgePluginDescriptor> _selectedPlugins;
-
-  /// Maps the selected plugin's options to/from the CLI parser, namespaced
+  /// Maps every registered plugin's options to/from the CLI parser, namespaced
   /// under its id (e.g. `--opencode-host`).
   final Map<String, PluginCliOptionsMapper> _pluginCliMappers;
 
-  /// Deferred plugin-selection failure (bad `enabledPlugins`): only running
-  /// the bridge needs a valid selection, so the error surfaces here instead
-  /// of blocking informational commands like `--help`, logout, or config.
-  final String? _selectionError;
-
-  RunCommand({required List<BridgePluginDescriptor> selectedPlugins, required String? selectionError})
-    : _selectedPlugins = selectedPlugins,
-      _pluginCliMappers = {
-        for (final plugin in selectedPlugins) plugin.id: PluginCliOptionsMapper(pluginId: plugin.id),
-      },
-      _selectionError = selectionError {
+  RunCommand()
+    : _pluginCliMappers = {
+        for (final plugin in knownPlugins) plugin.id: PluginCliOptionsMapper(pluginId: plugin.id),
+      } {
     argParser
       ..addFlag(
         'version',
@@ -101,21 +92,11 @@ class RunCommand extends cli.Command<void> {
         help: 'Show version and exit',
       )
       ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL')
-      // The selection was already scanned out of the raw argv to build this
-      // parser (see PluginSelector); registering the option here makes the
-      // full parse accept it and reject unknown ids via the allowed list.
-      // --help therefore documents the *selected* plugin's options.
-      ..addMultiOption(
-        'plugin',
-        help: 'Plugin backends to run, in order. Repeatable; defaults to "enabledPlugins", then opencode',
-        allowed: [for (final plugin in knownPlugins) plugin.id],
-        splitCommas: false,
-      )
       ..addMultiOption(
         'import-plugin',
-        help: 'Import the selected plugin catalog after startup. Repeatable.',
+        help: 'Import an eligible plugin catalog after startup. Repeatable.',
       );
-    for (final plugin in _selectedPlugins) {
+    for (final plugin in knownPlugins) {
       _pluginCliMappers[plugin.id]!.register(parser: argParser, options: plugin.options);
     }
     argParser
@@ -147,11 +128,6 @@ class RunCommand extends cli.Command<void> {
       return;
     }
 
-    final selectionError = _selectionError;
-    if (selectionError != null) {
-      usageException(selectionError);
-    }
-
     final BridgeCliOptions options;
     final Map<String, PluginConfig> pluginConfigs;
     final pluginConfigDeprecations = <String>[];
@@ -159,20 +135,13 @@ class RunCommand extends cli.Command<void> {
       // Plugin option validate hooks and config validation run at
       // argument-parse time — strictly before the startup mutex, so a typo'd
       // flag can never terminate a healthy resident bridge.
-      final cliPluginIds = List<String>.from(results['plugin'] as List<String>);
-      if (cliPluginIds.toSet().length != cliPluginIds.length) {
-        usageException('Plugin selection contains duplicate ids: ${cliPluginIds.join(", ")}.');
-      }
-      final enabledPlugins = cliPluginIds.isEmpty
-          ? _selectedPlugins
-          : [for (final id in cliPluginIds) knownPlugins.firstWhere((plugin) => plugin.id == id)];
       pluginConfigs = <String, PluginConfig>{};
-      for (final plugin in enabledPlugins) {
+      for (final plugin in knownPlugins) {
         final parsed = _pluginCliMappers[plugin.id]!.parse(results: results, options: plugin.options);
         pluginConfigs[plugin.id] = parsed.config;
         pluginConfigDeprecations.addAll(parsed.deprecations);
       }
-      for (final plugin in enabledPlugins) {
+      for (final plugin in knownPlugins) {
         plugin.validateConfig(pluginConfigs[plugin.id]!);
       }
       options = BridgeCliOptions.fromArgResults(
@@ -180,7 +149,6 @@ class RunCommand extends cli.Command<void> {
         results: results,
         environment: Platform.environment,
         defaultAuthUrl: _defaultAuthURL,
-        enabledPluginIds: [for (final plugin in enabledPlugins) plugin.id],
       );
     } on ArgParserException catch (e) {
       usageException(e.message);
@@ -188,9 +156,9 @@ class RunCommand extends cli.Command<void> {
       usageException(e.message);
     }
     for (final importPluginId in options.importPluginIds) {
-      if (!options.enabledPluginIds.contains(importPluginId)) {
+      if (!knownPlugins.any((plugin) => plugin.id == importPluginId)) {
         usageException(
-          'Cannot import plugin "$importPluginId" because it is not selected.',
+          'Cannot import unknown plugin "$importPluginId".',
         );
       }
     }
@@ -373,6 +341,7 @@ class ConfigCommand extends cli.Command<void> {
   ConfigCommand() {
     addSubcommand(ConfigTrackCommand());
     addSubcommand(ConfigYoloCommand());
+    addSubcommand(ConfigPluginsCommand());
     addSubcommand(ConfigEditCommand());
   }
 }
@@ -400,6 +369,65 @@ class ConfigEditCommand extends cli.Command<void> {
 
     final configFilePath = await configService.openConfigFile();
     Console.message('Opening config file at $configFilePath');
+  }
+}
+
+class ConfigPluginsCommand extends cli.Command<void> {
+  @override
+  final name = 'plugins';
+
+  @override
+  final description = 'Show or change plugin eligibility';
+
+  @override
+  Future<void> run() async {
+    final results = argResults;
+    if (results == null) usageException('Unable to read command arguments.');
+    final rest = results.rest;
+    final descriptors = [...knownPlugins]
+      ..sort((left, right) {
+        final byName = left.displayName.toLowerCase().compareTo(right.displayName.toLowerCase());
+        return byName != 0 ? byName : left.id.compareTo(right.id);
+      });
+    final knownIds = {for (final descriptor in descriptors) descriptor.id};
+    final configService = BridgeConfigService(
+      bridgeSettingsRepository: BridgeSettingsRepository(api: BridgeSettingsApi()),
+      defaultEditorRepository: DefaultEditorRepository(
+        api: DefaultEditorApi.forPlatform(processRunner: ProcessRunner()),
+      ),
+    );
+
+    if (rest.isEmpty) {
+      final snapshot = await configService.listPlugins(
+        knownPluginIds: [for (final descriptor in descriptors) descriptor.id],
+      );
+      final entriesById = {for (final entry in snapshot.plugins) entry.pluginId: entry};
+      for (final descriptor in descriptors) {
+        final entry = entriesById[descriptor.id]!;
+        stdout.writeln('${descriptor.displayName} (${descriptor.id}): ${entry.enabled ? 'enabled' : 'disabled'}');
+      }
+      if (snapshot.unknownDisabledPluginIds.isNotEmpty) {
+        stdout.writeln('Unknown disabled plugin IDs: ${snapshot.unknownDisabledPluginIds.join(', ')}');
+      }
+      return;
+    }
+
+    if (rest.length != 2 || (rest.first != 'enable' && rest.first != 'disable')) {
+      usageException('Expected: config plugins [enable|disable] <plugin-id>.');
+    }
+    final pluginId = rest[1];
+    final enabled = rest.first == 'enable';
+    try {
+      await configService.setPluginEnabled(
+        pluginId: pluginId,
+        enabled: enabled,
+        knownPluginIds: knownIds,
+      );
+    } on UnknownPluginConfigException catch (error) {
+      usageException('$error Known plugins: ${knownIds.join(', ')}.');
+    }
+    stdout.writeln('Plugin "$pluginId" ${enabled ? 'enabled' : 'disabled'}.');
+    stdout.writeln('Restart sesori-bridge to apply.');
   }
 }
 
@@ -658,47 +686,14 @@ class UpdateCommand extends cli.Command<void> {
   }
 }
 
-/// Best-effort `enabledPlugins` read for plugin selection. Selection also
-/// runs for `--help` and `logout`, so it must never crash on (or create)
-/// a missing/broken config — failures resolve to "unset". Diagnostics go
-/// through [Log.e] (the stderr level): stdout of `--version`/`--help` must
-/// stay machine-consumable.
-Future<List<String>?> _loadEnabledPluginsFromSettings() async {
-  try {
-    final settings = await BridgeSettingsRepository(api: BridgeSettingsApi()).peekSettings();
-    return settings.enabledPlugins;
-  } on Object catch (error) {
-    Log.e('Could not read bridge settings for plugin selection: $error');
-    return null;
-  }
-}
-
 Future<void> main(List<String> args) async {
   if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
     Log.e('Unsupported platform ${Platform.operatingSystem}');
     exit(1);
   }
 
-  // First pass of the two-pass parse: the selected plugin determines which
-  // options the run command's parser is built with.
-  List<BridgePluginDescriptor> selectedPlugins;
-  String? pluginSelectionError;
-  try {
-    selectedPlugins = await const PluginSelector(
-      knownPlugins: knownPlugins,
-      defaultPluginId: defaultPluginId,
-      loadEnabledPlugins: _loadEnabledPluginsFromSettings,
-    ).resolve(args: args);
-  } on PluginSelectionException catch (e) {
-    // Bad settings must not brick --help, logout, or config — config being
-    // the recovery command the message recommends. Build the parser from the
-    // default surface and defer the error to the run command itself.
-    selectedPlugins = [knownPlugins.firstWhere((plugin) => plugin.id == defaultPluginId)];
-    pluginSelectionError = e.message;
-  }
-
   final runner = cli.CommandRunner<void>('sesori-bridge', 'Sesori Bridge CLI')
-    ..addCommand(RunCommand(selectedPlugins: selectedPlugins, selectionError: pluginSelectionError))
+    ..addCommand(RunCommand())
     ..addCommand(LogoutCommand())
     ..addCommand(ConfigCommand())
     ..addCommand(UpdateCommand());
@@ -708,6 +703,9 @@ Future<void> main(List<String> args) async {
   } on cli.UsageException catch (e) {
     stderr.writeln(e.message);
     stderr.writeln(e.usage);
+    exit(1);
+  } on FormatException catch (error) {
+    stderr.writeln('Invalid bridge configuration: ${error.message}');
     exit(1);
   }
 }

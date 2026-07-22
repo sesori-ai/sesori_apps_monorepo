@@ -149,7 +149,7 @@ class ControlStatusNotifier {
   }
 
   ControlPluginHealthState _mapPluginMetadata(List<PluginMetadata> metadata) {
-    if (metadata.every((plugin) => plugin.state == PluginLifecycleState.ready)) {
+    if (metadata.isNotEmpty && metadata.every((plugin) => plugin.state == PluginLifecycleState.ready)) {
       return ControlPluginHealthState.healthy;
     }
     if (metadata.any(

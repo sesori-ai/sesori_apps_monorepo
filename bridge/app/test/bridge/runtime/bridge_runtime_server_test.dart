@@ -46,12 +46,18 @@ void main() {
       }
     });
 
-    Future<BridgePlugin> startPlugin({String? stateDirectory, ControlProvisionNotifier? provisionNotifier}) {
+    Future<BridgePlugin> startPlugin({
+      String? stateDirectory,
+      ControlProvisionNotifier? provisionNotifier,
+    }) {
       final directory = stateDirectory ?? runtimeDirectory.path;
       final lifecycleService = PluginLifecycleService()
-        ..registerSelection(
-          knownPluginIds: {descriptor.id},
-          enabledPlugins: [(id: descriptor.id, displayName: descriptor.displayName, isDefault: true)],
+        ..registerPlugins(
+          plugins: [(id: descriptor.id, displayName: descriptor.displayName)],
+        )
+        ..initialize(
+          disabledPluginIds: const {},
+          setupById: {descriptor.id: const PluginSetupReady()},
         );
       lifecycleServices.add(lifecycleService);
       final startedPlugins = <String, BridgePlugin>{};
@@ -115,6 +121,49 @@ void main() {
         equals(<int>[200]),
         reason: "stale cleanup must be authorized to reclaim records of the bridge this one replaced",
       );
+    });
+
+    test("zero-plugin startup still performs single-live-bridge enforcement", () async {
+      final lifecycleService = PluginLifecycleService()
+        ..registerPlugins(
+          plugins: [(id: descriptor.id, displayName: descriptor.displayName)],
+        )
+        ..initialize(
+          disabledPluginIds: {descriptor.id},
+          setupById: {
+            descriptor.id: const PluginSetupNotInspected(),
+          },
+        );
+      lifecycleServices.add(lifecycleService);
+
+      await BridgeRuntimeRunner.startPluginsUnderStartupMutex(
+        descriptors: const <BridgePluginDescriptor>[],
+        pluginConfigs: const <String, PluginConfig>{},
+        lifecycleService: lifecycleService,
+        startedPlugins: <String, BridgePlugin>{},
+        managedRuntimePaths: ManagedRuntimePaths(
+          installRoot: runtimeDirectory.path,
+          binaryPath: "${runtimeDirectory.path}/bin/sesori-bridge",
+          cacheDirectory: runtimeDirectory.path,
+        ),
+        currentBridgeIdentity: currentBridgeIdentity,
+        ownerSessionId: "owner-session",
+        startupMutexRepository: startupMutexRepository,
+        bridgeInstanceService: bridgeInstanceService,
+        processRepository: _FakeProcessRepository(),
+        runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
+        serverClock: const ServerClock(),
+        environment: const <String, String>{},
+        currentUser: null,
+        startAborted: StartAbortSignal.never,
+        provisionNotifier: null,
+      );
+
+      expect(startupMutexRepository.lockRequests, hasLength(1));
+      expect(bridgeInstanceService.currentPids, [currentBridgeIdentity.pid]);
+      expect(descriptor.startedHosts, isEmpty);
+      expect(lifecycleService.compositionView.defaultEnabledPluginId, isNull);
+      expect(lifecycleService.compositionView.operationalPlugins, isEmpty);
     });
 
     test("the state directory exists before the descriptor starts", () async {
@@ -281,7 +330,7 @@ void main() {
       await expectLater(startPlugin(), throwsA(isA<PluginStartAbortedException>()));
     });
 
-    group("runtime-provisioning tee", () {
+    group("runtime-resolution tee", () {
       test("supervised mode tees each provision event to the notifier, in order", () async {
         descriptor.provisionEvents.addAll(const <RuntimeProvisionProgress>[
           ProvisionResolving(),
@@ -364,6 +413,9 @@ class _RecordingDescriptor extends BridgePluginDescriptor {
 
   @override
   String get displayName => "Fake";
+
+  @override
+  PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
 
   @override
   List<PluginOption> get options => const [];
