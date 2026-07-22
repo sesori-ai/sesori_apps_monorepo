@@ -205,6 +205,35 @@ void main() {
       );
     });
 
+    test("turn_context scalar summary is not reported as malformed", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/07/22/rollout-turn-context-summary.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        cwd: "/repo/app",
+        cliVersion: "0.144.1",
+        extraLines: [
+          jsonEncode({
+            "type": "turn_context",
+            "payload": {
+              "model": "gpt-5.4",
+              "summary": "previous-turn context summary",
+            },
+          }),
+        ],
+      );
+
+      late List<CodexRolloutLineDto> transcript;
+      final output = _captureWarnings(() {
+        transcript = rolloutApi.readTranscript(rolloutPath: path);
+      }, level: LogLevel.verbose);
+
+      expect(output, isNot(contains("malformed rollout content list")));
+      expect(transcript.last.type, CodexRolloutLineType.turnContext);
+      expect(transcript.last.payload?.model, "gpt-5.4");
+      expect(transcript.last.payload?.summary, isEmpty);
+    });
+
     test("listSessions joins index + rollout header and sorts by updatedAt", () {
       _writeRollout(
         codexHome,
@@ -258,6 +287,37 @@ void main() {
 
       expect(records, isEmpty);
       expect(output, contains("rollout session id mismatch"));
+    });
+
+    test("catalog keeps leading metadata when a fork contains its parent header", () {
+      const childId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+      const parentId = "019a0000-1111-2222-3333-bbbbbbbbbbbb";
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-$childId.jsonl",
+        sessionId: childId,
+        cwd: "/repo/child",
+        extraLines: [
+          jsonEncode({
+            "type": "session_meta",
+            "payload": {
+              "id": parentId,
+              "cwd": "/repo/parent",
+              "timestamp": "2026-04-17T09:00:00Z",
+            },
+          }),
+        ],
+      );
+
+      late final List<CodexSessionRecord> records;
+      final output = _captureWarnings(() {
+        records = catalogRepository.listSessionRecords();
+      });
+
+      expect(output, isNot(contains("rollout session id mismatch")));
+      expect(records, hasLength(1));
+      expect(records.single.id, childId);
+      expect(records.single.cwd, "/repo/child");
     });
 
     test("catalog isolate enumeration keeps the main isolate responsive", () async {

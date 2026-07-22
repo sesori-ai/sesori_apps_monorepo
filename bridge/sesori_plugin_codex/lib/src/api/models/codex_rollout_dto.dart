@@ -82,7 +82,7 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
     @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required CodexRolloutPayloadType? type,
     @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole? role,
     @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? content,
-    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? summary,
+    @CodexRolloutSummaryConverter() required List<CodexRolloutContentDto>? summary,
     @JsonKey(name: "call_id") required String? callId,
     required String? name,
     required String? arguments,
@@ -147,6 +147,22 @@ class CodexRolloutContentListConverter implements JsonConverter<List<CodexRollou
           "text": content.text,
         },
     ];
+  }
+}
+
+/// Decodes the overloaded rollout `summary` field.
+///
+/// Reasoning response items use a typed content list, while `turn_context`
+/// records legitimately use a scalar string. The latter is context metadata,
+/// not a renderable reasoning part, so it is ignored without a malformed-list
+/// warning.
+class CodexRolloutSummaryConverter extends CodexRolloutContentListConverter {
+  const CodexRolloutSummaryConverter();
+
+  @override
+  List<CodexRolloutContentDto>? fromJson(Object? json) {
+    if (json is String) return const [];
+    return super.fromJson(json);
   }
 }
 

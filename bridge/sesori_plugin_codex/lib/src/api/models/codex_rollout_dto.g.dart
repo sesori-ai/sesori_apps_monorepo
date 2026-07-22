@@ -35,38 +35,39 @@ const _$CodexRolloutLineTypeEnumMap = {
   CodexRolloutLineType.unknown: 'unknown',
 };
 
-_CodexRolloutPayloadDto _$CodexRolloutPayloadDtoFromJson(
-  Map json,
-) => _CodexRolloutPayloadDto(
-  id: json['id'] as String?,
-  cwd: json['cwd'] as String?,
-  timestamp: json['timestamp'] as String?,
-  modelProvider: json['model_provider'] as String?,
-  cliVersion: json['cli_version'] as String?,
-  model: json['model'] as String?,
-  type: $enumDecodeNullable(
-    _$CodexRolloutPayloadTypeEnumMap,
-    json['type'],
-    unknownValue: CodexRolloutPayloadType.unknown,
-  ),
-  role: $enumDecodeNullable(
-    _$CodexRolloutRoleEnumMap,
-    json['role'],
-    unknownValue: CodexRolloutRole.unknown,
-  ),
-  content: const CodexRolloutContentListConverter().fromJson(json['content']),
-  summary: const CodexRolloutContentListConverter().fromJson(json['summary']),
-  callId: json['call_id'] as String?,
-  name: json['name'] as String?,
-  arguments: json['arguments'] as String?,
-  input: json['input'] as String?,
-  output: const CodexRolloutOutputConverter().fromJson(json['output']),
-  action: json['action'] == null
-      ? null
-      : CodexRolloutActionDto.fromJson(
-          Map<String, dynamic>.from(json['action'] as Map),
-        ),
-);
+_CodexRolloutPayloadDto _$CodexRolloutPayloadDtoFromJson(Map json) =>
+    _CodexRolloutPayloadDto(
+      id: json['id'] as String?,
+      cwd: json['cwd'] as String?,
+      timestamp: json['timestamp'] as String?,
+      modelProvider: json['model_provider'] as String?,
+      cliVersion: json['cli_version'] as String?,
+      model: json['model'] as String?,
+      type: $enumDecodeNullable(
+        _$CodexRolloutPayloadTypeEnumMap,
+        json['type'],
+        unknownValue: CodexRolloutPayloadType.unknown,
+      ),
+      role: $enumDecodeNullable(
+        _$CodexRolloutRoleEnumMap,
+        json['role'],
+        unknownValue: CodexRolloutRole.unknown,
+      ),
+      content: const CodexRolloutContentListConverter().fromJson(
+        json['content'],
+      ),
+      summary: const CodexRolloutSummaryConverter().fromJson(json['summary']),
+      callId: json['call_id'] as String?,
+      name: json['name'] as String?,
+      arguments: json['arguments'] as String?,
+      input: json['input'] as String?,
+      output: const CodexRolloutOutputConverter().fromJson(json['output']),
+      action: json['action'] == null
+          ? null
+          : CodexRolloutActionDto.fromJson(
+              Map<String, dynamic>.from(json['action'] as Map),
+            ),
+    );
 
 const _$CodexRolloutPayloadTypeEnumMap = {
   CodexRolloutPayloadType.message: 'message',

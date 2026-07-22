@@ -297,6 +297,15 @@ class CodexEventMapper {
           output: _mcpResultText(item["result"]),
           error: _asMap(item["error"])?["message"] as String?,
         );
+      case "dynamicToolCall":
+        return _toolItemEvents(
+          threadId: threadId,
+          itemId: itemId,
+          tool: item["tool"] as String? ?? "tool",
+          title: _dynamicToolTitle(item["arguments"]),
+          status: _toolStatus(item["status"], completed: completed),
+          output: _dynamicToolOutput(item["contentItems"]),
+        );
       case "webSearch":
         return _toolItemEvents(
           threadId: threadId,
@@ -307,9 +316,9 @@ class CodexEventMapper {
           status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
         );
       default:
-        // todoList, dynamicToolCall, hookPrompt, … — codex item kinds with no
-        // mobile representation yet. Dropped rather than surfaced as broken or
-        // empty messages.
+        // todoList, hookPrompt, … — codex item kinds with no mobile
+        // representation yet. Dropped rather than surfaced as broken or empty
+        // messages.
         return const [];
     }
   }
@@ -419,6 +428,29 @@ class CodexEventMapper {
     }
     final out = buffer.toString();
     return out.isEmpty ? null : out;
+  }
+
+  /// A concise rendering of the JSON-compatible arguments attached to a
+  /// `dynamicToolCall` item. Codex already decoded the app-server payload, so
+  /// maps and lists use their readable Dart representation here.
+  String? _dynamicToolTitle(Object? arguments) {
+    if (arguments == null) return null;
+    final rendered = arguments is String ? arguments : "$arguments";
+    if (rendered.isEmpty) return null;
+    return rendered.length > 120 ? rendered.substring(0, 120) : rendered;
+  }
+
+  /// Concatenates text outputs from a completed `dynamicToolCall`. Image
+  /// outputs have no bridge tool-state representation and are ignored.
+  String? _dynamicToolOutput(Object? contentItems) {
+    if (contentItems is! List) return null;
+    final buffer = StringBuffer();
+    for (final entry in contentItems) {
+      final text = _asMap(entry)?["text"];
+      if (text is String) buffer.write(text);
+    }
+    final output = buffer.toString();
+    return output.isEmpty ? null : output;
   }
 
   /// Builds an assistant message stamped with codex's agent/model/provider.
