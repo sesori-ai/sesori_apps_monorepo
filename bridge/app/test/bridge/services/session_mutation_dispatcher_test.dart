@@ -84,11 +84,15 @@ void main() {
       Future<void>? deletion;
       try {
         final renamed = await rename.timeout(const Duration(milliseconds: 100));
+        final newerRename = await dispatcher
+            .renameSession(sessionId: "s1", title: "Newer title")
+            .timeout(const Duration(milliseconds: 100));
         deletion = dispatcher.deleteSession(sessionId: "s1");
         await Future<void>.delayed(Duration.zero);
 
         expect(renamed.title, "Stored title");
-        expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Stored title");
+        expect(newerRename.title, "Newer title");
+        expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Newer title");
         expect(deleteStarted.isCompleted, isFalse);
       } finally {
         releaseRename.complete();
@@ -102,10 +106,25 @@ void main() {
       await insertSession();
 
       final renamed = await dispatcher.renameSession(sessionId: "s1", title: "Stored title");
+      await dispatcher.drain();
+      await dispatcher.captureTitle(sessionId: "s1", title: "Old backend title");
 
       expect(renamed.title, "Stored title");
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Stored title");
       expect(plugin.renameCalls, 1);
+    });
+
+    test("accepts a later backend rename that reuses an older local title", () async {
+      await insertSession();
+
+      await dispatcher.renameSession(sessionId: "s1", title: "First title");
+      await dispatcher.renameSession(sessionId: "s1", title: "Second title");
+      await dispatcher.renameSession(sessionId: "s1", title: "Third title");
+      await dispatcher.drain();
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await dispatcher.captureTitle(sessionId: "s1", title: "First title");
+
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "First title");
     });
 
     test("suppresses an older rename event without blocking later backend titles", () async {
@@ -127,6 +146,7 @@ void main() {
 
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Newer title");
 
+      await dispatcher.captureTitle(sessionId: "s1", title: "Newer title");
       await dispatcher.captureTitle(sessionId: "s1", title: "External title");
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "External title");
     });
