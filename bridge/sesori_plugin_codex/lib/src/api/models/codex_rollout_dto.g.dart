@@ -53,13 +53,25 @@ _CodexRolloutPayloadDto _$CodexRolloutPayloadDtoFromJson(Map json) =>
         json['role'],
         unknownValue: CodexRolloutRole.unknown,
       ),
-      content: json['content'],
-      summary: json['summary'],
+      content: (json['content'] as List<dynamic>?)
+          ?.map(
+            (e) => CodexRolloutContentDto.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList(),
+      summary: (json['summary'] as List<dynamic>?)
+          ?.map(
+            (e) => CodexRolloutContentDto.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList(),
       callId: json['call_id'] as String?,
       name: json['name'] as String?,
       arguments: json['arguments'] as String?,
       input: json['input'] as String?,
-      output: json['output'],
+      output: const CodexRolloutOutputConverter().fromJson(json['output']),
       action: json['action'] == null
           ? null
           : CodexRolloutActionDto.fromJson(

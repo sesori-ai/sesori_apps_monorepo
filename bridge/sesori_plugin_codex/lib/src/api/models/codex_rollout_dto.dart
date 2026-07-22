@@ -14,7 +14,9 @@ enum CodexRolloutLineType {
 }
 
 enum CodexRolloutPayloadType {
+  @JsonValue("message")
   message,
+  @JsonValue("reasoning")
   reasoning,
   @JsonValue("function_call")
   functionCall,
@@ -78,17 +80,13 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
     required String? model,
     @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required CodexRolloutPayloadType? type,
     @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole? role,
-    // Payload variants reuse these fields with different shapes. In
-    // particular, codex 0.144.x custom tool outputs are typed content arrays,
-    // while legacy function outputs are strings. Preserve the wire value here
-    // and narrow it in the repository after inspecting the payload type.
-    required Object? content,
-    required Object? summary,
+    required List<CodexRolloutContentDto>? content,
+    required List<CodexRolloutContentDto>? summary,
     @JsonKey(name: "call_id") required String? callId,
     required String? name,
     required String? arguments,
     required String? input,
-    required Object? output,
+    @CodexRolloutOutputConverter() required List<CodexRolloutContentDto>? output,
     required CodexRolloutActionDto? action,
   }) = _CodexRolloutPayloadDto;
 
@@ -103,6 +101,55 @@ sealed class CodexRolloutContentDto with _$CodexRolloutContentDto {
   }) = _CodexRolloutContentDto;
 
   factory CodexRolloutContentDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutContentDtoFromJson(json);
+}
+
+/// Normalizes Codex tool output across persisted rollout versions.
+///
+/// Legacy function-call records store output as a string, while current custom
+/// tool-call records store a typed content array. The DTO exposes one typed
+/// representation to the rest of the plugin.
+class CodexRolloutOutputConverter implements JsonConverter<List<CodexRolloutContentDto>?, Object?> {
+  const CodexRolloutOutputConverter();
+
+  @override
+  List<CodexRolloutContentDto>? fromJson(Object? json) {
+    if (json == null) return null;
+    if (json is String) {
+      return [
+        CodexRolloutContentDto(
+          type: CodexRolloutContentType.outputText,
+          text: json,
+        ),
+      ];
+    }
+    if (json is! List) {
+      throw const FormatException("Codex rollout output must be a string or content array");
+    }
+    return [
+      for (final item in json)
+        CodexRolloutContentDto.fromJson(
+          (item as Map).cast<String, dynamic>(),
+        ),
+    ];
+  }
+
+  @override
+  Object? toJson(List<CodexRolloutContentDto>? object) {
+    if (object == null) return null;
+    return [
+      for (final content in object)
+        {
+          "type": switch (content.type) {
+            CodexRolloutContentType.inputText => "input_text",
+            CodexRolloutContentType.outputText => "output_text",
+            CodexRolloutContentType.summaryText => "summary_text",
+            CodexRolloutContentType.unknown => "unknown",
+            null => null,
+          },
+          "text": content.text,
+        },
+    ];
+  }
 }
 
 @Freezed(fromJson: true, toJson: false)

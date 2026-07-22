@@ -199,8 +199,7 @@ class CodexMessageRepository {
     return messages;
   }
 
-  String? _toolOutputText(Object? output) {
-    if (output is String) return output;
+  String? _toolOutputText(List<CodexRolloutContentDto>? output) {
     final texts = _contentTexts(
       output,
       acceptedTypes: const {
@@ -212,34 +211,13 @@ class CodexMessageRepository {
   }
 
   List<String> _contentTexts(
-    Object? raw, {
+    List<CodexRolloutContentDto>? content, {
     required Set<CodexRolloutContentType> acceptedTypes,
   }) {
-    if (raw is! List) return const [];
-    final texts = <String>[];
-    for (final item in raw) {
-      if (item is String) {
-        if (item.isNotEmpty) texts.add(item);
-        continue;
-      }
-      if (item is! Map) continue;
-      try {
-        final content = CodexRolloutContentDto.fromJson(
-          item.cast<String, dynamic>(),
-        );
-        final text = content.text;
-        if (acceptedTypes.contains(content.type) && text != null && text.isNotEmpty) {
-          texts.add(text);
-        }
-      } on Object catch (error, stackTrace) {
-        Log.w(
-          "[codex] skipping malformed rollout content item",
-          error,
-          stackTrace,
-        );
-      }
-    }
-    return texts;
+    return [
+      for (final item in content ?? const <CodexRolloutContentDto>[])
+        if (item.text case final text? when acceptedTypes.contains(item.type) && text.isNotEmpty) text,
+    ];
   }
 
   PluginMessageWithParts _toolMessage({
