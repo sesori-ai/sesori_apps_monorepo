@@ -236,6 +236,31 @@ void main() {
       expect(fake.sentMethods.where((method) => method == "thread/name/set"), hasLength(1));
     });
 
+    test("renameSession bounds a stalled retry by the rollout deadline", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          error: {
+            "code": -32603,
+            "message":
+                "failed to read session metadata /tmp/rollout.jsonl: "
+                "rollout at /tmp/rollout.jsonl is empty",
+          },
+        ),
+        const _Response(respond: false),
+      ]);
+      final stopwatch = Stopwatch()..start();
+
+      await expectLater(
+        plugin
+            .renameSession(sessionId: "t-stalled", title: "Renamed")
+            .timeout(const Duration(seconds: 4)),
+        throwsA(isA<TimeoutException>()),
+      );
+
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 3)));
+    });
+
     test("sendPrompt resumes a thread from a prior run before the turn", () async {
       // `t-existing` was never started in this plugin instance, so the
       // app-server has not loaded it — the plugin must resume it on demand
@@ -622,9 +647,10 @@ const Map<String, dynamic> _initOk = {
 
 class _Response {
   // ignore: unused_element_parameter
-  const _Response({this.result, this.error});
+  const _Response({this.result, this.error, this.respond = true});
   final Object? result;
   final Map<String, dynamic>? error;
+  final bool respond;
 }
 
 /// Fake app-server that records every method/params it received and
@@ -699,6 +725,7 @@ class _FakeAppServer {
       return;
     }
     final response = _pending.removeAt(0);
+    if (!response.respond) return;
     final envelope = <String, dynamic>{"jsonrpc": "2.0", "id": id};
     if (response.error != null) {
       envelope["error"] = response.error;

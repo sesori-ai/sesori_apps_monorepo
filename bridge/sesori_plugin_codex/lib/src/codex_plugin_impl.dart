@@ -627,10 +627,15 @@ class CodexPlugin implements CodexManagedApi {
     final client = await _connectedClient();
     final retryStopwatch = Stopwatch();
     for (var attempt = 1; ; attempt++) {
+      final remainingRetryTime = _renameRetryTimeout - retryStopwatch.elapsed;
+      if (retryStopwatch.isRunning && remainingRetryTime <= Duration.zero) {
+        throw TimeoutException("Codex session rename retry deadline elapsed");
+      }
       try {
         await client.request(
           method: "thread/name/set",
           params: {"threadId": sessionId, "name": title},
+          timeout: retryStopwatch.isRunning ? remainingRetryTime : const Duration(seconds: 30),
         );
         break;
       } on CodexRpcException catch (error) {
