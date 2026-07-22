@@ -532,8 +532,47 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
+  /// Creates a plain folder named [name] below [parentPath] on the bridge host.
+  ///
+  /// The project list is untouched — this only makes the directory, so the
+  /// browser can move into it and let the user decide whether to add it.
+  Future<CreateDirectoryOutcome> createDirectory({
+    required String parentPath,
+    required String name,
+  }) async {
+    final response = await _projectRepository.createDirectory(
+      parentPath: parentPath,
+      name: name,
+    );
+    switch (response) {
+      case SuccessResponse(:final data):
+        return CreateDirectorySuccess(directory: data);
+      case ErrorResponse(:final error):
+        if (_isPermissionDenied(error)) return const CreateDirectoryPermissionDenied();
+        if (error is NonSuccessCodeError && error.errorCode == 409) {
+          return const CreateDirectoryAlreadyExists();
+        }
+        // A bridge that predates this endpoint has no route to answer with.
+        if (error is NonSuccessCodeError && error.errorCode == 404) {
+          return const CreateDirectoryUnsupported();
+        }
+        return const CreateDirectoryError();
+    }
+  }
+
   String? parentHostPath({required String path}) {
     return _projectRepository.parentHostPath(path: path);
+  }
+
+  /// The name of the machine the directory browser is listing — the account's
+  /// most recently seen registered bridge, matching what the connected-empty
+  /// and bridge-offline bodies name.
+  ///
+  /// Null when the lookup has nothing to offer (no registered bridges, or a
+  /// failed fetch), so callers fall back to the host path itself.
+  Future<String?> hostMachineName() async {
+    final bridges = await _registeredBridgesService.getRegisteredBridges();
+    return bridges.isEmpty ? null : bridges.first.name;
   }
 
   /// Renames the project with [projectId] to [name].

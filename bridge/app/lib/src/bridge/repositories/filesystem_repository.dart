@@ -257,10 +257,10 @@ class FilesystemRepository {
     });
   }
 
-  /// Creates the project directory at [path].
+  /// Creates the directory at [path].
   ///
   /// Throws [FilesystemPermissionDeniedException] on an OS permission denial.
-  void createProjectDirectory({required String path}) {
+  void createDirectory({required String path}) {
     _guard(path: path, () {
       _filesystemApi.createDirectory(path);
     });

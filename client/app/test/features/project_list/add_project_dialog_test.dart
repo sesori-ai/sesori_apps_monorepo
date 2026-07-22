@@ -12,6 +12,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/project_list/add_project_dialog.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -120,6 +121,10 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
   );
 }
 
+/// The folder the stubbed bridge starts the browser in, mirroring the real
+/// bridge's prefix-less first answer.
+const _homePath = "/home/user";
+
 void _stubSuggestionsWithEntries(
   MockProjectListCubit cubit, {
   required List<FilesystemSuggestion> entries,
@@ -137,14 +142,28 @@ void _stubSuggestionsWithEntries(
 void _stubSuggestionsPerPrefix(
   MockProjectListCubit cubit, {
   required Map<String, List<FilesystemSuggestion>> byPrefix,
+  String rootPath = _homePath,
 }) {
   when(() => cubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) async {
     final prefix = invocation.namedArguments[const Symbol("prefix")] as String?;
     return FilesystemSuggestionsSuccess(
-      suggestions: FilesystemSuggestions(data: byPrefix[prefix ?? ""] ?? [], path: null),
+      // The bridge always names the folder it listed; the prefix-less first
+      // call is how the browser learns where it starts.
+      suggestions: FilesystemSuggestions(data: byPrefix[prefix ?? ""] ?? [], path: prefix ?? rootPath),
     );
   });
 }
+
+/// The action menu's labelled action.
+final Finder _addButton = find.widgetWithText(PregoButtonsSolid, "Add as new project");
+
+/// The action menu's other action, which is icon-only — so it is found by the
+/// glyph that carries it.
+final Finder _createFolderButton = find.widgetWithIcon(PregoButtonsSolid, TablerRegular.folder_plus);
+
+/// The action-menu button [finder] resolves to, for asserting on its enabled
+/// state.
+PregoButtonsSolid _button(WidgetTester tester, Finder finder) => tester.widget<PregoButtonsSolid>(finder);
 
 void main() {
   setUpAll(() {
@@ -164,6 +183,8 @@ void main() {
 
   setUp(() {
     mockCubit = MockProjectListCubit();
+    // The browser heads its listing with the machine the bridge runs on.
+    when(() => mockCubit.hostMachineName()).thenAnswer((_) async => "MacBook-Pro.local");
     mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -223,10 +244,10 @@ void main() {
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
 
-      // Single view — title + directory entries + both action buttons
-      expect(find.text("Add Project"), findsWidgets);
+      // Single view — the machine heads the listing, with both actions below.
+      expect(find.text("MacBook-Pro.local"), findsOneWidget);
       expect(find.text("projects"), findsOneWidget);
-      expect(find.text("Open as Project"), findsOneWidget);
+      expect(find.text("Add as new project"), findsOneWidget);
     });
   });
 
@@ -315,8 +336,8 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, "Add Project"));
       await tester.pumpAndSettle();
 
-      expect(find.text("Open as Project"), findsOneWidget);
-      expect(find.text("Project name"), findsOneWidget);
+      expect(_addButton, findsOneWidget);
+      expect(_createFolderButton, findsOneWidget);
     });
   });
 
@@ -350,25 +371,20 @@ void main() {
       expect(find.text("work"), findsOneWidget);
       expect(find.text("my-repo"), findsOneWidget);
 
-      // Git badge
-      expect(find.text("git"), findsOneWidget);
+      // Git tag — the bridge only reports that a repository is there, so the
+      // label stays "Git" even though the glyph is GitHub's.
+      expect(find.text("Git"), findsOneWidget);
 
       // Both action buttons
-      expect(find.text("Open as Project"), findsOneWidget);
-      expect(find.text("Create"), findsOneWidget);
-
-      // Project name field
-      expect(find.text("Project name"), findsOneWidget);
-
-      // No tab bar
-      expect(find.byType(TabBar), findsNothing);
+      expect(_addButton, findsOneWidget);
+      expect(_createFolderButton, findsOneWidget);
     });
 
-    testWidgets("uses the bridge-resolved initial path as the selected folder", (tester) async {
+    testWidgets("starting folder is addable but cannot be written into", (tester) async {
       _stubSuggestionsWithEntries(
         mockCubit,
         entries: const [],
-        path: "/home/user",
+        path: _homePath,
       );
 
       await tester.pumpWidget(
@@ -387,11 +403,13 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      expect(find.text("/home/user"), findsOneWidget);
-      final openButton = tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, "Open as Project"),
-      );
-      expect(openButton.onPressed, isNotNull);
+      // The machine names the starting folder, and there is nowhere to go back
+      // to from it.
+      expect(find.text("MacBook-Pro.local"), findsOneWidget);
+      expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
+
+      expect(_button(tester, _addButton).onPressed, isNotNull);
+      expect(_button(tester, _createFolderButton).onPressed, isNull);
     });
 
     testWidgets("tapping a directory entry navigates into it", (tester) async {
@@ -426,8 +444,11 @@ void main() {
       expect(find.text("app-one"), findsOneWidget);
       expect(find.text("lib-two"), findsOneWidget);
       expect(find.text("work"), findsNothing);
-      expect(find.text("/home/user/projects"), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+      // The bar follows the browser: the folder heads it, and the path below
+      // reads from the machine down rather than from the filesystem root.
+      expect(find.text("projects"), findsOneWidget);
+      expect(find.text("MacBook-Pro.local/projects"), findsOneWidget);
+      expect(find.byIcon(TablerRegular.arrow_left), findsOneWidget);
     });
 
     testWidgets("back button navigates up one directory level", (tester) async {
@@ -436,12 +457,12 @@ void main() {
         byPrefix: {
           "": _homeDirEntries,
           "/home/user/projects": _projectsDirEntries,
-          "/home/user": _homeDirEntries,
+          _homePath: _homeDirEntries,
         },
       );
       when(
         () => mockCubit.parentHostPath(path: "/home/user/projects"),
-      ).thenReturn("/home/user");
+      ).thenReturn(_homePath);
 
       await tester.pumpWidget(
         _buildApp(
@@ -464,14 +485,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text("app-one"), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.tap(find.byIcon(TablerRegular.arrow_left));
       await tester.pumpAndSettle();
 
       expect(find.text("projects"), findsOneWidget);
       expect(find.text("work"), findsOneWidget);
+      // Back at the starting folder, so the way further up is gone again.
+      expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
     });
 
-    testWidgets("Open as Project calls discoverProject with browsed path", (tester) async {
+    testWidgets("Add as new project calls discoverProject with browsed path", (tester) async {
       _stubSuggestionsPerPrefix(
         mockCubit,
         byPrefix: {
@@ -508,7 +531,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap "Open as Project"
-      await tester.tap(find.text("Open as Project"));
+      await tester.tap(_addButton);
       await tester.pumpAndSettle();
 
       verify(
@@ -557,7 +580,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text("work"));
       await tester.pumpAndSettle();
-      await tester.tap(find.text("Open as Project"));
+      await tester.tap(_addButton);
       await tester.pumpAndSettle();
 
       expect(find.text("Enable Git tracking?"), findsOneWidget);
@@ -613,7 +636,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text("work"));
       await tester.pumpAndSettle();
-      await tester.tap(find.text("Open as Project"));
+      await tester.tap(_addButton);
       await tester.pumpAndSettle();
       await tester.tap(find.text("Continue Without Git"));
       await tester.pumpAndSettle();
@@ -664,7 +687,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text("work"));
       await tester.pumpAndSettle();
-      await tester.tap(find.text("Open as Project"));
+      await tester.tap(_addButton);
       await tester.pumpAndSettle();
       await tester.tap(find.text("Enable Git"));
       await tester.pumpAndSettle();
@@ -677,10 +700,75 @@ void main() {
       await tester.tap(find.text("I understand"));
       await tester.pumpAndSettle();
       expect(find.text("Project opened, Git setup incomplete"), findsNothing);
-      expect(find.text("Open as Project"), findsNothing);
+      expect(_addButton, findsNothing);
     });
 
-    testWidgets("Create constructs path from browsed dir + typed name", (tester) async {
+    testWidgets("Create new folder makes it in the browsed dir and steps into it", (tester) async {
+      const newFolderPath = "/home/user/projects/new-app";
+      _stubSuggestionsPerPrefix(
+        mockCubit,
+        byPrefix: {
+          "": _homeDirEntries,
+          "/home/user/projects": _projectsDirEntries,
+          newFolderPath: const [],
+        },
+      );
+      when(
+        () => mockCubit.createDirectory(
+          parentPath: any(named: "parentPath"),
+          name: any(named: "name"),
+        ),
+      ).thenAnswer(
+        (_) async => const CreateDirectorySuccess(
+          directory: FilesystemSuggestion(path: newFolderPath, name: "new-app", isGitRepo: false),
+        ),
+      );
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("projects"));
+      await tester.pumpAndSettle();
+
+      await tester.tap(_createFolderButton);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), "new-app");
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(PregoButtonsSolid, "Create"));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => mockCubit.createDirectory(
+          parentPath: "/home/user/projects",
+          name: "new-app",
+        ),
+      ).called(1);
+
+      // Only the folder was made: the browser moves into it and leaves adding
+      // it as a project to the user's next tap.
+      verifyNever(
+        () => mockCubit.discoverProject(path: any(named: "path"), gitAction: any(named: "gitAction")),
+      );
+      expect(find.text("new-app"), findsOneWidget);
+      expect(find.text("MacBook-Pro.local/projects/new-app"), findsOneWidget);
+      expect(find.text("This directory is empty"), findsOneWidget);
+    });
+
+    testWidgets("a bridge without the create-folder endpoint says so", (tester) async {
       _stubSuggestionsPerPrefix(
         mockCubit,
         byPrefix: {
@@ -689,66 +777,11 @@ void main() {
         },
       );
       when(
-        () => mockCubit.createProject(
+        () => mockCubit.createDirectory(
           parentPath: any(named: "parentPath"),
           name: any(named: "name"),
         ),
-      ).thenAnswer((_) async => AddProjectOutcome.success);
-
-      await tester.pumpWidget(
-        _buildApp(
-          cubit: mockCubit,
-          child: Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
-                child: const Text("Open"),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text("Open"));
-      await tester.pumpAndSettle();
-
-      // Navigate into "projects"
-      await tester.tap(find.text("projects"));
-      await tester.pumpAndSettle();
-
-      // Type project name
-      await tester.enterText(find.byType(TextField), "new-app");
-      await tester.pumpAndSettle();
-
-      // Tap "Create"
-      await tester.tap(find.text("Create"));
-      await tester.pumpAndSettle();
-
-      verify(
-        () => mockCubit.createProject(
-          parentPath: "/home/user/projects",
-          name: "new-app",
-        ),
-      ).called(1);
-    });
-
-    testWidgets("Create passes the Windows host parent and project name as intent", (tester) async {
-      const projectsPath = r"C:\Users\dev\projects";
-      _stubSuggestionsPerPrefix(
-        mockCubit,
-        byPrefix: {
-          "": const [
-            FilesystemSuggestion(path: projectsPath, name: "projects", isGitRepo: false),
-          ],
-          projectsPath: const [],
-        },
-      );
-      when(
-        () => mockCubit.createProject(
-          parentPath: any(named: "parentPath"),
-          name: any(named: "name"),
-        ),
-      ).thenAnswer((_) async => AddProjectOutcome.success);
+      ).thenAnswer((_) async => const CreateDirectoryUnsupported());
 
       await tester.pumpWidget(
         _buildApp(
@@ -767,17 +800,17 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text("projects"));
       await tester.pumpAndSettle();
+      await tester.tap(_createFolderButton);
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), "new-app");
       await tester.pumpAndSettle();
-      await tester.tap(find.text("Create"));
+      await tester.tap(find.widgetWithText(PregoButtonsSolid, "Create"));
       await tester.pumpAndSettle();
 
-      verify(
-        () => mockCubit.createProject(
-          parentPath: projectsPath,
-          name: "new-app",
-        ),
-      ).called(1);
+      // Retrying will not help, so the message points at the fix.
+      expect(find.textContaining("Update Sesori Bridge"), findsOneWidget);
+      // The browser stays where it was.
+      expect(find.text("app-one"), findsOneWidget);
     });
 
     testWidgets("empty directory shows empty state message", (tester) async {
@@ -803,7 +836,7 @@ void main() {
       expect(find.text("This directory is empty"), findsOneWidget);
     });
 
-    testWidgets("loading state shows progress indicator", (tester) async {
+    testWidgets("loading state holds the row shape with skeleton bars", (tester) async {
       when(
         () => mockCubit.fetchFilesystemSuggestions(prefix: any(named: "prefix")),
       ).thenAnswer((_) => Completer<FilesystemSuggestionsOutcome>().future);
@@ -825,7 +858,7 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      expect(find.byType(PregoSkeletonBar), findsWidgets);
     });
   });
 }

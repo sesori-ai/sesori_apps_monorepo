@@ -20,8 +20,10 @@ enum PregoSheetTitleAlignment { center, start }
 /// [PregoBottomSheet]).
 ///
 /// The close button ([TablerRegular.x], wired to [onClose]) sits on the trailing
-/// edge, after [actions]. In-sheet navigation ([onBack]) instead shows a leading
-/// back arrow ([TablerRegular.chevron_left]) and no close.
+/// edge, after [actions]. In-sheet navigation ([onBack]) adds a leading back
+/// arrow ([TablerRegular.arrow_left]) beside it: the two answer different
+/// questions — back steps within the sheet, close leaves it — so a sheet that
+/// navigates keeps both, as the Figma browser states do.
 ///
 /// Leading resolution (first match wins):
 /// 1. an explicit [leading] widget;
@@ -59,14 +61,12 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
   final bool showGrabber;
 
   /// Renders a glass close button (`x`) on the trailing edge that invokes this
-  /// callback. It lives in the trailing slot, so [leading] does not suppress it;
-  /// only [onBack] does — in-sheet navigation replaces the close with a leading
-  /// back arrow.
+  /// callback. It lives in the trailing slot, so neither [leading] nor [onBack]
+  /// suppresses it.
   final VoidCallback? onClose;
 
-  /// Renders a glass back button (`chevron-left`) that invokes this callback.
-  /// Takes precedence over [onClose] so an in-sheet navigation step swaps the
-  /// close affordance for a back one.
+  /// Renders a glass back button (`arrow-left`) in the leading slot that invokes
+  /// this callback, for stepping back within the sheet.
   final VoidCallback? onBack;
 
   /// Trailing bar actions. Build these with [PregoButtonsIconGlass] so they
@@ -180,11 +180,10 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
   }
 
   /// Resolves the trailing bar row: [actions] followed by the close button.
-  /// In-sheet navigation ([onBack]) replaces the close with the leading back
-  /// arrow, so no close is shown then. Null when the row would be empty.
+  /// Null when the row would be empty.
   Widget? _resolveTrailing(BuildContext context) {
     final onClose = this.onClose;
-    final trailingClose = onClose != null && onBack == null ? _closeButton(context, onClose: onClose) : null;
+    final trailingClose = onClose != null ? _closeButton(context, onClose: onClose) : null;
 
     final children = [...?actions, ?trailingClose];
     if (children.isEmpty) return null;
@@ -194,7 +193,10 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
 
   Widget _backButton(BuildContext context, {required VoidCallback onBack}) {
     return PregoButtonsIconGlass(
-      icon: TablerRegular.chevron_left,
+      // A sheet steps back through its own content rather than up a navigation
+      // stack, which the Figma sheet header marks with a full arrow. The page
+      // bar (PregoTopNavigation) keeps the chevron.
+      icon: TablerRegular.arrow_left,
       onPressed: onBack,
       semanticLabel: MaterialLocalizations.of(context).backButtonTooltip,
     );
@@ -209,11 +211,19 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
   }
 }
 
-/// The sheet header's title block: [title] in `text-lg / bold / text-primary`
-/// with an optional [subtitle] in `text-md / regular / text-secondary`, aligned
-/// per [alignment]. Distinct from [PregoNavTitle] (which is `text-lg / medium`,
-/// centre-only, tuned for the taller top bar): the sheet uses a bold title,
-/// leading-or-centred alignment, and this bar's tighter [lineHeight].
+/// The sheet header's title block, aligned per [alignment] — which selects the
+/// type scale as well as the position, matching the two Figma variants:
+///
+/// * [PregoSheetTitleAlignment.center] — a headline over the sheet's content:
+///   `text-lg / bold / text-primary` with `text-md / regular / text-secondary`
+///   beneath it.
+/// * [PregoSheetTitleAlignment.start] — a nav bar for content the sheet browses
+///   ("Title 2 Line Left"): the quieter `text-md / medium / text-primary` over
+///   `text-xs / regular / text-tertiary`, so a long second line (a path) fits
+///   between the leading and trailing buttons.
+///
+/// Distinct from [PregoNavTitle] (which is `text-lg / medium`, centre-only,
+/// tuned for the taller top bar) by this bar's tighter [lineHeight].
 class _SheetTitle extends StatelessWidget {
   const _SheetTitle({
     required this.title,
@@ -233,6 +243,9 @@ class _SheetTitle extends StatelessWidget {
     final subtitle = this.subtitle;
     final isCenter = alignment == PregoSheetTitleAlignment.center;
     final textAlign = isCenter ? TextAlign.center : TextAlign.start;
+    final titleStyle = isCenter ? prego.textTheme.textLg.bold : prego.textTheme.textMd.medium;
+    final subtitleStyle = isCenter ? prego.textTheme.textMd.regular : prego.textTheme.textXs.regular;
+    final subtitleColor = isCenter ? prego.colors.textSecondary : prego.colors.textTertiary;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -241,7 +254,7 @@ class _SheetTitle extends StatelessWidget {
       children: [
         Text(
           title,
-          style: prego.textTheme.textLg.bold.copyWith(color: prego.colors.textPrimary, height: lineHeight),
+          style: titleStyle.copyWith(color: prego.colors.textPrimary, height: lineHeight),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: textAlign,
@@ -249,7 +262,7 @@ class _SheetTitle extends StatelessWidget {
         if (subtitle != null && subtitle.isNotEmpty)
           Text(
             subtitle,
-            style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary, height: lineHeight),
+            style: subtitleStyle.copyWith(color: subtitleColor, height: lineHeight),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: textAlign,

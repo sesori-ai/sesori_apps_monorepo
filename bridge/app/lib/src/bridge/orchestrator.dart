@@ -66,6 +66,7 @@ import "repositories/session_unseen_repository.dart";
 import "repositories/trackers/session_event_tracker.dart";
 import "repositories/worktree_repository.dart";
 import "routing/abort_session_handler.dart";
+import "routing/create_directory_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
 import "routing/delete_session_handler.dart";
@@ -449,6 +450,7 @@ class Orchestrator {
         GetBaseBranchHandler(projectRepository: projectRepository),
         SetBaseBranchHandler(projectRepository: projectRepository),
         FilesystemSuggestionsHandler(filesystemRepository: filesystemRepository),
+        CreateDirectoryHandler(filesystemRepository: filesystemRepository),
         StartCatalogImportHandler(service: catalogImportService),
         CancelCatalogImportHandler(service: catalogImportService),
         GetCatalogImportStatusesHandler(service: catalogImportService),

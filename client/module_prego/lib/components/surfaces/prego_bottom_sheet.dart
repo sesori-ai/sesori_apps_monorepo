@@ -59,8 +59,9 @@ class PregoBottomSheet extends StatelessWidget {
   /// route-pop; pass your own when using this widget directly.
   final VoidCallback? onClose;
 
-  /// When set, the header's leading slot is a back button invoking this instead
-  /// of the close button — for in-sheet navigation.
+  /// When set, the header's leading slot is a back button invoking this — for
+  /// in-sheet navigation. It sits alongside the trailing close button rather
+  /// than replacing it.
   final VoidCallback? onBack;
 
   /// Trailing header actions. See [PregoTopNavigationSheets.actions].
