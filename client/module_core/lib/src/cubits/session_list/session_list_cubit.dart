@@ -272,11 +272,11 @@ class SessionListCubit extends Cubit<SessionListState> {
 
   void _onSessionUpdated(Session session) {
     if (session.projectID != _projectId) {
-      logd("[SessionList] session.updated ignored id=${session.id} reason=project_mismatch");
+      logt("[SessionList] session.updated ignored id=${session.id} reason=project_mismatch");
       return;
     }
     if (state is! SessionListLoaded) {
-      logd("[SessionList] session.updated ignored id=${session.id} reason=state_not_loaded");
+      logt("[SessionList] session.updated ignored id=${session.id} reason=state_not_loaded");
       return;
     }
 
