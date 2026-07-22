@@ -381,6 +381,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("keeps a multiline composer visible in a short viewport", (tester) async {
+    tester.view.physicalSize = const Size(700, 300);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 47, bottom: 34);
+    tester.view.viewPadding = const FakeViewPadding(top: 47, bottom: 34);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(EditableText), "one\ntwo\nthree\nfour\nfive");
+    await tester.pumpAndSettle();
+
+    final screenBottom = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    final composerRect = tester.getRect(find.byType(PromptInput));
+    final inputRect = tester.getRect(find.byType(EditableText));
+
+    expect(composerRect.top, greaterThanOrEqualTo(0));
+    expect(composerRect.bottom, closeTo(screenBottom, 0.01));
+    expect(inputRect.top, greaterThanOrEqualTo(0));
+    expect(inputRect.bottom, lessThanOrEqualTo(screenBottom));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("hides the dedicated worktree toggle when the project does not support it", (tester) async {
     when(
       () => projectRepository.getProject(projectId: any(named: "projectId")),

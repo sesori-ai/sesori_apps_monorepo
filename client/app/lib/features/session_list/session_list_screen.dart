@@ -1,23 +1,10 @@
-import "dart:async";
-
 import "package:flutter/material.dart";
-import "package:flutter_bloc/flutter_bloc.dart";
-import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_prego/module_prego.dart";
 
-import "../../core/constants.dart";
-import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
-import "../../l10n/app_localizations.dart";
-import "rename_session_dialog.dart";
+import "session_list_action_dispatcher.dart";
 import "session_list_scaffold.dart";
-
-part "session_list_actions.dart";
-part "session_list_action_dispatcher.dart";
-part "session_cleanup_dialogs.dart";
-part "session_force_dialog.dart";
 
 class SessionListScreen extends StatelessWidget {
   final String projectId;
@@ -73,7 +60,6 @@ class _SessionListBody extends StatelessWidget {
       },
       sessionMenuEntries: (BuildContext context, Session session) =>
           actionDispatcher.sessionMenuEntries(context: context, session: session),
-      onSessionSwipe: (session) => actionDispatcher.handleSessionSwipe(context: context, session: session),
     );
   }
 }

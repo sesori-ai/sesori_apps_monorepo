@@ -14,7 +14,6 @@ class SessionListPanel extends StatelessWidget {
   final String? selectedSessionId;
   final ValueChanged<Session> onSessionTap;
   final SessionMenuEntriesBuilder sessionMenuEntries;
-  final ValueChanged<Session> onSessionSwipe;
   final VoidCallback onNewSession;
   final VoidCallback? onBack;
 
@@ -24,7 +23,6 @@ class SessionListPanel extends StatelessWidget {
     this.selectedSessionId,
     required this.onSessionTap,
     required this.sessionMenuEntries,
-    required this.onSessionSwipe,
     required this.onNewSession,
     this.onBack,
   });
@@ -143,7 +141,6 @@ class SessionListPanel extends StatelessWidget {
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
           sessionMenuEntries: sessionMenuEntries,
-          onSessionSwipe: onSessionSwipe,
         ),
       ],
     );

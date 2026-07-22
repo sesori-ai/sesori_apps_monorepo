@@ -133,12 +133,6 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get projectListTitle;
 
-  /// App-bar title shown in place of 'Projects' while the connect-your-computer onboarding is visible (no bridge has ever been registered and none is connected).
-  ///
-  /// In en, this message translates to:
-  /// **'Connect'**
-  String get projectListConnectTitle;
-
   /// No description provided for @projectListLoadingSemantics.
   ///
   /// In en, this message translates to:
@@ -1009,10 +1003,22 @@ abstract class AppLocalizations {
   /// **'Password is required'**
   String get passwordRequired;
 
+  /// Accessibility label for the reveal toggle inside the password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get passwordShow;
+
+  /// Accessibility label for the toggle that re-masks the password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get passwordHide;
+
   /// No description provided for @signIn.
   ///
   /// In en, this message translates to:
-  /// **'Sign In'**
+  /// **'Sign in'**
   String get signIn;
 
   /// No description provided for @backToLogin.

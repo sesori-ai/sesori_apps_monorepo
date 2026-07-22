@@ -12,6 +12,7 @@ import "../../features/new_session/new_session_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_diffs/session_diffs_screen.dart";
+import "../../features/session_list/session_list_action_dispatcher.dart";
 import "../../features/session_list/session_list_cubit_provider.dart";
 import "../../features/session_list/session_list_panel.dart";
 import "../../features/session_list/session_list_screen.dart";
@@ -420,7 +421,6 @@ class _SessionListPane extends StatelessWidget {
         },
         sessionMenuEntries: (BuildContext context, Session session) =>
             actionDispatcher.sessionMenuEntries(context: context, session: session),
-        onSessionSwipe: (session) => actionDispatcher.handleSessionSwipe(context: context, session: session),
       ),
     );
   }

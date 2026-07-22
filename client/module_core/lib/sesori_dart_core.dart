@@ -67,6 +67,7 @@ export "src/cubits/session_detail/session_detail_state.dart";
 export "src/cubits/session_diffs/diff_cubit.dart";
 export "src/cubits/session_diffs/diff_state.dart";
 export "src/cubits/session_list/session_list_cubit.dart";
+export "src/cubits/session_list/session_list_resolvers.dart";
 export "src/cubits/session_list/session_list_state.dart";
 export "src/cubits/settings/settings_cubit.dart";
 export "src/cubits/settings/settings_state.dart";
