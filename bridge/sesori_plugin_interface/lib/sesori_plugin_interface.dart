@@ -7,6 +7,7 @@ export "src/host/host_json_store.dart";
 export "src/host/host_port_service.dart";
 export "src/host/host_process_service.dart";
 export "src/host/plugin_host.dart";
+export "src/json_log_schema.dart";
 export "src/lifecycle/bridge_plugin.dart";
 export "src/lifecycle/bridge_plugin_descriptor.dart";
 export "src/lifecycle/plugin_availability.dart";

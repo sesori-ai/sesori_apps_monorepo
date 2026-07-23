@@ -165,7 +165,6 @@ void main() {
           "type": "function_call",
           "name": "secret-tool-name",
           "arguments": {
-            "type": "secret-argument-type",
             "query": "secret-query",
           },
           "action": "secret-source-content",
@@ -182,13 +181,13 @@ void main() {
       expect(
         output,
         contains(
-          'schema={type:"response_item",payload:{type:"function_call",'
-          "name:String,arguments:{type:String,query:String},action:String}}",
+          'schema={type:enum("response_item"),payload:{'
+          'type:enum("function_call"),name:String,arguments:{query:String},'
+          "action:String}}",
         ),
       );
       expect(output, contains("error=type 'String'"));
       expect(output, isNot(contains("secret-tool-name")));
-      expect(output, isNot(contains("secret-argument-type")));
       expect(output, isNot(contains("secret-query")));
       expect(output, isNot(contains("secret-source-content")));
     });

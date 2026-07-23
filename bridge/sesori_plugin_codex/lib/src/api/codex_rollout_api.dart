@@ -3,7 +3,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, jsonSchemaForLog;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "models/codex_rollout_dto.dart";
@@ -272,7 +272,12 @@ class CodexRolloutApi {
       } on Object catch (error) {
         final isExpectedPartialLine = ignoreMalformedLastLine && i == source.length - 1;
         if (malformedWarning != null && !isExpectedPartialLine) {
-          final schema = parsedJson ? _jsonSchemaForLog(json) : "unparseable-json";
+          final schema = parsedJson
+              ? jsonSchemaForLog(
+                  value: json,
+                  enumKeyNames: const {"type", "role"},
+                )
+              : "unparseable-json";
           Log.w(
             "$malformedWarning "
             "(recordIndex=${i + 1}, schema=$schema, "
@@ -305,58 +310,6 @@ class CodexRolloutApi {
     }
     return const LineSplitter().convert(utf8.decode(bytes));
   }
-}
-
-/// Describes rollout JSON without logging transcript values.
-///
-/// Rollouts can contain prompts, source code, command output, paths, and
-/// credentials. Field names and bounded type structure are enough to diagnose
-/// schema drift, so only schema discriminator values are retained.
-String _jsonSchemaForLog(
-  Object? value, {
-  String? fieldName,
-  int depth = 0,
-}) {
-  const maxDepth = 5;
-  const maxEntries = 16;
-  const maxListItems = 8;
-
-  if (value == null) return "null";
-  if (value is String) {
-    // Only the record and payload discriminators are structural. A nested
-    // `type` can belong to tool input and must remain redacted.
-    if (depth <= 2 &&
-        (fieldName == "type" || fieldName == "role") &&
-        RegExp(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$").hasMatch(value)) {
-      return '"$value"';
-    }
-    return "String";
-  }
-  if (value is bool) return "bool";
-  if (value is num) return value.runtimeType.toString();
-  if (value is List) {
-    if (depth >= maxDepth) return "List";
-    if (value.isEmpty) return "List<empty>";
-    final itemSchemas = <String>{};
-    for (final item in value.take(maxListItems)) {
-      itemSchemas.add(_jsonSchemaForLog(item, depth: depth + 1));
-    }
-    final suffix = value.length > maxListItems ? ",…" : "";
-    return "List<${itemSchemas.join("|")}$suffix>";
-  }
-  if (value is Map) {
-    if (depth >= maxDepth) return "Map";
-    final entries = value.entries.take(maxEntries).map((entry) {
-      final key = entry.key;
-      final safeKey = key is String && RegExp(r"^[A-Za-z_][A-Za-z0-9_.-]{0,63}$").hasMatch(key)
-          ? key
-          : "<${key.runtimeType}-key>";
-      return "$safeKey:${_jsonSchemaForLog(entry.value, fieldName: safeKey, depth: depth + 1)}";
-    });
-    final suffix = value.length > maxEntries ? ",…" : "";
-    return "{${entries.join(",")}$suffix}";
-  }
-  return value.runtimeType.toString();
 }
 
 /// Keeps decoder diagnostics useful without letting an exception echo raw JSON.
