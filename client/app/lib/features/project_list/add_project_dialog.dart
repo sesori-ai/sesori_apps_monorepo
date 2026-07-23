@@ -407,7 +407,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     }
     if (_hasError) {
       return Padding(
-        padding: EdgeInsets.only(bottom: bottomInset),
+        padding: EdgeInsetsDirectional.only(bottom: bottomInset),
         child: _BrowseError(
           permissionDenied: _permissionDenied,
           onRetry: _fetchEntries,
@@ -416,7 +416,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     }
     if (_entries.isEmpty) {
       return Padding(
-        padding: EdgeInsets.only(bottom: bottomInset),
+        padding: EdgeInsetsDirectional.only(bottom: bottomInset),
         child: Center(
           child: Text(
             loc.emptyDirectory,
@@ -428,7 +428,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
       );
     }
     return ListView.builder(
-      padding: EdgeInsets.only(bottom: bottomInset),
+      padding: EdgeInsetsDirectional.only(bottom: bottomInset),
       itemCount: _entries.length,
       itemBuilder: (context, index) {
         final entry = _entries[index];
