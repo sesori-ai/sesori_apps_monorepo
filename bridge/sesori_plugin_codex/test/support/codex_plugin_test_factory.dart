@@ -9,8 +9,10 @@ CodexPlugin createInjectedCodexPlugin({
   required String projectCwd,
   required CodexAppServerClient Function() clientFactory,
   required Duration keepaliveInterval,
+  Duration rolloutPollInterval = const Duration(milliseconds: 10),
 }) {
   final rolloutApi = CodexRolloutApi(environment: environment);
+  final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
   final configReader = CodexConfigReader(environment: environment);
   final metadataRepository = CodexMetadataRepository(
     skillReader: CodexSkillReader(environment: environment),
@@ -22,7 +24,7 @@ CodexPlugin createInjectedCodexPlugin({
     capabilityToken: null,
     clientFactory: clientFactory,
     sessionService: CodexSessionService(
-      catalogRepository: CodexCatalogRepository(rolloutApi: rolloutApi),
+      catalogRepository: catalogRepository,
       messageRepository: CodexMessageRepository(rolloutApi: rolloutApi),
       metadataRepository: metadataRepository,
       launchDirectory: projectCwd,
@@ -31,6 +33,11 @@ CodexPlugin createInjectedCodexPlugin({
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,
       config: configReader.readDefaults(),
+    ),
+    rolloutTailer: CodexRolloutTailer(
+      rolloutApi: rolloutApi,
+      catalogRepository: catalogRepository,
+      pollInterval: rolloutPollInterval,
     ),
     projectCwd: projectCwd,
     onConnected: null,

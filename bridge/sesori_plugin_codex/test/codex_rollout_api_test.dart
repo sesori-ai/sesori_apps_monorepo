@@ -154,6 +154,56 @@ void main() {
       expect(output, isNot(contains("secret-source-content")));
     });
 
+    test("readTranscriptChunk retains a partial trailing record until newline", () {
+      final path = p.join(codexHome.path, "live-tail.jsonl");
+      final first = jsonEncode({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "name": "wait",
+          "call_id": "call-1",
+          "arguments": "{}",
+        },
+      });
+      final second = jsonEncode({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": "call-1",
+          "output": "done",
+        },
+      });
+      final split = second.length ~/ 2;
+      File(path).writeAsStringSync("$first\n${second.substring(0, split)}");
+
+      final initial = rolloutApi.readTranscriptChunk(
+        rolloutPath: path,
+        offset: 0,
+        trailingBytes: const [],
+      );
+
+      expect(initial.lines, hasLength(1));
+      expect(initial.lines.single.payload?.callId, "call-1");
+      expect(initial.trailingBytes, isNotEmpty);
+
+      File(path).writeAsStringSync(
+        "${second.substring(split)}\n",
+        mode: FileMode.append,
+      );
+      final completed = rolloutApi.readTranscriptChunk(
+        rolloutPath: path,
+        offset: initial.nextOffset,
+        trailingBytes: initial.trailingBytes,
+      );
+
+      expect(completed.lines, hasLength(1));
+      expect(
+        completed.lines.single.payload?.type,
+        CodexRolloutPayloadType.functionCallOutput,
+      );
+      expect(completed.trailingBytes, isEmpty);
+    });
+
     test("current structured rollout records are not reported as malformed", () {
       final path = _writeRollout(
         codexHome,
@@ -403,6 +453,7 @@ void main() {
           jsonEncode({
             "type": "response_item",
             "payload": {
+              "id": "user-1",
               "role": "user",
               "content": [
                 {"type": "input_text", "text": "hello, codex"},
@@ -412,6 +463,7 @@ void main() {
           jsonEncode({
             "type": "response_item",
             "payload": {
+              "id": "assistant-1",
               "role": "assistant",
               "content": [
                 {"type": "output_text", "text": "hello back!"},
@@ -436,6 +488,10 @@ void main() {
       expect(messages[1].info, isA<PluginMessageAssistant>());
       expect(messages[1].parts.first.text, equals("hello back!"));
       expect(messages[0].info.sessionID, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
+      expect(messages[0].info.id, "user-1");
+      expect(messages[0].parts.single.id, "user-1-text");
+      expect(messages[1].info.id, "assistant-1");
+      expect(messages[1].parts.single.id, "assistant-1-text");
     });
 
     test("readMessages surfaces transcript read failures", () {
@@ -520,6 +576,8 @@ void main() {
       expect(messages, hasLength(3));
 
       final exec = messages[0].parts.single;
+      expect(messages[0].info.id, "c1");
+      expect(exec.id, "c1-tool");
       expect(exec.type, equals(PluginMessagePartType.tool));
       expect(exec.tool, equals("shell"));
       expect(exec.state?.status, equals(PluginToolStatus.completed));

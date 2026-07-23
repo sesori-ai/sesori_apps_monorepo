@@ -363,6 +363,206 @@ void main() {
       expect(plugin.getActiveSessionsSummary(), isEmpty);
     });
 
+    test("live rollout tools converge exactly with reloaded history", () async {
+      const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/07/23/"
+          "rollout-2026-07-23T08-00-00-$sessionId.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "timestamp": "2026-07-23T08:00:00Z",
+          "type": "session_meta",
+          "payload": {
+            "id": sessionId,
+            "timestamp": "2026-07-23T08:00:00Z",
+            "cwd": "/work/sample",
+            "model_provider": "openai",
+            "cli_version": "0.144.1",
+          },
+        })}\n",
+      );
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": sessionId},
+          },
+        ),
+        const _Response(result: {"turnId": "u-live"}),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      await plugin.sendPrompt(
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "run the live event fixture")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      final records = <Map<String, Object?>>[
+        _toolCall(
+          id: "fc-immediate",
+          callId: "call-immediate",
+          name: "exec_command",
+          arguments: '{"cmd":"printf \'LIVE-EVENT-TEST immediate-complete\\\\n\'"}',
+        ),
+        _toolOutput(
+          callId: "call-immediate",
+          output: _processOutput(
+            chunkId: "immediate",
+            exitCode: 0,
+            output: "LIVE-EVENT-TEST immediate-complete\n",
+          ),
+        ),
+        _customToolCall(
+          id: "ct-exec-1",
+          callId: "call-exec-1",
+          input:
+              'const r = await tools.exec_command({cmd:"sleep 5"}); '
+              "text(r.output);",
+        ),
+        _customToolOutput(
+          callId: "call-exec-1",
+          output:
+              "Script running with cell ID 1\n"
+              "Wall time: 0.01 seconds\n"
+              "Output:\n",
+        ),
+        _toolCall(
+          id: "fc-wait-1",
+          callId: "call-wait-1",
+          name: "wait",
+          arguments: '{"cell_id":"1","yield_time_ms":10000,"max_tokens":20000}',
+        ),
+        _toolOutput(
+          callId: "call-wait-1",
+          output:
+              "Script completed with exit code 0\n"
+              "Final output:\n",
+        ),
+        _customToolCall(
+          id: "ct-exec-2",
+          callId: "call-exec-2",
+          input:
+              'const r = await tools.exec_command({cmd:"sleep 2"}); '
+              "text(r.output);",
+        ),
+        _customToolOutput(
+          callId: "call-exec-2",
+          output:
+              "Script running with cell ID 2\n"
+              "Wall time: 0.01 seconds\n"
+              "Output:\n",
+        ),
+        _toolCall(
+          id: "fc-wait-2",
+          callId: "call-wait-2",
+          name: "wait",
+          arguments: '{"cell_id":"2","yield_time_ms":10000,"max_tokens":20000}',
+        ),
+        _toolOutput(
+          callId: "call-wait-2",
+          output:
+              "Script completed with exit code 0\n"
+              "Final output:\n",
+        ),
+        _toolCall(
+          id: "fc-failed",
+          callId: "call-failed",
+          name: "exec_command",
+          arguments: '{"cmd":"/usr/bin/false"}',
+        ),
+        _toolOutput(
+          callId: "call-failed",
+          output: _processOutput(
+            chunkId: "failed",
+            exitCode: 1,
+            output: "",
+          ),
+        ),
+        _toolCall(
+          id: "fc-recovery",
+          callId: "call-recovery",
+          name: "exec_command",
+          arguments: '{"cmd":"printf \'LIVE-EVENT-TEST recovery-complete\\\\n\'"}',
+        ),
+        _toolOutput(
+          callId: "call-recovery",
+          output: _processOutput(
+            chunkId: "recovery",
+            exitCode: 0,
+            output: "LIVE-EVENT-TEST recovery-complete\n",
+          ),
+        ),
+      ];
+      rollout.writeAsStringSync(
+        "${records.map(jsonEncode).join("\n")}\n",
+        mode: FileMode.append,
+      );
+
+      fake.pushNotification("turn/completed", {
+        "threadId": sessionId,
+        "turn": {"id": "u-live"},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final finalLiveParts = <String, PluginMessagePart>{};
+      for (final event in events.whereType<BridgeSseMessagePartUpdated>()) {
+        final part = event.part;
+        if (part.type == PluginMessagePartType.tool) {
+          finalLiveParts[part.messageID] = part;
+        }
+      }
+      final history = await plugin.getSessionMessages(sessionId);
+
+      expect(finalLiveParts.keys, {
+        "call-immediate",
+        "call-exec-1",
+        "call-wait-1",
+        "call-exec-2",
+        "call-wait-2",
+        "call-failed",
+        "call-recovery",
+      });
+      expect(history, hasLength(finalLiveParts.length));
+      for (final message in history) {
+        final historicalPart = message.parts.single;
+        final livePart = finalLiveParts[message.info.id];
+        expect(livePart, isNotNull, reason: message.info.id);
+        expect(livePart?.id, historicalPart.id);
+        expect(livePart?.tool, historicalPart.tool);
+        expect(livePart?.state?.title, historicalPart.state?.title);
+        expect(livePart?.state?.status, historicalPart.state?.status);
+        expect(livePart?.state?.output, historicalPart.state?.output);
+        expect(livePart?.state?.error, historicalPart.state?.error);
+      }
+      expect(
+        finalLiveParts["call-immediate"]?.state?.title,
+        r"printf 'LIVE-EVENT-TEST immediate-complete\n'",
+      );
+      expect(finalLiveParts["call-exec-1"]?.state?.title, "sleep 5");
+      expect(
+        finalLiveParts["call-failed"]?.state?.status,
+        PluginToolStatus.error,
+      );
+      expect(
+        finalLiveParts["call-failed"]?.state?.output,
+        contains("Process exited with code 1"),
+      );
+      expect(
+        events.lastIndexWhere((event) => event is BridgeSseMessagePartUpdated),
+        lessThan(events.lastIndexWhere((event) => event is BridgeSseSessionIdle)),
+      );
+
+      await subscription.cancel();
+    });
+
     test("keepalive sends periodic model/list RPCs while connected, stops on dispose", () async {
       final kaFake = _FakeAppServer();
       const serverUrl = "ws://127.0.0.1:0";
@@ -579,6 +779,79 @@ class _Response {
   final Object? result;
   final Map<String, dynamic>? error;
 }
+
+Map<String, Object?> _toolCall({
+  required String id,
+  required String callId,
+  required String name,
+  required String arguments,
+}) => {
+  "timestamp": "2026-07-23T08:00:01Z",
+  "type": "response_item",
+  "payload": {
+    "type": "function_call",
+    "id": id,
+    "call_id": callId,
+    "name": name,
+    "arguments": arguments,
+  },
+};
+
+Map<String, Object?> _customToolCall({
+  required String id,
+  required String callId,
+  required String input,
+}) => {
+  "timestamp": "2026-07-23T08:00:01Z",
+  "type": "response_item",
+  "payload": {
+    "type": "custom_tool_call",
+    "id": id,
+    "call_id": callId,
+    "name": "exec",
+    "input": input,
+  },
+};
+
+Map<String, Object?> _toolOutput({
+  required String callId,
+  required String output,
+}) => {
+  "timestamp": "2026-07-23T08:00:02Z",
+  "type": "response_item",
+  "payload": {
+    "type": "function_call_output",
+    "call_id": callId,
+    "output": output,
+  },
+};
+
+Map<String, Object?> _customToolOutput({
+  required String callId,
+  required String output,
+}) => {
+  "timestamp": "2026-07-23T08:00:02Z",
+  "type": "response_item",
+  "payload": {
+    "type": "custom_tool_call_output",
+    "call_id": callId,
+    "output": [
+      {"type": "input_text", "text": output},
+    ],
+  },
+};
+
+String _processOutput({
+  required String chunkId,
+  required int exitCode,
+  required String output,
+}) =>
+    "Chunk ID: $chunkId\n"
+    "Wall time: 0.01 seconds\n"
+    "Process exited with code $exitCode\n"
+    "Original token count: 3\n"
+    "Final output:\n"
+    "$output";
 
 /// Fake app-server that records every method/params it received and
 /// replies in the order [respondInOrder] queued. Lets us push
