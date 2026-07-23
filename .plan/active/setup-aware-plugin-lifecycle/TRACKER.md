@@ -5,9 +5,9 @@
 - **Status:** Stage 10 merged; PR #508 frozen as reference; smaller replacement
   stack in progress
 - **Base:** `origin/main` at `583748ab`
-- **Current branch:** `setup-aware-plugin-lifecycle-operation-routing`
-- **Current stage:** Stage 11-P01B — plugin operation routing open as PR #548
-- **Next action:** monitor #547/#548 and start P01C from the verified P01B head
+- **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
+- **Current stage:** Stage 11-P01C — dynamic events and durable fencing verification
+- **Next action:** commit and open P01C after handling new review feedback on #548
 
 ## Frozen Oversized Stack
 
@@ -34,7 +34,7 @@ run their focused verification again.
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
 | [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 open and monitored |
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
-| [ ] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | stack after P01B |
+| [ ] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | implementation verified; architecture approved |
 | [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | stack after P01C |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | rebuild branch TBD | frozen #509 descendant |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
@@ -146,6 +146,27 @@ run their focused verification again.
   routing, dependency direction, and both contained stack-local seams with no
   findings.
 - Committed as `2e20026d`, pushed, and opened as stacked PR #548.
+
+### 2026-07-23 — Stage 11-P01C dynamic events and durable fencing
+
+- Replaced the generation-dropping event adapter with generation-attributed
+  capture, normalization, ordered dispatch, and pre-delivery checks.
+- Added in-transaction generation checks for session projection/child writes and
+  catalog publication, with stream leases retained through cancellation and
+  atomic publication.
+- Routed catalog import through `PluginRuntime.useStream` and drained in-flight
+  relay requests before runtime disposal.
+- Focused event, projection, catalog, routing, runtime-startup, PR-sync, and
+  orchestrator suites passed (117 tests).
+- `dart analyze --fatal-infos` passed in `bridge/app`.
+- Architecture review fixes retained source generation through binding replay,
+  held runtime ownership across explicit durable commits, and rechecked source
+  ownership immediately before final SSE enqueue and delayed summary delivery.
+  Pending tracker keys remain backend-identity based because each pending event
+  already retains its own generation and replay is fenced before publication.
+- The second and final implementation-review pass approved P01C with no
+  findings. Focused regression tests, fatal analysis, and `git diff --check`
+  passed after the review fixes.
 
 ## Delivery Rules
 

@@ -80,8 +80,9 @@ class _EventProjectionBenchmark {
       final sqliteVersion = await _sqliteVersion(database: database);
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
+      final runtime = createBenchmarkPluginRuntime(plugins: [plugin]);
       repository = SessionRepository(
-        runtime: createBenchmarkPluginRuntime(plugins: [plugin]),
+        runtime: runtime,
         bridgeDerivedProjectPluginIds: const {},
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
@@ -93,6 +94,7 @@ class _EventProjectionBenchmark {
       final failureReporter = _BenchmarkFailureReporter();
       final service = SessionEventService(
         sessionRepository: repository,
+        pluginRuntime: runtime,
         eventMapper: const SessionEventMapper(),
         eventTracker: SessionEventTracker(
           maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
@@ -250,6 +252,7 @@ class _EventProjectionBenchmark {
     final output = await service.normalize(
       source: service.captureSource(
         pluginId: _pluginId,
+        generation: 1,
         event: BridgeSseSessionUpdated(
           info: Session(
             id: _backendSessionId,

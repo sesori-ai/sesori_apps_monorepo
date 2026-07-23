@@ -110,7 +110,14 @@ void main() {
         ),
       );
 
-      expect(tracker.isBindingPending(pluginId: "a", backendSessionId: "child"), isTrue);
+      expect(
+        tracker.isBindingPending(
+          pluginId: "a",
+          generation: 1,
+          backendSessionId: "child",
+        ),
+        isTrue,
+      );
       tracker.takeRoot(pluginId: "a", backendSessionId: "root");
       final rootReady = tracker.takeReady(pluginId: "a", backendSessionId: "root");
       expect(rootReady, [isA<PendingSessionEvent>()]);
@@ -189,6 +196,7 @@ PendingSessionEvent _pending({
   );
   return PendingSessionEvent(
     pluginId: pluginId,
+    generation: 1,
     event: updated
         ? BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false)
         : BridgeSseSessionCreated(info: session.toJson()),
@@ -203,6 +211,7 @@ PendingTranslationEvent _pendingTranslation({
 }) {
   return PendingTranslationEvent(
     pluginId: pluginId,
+    generation: 1,
     event: BridgeSsePermissionAsked(
       requestID: "permission-$backendSessionId",
       sessionID: backendSessionId,

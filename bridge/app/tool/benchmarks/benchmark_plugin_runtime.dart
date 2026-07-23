@@ -90,6 +90,19 @@ class BenchmarkPluginRuntime extends PluginRuntime {
   }
 
   @override
+  Future<R> commitCurrentGeneration<R>({
+    required String pluginId,
+    required int generation,
+    required Enum operation,
+    required Future<R> Function() commit,
+  }) {
+    if (!isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+      throw PluginOperationException(operation.name, statusCode: 503);
+    }
+    return commit();
+  }
+
+  @override
   Stream<T> useStream<T>({
     required String pluginId,
     required Enum operation,

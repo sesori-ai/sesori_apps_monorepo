@@ -116,10 +116,10 @@ void main() {
 
     test("cancels an active import after its plugin becomes unavailable", () async {
       final releaseImport = Completer<void>();
-      final operationalPluginIds = <String>{"selected"};
+      final eligiblePluginIds = <String>{"selected"};
       final repository = _FakeCatalogImportRepository(
         releaseImport: releaseImport,
-        operationalPluginIds: operationalPluginIds,
+        eligiblePluginIds: eligiblePluginIds,
       );
       final service = createService(
         repository: repository,
@@ -128,7 +128,7 @@ void main() {
       service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
       await repository.importStarted.future;
 
-      operationalPluginIds.remove("selected");
+      eligiblePluginIds.remove("selected");
       Object? cancellationError;
       try {
         service.cancel(pluginId: "selected");
@@ -200,15 +200,15 @@ class _FakeCatalogImportRepository implements CatalogImportRepository {
     this.hydrationGate,
     this.releaseImport,
     this.importError,
-    Set<String>? operationalPluginIds,
-  }) : operationalPluginIds = operationalPluginIds ?? <String>{"selected"};
+    Set<String>? eligiblePluginIds,
+  }) : importEligiblePluginIds = eligiblePluginIds ?? <String>{"selected"};
 
   final CatalogHydrationDto? completion;
   final Completer<CatalogHydrationDto?>? hydrationGate;
   final Completer<void>? releaseImport;
   final Object? importError;
   @override
-  final Set<String> operationalPluginIds;
+  final Set<String> importEligiblePluginIds;
   final Completer<void> importStarted = Completer<void>();
 
   int hydrationReads = 0;

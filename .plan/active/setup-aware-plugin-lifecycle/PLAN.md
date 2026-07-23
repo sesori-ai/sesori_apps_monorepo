@@ -567,13 +567,13 @@ the listed source files and committed with their stage.
 | Workspace | Production files/classes |
 |---|---|
 | Event composition | Consume the runtime event seam in `orchestrator.dart`, `plugin_event_listener.dart`, `session_event_dispatcher.dart`, `session_event_service.dart`, and `session_event_tracker.dart`. |
-| Durable plugin evidence | `session_repository.dart`, new `project_activity_repository.dart`, `project_activity_service.dart`, `catalog_import_repository.dart`, and `catalog_import_service.dart`; preserve generation attribution through normalization and through each transaction publication point. |
+| Durable plugin evidence | `session_repository.dart`, `catalog_import_repository.dart`, and `catalog_import_service.dart`; preserve generation attribution through normalization and through each session/catalog transaction publication point. Project activity moves with its ownership extraction in P01D. |
 
 ### Stage 11-P01D — bridge-owned projects and defaults files
 
 | Workspace | Production files/classes |
 |---|---|
-| Aggregate projects | `project_repository.dart`, `project_activity_repository.dart`, `project_activity_service.dart`, `rename_project_handler.dart`, and `orchestrator.dart`; project create/open/rename become plugin-neutral. |
+| Aggregate projects | `project_repository.dart`, `project_activity_repository.dart`, `project_activity_service.dart`, `rename_project_handler.dart`, and `orchestrator.dart`; project create/open/rename become plugin-neutral and plugin activity observations move to a generation-fenced evidence owner. |
 | Default policy | `plugin_lifecycle_service.dart`, `plugin_registry.dart`, and `bridge_runtime_runner.dart`; prefer OpenCode when selectable, otherwise deterministic first selectable, otherwise null. Missing released `pluginId` still means OpenCode. |
 | Ownership documentation | Project DAO/table/catalog identity and foundation directory comments, generated database output, and scoped bridge instructions. Remove the temporary live API seam. |
 
@@ -633,12 +633,13 @@ the listed source files and committed with their stage.
 ### Stage 11-P01C — dynamic events and durable generation fencing
 
 - replace startup-fixed event subscriptions with generation-attributed events;
-- fence session projection, catalog publication, and plugin activity evidence;
+- fence session projection and catalog publication;
 - drain routed work before runtime disposal.
 
 ### Stage 11-P01D — bridge-owned projects and default behavior
 
-- make project create/open/rename bridge-owned and plugin-neutral;
+- make project create/open/rename bridge-owned and plugin-neutral and isolate
+  generation-fenced plugin activity evidence;
 - prefer OpenCode as the selectable default with deterministic fallback;
 - remove the temporary API view and finalize ownership guidance.
 
