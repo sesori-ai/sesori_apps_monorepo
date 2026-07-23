@@ -16,13 +16,15 @@ sealed class ConnectionStatus with _$ConnectionStatus {
     required HealthResponse health,
   }) = ConnectionConnected;
 
-  /// SSE dropped, auto-reconnecting (≤5s window).
+  /// A relay connection attempt is in progress. Automatic retries use bounded
+  /// exponential backoff; manual and lifecycle attempts may be immediate.
   /// UI stays as-is — no overlay yet.
   const factory ConnectionStatus.reconnecting({
     required ServerConnectionConfig config,
   }) = ConnectionReconnecting;
 
-  /// Auto-reconnect failed after timeout.
+  /// Automatic reconnect is paused or stopped (for example, while the app is
+  /// backgrounded, authentication is missing, or the relay close is terminal).
   /// Overlay shows with Reconnect / Disconnect actions.
   const factory ConnectionStatus.connectionLost({
     required ServerConnectionConfig config,

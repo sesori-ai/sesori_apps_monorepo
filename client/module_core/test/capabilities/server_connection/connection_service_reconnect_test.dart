@@ -120,29 +120,7 @@ void main() {
       await authStateController.close();
     });
 
-    test("disconnect cancels reconnect timer before token refresh", () async {
-      final service = ConnectionService(
-        cryptoService,
-        roomKeyStorage,
-        authTokenProvider,
-        authSession,
-        lifecycleSource,
-        failureReporter,
-      );
-      addTearDown(service.dispose);
-
-      service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
-      service.reconnect();
-
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      service.disconnect();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-
-      verifyNever(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")));
-      expect(service.currentStatus, isA<ConnectionDisconnected>());
-    });
-
-    test("backgrounding during reconnect delay prevents refresh and reconnect", () async {
+    test("disconnect during token refresh prevents reconnect", () async {
       final tokenCompleter = Completer<String?>();
       when(
         () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
@@ -171,7 +149,46 @@ void main() {
       service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
       service.reconnect();
 
-      await Future<void>.delayed(const Duration(milliseconds: 1400));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      verify(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).called(1);
+      service.disconnect();
+      tokenCompleter.complete("fresh-token");
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(factory.callCount, 0);
+      expect(service.currentStatus, isA<ConnectionDisconnected>());
+    });
+
+    test("backgrounding during token refresh prevents reconnect", () async {
+      final tokenCompleter = Completer<String?>();
+      when(
+        () => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")),
+      ).thenAnswer((_) => tokenCompleter.future);
+
+      final relayClient = MockRelayClient();
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => relayClient,
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
+      service.reconnect();
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       verify(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).called(1);
 
       lifecycleController.add(LifecycleState.paused);
@@ -503,20 +520,90 @@ void main() {
       },
     );
 
-    test("a non-resume reconnect still waits the backoff before its first attempt", () async {
+    test("transient failures retry automatically and manual reconnect bypasses accumulated backoff", () async {
       final sseController = StreamController<RelaySseEvent>.broadcast();
       addTearDown(sseController.close);
 
-      final relayClient = MockRelayClient();
-      when(relayClient.connect).thenAnswer((_) async {});
-      when(() => relayClient.didResume).thenReturn(false);
-      when(() => relayClient.isConnected).thenReturn(true);
-      when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
-      when(() => relayClient.sendRequest(any())).thenAnswer(
+      final firstFailure = Completer<void>();
+      final secondFailure = Completer<void>();
+      final firstFailedClient = MockRelayClient();
+      final secondFailedClient = MockRelayClient();
+      final connectedClient = MockRelayClient();
+
+      when(firstFailedClient.connect).thenAnswer((_) async => throw StateError("first transient failure"));
+      when(() => firstFailedClient.lastCloseCode).thenReturn(null);
+      when(firstFailedClient.disconnect).thenAnswer((_) async {
+        if (!firstFailure.isCompleted) firstFailure.complete();
+      });
+      when(secondFailedClient.connect).thenAnswer((_) async => throw StateError("second transient failure"));
+      when(() => secondFailedClient.lastCloseCode).thenReturn(null);
+      when(secondFailedClient.disconnect).thenAnswer((_) async {
+        if (!secondFailure.isCompleted) secondFailure.complete();
+      });
+
+      when(connectedClient.connect).thenAnswer((_) async {});
+      when(() => connectedClient.didResume).thenReturn(false);
+      when(() => connectedClient.isConnected).thenReturn(true);
+      when(() => connectedClient.connectionState).thenReturn(RelayClientConnectionState.connected);
+      when(() => connectedClient.sendRequest(any())).thenAnswer(
         (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
       );
-      when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
-      when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => connectedClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+      when(() => connectedClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(connectedClient.disconnect).thenAnswer((_) async {});
+
+      final clients = <MockRelayClient>[firstFailedClient, secondFailedClient, connectedClient];
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
+      final connected = service.status.firstWhere((status) => status is ConnectionConnected);
+
+      // A manual reconnect starts immediately. Its transient failure must retain
+      // the reconnecting state and schedule another attempt without user input.
+      service.reconnect();
+      await firstFailure.future.timeout(const Duration(seconds: 1));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(factory.callCount, 1);
+      expect(service.currentStatus, isA<ConnectionReconnecting>());
+
+      await secondFailure.future.timeout(const Duration(seconds: 4));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(factory.callCount, 2);
+      expect(service.currentStatus, isA<ConnectionReconnecting>());
+
+      // The second failure has accumulated a multi-second automatic backoff.
+      // Manual Retry must cancel it and open the next connection immediately.
+      service.reconnect();
+      await connected.timeout(const Duration(seconds: 1));
+
+      expect(factory.callCount, 3);
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
+    test("terminal close code stops automatic reconnects", () async {
+      final relayClient = MockRelayClient();
+      when(relayClient.connect).thenAnswer((_) async => throw StateError("account full"));
+      when(() => relayClient.lastCloseCode).thenReturn(RelayCloseCodes.accountFull);
       when(relayClient.disconnect).thenAnswer((_) async {});
 
       final factory = _TestRelayClientFactory(
@@ -538,16 +625,14 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      // Manual reconnect is NOT the resume path, so it keeps the exponential
-      // backoff (seeded at 1s): no attempt fires on the immediate tick.
       service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
+      final stopped = service.status.skip(1).firstWhere((status) => status is ConnectionLost);
+
       service.reconnect();
+      await stopped.timeout(const Duration(seconds: 1));
 
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      expect(factory.callCount, 0);
-
-      await Future<void>.delayed(const Duration(milliseconds: 1400));
       expect(factory.callCount, 1);
+      expect(service.currentStatus, isA<ConnectionLost>());
     });
 
     test("a superseded reconnect attempt aborts after its async gap and does not open a second socket", () async {
