@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
@@ -174,22 +176,31 @@ class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
   }
 }
 
-/// Normalizes the overloaded `summary` field before generated DTO decoding.
+/// Normalizes overloaded payload fields before generated DTO decoding.
 ///
 /// Reasoning response items use a typed content list, while `turn_context`
 /// records legitimately use a scalar string. The latter is context metadata,
 /// not a renderable reasoning part, so only that line type drops the field.
+///
+/// COMPATIBILITY 2026-07-23 (Codex 0.145.x): function calls persist arguments
+/// as JSON-encoded strings, while `tool_search_call` persists the decoded JSON
+/// value directly. Keep both forms until Codex converges the rollout schema or
+/// this DTO models each response-item variant separately.
 Map<String, dynamic> _normalizeRolloutLineJson({
   required Map<String, dynamic> json,
 }) {
-  if (json["type"] != "turn_context") return json;
   final payload = json["payload"];
-  if (payload is! Map || payload["summary"] is! String) return json;
+  if (payload is! Map) return json;
+  final normalizeSummary = json["type"] == "turn_context" && payload["summary"] is String;
+  final arguments = payload["arguments"];
+  final normalizeArguments = arguments != null && arguments is! String;
+  if (!normalizeSummary && !normalizeArguments) return json;
   return {
     ...json,
     "payload": {
       ...payload,
-      "summary": null,
+      if (normalizeSummary) "summary": null,
+      if (normalizeArguments) "arguments": jsonEncode(arguments),
     },
   };
 }
