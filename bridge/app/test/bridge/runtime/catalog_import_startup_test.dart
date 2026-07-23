@@ -20,19 +20,21 @@ void main() {
     ]);
   });
 
-  test("runner skips an unavailable headless import and starts healthy imports", () {
+  test("runner rejects an unavailable explicit headless import", () {
     final service = _RecordingCatalogImportService(operationalPluginIds: const {"healthy"});
 
-    BridgeRuntimeRunner.startCatalogImports(
-      service: service,
-      pluginIds: const ["unavailable", "healthy"],
-      headlessPluginIds: const ["unavailable", "healthy"],
-      operationalPluginIds: const {"healthy"},
+    expect(
+      () => BridgeRuntimeRunner.startCatalogImports(
+        service: service,
+        pluginIds: const ["unavailable", "healthy"],
+        headlessPluginIds: const ["unavailable", "healthy"],
+        operationalPluginIds: const {"healthy"},
+      ),
+      throwsA(isA<CatalogImportPluginUnavailableException>()),
     );
 
     expect(service.starts, const [
       (pluginId: "healthy", trigger: CatalogImportTrigger.automatic),
-      (pluginId: "healthy", trigger: CatalogImportTrigger.headless),
     ]);
   });
 }
