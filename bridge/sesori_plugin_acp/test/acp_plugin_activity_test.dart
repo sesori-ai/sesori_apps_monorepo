@@ -10,10 +10,12 @@ void main() {
   group("AcpPlugin.getActiveSessionsSummary", () {
     late FakeAcpProcess fake;
     late AcpPlugin plugin;
+    late List<BridgeSseEvent> emitted;
     const cwd = "/repo";
 
     setUp(() {
       fake = FakeAcpProcess();
+      emitted = [];
       plugin = AcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
@@ -22,6 +24,7 @@ void main() {
         eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
         processFactory: (_) async => fake,
       );
+      plugin.events.listen(emitted.add);
     });
 
     tearDown(() async {
@@ -97,10 +100,12 @@ void main() {
       expect(active.awaitingInput, isFalse);
       expect(active.isRetrying, isFalse);
       expect(active.childSessionIds, isEmpty, reason: "ACP sessions are flat");
+      expect(emitted.whereType<BridgeSseProjectUpdated>(), hasLength(1));
 
       // Resolve the turn -> session goes idle -> summary clears.
       await respond("session/prompt", {"stopReason": "end_turn"});
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(emitted.whereType<BridgeSseProjectUpdated>(), hasLength(2));
     });
 
     test("a session awaiting a permission is surfaced with awaitingInput", () async {
@@ -129,6 +134,17 @@ void main() {
       expect(active.id, sessionId);
       expect(active.awaitingInput, isTrue);
       expect(active.mainAgentRunning, isFalse, reason: "no prompt turn in flight");
+      expect(emitted.whereType<BridgeSseProjectUpdated>(), hasLength(1));
+
+      final requestId = emitted.whereType<BridgeSsePermissionAsked>().single.requestID;
+      await plugin.replyToPermission(
+        requestId: requestId,
+        sessionId: sessionId,
+        reply: PluginPermissionReply.once,
+      );
+      await pump();
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(emitted.whereType<BridgeSseProjectUpdated>(), hasLength(2));
     });
   });
 }

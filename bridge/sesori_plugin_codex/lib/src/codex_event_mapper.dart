@@ -54,6 +54,12 @@ class CodexEventMapper {
   /// effect even though codex honoured it. Falls back to [config] when unknown.
   final Map<String, String> _threadModel = {};
 
+  /// Last-known thread times, used to turn activity notifications into a
+  /// timestamp-bearing `session.updated` payload. Codex sends the activity
+  /// time on the turn, not on a thread/session event.
+  final Map<String, int> _threadCreatedAt = {};
+  final Map<String, int> _threadUpdatedAt = {};
+
   /// Records the model codex resolved for [threadId] so subsequent
   /// live-streamed assistant messages are stamped with the model actually in
   /// use. Passing a null/empty [model] clears the override (falls back to the
@@ -98,6 +104,30 @@ class CodexEventMapper {
     }
   }
 
+  /// Retains the earliest creation and latest update time seen for [record].
+  void setThreadTime(CodexThreadRecord record) {
+    final createdAt = record.createdAt;
+    final previousCreatedAt = _threadCreatedAt[record.id];
+    if (createdAt != null &&
+        (previousCreatedAt == null || createdAt < previousCreatedAt)) {
+      _threadCreatedAt[record.id] = createdAt;
+    }
+    final updatedAt = record.updatedAt;
+    final previousUpdatedAt = _threadUpdatedAt[record.id];
+    if (updatedAt != null &&
+        (previousUpdatedAt == null || updatedAt > previousUpdatedAt)) {
+      _threadUpdatedAt[record.id] = updatedAt;
+    }
+  }
+
+  void forgetThread(String threadId) {
+    _threadCreatedAt.remove(threadId);
+    _threadUpdatedAt.remove(threadId);
+    _threadModel.remove(threadId);
+    _threadProvider.remove(threadId);
+    _threadDirectory.remove(threadId);
+  }
+
   /// The project id a live session event should carry for [threadId]: the
   /// plugin-fed directory, else the notification's own [cwd], else the launch
   /// cwd — always normalized to match the bridge's derived project id.
@@ -106,6 +136,7 @@ class CodexEventMapper {
 
   /// Maps a repository-normalized `thread/started` record.
   List<BridgeSseEvent> mapThreadStarted(CodexThreadRecord record) {
+    setThreadTime(record);
     setThreadProvider(record.id, record.modelProvider);
     setThreadDirectory(record.id, record.directory);
     return [
@@ -127,6 +158,7 @@ class CodexEventMapper {
             info: _minimalSession(
               id: threadId,
               title: params["threadName"] as String?,
+              time: null,
             ).toJson(),
             titleChanged: true,
           ),
@@ -146,6 +178,10 @@ class CodexEventMapper {
         final threadId = params["threadId"] as String?;
         if (threadId == null) return const [];
         return [
+          _sessionActivityUpdated(
+            threadId: threadId,
+            timestampSeconds: _asMap(params["turn"])?["startedAt"],
+          ),
           BridgeSseSessionStatus(
             sessionID: threadId,
             status: const shared.SessionStatus.busy().toJson(),
@@ -155,7 +191,13 @@ class CodexEventMapper {
       case "turn/completed":
         final threadId = params["threadId"] as String?;
         if (threadId == null) return const [];
-        return [BridgeSseSessionIdle(sessionID: threadId)];
+        return [
+          _sessionActivityUpdated(
+            threadId: threadId,
+            timestampSeconds: _asMap(params["turn"])?["completedAt"],
+          ),
+          BridgeSseSessionIdle(sessionID: threadId),
+        ];
 
       case "item/started":
       case "item/completed":
@@ -532,11 +574,41 @@ class CodexEventMapper {
     );
   }
 
+  BridgeSseSessionUpdated _sessionActivityUpdated({
+    required String threadId,
+    required Object? timestampSeconds,
+  }) {
+    final observedAt = timestampSeconds is num
+        ? (timestampSeconds * Duration.millisecondsPerSecond).round()
+        : DateTime.now().millisecondsSinceEpoch;
+    final previousUpdated = _threadUpdatedAt[threadId];
+    final updatedAt = previousUpdated != null && previousUpdated > observedAt
+        ? previousUpdated
+        : observedAt;
+    _threadUpdatedAt[threadId] = updatedAt;
+    return BridgeSseSessionUpdated(
+      info: _minimalSession(
+        id: threadId,
+        title: null,
+        time: shared.SessionTime(
+          created: _threadCreatedAt[threadId] ?? updatedAt,
+          updated: updatedAt,
+          archived: null,
+        ),
+      ).toJson(),
+      titleChanged: false,
+    );
+  }
+
   /// Builds a minimal [shared.Session] for notifications that only carry an
   /// id (and maybe a title). The bridge enrichment + the mobile client merge
   /// this against existing session state, so the missing fields are filled
   /// in downstream.
-  shared.Session _minimalSession({required String id, required String? title}) {
+  shared.Session _minimalSession({
+    required String id,
+    required String? title,
+    required shared.SessionTime? time,
+  }) {
     final projectId = _projectIdForThread(id);
     return shared.Session(
       branchName: null,
@@ -546,7 +618,7 @@ class CodexEventMapper {
       directory: projectId,
       parentID: null,
       title: title,
-      time: null,
+      time: time,
       pullRequest: null,
       promptDefaults: null,
     );

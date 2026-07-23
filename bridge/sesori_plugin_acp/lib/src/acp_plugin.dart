@@ -171,7 +171,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
     return AcpApprovalRegistry.forClient(
       client: client,
-      emit: _eventBuffer.add,
+      emit: emitActivityEvent,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }
@@ -220,6 +220,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   AcpStdioClient? get client => _client;
   AcpInitializeResult? get initializeResult => _initResult;
   void emitEvent(BridgeSseEvent event) => _eventBuffer.add(event);
+
+  /// Approval state participates in the activity summary, so invalidate that
+  /// summary after forwarding each approval transition.
+  void emitActivityEvent(BridgeSseEvent event) {
+    _eventBuffer.add(event);
+    _eventBuffer.add(const BridgeSseProjectUpdated());
+  }
 
   // --- BridgePluginApi ---
 
@@ -881,6 +888,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           status: const shared.SessionStatus.busy().toJson(),
         ),
       );
+      _eventBuffer.add(const BridgeSseProjectUpdated());
     }
     final expectedGeneration = state.generation;
     // Each link isolates its own failure (_runTurn never throws), so one
@@ -1017,6 +1025,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     if (state.pending == 0) {
       _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
       _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+      _eventBuffer.add(const BridgeSseProjectUpdated());
     }
     if (failed || refused) {
       _eventBuffer.add(BridgeSseSessionError(sessionID: sessionId));

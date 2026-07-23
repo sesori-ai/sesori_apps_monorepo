@@ -173,30 +173,86 @@ void main() {
       expect(session.projectID, "/repo/app/packages/ui");
     });
 
-    test("turn/started → SessionStatus(busy) parseable as SessionStatus", () {
-      final events = mapper.map(
+    test("turn/started updates session time and emits busy status", () {
+      final activityMapper = CodexEventMapper(
+        pluginId: CodexPlugin.pluginId,
+        projectCwd: projectCwd,
+      );
+      mapThreadStarted(
+        activityMapper,
         const CodexServerNotification(
-          method: "turn/started",
+          method: "thread/started",
           params: {
-            "threadId": "t-1",
-            "turn": {"id": "u-1"},
+            "thread": {
+              "id": "t-activity",
+              "cwd": projectCwd,
+              "createdAt": 1779293088,
+              "updatedAt": 1779293090,
+            },
           },
         ),
       );
 
-      expect(events, hasLength(1));
-      final status = events.single as BridgeSseSessionStatus;
-      expect(status.sessionID, "t-1");
+      final events = activityMapper.map(
+        const CodexServerNotification(
+          method: "turn/started",
+          params: {
+            "threadId": "t-activity",
+            "turn": {"id": "u-1", "startedAt": 1779293100},
+          },
+        ),
+      );
+
+      expect(events, hasLength(2));
+      final updated = events.whereType<BridgeSseSessionUpdated>().single;
+      final session = shared.Session.fromJson(updated.info);
+      expect(session.time?.created, 1779293088000);
+      expect(session.time?.updated, 1779293100000);
+      expect(updated.titleChanged, isFalse);
+      expect(parseAsSesori(updated), isA<shared.SesoriSessionUpdated>());
+
+      final status = events.whereType<BridgeSseSessionStatus>().single;
+      expect(status.sessionID, "t-activity");
       expect(shared.SessionStatus.fromJson(status.status), isA<shared.SessionStatusBusy>());
       expect(parseAsSesori(status), isA<shared.SesoriSessionStatus>());
     });
 
-    test("turn/completed → SessionIdle", () {
-      final events = mapper.map(
-        const CodexServerNotification(method: "turn/completed", params: {"threadId": "t-1"}),
+    test("turn/completed updates session time and emits idle status", () {
+      final activityMapper = CodexEventMapper(
+        pluginId: CodexPlugin.pluginId,
+        projectCwd: projectCwd,
       );
-      expect(events, hasLength(1));
-      expect((events.single as BridgeSseSessionIdle).sessionID, "t-1");
+      mapThreadStarted(
+        activityMapper,
+        const CodexServerNotification(
+          method: "thread/started",
+          params: {
+            "thread": {
+              "id": "t-activity",
+              "cwd": projectCwd,
+              "createdAt": 1779293088,
+              "updatedAt": 1779293090,
+            },
+          },
+        ),
+      );
+
+      final events = activityMapper.map(
+        const CodexServerNotification(
+          method: "turn/completed",
+          params: {
+            "threadId": "t-activity",
+            "turn": {"id": "u-1", "completedAt": 1779293110},
+          },
+        ),
+      );
+      expect(events, hasLength(2));
+      final session = shared.Session.fromJson(
+        events.whereType<BridgeSseSessionUpdated>().single.info,
+      );
+      expect(session.time?.created, 1779293088000);
+      expect(session.time?.updated, 1779293110000);
+      expect(events.whereType<BridgeSseSessionIdle>().single.sessionID, "t-activity");
     });
 
     test("thread/status/changed maps active→busy and idle→idle", () {
