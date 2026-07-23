@@ -151,6 +151,45 @@ void main() {
 
       expect(output, contains("malformed rollout transcript record"));
       expect("malformed rollout transcript record".allMatches(output), hasLength(1));
+      expect(output, contains("recordIndex=2"));
+      expect(output, contains("schema=unparseable-json"));
+      expect(output, contains("error=FormatException(offset=0)"));
+      expect(output, isNot(contains("secret-source-content")));
+    });
+
+    test("readTranscript describes malformed record schema without values", () {
+      final path = p.join(codexHome.path, "schema-drifted-transcript.jsonl");
+      final malformed = jsonEncode({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "name": "secret-tool-name",
+          "arguments": {
+            "type": "secret-argument-type",
+            "query": "secret-query",
+          },
+          "action": "secret-source-content",
+        },
+      });
+      File(path).writeAsStringSync('{}\n$malformed\n{}\n');
+
+      final output = _captureWarnings(
+        () => rolloutApi.readTranscript(rolloutPath: path),
+        level: LogLevel.verbose,
+      );
+
+      expect(output, contains("recordIndex=2"));
+      expect(
+        output,
+        contains(
+          'schema={type:"response_item",payload:{type:"function_call",'
+          "name:String,arguments:{type:String,query:String},action:String}}",
+        ),
+      );
+      expect(output, contains("error=type 'String'"));
+      expect(output, isNot(contains("secret-tool-name")));
+      expect(output, isNot(contains("secret-argument-type")));
+      expect(output, isNot(contains("secret-query")));
       expect(output, isNot(contains("secret-source-content")));
     });
 
