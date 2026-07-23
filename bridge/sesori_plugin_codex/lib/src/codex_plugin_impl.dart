@@ -625,17 +625,19 @@ class CodexPlugin implements CodexManagedApi {
     required String title,
   }) async {
     final client = await _connectedClient();
-    final retryStopwatch = Stopwatch();
+    Stopwatch? retryClock;
     for (var attempt = 1; ; attempt++) {
-      final remainingRetryTime = _renameRetryTimeout - retryStopwatch.elapsed;
-      if (retryStopwatch.isRunning && remainingRetryTime <= Duration.zero) {
+      final requestTimeout = retryClock == null
+          ? const Duration(seconds: 30)
+          : _renameRetryTimeout - retryClock.elapsed;
+      if (requestTimeout <= Duration.zero) {
         throw TimeoutException("Codex session rename retry deadline elapsed");
       }
       try {
         await client.request(
           method: "thread/name/set",
           params: {"threadId": sessionId, "name": title},
-          timeout: retryStopwatch.isRunning ? remainingRetryTime : const Duration(seconds: 30),
+          timeout: requestTimeout,
         );
         break;
       } on CodexRpcException catch (error) {
@@ -643,8 +645,8 @@ class CodexPlugin implements CodexManagedApi {
         // initial session metadata has been flushed. Retry only that transient
         // app-server failure; unrelated rename failures remain immediate.
         if (!_isEmptyRollout(error)) rethrow;
-        if (!retryStopwatch.isRunning) retryStopwatch.start();
-        if (retryStopwatch.elapsed + _renameRetryDelay > _renameRetryTimeout) rethrow;
+        retryClock ??= Stopwatch()..start();
+        if (retryClock.elapsed + _renameRetryDelay > _renameRetryTimeout) rethrow;
         Log.d(
           "Codex rollout metadata is not ready for session $sessionId; "
           "retrying rename after attempt $attempt",
