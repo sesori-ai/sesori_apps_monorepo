@@ -361,6 +361,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required String sessionId,
     required String command,
     required String arguments,
+    required String userVisibleArguments,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,

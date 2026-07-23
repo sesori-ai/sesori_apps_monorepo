@@ -69,6 +69,7 @@ void main() {
       expect(plugin.lastSendCommandSessionId, equals("backend-s1"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("extra args"));
+      expect(plugin.lastSendCommandUserVisibleArguments, equals("extra args"));
     });
 
     test("propagates a command dispatch failure", () async {

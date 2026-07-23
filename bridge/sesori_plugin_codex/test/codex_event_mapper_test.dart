@@ -321,6 +321,48 @@ void main() {
       expect(part.text, "hey");
     });
 
+    test("contextCompaction emits a durable tool lifecycle and completion signal", () {
+      final started = mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-compact",
+            "item": {"type": "contextCompaction", "id": "cmp-1"},
+          },
+        ),
+      );
+      final completed = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-compact",
+            "item": {"type": "contextCompaction", "id": "cmp-1"},
+          },
+        ),
+      );
+
+      expect(started, hasLength(2));
+      expect(
+        shared.Message.fromJson((started[0] as BridgeSseMessageUpdated).info),
+        isA<shared.MessageAssistant>(),
+      );
+      final startedPart = (started[1] as BridgeSseMessagePartUpdated).part;
+      expect(startedPart.tool, "compact");
+      expect(startedPart.state?.title, "Compacting context");
+      expect(startedPart.state?.status, PluginToolStatus.running);
+
+      expect(completed, hasLength(3));
+      final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
+      expect(completedPart.state?.title, "Context compacted");
+      expect(completedPart.state?.status, PluginToolStatus.completed);
+      expect(
+        completed.whereType<BridgeSseSessionCompacted>().single.sessionID,
+        "t-1",
+      );
+    });
+
     test("item agentMessage → assistant message + text part", () {
       final events = mapper.map(
         const CodexServerNotification(

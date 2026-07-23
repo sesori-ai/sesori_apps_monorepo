@@ -109,10 +109,16 @@ sealed class BridgePluginApi {
   ///
   /// Dispatch failures (unknown command, missing session, backend down) MUST
   /// be thrown so callers can report the send as failed.
+  ///
+  /// [arguments] is the exact backend execution payload and may include
+  /// bridge-owned context. [userVisibleArguments] is only the user-authored
+  /// portion; implementations that synthesize a client-facing command message
+  /// MUST use that value, never [arguments].
   Future<void> sendCommand({
     required String sessionId,
     required String command,
     required String arguments,
+    required String userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
