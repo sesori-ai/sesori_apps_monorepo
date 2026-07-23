@@ -38,7 +38,7 @@ CursorPlugin _defaultBuildPlugin({
 
 /// The const Cursor plugin descriptor.
 ///
-/// Cursor drives an `agent acp` stdio subprocess over the generic ACP
+/// Cursor drives a `cursor-agent acp` stdio subprocess over the generic ACP
 /// machinery, so it needs no managed-runtime supervisor (no listening port to
 /// reclaim, no ownership file). It declares its CLI surface, probes the
 /// Cursor CLI binary for availability, and on [start] spawns the agent
@@ -78,7 +78,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   static const List<PluginOption> cliOptions = [
     PluginValueOption(
       name: binOption,
-      help: "Path to the Cursor CLI binary (agent)",
+      help: "Path to the Cursor CLI binary (cursor-agent)",
       defaultsTo: CursorBinary.defaultBinary,
       allowedValues: null,
       valueHelp: "path",
@@ -285,7 +285,6 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       "",
       "Verify it is installed:  $executablePath --version",
       "Install the Cursor CLI:  curl https://cursor.com/install -fsS | bash",
-      "Legacy installs that only ship `cursor-agent` can use --cursor-bin cursor-agent.",
     ].join("\n");
   }
 

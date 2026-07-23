@@ -151,10 +151,10 @@ void main() {
       expect(plugin.id, "cursor");
     });
 
-    test("the default binary is the official Cursor CLI name", () {
-      expect(CursorBinary.defaultBinary, "agent");
+    test("the default binary is the stable Cursor CLI executable", () {
+      expect(CursorBinary.defaultBinary, "cursor-agent");
       final spec = CursorBinary.launchSpec(cwd: "/repo");
-      expect(spec.command, "agent");
+      expect(spec.command, "cursor-agent");
       expect(spec.args, ["acp"]);
     });
 
