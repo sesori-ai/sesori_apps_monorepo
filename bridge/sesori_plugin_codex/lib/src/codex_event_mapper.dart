@@ -2,8 +2,10 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "api/models/codex_rollout_dto.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
+import "codex_rollout_tool_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
 
 /// Translates `codex app-server` `ServerNotification` frames into
@@ -53,6 +55,13 @@ class CodexEventMapper {
   /// global [config] default — making a model switch look like it never took
   /// effect even though codex honoured it. Falls back to [config] when unknown.
   final Map<String, String> _threadModel = {};
+  static const CodexRolloutToolMapper _rolloutToolMapper = CodexRolloutToolMapper();
+
+  /// Raw rollout state keyed by the same `call_id` app-server uses as a
+  /// command item id. It lets late normalized item notifications reuse the
+  /// richer result instead of replacing it with their smaller projection.
+  final Map<String, CodexRolloutToolCall> _rolloutToolCalls = {};
+  final Map<String, CodexRolloutToolResult> _rolloutToolResults = {};
 
   /// Last-known thread times, used to turn activity notifications into a
   /// timestamp-bearing `session.updated` payload. Codex sends the activity
@@ -244,6 +253,51 @@ class CodexEventMapper {
     return const [];
   }
 
+  /// Maps a complete response-item record observed in the active rollout.
+  ///
+  /// App-server's stable item stream remains the low-latency source. These
+  /// records update the same message ids with executor metadata and also
+  /// surface raw-only calls such as code-mode `exec` and `wait`.
+  List<BridgeSseEvent> mapRolloutLine({
+    required String threadId,
+    required CodexRolloutLineDto line,
+  }) {
+    if (line.type != CodexRolloutLineType.responseItem) return const [];
+    final payload = line.payload;
+    if (payload == null) return const [];
+    final call = _rolloutToolMapper.mapCall(payload);
+    if (call != null) {
+      _rolloutToolCalls[_rolloutToolKey(threadId, call.id)] = call;
+      return _toolItemEvents(
+        threadId: threadId,
+        itemId: call.id,
+        tool: call.tool,
+        title: call.title,
+        status: PluginToolStatus.running,
+      );
+    }
+    final result = _rolloutToolMapper.mapResult(payload);
+    if (result == null) return const [];
+    final key = _rolloutToolKey(threadId, result.callId);
+    final originalCall = _rolloutToolCalls[key];
+    if (originalCall == null) return const [];
+    _rolloutToolResults[key] = result;
+    return _toolItemEvents(
+      threadId: threadId,
+      itemId: originalCall.id,
+      tool: originalCall.tool,
+      title: originalCall.title,
+      status: result.status,
+      output: result.output,
+    );
+  }
+
+  void clearRolloutTurn({required String threadId}) {
+    final prefix = "$threadId\u0000";
+    _rolloutToolCalls.removeWhere((key, _) => key.startsWith(prefix));
+    _rolloutToolResults.removeWhere((key, _) => key.startsWith(prefix));
+  }
+
   /// `item/*/delta` notifications stream text into an already-known part.
   List<BridgeSseEvent> _deltaEvent({
     required Map<String, dynamic> params,
@@ -312,13 +366,31 @@ class CodexEventMapper {
           text: _extractReasoningText(item),
         );
       case "commandExecution":
+        final canonical = _canonicalRolloutTool(
+          threadId: threadId,
+          itemId: itemId,
+        );
+        final exitCode = item["exitCode"];
+        final appServerStatus = exitCode is num && exitCode.toInt() != 0
+            ? PluginToolStatus.error
+            : _toolStatus(item["status"], completed: completed);
         return _toolItemEvents(
           threadId: threadId,
           itemId: itemId,
-          tool: "shell",
-          title: item["command"] as String?,
-          status: _toolStatus(item["status"], completed: completed),
-          output: item["aggregatedOutput"] as String?,
+          tool: canonical?.call.tool ?? "shell",
+          title:
+              canonical?.call.title ??
+              _rolloutToolMapper.logicalCommandTitle(
+                item["command"] as String?,
+              ),
+          status: appServerStatus == PluginToolStatus.error
+              ? PluginToolStatus.error
+              : canonical?.result.status ?? appServerStatus,
+          output:
+              canonical?.result.output ??
+              _rolloutToolMapper.clipOutput(
+                item["aggregatedOutput"] as String?,
+              ),
         );
       case "fileChange":
         return _toolItemEvents(
@@ -340,16 +412,26 @@ class CodexEventMapper {
           error: _asMap(item["error"])?["message"] as String?,
         );
       case "dynamicToolCall":
+        final canonical = _canonicalRolloutTool(
+          threadId: threadId,
+          itemId: itemId,
+        );
         return _toolItemEvents(
           threadId: threadId,
           itemId: itemId,
-          tool: switch (item["tool"]) {
-            final String tool when tool.isNotEmpty => tool,
-            _ => "tool",
-          },
-          title: _dynamicToolTitle(item["arguments"]),
-          status: _toolStatus(item["status"], completed: completed),
-          output: _dynamicToolOutput(item["contentItems"]),
+          tool:
+              canonical?.call.tool ??
+              switch (item["tool"]) {
+                final String tool when tool.isNotEmpty => tool,
+                _ => "tool",
+              },
+          title: canonical?.call.title ?? _dynamicToolTitle(item["arguments"]),
+          status: canonical?.result.status ?? _toolStatus(item["status"], completed: completed),
+          output:
+              canonical?.result.output ??
+              _rolloutToolMapper.clipOutput(
+                _dynamicToolOutput(item["contentItems"]),
+              ),
         );
       case "webSearch":
         return _toolItemEvents(
@@ -427,6 +509,18 @@ class CodexEventMapper {
     }
     return completed ? PluginToolStatus.completed : PluginToolStatus.running;
   }
+
+  ({CodexRolloutToolCall call, CodexRolloutToolResult result})? _canonicalRolloutTool({
+    required String threadId,
+    required String itemId,
+  }) {
+    final key = _rolloutToolKey(threadId, itemId);
+    final call = _rolloutToolCalls[key];
+    final result = _rolloutToolResults[key];
+    return call == null || result == null ? null : (call: call, result: result);
+  }
+
+  String _rolloutToolKey(String threadId, String callId) => "$threadId\u0000$callId";
 
   /// A short title for a `fileChange` item: the touched paths (codex's
   /// `changes` are `{path, kind, diff}` entries).
