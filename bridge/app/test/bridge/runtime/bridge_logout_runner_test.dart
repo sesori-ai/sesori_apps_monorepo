@@ -71,6 +71,20 @@ void main() {
       expect(bridgeInstanceService.terminateRequests, isEmpty);
     });
 
+    test('stopped-bridge logout skips host-wide process handling', () async {
+      bridgeInstanceRepository.liveBridges = <ProcessIdentity>[_candidate(pid: 200)];
+
+      final result = await service.logoutStoppedBridge();
+
+      expect(result.status, equals(BridgeLogoutStatus.loggedOut));
+      expect(clearTokensCalls, equals(1));
+      expect(appOnboardingStateRepository.clearCalls, equals(1));
+      expect(unregisterBridgeCalls, equals(1));
+      expect(bridgeInstanceRepository.listCalls, equals(0));
+      expect(terminalPromptRepository.askCount, equals(0));
+      expect(bridgeInstanceService.terminateRequests, isEmpty);
+    });
+
     test('decline keeps tokens and does not terminate bridges', () async {
       bridgeInstanceRepository.liveBridges = <ProcessIdentity>[_candidate(pid: 200)];
       terminalPromptRepository.decision = TerminalPromptDecision.decline;
@@ -224,9 +238,11 @@ ProcessIdentity _candidate({required int pid}) {
 
 class _FakeBridgeInstanceRepository implements BridgeInstanceRepository {
   List<ProcessIdentity> liveBridges = <ProcessIdentity>[];
+  int listCalls = 0;
 
   @override
   Future<List<ProcessIdentity>> listLiveBridgeCandidates({required int currentPid}) async {
+    listCalls += 1;
     return liveBridges;
   }
 }

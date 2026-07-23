@@ -45,13 +45,10 @@ class BridgeCliOptions {
       defaultAuthUrl: defaultAuthUrl,
     );
     final debugPortRaw = results["debug-port"] as String;
-    final dataDirectoryRaw = results["data-dir"] as String?;
-    if (dataDirectoryRaw != null && dataDirectoryRaw.trim().isEmpty) {
-      throw ArgParserException("--data-dir must not be empty.");
-    }
-    final dataDirectory = dataDirectoryRaw == null
-        ? defaultDataDirectory
-        : path.normalize(path.absolute(dataDirectoryRaw));
+    final dataDirectory = resolveDataDirectory(
+      dataDirectoryFlag: results["data-dir"] as String?,
+      defaultDataDirectory: defaultDataDirectory,
+    );
 
     // Supervised-only option: trim and treat blank as absent. Do NOT validate
     // it here (no URI parse) — strict parse-time validation would risk failing
@@ -69,6 +66,24 @@ class BridgeCliOptions {
       importPluginIds: List.unmodifiable(results["import-plugin"] as List<String>),
       controlUrl: controlUrl,
     );
+  }
+
+  static String resolveDataDirectory({
+    required String? dataDirectoryFlag,
+    required String defaultDataDirectory,
+  }) {
+    if (dataDirectoryFlag == null) return defaultDataDirectory;
+    if (dataDirectoryFlag.trim().isEmpty) {
+      throw ArgParserException("--data-dir must not be empty.");
+    }
+    return path.normalize(path.absolute(dataDirectoryFlag));
+  }
+
+  static bool isDefaultDataDirectory({
+    required String dataDirectory,
+    required String defaultDataDirectory,
+  }) {
+    return path.equals(dataDirectory, defaultDataDirectory);
   }
 
   /// Resolves the auth backend URL from the CLI flag, the

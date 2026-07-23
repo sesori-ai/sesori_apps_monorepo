@@ -50,6 +50,31 @@ void main() {
         throwsA(isA<ArgParserException>()),
       );
     });
+
+    test("can be resolved independently for another command", () {
+      expect(
+        BridgeCliOptions.resolveDataDirectory(
+          dataDirectoryFlag: "relative-logout-data",
+          defaultDataDirectory: "/default/sesori-data",
+        ),
+        path.normalize(path.absolute("relative-logout-data")),
+      );
+    });
+
+    test("recognizes an explicitly resolved canonical directory as the default", () {
+      final explicitDefault = BridgeCliOptions.resolveDataDirectory(
+        dataDirectoryFlag: "/default/other/../sesori-data/.",
+        defaultDataDirectory: "/default/sesori-data",
+      );
+
+      expect(
+        BridgeCliOptions.isDefaultDataDirectory(
+          dataDirectory: explicitDefault,
+          defaultDataDirectory: "/default/sesori-data",
+        ),
+        isTrue,
+      );
+    });
   });
 
   test("import plugin values retain order and duplicates", () {

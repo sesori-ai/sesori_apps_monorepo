@@ -82,6 +82,19 @@ class BridgeLogoutRunner {
       }
     }
 
+    return _clearStoredState(runningBridgeCount: runningBridgeCount);
+  }
+
+  /// Clears one custom data directory after its source-run bridge has stopped.
+  ///
+  /// Source-run bridges are not part of native bridge process discovery. This
+  /// path therefore skips host-wide termination so logging out a test account
+  /// cannot stop an unrelated packaged bridge.
+  Future<BridgeLogoutResult> logoutStoppedBridge() {
+    return _clearStoredState(runningBridgeCount: 0);
+  }
+
+  Future<BridgeLogoutResult> _clearStoredState({required int runningBridgeCount}) async {
     try {
       await _appOnboardingStateRepository.clearAll();
     } on Object catch (error) {

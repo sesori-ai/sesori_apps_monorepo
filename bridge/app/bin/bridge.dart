@@ -211,12 +211,38 @@ class LogoutCommand extends cli.Command<void> {
   final description = 'Clear stored authentication tokens';
 
   LogoutCommand() {
-    argParser.addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL');
+    argParser
+      ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
+      ..addOption(
+        'data-dir',
+        valueHelp: 'path',
+        help: 'Override the account data directory (tokens, bridge ID, and database)',
+      );
   }
 
   @override
   Future<void> run() async {
-    final dataDirectory = sesoriDataDirectory();
+    final dataDirectoryFlag = argResults!['data-dir'] as String?;
+    final defaultDataDirectory = sesoriDataDirectory();
+    final String dataDirectory;
+    try {
+      dataDirectory = BridgeCliOptions.resolveDataDirectory(
+        dataDirectoryFlag: dataDirectoryFlag,
+        defaultDataDirectory: defaultDataDirectory,
+      );
+    } on ArgParserException catch (error) {
+      usageException(error.message);
+    }
+    final isCustomDataDirectory = !BridgeCliOptions.isDefaultDataDirectory(
+      dataDirectory: dataDirectory,
+      defaultDataDirectory: defaultDataDirectory,
+    );
+    if (isCustomDataDirectory) {
+      Console.warning(
+        'Stop the source-run bridge using $dataDirectory before logging out; '
+        'custom data-directory logout does not stop running bridge processes.',
+      );
+    }
     final authBackendUrl = BridgeCliOptions.resolveAuthBackendUrl(
       authBackendFlag: argResults!['auth-backend'] as String,
       environment: Platform.environment,
@@ -273,7 +299,9 @@ class LogoutCommand extends cli.Command<void> {
       clearTokens: () => clearTokens(dataDirectory: dataDirectory),
     );
 
-    final result = await logoutRunner.logout(currentPid: pid);
+    final result = isCustomDataDirectory
+        ? await logoutRunner.logoutStoppedBridge()
+        : await logoutRunner.logout(currentPid: pid);
     switch (result.status) {
       case BridgeLogoutStatus.loggedOut:
         Console.message('Authentication cleared. You will be asked to log in on next start.');

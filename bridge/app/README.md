@@ -160,7 +160,7 @@ In addition to flags, the bridge supports subcommands:
 | `config plugins enable <id>` | Remove a known plugin from the denylist. Restart the bridge to apply. |
 | `config plugins disable <id>` | Add a known plugin to the denylist. Restart the bridge to apply. |
 | `config edit` | Open the bridge configuration file in your default editor |
-| `logout` | Clear stored authentication tokens. You will be asked to log in again on next start. |
+| `logout [--data-dir <path>]` | Clear stored authentication tokens. You will be asked to log in again on next start. |
 
 `config edit` opens `~/.config/sesori/config.json`. A generated config includes:
 
@@ -223,13 +223,19 @@ host-wide startup mutex and plugin runtime state remain shared intentionally.
 ```bash
 dart run bin/bridge.dart --data-dir /tmp/sesori-bridge-account-a
 dart run bin/bridge.dart --data-dir /tmp/sesori-bridge-account-b
+
+# After stopping account A's source-run bridge, unregister it and clear its credentials
+dart run bin/bridge.dart logout --data-dir /tmp/sesori-bridge-account-a
 ```
 
 The override isolates Sesori credentials, bridge identity, catalog database,
 and onboarding markers. Bridge settings in `~/.config/sesori`, managed plugin
 runtime state, and backend CLI credentials remain shared. Packaged native
 bridges still enforce the normal single-live-bridge rule; this workflow is for
-source-run test processes.
+source-run test processes. A custom-directory logout deliberately does not stop
+any bridge process, so stop the corresponding source-run bridge first. Server
+unregistration is best-effort: if it fails, credentials are still removed but
+the custom directory's `bridge_id` remains.
 
 Plugin-specific examples (OpenCode):
 
