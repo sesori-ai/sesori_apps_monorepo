@@ -299,9 +299,10 @@ class LogoutCommand extends cli.Command<void> {
       clearTokens: () => clearTokens(dataDirectory: dataDirectory),
     );
 
-    final result = isCustomDataDirectory
-        ? await logoutRunner.logoutStoppedBridge()
-        : await logoutRunner.logout(currentPid: pid);
+    final result = await logoutRunner.logout(
+      currentPid: pid,
+      manageRunningBridges: !isCustomDataDirectory,
+    );
     switch (result.status) {
       case BridgeLogoutStatus.loggedOut:
         Console.message('Authentication cleared. You will be asked to log in on next start.');

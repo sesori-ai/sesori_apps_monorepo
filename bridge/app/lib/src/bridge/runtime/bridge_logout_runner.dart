@@ -57,44 +57,35 @@ class BridgeLogoutRunner {
   final AppOnboardingStateRepository _appOnboardingStateRepository;
   final Future<void> Function() _clearTokens;
 
-  Future<BridgeLogoutResult> logout({required int currentPid}) async {
-    final existingBridges = await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid);
-
+  Future<BridgeLogoutResult> logout({
+    required int currentPid,
+    required bool manageRunningBridges,
+  }) async {
     var runningBridgeCount = 0;
-    if (existingBridges.isNotEmpty) {
-      final decision = await _terminalPromptRepository.askStopBridgesBeforeLogout(
-        bridgeCount: existingBridges.length,
-      );
-      switch (decision) {
-        case TerminalPromptDecision.decline:
-          return BridgeLogoutResult(
-            status: BridgeLogoutStatus.cancelled,
-            runningBridgeCount: existingBridges.length,
-          );
-        case TerminalPromptDecision.nonInteractive:
-          runningBridgeCount = existingBridges.length;
-        case TerminalPromptDecision.replace:
-          final terminatedBridges = await _bridgeInstanceService.terminateBridges(
-            currentPid: currentPid,
-            existingBridges: existingBridges,
-          );
-          runningBridgeCount = existingBridges.length - terminatedBridges.length;
+    if (manageRunningBridges) {
+      final existingBridges = await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid);
+      if (existingBridges.isNotEmpty) {
+        final decision = await _terminalPromptRepository.askStopBridgesBeforeLogout(
+          bridgeCount: existingBridges.length,
+        );
+        switch (decision) {
+          case TerminalPromptDecision.decline:
+            return BridgeLogoutResult(
+              status: BridgeLogoutStatus.cancelled,
+              runningBridgeCount: existingBridges.length,
+            );
+          case TerminalPromptDecision.nonInteractive:
+            runningBridgeCount = existingBridges.length;
+          case TerminalPromptDecision.replace:
+            final terminatedBridges = await _bridgeInstanceService.terminateBridges(
+              currentPid: currentPid,
+              existingBridges: existingBridges,
+            );
+            runningBridgeCount = existingBridges.length - terminatedBridges.length;
+        }
       }
     }
 
-    return _clearStoredState(runningBridgeCount: runningBridgeCount);
-  }
-
-  /// Clears one custom data directory after its source-run bridge has stopped.
-  ///
-  /// Source-run bridges are not part of native bridge process discovery. This
-  /// path therefore skips host-wide termination so logging out a test account
-  /// cannot stop an unrelated packaged bridge.
-  Future<BridgeLogoutResult> logoutStoppedBridge() {
-    return _clearStoredState(runningBridgeCount: 0);
-  }
-
-  Future<BridgeLogoutResult> _clearStoredState({required int runningBridgeCount}) async {
     try {
       await _appOnboardingStateRepository.clearAll();
     } on Object catch (error) {

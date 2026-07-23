@@ -22,5 +22,9 @@ void main() {
     }
 
     expect(File(path.join(dataDirectory, "sesori.db")).existsSync(), isTrue);
+    if (!Platform.isWindows) {
+      expect(FileStat.statSync(dataDirectory).mode & 0x1ff, equals(0x1c0));
+      expect(FileStat.statSync(path.join(dataDirectory, "sesori.db")).mode & 0x1ff, equals(0x180));
+    }
   });
 }

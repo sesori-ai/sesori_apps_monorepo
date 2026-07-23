@@ -61,7 +61,7 @@ void main() {
     });
 
     test('clears tokens without prompting when no bridge is running', () async {
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.loggedOut));
       expect(result.runningBridgeCount, equals(0));
@@ -71,10 +71,10 @@ void main() {
       expect(bridgeInstanceService.terminateRequests, isEmpty);
     });
 
-    test('stopped-bridge logout skips host-wide process handling', () async {
+    test('skips host-wide process handling when it is disabled', () async {
       bridgeInstanceRepository.liveBridges = <ProcessIdentity>[_candidate(pid: 200)];
 
-      final result = await service.logoutStoppedBridge();
+      final result = await service.logout(currentPid: 100, manageRunningBridges: false);
 
       expect(result.status, equals(BridgeLogoutStatus.loggedOut));
       expect(clearTokensCalls, equals(1));
@@ -89,7 +89,7 @@ void main() {
       bridgeInstanceRepository.liveBridges = <ProcessIdentity>[_candidate(pid: 200)];
       terminalPromptRepository.decision = TerminalPromptDecision.decline;
 
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.cancelled));
       expect(result.runningBridgeCount, equals(1));
@@ -105,7 +105,7 @@ void main() {
       ];
       terminalPromptRepository.decision = TerminalPromptDecision.nonInteractive;
 
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.loggedOutWithRunningBridges));
       expect(result.runningBridgeCount, equals(2));
@@ -120,7 +120,7 @@ void main() {
       terminalPromptRepository.decision = TerminalPromptDecision.replace;
       bridgeInstanceService.terminatedBridges = <ProcessIdentity>[bridge];
 
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.loggedOut));
       expect(result.runningBridgeCount, equals(0));
@@ -137,7 +137,7 @@ void main() {
       terminalPromptRepository.decision = TerminalPromptDecision.replace;
       bridgeInstanceService.terminatedBridges = <ProcessIdentity>[first];
 
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.loggedOutWithRunningBridges));
       expect(result.runningBridgeCount, equals(1));
@@ -147,7 +147,7 @@ void main() {
     test('reports failure when clearing tokens throws', () async {
       clearTokensError = const FileSystemException('cannot delete token file');
 
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.failed));
       expect(result.error, equals(clearTokensError));
@@ -157,7 +157,7 @@ void main() {
       const error = FileSystemException('cannot delete onboarding state');
       appOnboardingStateRepository.clearError = error;
 
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.failed));
       expect(result.error, same(error));
@@ -167,7 +167,7 @@ void main() {
     });
 
     test('unregisters the bridge before clearing tokens', () async {
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.loggedOut));
       expect(unregisterBridgeCalls, equals(1));
@@ -180,7 +180,7 @@ void main() {
     test('still clears tokens when unregistering the bridge fails', () async {
       unregisterBridgeError = Exception('auth server unreachable');
 
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.loggedOut));
       expect(unregisterBridgeCalls, equals(1));
@@ -191,7 +191,7 @@ void main() {
       bridgeInstanceRepository.liveBridges = <ProcessIdentity>[_candidate(pid: 200)];
       terminalPromptRepository.decision = TerminalPromptDecision.decline;
 
-      final result = await service.logout(currentPid: 100);
+      final result = await service.logout(currentPid: 100, manageRunningBridges: true);
 
       expect(result.status, equals(BridgeLogoutStatus.cancelled));
       expect(unregisterBridgeCalls, equals(0));

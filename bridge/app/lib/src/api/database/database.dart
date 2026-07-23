@@ -259,8 +259,24 @@ class AppDatabase extends _$AppDatabase {
     if (!dbDir.existsSync()) {
       dbDir.createSync(recursive: true);
     }
+    if (!Platform.isWindows) {
+      _setUnixMode(targetPath: dbDir.path, mode: "700");
+    }
     final dbFile = File(path.join(dbDir.path, "sesori.db"));
+    if (!Platform.isWindows) {
+      if (!dbFile.existsSync()) {
+        dbFile.createSync();
+      }
+      _setUnixMode(targetPath: dbFile.path, mode: "600");
+    }
     return openFile(file: dbFile);
+  }
+
+  static void _setUnixMode({required String targetPath, required String mode}) {
+    final result = Process.runSync("chmod", [mode, targetPath]);
+    if (result.exitCode != 0) {
+      throw FileSystemException("Failed to set mode $mode", targetPath);
+    }
   }
 
   static AppDatabase openFile({required File file}) {

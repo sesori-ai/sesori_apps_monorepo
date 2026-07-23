@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:args/args.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
@@ -61,16 +63,17 @@ void main() {
       );
     });
 
-    test("recognizes an explicitly resolved canonical directory as the default", () {
-      final explicitDefault = BridgeCliOptions.resolveDataDirectory(
-        dataDirectoryFlag: "/default/other/../sesori-data/.",
-        defaultDataDirectory: "/default/sesori-data",
-      );
+    test("recognizes a symlink to the canonical directory as the default", () async {
+      if (Platform.isWindows) return;
+      final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-data-alias-test-");
+      addTearDown(() => temporaryDirectory.delete(recursive: true));
+      final defaultDirectory = Directory(path.join(temporaryDirectory.path, "default"))..createSync();
+      final alias = Link(path.join(temporaryDirectory.path, "alias"))..createSync(defaultDirectory.path);
 
       expect(
         BridgeCliOptions.isDefaultDataDirectory(
-          dataDirectory: explicitDefault,
-          defaultDataDirectory: "/default/sesori-data",
+          dataDirectory: alias.path,
+          defaultDataDirectory: defaultDirectory.path,
         ),
         isTrue,
       );

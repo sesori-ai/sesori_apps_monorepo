@@ -1,3 +1,5 @@
+import "dart:io" show Directory, FileSystemEntity, FileSystemEntityType;
+
 import "package:args/args.dart" show ArgParserException, ArgResults;
 import "package:path/path.dart" as path;
 
@@ -83,7 +85,18 @@ class BridgeCliOptions {
     required String dataDirectory,
     required String defaultDataDirectory,
   }) {
-    return path.equals(dataDirectory, defaultDataDirectory);
+    return path.equals(
+      _dataDirectoryIdentity(dataDirectory),
+      _dataDirectoryIdentity(defaultDataDirectory),
+    );
+  }
+
+  static String _dataDirectoryIdentity(String dataDirectory) {
+    final normalized = path.normalize(path.absolute(dataDirectory));
+    if (FileSystemEntity.typeSync(normalized, followLinks: true) == FileSystemEntityType.notFound) {
+      return normalized;
+    }
+    return Directory(normalized).resolveSymbolicLinksSync();
   }
 
   /// Resolves the auth backend URL from the CLI flag, the
