@@ -247,6 +247,8 @@ class CodexPlugin implements CodexManagedApi {
     _sessionService.detachThreadRepository();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
+    _approvalRegistry = null;
+    unawaited(registry?.dispose());
     _sessionStatuses.clear();
     _activeTurnByThread.clear();
     if (hadVisibleActivity) {

@@ -260,12 +260,14 @@ void main() {
       );
       addTearDown(plugin.dispose);
       final firstSummary = Completer<void>();
+      final approvalSummary = Completer<void>();
       final clearedSummary = Completer<void>();
       var invalidations = 0;
       final subscription = plugin.events.where((event) => event is BridgeSseProjectUpdated).listen((_) {
         invalidations++;
         if (invalidations == 1) firstSummary.complete();
-        if (invalidations == 2) clearedSummary.complete();
+        if (invalidations == 2) approvalSummary.complete();
+        if (invalidations == 3) clearedSummary.complete();
       });
       addTearDown(subscription.cancel);
 
@@ -297,11 +299,33 @@ void main() {
       );
       await firstSummary.future.timeout(const Duration(seconds: 2));
       expect(plugin.getActiveSessionsSummary(), isNotEmpty);
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "id": 99,
+          "method": "item/commandExecution/requestApproval",
+          "params": {
+            "threadId": "t-running",
+            "turnId": "turn-1",
+            "itemId": "item-1",
+            "command": "ls",
+          },
+        }),
+      );
+      await approvalSummary.future.timeout(const Duration(seconds: 2));
+      expect(
+        await plugin.getPendingPermissions(sessionId: "t-running"),
+        hasLength(1),
+      );
 
       await socket.close(WebSocketStatus.goingAway);
 
       await clearedSummary.future.timeout(const Duration(seconds: 2));
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(
+        await plugin.getPendingPermissions(sessionId: "t-running"),
+        isEmpty,
+      );
     });
 
     test("dispose closes event buffer without error", () async {
