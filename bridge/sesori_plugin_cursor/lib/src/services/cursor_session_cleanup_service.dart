@@ -1,3 +1,5 @@
+import "dart:io" show FileSystemException;
+
 import "package:path/path.dart" as p;
 
 import "../repositories/cursor_session_storage_repository.dart";
@@ -18,21 +20,51 @@ class CursorSessionCleanupService {
   final Map<String, String> _environment;
   final bool _isWindows;
 
-  Future<void> deletePersistedSession({required String sessionId}) async {
-    if (sessionId.isEmpty || p.isAbsolute(sessionId) || p.basename(sessionId) != sessionId) {
-      throw ArgumentError.value(sessionId, "sessionId", "must be one path segment");
+  Future<void> deletePersistedSession({required String backendSessionId}) async {
+    if (backendSessionId.isEmpty ||
+        p.isAbsolute(backendSessionId) ||
+        p.basename(backendSessionId) != backendSessionId) {
+      throw ArgumentError.value(
+        backendSessionId,
+        "backendSessionId",
+        "must be one path segment",
+      );
     }
 
     final sessionsRoot = p.normalize(
       p.absolute(p.join(_resolveConfigDirectory(), _sessionsDirectoryName)),
     );
-    final sessionDirectory = p.normalize(p.join(sessionsRoot, sessionId));
+    final sessionDirectory = p.normalize(
+      p.join(sessionsRoot, backendSessionId),
+    );
     if (!p.isWithin(sessionsRoot, sessionDirectory)) {
-      throw ArgumentError.value(sessionId, "sessionId", "resolves outside Cursor session storage");
+      throw ArgumentError.value(
+        backendSessionId,
+        "backendSessionId",
+        "resolves outside Cursor session storage",
+      );
     }
 
-    if (!_repository.directoryExists(path: sessionDirectory)) return;
-    await _repository.deleteDirectory(path: sessionDirectory);
+    switch (_repository.entryType(path: sessionDirectory)) {
+      case CursorSessionStorageEntryType.missing:
+        return;
+      case CursorSessionStorageEntryType.directory:
+        break;
+      case CursorSessionStorageEntryType.nonDirectory:
+        throw FileSystemException(
+          "Cursor session storage is not a directory",
+          sessionDirectory,
+        );
+    }
+
+    try {
+      await _repository.deleteDirectory(path: sessionDirectory);
+    } on FileSystemException {
+      if (_repository.entryType(path: sessionDirectory) == CursorSessionStorageEntryType.missing) {
+        return;
+      }
+      rethrow;
+    }
   }
 
   String _resolveConfigDirectory() {

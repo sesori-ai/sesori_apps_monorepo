@@ -69,7 +69,9 @@ void main() {
         environment: {"CURSOR_CONFIG_DIR": configDirectory},
       );
 
-      await service.deletePersistedSession(sessionId: "deleted-session");
+      await service.deletePersistedSession(
+        backendSessionId: "deleted-session",
+      );
 
       expect(
         Directory(
@@ -98,7 +100,9 @@ void main() {
         },
       );
 
-      await service.deletePersistedSession(sessionId: "missing-session");
+      await service.deletePersistedSession(
+        backendSessionId: "missing-session",
+      );
     });
 
     test("uses Cursor config-directory precedence", () async {
@@ -121,7 +125,7 @@ void main() {
         },
       );
 
-      await service.deletePersistedSession(sessionId: "session-1");
+      await service.deletePersistedSession(backendSessionId: "session-1");
 
       expect(
         Directory(
@@ -166,10 +170,10 @@ void main() {
 
       await buildService(
         environment: {"XDG_CONFIG_HOME": xdg, "HOME": home},
-      ).deletePersistedSession(sessionId: "xdg-session");
+      ).deletePersistedSession(backendSessionId: "xdg-session");
       await buildService(
         environment: {"HOME": home},
-      ).deletePersistedSession(sessionId: "home-session");
+      ).deletePersistedSession(backendSessionId: "home-session");
 
       expect(
         Directory(
@@ -201,7 +205,7 @@ void main() {
       await buildService(
         environment: {"USERPROFILE": profile},
         isWindows: true,
-      ).deletePersistedSession(sessionId: "windows-session");
+      ).deletePersistedSession(backendSessionId: "windows-session");
 
       expect(
         Directory(
@@ -214,6 +218,39 @@ void main() {
       );
     });
 
+    test("rejects a non-directory entry at the session path", () async {
+      final configDirectory = p.join(tempDirectory.path, "config");
+      final sessionPath = sessionDirectory(
+        configDirectory: configDirectory,
+        sessionId: "session-file",
+      );
+      final file = File(sessionPath);
+      await file.create(recursive: true);
+      final service = buildService(
+        environment: {"CURSOR_CONFIG_DIR": configDirectory},
+      );
+
+      await expectLater(
+        service.deletePersistedSession(backendSessionId: "session-file"),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(file.existsSync(), isTrue);
+    });
+
+    test("accepts a session directory removed during deletion", () async {
+      final service = CursorSessionCleanupService(
+        repository: _DisappearingSessionStorageRepository(),
+        environment: {
+          "CURSOR_CONFIG_DIR": p.join(tempDirectory.path, "config"),
+        },
+        isWindows: false,
+      );
+
+      await service.deletePersistedSession(
+        backendSessionId: "removed-session",
+      );
+    });
+
     test("rejects paths outside the session storage root", () async {
       final configDirectory = p.join(tempDirectory.path, "config");
       final outside = Directory(p.join(configDirectory, "outside"));
@@ -223,14 +260,31 @@ void main() {
       );
 
       await expectLater(
-        service.deletePersistedSession(sessionId: "../outside"),
+        service.deletePersistedSession(backendSessionId: "../outside"),
         throwsArgumentError,
       );
       await expectLater(
-        service.deletePersistedSession(sessionId: outside.absolute.path),
+        service.deletePersistedSession(
+          backendSessionId: outside.absolute.path,
+        ),
         throwsArgumentError,
       );
       expect(outside.existsSync(), isTrue);
     });
   });
+}
+
+class _DisappearingSessionStorageRepository implements CursorSessionStorageRepository {
+  var _typeReads = 0;
+
+  @override
+  @override
+  CursorSessionStorageEntryType entryType({required String path}) {
+    return _typeReads++ == 0 ? CursorSessionStorageEntryType.directory : CursorSessionStorageEntryType.missing;
+  }
+
+  @override
+  Future<void> deleteDirectory({required String path}) {
+    throw FileSystemException("directory disappeared", path);
+  }
 }

@@ -326,7 +326,7 @@ class SessionRepository {
   }) {
     return _requirePersistedSessionCleanupApi(
       pluginId: pluginId,
-    ).deletePersistedSession(sessionId: backendSessionId);
+    ).deletePersistedSession(backendSessionId: backendSessionId);
   }
 
   Future<void> _ensureTombstonesLoaded({required String pluginId}) async {

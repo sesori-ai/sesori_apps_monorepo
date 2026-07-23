@@ -354,8 +354,10 @@ class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   }
 
   @override
-  Future<void> deletePersistedSession({required String sessionId}) {
-    return _sessionCleanupService.deletePersistedSession(sessionId: sessionId);
+  Future<void> deletePersistedSession({required String backendSessionId}) {
+    return _sessionCleanupService.deletePersistedSession(
+      backendSessionId: backendSessionId,
+    );
   }
 
   @override

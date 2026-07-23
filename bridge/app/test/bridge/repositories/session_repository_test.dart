@@ -2224,8 +2224,8 @@ class _FakePersistedCleanupPlugin extends _FakeBridgePlugin implements Persisted
   final List<String> persistedDeleteCalls = [];
 
   @override
-  Future<void> deletePersistedSession({required String sessionId}) async {
-    persistedDeleteCalls.add(sessionId);
+  Future<void> deletePersistedSession({required String backendSessionId}) async {
+    persistedDeleteCalls.add(backendSessionId);
   }
 }
 

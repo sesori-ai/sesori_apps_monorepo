@@ -137,7 +137,9 @@ void main() {
     test("delegates persisted session cleanup", () async {
       expect(plugin, isA<PersistedSessionCleanupApi>());
 
-      await plugin.deletePersistedSession(sessionId: "session-1");
+      await plugin.deletePersistedSession(
+        backendSessionId: "session-1",
+      );
 
       expect(sessionCleanupService.deletedSessionIds, ["session-1"]);
     });
@@ -1319,7 +1321,7 @@ class _FakeCursorSessionCleanupService implements CursorSessionCleanupService {
   final List<String> deletedSessionIds = [];
 
   @override
-  Future<void> deletePersistedSession({required String sessionId}) async {
-    deletedSessionIds.add(sessionId);
+  Future<void> deletePersistedSession({required String backendSessionId}) async {
+    deletedSessionIds.add(backendSessionId);
   }
 }

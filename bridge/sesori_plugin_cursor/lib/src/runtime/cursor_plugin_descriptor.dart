@@ -361,9 +361,8 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       endpoint: "$binaryPath acp",
     );
 
-    // Rolls back the spawned agent and surfaces the abort. Each eager phase
-    // below (connect, catalog warm-up) is a boundary where an abort that arrived
-    // meanwhile must undo the partial start rather than return a live plugin.
+    // Rolls back the spawned agent and surfaces an abort that arrived while
+    // connecting rather than returning a live plugin.
     Future<Never> rollbackAborted() async {
       try {
         await plugin.shutdown(budget: null);
@@ -378,17 +377,6 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
     // leaves the plugin degraded rather than failing the bridge.
     await plugin.connect(budget: _connectBudget, startAborted: host.startAborted);
 
-    if (host.startAborted.isAborted) {
-      await rollbackAborted();
-    }
-
-    // Eagerly warm the model/mode catalog so the mobile's first providers fetch
-    // (which it caches) already has the full list. The catalog service owns the
-    // total deadline; the lazy path in getProviders/getAgents is the fallback.
-    await cursor.warmCatalog();
-
-    // Warm-up can run for seconds: re-check so an abort observed during it still
-    // rolls back instead of returning a started plugin.
     if (host.startAborted.isAborted) {
       await rollbackAborted();
     }

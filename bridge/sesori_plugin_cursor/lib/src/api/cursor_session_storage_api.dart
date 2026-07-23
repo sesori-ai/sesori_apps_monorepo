@@ -4,8 +4,8 @@ import "dart:io";
 class CursorSessionStorageApi {
   const CursorSessionStorageApi();
 
-  bool directoryExists({required String path}) {
-    return Directory(path).existsSync();
+  FileSystemEntityType entityType({required String path}) {
+    return FileSystemEntity.typeSync(path, followLinks: false);
   }
 
   Future<void> deleteDirectory({required String path}) {
