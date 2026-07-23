@@ -508,6 +508,98 @@ void main() {
       expect(part.state?.error, "element not found");
     });
 
+    test("dynamicToolCall streams a running tool and its completed output", () {
+      final started = mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": "t-1",
+            "item": {
+              "type": "dynamicToolCall",
+              "id": "i-wait",
+              "tool": "wait",
+              "namespace": "functions",
+              "arguments": {
+                "cell_id": "166",
+                "yield_time_ms": 10000,
+                "max_tokens": 20000,
+              },
+              "status": "inProgress",
+              "contentItems": null,
+              "durationMs": null,
+              "success": null,
+            },
+          },
+        ),
+      );
+
+      expect(started, hasLength(2));
+      final runningPart = (started[1] as BridgeSseMessagePartUpdated).part;
+      expect(runningPart.type, PluginMessagePartType.tool);
+      expect(runningPart.id, "i-wait-tool");
+      expect(runningPart.tool, "wait");
+      expect(runningPart.state?.status, PluginToolStatus.running);
+      expect(runningPart.state?.title, contains("cell_id: 166"));
+      expect(runningPart.state?.title, contains("yield_time_ms: 10000"));
+      expect(runningPart.state?.output, isNull);
+
+      final completed = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "item": {
+              "type": "dynamicToolCall",
+              "id": "i-wait",
+              "tool": "wait",
+              "namespace": "functions",
+              "arguments": {
+                "cell_id": "166",
+                "yield_time_ms": 10000,
+                "max_tokens": 20000,
+              },
+              "status": "completed",
+              "contentItems": [
+                {"type": "inputText", "text": "wait completed"},
+              ],
+              "durationMs": 2000,
+              "success": true,
+            },
+          },
+        ),
+      );
+
+      expect(completed, hasLength(2));
+      final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
+      expect(completedPart.id, runningPart.id);
+      expect(completedPart.state?.status, PluginToolStatus.completed);
+      expect(completedPart.state?.output, "wait completed");
+    });
+
+    test("dynamicToolCall falls back for malformed or empty tool names", () {
+      for (final rawTool in <Object?>[42, ""]) {
+        final events = mapper.map(
+          CodexServerNotification(
+            method: "item/started",
+            params: {
+              "threadId": "t-1",
+              "item": {
+                "type": "dynamicToolCall",
+                "id": "i-fallback",
+                "tool": rawTool,
+                "arguments": const <String, Object?>{},
+                "status": "inProgress",
+              },
+            },
+          ),
+        );
+
+        final part = (events[1] as BridgeSseMessagePartUpdated).part;
+        expect(part.tool, "tool");
+        expect(part.state?.status, PluginToolStatus.running);
+      }
+    });
+
     test("genuinely unrenderable item kinds (todoList) are still dropped", () {
       final events = mapper.map(
         const CodexServerNotification(
