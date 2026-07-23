@@ -28,6 +28,8 @@ class _StubAuthSession extends Mock implements AuthSession {
   AuthState get currentState => _authState.value;
 }
 
+class _MockNotificationRegistrationService extends Mock implements NotificationRegistrationService {}
+
 class _MockAppearanceStore extends Mock implements AppearanceStore {}
 
 class _MockUrlLauncher extends Mock implements UrlLauncher {}
@@ -93,6 +95,9 @@ void main() {
 
     await GetIt.instance.reset();
     GetIt.instance.registerSingleton<AuthSession>(_StubAuthSession());
+    GetIt.instance.registerSingleton<NotificationRegistrationService>(
+      _MockNotificationRegistrationService(),
+    );
 
     final store = _MockAppearanceStore();
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
@@ -166,8 +171,9 @@ void main() {
 
   testWidgets("legal rows open the document in a sheet, not a browser", (tester) async {
     _useTallSurface(tester);
-    when(() => legalRepository.getMarkdown(document: any(named: "document")))
-        .thenAnswer((_) async => ApiResponse.success("# Privacy Policy\n\nHow we handle your data."));
+    when(
+      () => legalRepository.getMarkdown(document: any(named: "document")),
+    ).thenAnswer((_) async => ApiResponse.success("# Privacy Policy\n\nHow we handle your data."));
 
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();

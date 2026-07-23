@@ -135,4 +135,12 @@ void main() {
     expect(token, isNull);
     verifyNever(() => messaging.getToken());
   });
+
+  test("deleteToken delegates to Firebase Messaging", () async {
+    when(() => messaging.deleteToken()).thenAnswer((_) async {});
+
+    await source.deleteToken();
+
+    verify(() => messaging.deleteToken()).called(1);
+  });
 }
