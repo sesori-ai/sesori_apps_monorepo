@@ -1,9 +1,49 @@
 import "package:acp_plugin/acp_plugin.dart";
 
+import "../../api/models/cursor_available_models_dto.dart";
 import "../../models/cursor_catalog_models.dart";
 
 /// Maps Cursor's raw ACP config options into the internal catalog model.
 abstract final class CursorCatalogMapper {
+  static CursorCatalogBootstrapSnapshot mapAvailableModels({
+    required CursorAvailableModelsDto result,
+  }) {
+    final models = <CursorCatalogOption>[];
+    final thoughtLevelsByModel = <String, CursorThoughtLevelSnapshot>{};
+    for (final model in result.models) {
+      final modelId = model.value;
+      if (modelId.isEmpty) continue;
+      models.add(
+        CursorCatalogOption(
+          value: modelId,
+          name: switch (model.name) {
+            final name? when name.isNotEmpty => name,
+            _ => modelId,
+          },
+          description: null,
+        ),
+      );
+      final thoughtLevel = _mapAvailableThoughtLevel(model: model);
+      if (thoughtLevel != null) {
+        thoughtLevelsByModel[modelId] = thoughtLevel;
+      }
+    }
+
+    return CursorCatalogBootstrapSnapshot(
+      models: models,
+      modes: [
+        for (final mode in CursorMode.values)
+          CursorCatalogOption(
+            value: mode.id,
+            name: mode.displayName,
+            description: null,
+          ),
+      ],
+      defaultModeId: CursorMode.agent.id,
+      thoughtLevelsByModel: thoughtLevelsByModel,
+    );
+  }
+
   static CursorCatalogSnapshot mapSession({required AcpNewSessionResult result}) {
     final modelConfig = _findConfig(result: result, category: "model");
     final modeConfig = _findConfig(result: result, category: "mode");
@@ -24,6 +64,54 @@ abstract final class CursorCatalogMapper {
               defaultValue: _currentValue(config: thoughtConfig),
             ),
     );
+  }
+
+  static CursorThoughtLevelSnapshot? _mapAvailableThoughtLevel({
+    required CursorAvailableModelDto model,
+  }) {
+    CursorModelConfigOptionDto? effort;
+    CursorModelConfigOptionDto? reasoning;
+    for (final option in model.configOptions) {
+      if (option.category != "thought_level") continue;
+      switch (option.id) {
+        case "effort":
+          effort = option;
+        case "reasoning":
+          reasoning = option;
+        case _:
+          break;
+      }
+    }
+    final selected = switch ((reasoning, effort)) {
+      (final reasoning?, _) when _hasMultiLevelAvailableOptions(config: reasoning) => reasoning,
+      (_, final effort?) when _hasMultiLevelAvailableOptions(config: effort) => effort,
+      _ => null,
+    };
+    if (selected == null) return null;
+    final values = [
+      for (final option in selected.options)
+        if (option.value.isNotEmpty) option.value,
+    ];
+    final currentValue = selected.currentValue;
+    if (currentValue != null && currentValue.isNotEmpty && values.remove(currentValue)) {
+      values.insert(0, currentValue);
+    }
+    return CursorThoughtLevelSnapshot(
+      configId: selected.id,
+      variants: values,
+      defaultValue: currentValue,
+    );
+  }
+
+  static bool _hasMultiLevelAvailableOptions({
+    required CursorModelConfigOptionDto config,
+  }) {
+    final values = config.options.map((option) => option.value).where((value) => value.isNotEmpty).toSet();
+    if (values.length <= 1) return false;
+    if (values.length == 2 && (values.containsAll({"true", "false"}) || values.containsAll({"on", "off"}))) {
+      return false;
+    }
+    return true;
   }
 
   static Map<String, dynamic>? _findConfig({

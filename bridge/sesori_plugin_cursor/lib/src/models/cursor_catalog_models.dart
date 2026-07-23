@@ -24,6 +24,35 @@ class CursorThoughtLevelSnapshot {
   final String? defaultValue;
 }
 
+/// Cursor's stable execution modes, available before the first session exists.
+enum CursorMode {
+  agent(id: "agent", displayName: "Agent"),
+  plan(id: "plan", displayName: "Plan"),
+  ask(id: "ask", displayName: "Ask");
+
+  const CursorMode({required this.id, required this.displayName});
+
+  final String id;
+  final String displayName;
+}
+
+/// Account catalog returned without creating or loading a Cursor session.
+class CursorCatalogBootstrapSnapshot {
+  CursorCatalogBootstrapSnapshot({
+    required List<CursorCatalogOption> models,
+    required List<CursorCatalogOption> modes,
+    required this.defaultModeId,
+    required Map<String, CursorThoughtLevelSnapshot> thoughtLevelsByModel,
+  }) : models = List.unmodifiable(models),
+       modes = List.unmodifiable(modes),
+       thoughtLevelsByModel = Map.unmodifiable(thoughtLevelsByModel);
+
+  final List<CursorCatalogOption> models;
+  final List<CursorCatalogOption> modes;
+  final String defaultModeId;
+  final Map<String, CursorThoughtLevelSnapshot> thoughtLevelsByModel;
+}
+
 /// Typed Cursor catalog data parsed from an ACP session result.
 class CursorCatalogSnapshot {
   CursorCatalogSnapshot({
