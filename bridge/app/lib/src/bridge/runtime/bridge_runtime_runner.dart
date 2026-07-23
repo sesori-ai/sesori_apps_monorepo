@@ -757,6 +757,12 @@ class BridgeRuntimeRunner {
         Log.i("Plugin start aborted as requested.");
         return 0;
       }
+      for (final importPluginId in options.importPluginIds) {
+        if (!activePluginRuntime.activePluginIds.contains(importPluginId)) {
+          Console.error('Cannot import plugin "$importPluginId" because it is not operational.');
+          return 1;
+        }
+      }
       for (final pluginId in startupPolicy.eligiblePluginIds) {
         final diagnostics = activePluginRuntime.describe(pluginId: pluginId);
         if (diagnostics != null) Console.message("Target [$pluginId]: ${diagnostics.endpoint ?? pluginId}");
@@ -986,7 +992,6 @@ class BridgeRuntimeRunner {
       service.start(pluginId: pluginId, trigger: CatalogImportTrigger.automatic);
     }
     for (final headlessPluginId in headlessPluginIds) {
-      if (!operationalPluginIds.contains(headlessPluginId)) continue;
       service.start(pluginId: headlessPluginId, trigger: CatalogImportTrigger.headless);
     }
   }
