@@ -441,19 +441,17 @@ class SessionRepository {
     final results = await Future.wait(
       _runtime.activePluginIds.map((pluginId) async {
         try {
-          final sourcedObservation = await _runtime
-              .useIfActive(
+          final sourcedObservation = await _runtime.useIfActive(
+            pluginId: pluginId,
+            operation: SessionOperation.getProjectActivitySummaries,
+            body: (plugin, generation) async => (
+              generation: generation,
+              observation: await _collectPluginProjectActivity(
                 pluginId: pluginId,
-                operation: SessionOperation.getProjectActivitySummaries,
-                body: (plugin, generation) async => (
-                  generation: generation,
-                  observation: await _collectPluginProjectActivity(
-                    pluginId: pluginId,
-                    plugin: plugin,
-                  ),
-                ),
-              )
-              .timeout(_aggregateSourceDeadline);
+                plugin: plugin,
+              ).timeout(_aggregateSourceDeadline),
+            ),
+          );
           if (sourcedObservation == null) return const <ProjectActivitySummary>[];
           final (:generation, :observation) = sourcedObservation;
           _runtime.requireCurrentGeneration(
@@ -461,7 +459,12 @@ class SessionRepository {
             generation: generation,
             operation: SessionOperation.getProjectActivitySummaries,
           );
-          await _persistActiveRootHydrations(observation: observation);
+          await _runtime.commitCurrentGeneration(
+            pluginId: pluginId,
+            generation: generation,
+            operation: SessionOperation.getProjectActivitySummaries,
+            commit: () => _persistActiveRootHydrations(observation: observation),
+          );
           return _mapPluginProjectActivitySummaries(observation: observation);
         } on Object catch (error, stackTrace) {
           Log.w("Could not read activity summaries from plugin $pluginId", error, stackTrace);
@@ -773,13 +776,11 @@ class SessionRepository {
     final results = await Future.wait(
       _runtime.activePluginIds.map((pluginId) async {
         try {
-          final pluginStatuses = await _runtime
-              .useIfActive(
-                pluginId: pluginId,
-                operation: SessionOperation.getSessionStatuses,
-                body: (plugin, _) => plugin.getSessionStatuses(),
-              )
-              .timeout(_aggregateSourceDeadline);
+          final pluginStatuses = await _runtime.useIfActive(
+            pluginId: pluginId,
+            operation: SessionOperation.getSessionStatuses,
+            body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
+          );
           if (pluginStatuses == null) return (pluginId: pluginId, statuses: null);
           final bindings = await _sessionDao.getSessionsByBackendIds(
             pluginId: pluginId,
