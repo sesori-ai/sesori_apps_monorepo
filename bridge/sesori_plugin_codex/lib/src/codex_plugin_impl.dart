@@ -290,15 +290,16 @@ class CodexPlugin implements CodexManagedApi {
     _notificationSubscription = client.notifications.listen((notification) {
       // Serialize notification side effects so a terminal rollout drain cannot
       // let session.idle overtake its final tool update.
-      _notificationWork = _notificationWork
-          .then((_) => _handleNotification(notification))
-          .catchError((Object error, StackTrace stackTrace) {
-            Log.e(
-              "[codex] failed to map app-server notification",
-              error,
-              stackTrace,
-            );
-          });
+      _notificationWork = _notificationWork.then((_) => _handleNotification(notification)).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        Log.e(
+          "[codex] failed to map app-server notification",
+          error,
+          stackTrace,
+        );
+      });
     });
   }
 
@@ -330,9 +331,7 @@ class CodexPlugin implements CodexManagedApi {
       // same call id immediately enriches it with executor metadata.
       _rolloutTailer.drain(sessionId: threadId);
     }
-    if (threadId != null &&
-        (notification.method == "error" ||
-            notification.method == "thread/closed")) {
+    if (threadId != null && (notification.method == "error" || notification.method == "thread/closed")) {
       _rolloutTailer.stop(sessionId: threadId);
     }
     if (threadId != null &&

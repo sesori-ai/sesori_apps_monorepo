@@ -200,7 +200,11 @@ void main() {
       // it without a redundant resume round-trip.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-fresh"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-fresh"},
+          },
+        ),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -229,7 +233,11 @@ void main() {
       // the first turn/start fails, then resume + retry must recover it.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-dropped"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-dropped"},
+          },
+        ),
         const _Response(error: {"code": -32600, "message": "thread not found"}),
         const _Response(
           result: {
@@ -270,7 +278,11 @@ void main() {
       // unknown to this run, so the prompt resumes it before the turn.
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-1"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-1"},
+          },
+        ),
         const _Response(result: {"turnId": "u-active"}),
         const _Response(result: null),
       ]);
@@ -304,7 +316,15 @@ void main() {
 
       // Subscribe BEFORE the connection so buffered events flow.
       final events = <BridgeSseEvent>[];
-      final subscription = plugin.events.listen(events.add);
+      final terminalActivityUpdate = Completer<void>();
+      var projectUpdates = 0;
+      final subscription = plugin.events.listen((event) {
+        events.add(event);
+        if (event is BridgeSseProjectUpdated) {
+          projectUpdates++;
+          if (projectUpdates == 2) terminalActivityUpdate.complete();
+        }
+      });
 
       // Trigger _ensureConnected.
       await plugin.healthCheck();
@@ -340,8 +360,10 @@ void main() {
         "turn": {"id": "u-1", "completedAt": 1700000010},
       });
 
-      // Drain microtasks so all notification handlers run.
-      await Future<void>.delayed(Duration.zero);
+      // A terminal notification may briefly wait for Codex to create/finish
+      // its rollout file. Await the activity invalidation emitted after idle
+      // instead of assuming the ordered async event pipeline is synchronous.
+      await terminalActivityUpdate.future.timeout(const Duration(seconds: 2));
       await subscription.cancel();
 
       expect(
@@ -594,13 +616,11 @@ void main() {
       await kaPlugin.healthCheck(); // connect → starts keepalive
       await Future<void>.delayed(const Duration(milliseconds: 90));
 
-      final firedWhileConnected =
-          kaFake.sentMethods.where((m) => m == "model/list").length;
+      final firedWhileConnected = kaFake.sentMethods.where((m) => m == "model/list").length;
       expect(firedWhileConnected, greaterThanOrEqualTo(2));
 
       await kaPlugin.dispose();
-      final afterDispose =
-          kaFake.sentMethods.where((m) => m == "model/list").length;
+      final afterDispose = kaFake.sentMethods.where((m) => m == "model/list").length;
       await Future<void>.delayed(const Duration(milliseconds: 60));
       // No further keepalives once disposed.
       expect(
@@ -740,7 +760,11 @@ void main() {
     test("sendPrompt without a variant sends no effort (codex uses its default)", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-default"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-default"},
+          },
+        ),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -758,7 +782,11 @@ void main() {
     test("createSession applies the variant on the first turn", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(result: {"thread": {"id": "t-new"}}),
+        const _Response(
+          result: {
+            "thread": {"id": "t-new"},
+          },
+        ),
         const _Response(result: {"turnId": "u-1"}),
       ]);
 
@@ -890,8 +918,7 @@ class _FakeAppServer {
   /// `thread/name/updated` while `turn/start` is still in flight).
   void Function(String method)? onRequest;
 
-  List<String> get sentMethods =>
-      _sent.map((f) => f.method).toList(growable: false);
+  List<String> get sentMethods => _sent.map((f) => f.method).toList(growable: false);
 
   Map<String, dynamic> sentParamsFor(String method) {
     final frame = _sent.firstWhere((f) => f.method == method);
@@ -982,8 +1009,7 @@ class _SinkAdapter implements WebSocketSink {
   void add(Object? data) => _controller.add(data);
 
   @override
-  void addError(Object error, [StackTrace? stackTrace]) =>
-      _controller.addError(error, stackTrace);
+  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
 
   @override
   Future<void> addStream(Stream<Object?> stream) async {
