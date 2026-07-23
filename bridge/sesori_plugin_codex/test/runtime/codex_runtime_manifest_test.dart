@@ -14,7 +14,7 @@ void main() {
     });
 
     test("pinned versions", () {
-      expect(manifest.bundledVersion.toString(), "0.144.5");
+      expect(manifest.bundledVersion.toString(), "0.145.0");
       expect(manifest.minPathVersion.toString(), "0.139.0");
       expect(manifest.runtimeId, const CodexPluginDescriptor().id);
       expect(manifest.pathExecutableName, "codex");
@@ -83,7 +83,7 @@ void main() {
       )!;
       expect(
         manifest.downloadUrlFor(asset: asset),
-        equals("https://github.com/openai/codex/releases/download/rust-v0.144.5/codex-aarch64-apple-darwin.tar.gz"),
+        equals("https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-aarch64-apple-darwin.tar.gz"),
       );
     });
 

@@ -140,6 +140,7 @@ void main() {
         expect(pending.single.displaySessionId, equals("t-7"));
         expect(pending.single.tool, equals("exec"));
         expect(pending.single.description, equals("clean build dir"));
+        expect(registry.hasPendingInput("t-7"), isTrue);
         // Questions and permissions are disjoint: a permission is never a
         // pending question.
         expect(registry.pendingForSession("t-7"), isEmpty);
@@ -169,6 +170,7 @@ void main() {
       expect(respondCalls.single.id, equals(100));
       expect((respondCalls.single.result as Map)["decision"], equals("accept"));
       expect(emitted.single, isA<BridgeSsePermissionReplied>());
+      expect(registry.hasPendingInput("t-1"), isFalse);
     });
 
     test("replyPermission(always) sends 'acceptForSession'", () async {
@@ -349,6 +351,7 @@ void main() {
         final pending = registry.pendingForSession("t-3");
         expect(pending, hasLength(1));
         expect(pending.single.id, equals(asked.id));
+        expect(registry.hasPendingInput("t-3"), isTrue);
       },
     );
 

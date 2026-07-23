@@ -191,6 +191,9 @@ class ApprovalRegistry {
   String? sessionIdFor(String bridgeRequestId) =>
       _pending[bridgeRequestId]?.sessionId;
 
+  bool hasPendingInput(String sessionId) =>
+      _pending.values.any((entry) => entry.sessionId == sessionId);
+
   /// Acknowledges a permission ask with a once/always/reject decision.
   ///
   /// Returns true when the response was sent, false if the id had

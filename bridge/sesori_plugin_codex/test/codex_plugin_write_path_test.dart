@@ -309,17 +309,36 @@ void main() {
       // Trigger _ensureConnected.
       await plugin.healthCheck();
 
+      fake.pushNotification("thread/started", {
+        "thread": {
+          "id": "t-1",
+          "cwd": "/work/sample",
+          "createdAt": 1700000000,
+          "updatedAt": 1700000000,
+        },
+      });
       fake.pushNotification("turn/started", {
         "threadId": "t-1",
-        "turn": {"id": "u-1"},
+        "turn": {"id": "u-1", "startedAt": 1700000005},
       });
+      await Future<void>.delayed(Duration.zero);
+
+      final running = plugin.getActiveSessionsSummary();
+      expect(running, hasLength(1));
+      expect(running.single.id, "/work/sample");
+      expect(running.single.activeSessions.single.id, "t-1");
+      expect(running.single.activeSessions.single.mainAgentRunning, isTrue);
+
       fake.pushNotification("item/agentMessage/delta", {
         "threadId": "t-1",
         "turnId": "u-1",
         "itemId": "i-1",
         "delta": "Hi",
       });
-      fake.pushNotification("turn/completed", {"threadId": "t-1"});
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-1",
+        "turn": {"id": "u-1", "completedAt": 1700000010},
+      });
 
       // Drain microtasks so all notification handlers run.
       await Future<void>.delayed(Duration.zero);
@@ -328,15 +347,20 @@ void main() {
       expect(
         events.map((e) => e.runtimeType.toString()).toList(),
         containsAllInOrder([
+          "BridgeSseSessionUpdated",
           "BridgeSseSessionStatus",
+          "BridgeSseProjectUpdated",
           "BridgeSseMessagePartDelta",
+          "BridgeSseSessionUpdated",
           "BridgeSseSessionIdle",
+          "BridgeSseProjectUpdated",
         ]),
       );
 
       // Active session status is tracked from the notifications.
       final statuses = await plugin.getSessionStatuses();
       expect(statuses["t-1"], isA<PluginSessionStatusIdle>());
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
     });
 
     test("keepalive sends periodic model/list RPCs while connected, stops on dispose", () async {

@@ -233,14 +233,34 @@ class CodexPlugin implements CodexManagedApi {
   /// Invoked when the underlying transport drops unexpectedly. Resets the
   /// cached connection state (so [healthCheck]/[_ensureConnected] no longer
   /// hand back a stale successful future for a dead socket and instead
-  /// re-establish on the next call), then forwards the signal to the runtime
-  /// descriptor's status reporter.
+  /// re-establish on the next call), clears connection-scoped activity, then
+  /// forwards the signal to the runtime descriptor's status reporter.
   void _handleClientDisconnected() {
+    final registry = _approvalRegistry;
+    final activeSessionIds = [
+      for (final entry in _sessionStatuses.entries)
+        if (_isActiveStatus(entry.value)) entry.key,
+    ];
+    final hadVisibleActivity =
+        activeSessionIds.isNotEmpty ||
+        _sessionStatuses.keys.any(
+          (sessionId) => registry?.hasPendingInput(sessionId) ?? false,
+        );
     _connectFuture = null;
     _client = null;
     _sessionService.detachThreadRepository();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
+    _approvalRegistry = null;
+    unawaited(registry?.dispose());
+    _sessionStatuses.clear();
+    _activeTurnByThread.clear();
+    for (final sessionId in activeSessionIds) {
+      _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+    }
+    if (hadVisibleActivity) {
+      _eventBuffer.add(const BridgeSseProjectUpdated());
+    }
     _onDisconnected?.call();
   }
 
@@ -258,8 +278,11 @@ class CodexPlugin implements CodexManagedApi {
         _eventMapper.mapThreadStarted(thread).forEach(_eventBuffer.add);
         return;
       }
-      _maintainBookkeeping(notification);
+      final activityChanged = _maintainBookkeeping(notification);
       _eventMapper.map(notification).forEach(_eventBuffer.add);
+      if (activityChanged) {
+        _eventBuffer.add(const BridgeSseProjectUpdated());
+      }
     });
   }
 
@@ -274,7 +297,7 @@ class CodexPlugin implements CodexManagedApi {
   /// bridge permission/question events.
   void _attachApprovalRegistry(CodexAppServerClient client) {
     final registry = ApprovalRegistry(
-      emit: _eventBuffer.add,
+      emit: _emitApprovalEvent,
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
       respondError: (id, code, message) => client.respondToServerRequestWithError(
         id: id,
@@ -284,6 +307,11 @@ class CodexPlugin implements CodexManagedApi {
     );
     _approvalRegistry = registry;
     registry.attach(client.serverRequests);
+  }
+
+  void _emitApprovalEvent(BridgeSseEvent event) {
+    _eventBuffer.add(event);
+    _eventBuffer.add(const BridgeSseProjectUpdated());
   }
 
   /// Starts (or restarts) the idle-keepalive timer. Sends a cheap read RPC on
@@ -307,34 +335,53 @@ class CodexPlugin implements CodexManagedApi {
     );
   }
 
-  void _maintainBookkeeping(CodexServerNotification notification) {
+  bool _maintainBookkeeping(CodexServerNotification notification) {
     final params = notification.params;
     final threadId = params["threadId"] as String?;
     switch (notification.method) {
       case "turn/started":
-        if (threadId == null) return;
+        if (threadId == null) return false;
         final turn = (params["turn"] as Map?)?.cast<String, dynamic>();
         final turnId = turn?["id"] as String?;
         if (turnId != null) _activeTurnByThread[threadId] = turnId;
-        _sessionStatuses[threadId] = const PluginSessionStatus.busy();
+        return _setSessionStatus(threadId, const PluginSessionStatus.busy());
       case "turn/completed":
-        if (threadId == null) return;
+        if (threadId == null) return false;
         _activeTurnByThread.remove(threadId);
-        _sessionStatuses[threadId] = const PluginSessionStatus.idle();
+        return _setSessionStatus(threadId, const PluginSessionStatus.idle());
       case "error":
-        if (threadId == null) return;
+        if (threadId == null) return false;
         _activeTurnByThread.remove(threadId);
         // PluginSessionStatus has no explicit "error" — surfacing as idle
         // and letting the mapped BridgeSseSessionError carry the signal.
-        _sessionStatuses[threadId] = const PluginSessionStatus.idle();
+        return _setSessionStatus(threadId, const PluginSessionStatus.idle());
+      case "thread/status/changed":
+        if (threadId == null) return false;
+        return _setSessionStatus(
+          threadId,
+          _eventMapper.isIdleThreadStatus(params["status"])
+              ? const PluginSessionStatus.idle()
+              : const PluginSessionStatus.busy(),
+        );
       case "thread/closed":
-        if (threadId == null) return;
+        if (threadId == null) return false;
         _activeTurnByThread.remove(threadId);
-        _sessionStatuses.remove(threadId);
+        final wasActive = _isActiveStatus(_sessionStatuses.remove(threadId));
         // The app-server unloaded this thread; a later turn must resume it.
         _sessionService.markThreadUnloaded(threadId: threadId);
+        return wasActive;
     }
+    return false;
   }
+
+  bool _setSessionStatus(String threadId, PluginSessionStatus status) {
+    final wasActive = _isActiveStatus(_sessionStatuses[threadId]);
+    _sessionStatuses[threadId] = status;
+    return wasActive != _isActiveStatus(status);
+  }
+
+  bool _isActiveStatus(PluginSessionStatus? status) =>
+      status is PluginSessionStatusBusy || status is PluginSessionStatusRetry;
 
   /// Cold-start hook the runtime descriptor awaits before reporting the
   /// plugin ready: opens the WebSocket, performs the `initialize` handshake,
@@ -409,6 +456,7 @@ class CodexPlugin implements CodexManagedApi {
       model: model?.modelID,
       modelProvider: model?.providerID,
     );
+    _eventMapper.setThreadTime(thread);
     final threadId = thread.id;
     // codex's ThreadStartResponse carries the resolved model alongside the
     // thread; record it so live-streamed assistant messages are stamped with
@@ -563,6 +611,7 @@ class CodexPlugin implements CodexManagedApi {
       force: force,
     );
     if (response == null) return;
+    _eventMapper.setThreadTime(response);
     _eventMapper.setThreadModel(threadId, response.model);
     _eventMapper.setThreadProvider(threadId, response.modelProvider);
     // A thread resumed from a prior bridge run never re-emits `thread/started`,
@@ -670,6 +719,7 @@ class CodexPlugin implements CodexManagedApi {
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
     _threadDirectory.remove(sessionId);
+    _eventMapper.forgetThread(sessionId);
   }
 
   @override
@@ -938,7 +988,31 @@ class CodexPlugin implements CodexManagedApi {
   }
 
   @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => const [];
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    final registry = _approvalRegistry;
+    final byProject = <String, List<PluginActiveSession>>{};
+    for (final entry in _sessionStatuses.entries) {
+      final running = _isActiveStatus(entry.value);
+      final awaitingInput = registry?.hasPendingInput(entry.key) ?? false;
+      if (!running && !awaitingInput) continue;
+      (byProject[_directoryForSession(entry.key)] ??= []).add(
+        PluginActiveSession(
+          id: entry.key,
+          mainAgentRunning: running,
+          awaitingInput: awaitingInput,
+          isRetrying: false,
+          childSessionIds: const [],
+        ),
+      );
+    }
+    return [
+      for (final entry in byProject.entries)
+        PluginProjectActivitySummary(
+          id: entry.key,
+          activeSessions: entry.value,
+        ),
+    ];
+  }
 
   @override
   Future<void> dispose() async {
