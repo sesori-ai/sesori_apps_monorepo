@@ -639,9 +639,14 @@ class CodexEventMapper {
   /// sesori [shared.SessionStatus] union. Anything that is not explicitly
   /// `idle` is treated as busy.
   shared.SessionStatus _codexStatusToSessionStatus(Object? raw) {
+    return isIdleThreadStatus(raw) ? const shared.SessionStatus.idle() : const shared.SessionStatus.busy();
+  }
+
+  /// Parses the direct and nested status shapes emitted by codex.
+  bool isIdleThreadStatus(Object? raw) {
     final map = _asMap(raw);
     final type = (map?["type"] ?? _asMap(map?["status"])?["type"]) as String?;
-    return type == "idle" ? const shared.SessionStatus.idle() : const shared.SessionStatus.busy();
+    return type == "idle";
   }
 
   /// Concatenates the `text` of every text-bearing entry in a codex `content`

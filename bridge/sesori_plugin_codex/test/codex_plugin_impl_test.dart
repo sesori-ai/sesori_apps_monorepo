@@ -10,6 +10,7 @@ import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
@@ -231,6 +232,76 @@ void main() {
 
       expect(await plugin.healthCheck(), isFalse);
       await plugin.dispose();
+    });
+
+    test("an unexpected transport drop clears live session activity", () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      final socketReady = Completer<WebSocket>();
+      server.listen((request) async {
+        final socket = await WebSocketTransformer.upgrade(request);
+        socketReady.complete(socket);
+        socket.listen((frame) {
+          final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
+          if (decoded["method"] != "initialize") return;
+          socket.add(
+            jsonEncode({
+              "jsonrpc": "2.0",
+              "id": decoded["id"],
+              "result": _initOk,
+            }),
+          );
+        });
+      });
+      final plugin = CodexPlugin(
+        serverUrl: "ws://127.0.0.1:${server.port}",
+        projectCwd: "/repo/example",
+        keepaliveInterval: const Duration(seconds: 30),
+      );
+      addTearDown(plugin.dispose);
+      final firstSummary = Completer<void>();
+      final clearedSummary = Completer<void>();
+      var invalidations = 0;
+      final subscription = plugin.events.where((event) => event is BridgeSseProjectUpdated).listen((_) {
+        invalidations++;
+        if (invalidations == 1) firstSummary.complete();
+        if (invalidations == 2) clearedSummary.complete();
+      });
+      addTearDown(subscription.cancel);
+
+      expect(await plugin.healthCheck(), isTrue);
+      final socket = await socketReady.future;
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "method": "thread/started",
+          "params": {
+            "thread": {
+              "id": "t-running",
+              "cwd": "/repo/example",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000000,
+            },
+          },
+        }),
+      );
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "method": "turn/started",
+          "params": {
+            "threadId": "t-running",
+            "turn": {"id": "turn-1", "startedAt": 1700000001},
+          },
+        }),
+      );
+      await firstSummary.future.timeout(const Duration(seconds: 2));
+      expect(plugin.getActiveSessionsSummary(), isNotEmpty);
+
+      await socket.close(WebSocketStatus.goingAway);
+
+      await clearedSummary.future.timeout(const Duration(seconds: 2));
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
     });
 
     test("dispose closes event buffer without error", () async {

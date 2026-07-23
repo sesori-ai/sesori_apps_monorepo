@@ -233,14 +233,25 @@ class CodexPlugin implements CodexManagedApi {
   /// Invoked when the underlying transport drops unexpectedly. Resets the
   /// cached connection state (so [healthCheck]/[_ensureConnected] no longer
   /// hand back a stale successful future for a dead socket and instead
-  /// re-establish on the next call), then forwards the signal to the runtime
-  /// descriptor's status reporter.
+  /// re-establish on the next call), clears connection-scoped activity, then
+  /// forwards the signal to the runtime descriptor's status reporter.
   void _handleClientDisconnected() {
+    final registry = _approvalRegistry;
+    final hadVisibleActivity = _sessionStatuses.entries.any(
+      (entry) =>
+          _isActiveStatus(entry.value) ||
+          (registry?.hasPendingInput(entry.key) ?? false),
+    );
     _connectFuture = null;
     _client = null;
     _sessionService.detachThreadRepository();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
+    _sessionStatuses.clear();
+    _activeTurnByThread.clear();
+    if (hadVisibleActivity) {
+      _eventBuffer.add(const BridgeSseProjectUpdated());
+    }
     _onDisconnected?.call();
   }
 
@@ -339,7 +350,9 @@ class CodexPlugin implements CodexManagedApi {
         if (threadId == null) return false;
         return _setSessionStatus(
           threadId,
-          _pluginStatus(params["status"]),
+          _eventMapper.isIdleThreadStatus(params["status"])
+              ? const PluginSessionStatus.idle()
+              : const PluginSessionStatus.busy(),
         );
       case "thread/closed":
         if (threadId == null) return false;
@@ -360,16 +373,6 @@ class CodexPlugin implements CodexManagedApi {
 
   bool _isActiveStatus(PluginSessionStatus? status) =>
       status is PluginSessionStatusBusy || status is PluginSessionStatusRetry;
-
-  PluginSessionStatus _pluginStatus(Object? raw) {
-    final status = raw is Map ? raw.cast<String, dynamic>() : null;
-    final nested = status?["status"];
-    final nestedStatus = nested is Map ? nested.cast<String, dynamic>() : null;
-    final type = (status?["type"] ?? nestedStatus?["type"]) as String?;
-    return type == "idle"
-        ? const PluginSessionStatus.idle()
-        : const PluginSessionStatus.busy();
-  }
 
   /// Cold-start hook the runtime descriptor awaits before reporting the
   /// plugin ready: opens the WebSocket, performs the `initialize` handshake,

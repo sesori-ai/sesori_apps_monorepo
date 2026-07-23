@@ -255,7 +255,7 @@ void main() {
       expect(events.whereType<BridgeSseSessionIdle>().single.sessionID, "t-activity");
     });
 
-    test("thread/status/changed maps active→busy and idle→idle", () {
+    test("thread/status/changed maps direct active and nested idle statuses", () {
       final active = mapper.map(
         const CodexServerNotification(
           method: "thread/status/changed",
@@ -270,7 +270,9 @@ void main() {
           method: "thread/status/changed",
           params: {
             "threadId": "t-1",
-            "status": {"type": "idle"},
+            "status": {
+              "status": {"type": "idle"},
+            },
           },
         ),
       );
