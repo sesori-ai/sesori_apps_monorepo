@@ -6,9 +6,8 @@
   stack in progress
 - **Base:** `origin/main` at `583748ab`
 - **Current branch:** `setup-aware-plugin-lifecycle-runtime-mechanics`
-- **Current stage:** Stage 11-P01A — runtime mechanics verified and approved
-- **Next action:** publish P01A as the base of the smaller replacement stack,
-  then start P01B from that verified head
+- **Current stage:** Stage 11-P01A — runtime mechanics open as PR #547
+- **Next action:** monitor #547 and build P01B from its verified head
 
 ## Frozen Oversized Stack
 
@@ -33,7 +32,7 @@ run their focused verification again.
 | Done | Stage | Branch | PR state |
 |---|---|---|---|
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
-| [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | verified; ready to publish |
+| [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 open and monitored |
 | [ ] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | stack after P01A |
 | [ ] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | stack after P01B |
 | [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | stack after P01C |
@@ -123,6 +122,7 @@ run their focused verification again.
 - `dart analyze --fatal-infos` passed in `bridge/app`.
 - Architecture implementation review approved the runtime/factory ownership,
   lifecycle, dependency direction, and enabling-slice boundary with no findings.
+- Committed as `fbd02dee`, pushed, and opened as PR #547.
 
 ## Delivery Rules
 
