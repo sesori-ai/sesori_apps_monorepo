@@ -18,7 +18,6 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
@@ -114,7 +113,6 @@ class _CatalogImportEventSoak {
     final releaseWriter = Completer<void>();
     AppDatabase? database;
     SessionRepository? sessionRepository;
-    SessionMutationDispatcher? mutationDispatcher;
     _CountingSSEManager? sseManager;
     StreamSubscription<CatalogImportProgress>? importSubscription;
     Future<void>? heldWriter;
@@ -167,14 +165,12 @@ class _CatalogImportEventSoak {
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
-      mutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
       final eventTracker = SessionEventTracker(
         maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
       );
       final failureReporter = _BenchmarkFailureReporter();
       final eventService = SessionEventService(
         sessionRepository: sessionRepository,
-        sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: eventTracker,
         failureReporter: failureReporter,
@@ -402,8 +398,6 @@ class _CatalogImportEventSoak {
 
       sseManager.stop();
       sseManager = null;
-      await mutationDispatcher.dispose();
-      mutationDispatcher = null;
       await sessionRepository.dispose();
       sessionRepository = null;
       await database.close();
@@ -424,7 +418,6 @@ class _CatalogImportEventSoak {
       }
       await importSubscription?.cancel();
       sseManager?.stop();
-      if (mutationDispatcher != null) await mutationDispatcher.dispose();
       if (sessionRepository != null) await sessionRepository.dispose();
       if (database != null) await database.close();
       try {

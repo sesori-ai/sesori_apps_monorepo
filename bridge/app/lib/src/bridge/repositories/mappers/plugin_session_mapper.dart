@@ -68,7 +68,7 @@ Session enrichSharedSession({
       // owns its own attribution, so its reported projectID is kept. The
       // directory intentionally stays the session's real cwd either way.
       projectID: adoptStoredProjectId ? storedSession.projectId : session.projectID,
-      title: storedSession.title ?? session.title ?? storedSession.catalogTitle,
+      title: storedSession.title ?? storedSession.catalogTitle,
       time: mergedTime,
       hasWorktree: storedSession.worktreePath != null,
       promptDefaults: _promptDefaultsFromStoredSession(storedSession),

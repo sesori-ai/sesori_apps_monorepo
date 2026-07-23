@@ -7,26 +7,22 @@ import "../repositories/mappers/session_event_mapper.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/session_event_tracker.dart";
-import "session_mutation_dispatcher.dart";
 
 typedef SourcedBridgeEvent = ({String pluginId, int projectionUpdatedAt, BridgeSseEvent event});
 typedef _ProjectedSession = ({StoredSession binding, bool inserted});
 
 class SessionEventService {
   final SessionRepository _sessionRepository;
-  final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionEventMapper _eventMapper;
   final SessionEventTracker _eventTracker;
   final FailureReporter _failureReporter;
 
   SessionEventService({
     required SessionRepository sessionRepository,
-    required SessionMutationDispatcher sessionMutationDispatcher,
     required SessionEventMapper eventMapper,
     required SessionEventTracker eventTracker,
     required FailureReporter failureReporter,
   }) : _sessionRepository = sessionRepository,
-       _sessionMutationDispatcher = sessionMutationDispatcher,
        _eventMapper = eventMapper,
        _eventTracker = eventTracker,
        _failureReporter = failureReporter;
@@ -326,12 +322,6 @@ class SessionEventService {
     required Session session,
     required bool titleChanged,
   }) async {
-    if (titleChanged) {
-      await _sessionMutationDispatcher.captureTitle(
-        sessionId: session.id,
-        title: session.title,
-      );
-    }
     final catalogSession = await _sessionRepository.getCatalogSession(sessionId: session.id);
     if (catalogSession == null) return null;
     return BridgeSseSessionUpdated(info: catalogSession.toJson(), titleChanged: titleChanged);
