@@ -58,7 +58,7 @@ _CodexRolloutPayloadDto _$CodexRolloutPayloadDtoFromJson(
   summary: const CodexRolloutContentListConverter().fromJson(json['summary']),
   callId: json['call_id'] as String?,
   name: json['name'] as String?,
-  arguments: json['arguments'] as String?,
+  arguments: const CodexRolloutArgumentsConverter().fromJson(json['arguments']),
   input: json['input'] as String?,
   output: const CodexRolloutOutputConverter().fromJson(json['output']),
   action: json['action'] == null

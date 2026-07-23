@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
@@ -87,7 +89,7 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
     @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? summary,
     @JsonKey(name: "call_id") required String? callId,
     required String? name,
-    required String? arguments,
+    @CodexRolloutArgumentsConverter() required String? arguments,
     required String? input,
     @CodexRolloutOutputConverter() required List<CodexRolloutContentDto>? output,
     required CodexRolloutActionDto? action,
@@ -104,6 +106,26 @@ sealed class CodexRolloutContentDto with _$CodexRolloutContentDto {
   }) = _CodexRolloutContentDto;
 
   factory CodexRolloutContentDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutContentDtoFromJson(json);
+}
+
+/// Normalizes response-item arguments to their historical JSON-string shape.
+///
+/// COMPATIBILITY 2026-07-23 (Codex 0.145.x): function calls persist
+/// JSON-encoded strings, while `tool_search_call` persists the decoded JSON
+/// value directly. Keep both forms until Codex converges the rollout schema or
+/// this DTO models each response-item variant separately.
+class CodexRolloutArgumentsConverter implements JsonConverter<String?, Object?> {
+  const CodexRolloutArgumentsConverter();
+
+  @override
+  String? fromJson(Object? json) {
+    if (json == null) return null;
+    if (json is String) return json;
+    return jsonEncode(json);
+  }
+
+  @override
+  Object? toJson(String? object) => object;
 }
 
 /// Decodes typed rollout content without dropping an otherwise valid record

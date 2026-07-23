@@ -309,7 +309,7 @@ $CodexRolloutPayloadDtoCopyWith<$Res>? get payload {
 /// @nodoc
 mixin _$CodexRolloutPayloadDto {
 
- String? get id; String? get cwd; String? get timestamp;@JsonKey(name: "model_provider") String? get modelProvider;@JsonKey(name: "cli_version") String? get cliVersion; String? get model;@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? get type;@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? get role;@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? get content;@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? get summary;@JsonKey(name: "call_id") String? get callId; String? get name; String? get arguments; String? get input;@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? get output; CodexRolloutActionDto? get action;
+ String? get id; String? get cwd; String? get timestamp;@JsonKey(name: "model_provider") String? get modelProvider;@JsonKey(name: "cli_version") String? get cliVersion; String? get model;@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? get type;@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? get role;@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? get content;@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? get summary;@JsonKey(name: "call_id") String? get callId; String? get name;@CodexRolloutArgumentsConverter() String? get arguments; String? get input;@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? get output; CodexRolloutActionDto? get action;
 /// Create a copy of CodexRolloutPayloadDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -340,7 +340,7 @@ abstract mixin class $CodexRolloutPayloadDtoCopyWith<$Res>  {
   factory $CodexRolloutPayloadDtoCopyWith(CodexRolloutPayloadDto value, $Res Function(CodexRolloutPayloadDto) _then) = _$CodexRolloutPayloadDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "cli_version") String? cliVersion, String? model,@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? type,@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? role,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? content,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? summary,@JsonKey(name: "call_id") String? callId, String? name, String? arguments, String? input,@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? output, CodexRolloutActionDto? action
+ String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "cli_version") String? cliVersion, String? model,@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? type,@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? role,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? content,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? summary,@JsonKey(name: "call_id") String? callId, String? name,@CodexRolloutArgumentsConverter() String? arguments, String? input,@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? output, CodexRolloutActionDto? action
 });
 
 
@@ -399,7 +399,7 @@ $CodexRolloutActionDtoCopyWith<$Res>? get action {
 @JsonSerializable(createToJson: false)
 
 class _CodexRolloutPayloadDto implements CodexRolloutPayloadDto {
-  const _CodexRolloutPayloadDto({required this.id, required this.cwd, required this.timestamp, @JsonKey(name: "model_provider") required this.modelProvider, @JsonKey(name: "cli_version") required this.cliVersion, required this.model, @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required this.type, @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required this.role, @CodexRolloutContentListConverter() required final  List<CodexRolloutContentDto>? content, @CodexRolloutContentListConverter() required final  List<CodexRolloutContentDto>? summary, @JsonKey(name: "call_id") required this.callId, required this.name, required this.arguments, required this.input, @CodexRolloutOutputConverter() required final  List<CodexRolloutContentDto>? output, required this.action}): _content = content,_summary = summary,_output = output;
+  const _CodexRolloutPayloadDto({required this.id, required this.cwd, required this.timestamp, @JsonKey(name: "model_provider") required this.modelProvider, @JsonKey(name: "cli_version") required this.cliVersion, required this.model, @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required this.type, @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required this.role, @CodexRolloutContentListConverter() required final  List<CodexRolloutContentDto>? content, @CodexRolloutContentListConverter() required final  List<CodexRolloutContentDto>? summary, @JsonKey(name: "call_id") required this.callId, required this.name, @CodexRolloutArgumentsConverter() required this.arguments, required this.input, @CodexRolloutOutputConverter() required final  List<CodexRolloutContentDto>? output, required this.action}): _content = content,_summary = summary,_output = output;
   factory _CodexRolloutPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutPayloadDtoFromJson(json);
 
 @override final  String? id;
@@ -430,7 +430,7 @@ class _CodexRolloutPayloadDto implements CodexRolloutPayloadDto {
 
 @override@JsonKey(name: "call_id") final  String? callId;
 @override final  String? name;
-@override final  String? arguments;
+@override@CodexRolloutArgumentsConverter() final  String? arguments;
 @override final  String? input;
  final  List<CodexRolloutContentDto>? _output;
 @override@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? get output {
@@ -473,7 +473,7 @@ abstract mixin class _$CodexRolloutPayloadDtoCopyWith<$Res> implements $CodexRol
   factory _$CodexRolloutPayloadDtoCopyWith(_CodexRolloutPayloadDto value, $Res Function(_CodexRolloutPayloadDto) _then) = __$CodexRolloutPayloadDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "cli_version") String? cliVersion, String? model,@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? type,@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? role,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? content,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? summary,@JsonKey(name: "call_id") String? callId, String? name, String? arguments, String? input,@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? output, CodexRolloutActionDto? action
+ String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "cli_version") String? cliVersion, String? model,@JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) CodexRolloutPayloadType? type,@JsonKey(unknownEnumValue: CodexRolloutRole.unknown) CodexRolloutRole? role,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? content,@CodexRolloutContentListConverter() List<CodexRolloutContentDto>? summary,@JsonKey(name: "call_id") String? callId, String? name,@CodexRolloutArgumentsConverter() String? arguments, String? input,@CodexRolloutOutputConverter() List<CodexRolloutContentDto>? output, CodexRolloutActionDto? action
 });
 
 

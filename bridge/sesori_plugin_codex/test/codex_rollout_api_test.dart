@@ -364,6 +364,39 @@ void main() {
       expect(transcript.last.payload?.summary, isEmpty);
     });
 
+    test("object-form tool search arguments do not invalidate the record", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/07/23/rollout-tool-search-call.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        cwd: "/repo/app",
+        cliVersion: "0.145.0",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "tool_search_call",
+              "id": "tool-search-1",
+              "call_id": "call-1",
+              "arguments": {"query": "available tools"},
+            },
+          }),
+        ],
+      );
+
+      late List<CodexRolloutLineDto> transcript;
+      final output = _captureWarnings(() {
+        transcript = rolloutApi.readTranscript(rolloutPath: path);
+      }, level: LogLevel.verbose);
+
+      expect(output, isNot(contains("malformed rollout transcript record")));
+      expect(transcript.last.payload?.type, CodexRolloutPayloadType.unknown);
+      expect(
+        transcript.last.payload?.arguments,
+        jsonEncode({"query": "available tools"}),
+      );
+    });
+
     test("listSessions joins index + rollout header and sorts by updatedAt", () {
       _writeRollout(
         codexHome,
