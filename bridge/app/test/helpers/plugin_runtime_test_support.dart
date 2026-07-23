@@ -103,25 +103,30 @@ class TestPluginRuntime extends PluginRuntime {
     required String pluginId,
     required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
-  }) {
-    return useWithGeneration(
-      pluginId: pluginId,
-      operation: operation,
-      body: (api, _) => body(api),
-    );
-  }
-
-  @override
-  Future<T> useWithGeneration<T>({
-    required String pluginId,
-    required Enum operation,
-    required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
-    final result = await body(plugin, 1);
+    final result = await body(plugin);
+    requireCurrentGeneration(pluginId: pluginId, generation: 1, operation: operation);
+    return result;
+  }
+
+  @override
+  Future<R> useAndCommit<P, R>({
+    required String pluginId,
+    required Enum operation,
+    required Future<P> Function(BridgePluginApi api) prepare,
+    required Future<R> Function(P prepared) commit,
+  }) async {
+    final plugin = _plugins[pluginId];
+    if (plugin == null) {
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
+    }
+    final prepared = await prepare(plugin);
+    requireCurrentGeneration(pluginId: pluginId, generation: 1, operation: operation);
+    final result = await commit(prepared);
     requireCurrentGeneration(pluginId: pluginId, generation: 1, operation: operation);
     return result;
   }

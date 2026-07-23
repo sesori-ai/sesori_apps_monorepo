@@ -265,10 +265,12 @@ revision, and lifecycle snapshots. `BridgeRuntimeRunner` remains the Layer-5
 composer. `Orchestrator` owns management SSE emission and dynamic backend-event
 routing.
 
-Every plugin-backed operation uses `PluginRuntime.use`, `useStream`, or
-`useIfActive`. Catalog-only reads never acquire. Aggregate status reads inspect
-active generations only. A generation result or event is accepted only while
-its captured generation remains current.
+Every plugin-backed operation uses `PluginRuntime.use`, `useAndCommit`,
+`useStream`, or `useIfActive`. `useAndCommit` keeps backend work interruptible,
+then protects its short durable commit from generation replacement. Catalog-only
+reads never acquire. Aggregate status reads inspect active generations only. A
+generation result or event is accepted only while its captured generation
+remains current.
 
 Concrete `PluginGenerationFactory` lives at
 `bridge/app/lib/src/bridge/runtime/plugin_generation_factory.dart`; there is no
@@ -300,7 +302,7 @@ The Stage 11-P01 method migration is complete before the branch is done:
 
 | Consumer | Acquisition |
 |---|---|
-| `SessionRepository` concrete backend operations | `use` the request or persisted binding's plugin; durable writes occur only after a current-generation result. |
+| `SessionRepository` concrete backend operations | `use` the request or persisted binding's plugin; session creation uses `useAndCommit` so generation replacement cannot split backend creation from its durable binding commit. |
 | `SessionRepository` aggregate activity/status reads | `useIfActive`; never wake every plugin. |
 | `ProjectRepository` create/open/rename | No plugin acquisition; use the durable bridge catalog and local filesystem only. |
 | `ProjectActivityRepository` reconciliation | `useIfActive` for the explicitly reconciled plugin source; plugin observations are evidence for bridge-owned aggregates. |
@@ -318,14 +320,20 @@ residency to dormant and enables idle stop.
 The exact operation path is:
 
 ```text
-handler -> service -> owning repository -> PluginRuntime.use/useStream
+handler -> service -> owning repository -> PluginRuntime.use/useAndCommit/useStream
   -> per-plugin transition lock checks eligibility and setup
   -> join or start one generation
   -> increment lease before API escapes the lock
   -> run callback/stream
   -> verify captured generation before accepting result/publication
-  -> release lease in finally/cancel/error
+   -> release lease in finally/cancel/error
 ```
+
+For a backend result that must be durably bound, `useAndCommit` splits the body
+into interruptible preparation and a short protected commit. Force stop and
+terminal retirement fence new acquisitions, wait for an entered commit, then
+replace the generation; if replacement wins before commit entry, no durable
+write starts.
 
 The exact stop/replace path is:
 

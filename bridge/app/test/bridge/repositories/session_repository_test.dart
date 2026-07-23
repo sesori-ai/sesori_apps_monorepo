@@ -855,61 +855,6 @@ void main() {
       }
     });
 
-    test("createSession rolls back its binding when the plugin generation changes before persistence", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-      final runtime = createTestPluginRuntime(plugins: [plugin]);
-      final sessionDao = _BlockingBindingSessionDao(database: db);
-      final repository = SessionRepository(
-        runtime: runtime,
-        bridgeDerivedProjectPluginIds: const {},
-        sessionDao: sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-        aggregateSourceDeadline: const Duration(seconds: 5),
-      );
-
-      final creation = repository.createSession(
-        pluginId: plugin.id,
-        projectId: "/repo",
-        directory: "/repo",
-        parentSessionId: null,
-        parts: const [],
-        variant: null,
-        agent: null,
-        model: null,
-        isDedicated: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-      await sessionDao.bindingReadStarted.future;
-      runtime.generationCurrent = false;
-      sessionDao.releaseBindingRead.complete();
-
-      await expectLater(
-        creation,
-        throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.statusCode, "statusCode", 503)
-              .having((error) => error.message, "message", contains("generation changed")),
-        ),
-      );
-      expect(
-        await db.sessionDao.getSessionByBinding(
-          pluginId: plugin.id,
-          backendSessionId: plugin.createSessionResult.id,
-        ),
-        isNull,
-      );
-      expect(await db.projectsDao.getProject(projectId: "/repo"), isNull);
-    });
-
     test("createSession rejects a plugin mismatch before plugin I/O", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -2358,30 +2303,6 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _BlockingBindingSessionDao extends SessionDao {
-  _BlockingBindingSessionDao({required AppDatabase database}) : super(database);
-
-  final Completer<void> bindingReadStarted = Completer<void>();
-  final Completer<void> releaseBindingRead = Completer<void>();
-  bool _blocked = false;
-
-  @override
-  Future<SessionDto?> getSessionByBinding({
-    required String pluginId,
-    required String backendSessionId,
-  }) async {
-    if (!_blocked) {
-      _blocked = true;
-      bindingReadStarted.complete();
-      await releaseBindingRead.future;
-    }
-    return super.getSessionByBinding(
-      pluginId: pluginId,
-      backendSessionId: backendSessionId,
-    );
-  }
 }
 
 class _CountingSessionDao implements SessionDao {

@@ -210,25 +210,37 @@ class PluginRuntime {
     required String pluginId,
     required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
-  }) {
-    return useWithGeneration(
-      pluginId: pluginId,
-      operation: operation,
-      body: (api, _) => body(api),
-    );
-  }
-
-  Future<T> useWithGeneration<T>({
-    required String pluginId,
-    required Enum operation,
-    required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
     try {
-      final result = await body(lease.api, lease.generation);
+      final result = await body(lease.api);
       _requireCurrentGeneration(lease: lease, operation: operation);
       return result;
     } finally {
+      _release(lease);
+    }
+  }
+
+  /// Runs interruptible plugin work, then linearizes a short durable commit
+  /// before this generation can be replaced. Force-stop remains able to
+  /// interrupt [prepare], but waits for an entered [commit] to finish.
+  Future<R> useAndCommit<P, R>({
+    required String pluginId,
+    required Enum operation,
+    required Future<P> Function(BridgePluginApi api) prepare,
+    required Future<R> Function(P prepared) commit,
+  }) async {
+    final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
+    var commitProtected = false;
+    try {
+      final prepared = await prepare(lease.api);
+      _beginDurableCommit(lease: lease, operation: operation);
+      commitProtected = true;
+      final result = await commit(prepared);
+      _requireSameGeneration(lease: lease, operation: operation);
+      return result;
+    } finally {
+      if (commitProtected) _endDurableCommit(lease.slot);
       _release(lease);
     }
   }
@@ -459,6 +471,7 @@ class PluginRuntime {
           }
           try {
             await slot.cleanupFuture;
+            await _waitForDurableCommits(slot);
             await _cancelAndShutdownGeneration(slot: slot, plugin: slot.plugin);
           } on Object catch (error, stackTrace) {
             errors.add((error: error, stackTrace: stackTrace));
@@ -648,6 +661,7 @@ class PluginRuntime {
       startStackTrace = stackTrace;
     }
     await slot.cleanupFuture;
+    await _waitForDurableCommits(slot);
     final plugin = slot.plugin;
     slot
       ..plugin = null
@@ -699,6 +713,23 @@ class PluginRuntime {
     _publishSnapshots();
   }
 
+  void _beginDurableCommit({required _PluginLease lease, required Enum operation}) {
+    _requireCurrentGeneration(lease: lease, operation: operation);
+    lease.slot.durableCommitCount++;
+  }
+
+  void _endDurableCommit(_PluginRuntimeSlot slot) {
+    if (slot.durableCommitCount > 0) slot.durableCommitCount--;
+    if (slot.durableCommitCount != 0) return;
+    slot.durableCommitsDrained?.complete();
+    slot.durableCommitsDrained = null;
+  }
+
+  Future<void> _waitForDurableCommits(_PluginRuntimeSlot slot) {
+    if (slot.durableCommitCount == 0) return Future<void>.value();
+    return (slot.durableCommitsDrained ??= Completer<void>()).future;
+  }
+
   void _requireCurrentGeneration({required _PluginLease lease, required Enum operation}) {
     requireCurrentGeneration(
       pluginId: lease.slot.registration.descriptor.id,
@@ -706,6 +737,16 @@ class PluginRuntime {
       operation: operation,
     );
     if (!identical(lease.slot.plugin?.api, lease.api)) {
+      throw PluginOperationException(
+        operation.name,
+        statusCode: 503,
+        message: "plugin generation changed during operation",
+      );
+    }
+  }
+
+  void _requireSameGeneration({required _PluginLease lease, required Enum operation}) {
+    if (lease.slot.generation != lease.generation || !identical(lease.slot.plugin?.api, lease.api)) {
       throw PluginOperationException(
         operation.name,
         statusCode: 503,
@@ -936,10 +977,8 @@ class PluginRuntime {
   }) {
     if (slot.generation != generation) return;
     final plugin = slot.plugin;
-    if (plugin == null) return;
-    slot
-      ..plugin = null
-      ..state = PluginRuntimeState.failed;
+    if (plugin == null || slot.cleanupFuture != null) return;
+    slot.state = PluginRuntimeState.stopping;
     if (slot.commandTransitionOwner == null) {
       slot.transition = PluginRuntimeTransition.stopping;
     }
@@ -948,6 +987,12 @@ class PluginRuntime {
     late final Future<void> cleanup;
     cleanup = () async {
       try {
+        await _waitForDurableCommits(slot);
+        if (slot.generation != generation || !identical(slot.plugin, plugin)) return;
+        slot
+          ..plugin = null
+          ..state = PluginRuntimeState.failed;
+        _publishSnapshots();
         await _cancelAndShutdownGeneration(slot: slot, plugin: plugin);
       } on Object catch (error, stackTrace) {
         Log.w(
@@ -1080,6 +1125,8 @@ class _PluginRuntimeSlot {
   PluginRuntimeTransition transition = PluginRuntimeTransition.none;
   Object? commandTransitionOwner;
   int leaseCount = 0;
+  int durableCommitCount = 0;
+  Completer<void>? durableCommitsDrained;
   BridgePlugin? plugin;
   Future<BridgePlugin?>? startFuture;
   Future<void>? cleanupFuture;

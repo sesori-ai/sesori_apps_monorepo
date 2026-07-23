@@ -136,6 +136,11 @@ run their focused verification again.
 - Architecture review approved the new ownership and dependency boundaries with
   no findings. Pushed head `b51ee3cd` and resolved the project-default ownership
   review thread.
+- Follow-up review hardened session creation with `PluginRuntime.useAndCommit`:
+  backend creation remains force-interruptible, while an entered binding
+  transaction completes before force stop or terminal retirement can replace
+  the generation. Focused runtime/session/create coverage passed (98 tests) and
+  bridge-app fatal analysis remained clean.
 
 ## Delivery Rules
 

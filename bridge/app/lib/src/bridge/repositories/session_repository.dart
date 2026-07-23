@@ -134,11 +134,11 @@ class SessionRepository {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async {
-    final result = await _runtime.useWithGeneration(
+    final result = await _runtime.useAndCommit(
       pluginId: pluginId,
       operation: SessionOperation.createSession,
-      body: (plugin, generation) async {
-        final created = await plugin.createSession(
+      prepare: (plugin) {
+        return plugin.createSession(
           directory: directory,
           parentSessionId: parentSessionId,
           parts: parts.map((part) => part.toPlugin()).toList(growable: false),
@@ -149,6 +149,8 @@ class SessionRepository {
             null => null,
           },
         );
+      },
+      commit: (created) async {
         final projectionUpdatedAt = captureProjectionTimestamp();
         final createdAt = created.time?.created ?? projectionUpdatedAt;
         final updatedAt = created.time?.updated ?? createdAt;
@@ -166,11 +168,6 @@ class SessionRepository {
             );
           }
           sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
-          _runtime.requireCurrentGeneration(
-            pluginId: pluginId,
-            generation: generation,
-            operation: SessionOperation.createSession,
-          );
           await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
           await _sessionDao.insertSession(
             sessionId: sessionId,
@@ -193,11 +190,6 @@ class SessionRepository {
             updateCatalogTitle: true,
             updatedAt: updatedAt,
             projectionUpdatedAt: projectionUpdatedAt,
-          );
-          _runtime.requireCurrentGeneration(
-            pluginId: pluginId,
-            generation: generation,
-            operation: SessionOperation.createSession,
           );
         });
         return (created: created, sessionId: sessionId);

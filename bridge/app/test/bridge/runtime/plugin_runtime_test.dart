@@ -264,6 +264,77 @@ void main() {
     expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
   });
 
+  test("a force stop waits for a generation's durable commit", () async {
+    final commitStarted = Completer<void>();
+    final commitGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    final operation = runtime.useAndCommit<String, String>(
+      pluginId: "one",
+      operation: _TestOperation.durableCommit,
+      prepare: (_) async => "prepared",
+      commit: (prepared) async {
+        commitStarted.complete();
+        await commitGate.future;
+        return prepared;
+      },
+    );
+    await commitStarted.future;
+
+    var stopCompleted = false;
+    final stopping = runtime.stop(pluginId: "one", intent: PluginStopIntent.force).whenComplete(() {
+      stopCompleted = true;
+    });
+    await _waitUntil(() => runtime.snapshot.single.transition == PluginRuntimeTransition.stopping);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(stopCompleted, isFalse);
+    expect(factory.plugins.single.shutdownInvocationCount, 0);
+
+    commitGate.complete();
+    expect(await operation, "prepared");
+    expect(await stopping, isA<PluginRuntimeCommandApplied>());
+    expect(factory.plugins.single.shutdownInvocationCount, 1);
+  });
+
+  test("a terminal failure waits for a generation's durable commit", () async {
+    final commitStarted = Completer<void>();
+    final commitGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final plugin = factory.plugins.single;
+
+    final operation = runtime.useAndCommit<String, String>(
+      pluginId: "one",
+      operation: _TestOperation.durableCommit,
+      prepare: (_) async => "prepared",
+      commit: (prepared) async {
+        commitStarted.complete();
+        await commitGate.future;
+        return prepared;
+      },
+    );
+    await commitStarted.future;
+
+    plugin.statuses.add(const PluginFailed(reason: "terminal", cause: null));
+    await _waitUntil(() => runtime.snapshot.single.transition == PluginRuntimeTransition.stopping);
+    expect(plugin.shutdownInvocationCount, 0);
+
+    commitGate.complete();
+    expect(await operation, "prepared");
+    await _waitUntil(
+      () =>
+          runtime.snapshot.single.state == PluginRuntimeState.failed &&
+          runtime.snapshot.single.transition == PluginRuntimeTransition.none,
+    );
+    expect(plugin.shutdownInvocationCount, 1);
+  });
+
   test("restart keeps its transition serialized through the successor start", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
@@ -460,6 +531,7 @@ enum _TestOperation {
   stream,
   duringStop,
   forceFenced,
+  durableCommit,
   retry,
 }
 
