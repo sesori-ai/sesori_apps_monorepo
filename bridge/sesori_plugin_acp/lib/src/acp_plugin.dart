@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "acp_approval_registry.dart";
+import "acp_command_listener.dart";
 import "acp_command_tracker.dart";
 import "acp_event_mapper.dart";
 import "acp_process_factory.dart";
@@ -36,9 +37,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required this.launchSpec,
     required String launchDirectory,
     required this.eventMapper,
+    required AcpCommandTracker commandTracker,
     AcpProcessFactory? processFactory,
   }) : launchDirectory = normalizeProjectDirectory(directory: launchDirectory),
        _processFactory = processFactory,
+       _commandTracker = commandTracker,
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
 
   @override
@@ -63,7 +66,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   /// Snapshot of the agent's advertised slash commands, fed by the
   /// notification listener and served by [getCommands].
-  final AcpCommandTracker _commandTracker = AcpCommandTracker();
+  final AcpCommandTracker _commandTracker;
+  AcpCommandListener? _commandListener;
 
   /// sessionId -> the canonical directory the session lives in. Populated on
   /// create and on every `session/list` hit, so a turn/history load runs in
@@ -245,10 +249,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       _client = client;
       try {
         await client.connect();
+        _commandListener = AcpCommandListener(
+          notifications: client.notifications,
+          tracker: _commandTracker,
+        );
         _notificationSubscription = client.notifications.listen((notification) {
-          // The command snapshot consumes every notification — including a
-          // suppressed resume replay, whose advertised commands are current.
-          _commandTracker.consume(notification);
           if (notification.method == AcpMethods.sessionUpdate) {
             final sid = notification.params["sessionId"];
             final update = notification.params["update"];
@@ -270,6 +275,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         if (!_connected.isClosed) _connected.add(null);
         return true;
       } catch (error) {
+        await _commandListener?.dispose();
+        _commandListener = null;
         await client.dispose();
         _client = null;
         _connectFuture = null;
@@ -352,6 +359,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     onConnectionReset();
     final sub = _notificationSubscription;
     _notificationSubscription = null;
+    final commandListener = _commandListener;
+    _commandListener = null;
     final registry = _approvalRegistry;
     _approvalRegistry = null;
     final client = _client;
@@ -360,6 +369,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       await sub?.cancel();
     } on Object catch (e, st) {
       Log.w("[$id] failed to cancel notification subscription on reset", e, st);
+    }
+    try {
+      await commandListener?.dispose();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to cancel command subscription on reset", e, st);
     }
     try {
       await registry?.dispose();
@@ -1171,6 +1185,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       haltClassifier: eventMapper.classifyHaltNotice,
     );
     StreamSubscription<AcpNotification>? sub;
+    AcpCommandListener? commandListener;
     try {
       await replayClient.connect();
       final replayInit = await _initialize(replayClient);
@@ -1186,13 +1201,16 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       }
       var received = 0;
       BridgeSseSessionsUpdated? deferredCommandRefresh;
+      commandListener = AcpCommandListener(
+        notifications: replayClient.notifications,
+        tracker: _commandTracker,
+      );
       sub = replayClient.notifications.listen((notification) {
         if (notification.method == AcpMethods.sessionUpdate) {
           received++;
           collector.consume(notification.params);
           final update = notification.params["update"];
           if (update is Map && update["sessionUpdate"] == "available_commands_update") {
-            _commandTracker.consume(notification);
             final refreshes = eventMapper.map(notification).whereType<BridgeSseSessionsUpdated>();
             if (refreshes.isNotEmpty) deferredCommandRefresh = refreshes.last;
           }
@@ -1274,6 +1292,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         await sub?.cancel();
       } on Object catch (e, st) {
         Log.w("[$id] failed to cancel replay subscription", e, st);
+      }
+      try {
+        await commandListener?.dispose();
+      } on Object catch (e, st) {
+        Log.w("[$id] failed to cancel replay command subscription", e, st);
       }
       try {
         await replayClient.dispose();
@@ -1455,6 +1478,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       Log.w("[$id] failed to cancel notification subscription", e, st);
     } finally {
       _notificationSubscription = null;
+    }
+    try {
+      await _commandListener?.dispose();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to cancel command subscription", e, st);
+    } finally {
+      _commandListener = null;
     }
     try {
       await _approvalRegistry?.dispose();

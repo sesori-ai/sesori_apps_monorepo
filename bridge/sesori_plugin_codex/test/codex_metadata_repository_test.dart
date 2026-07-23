@@ -36,11 +36,7 @@ void main() {
         environment: {"CODEX_HOME": codexHome.path},
       );
       final metadata = CodexMetadataRepository(
-        skillReader: CodexSkillReader(
-          environment: {"CODEX_HOME": codexHome.path},
-        ),
         configReader: configReader,
-        launchDirectory: launchProject.path,
       );
       return (
         metadata: metadata,
@@ -52,55 +48,6 @@ void main() {
         ),
       );
     }
-
-    group("getCommands", () {
-      test("scopes project-local skills to the selected project directory", () {
-        _writeSkill(codexHome, "skills/shared/SKILL.md", name: "shared");
-        _writeSkill(
-          launchProject,
-          ".codex/skills/launch-only/SKILL.md",
-          name: "launch-only",
-        );
-        _writeSkill(
-          otherProject,
-          ".codex/skills/other-only/SKILL.md",
-          name: "other-only",
-        );
-
-        final repository = newRepositories().metadata;
-        expect(
-          repository.getCommands(projectId: launchProject.path).map((c) => c.name).toList(),
-          equals(["launch-only", "shared"]),
-        );
-        expect(
-          repository.getCommands(projectId: otherProject.path).map((c) => c.name).toList(),
-          equals(["other-only", "shared"]),
-        );
-      });
-
-      test("null projectId falls back to the launch directory", () {
-        _writeSkill(
-          launchProject,
-          ".codex/skills/launch-only/SKILL.md",
-          name: "launch-only",
-        );
-
-        final commands = newRepositories().metadata.getCommands(projectId: null);
-        expect(commands.map((c) => c.name).toList(), equals(["launch-only"]));
-      });
-
-      test("empty skill descriptions map to null", () {
-        _writeSkill(
-          launchProject,
-          ".codex/skills/terse/SKILL.md",
-          name: "terse",
-          description: "",
-        );
-
-        final command = newRepositories().metadata.getCommands(projectId: launchProject.path).single;
-        expect(command.description, isNull);
-      });
-    });
 
     group("resolveModelDefaults", () {
       test("the selected project's own latest rollout wins over a newer rollout elsewhere", () {
@@ -248,26 +195,6 @@ void main() {
       });
     });
   });
-}
-
-void _writeSkill(
-  Directory root,
-  String relPath, {
-  required String name,
-  String description = "A skill",
-}) {
-  final full = p.join(root.path, relPath);
-  Directory(p.dirname(full)).createSync(recursive: true);
-  File(full).writeAsStringSync(
-    [
-      "---",
-      "name: $name",
-      if (description.isNotEmpty) "description: $description",
-      "---",
-      "",
-      "Body.",
-    ].join("\n"),
-  );
 }
 
 void _writeRollout(

@@ -23,6 +23,7 @@ void main() {
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        commandTracker: AcpCommandTracker(),
         processFactory: (_) async => fake,
       );
       emitted.clear();

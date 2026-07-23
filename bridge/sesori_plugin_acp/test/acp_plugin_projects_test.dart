@@ -26,6 +26,7 @@ void main() {
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        commandTracker: AcpCommandTracker(),
         processFactory: (_) async {
           final fake = FakeAcpProcess();
           fakes.add(fake);
@@ -729,6 +730,7 @@ void main() {
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        commandTracker: AcpCommandTracker(),
         processFactory: _throwReplayProcess,
       );
       addTearDown(failingPlugin.dispose);
@@ -842,6 +844,7 @@ class _RegistryCapturingAcpPlugin extends AcpPlugin {
     required super.launchSpec,
     required super.launchDirectory,
     required super.eventMapper,
+    required super.commandTracker,
     super.processFactory,
   });
 

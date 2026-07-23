@@ -12,6 +12,8 @@ class CursorCatalogProbeApi {
   AcpInitializeResult? _initializeResult;
   bool _disposed = false;
 
+  Stream<AcpNotification> get notifications => _client.notifications;
+
   /// Connects and performs Cursor's ACP v1 initialize/authenticate handshake.
   Future<AcpInitializeResult> open({required Duration timeout}) async {
     if (_disposed) throw StateError("CursorCatalogProbeApi is disposed");

@@ -83,6 +83,69 @@ void main() {
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
     });
 
+    test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "data": [
+              {
+                "cwd": "/work/sample",
+                "skills": [
+                  {
+                    "name": "review",
+                    "description": "Review changes",
+                    "shortDescription": null,
+                    "interface": null,
+                    "enabled": true,
+                  },
+                ],
+              },
+            ],
+          },
+        ),
+        const _Response(
+          result: {
+            "thread": {"id": "t-existing", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-skill"}),
+        const _Response(result: {}),
+      ]);
+
+      final commands = await plugin.getCommands(projectId: "/work/sample");
+      await plugin.sendCommand(
+        sessionId: "t-existing",
+        command: "review",
+        arguments: "staged changes",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await plugin.sendCommand(
+        sessionId: "t-existing",
+        command: "compact",
+        arguments: "",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(commands.map((command) => command.name), ["review", "compact"]);
+      expect(fake.sentMethods, [
+        "initialize",
+        "skills/list",
+        "thread/resume",
+        "turn/start",
+        "thread/compact/start",
+      ]);
+      expect(fake.sentParamsFor("skills/list"), {
+        "cwds": ["/work/sample"],
+      });
+      final input = fake.sentParamsFor("turn/start")["input"] as List;
+      expect(input.single["text"], r"$review staged changes");
+    });
+
     test("a live event emitted during the first turn is scoped to the new session's directory", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),

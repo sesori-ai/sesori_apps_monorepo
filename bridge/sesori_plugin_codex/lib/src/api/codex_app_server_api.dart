@@ -1,7 +1,9 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../codex_app_server_client.dart";
+import "models/codex_skill_dto.dart";
 import "models/codex_thread_dto.dart";
+import "models/codex_turn_input_dto.dart";
 
 /// Layer-1 typed boundary for migrated Codex app-server operations.
 class CodexAppServerApi {
@@ -31,6 +33,45 @@ class CodexAppServerApi {
       params: {"threadId": threadId},
     );
     return _decodeResponse(result: result, operation: "thread/resume");
+  }
+
+  Future<CodexSkillsListResponseDto> listSkills({required String cwd}) async {
+    final result = await _client.request(
+      method: "skills/list",
+      params: {
+        "cwds": [cwd],
+      },
+    );
+    if (result is! Map) {
+      throw StateError(
+        "expected a Codex skills response object, got ${result.runtimeType}",
+      );
+    }
+    return CodexSkillsListResponseDto.fromJson(
+      result.cast<String, dynamic>(),
+    );
+  }
+
+  Future<void> startTurn({
+    required String threadId,
+    required List<CodexTurnInputDto> input,
+    required String? model,
+    required String? effort,
+  }) async {
+    final params = <String, dynamic>{
+      "threadId": threadId,
+      "input": input.map((item) => item.toJson()).toList(growable: false),
+    };
+    if (model != null) params["model"] = model;
+    if (effort != null) params["effort"] = effort;
+    await _client.request(method: "turn/start", params: params);
+  }
+
+  Future<void> compactThread({required String threadId}) async {
+    await _client.request(
+      method: "thread/compact/start",
+      params: {"threadId": threadId},
+    );
   }
 
   CodexThreadEnvelopeDto? decodeThreadStartedParams({

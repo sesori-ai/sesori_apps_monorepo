@@ -24,6 +24,7 @@ void main() {
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        commandTracker: AcpCommandTracker(),
         processFactory: (_) async => fake,
       );
       // Prime the session's directory so the replay skips the live warm-up

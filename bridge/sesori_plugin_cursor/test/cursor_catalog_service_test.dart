@@ -22,6 +22,7 @@ void main() {
         totalTimeout: const Duration(seconds: 12),
         maxCandidates: 8,
       );
+      addTearDown(service.dispose);
     });
 
     test("loads candidates most-recent-first and stops when complete", () async {

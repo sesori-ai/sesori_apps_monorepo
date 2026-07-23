@@ -1044,6 +1044,7 @@ void main() {
       Map<String?, List<Map<String, dynamic>>>? listSessionsByScope,
       bool rejectUnfiltered = false,
       List<String>? loadOrder,
+      List<Map<String, dynamic>>? availableCommands,
     }) {
       final answered = <(FakeAcpProcess, Object?)>{};
       var running = true;
@@ -1081,6 +1082,20 @@ void main() {
                 case "session/load":
                   final sid = (frame["params"] as Map).cast<String, dynamic>()["sessionId"] as String;
                   loadOrder?.add(sid);
+                  if (availableCommands != null) {
+                    fake.emit({
+                      "jsonrpc": "2.0",
+                      "method": "session/update",
+                      "params": {
+                        "sessionId": sid,
+                        "update": {
+                          "sessionUpdate": "available_commands_update",
+                          "availableCommands": availableCommands,
+                        },
+                      },
+                    });
+                    await Future<void>.delayed(Duration.zero);
+                  }
                   result = loadResults[sid] ?? const {};
                 default:
                   answered.remove((fake, id));
@@ -1094,6 +1109,23 @@ void main() {
       }());
       return () => running = false;
     }
+
+    test("discovers commands while catalog sessions are loaded", () async {
+      final stop = autoAnswer(
+        listSessions: [listSession("session", updatedAt: 1000)],
+        loadResults: {
+          "session": loadResult(currentModel: "gpt-5.4", reasoning: true),
+        },
+        availableCommands: const [
+          {"name": "review", "description": "Review changes"},
+        ],
+      );
+
+      final commands = await plugin.getCommands(projectId: cwd);
+      stop();
+
+      expect(commands.map((command) => command.name), ["review", "compact"]);
+    });
 
     test("seeds provisional effort when the newest session is non-reasoning but an older one is reasoning", () async {
       final loadOrder = <String>[];

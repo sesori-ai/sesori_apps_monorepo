@@ -15,9 +15,7 @@ CodexPlugin createInjectedCodexPlugin({
   final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
   final configReader = CodexConfigReader(environment: environment);
   final metadataRepository = CodexMetadataRepository(
-    skillReader: CodexSkillReader(environment: environment),
     configReader: configReader,
-    launchDirectory: projectCwd,
   );
   return CodexPlugin.injected(
     serverUrl: serverUrl,
