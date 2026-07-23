@@ -253,6 +253,7 @@ class PluginRuntime {
     StreamSubscription<T>? sourceSubscription;
     _PluginLease? lease;
     Future<void>? termination;
+    Future<void> Function()? generationCancellation;
     var cancelled = false;
     var released = false;
 
@@ -266,7 +267,12 @@ class PluginRuntime {
 
     late final StreamController<T> controller;
 
-    Future<void> finish({Object? error, StackTrace? stackTrace, required bool cancelSource}) {
+    Future<void> finish({
+      Object? error,
+      StackTrace? stackTrace,
+      required bool cancelSource,
+      bool surfaceCancellationError = false,
+    }) {
       return termination ??= () async {
         if (error != null && !cancelled && !controller.isClosed) {
           controller.addError(error, stackTrace);
@@ -278,6 +284,7 @@ class PluginRuntime {
         try {
           if (cancelSource) await sourceSubscription?.cancel();
         } on Object catch (cancelError, cancelStackTrace) {
+          if (surfaceCancellationError) rethrow;
           if (error == null && !cancelled && !controller.isClosed) {
             controller.addError(cancelError, cancelStackTrace);
           } else {
@@ -288,8 +295,14 @@ class PluginRuntime {
             );
           }
         } finally {
+          final activeLease = lease;
+          final cancellation = generationCancellation;
+          if (activeLease != null && cancellation != null) {
+            activeLease.slot.operationStreamCancellations.remove(cancellation);
+          }
+          generationCancellation = null;
           releaseLease();
-          if (!cancelled && !controller.isClosed) await controller.close();
+          if (!cancelled && !controller.isClosed) unawaited(controller.close());
         }
       }();
     }
@@ -303,6 +316,8 @@ class PluginRuntime {
             releaseLease();
             return;
           }
+          generationCancellation = () => finish(cancelSource: true);
+          acquired.slot.operationStreamCancellations.add(generationCancellation!);
           sourceSubscription = body(acquired.api, acquired.generation).listen(
             (value) {
               try {
@@ -333,11 +348,8 @@ class PluginRuntime {
       onResume: () => sourceSubscription?.resume(),
       onCancel: () async {
         cancelled = true;
-        try {
-          await sourceSubscription?.cancel();
-        } finally {
-          releaseLease();
-        }
+        if (termination != null) return;
+        await finish(cancelSource: true, surfaceCancellationError: true);
       },
     );
     return controller.stream;
@@ -471,6 +483,7 @@ class PluginRuntime {
           }
           try {
             await slot.cleanupFuture;
+            await slot.commandTransitionCompleter?.future;
             await _waitForDurableCommits(slot);
             await _cancelAndShutdownGeneration(slot: slot, plugin: slot.plugin);
           } on Object catch (error, stackTrace) {
@@ -491,6 +504,9 @@ class PluginRuntime {
     required PluginStopIntent intent,
   }) async {
     final slot = _requireSlot(pluginId);
+    if (_shuttingDown) {
+      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: "bridge is shutting down");
+    }
     if (!slot.eligible) {
       return PluginRuntimeCommandConflict(
         snapshot: _snapshotFor(slot),
@@ -518,8 +534,10 @@ class PluginRuntime {
     }
     final hadPlugin = slot.plugin != null || slot.startFuture != null;
     final transitionOwner = Object();
+    final transitionCompleter = Completer<void>();
     slot
       ..commandTransitionOwner = transitionOwner
+      ..commandTransitionCompleter = transitionCompleter
       ..transition = PluginRuntimeTransition.stopping;
     _publishSnapshots();
     String? failureMessage;
@@ -545,9 +563,11 @@ class PluginRuntime {
       if (identical(slot.commandTransitionOwner, transitionOwner)) {
         slot
           ..commandTransitionOwner = null
+          ..commandTransitionCompleter = null
           ..transition = PluginRuntimeTransition.none;
       }
       _publishSnapshots();
+      if (!transitionCompleter.isCompleted) transitionCompleter.complete();
     }
     if (failureMessage != null) {
       return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: failureMessage);
@@ -562,6 +582,9 @@ class PluginRuntime {
     required PluginStopIntent intent,
   }) async {
     final slot = _requireSlot(pluginId);
+    if (_shuttingDown) {
+      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: "bridge is shutting down");
+    }
     if (!slot.eligible) {
       return PluginRuntimeCommandConflict(
         snapshot: _snapshotFor(slot),
@@ -589,8 +612,10 @@ class PluginRuntime {
     }
 
     final transitionOwner = Object();
+    final transitionCompleter = Completer<void>();
     slot
       ..commandTransitionOwner = transitionOwner
+      ..commandTransitionCompleter = transitionCompleter
       ..transition = PluginRuntimeTransition.restarting;
     _publishSnapshots();
     String? failureMessage;
@@ -632,9 +657,11 @@ class PluginRuntime {
       if (identical(slot.commandTransitionOwner, transitionOwner)) {
         slot
           ..commandTransitionOwner = null
+          ..commandTransitionCompleter = null
           ..transition = PluginRuntimeTransition.none;
       }
       _publishSnapshots();
+      if (!transitionCompleter.isCompleted) transitionCompleter.complete();
     }
     if (failureMessage != null) {
       return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: failureMessage);
@@ -1021,10 +1048,13 @@ class PluginRuntime {
 
   Future<void> _cancelGenerationSubscriptions(_PluginRuntimeSlot slot) async {
     final subscriptions = [slot.statusSubscription, slot.eventSubscription];
+    final operationStreamCancellations = slot.operationStreamCancellations.toList(growable: false);
     slot
       ..statusSubscription = null
-      ..eventSubscription = null;
+      ..eventSubscription = null
+      ..operationStreamCancellations.clear();
     await Future.wait([
+      for (final cancel in operationStreamCancellations) cancel(),
       for (final subscription in subscriptions)
         if (subscription != null) subscription.cancel(),
     ]);
@@ -1052,7 +1082,7 @@ class PluginRuntime {
   }
 
   bool _isRoutable(_PluginRuntimeSlot slot) {
-    return slot.eligible && !_blocksAcquisition(slot) && _hasOperationalGeneration(slot);
+    return slot.eligible && slot.startAllowed && !_blocksAcquisition(slot) && _hasOperationalGeneration(slot);
   }
 
   bool _hasOperationalGeneration(_PluginRuntimeSlot slot) {
@@ -1124,6 +1154,7 @@ class _PluginRuntimeSlot {
   PluginRuntimeState state = PluginRuntimeState.disabled;
   PluginRuntimeTransition transition = PluginRuntimeTransition.none;
   Object? commandTransitionOwner;
+  Completer<void>? commandTransitionCompleter;
   int leaseCount = 0;
   int durableCommitCount = 0;
   Completer<void>? durableCommitsDrained;
@@ -1135,6 +1166,7 @@ class _PluginRuntimeSlot {
   StreamSubscription<PluginStatus>? statusSubscription;
   // ignore: cancel_subscriptions - generation ownership cancels these in PluginRuntime.
   StreamSubscription<BridgeSseEvent>? eventSubscription;
+  final Set<Future<void> Function()> operationStreamCancellations = <Future<void> Function()>{};
 }
 
 class _PluginLease {

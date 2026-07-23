@@ -179,6 +179,89 @@ void main() {
     expect(bodyCalled, isFalse);
   });
 
+  test("generation teardown cancels active operation streams and releases their leases", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final source = StreamController<int>();
+    final sourceCancelled = Completer<void>();
+    source.onCancel = sourceCancelled.complete;
+    final completion = expectLater(
+      runtime.useStream(
+        pluginId: "one",
+        operation: _TestOperation.stream,
+        body: (_, _) => source.stream,
+      ),
+      emitsDone,
+    );
+    await _waitUntil(() => runtime.snapshot.single.leaseCount == 1 && source.hasListener);
+
+    expect(
+      await runtime.stop(pluginId: "one", intent: PluginStopIntent.force),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+
+    await sourceCancelled.future;
+    await completion;
+    expect(runtime.snapshot.single.leaseCount, 0);
+    await source.close();
+  });
+
+  test("generation teardown does not wait for a paused operation stream consumer", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final source = StreamController<int>();
+    final sourceCancelled = Completer<void>();
+    source.onCancel = sourceCancelled.complete;
+    final subscription = runtime
+        .useStream(
+          pluginId: "one",
+          operation: _TestOperation.stream,
+          body: (_, _) => source.stream,
+        )
+        .listen((_) {});
+    await _waitUntil(() => runtime.snapshot.single.leaseCount == 1 && source.hasListener);
+    subscription.pause();
+
+    final result = await runtime
+        .stop(pluginId: "one", intent: PluginStopIntent.force)
+        .timeout(const Duration(seconds: 1));
+
+    expect(result, isA<PluginRuntimeCommandApplied>());
+    await sourceCancelled.future;
+    expect(runtime.snapshot.single.leaseCount, 0);
+    subscription.resume();
+    await subscription.cancel();
+    await source.close();
+  });
+
+  test("revoking start permission removes an active generation from routing", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    runtime.applyAccess(
+      entries: const [
+        PluginRuntimeAccess(pluginId: "one", eligible: true, startAllowed: false),
+      ],
+    );
+
+    expect(runtime.activePluginIds, isEmpty);
+    expect(runtime.isCurrentGeneration(pluginId: "one", generation: 1), isFalse);
+    expect(
+      await runtime.useIfActive(
+        pluginId: "one",
+        operation: _TestOperation.activeRead,
+        body: (_, _) async => "unexpected",
+      ),
+      isNull,
+    );
+  });
+
   test("a safe stop blocks acquisitions once its transition begins", () async {
     final shutdownGate = Completer<void>();
     final factory = _FakeGenerationFactory(
@@ -230,6 +313,28 @@ void main() {
     expect(runtime.snapshot.single.generation, 1);
     expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
+  });
+
+  test("runtime disposal waits for command-owned generation teardown", () async {
+    final shutdownGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(api: _FakeApi(), shutdownGate: shutdownGate.future),
+    );
+    final runtime = _runtime(factory: factory);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    final stopping = runtime.stop(pluginId: "one", intent: PluginStopIntent.safe);
+    await _waitUntil(() => factory.plugins.single.shutdownInvocationCount == 1);
+    var disposeCompleted = false;
+    final disposing = runtime.dispose().whenComplete(() => disposeCompleted = true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(disposeCompleted, isFalse);
+
+    shutdownGate.complete();
+    expect(await stopping, isA<PluginRuntimeCommandApplied>());
+    await disposing;
   });
 
   test("a force stop fences an operation that completes after shutdown", () async {

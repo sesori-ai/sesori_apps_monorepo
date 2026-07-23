@@ -612,7 +612,7 @@ the listed source files and committed with their stage.
 - config model/repository and local plugin commands;
 - unconditional plugin CLI option registration;
 - descriptor setup states/probes without installation;
-- deterministic eligibility, OpenCode-preferred default, and zero-plugin startup;
+- alphabetical eligibility/default and zero-plugin startup;
 - snapshot setup API and compatible plugin list.
 
 ### Stage 11-P01A — runtime mechanics

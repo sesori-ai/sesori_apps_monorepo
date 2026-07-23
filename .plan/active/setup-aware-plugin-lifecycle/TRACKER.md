@@ -118,11 +118,15 @@ run their focused verification again.
 - Started a clean replacement branch from `origin/main` at `583748ab`.
 - Added the concrete `PluginGenerationFactory` and `PluginRuntime` kernel plus
   focused runtime tests. The bridge composition remains unchanged in this slice.
-- Focused generation-factory and runtime tests passed (36 tests).
+- Focused generation-factory and runtime tests passed (40 tests).
 - `dart analyze --fatal-infos` passed in `bridge/app`.
 - Architecture implementation review approved the runtime/factory ownership,
   lifecycle, dependency direction, and enabling-slice boundary with no findings.
 - Committed as `fbd02dee`, pushed, and opened as PR #547.
+- PR review hardened generation-owned stream cancellation, command/disposal
+  serialization, and access revocation. The second architecture pass identified
+  a paused-consumer teardown dependency; source cancellation and lease release
+  now complete without waiting for downstream `done` delivery.
 
 ## Delivery Rules
 
