@@ -6,8 +6,8 @@ import "package:acp_plugin/acp_plugin.dart";
 /// environment, so `CURSOR_API_KEY` / `CURSOR_AUTH_TOKEN` (or a prior
 /// `cursor-agent login`) are passed through automatically.
 abstract final class CursorBinary {
-  /// The stable Cursor CLI executable. The user-facing `agent` command can be
-  /// registered as shell state, which is unavailable to a headless bridge.
+  /// The current installer exposes both names for the same payload. Use
+  /// `cursor-agent` because older installs may not provide the `agent` symlink.
   static const String defaultBinary = "cursor-agent";
 
   static AcpLaunchSpec launchSpec({

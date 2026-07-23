@@ -64,7 +64,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   /// silently no-op model switching and history replay, so the experience is
   /// broken in ways the user can't see. Keep this target aligned with the
   /// latest verified Cursor CLI build.
-  static const String minVersion = "2026.07.16";
+  static const String minVersion = "2026.07.20";
 
   /// CLI option naming the Cursor CLI binary (path or PATH name). Declared
   /// as the bare local name — the bridge's [PluginCliOptionsMapper] namespaces
