@@ -3,7 +3,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, jsonSchemaForLog;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "models/codex_rollout_dto.dart";
@@ -259,25 +259,14 @@ class CodexRolloutApi {
     for (var i = 0; i < source.length; i++) {
       final line = source[i];
       if (line.trim().isEmpty) continue;
-      Object? json;
-      var parsedJson = false;
+      Map<String, dynamic>? json;
       try {
-        json = jsonDecode(line);
-        parsedJson = true;
-        decoded.add(
-          CodexRolloutLineDto.fromJson(
-            (json! as Map).cast<String, dynamic>(),
-          ),
-        );
+        json = jsonDecodeMap(line);
+        decoded.add(CodexRolloutLineDto.fromJson(json));
       } on Object catch (error) {
         final isExpectedPartialLine = ignoreMalformedLastLine && i == source.length - 1;
         if (malformedWarning != null && !isExpectedPartialLine) {
-          final schema = parsedJson
-              ? jsonSchemaForLog(
-                  value: json,
-                  enumKeyNames: const {"type", "role"},
-                )
-              : "unparseable-json";
+          final schema = json != null ? _rolloutSchemaForLog(value: json) : "unparseable-json";
           Log.w(
             "$malformedWarning "
             "(recordIndex=${i + 1}, schema=$schema, "
@@ -311,6 +300,132 @@ class CodexRolloutApi {
     return const LineSplitter().convert(utf8.decode(bytes));
   }
 }
+
+const _rolloutSchemaKeyNames = {
+  "timestamp",
+  "type",
+  "payload",
+  "id",
+  "cwd",
+  "model_provider",
+  "cli_version",
+  "model",
+  "role",
+  "content",
+  "summary",
+  "call_id",
+  "name",
+  "arguments",
+  "input",
+  "output",
+  "action",
+  "query",
+  "text",
+};
+
+/// Describes malformed Codex records without logging source or tool input.
+String _rolloutSchemaForLog({required Object? value}) {
+  final schema = _renderRolloutSchemaForLog(
+    value: value,
+    path: const <String>[],
+    depth: 0,
+    budget: _RolloutSchemaBudget(remainingNodes: 128),
+  );
+  const maxSchemaLength = 2048;
+  if (schema.length <= maxSchemaLength) return schema;
+  return "${schema.substring(0, maxSchemaLength - 1)}…";
+}
+
+String _renderRolloutSchemaForLog({
+  required Object? value,
+  required List<String>? path,
+  required int depth,
+  required _RolloutSchemaBudget budget,
+}) {
+  const maxDepth = 5;
+  const maxEntries = 16;
+  const maxListItems = 8;
+
+  if (!budget.takeNode()) return "…";
+  if (value == null) return "null";
+  if (value is String) {
+    if (path != null && _isRolloutEnumValuePath(path: path) && _schemaIdentifierPattern.hasMatch(value)) {
+      return 'enum("$value")';
+    }
+    return "String";
+  }
+  if (value is bool) return "bool";
+  if (value is num) return value.runtimeType.toString();
+  if (value is List) {
+    if (depth >= maxDepth) return "List";
+    if (value.isEmpty) return "List<empty>";
+    final itemSchemas = <String>{};
+    var visitedItems = 0;
+    for (final item in value.take(maxListItems)) {
+      if (budget.isExhausted) break;
+      itemSchemas.add(
+        _renderRolloutSchemaForLog(
+          value: item,
+          path: path,
+          depth: depth + 1,
+          budget: budget,
+        ),
+      );
+      visitedItems += 1;
+    }
+    final suffix = value.length > visitedItems ? (itemSchemas.isEmpty ? "…" : ",…") : "";
+    return "List<${itemSchemas.join("|")}$suffix>";
+  }
+  if (value is Map) {
+    if (depth >= maxDepth) return "Map";
+    final entries = <String>[];
+    var visitedEntries = 0;
+    for (final entry in value.entries.take(maxEntries)) {
+      if (budget.isExhausted) break;
+      final key = entry.key;
+      final keyIsSafe = key is String && _rolloutSchemaKeyNames.contains(key) && _schemaKeyPattern.hasMatch(key);
+      final safeKey = keyIsSafe ? key : "<redacted-key>";
+      entries.add(
+        "$safeKey:${_renderRolloutSchemaForLog(
+          value: entry.value,
+          path: keyIsSafe && path != null ? [...path, key] : null,
+          depth: depth + 1,
+          budget: budget,
+        )}",
+      );
+      visitedEntries += 1;
+    }
+    final suffix = value.length > visitedEntries ? (entries.isEmpty ? "…" : ",…") : "";
+    return "{${entries.join(",")}$suffix}";
+  }
+  return value.runtimeType.toString();
+}
+
+bool _isRolloutEnumValuePath({required List<String> path}) {
+  if (path.length == 1) return path.single == "type";
+  return path.length == 2 && path.first == "payload" && (path.last == "type" || path.last == "role");
+}
+
+class _RolloutSchemaBudget {
+  _RolloutSchemaBudget({required this.remainingNodes});
+
+  int remainingNodes;
+
+  bool get isExhausted => remainingNodes == 0;
+
+  bool takeNode() {
+    if (isExhausted) return false;
+    remainingNodes -= 1;
+    return true;
+  }
+}
+
+final RegExp _schemaIdentifierPattern = RegExp(
+  r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$",
+);
+final RegExp _schemaKeyPattern = RegExp(
+  r"^[A-Za-z_][A-Za-z0-9_.-]{0,63}$",
+);
 
 /// Keeps decoder diagnostics useful without letting an exception echo raw JSON.
 String _decodeErrorForLog(Object error) {

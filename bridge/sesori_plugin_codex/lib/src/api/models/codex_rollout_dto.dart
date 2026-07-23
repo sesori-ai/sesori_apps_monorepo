@@ -89,7 +89,7 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
     @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? summary,
     @JsonKey(name: "call_id") required String? callId,
     required String? name,
-    @CodexRolloutArgumentsConverter() required String? arguments,
+    required String? arguments,
     required String? input,
     @CodexRolloutOutputConverter() required List<CodexRolloutContentDto>? output,
     required CodexRolloutActionDto? action,
@@ -106,26 +106,6 @@ sealed class CodexRolloutContentDto with _$CodexRolloutContentDto {
   }) = _CodexRolloutContentDto;
 
   factory CodexRolloutContentDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutContentDtoFromJson(json);
-}
-
-/// Normalizes response-item arguments to their historical JSON-string shape.
-///
-/// COMPATIBILITY 2026-07-23 (Codex 0.145.x): function calls persist
-/// JSON-encoded strings, while `tool_search_call` persists the decoded JSON
-/// value directly. Keep both forms until Codex converges the rollout schema or
-/// this DTO models each response-item variant separately.
-class CodexRolloutArgumentsConverter implements JsonConverter<String?, Object?> {
-  const CodexRolloutArgumentsConverter();
-
-  @override
-  String? fromJson(Object? json) {
-    if (json == null) return null;
-    if (json is String) return json;
-    return jsonEncode(json);
-  }
-
-  @override
-  Object? toJson(String? object) => object;
 }
 
 /// Decodes typed rollout content without dropping an otherwise valid record
@@ -196,22 +176,31 @@ class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
   }
 }
 
-/// Normalizes the overloaded `summary` field before generated DTO decoding.
+/// Normalizes overloaded payload fields before generated DTO decoding.
 ///
 /// Reasoning response items use a typed content list, while `turn_context`
 /// records legitimately use a scalar string. The latter is context metadata,
 /// not a renderable reasoning part, so only that line type drops the field.
+///
+/// COMPATIBILITY 2026-07-23 (Codex 0.145.x): function calls persist arguments
+/// as JSON-encoded strings, while `tool_search_call` persists the decoded JSON
+/// value directly. Keep both forms until Codex converges the rollout schema or
+/// this DTO models each response-item variant separately.
 Map<String, dynamic> _normalizeRolloutLineJson({
   required Map<String, dynamic> json,
 }) {
-  if (json["type"] != "turn_context") return json;
   final payload = json["payload"];
-  if (payload is! Map || payload["summary"] is! String) return json;
+  if (payload is! Map) return json;
+  final normalizeSummary = json["type"] == "turn_context" && payload["summary"] is String;
+  final arguments = payload["arguments"];
+  final normalizeArguments = arguments != null && arguments is! String;
+  if (!normalizeSummary && !normalizeArguments) return json;
   return {
     ...json,
     "payload": {
       ...payload,
-      "summary": null,
+      if (normalizeSummary) "summary": null,
+      if (normalizeArguments) "arguments": jsonEncode(arguments),
     },
   };
 }

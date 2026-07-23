@@ -165,6 +165,8 @@ void main() {
           "type": "function_call",
           "name": "secret-tool-name",
           "arguments": {
+            "type": "secret-token",
+            "ghp_secretCredential": "secret-credential",
             "query": "secret-query",
           },
           "action": "secret-source-content",
@@ -182,14 +184,44 @@ void main() {
         output,
         contains(
           'schema={type:enum("response_item"),payload:{'
-          'type:enum("function_call"),name:String,arguments:{query:String},'
+          'type:enum("function_call"),name:String,arguments:{type:String,'
+          '<redacted-key>:String,query:String},'
           "action:String}}",
         ),
       );
       expect(output, contains("error=type 'String'"));
       expect(output, isNot(contains("secret-tool-name")));
+      expect(output, isNot(contains("secret-token")));
+      expect(output, isNot(contains("secret-credential")));
       expect(output, isNot(contains("secret-query")));
       expect(output, isNot(contains("secret-source-content")));
+    });
+
+    test("readTranscript bounds malformed record schema output", () {
+      Object? wideValue(int depth) {
+        if (depth == 0) return "value";
+        return {
+          for (var index = 0; index < 16; index++) "field$index": wideValue(depth - 1),
+        };
+      }
+
+      final path = p.join(codexHome.path, "wide-malformed-transcript.jsonl");
+      File(path).writeAsStringSync(
+        '${jsonEncode({
+          "type": "response_item",
+          "payload": "invalid-payload",
+          "wide": wideValue(3),
+        })}\n{}\n',
+      );
+
+      final output = _captureWarnings(
+        () => rolloutApi.readTranscript(rolloutPath: path),
+        level: LogLevel.verbose,
+      );
+
+      expect(output, contains("malformed rollout transcript record"));
+      expect(output, contains("schema="));
+      expect(output.length, lessThanOrEqualTo(2500));
     });
 
     test("readTranscriptChunk retains a partial trailing record until newline", () {
