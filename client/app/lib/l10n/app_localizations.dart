@@ -1324,7 +1324,7 @@ abstract class AppLocalizations {
   /// No description provided for @newFolderExists.
   ///
   /// In en, this message translates to:
-  /// **'A folder with that name already exists here'**
+  /// **'A file or folder with that name already exists here'**
   String get newFolderExists;
 
   /// No description provided for @newFolderFailed.

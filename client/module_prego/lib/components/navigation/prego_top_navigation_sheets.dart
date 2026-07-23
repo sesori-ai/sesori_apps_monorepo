@@ -44,11 +44,13 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
     this.leading,
   });
 
-  /// Primary title — `text-lg / bold / text-primary`.
+  /// Primary title, in `text-primary`. [alignment] picks the scale:
+  /// `text-lg / bold` centred, the quieter `text-md / medium` start-aligned.
   final String title;
 
-  /// Optional second line in `text-md / regular / text-secondary`. A `null` or
-  /// empty value renders the title on its own.
+  /// Optional second line, in the scale [alignment] picks: `text-md / regular /
+  /// text-secondary` centred, `text-xs / regular / text-tertiary`
+  /// start-aligned. A `null` or empty value renders the title on its own.
   final String? subtitle;
 
   /// Whether the title block is centred across the bar or pinned to the leading

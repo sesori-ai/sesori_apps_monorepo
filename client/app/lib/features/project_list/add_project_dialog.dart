@@ -114,11 +114,16 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
       _permissionDenied = false;
     });
 
+    final requestedPath = _currentPath;
     final outcome = await widget.cubit.fetchFilesystemSuggestions(
-      prefix: _currentPath.isEmpty ? null : _currentPath,
+      prefix: requestedPath.isEmpty ? null : requestedPath,
     );
 
-    if (!mounted) return;
+    // Stepping in and back out again leaves two listings in flight. Only the
+    // one for the folder still being browsed may land: the other would fill the
+    // current header with another folder's rows, and tapping one would then
+    // navigate somewhere the user is not.
+    if (!mounted || requestedPath != _currentPath) return;
     setState(() {
       _loading = false;
       switch (outcome) {
@@ -647,11 +652,13 @@ class _ActionMenu extends StatelessWidget {
   /// Clear space above the buttons, where the fade starts.
   static const double _fadeExtent = PregoSpacing.x5l;
 
-  /// Height of a [PregoButtonsSolid] at [PregoButtonsSolidSize.xl], per that
-  /// size's own definition. Stated rather than measured so the listing can
+  /// Height of the labelled [PregoButtonsSolid] at [PregoButtonsSolidSize.xl],
+  /// per that size's own definition: a 24px `text-md` line between 16px of
+  /// padding. It is the taller of the two buttons — the icon-only one is 52 —
+  /// so it sets the row's height. Stated rather than measured so the listing can
   /// reserve the menu's height without a layout round-trip; at a text scale
   /// large enough to grow the button past it, the fade absorbs the difference.
-  static const double _buttonExtent = 52;
+  static const double _buttonExtent = 56;
 
   /// How much of the listing's bottom the menu covers, for the scroll inset
   /// that keeps the last folder clear of the buttons.

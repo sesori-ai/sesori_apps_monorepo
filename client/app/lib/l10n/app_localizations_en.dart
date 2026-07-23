@@ -670,7 +670,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newFolderCreate => 'Create';
 
   @override
-  String get newFolderExists => 'A folder with that name already exists here';
+  String get newFolderExists => 'A file or folder with that name already exists here';
 
   @override
   String get newFolderFailed => 'Could not create the folder';

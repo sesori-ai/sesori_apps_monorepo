@@ -494,6 +494,55 @@ void main() {
       expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
     });
 
+    testWidgets("a listing that lands after stepping back out is ignored", (tester) async {
+      // Stepping into a folder and back out again leaves the deeper listing in
+      // flight: it answers a folder that is no longer being browsed, so filling
+      // the browser with it would put another folder's rows under this header.
+      final projectsListing = Completer<FilesystemSuggestionsOutcome>();
+      when(() => mockCubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) {
+        final prefix = invocation.namedArguments[const Symbol("prefix")] as String?;
+        if (prefix == "/home/user/projects") return projectsListing.future;
+        return Future.value(
+          FilesystemSuggestionsSuccess(
+            suggestions: FilesystemSuggestions(data: _homeDirEntries, path: prefix ?? _homePath),
+          ),
+        );
+      });
+      when(() => mockCubit.parentHostPath(path: "/home/user/projects")).thenReturn(_homePath);
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text("projects"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(TablerRegular.arrow_left));
+      await tester.pumpAndSettle();
+
+      projectsListing.complete(
+        const FilesystemSuggestionsSuccess(
+          suggestions: FilesystemSuggestions(data: _projectsDirEntries, path: "/home/user/projects"),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("app-one"), findsNothing);
+      expect(find.text("work"), findsOneWidget);
+      expect(find.text("MacBook-Pro.local"), findsOneWidget);
+    });
+
     testWidgets("Add as new project calls discoverProject with browsed path", (tester) async {
       _stubSuggestionsPerPrefix(
         mockCubit,

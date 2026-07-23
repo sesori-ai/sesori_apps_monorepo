@@ -88,6 +88,14 @@ void main() {
       await expectLater(() => create(parentPath: tempDir.path, name: "taken"), throwsStatus(409));
     });
 
+    test("a file holding the name returns 409, not a generic failure", () async {
+      // Creation fails the same way whatever holds the name, so the client is
+      // told the name is taken rather than left with an unexplained error.
+      File("${tempDir.path}/notes").writeAsStringSync("");
+
+      await expectLater(() => create(parentPath: tempDir.path, name: "notes"), throwsStatus(409));
+    });
+
     test("missing parent returns 400", () async {
       await expectLater(
         () => create(parentPath: "${tempDir.path}/absent", name: "app"),

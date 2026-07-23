@@ -65,7 +65,7 @@ class CreateDirectoryHandler extends BodyRequestHandler<FilesystemCreateDirector
         case CreatableDirectoryStatus.parentMissing:
           throw buildErrorResponse(request, 400, "parent directory does not exist");
         case CreatableDirectoryStatus.alreadyExists:
-          throw buildErrorResponse(request, 409, "directory already exists");
+          throw buildErrorResponse(request, 409, "a file or directory with that name already exists");
         case CreatableDirectoryStatus.creatable:
           _filesystemRepository.createDirectory(path: path);
       }

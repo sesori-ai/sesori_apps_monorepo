@@ -409,7 +409,7 @@
   "newFolderTitle": "New folder",
   "newFolderHint": "Folder name",
   "newFolderCreate": "Create",
-  "newFolderExists": "A folder with that name already exists here",
+  "newFolderExists": "A file or folder with that name already exists here",
   "newFolderFailed": "Could not create the folder",
   "newFolderUnsupported": "Update Sesori Bridge on your computer to create folders from here.",
   "emptyDirectory": "This directory is empty",
