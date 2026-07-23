@@ -198,6 +198,7 @@ class CodexCatalogRepository {
           final candidate = line.payload?.model;
           if (candidate != null && candidate.isNotEmpty) model = candidate;
         case CodexRolloutLineType.responseItem:
+        case CodexRolloutLineType.compacted:
         case CodexRolloutLineType.unknown:
         case null:
           break;

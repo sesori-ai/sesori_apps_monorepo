@@ -123,6 +123,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastSendCommandSessionId;
   String? lastSendCommand;
   String? lastSendCommandArguments;
+  String? lastSendCommandUserVisibleArguments;
   String? lastSendCommandVariant;
   String? lastSendCommandAgent;
   ({String providerID, String modelID})? lastSendCommandModel;
@@ -324,6 +325,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -331,6 +333,7 @@ class FakeBridgePlugin implements NativeProjectsPluginApi {
     lastSendCommandSessionId = sessionId;
     lastSendCommand = command;
     lastSendCommandArguments = arguments;
+    lastSendCommandUserVisibleArguments = userVisibleArguments;
     lastSendCommandVariant = variant?.id;
     lastSendCommandAgent = agent;
     lastSendCommandModel = model;
@@ -905,6 +908,7 @@ class _NoopSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -1326,6 +1330,7 @@ class FakeSessionRepository implements SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -1334,6 +1339,7 @@ class FakeSessionRepository implements SessionRepository {
       sessionId: sessionId,
       command: command,
       arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
       variant: _toPluginVariant(variant),
       agent: agent,
       model: switch (model) {

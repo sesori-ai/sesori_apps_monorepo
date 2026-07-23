@@ -63,6 +63,24 @@ class CodexMessageRepository {
           final model = payload?.model;
           if (model != null && model.isNotEmpty) currentModel = model;
           continue;
+        case CodexRolloutLineType.compacted:
+          messageCounter += 1;
+          final messageId = "codex-compaction-$messageCounter";
+          messages.add(
+            _toolMessage(
+              messageId: messageId,
+              sessionId: sessionId,
+              info: assistantInfo(
+                messageId,
+                _messageTimeFrom(line.timestamp),
+              ),
+              tool: "compact",
+              title: "Context compacted",
+              status: PluginToolStatus.completed,
+              output: null,
+            ),
+          );
+          continue;
         case CodexRolloutLineType.responseItem:
           break;
         case CodexRolloutLineType.unknown:

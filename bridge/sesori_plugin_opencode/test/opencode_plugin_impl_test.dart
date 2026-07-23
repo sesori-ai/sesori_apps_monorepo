@@ -204,6 +204,7 @@ void main() {
         sessionId: "s-root",
         command: "/review-work",
         arguments: "recent changes",
+        userVisibleArguments: "recent changes",
         agent: "reviewer",
         variant: const PluginSessionVariant(id: "xhigh"),
         model: (providerID: "openai", modelID: "gpt-4.1"),

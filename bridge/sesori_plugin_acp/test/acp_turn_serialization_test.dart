@@ -179,7 +179,7 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
-    test("command arguments are not emitted as a user message", () async {
+    test("a command emits only its user-visible arguments", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
@@ -188,15 +188,21 @@ void main() {
         sessionId: sessionId,
         command: "review",
         arguments: "[SYSTEM CONTEXT — IMPORTANT] internal\n\nuser arguments",
+        userVisibleArguments: "user arguments",
         variant: null,
         agent: null,
         model: null,
       );
       await pump();
 
-      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+      final message = emitted.whereType<BridgeSseMessageUpdated>().single;
+      expect(message.info["role"], "user");
+      final part = emitted.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(part.text, "/review user arguments");
+      expect(part.text, isNot(contains("SYSTEM CONTEXT")));
 
       final prompt = await waitForFrame("session/prompt");
+      expect(prompt.toString(), contains("SYSTEM CONTEXT"));
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
