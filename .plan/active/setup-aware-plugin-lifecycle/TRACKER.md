@@ -7,7 +7,7 @@
 - **Base:** `origin/main` at `583748ab`
 - **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
 - **Current stage:** Stage 11-P02 — dormant runtime and numeric idle timeout rebuild
-- **Next action:** rebuild the frozen #509 behavior on the verified P01D head while monitoring #549/#550
+- **Next action:** selectively rebuild the frozen #509 behavior on the verified P01D head while monitoring #549/#550
 
 ## Frozen Oversized Stack
 
@@ -36,7 +36,7 @@ run their focused verification again.
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 open and monitored |
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 open and monitored |
-| [ ] | Stage 11-P02 — dormancy and numeric idle timeout | rebuild branch TBD | frozen #509 descendant |
+| [ ] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | rebuilding frozen #509 descendant |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
 
