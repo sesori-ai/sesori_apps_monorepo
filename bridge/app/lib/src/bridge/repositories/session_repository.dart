@@ -134,64 +134,77 @@ class SessionRepository {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async {
-    final created = await _runtime.use(
+    final result = await _runtime.useWithGeneration(
       pluginId: pluginId,
       operation: SessionOperation.createSession,
-      body: (plugin) => plugin.createSession(
-        directory: directory,
-        parentSessionId: parentSessionId,
-        parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-        variant: _toPluginVariant(variant),
-        agent: agent,
-        model: switch (model) {
-          PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
-          null => null,
-        },
-      ),
-    );
-    final projectionUpdatedAt = captureProjectionTimestamp();
-    final createdAt = created.time?.created ?? projectionUpdatedAt;
-    final updatedAt = created.time?.updated ?? createdAt;
-    late String sessionId;
-    await _sessionDao.attachedDatabase.transaction(() async {
-      final existingBinding = await _sessionDao.getSessionByBinding(
-        pluginId: pluginId,
-        backendSessionId: created.id,
-      );
-      if (existingBinding?.parentSessionId != null) {
-        throw PluginOperationException(
-          SessionOperation.createSession.name,
-          statusCode: 409,
-          message: "backend session ${created.id} is already bound as a child session",
+      body: (plugin, generation) async {
+        final created = await plugin.createSession(
+          directory: directory,
+          parentSessionId: parentSessionId,
+          parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+          variant: _toPluginVariant(variant),
+          agent: agent,
+          model: switch (model) {
+            PromptModel(:final providerID, :final modelID) => (providerID: providerID, modelID: modelID),
+            null => null,
+          },
         );
-      }
-      sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
-      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
-      await _sessionDao.insertSession(
-        sessionId: sessionId,
-        backendSessionId: created.id,
-        projectId: projectId,
-        isDedicated: isDedicated,
-        createdAt: createdAt,
-        worktreePath: worktreePath,
-        branchName: branchName,
-        baseBranch: baseBranch,
-        baseCommit: baseCommit,
-        lastAgent: lastAgent,
-        lastAgentModel: lastAgentModel,
-        pluginId: pluginId,
-      );
-      await _sessionDao.updateObservedSessionProjection(
-        sessionId: sessionId,
-        directory: directory,
-        catalogTitle: created.title,
-        updateCatalogTitle: true,
-        updatedAt: updatedAt,
-        projectionUpdatedAt: projectionUpdatedAt,
-      );
-    });
-    _publishBindingsCommitted(pluginId: pluginId, backendSessionIds: [created.id]);
-    return created.toSharedSessionWithId(sessionId: sessionId, pluginId: pluginId);
+        final projectionUpdatedAt = captureProjectionTimestamp();
+        final createdAt = created.time?.created ?? projectionUpdatedAt;
+        final updatedAt = created.time?.updated ?? createdAt;
+        late String sessionId;
+        await _sessionDao.attachedDatabase.transaction(() async {
+          final existingBinding = await _sessionDao.getSessionByBinding(
+            pluginId: pluginId,
+            backendSessionId: created.id,
+          );
+          if (existingBinding?.parentSessionId != null) {
+            throw PluginOperationException(
+              SessionOperation.createSession.name,
+              statusCode: 409,
+              message: "backend session ${created.id} is already bound as a child session",
+            );
+          }
+          sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
+          _runtime.requireCurrentGeneration(
+            pluginId: pluginId,
+            generation: generation,
+            operation: SessionOperation.createSession,
+          );
+          await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+          await _sessionDao.insertSession(
+            sessionId: sessionId,
+            backendSessionId: created.id,
+            projectId: projectId,
+            isDedicated: isDedicated,
+            createdAt: createdAt,
+            worktreePath: worktreePath,
+            branchName: branchName,
+            baseBranch: baseBranch,
+            baseCommit: baseCommit,
+            lastAgent: lastAgent,
+            lastAgentModel: lastAgentModel,
+            pluginId: pluginId,
+          );
+          await _sessionDao.updateObservedSessionProjection(
+            sessionId: sessionId,
+            directory: directory,
+            catalogTitle: created.title,
+            updateCatalogTitle: true,
+            updatedAt: updatedAt,
+            projectionUpdatedAt: projectionUpdatedAt,
+          );
+          _runtime.requireCurrentGeneration(
+            pluginId: pluginId,
+            generation: generation,
+            operation: SessionOperation.createSession,
+          );
+        });
+        return (created: created, sessionId: sessionId);
+      },
+    );
+    _publishBindingsCommitted(pluginId: pluginId, backendSessionIds: [result.created.id]);
+    return result.created.toSharedSessionWithId(sessionId: result.sessionId, pluginId: pluginId);
   }
 
   Future<Session> renameSession({required String sessionId, required String title}) async {

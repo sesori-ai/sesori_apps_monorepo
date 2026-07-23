@@ -210,10 +210,22 @@ class PluginRuntime {
     required String pluginId,
     required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
+  }) {
+    return useWithGeneration(
+      pluginId: pluginId,
+      operation: operation,
+      body: (api, _) => body(api),
+    );
+  }
+
+  Future<T> useWithGeneration<T>({
+    required String pluginId,
+    required Enum operation,
+    required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
     try {
-      final result = await body(lease.api);
+      final result = await body(lease.api, lease.generation);
       _requireCurrentGeneration(lease: lease, operation: operation);
       return result;
     } finally {
