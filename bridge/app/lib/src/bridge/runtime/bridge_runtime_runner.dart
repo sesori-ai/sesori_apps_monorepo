@@ -611,12 +611,12 @@ class BridgeRuntimeRunner {
       );
       pluginRuntime = activePluginRuntime;
       final lifecycleRepository = PluginLifecycleRepository(runtime: activePluginRuntime);
-      final activePluginLifecycleService =
-          PluginLifecycleService(lifecycleRepository: lifecycleRepository)..registerPlugins(
-            plugins: [
-              for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
-            ],
-          );
+      final activePluginLifecycleService = PluginLifecycleService(lifecycleRepository: lifecycleRepository)
+        ..registerPlugins(
+          plugins: [
+            for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
+          ],
+        );
       pluginLifecycleService = activePluginLifecycleService;
       final eligiblePluginIds = {
         for (final descriptor in knownPlugins)
@@ -866,14 +866,12 @@ class BridgeRuntimeRunner {
         );
         catalogImportConsoleListener.start();
       }
+      final operationalPluginIds = activePluginRuntime.activePluginIds;
       startCatalogImports(
         service: activeRuntime.catalogImportService,
-        pluginIds: [
-          for (final pluginId in startupPolicy.enabledPluginIds)
-            if (activePluginRuntime.startAllowedPluginIds.contains(pluginId)) pluginId,
-        ],
+        pluginIds: startupPolicy.enabledPluginIds,
         headlessPluginIds: options.importPluginIds,
-        eligiblePluginIds: activePluginRuntime.startAllowedPluginIds,
+        operationalPluginIds: operationalPluginIds,
       );
 
       debugServer = await startDebugServerIfRequested(
@@ -978,13 +976,14 @@ class BridgeRuntimeRunner {
     required CatalogImportService service,
     required List<String> pluginIds,
     required List<String> headlessPluginIds,
-    required Set<String> eligiblePluginIds,
+    required Set<String> operationalPluginIds,
   }) {
     for (final pluginId in pluginIds) {
+      if (!operationalPluginIds.contains(pluginId)) continue;
       service.start(pluginId: pluginId, trigger: CatalogImportTrigger.automatic);
     }
     for (final headlessPluginId in headlessPluginIds) {
-      if (!eligiblePluginIds.contains(headlessPluginId)) continue;
+      if (!operationalPluginIds.contains(headlessPluginId)) continue;
       service.start(pluginId: headlessPluginId, trigger: CatalogImportTrigger.headless);
     }
   }

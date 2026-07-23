@@ -10,7 +10,7 @@ void main() {
       service: service,
       pluginIds: const ["selected"],
       headlessPluginIds: const ["selected", "selected"],
-      eligiblePluginIds: const {"selected"},
+      operationalPluginIds: const {"selected"},
     );
 
     expect(service.starts, const [
@@ -25,9 +25,9 @@ void main() {
 
     BridgeRuntimeRunner.startCatalogImports(
       service: service,
-      pluginIds: const ["healthy"],
+      pluginIds: const ["unavailable", "healthy"],
       headlessPluginIds: const ["unavailable", "healthy"],
-      eligiblePluginIds: const {"healthy"},
+      operationalPluginIds: const {"healthy"},
     );
 
     expect(service.starts, const [

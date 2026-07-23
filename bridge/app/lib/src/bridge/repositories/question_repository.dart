@@ -96,17 +96,15 @@ class QuestionRepository {
     final sources = await Future.wait<List<PendingQuestion>?>(
       pluginIds.map((pluginId) async {
         try {
-          return await _runtime
-              .useIfActive(
-                pluginId: pluginId,
-                operation: SessionOperation.getProjectQuestions,
-                body: (plugin, _) => _getPluginProjectQuestions(
-                  plugin: plugin,
-                  projectId: projectId,
-                  directory: directory,
-                ),
-              )
-              .timeout(_aggregateSourceDeadline);
+          return await _runtime.useIfActive(
+            pluginId: pluginId,
+            operation: SessionOperation.getProjectQuestions,
+            body: (plugin, _) => _getPluginProjectQuestions(
+              plugin: plugin,
+              projectId: projectId,
+              directory: directory,
+            ).timeout(_aggregateSourceDeadline),
+          );
         } on Object catch (error, stackTrace) {
           Log.w("Could not read project questions from plugin $pluginId", error, stackTrace);
           return null;

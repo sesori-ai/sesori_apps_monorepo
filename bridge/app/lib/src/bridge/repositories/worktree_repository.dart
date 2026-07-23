@@ -189,10 +189,10 @@ class WorktreeRepository {
       // The backend resolves the workspace by directory, so it gets the live
       // project path — the same root the worktree was just removed under.
       _runtime
-          .use(
+          .useIfActive(
             pluginId: pluginId,
             operation: _WorktreeOperation.deleteWorkspace,
-            body: (plugin) => plugin.deleteWorkspace(
+            body: (plugin, _) => plugin.deleteWorkspace(
               projectId: projectPath,
               worktreePath: worktreePath,
             ),
