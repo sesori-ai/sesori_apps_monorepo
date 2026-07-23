@@ -115,16 +115,17 @@ class CodexRolloutTailer {
     }
   }
 
-  /// Drains a terminal partial record before releasing this turn's cursor.
+  /// Discovers and drains terminal rollout data before releasing this cursor.
   ///
-  /// Complete records stop synchronously. Only a suffix observed without its
-  /// newline waits, bounded to ten normal poll intervals so a broken writer
-  /// cannot hold `session.idle` indefinitely.
+  /// An already discovered rollout with complete records stops synchronously.
+  /// A rollout not created yet, or a suffix observed without its newline, waits
+  /// up to ten normal poll intervals so Codex's writer can finish without a
+  /// missing or broken writer holding `session.idle` indefinitely.
   Future<void> finish({required String sessionId}) async {
     drain(sessionId: sessionId);
     var cursor = _cursors[sessionId];
     if (cursor == null) return;
-    if (cursor.trailingBytes.isEmpty) {
+    if (cursor.path != null && cursor.trailingBytes.isEmpty) {
       stop(sessionId: sessionId);
       return;
     }
@@ -133,13 +134,13 @@ class CodexRolloutTailer {
       drain(sessionId: sessionId);
       cursor = _cursors[sessionId];
       if (cursor == null) return;
-      if (cursor.trailingBytes.isEmpty) {
+      if (cursor.path != null && cursor.trailingBytes.isEmpty) {
         stop(sessionId: sessionId);
         return;
       }
     }
     Log.w(
-      "[codex] timed out waiting for the final live rollout record for "
+      "[codex] timed out discovering or completing the live rollout for "
       "$sessionId",
     );
     stop(sessionId: sessionId);

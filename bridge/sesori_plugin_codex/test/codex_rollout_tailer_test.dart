@@ -88,6 +88,51 @@ void main() {
       expect(appends.single.sessionId, "session-1");
       expect(appends.single.line.payload?.callId, "current-call");
     });
+
+    test("finish waits for a rollout created after completion begins", () async {
+      final directory = Directory.systemTemp.createTempSync("codex-tail-");
+      addTearDown(() {
+        try {
+          directory.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+      final path = p.join(directory.path, "rollout.jsonl");
+      final api = CodexRolloutApi(environment: const {});
+      final repository = _MutableCatalogRepository(rolloutApi: api);
+      final tailer = CodexRolloutTailer(
+        rolloutApi: api,
+        catalogRepository: repository,
+        pollInterval: const Duration(milliseconds: 5),
+      );
+      final appends = <CodexRolloutAppend>[];
+      final subscription = tailer.appends.listen(appends.add);
+      addTearDown(() async {
+        await subscription.cancel();
+        await tailer.dispose();
+      });
+
+      tailer.start(sessionId: "session-1");
+      final createTimer = Timer(const Duration(milliseconds: 10), () {
+        File(path).writeAsStringSync(
+          "${jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call_output",
+              "call_id": "late-call",
+              "output": "done",
+            },
+          })}\n",
+        );
+        repository.path = path;
+      });
+      addTearDown(createTimer.cancel);
+
+      await tailer.finish(sessionId: "session-1");
+
+      expect(appends, hasLength(1));
+      expect(appends.single.sessionId, "session-1");
+      expect(appends.single.line.payload?.callId, "late-call");
+    });
   });
 }
 
@@ -109,6 +154,15 @@ class _FixedCatalogRepository extends CodexCatalogRepository {
   });
 
   final String path;
+
+  @override
+  String? findRolloutPath({required String sessionId}) => path;
+}
+
+class _MutableCatalogRepository extends CodexCatalogRepository {
+  _MutableCatalogRepository({required super.rolloutApi});
+
+  String? path;
 
   @override
   String? findRolloutPath({required String sessionId}) => path;
