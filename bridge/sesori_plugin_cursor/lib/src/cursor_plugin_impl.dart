@@ -11,6 +11,7 @@ import "cursor_event_mapper.dart";
 import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
 import "services/cursor_catalog_service.dart";
+import "services/cursor_command_service.dart";
 import "trackers/cursor_catalog_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
@@ -42,11 +43,21 @@ class CursorPlugin extends AcpPlugin {
       launchScope: cwd,
     );
     final catalogTracker = CursorCatalogTracker();
+    final commandTracker = AcpCommandTracker();
+    final catalogCommandListener = AcpCommandListener(
+      notifications: catalogApi.notifications,
+      tracker: commandTracker,
+    );
     final catalogService = CursorCatalogService(
       repository: catalogRepository,
       tracker: catalogTracker,
       totalTimeout: const Duration(seconds: 12),
       maxCandidates: 8,
+    );
+    final commandService = CursorCommandService(
+      catalogService: catalogService,
+      commandTracker: commandTracker,
+      launchDirectory: cwd,
     );
     return CursorPlugin._(
       launchSpec: launchSpec,
@@ -54,7 +65,10 @@ class CursorPlugin extends AcpPlugin {
       mapper: CursorEventMapper(launchDirectory: cwd, pluginId: pluginId),
       processFactory: processFactory,
       catalogService: catalogService,
+      catalogCommandListener: catalogCommandListener,
       catalogTracker: catalogTracker,
+      commandService: commandService,
+      commandTracker: commandTracker,
     );
   }
 
@@ -63,14 +77,25 @@ class CursorPlugin extends AcpPlugin {
     required super.launchDirectory,
     required CursorEventMapper mapper,
     required CursorCatalogService catalogService,
+    required AcpCommandListener catalogCommandListener,
     required CursorCatalogTracker catalogTracker,
+    required CursorCommandService commandService,
+    required super.commandTracker,
     super.processFactory,
   }) : _catalogService = catalogService,
+       _catalogCommandListener = catalogCommandListener,
        _catalogTracker = catalogTracker,
-       super(id: pluginId, agentDisplayName: "Cursor", eventMapper: mapper);
+       _commandService = commandService,
+       super(
+         id: pluginId,
+         agentDisplayName: "Cursor",
+         eventMapper: mapper,
+       );
 
   final CursorCatalogService _catalogService;
+  final AcpCommandListener _catalogCommandListener;
   final CursorCatalogTracker _catalogTracker;
+  final CursorCommandService _commandService;
 
   String? _appliedModelId;
   String? _appliedModeId;
@@ -259,6 +284,27 @@ class CursorPlugin extends AcpPlugin {
     }
   }
 
+  @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) =>
+      _commandService.listCommands(projectId: projectId);
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) => super.sendCommand(
+    sessionId: sessionId,
+    command: _commandService.backendCommandFor(command: command),
+    arguments: arguments,
+    variant: variant,
+    agent: agent,
+    model: model,
+  );
+
   List<PluginAgent> _modeAgents() {
     final modes = _catalogTracker.modes;
     if (modes.isEmpty) {
@@ -331,6 +377,11 @@ class CursorPlugin extends AcpPlugin {
 
   @override
   Future<void> dispose() async {
+    try {
+      await _catalogCommandListener.dispose();
+    } on Object catch (error, stack) {
+      Log.w("[cursor] failed to dispose catalog command listener", error, stack);
+    }
     try {
       await _catalogService.dispose();
     } on Object catch (error, stack) {

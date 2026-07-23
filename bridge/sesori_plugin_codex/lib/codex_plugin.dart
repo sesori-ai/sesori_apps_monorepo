@@ -12,7 +12,6 @@ export "src/codex_event_mapper.dart";
 export "src/codex_metadata_repository.dart";
 export "src/codex_plugin_impl.dart";
 export "src/codex_rollout_tool_mapper.dart";
-export "src/codex_skill_reader.dart";
 // Runtime lifecycle: the descriptor is the public entry point the bridge
 // registers in bin/bridge.dart.
 export "src/runtime/codex_bridge_plugin.dart";

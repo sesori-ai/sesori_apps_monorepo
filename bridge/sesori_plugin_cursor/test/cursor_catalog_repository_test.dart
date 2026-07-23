@@ -275,6 +275,9 @@ class _FakeCursorCatalogProbeApi implements CursorCatalogProbeApi {
   Object? availableModelsError;
 
   @override
+  Stream<AcpNotification> get notifications => const Stream.empty();
+
+  @override
   Future<AcpInitializeResult> open({required Duration timeout}) async {
     return AcpInitializeResult.fromJson({
       "protocolVersion": 1,
