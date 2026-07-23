@@ -721,7 +721,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required String sessionId,
     required String command,
     required String arguments,
-    required String userVisibleArguments,
+    required String? userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -730,7 +730,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final body = arguments.isEmpty
         ? "/$backendCommand"
         : "/$backendCommand $arguments";
-    final visibleBody = userVisibleArguments.isEmpty ? "/$command" : "/$command $userVisibleArguments";
+    final visibleBody = userVisibleArguments == null ? "/$command" : "/$command $userVisibleArguments";
     // Acceptance gate — see [sendPrompt].
     await _connectedClient();
     eventMapper

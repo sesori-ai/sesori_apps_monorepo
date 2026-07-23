@@ -127,7 +127,7 @@ void main() {
         sessionId: "t-existing",
         command: "compact",
         arguments: "",
-        userVisibleArguments: "",
+        userVisibleArguments: null,
         variant: null,
         agent: null,
         model: null,

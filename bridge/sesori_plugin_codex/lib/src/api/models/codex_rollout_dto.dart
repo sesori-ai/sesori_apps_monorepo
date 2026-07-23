@@ -13,6 +13,7 @@ enum CodexRolloutLineType {
   turnContext,
   @JsonValue("response_item")
   responseItem,
+  @JsonValue("compacted")
   compacted,
   unknown,
 }

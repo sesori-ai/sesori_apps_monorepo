@@ -1297,7 +1297,7 @@ class _OrderCheckingCommandPlugin extends _OpenCodeFakeBridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
-    required String userVisibleArguments,
+    required String? userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,

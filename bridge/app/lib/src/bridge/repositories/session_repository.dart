@@ -225,7 +225,7 @@ class SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
-    required String userVisibleArguments,
+    required String? userVisibleArguments,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,

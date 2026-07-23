@@ -53,7 +53,7 @@ class SessionPromptService {
     }
 
     final textPart = parts.whereType<PromptPartText>().firstOrNull;
-    final arguments = textPart?.text ?? '';
+    final arguments = textPart?.text;
     // Per the BridgePluginApi contract, sendCommand completes once the
     // backend has accepted the command — not when its run finishes — so
     // awaiting it here never holds the phone's relay request open for the
@@ -61,8 +61,8 @@ class SessionPromptService {
     await _sessionRepository.sendCommand(
       sessionId: sessionId,
       command: normalizedCommand,
-      arguments: arguments,
-      userVisibleArguments: arguments,
+      arguments: arguments ?? '',
+      userVisibleArguments: arguments == null || arguments.isEmpty ? null : arguments,
       variant: variant,
       agent: agent,
       model: model,

@@ -263,7 +263,7 @@ void main() {
       expect(plugin.lastSendCommandModel, isNull);
     });
 
-    test("passes empty arguments when no text part present", () async {
+    test("passes no user-visible arguments when no text part is present", () async {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
@@ -284,6 +284,7 @@ void main() {
       expect(plugin.lastSendCommandSessionId, equals("backend-s8"));
       expect(plugin.lastSendCommand, equals("attach"));
       expect(plugin.lastSendCommandArguments, equals(""));
+      expect(plugin.lastSendCommandUserVisibleArguments, isNull);
     });
 
     test("passes agent and model when command is present", () async {
@@ -636,7 +637,7 @@ class _ThrowingSendCommandPlugin extends FakeBridgePlugin {
     required String sessionId,
     required String command,
     required String arguments,
-    required String userVisibleArguments,
+    required String? userVisibleArguments,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
