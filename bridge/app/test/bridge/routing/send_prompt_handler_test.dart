@@ -287,6 +287,25 @@ void main() {
       expect(plugin.lastSendCommandUserVisibleArguments, isNull);
     });
 
+    test("treats whitespace-only user-visible arguments as absent", () async {
+      await handler.handle(
+        makeRequest("POST", "/session/prompt_async"),
+        body: const SendPromptRequest(
+          sessionId: "s8",
+          parts: [PromptPart.text(text: "   ")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: "attach",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastSendCommandUserVisibleArguments, isNull);
+    });
+
     test("passes agent and model when command is present", () async {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),

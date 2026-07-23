@@ -62,7 +62,7 @@ class SessionPromptService {
       sessionId: sessionId,
       command: normalizedCommand,
       arguments: arguments ?? '',
-      userVisibleArguments: arguments == null || arguments.isEmpty ? null : arguments,
+      userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
       variant: variant,
       agent: agent,
       model: model,
