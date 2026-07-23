@@ -2,14 +2,14 @@
 
 ## Plan State
 
-- **Status:** Stage 10 merged; Stage 11-P01 is being synchronized with `main`
-  and corrected for bridge-owned aggregate projects
+- **Status:** Stage 10 merged; Stage 11-P01 is synchronized with `main`, and its
+  bridge-owned aggregate-project correction is pushed
 - **Base:** latest `origin/main`
 - **Current branch:** PR branch `setup-aware-plugin-lifecycle-s11-p01`
   (local delivery branch `fix-p508-operation-enum`)
-- **Current stage:** Stage 11-P01 / PR #508 conflict resolution and ownership fix
-- **Next action:** finish focused verification and architecture review, merge any
-  newer `main`, push #508, resolve its ownership thread, and monitor only #508
+- **Current stage:** Stage 11-P01 / PR #508 CI and review monitoring
+- **Next action:** monitor only #508 and address any concrete CI, mergeability,
+  or review regression reported for its current head
 
 ## Closed First Implementation
 
@@ -116,6 +116,26 @@ run their focused verification again.
 - Committed as `bc7d62b1`, force-pushed with lease, and reopened #508. GitHub
   again required temporarily restoring the old head solely for the reopen;
   `bc7d62b1` was restored immediately and is the monitored replacement head.
+
+### 2026-07-23 — PR #508 main sync and bridge-owned projects
+
+- Merged current `main` through `587d326e`, preserving the dynamic runtime and
+  latest session-title/persist-first ownership changes. The final sync was
+  conflict-free and PR #508 became mergeable.
+- Removed runtime/default-plugin dependencies from `ProjectRepository`.
+  Aggregate project create/open/rename now use only the local filesystem and
+  durable bridge catalog; rename never propagates to a plugin.
+- Extracted existing plugin activity-evidence acquisition and generation fencing
+  into `ProjectActivityRepository`; observations remain evidence for
+  bridge-owned aggregate identity and activity.
+- Regenerated bridge-app generated output from source. `dart analyze
+  --fatal-infos` passed in `bridge/app` before and after the final main sync.
+- Focused project/repository/activity/open/create/rename/routing/unseen/FK suites
+  passed (100 tests, then 120 tests). Final runtime runner/auth coverage passed
+  after the last main sync (9 tests).
+- Architecture review approved the new ownership and dependency boundaries with
+  no findings. Pushed head `b51ee3cd` and resolved the project-default ownership
+  review thread.
 
 ## Delivery Rules
 
