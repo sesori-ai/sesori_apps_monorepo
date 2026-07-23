@@ -7,7 +7,7 @@
 - **Base:** `origin/main` at `583748ab`
 - **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
 - **Current stage:** Stage 11-P01D — bridge-owned projects and defaults verification
-- **Next action:** commit P01D after handling new review feedback on #549
+- **Next action:** push and open P01D stacked on #549
 
 ## Frozen Oversized Stack
 
@@ -178,6 +178,11 @@ run their focused verification again.
 - Committed the implementation as `2a461f8b`, merged the updated #548 head,
   pushed the verified branch, and opened stacked PR #549. Its initial monitor
   reported it mergeable with CI running and no review threads.
+- PR feedback hardened successor-generation pending-root replay, skipped stale
+  outputs without aborting a mixed replay batch, suppressed expected stale
+  normalization telemetry, and disposed the benchmark runtime. Focused tests
+  and fatal analysis passed; fixes were pushed as `220b2954` and every review
+  thread was answered.
 
 ### 2026-07-24 — Stage 11-P01D bridge-owned projects and defaults
 
@@ -194,6 +199,8 @@ run their focused verification again.
   project, activity, lifecycle, runtime, routing, and orchestrator tests passed;
   focused review-fix tests also passed.
 - The second implementation-review pass approved P01D with no findings.
+- Merged the reviewed #549 feedback commit and reran fatal analysis plus 88
+  focused event-tracking and project-activity tests successfully.
 
 ## Delivery Rules
 
