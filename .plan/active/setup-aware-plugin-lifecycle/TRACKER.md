@@ -6,8 +6,8 @@
   stack in progress
 - **Base:** `origin/main` at `583748ab`
 - **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
-- **Current stage:** Stage 11-P01C — dynamic events and durable fencing verification
-- **Next action:** push and open P01C stacked on #548
+- **Current stage:** Stage 11-P01D — bridge-owned projects and defaults
+- **Next action:** start P01D from the verified P01C head while monitoring #548/#549
 
 ## Frozen Oversized Stack
 
@@ -34,7 +34,7 @@ run their focused verification again.
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
 | [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 open and monitored |
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
-| [ ] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | implementation verified; architecture approved |
+| [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 open and monitored |
 | [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | stack after P01C |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | rebuild branch TBD | frozen #509 descendant |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
@@ -175,6 +175,9 @@ run their focused verification again.
 - Merged the reviewed #548 feedback commits into the stack and reran fatal
   analysis plus 133 focused runtime, repository, event, catalog, startup, and
   orchestrator tests successfully.
+- Committed the implementation as `2a461f8b`, merged the updated #548 head,
+  pushed the verified branch, and opened stacked PR #549. Its initial monitor
+  reported it mergeable with CI running and no review threads.
 
 ## Delivery Rules
 
