@@ -76,6 +76,30 @@ class CursorCatalogService {
       final supported = await _repository.open(
         timeout: _remaining(stopwatch: stopwatch),
       );
+
+      try {
+        final bootstrap = await _repository.loadAvailableCatalog(
+          timeout: _remaining(stopwatch: stopwatch),
+        );
+        if (bootstrap != null) {
+          _tracker.applyBootstrapSnapshot(snapshot: bootstrap);
+        }
+      } on Object catch (error, stack) {
+        Log.w(
+          "[cursor] account catalog discovery failed; falling back to existing sessions",
+          error,
+          stack,
+        );
+      }
+
+      if (_tracker.isComplete) {
+        _tracker.recordOutcome(
+          scope: scope,
+          outcome: CursorCatalogProbeOutcome.complete,
+        );
+        return;
+      }
+
       if (!supported) {
         _tracker.recordOutcome(
           scope: scope,

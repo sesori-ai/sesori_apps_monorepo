@@ -23,6 +23,18 @@ class CursorCatalogTracker {
 
   bool get isComplete => _models.isNotEmpty && _modes.isNotEmpty && _provisionalThoughtLevelVariants.isNotEmpty;
 
+  void applyBootstrapSnapshot({required CursorCatalogBootstrapSnapshot snapshot}) {
+    if (_models.isEmpty && snapshot.models.isNotEmpty) _models = snapshot.models;
+    if (_modes.isEmpty && snapshot.modes.isNotEmpty) _modes = snapshot.modes;
+    _defaultModeId ??= snapshot.defaultModeId;
+    for (final entry in snapshot.thoughtLevelsByModel.entries) {
+      _thoughtLevelsByModel.putIfAbsent(entry.key, () => entry.value);
+      if (_provisionalThoughtLevelVariants.isEmpty && entry.value.variants.isNotEmpty) {
+        _provisionalThoughtLevelVariants = entry.value.variants;
+      }
+    }
+  }
+
   CursorCatalogCaptureResult applySnapshot({
     required CursorCatalogSnapshot snapshot,
     required bool fromNewSession,

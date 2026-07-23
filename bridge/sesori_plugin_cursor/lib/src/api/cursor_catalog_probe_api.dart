@@ -2,6 +2,8 @@ import "dart:async";
 
 import "package:acp_plugin/acp_plugin.dart";
 
+import "models/cursor_available_models_dto.dart";
+
 /// Layer-1 ACP operations used by Cursor's isolated catalog-probe process.
 class CursorCatalogProbeApi {
   CursorCatalogProbeApi({required AcpStdioClient client}) : _client = client;
@@ -11,6 +13,8 @@ class CursorCatalogProbeApi {
   final AcpStdioClient _client;
   AcpInitializeResult? _initializeResult;
   bool _disposed = false;
+
+  static const String _listAvailableModelsMethod = "cursor/list_available_models";
 
   /// Connects and performs Cursor's ACP v1 initialize/authenticate handshake.
   Future<AcpInitializeResult> open({required Duration timeout}) async {
@@ -84,6 +88,20 @@ class CursorCatalogProbeApi {
       cursor = nextCursor;
     }
     throw StateError("Cursor session/list exceeded $_maxPages pages");
+  }
+
+  /// Reads Cursor's account model catalog without creating a session.
+  Future<CursorAvailableModelsDto> listAvailableModels({required Duration timeout}) async {
+    if (_initializeResult == null || !_client.isConnected) {
+      throw StateError("Cursor catalog probe is not initialized");
+    }
+    final raw = await _client.request(
+      method: _listAvailableModelsMethod,
+      timeout: timeout,
+    );
+    return CursorAvailableModelsDto.fromJson(
+      raw is Map ? raw.cast<String, dynamic>() : const {},
+    );
   }
 
   /// Loads one existing session and parses its typed ACP result.

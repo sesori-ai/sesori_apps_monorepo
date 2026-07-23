@@ -25,6 +25,17 @@ class CursorCatalogRepository {
     return capabilities.listSessions && capabilities.loadSession;
   }
 
+  /// Returns null only when this Cursor build does not expose model discovery.
+  Future<CursorCatalogBootstrapSnapshot?> loadAvailableCatalog({required Duration timeout}) async {
+    try {
+      final result = await _api.listAvailableModels(timeout: timeout);
+      return CursorCatalogMapper.mapAvailableModels(result: result);
+    } on AcpRpcException catch (error) {
+      if (error.code == -32601) return null;
+      rethrow;
+    }
+  }
+
   /// Unions unfiltered, launch, and requested-scope enumeration results.
   Future<CursorCatalogCandidateListResult> listCandidates({
     required String scope,
