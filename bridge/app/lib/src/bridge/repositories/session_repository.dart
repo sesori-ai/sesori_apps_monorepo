@@ -457,7 +457,12 @@ class SessionRepository {
             generation: generation,
             operation: SessionOperation.getProjectActivitySummaries,
           );
-          await _persistActiveRootHydrations(observation: observation);
+          await _runtime.commitCurrentGeneration(
+            pluginId: pluginId,
+            generation: generation,
+            operation: SessionOperation.getProjectActivitySummaries,
+            commit: () => _persistActiveRootHydrations(observation: observation),
+          );
           return _mapPluginProjectActivitySummaries(observation: observation);
         } on Object catch (error, stackTrace) {
           Log.w("Could not read activity summaries from plugin $pluginId", error, stackTrace);

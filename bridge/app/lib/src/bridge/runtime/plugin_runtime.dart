@@ -251,6 +251,42 @@ class PluginRuntime {
     }
   }
 
+  /// Runs a short durable commit only while [generation] is current and keeps
+  /// replacement from crossing the commit boundary once it has been entered.
+  Future<R> commitCurrentGeneration<R>({
+    required String pluginId,
+    required int generation,
+    required Enum operation,
+    required Future<R> Function() commit,
+  }) async {
+    if (_shuttingDown) {
+      throw PluginOperationException(operation.name, statusCode: 503, message: "bridge is shutting down");
+    }
+    final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
+    final plugin = slot.plugin;
+    if (plugin == null || slot.generation != generation || !_isRoutable(slot)) {
+      throw PluginOperationException(
+        operation.name,
+        statusCode: 503,
+        message: "plugin generation changed before durable commit",
+      );
+    }
+    final lease = _PluginLease(slot: slot, generation: generation, api: plugin.api);
+    slot.leaseCount++;
+    var commitProtected = false;
+    try {
+      _beginDurableCommit(lease: lease, operation: operation);
+      commitProtected = true;
+      _publishSnapshots();
+      final result = await commit();
+      _requireSameGeneration(lease: lease, operation: operation);
+      return result;
+    } finally {
+      if (commitProtected) _endDurableCommit(slot);
+      _release(lease);
+    }
+  }
+
   Stream<T> useStream<T>({
     required String pluginId,
     required Enum operation,

@@ -135,6 +135,19 @@ class TestPluginRuntime extends PluginRuntime {
   }
 
   @override
+  Future<R> commitCurrentGeneration<R>({
+    required String pluginId,
+    required int generation,
+    required Enum operation,
+    required Future<R> Function() commit,
+  }) async {
+    requireCurrentGeneration(pluginId: pluginId, generation: generation, operation: operation);
+    final result = await commit();
+    requireCurrentGeneration(pluginId: pluginId, generation: generation, operation: operation);
+    return result;
+  }
+
+  @override
   Stream<T> useStream<T>({
     required String pluginId,
     required Enum operation,

@@ -405,6 +405,39 @@ void main() {
     expect(factory.plugins.single.shutdownInvocationCount, 1);
   });
 
+  test("a force stop waits for an explicit current-generation commit", () async {
+    final commitStarted = Completer<void>();
+    final commitGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    final operation = runtime.commitCurrentGeneration(
+      pluginId: "one",
+      generation: 1,
+      operation: _TestOperation.durableCommit,
+      commit: () async {
+        commitStarted.complete();
+        await commitGate.future;
+        return "committed";
+      },
+    );
+    await commitStarted.future;
+    var stopCompleted = false;
+    final stopping = runtime.stop(pluginId: "one", intent: PluginStopIntent.force).whenComplete(() {
+      stopCompleted = true;
+    });
+    await _waitUntil(() => runtime.snapshot.single.transition == PluginRuntimeTransition.stopping);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(stopCompleted, isFalse);
+
+    commitGate.complete();
+    expect(await operation, "committed");
+    expect(await stopping, isA<PluginRuntimeCommandApplied>());
+  });
+
   test("a terminal failure waits for a generation's durable commit", () async {
     final commitStarted = Completer<void>();
     final commitGate = Completer<void>();
