@@ -21,7 +21,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// the downloaded archive), confirm the [_assets] filenames still match the
 /// release, raise [minPathVersion] only if the bridge starts to require a newer
 /// codex API, and re-run the integration tests. The hashes below are the
-/// published asset digests for codex `rust-v0.144.5`.
+/// published asset digests for codex `rust-v0.145.0`.
 class CodexRuntimeManifest extends RuntimeManifest {
   const CodexRuntimeManifest();
 
@@ -29,7 +29,7 @@ class CodexRuntimeManifest extends RuntimeManifest {
   static final SemanticVersion _minPathVersion = SemanticVersion.parse(value: "0.139.0");
 
   /// The exact codex version the managed runtime installs.
-  static final SemanticVersion _bundledVersion = SemanticVersion.parse(value: "0.144.5");
+  static final SemanticVersion _bundledVersion = SemanticVersion.parse(value: "0.145.0");
 
   static const String _releaseBaseUrl = "https://github.com/openai/codex/releases/download";
 
@@ -43,13 +43,13 @@ class CodexRuntimeManifest extends RuntimeManifest {
       PlatformArch.arm64: RuntimeAsset(
         assetName: "codex-aarch64-apple-darwin.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "a5b77d2fb393f201777809425ab28d9beb65ee0c0b2bf792f09eaf8ef1151592",
+        sha256: "072a30a65f05666735889ef0f60b56db186adbdde9d5c5cc1a64be0b598530fe",
         archiveBinaryName: "codex-aarch64-apple-darwin",
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "codex-x86_64-apple-darwin.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "ff5c894a9ffa6d97c225c8d3c869c7ef7573dcbd0cf9b762ecfb9fa96dbb7d88",
+        sha256: "4216d7a40aa49d74b65fab93d2a86d2e25a902482b827dbdb3f357777b09fadf",
         archiveBinaryName: "codex-x86_64-apple-darwin",
       ),
     },
@@ -57,13 +57,13 @@ class CodexRuntimeManifest extends RuntimeManifest {
       PlatformArch.arm64: RuntimeAsset(
         assetName: "codex-aarch64-unknown-linux-musl.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "5433789cd66e0db3b78cccd218d894471ed9e92fe93465120d1356508952084d",
+        sha256: "d384f90bc842450b42bd675feef06a12a46a3b1ca97efcb22566b270e4a11227",
         archiveBinaryName: "codex-aarch64-unknown-linux-musl",
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "codex-x86_64-unknown-linux-musl.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "b6bea13bedf493232f6717714c45e783788c695cedcf37c344f73afc97b1ec9f",
+        sha256: "bfaf13c9ba34f2ad764e4a916c49cf7177aeba329cf0f719e2227566fc8d662a",
         archiveBinaryName: "codex-x86_64-unknown-linux-musl",
       ),
     },
@@ -71,13 +71,13 @@ class CodexRuntimeManifest extends RuntimeManifest {
       PlatformArch.arm64: RuntimeAsset(
         assetName: "codex-aarch64-pc-windows-msvc.exe.zip",
         format: ArchiveFormat.zip,
-        sha256: "e5f319f9f737605731aecf4208b7cda88df9ef0f98fa22c9935944bd7f267469",
+        sha256: "e38667194ddf24dfeb877ab9f6346b55bd979ff52bee9dbf4123e2a48f3627e2",
         archiveBinaryName: "codex-aarch64-pc-windows-msvc.exe",
       ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "codex-x86_64-pc-windows-msvc.exe.zip",
         format: ArchiveFormat.zip,
-        sha256: "c5fa9ad03f266640465da5677f2bcebd2db02a604940d1264b6a342d5136df91",
+        sha256: "bc6ae808bf5a9cdf113364ac281594d6da76dc103c19129e9d32caed54ec3cda",
         archiveBinaryName: "codex-x86_64-pc-windows-msvc.exe",
       ),
     },
