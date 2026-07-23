@@ -6,8 +6,8 @@
   stack in progress
 - **Base:** `origin/main` at `583748ab`
 - **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
-- **Current stage:** Stage 11-P01D — bridge-owned projects and defaults verification
-- **Next action:** push and open P01D stacked on #549
+- **Current stage:** Stage 11-P02 — dormant runtime and numeric idle timeout rebuild
+- **Next action:** rebuild the frozen #509 behavior on the verified P01D head while monitoring #549/#550
 
 ## Frozen Oversized Stack
 
@@ -35,7 +35,7 @@ run their focused verification again.
 | [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 open and monitored |
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 open and monitored |
-| [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | implementation verified; architecture approved |
+| [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 open and monitored |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | rebuild branch TBD | frozen #509 descendant |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
@@ -201,6 +201,9 @@ run their focused verification again.
 - The second implementation-review pass approved P01D with no findings.
 - Merged the reviewed #549 feedback commit and reran fatal analysis plus 88
   focused event-tracking and project-activity tests successfully.
+- Committed P01D as `059689e7`, merged the updated #549 head, pushed the
+  verified branch, and opened stacked PR #550. Its initial monitor reported it
+  mergeable with CI running and no inline review threads.
 
 ## Delivery Rules
 
