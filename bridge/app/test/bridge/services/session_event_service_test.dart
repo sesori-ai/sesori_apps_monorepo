@@ -25,6 +25,7 @@ void main() {
     late SessionRepository repository;
     late SessionEventTracker eventTracker;
     late SessionEventService service;
+    late CapturingFailureReporter failureReporter;
 
     setUp(() {
       database = createTestDatabase();
@@ -42,12 +43,13 @@ void main() {
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
       eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
+      failureReporter = CapturingFailureReporter();
       service = SessionEventService(
         sessionRepository: repository,
         pluginRuntime: pluginRuntime,
         eventMapper: const SessionEventMapper(),
         eventTracker: eventTracker,
-        failureReporter: FakeFailureReporter(),
+        failureReporter: failureReporter,
       );
     });
 
@@ -500,6 +502,52 @@ void main() {
       expect(eventTracker.length, 0);
     });
 
+    test("replaces a stale pending root when its successor observes an update", () async {
+      final created = BridgeSseSessionCreated(
+        info: _sessionInfo(
+          sessionId: "backend-root",
+          parentId: null,
+          projectId: "backend-project",
+          directory: "/repo",
+        ),
+      );
+      final updated = BridgeSseSessionUpdated(
+        info: Session.fromJson(created.info).copyWith(title: "Successor title").toJson(),
+        titleChanged: true,
+      );
+
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 12, event: created),
+        ),
+        isEmpty,
+      );
+      pluginRuntime.currentGeneration = 2;
+      expect(
+        await service.normalize(
+          source: (pluginId: plugin.id, generation: 2, projectionUpdatedAt: 13, event: updated),
+        ),
+        isEmpty,
+      );
+
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final output = await service.handleBindingsCommitted(
+        commit: (pluginId: plugin.id, backendSessionIds: const ["backend-root"]),
+      );
+
+      expect(output, hasLength(2));
+      expect(output.map((item) => item.generation), everyElement(2));
+      expect(output.first.event, isA<BridgeSseSessionCreated>());
+      final normalizedUpdate = output.last.event as BridgeSseSessionUpdated;
+      expect(Session.fromJson(normalizedUpdate.info).title, "Successor title");
+      expect(eventTracker.length, 0);
+    });
+
     test("replays child input after its pending ancestry commits", () async {
       final rootEvent = BridgeSseSessionCreated(
         info: _sessionInfo(
@@ -729,6 +777,7 @@ void main() {
       expect(after?.catalogTitle, before?.catalogTitle);
       expect(after?.updatedAt, before?.updatedAt);
       expect(after?.projectionUpdatedAt, before?.projectionUpdatedAt);
+      expect(failureReporter.recordedIdentifiers, isEmpty);
     });
 
     test("does not commit a retired-generation child after transaction entry", () async {
@@ -767,6 +816,7 @@ void main() {
         ),
         isNull,
       );
+      expect(failureReporter.recordedIdentifiers, isEmpty);
     });
 
     test("commits same-generation projection writes after transaction entry", () async {

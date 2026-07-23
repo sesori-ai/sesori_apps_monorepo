@@ -73,6 +73,7 @@ class _EventProjectionBenchmark {
     final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
     AppDatabase? database;
     SessionRepository? repository;
+    BenchmarkPluginRuntime? runtime;
     SSEManager? sseManager;
 
     try {
@@ -80,7 +81,7 @@ class _EventProjectionBenchmark {
       final sqliteVersion = await _sqliteVersion(database: database);
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
-      final runtime = createBenchmarkPluginRuntime(plugins: [plugin]);
+      runtime = createBenchmarkPluginRuntime(plugins: [plugin]);
       repository = SessionRepository(
         runtime: runtime,
         bridgeDerivedProjectPluginIds: const {},
@@ -119,6 +120,8 @@ class _EventProjectionBenchmark {
       sseManager = null;
       await repository.dispose();
       repository = null;
+      await runtime.dispose();
+      runtime = null;
       await database.close();
       database = null;
       final databaseBytes = databaseFile.lengthSync();
@@ -155,6 +158,7 @@ class _EventProjectionBenchmark {
     } finally {
       sseManager?.stop();
       if (repository != null) await repository.dispose();
+      if (runtime != null) await runtime.dispose();
       if (database != null) await database.close();
       try {
         await temporaryDirectory.delete(recursive: true);
