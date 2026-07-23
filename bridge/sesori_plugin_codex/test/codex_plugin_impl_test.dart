@@ -262,8 +262,13 @@ void main() {
       final firstSummary = Completer<void>();
       final approvalSummary = Completer<void>();
       final clearedSummary = Completer<void>();
+      final sessionIdle = Completer<String>();
       var invalidations = 0;
-      final subscription = plugin.events.where((event) => event is BridgeSseProjectUpdated).listen((_) {
+      final subscription = plugin.events.listen((event) {
+        if (event is BridgeSseSessionIdle) {
+          sessionIdle.complete(event.sessionID);
+        }
+        if (event is! BridgeSseProjectUpdated) return;
         invalidations++;
         if (invalidations == 1) firstSummary.complete();
         if (invalidations == 2) approvalSummary.complete();
@@ -320,6 +325,10 @@ void main() {
 
       await socket.close(WebSocketStatus.goingAway);
 
+      expect(
+        await sessionIdle.future.timeout(const Duration(seconds: 2)),
+        "t-running",
+      );
       await clearedSummary.future.timeout(const Duration(seconds: 2));
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect(

@@ -237,11 +237,15 @@ class CodexPlugin implements CodexManagedApi {
   /// forwards the signal to the runtime descriptor's status reporter.
   void _handleClientDisconnected() {
     final registry = _approvalRegistry;
-    final hadVisibleActivity = _sessionStatuses.entries.any(
-      (entry) =>
-          _isActiveStatus(entry.value) ||
-          (registry?.hasPendingInput(entry.key) ?? false),
-    );
+    final activeSessionIds = [
+      for (final entry in _sessionStatuses.entries)
+        if (_isActiveStatus(entry.value)) entry.key,
+    ];
+    final hadVisibleActivity =
+        activeSessionIds.isNotEmpty ||
+        _sessionStatuses.keys.any(
+          (sessionId) => registry?.hasPendingInput(sessionId) ?? false,
+        );
     _connectFuture = null;
     _client = null;
     _sessionService.detachThreadRepository();
@@ -251,6 +255,9 @@ class CodexPlugin implements CodexManagedApi {
     unawaited(registry?.dispose());
     _sessionStatuses.clear();
     _activeTurnByThread.clear();
+    for (final sessionId in activeSessionIds) {
+      _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+    }
     if (hadVisibleActivity) {
       _eventBuffer.add(const BridgeSseProjectUpdated());
     }
