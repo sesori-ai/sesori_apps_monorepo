@@ -1,9 +1,13 @@
-import "package:args/args.dart" show ArgResults;
+import "dart:io" show Directory, FileSystemEntity, FileSystemEntityType;
+
+import "package:args/args.dart" show ArgParserException, ArgResults;
+import "package:path/path.dart" as path;
 
 class BridgeCliOptions {
   final List<String> cliArgs;
   final String relayUrl;
   final String authBackendUrl;
+  final String dataDirectory;
   final int? debugPort;
   final String logLevelName;
   final List<String> importPluginIds;
@@ -16,6 +20,7 @@ class BridgeCliOptions {
     required this.cliArgs,
     required this.relayUrl,
     required this.authBackendUrl,
+    required this.dataDirectory,
     required this.debugPort,
     required this.logLevelName,
     required this.importPluginIds,
@@ -33,6 +38,7 @@ class BridgeCliOptions {
     required ArgResults results,
     required Map<String, String> environment,
     required String defaultAuthUrl,
+    required String defaultDataDirectory,
   }) {
     final authBackendFlag = results["auth-backend"] as String;
     final authBackendUrl = resolveAuthBackendUrl(
@@ -41,6 +47,10 @@ class BridgeCliOptions {
       defaultAuthUrl: defaultAuthUrl,
     );
     final debugPortRaw = results["debug-port"] as String;
+    final dataDirectory = resolveDataDirectory(
+      dataDirectoryFlag: results["data-dir"] as String?,
+      defaultDataDirectory: defaultDataDirectory,
+    );
 
     // Supervised-only option: trim and treat blank as absent. Do NOT validate
     // it here (no URI parse) — strict parse-time validation would risk failing
@@ -52,11 +62,41 @@ class BridgeCliOptions {
       cliArgs: cliArgs,
       relayUrl: results["relay"] as String,
       authBackendUrl: authBackendUrl,
+      dataDirectory: dataDirectory,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
       logLevelName: results["log-level"] as String,
       importPluginIds: List.unmodifiable(results["import-plugin"] as List<String>),
       controlUrl: controlUrl,
     );
+  }
+
+  static String resolveDataDirectory({
+    required String? dataDirectoryFlag,
+    required String defaultDataDirectory,
+  }) {
+    if (dataDirectoryFlag == null) return defaultDataDirectory;
+    if (dataDirectoryFlag.trim().isEmpty) {
+      throw ArgParserException("--data-dir must not be empty.");
+    }
+    return path.normalize(path.absolute(dataDirectoryFlag));
+  }
+
+  static bool isDefaultDataDirectory({
+    required String dataDirectory,
+    required String defaultDataDirectory,
+  }) {
+    return path.equals(
+      _dataDirectoryIdentity(dataDirectory),
+      _dataDirectoryIdentity(defaultDataDirectory),
+    );
+  }
+
+  static String _dataDirectoryIdentity(String dataDirectory) {
+    final normalized = path.normalize(path.absolute(dataDirectory));
+    if (FileSystemEntity.typeSync(normalized, followLinks: true) == FileSystemEntityType.notFound) {
+      return normalized;
+    }
+    return Directory(normalized).resolveSymbolicLinksSync();
   }
 
   /// Resolves the auth backend URL from the CLI flag, the

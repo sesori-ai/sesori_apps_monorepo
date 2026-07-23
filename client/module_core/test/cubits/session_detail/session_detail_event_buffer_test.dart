@@ -219,6 +219,76 @@ void main() {
       expect(state.children.first.id, "child-1");
     });
 
+    test("refreshes commands when sessions.updated arrives during loading", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      final loadCompleter = Completer<SessionDetailLoadResult>();
+      var reloadCount = 0;
+
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer((_) => loadCompleter.future);
+      when(
+        () => mockLoadService.reload(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer((_) async {
+        reloadCount++;
+        return SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            messages: const <MessageWithParts>[],
+            pendingQuestions: const <PendingQuestion>[],
+            pendingPermissions: const <PendingPermission>[],
+            childSessions: const <Session>[],
+            statuses: const <String, SessionStatus>{},
+            agents: const <AgentInfo?>[],
+            providerData: null,
+            commands: [testCommandInfo(name: "compact", template: "/compact")],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+          ),
+          isBridgeConnected: true,
+        );
+      });
+
+      final cubit = createCubit(loadService: mockLoadService);
+      globalEvents.add(
+        SseEvent(data: const SesoriSessionsUpdated(projectID: "project-1")),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      loadCompleter.complete(
+        const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            messages: <MessageWithParts>[],
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo?>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+
+      for (var i = 0; i < 100 && reloadCount == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      expect(reloadCount, 1);
+      await _awaitLoadedWithCommand(cubit, command: "compact");
+    });
+
     test("clears pending events when load fails", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final completer = Completer<SessionDetailLoadResult>();
@@ -470,4 +540,20 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
     await Future<void>.delayed(const Duration(milliseconds: 5));
   }
   fail("Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}");
+}
+
+Future<void> _awaitLoadedWithCommand(
+  SessionDetailCubit cubit, {
+  required String command,
+}) async {
+  for (var i = 0; i < 100; i++) {
+    final state = cubit.state;
+    if (state is SessionDetailLoaded &&
+        !state.isRefreshing &&
+        state.availableCommands.any((item) => item.name == command)) {
+      return;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+  fail("Timed out waiting for '$command'; current state: ${cubit.state}");
 }

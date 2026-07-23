@@ -508,9 +508,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   /// for one of our child sessions), we queue it and let the replay handler
   /// decide.
   ///
-  /// [SesoriSessionsUpdated] is intentionally excluded: it triggers a silent
-  /// refresh, but during loading we are already fetching the latest snapshot,
-  /// so replaying it would cause a redundant refresh immediately after load.
   bool _isRelevantGlobalEvent(SseEvent event) {
     return switch (event.data) {
       // Child session created for this session — definitely relevant.
@@ -576,11 +573,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriSessionPromptDefaultsChanged() ||
       // Unseen-state changes are list-level concerns handled by the tracker;
       // the detail screen does not react to them.
-      SesoriSessionUnseenChanged() ||
-      // Intentionally excluded: triggers a silent refresh, but during loading
-      // we are already fetching the latest snapshot, so replaying it would
-      // cause a redundant refresh immediately after load.
-      SesoriSessionsUpdated() => false,
+      SesoriSessionUnseenChanged() => false,
+      // Command catalogs can change while the initial snapshot is in flight
+      // (Cursor advertises them during the concurrent history load), so retain
+      // a matching project invalidation and refresh once loading completes.
+      SesoriSessionsUpdated(:final projectID) => projectID.isNotEmpty && projectID == _projectId,
     };
   }
 

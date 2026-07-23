@@ -14,6 +14,7 @@ class _GatedSelectionPlugin extends AcpPlugin {
     required super.launchSpec,
     required super.launchDirectory,
     required super.eventMapper,
+    required super.commandTracker,
     required AcpProcessFactory super.processFactory,
   });
 
@@ -59,6 +60,7 @@ void main() {
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        commandTracker: AcpCommandTracker(),
         processFactory: (_) async => fake,
       );
       emitted.clear();
@@ -273,6 +275,7 @@ void main() {
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        commandTracker: AcpCommandTracker(),
         processFactory: (_) async => fake,
       );
       addTearDown(gated.dispose);
@@ -484,6 +487,7 @@ void main() {
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp", pluginId: "acp"),
+        commandTracker: AcpCommandTracker(),
         processFactory: (_) async {
           final next = fakes.removeAt(0);
           spawned.add(next);

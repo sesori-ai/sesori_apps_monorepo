@@ -5,11 +5,21 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../codex_metadata_repository.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
+import "../repositories/codex_skill_repository.dart";
 import "../repositories/codex_thread_repository.dart";
 import "../repositories/models/codex_thread_record.dart";
 
 /// Layer-3 coordination for the migrated Codex session operations.
 class CodexSessionService {
+  static const String compactionCommandName = "compact";
+
+  static const PluginCommand _compactionCommand = PluginCommand(
+    name: compactionCommandName,
+    description: "Summarize the conversation so far to free up the context window",
+    provider: null,
+    source: PluginCommandSource.command,
+  );
+
   CodexSessionService({
     required CodexCatalogRepository catalogRepository,
     required CodexMessageRepository messageRepository,
@@ -26,16 +36,20 @@ class CodexSessionService {
   final String _launchDirectory;
 
   CodexThreadRepository? _threadRepository;
+  CodexSkillRepository? _skillRepository;
   final Set<String> _loadedThreads = {};
 
-  void attachThreadRepository({
+  void attachAppServerRepositories({
     required CodexThreadRepository threadRepository,
+    required CodexSkillRepository skillRepository,
   }) {
     _threadRepository = threadRepository;
+    _skillRepository = skillRepository;
   }
 
-  void detachThreadRepository() {
+  void detachAppServerRepositories() {
     _threadRepository = null;
+    _skillRepository = null;
     _loadedThreads.clear();
   }
 
@@ -51,8 +65,24 @@ class CodexSessionService {
     limit: limit,
   );
 
-  List<PluginCommand> getCommands({required String? projectId}) =>
-      _metadataRepository.getCommands(projectId: projectId);
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    final target = normalizeProjectDirectory(directory: projectId ?? _launchDirectory);
+    final List<PluginCommand> commands;
+    try {
+      commands = await _connectedSkillRepository.listCommands(cwd: target);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[codex] skill discovery failed; exposing compact only",
+        error,
+        stackTrace,
+      );
+      return const [_compactionCommand];
+    }
+    if (commands.any((command) => command.name == compactionCommandName)) {
+      return commands;
+    }
+    return [...commands, _compactionCommand];
+  }
 
   Future<CodexThreadRecord> startThread({
     required String cwd,
@@ -76,6 +106,82 @@ class CodexSessionService {
     final thread = await _connectedThreadRepository.resumeThread(threadId: threadId);
     _loadedThreads.add(threadId);
     return thread;
+  }
+
+  Future<({CodexThreadRecord? resumedThread, bool started})> startTurn({
+    required String threadId,
+    required List<PluginPromptPart> parts,
+    required String? model,
+    required String? effort,
+  }) async {
+    var resumed = await resumeThreadIfNeeded(threadId: threadId, force: false);
+    try {
+      final started = await _connectedThreadRepository.startTurn(
+        threadId: threadId,
+        parts: parts,
+        model: model,
+        effort: effort,
+      );
+      return (resumedThread: resumed, started: started);
+    } on CodexThreadNotFoundException {
+      resumed = await resumeThreadIfNeeded(threadId: threadId, force: true);
+      final started = await _connectedThreadRepository.startTurn(
+        threadId: threadId,
+        parts: parts,
+        model: model,
+        effort: effort,
+      );
+      return (resumedThread: resumed, started: started);
+    }
+  }
+
+  Future<CodexThreadRecord?> sendCommand({
+    required String threadId,
+    required String command,
+    required String arguments,
+    required String? model,
+    required String? effort,
+  }) async {
+    var resumed = await resumeThreadIfNeeded(threadId: threadId, force: false);
+    try {
+      await _dispatchCommand(
+        threadId: threadId,
+        command: command,
+        arguments: arguments,
+        model: model,
+        effort: effort,
+      );
+    } on CodexThreadNotFoundException {
+      resumed = await resumeThreadIfNeeded(threadId: threadId, force: true);
+      await _dispatchCommand(
+        threadId: threadId,
+        command: command,
+        arguments: arguments,
+        model: model,
+        effort: effort,
+      );
+    }
+    return resumed;
+  }
+
+  Future<void> _dispatchCommand({
+    required String threadId,
+    required String command,
+    required String arguments,
+    required String? model,
+    required String? effort,
+  }) async {
+    if (command == compactionCommandName) {
+      await _connectedThreadRepository.compactThread(threadId: threadId);
+      return;
+    }
+    final invocation = arguments.isEmpty ? "\$$command" : "\$$command $arguments";
+    await _connectedThreadRepository.startTurn(
+      threadId: threadId,
+      parts: [PluginPromptPart.text(text: invocation)],
+      model: model,
+      effort: effort,
+    );
   }
 
   CodexThreadRecord? decodeStartedNotificationParams({
@@ -157,6 +263,14 @@ class CodexSessionService {
 
   CodexThreadRepository get _connectedThreadRepository {
     final repository = _threadRepository;
+    if (repository == null) {
+      throw StateError("codex app-server API is not connected");
+    }
+    return repository;
+  }
+
+  CodexSkillRepository get _connectedSkillRepository {
+    final repository = _skillRepository;
     if (repository == null) {
       throw StateError("codex app-server API is not connected");
     }

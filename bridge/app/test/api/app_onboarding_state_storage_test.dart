@@ -5,6 +5,13 @@ import "package:sesori_bridge/src/api/app_onboarding_state_storage.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("derives the marker directory from the supplied data directory", () {
+    expect(
+      appOnboardingStateDirectoryPath(dataDirectory: path.join("root", "account-a")),
+      path.join("root", "account-a", "app_onboarding"),
+    );
+  });
+
   group("AppOnboardingStateStorage", () {
     late Directory temporaryDirectory;
     late String markerDirectory;

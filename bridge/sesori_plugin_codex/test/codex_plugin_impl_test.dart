@@ -62,7 +62,6 @@ void main() {
           keepaliveInterval: const Duration(seconds: 30),
         );
         expect(await plugin.getSessions("/repo/example"), isEmpty);
-        expect(await plugin.getCommands(projectId: "/repo/example"), isEmpty);
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
         expect(await plugin.getSessionStatuses(), isEmpty);
         expect(plugin.getActiveSessionsSummary(), isEmpty);

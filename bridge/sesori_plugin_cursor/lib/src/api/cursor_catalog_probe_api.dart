@@ -9,12 +9,13 @@ class CursorCatalogProbeApi {
   CursorCatalogProbeApi({required AcpStdioClient client}) : _client = client;
 
   static const int _maxPages = 50;
+  static const String _listAvailableModelsMethod = "cursor/list_available_models";
 
   final AcpStdioClient _client;
   AcpInitializeResult? _initializeResult;
   bool _disposed = false;
 
-  static const String _listAvailableModelsMethod = "cursor/list_available_models";
+  Stream<AcpNotification> get notifications => _client.notifications;
 
   /// Connects and performs Cursor's ACP v1 initialize/authenticate handshake.
   Future<AcpInitializeResult> open({required Duration timeout}) async {

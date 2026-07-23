@@ -326,16 +326,21 @@ class BridgeRuntimeRunner {
         browserOpenability: detectBrowserOpenability,
       ),
       environment: environment,
-      loadTokens: loadTokens,
-      saveTokens: saveTokens,
-      clearTokens: clearTokens,
+      loadTokens: () => loadTokens(dataDirectory: options.dataDirectory),
+      saveTokens: (data) => saveTokens(
+        data: data,
+        dataDirectory: options.dataDirectory,
+      ),
+      clearTokens: () => clearTokens(dataDirectory: options.dataDirectory),
     );
 
     // Persisted bridge-id storage (its own file, not token.json). Constructed
     // here so the supervised registration service below can share it; the
     // legacy-id migration that populates it still runs at its normal point
     // before authentication.
-    final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
+    final bridgeIdStorage = BridgeIdStorage(
+      filePath: bridgeIdPath(dataDirectory: options.dataDirectory),
+    );
 
     try {
       // Copy a legacy bridge id out of token.json into its own storage before
@@ -348,7 +353,9 @@ class BridgeRuntimeRunner {
       // the legacy source still intact.
       await BridgeIdMigrationService(
         bridgeIdStorage: bridgeIdStorage,
-        readLegacyBridgeId: readLegacyBridgeId,
+        readLegacyBridgeId: () => readLegacyBridgeId(
+          dataDirectory: options.dataDirectory,
+        ),
       ).migrate();
 
       // Supervised mode (desktop GUI): bring up the loopback control channel
@@ -539,8 +546,11 @@ class BridgeRuntimeRunner {
         final tokenManager = TokenManager(
           initialToken: authAccessToken,
           authBackendUrl: options.authBackendUrl,
-          loadTokens: loadTokens,
-          saveTokens: saveTokens,
+          loadTokens: () => loadTokens(dataDirectory: options.dataDirectory),
+          saveTokens: (data) => saveTokens(
+            data: data,
+            dataDirectory: options.dataDirectory,
+          ),
         );
         shutdownCoordinator.add(disposable: tokenManager.dispose);
         accessTokenProvider = tokenManager;
@@ -681,7 +691,11 @@ class BridgeRuntimeRunner {
             ),
           ),
           stateRepository: AppOnboardingStateRepository(
-            storage: AppOnboardingStateStorage(directoryPath: appOnboardingStateDirectoryPath()),
+            storage: AppOnboardingStateStorage(
+              directoryPath: appOnboardingStateDirectoryPath(
+                dataDirectory: options.dataDirectory,
+              ),
+            ),
           ),
           formatter: AppOnboardingFormatter(out: io.stdout, environment: environment),
           tokenRefresher: tokenRefresher,
@@ -812,7 +826,9 @@ class BridgeRuntimeRunner {
         Log.w("Startup diagnostics failed; continuing without a degraded-access warning", error, stackTrace);
       }
 
-      final database = AppDatabase.create();
+      final database = AppDatabase.create(
+        dataDirectory: options.dataDirectory,
+      );
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
         config: BridgeConfig(

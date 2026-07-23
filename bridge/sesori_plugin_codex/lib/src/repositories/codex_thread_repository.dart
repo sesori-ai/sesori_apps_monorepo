@@ -1,9 +1,38 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSession, PluginSessionTime;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/codex_app_server_api.dart";
 import "../api/models/codex_thread_dto.dart";
+import "../api/models/codex_turn_input_dto.dart";
+import "../codex_app_server_client.dart";
 import "models/codex_thread_record.dart";
+
+sealed class CodexThreadOperationException implements Exception {
+  const CodexThreadOperationException({
+    required this.operation,
+    required this.message,
+  });
+
+  final String operation;
+  final String message;
+
+  @override
+  String toString() => "CodexThreadOperationException($operation: $message)";
+}
+
+final class CodexThreadNotFoundException extends CodexThreadOperationException {
+  const CodexThreadNotFoundException({
+    required super.operation,
+    required super.message,
+  });
+}
+
+final class CodexThreadRequestException extends CodexThreadOperationException {
+  const CodexThreadRequestException({
+    required super.operation,
+    required super.message,
+  });
+}
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
 class CodexThreadRepository {
@@ -16,18 +45,49 @@ class CodexThreadRepository {
     required String? model,
     required String? modelProvider,
   }) async {
-    final dto = await _appServerApi.startThread(
-      cwd: cwd,
-      model: model,
-      modelProvider: modelProvider,
+    final dto = await _request(
+      operation: "thread/start",
+      request: () => _appServerApi.startThread(
+        cwd: cwd,
+        model: model,
+        modelProvider: modelProvider,
+      ),
     );
     return _mapRequired(dto: dto, operation: "thread/start");
   }
 
   Future<CodexThreadRecord> resumeThread({required String threadId}) async {
-    final dto = await _appServerApi.resumeThread(threadId: threadId);
+    final dto = await _request(
+      operation: "thread/resume",
+      request: () => _appServerApi.resumeThread(threadId: threadId),
+    );
     return _mapRequired(dto: dto, operation: "thread/resume");
   }
+
+  Future<bool> startTurn({
+    required String threadId,
+    required List<PluginPromptPart> parts,
+    required String? model,
+    required String? effort,
+  }) async {
+    final input = parts.map(_mapTurnInput).whereType<CodexTurnInputDto>().toList();
+    if (input.isEmpty) return false;
+    await _request(
+      operation: "turn/start",
+      request: () => _appServerApi.startTurn(
+        threadId: threadId,
+        input: input,
+        model: model,
+        effort: effort,
+      ),
+    );
+    return true;
+  }
+
+  Future<void> compactThread({required String threadId}) => _request(
+    operation: "thread/compact/start",
+    request: () => _appServerApi.compactThread(threadId: threadId),
+  );
 
   CodexThreadRecord? mapStartedNotification({
     required CodexThreadEnvelopeDto dto,
@@ -89,6 +149,42 @@ class CodexThreadRepository {
       model: _usefulText(dto.model),
       modelProvider: _usefulText(thread.modelProvider) ?? _usefulText(dto.modelProvider),
     );
+  }
+
+  CodexTurnInputDto? _mapTurnInput(PluginPromptPart part) {
+    return switch (part) {
+      PluginPromptPartText(:final text) => CodexTurnInputDto.text(text: text),
+      PluginPromptPartFilePath(:final path) => CodexTurnInputDto.localImage(path: path),
+      PluginPromptPartFileUrl(:final url) => CodexTurnInputDto.image(url: url),
+      PluginPromptPartFileData() => null,
+    };
+  }
+
+  Future<T> _request<T>({
+    required String operation,
+    required Future<T> Function() request,
+  }) async {
+    try {
+      return await request();
+    } on CodexRpcException catch (error, stackTrace) {
+      final exception = _isThreadNotFound(error)
+          ? CodexThreadNotFoundException(
+              operation: operation,
+              message: error.message,
+            )
+          : CodexThreadRequestException(
+              operation: operation,
+              message: error.message,
+            );
+      Error.throwWithStackTrace(exception, stackTrace);
+    }
+  }
+
+  bool _isThreadNotFound(CodexRpcException error) {
+    final message = error.message.toLowerCase();
+    return message.contains("thread not found") ||
+        message.contains("no such thread") ||
+        (error.code == -32600 && message.contains("not found"));
   }
 
   int? _milliseconds(num? seconds) => seconds == null ? null : (seconds * 1000).round();

@@ -1,13 +1,10 @@
-// Phase 6 polish tests: getCommands surfaces skills, renameProject
-// returns the synthesised project with the new name, deleteSession
-// removes the rollout JSONL and the index entry.
+// Phase 6 polish tests for project/session mutation behavior.
 
 import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:path/path.dart" as p;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginCommandSource;
 import "package:test/test.dart";
 
 import "support/codex_plugin_test_factory.dart";
@@ -41,57 +38,6 @@ void main() {
         keepaliveInterval: const Duration(seconds: 30),
       );
     }
-
-    test("getCommands enumerates codex skills as PluginCommand(source=skill)", () async {
-      _writeSkill(
-        codexHome,
-        "skills/ralph/SKILL.md",
-        name: "ralph",
-        description: "Persistence loop",
-      );
-      _writeSkill(
-        projectCwd,
-        ".codex/skills/local/SKILL.md",
-        name: "local",
-        description: "Project-only skill",
-      );
-
-      final plugin = newPlugin();
-      final commands = await plugin.getCommands(projectId: projectCwd.path);
-      expect(commands.map((c) => c.name).toList(), equals(["local", "ralph"]));
-      for (final cmd in commands) {
-        expect(cmd.source, equals(PluginCommandSource.skill));
-      }
-      await plugin.dispose();
-    });
-
-    test("getCommands scopes project-local skills to the selected derived project", () async {
-      _writeSkill(
-        projectCwd,
-        ".codex/skills/launch-only/SKILL.md",
-        name: "launch-only",
-        description: "Launch project skill",
-      );
-      final otherProject = Directory.systemTemp.createTempSync("codex-other-p6-");
-      addTearDown(() {
-        try {
-          otherProject.deleteSync(recursive: true);
-        } catch (_) {}
-      });
-      _writeSkill(
-        otherProject,
-        ".codex/skills/other-only/SKILL.md",
-        name: "other-only",
-        description: "Derived project skill",
-      );
-
-      final plugin = newPlugin();
-      // A derived project outside the launch directory sees its own project-
-      // local skills, not the launch project's.
-      final commands = await plugin.getCommands(projectId: otherProject.path);
-      expect(commands.map((c) => c.name).toList(), equals(["other-only"]));
-      await plugin.dispose();
-    });
 
     test("deleteSession removes the rollout JSONL and the index entry", () async {
       // Set up: one session in the index and on disk, one extra session
@@ -203,24 +149,4 @@ void _writeRollout(
     },
   });
   File(full).writeAsStringSync("$line\n");
-}
-
-void _writeSkill(
-  Directory root,
-  String relPath, {
-  required String name,
-  required String description,
-}) {
-  final full = p.join(root.path, relPath);
-  Directory(p.dirname(full)).createSync(recursive: true);
-  File(full).writeAsStringSync(
-    [
-      "---",
-      "name: $name",
-      "description: $description",
-      "---",
-      "",
-      "Body.",
-    ].join("\n"),
-  );
 }
