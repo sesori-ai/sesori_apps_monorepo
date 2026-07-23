@@ -1088,6 +1088,9 @@ class _TrackingSessionMutationDispatcher implements SessionMutationDispatcher {
   Future<void> deleteSession({required String sessionId}) async {}
 
   @override
+  Future<void> drain() async {}
+
+  @override
   Future<void> dispose() async {}
 
   @override

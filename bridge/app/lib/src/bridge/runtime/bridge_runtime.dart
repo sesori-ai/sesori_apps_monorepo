@@ -45,6 +45,7 @@ class BridgeRuntime {
       failureReporter: _failureReporter,
       restartService: _restartService,
       restartHandoff: session.handleRestartHandoff,
+      drainRoutedMutations: session.drainRoutedMutations,
     );
   }
 

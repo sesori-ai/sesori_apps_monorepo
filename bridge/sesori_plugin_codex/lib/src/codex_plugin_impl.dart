@@ -38,6 +38,8 @@ import "services/codex_session_service.dart";
 /// Approval/permission flows still throw — those land in Phase 5.
 class CodexPlugin implements CodexManagedApi {
   static const String pluginId = "codex";
+  static const Duration _renameRetryDelay = Duration(milliseconds: 100);
+  static const Duration _renameRetryTimeout = Duration(seconds: 2);
 
   final String _serverUrl;
   // Passed to the default client built in [_createClient]; retained for future
@@ -634,6 +636,14 @@ class CodexPlugin implements CodexManagedApi {
         (error.code == -32600 && message.contains("not found"));
   }
 
+  bool _isEmptyRollout(CodexRpcException error) {
+    final message = error.message.toLowerCase();
+    return error.code == -32603 &&
+        message.contains("failed to read session metadata") &&
+        message.contains("rollout") &&
+        message.contains(" is empty");
+  }
+
   Map<String, dynamic>? _promptPartToUserInput(PluginPromptPart part) {
     return switch (part) {
       PluginPromptPartText(:final text) => {
@@ -664,10 +674,35 @@ class CodexPlugin implements CodexManagedApi {
     required String title,
   }) async {
     final client = await _connectedClient();
-    await client.request(
-      method: "thread/name/set",
-      params: {"threadId": sessionId, "name": title},
-    );
+    Stopwatch? retryClock;
+    for (var attempt = 1; ; attempt++) {
+      final requestTimeout = retryClock == null
+          ? const Duration(seconds: 30)
+          : _renameRetryTimeout - retryClock.elapsed;
+      if (requestTimeout <= Duration.zero) {
+        throw TimeoutException("Codex session rename retry deadline elapsed");
+      }
+      try {
+        await client.request(
+          method: "thread/name/set",
+          params: {"threadId": sessionId, "name": title},
+          timeout: requestTimeout,
+        );
+        break;
+      } on CodexRpcException catch (error) {
+        // thread/start can return after creating the rollout but before its
+        // initial session metadata has been flushed. Retry only that transient
+        // app-server failure; unrelated rename failures remain immediate.
+        if (!_isEmptyRollout(error)) rethrow;
+        retryClock ??= Stopwatch()..start();
+        if (retryClock.elapsed + _renameRetryDelay > _renameRetryTimeout) rethrow;
+        Log.d(
+          "Codex rollout metadata is not ready for session $sessionId; "
+          "retrying rename after attempt $attempt",
+        );
+        await Future<void>.delayed(_renameRetryDelay);
+      }
+    }
     final directory = _directoryForSession(sessionId);
     return PluginSession(
       id: sessionId,

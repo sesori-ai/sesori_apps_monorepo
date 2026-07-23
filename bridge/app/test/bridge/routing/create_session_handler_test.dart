@@ -63,6 +63,7 @@ void main() {
     late FakeMetadataService metadataService;
     late _FakeWorktreeService worktreeService;
     late SessionRepository sessionRepository;
+    late SessionMutationDispatcher sessionMutationDispatcher;
     late CreateSessionHandler handler;
     late AppDatabase db;
 
@@ -79,17 +80,19 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
       handler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: sessionRepository,
-          sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
+          sessionMutationDispatcher: sessionMutationDispatcher,
         ),
       );
     });
 
     tearDown(() async {
+      await sessionMutationDispatcher.dispose();
       await plugin.close();
       await db.close();
     });
@@ -744,6 +747,9 @@ void main() {
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(metadataService.lastGenerateMessage, equals("Fix the login bug"));
       expect(worktreeService.lastPreparePreferredBranchName, equals("fix-login-bug"));
+      expect(result.title, equals("Fix Login Bug"));
+      expect((await db.sessionDao.getSession(sessionId: result.id))?.title, equals("Fix Login Bug"));
+      await sessionMutationDispatcher.drain();
       expect(plugin.lastRenameSessionTitle, equals("Fix Login Bug"));
     });
 
@@ -1117,7 +1123,7 @@ void main() {
       expect(plugin.lastSendCommandSessionId, isNull);
     });
 
-    test("rename fails — session still returned successfully", () async {
+    test("plugin rename failure keeps the stored generated title", () async {
       final throwingPlugin = _ThrowingRenameSessionPlugin();
       metadataService.generateResult = const bridge_metadata.SessionMetadata(
         title: "Fix Login Bug",
@@ -1139,12 +1145,13 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
+      final throwingDispatcher = SessionMutationDispatcher(sessionRepository: throwingRepository);
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
           metadataService: metadataService,
           worktreeService: worktreeService,
           sessionRepository: throwingRepository,
-          sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: throwingRepository),
+          sessionMutationDispatcher: throwingDispatcher,
         ),
       );
 
@@ -1166,6 +1173,9 @@ void main() {
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
+      expect(result.title, "Fix Login Bug");
+      expect((await db.sessionDao.getSession(sessionId: result.id))?.title, "Fix Login Bug");
+      await throwingDispatcher.dispose();
       await throwingPlugin.close();
     });
   });

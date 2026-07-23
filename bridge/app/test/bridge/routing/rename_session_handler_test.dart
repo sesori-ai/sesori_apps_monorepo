@@ -18,6 +18,7 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late SessionRepository sessionRepository;
+    late SessionMutationDispatcher sessionMutationDispatcher;
     late RenameSessionHandler handler;
 
     setUp(() async {
@@ -30,9 +31,8 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      handler = RenameSessionHandler(
-        sessionMutationDispatcher: SessionMutationDispatcher(sessionRepository: sessionRepository),
-      );
+      sessionMutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
+      handler = RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher);
       await sessionRepository.insertStoredSession(
         sessionId: "s1",
         backendSessionId: "backend-s1",
@@ -50,6 +50,7 @@ void main() {
     });
 
     tearDown(() async {
+      await sessionMutationDispatcher.dispose();
       await plugin.close();
       await db.close();
     });
@@ -87,12 +88,13 @@ void main() {
         queryParams: {},
         fragment: null,
       );
+      await sessionMutationDispatcher.dispose();
 
       expect(plugin.lastRenameSessionId, equals("backend-s1"));
       expect(plugin.lastRenameSessionTitle, equals("New Title"));
     });
 
-    test("returns mapped Session", () async {
+    test("returns the authoritative catalog Session", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         pluginId: "fake",
@@ -145,13 +147,14 @@ void main() {
       expect(result.id, equals("s1"));
       expect(result.projectID, equals("p1"));
       expect(result.directory, equals("/tmp"));
-      expect(result.parentID, equals("parent-1"));
+      expect(result.parentID, isNull);
       expect(result.title, equals("Renamed Session"));
-      expect(result.time?.created, equals(10));
-      expect(result.time?.updated, equals(20));
+      expect(result.time?.created, equals(1));
+      expect(result.time?.updated, greaterThan(1));
       expect(result.time?.archived, isNull);
       expect(result.pullRequest?.number, equals(13));
       expect(result.pullRequest?.title, equals("Rename PR"));
+      await sessionMutationDispatcher.dispose();
       expect(plugin.lastRenameSessionId, equals("backend-s1"));
     });
 
@@ -184,7 +187,7 @@ void main() {
       expect(plugin.lastRenameSessionId, isNull);
     });
 
-    test("stored plugin mismatch returns 503 before plugin I/O", () async {
+    test("stores a rename while the owning plugin is unavailable", () async {
       await sessionRepository.insertStoredSession(
         sessionId: "stale-plugin-session",
         backendSessionId: "backend-stale-plugin-session",
@@ -213,7 +216,8 @@ void main() {
         fragment: null,
       );
 
-      expect(response.status, 503);
+      expect(response.status, 200);
+      expect((await db.sessionDao.getSession(sessionId: "stale-plugin-session"))?.title, "New Title");
       expect(plugin.lastRenameSessionId, isNull);
     });
   });

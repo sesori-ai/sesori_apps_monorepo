@@ -165,6 +165,102 @@ void main() {
       expect(renamed.directory, equals("/work/sample/packages/core"));
     });
 
+    test("renameSession retries beyond the initial rollout flush window", () async {
+      const emptyRolloutResponse = _Response(
+        error: {
+          "code": -32603,
+          "message":
+              "failed to set thread name: Fatal error: failed to update thread metadata "
+              "t-empty-rollout: thread-store internal error: failed to read session metadata "
+              "/tmp/rollout-t-empty-rollout.jsonl: rollout at "
+              "/tmp/rollout-t-empty-rollout.jsonl is empty",
+        },
+      );
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-empty-rollout"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-1"}),
+        emptyRolloutResponse,
+        emptyRolloutResponse,
+        emptyRolloutResponse,
+        emptyRolloutResponse,
+        emptyRolloutResponse,
+        emptyRolloutResponse,
+        const _Response(result: {}),
+      ]);
+
+      await plugin.createSession(
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "start")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final renamed = await plugin.renameSession(
+        sessionId: "t-empty-rollout",
+        title: "Renamed",
+      );
+
+      expect(renamed.title, equals("Renamed"));
+      expect(fake.sentMethods.where((method) => method == "thread/name/set"), hasLength(7));
+    });
+
+    test("renameSession does not retry unrelated RPC failures", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          error: {
+            "code": -32603,
+            "message": "failed to set thread name: state database is unavailable",
+          },
+        ),
+        const _Response(result: {}),
+      ]);
+
+      await expectLater(
+        plugin.renameSession(sessionId: "t-failed", title: "Renamed"),
+        throwsA(
+          isA<CodexRpcException>().having(
+            (error) => error.message,
+            "message",
+            contains("state database is unavailable"),
+          ),
+        ),
+      );
+
+      expect(fake.sentMethods.where((method) => method == "thread/name/set"), hasLength(1));
+    });
+
+    test("renameSession bounds a stalled retry by the rollout deadline", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          error: {
+            "code": -32603,
+            "message":
+                "failed to read session metadata /tmp/rollout.jsonl: "
+                "rollout at /tmp/rollout.jsonl is empty",
+          },
+        ),
+        const _Response(respond: false),
+      ]);
+      final stopwatch = Stopwatch()..start();
+
+      await expectLater(
+        plugin
+            .renameSession(sessionId: "t-stalled", title: "Renamed")
+            .timeout(const Duration(seconds: 4)),
+        throwsA(isA<TimeoutException>()),
+      );
+
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 3)));
+    });
+
     test("sendPrompt resumes a thread from a prior run before the turn", () async {
       // `t-existing` was never started in this plugin instance, so the
       // app-server has not loaded it — the plugin must resume it on demand
@@ -575,9 +671,10 @@ const Map<String, dynamic> _initOk = {
 
 class _Response {
   // ignore: unused_element_parameter
-  const _Response({this.result, this.error});
+  const _Response({this.result, this.error, this.respond = true});
   final Object? result;
   final Map<String, dynamic>? error;
+  final bool respond;
 }
 
 /// Fake app-server that records every method/params it received and
@@ -652,6 +749,7 @@ class _FakeAppServer {
       return;
     }
     final response = _pending.removeAt(0);
+    if (!response.respond) return;
     final envelope = <String, dynamic>{"jsonrpc": "2.0", "id": id};
     if (response.error != null) {
       envelope["error"] = response.error;
