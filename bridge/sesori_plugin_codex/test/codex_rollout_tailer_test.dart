@@ -133,6 +133,63 @@ void main() {
       expect(appends.single.sessionId, "session-1");
       expect(appends.single.line.payload?.callId, "late-call");
     });
+
+    test("finish waits for a late append to an existing rollout", () async {
+      final directory = Directory.systemTemp.createTempSync("codex-tail-");
+      addTearDown(() {
+        try {
+          directory.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+      final path = p.join(directory.path, "rollout.jsonl");
+      File(path).writeAsStringSync(
+        "${jsonEncode({
+          "type": "response_item",
+          "payload": {
+            "type": "function_call_output",
+            "call_id": "previous-call",
+            "output": "old",
+          },
+        })}\n",
+      );
+      final api = CodexRolloutApi(environment: const {});
+      final tailer = CodexRolloutTailer(
+        rolloutApi: api,
+        catalogRepository: _FixedCatalogRepository(
+          rolloutApi: api,
+          path: path,
+        ),
+        pollInterval: const Duration(milliseconds: 5),
+      );
+      final appends = <CodexRolloutAppend>[];
+      final subscription = tailer.appends.listen(appends.add);
+      addTearDown(() async {
+        await subscription.cancel();
+        await tailer.dispose();
+      });
+
+      tailer.start(sessionId: "session-1");
+      final appendTimer = Timer(const Duration(milliseconds: 10), () {
+        File(path).writeAsStringSync(
+          "${jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call_output",
+              "call_id": "late-existing-call",
+              "output": "done",
+            },
+          })}\n",
+          mode: FileMode.append,
+        );
+      });
+      addTearDown(appendTimer.cancel);
+
+      await tailer.finish(sessionId: "session-1");
+
+      expect(appends, hasLength(1));
+      expect(appends.single.sessionId, "session-1");
+      expect(appends.single.line.payload?.callId, "late-existing-call");
+    });
   });
 }
 

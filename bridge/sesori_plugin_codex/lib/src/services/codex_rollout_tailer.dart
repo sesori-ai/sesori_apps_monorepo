@@ -74,6 +74,7 @@ class CodexRolloutTailer {
       path: path,
       offset: position.offset,
       trailingBytes: position.trailingBytes,
+      hasObservedAppend: false,
     );
     _timer ??= Timer.periodic(_pollInterval, (_) => drainAll());
   }
@@ -99,9 +100,11 @@ class CodexRolloutTailer {
         offset: cursor.offset,
         trailingBytes: cursor.trailingBytes,
       );
+      final observedAppend = chunk.nextOffset > cursor.offset;
       cursor
         ..offset = chunk.nextOffset
-        ..trailingBytes = chunk.trailingBytes;
+        ..trailingBytes = chunk.trailingBytes
+        ..hasObservedAppend = cursor.hasObservedAppend || observedAppend;
       for (final line in chunk.lines) {
         _appends.add(CodexRolloutAppend(sessionId: sessionId, line: line));
       }
@@ -117,15 +120,16 @@ class CodexRolloutTailer {
 
   /// Discovers and drains terminal rollout data before releasing this cursor.
   ///
-  /// An already discovered rollout with complete records stops synchronously.
-  /// A rollout not created yet, or a suffix observed without its newline, waits
-  /// up to ten normal poll intervals so Codex's writer can finish without a
-  /// missing or broken writer holding `session.idle` indefinitely.
+  /// An already discovered rollout stops synchronously only after this turn
+  /// observed appended bytes and has no partial suffix. A rollout not created
+  /// yet, an idle existing rollout, or a suffix without its newline waits up to
+  /// ten normal poll intervals so Codex's writer can finish without a missing
+  /// or broken writer holding `session.idle` indefinitely.
   Future<void> finish({required String sessionId}) async {
     drain(sessionId: sessionId);
     var cursor = _cursors[sessionId];
     if (cursor == null) return;
-    if (cursor.path != null && cursor.trailingBytes.isEmpty) {
+    if (_isTerminallyDrained(cursor)) {
       stop(sessionId: sessionId);
       return;
     }
@@ -134,7 +138,7 @@ class CodexRolloutTailer {
       drain(sessionId: sessionId);
       cursor = _cursors[sessionId];
       if (cursor == null) return;
-      if (cursor.path != null && cursor.trailingBytes.isEmpty) {
+      if (_isTerminallyDrained(cursor)) {
         stop(sessionId: sessionId);
         return;
       }
@@ -145,6 +149,9 @@ class CodexRolloutTailer {
     );
     stop(sessionId: sessionId);
   }
+
+  bool _isTerminallyDrained(_CodexRolloutCursor cursor) =>
+      cursor.path != null && cursor.hasObservedAppend && cursor.trailingBytes.isEmpty;
 
   void stop({required String sessionId}) {
     _cursors.remove(sessionId);
@@ -171,9 +178,15 @@ class _CodexRolloutCursor {
     required this.path,
     required this.offset,
     required this.trailingBytes,
+    required this.hasObservedAppend,
   });
 
   String? path;
   int offset;
   List<int> trailingBytes;
+
+  // COMPATIBILITY 2026-07-23 (Codex JSONL writer): a non-null path at EOF does
+  // not prove the current turn is flushed; Codex may append its first bytes
+  // just after turn/completed. Remove with the live rollout tail workaround.
+  bool hasObservedAppend;
 }
