@@ -7,12 +7,14 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
+import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -21,16 +23,20 @@ void main() {
   test("zero-plugin composition keeps the relay session online", () async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
-    final lifecycleService = PluginLifecycleService()
-      ..registerPlugins(
-        plugins: const [(id: "opencode", displayName: "OpenCode")],
-      )
-      ..initialize(
-        disabledPluginIds: const {"opencode"},
-        setupById: const {
-          "opencode": PluginSetupNotInspected(),
-        },
-      );
+    final pluginRuntime = createRegisteredTestPluginRuntime(pluginIds: const ["opencode"]);
+    final lifecycleService =
+        PluginLifecycleService(
+            lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+          )
+          ..registerPlugins(
+            plugins: const [(id: "opencode", displayName: "OpenCode")],
+          )
+          ..initialize(
+            disabledPluginIds: const {"opencode"},
+            setupById: const {
+              "opencode": PluginSetupNotInspected(),
+            },
+          );
     final httpClient = http.Client();
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -47,6 +53,7 @@ void main() {
       client: relayClient,
       legacyMissingPluginId: "opencode",
       pluginLifecycleService: lifecycleService,
+      pluginRuntime: pluginRuntime,
       database: database,
       httpClient: httpClient,
       processRunner: ProcessRunner(),
@@ -62,14 +69,15 @@ void main() {
 
     try {
       await relayServer.nextClient();
-      expect(lifecycleService.compositionView.enabledPluginIds, isEmpty);
-      expect(lifecycleService.compositionView.operationalPlugins, isEmpty);
+      expect(lifecycleService.compositionView.eligiblePluginIds, isEmpty);
+      expect(pluginRuntime.activePluginIds, isEmpty);
       expect(composition.catalogImportService.latestStatuses, isEmpty);
     } finally {
       await composition.session.cancel();
       await runFuture.timeout(const Duration(seconds: 5));
       await composition.catalogImportService.dispose();
       await lifecycleService.dispose();
+      await pluginRuntime.dispose();
       httpClient.close();
       await database.close();
       await relayServer.close();
@@ -92,6 +100,7 @@ void main() {
         client: _ThrowingConnectRelayClient(),
         legacyMissingPluginId: plugin.id,
         pluginLifecycleService: lifecycleService,
+        pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
         database: database,
         httpClient: httpClient,
         processRunner: ProcessRunner(),
@@ -196,6 +205,7 @@ class _TestHarness {
       client: relayClient,
       legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
+      pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       database: database,
       httpClient: httpClient,
       processRunner: ProcessRunner(),

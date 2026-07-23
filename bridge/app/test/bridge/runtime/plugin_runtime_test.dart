@@ -455,6 +455,29 @@ void main() {
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
   });
 
+  test("the temporary operational API view follows generation replacement", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final firstApi = factory.api;
+
+    expect(runtime.operationalApis["one"], same(firstApi));
+
+    expect(
+      await runtime.restart(pluginId: "one", intent: PluginStopIntent.safe),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+    expect(runtime.operationalApis["one"], same(factory.api));
+    expect(runtime.operationalApis["one"], isNot(same(firstApi)));
+
+    expect(
+      await runtime.stop(pluginId: "one", intent: PluginStopIntent.safe),
+      isA<PluginRuntimeCommandApplied>(),
+    );
+    expect(runtime.operationalApis, isEmpty);
+  });
+
   test("a force restart aborts an in-flight start before starting its successor", () async {
     final startGate = Completer<void>();
     final factory = _FakeGenerationFactory(startGate: startGate.future);

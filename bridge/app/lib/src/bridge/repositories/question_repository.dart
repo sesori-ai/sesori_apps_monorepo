@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../api/database/daos/projects_dao.dart";
 import "../../api/database/daos/session_dao.dart";
 import "../../api/database/tables/session_table.dart";
+import "../runtime/plugin_runtime.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_question_mapper.dart";
 import "models/project_not_found_exception.dart";
@@ -16,19 +17,19 @@ import "models/session_operation.dart";
 class QuestionRepository {
   static const DerivedSessionBuilder _derivedSessionBuilder = DerivedSessionBuilder();
 
-  final Map<String, BridgePluginApi> _operationalPlugins;
+  final PluginRuntime _runtime;
   final SessionDao _sessionDao;
   final ProjectsDao _projectsDao;
   final String _legacyMissingPluginId;
   final Duration _aggregateSourceDeadline;
 
   QuestionRepository({
-    required Map<String, BridgePluginApi> operationalPlugins,
+    required PluginRuntime runtime,
     required SessionDao sessionDao,
     required ProjectsDao projectsDao,
     required String legacyMissingPluginId,
     required Duration aggregateSourceDeadline,
-  }) : _operationalPlugins = operationalPlugins,
+  }) : _runtime = runtime,
        _sessionDao = sessionDao,
        _projectsDao = projectsDao,
        _legacyMissingPluginId = legacyMissingPluginId,
@@ -37,22 +38,28 @@ class QuestionRepository {
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingQuestion>> getPendingQuestions({required String sessionId}) async {
-    final target = await _requireBinding(
+    final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.getPendingQuestions,
     );
-    Set<String>? tombstoned;
-    if (target.plugin case final BridgeDerivedProjectsPluginApi plugin) {
-      tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
-      if (tombstoned.contains(target.binding.backendSessionId)) return const [];
-    }
-    final pluginQuestions = await target.plugin.getPendingQuestions(sessionId: target.binding.backendSessionId);
-    return _mapPendingQuestions(
-      pluginId: target.plugin.id,
-      questions: [
-        for (final question in pluginQuestions)
-          if (tombstoned == null || _isVisible(question, tombstoned)) question,
-      ],
+    return _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.getPendingQuestions,
+      body: (plugin) async {
+        Set<String>? tombstoned;
+        if (plugin is BridgeDerivedProjectsPluginApi) {
+          tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
+          if (tombstoned.contains(binding.backendSessionId)) return const <PendingQuestion>[];
+        }
+        final questions = await plugin.getPendingQuestions(sessionId: binding.backendSessionId);
+        return _mapPendingQuestions(
+          pluginId: plugin.id,
+          questions: [
+            for (final question in questions)
+              if (tombstoned == null || _isVisible(question, tombstoned)) question,
+          ],
+        );
+      },
     );
   }
 
@@ -78,31 +85,37 @@ class QuestionRepository {
     if (directory == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
-    final plugins = _operationalPlugins.values.toList(growable: false);
-    if (plugins.isEmpty) {
-      throw const PluginOperationException(
-        "getProjectQuestions",
+    final pluginIds = _runtime.activePluginIds;
+    if (pluginIds.isEmpty) {
+      throw PluginOperationException(
+        SessionOperation.getProjectQuestions.name,
         statusCode: 503,
         message: "no plugins are running",
       );
     }
     final sources = await Future.wait<List<PendingQuestion>?>(
-      plugins.map((plugin) async {
+      pluginIds.map((pluginId) async {
         try {
-          return await _getPluginProjectQuestions(
-            plugin: plugin,
-            projectId: projectId,
-            directory: directory,
-          ).timeout(_aggregateSourceDeadline);
+          return await _runtime
+              .useIfActive(
+                pluginId: pluginId,
+                operation: SessionOperation.getProjectQuestions,
+                body: (plugin, _) => _getPluginProjectQuestions(
+                  plugin: plugin,
+                  projectId: projectId,
+                  directory: directory,
+                ),
+              )
+              .timeout(_aggregateSourceDeadline);
         } on Object catch (error, stackTrace) {
-          Log.w("Could not read project questions from plugin ${plugin.id}", error, stackTrace);
+          Log.w("Could not read project questions from plugin $pluginId", error, stackTrace);
           return null;
         }
       }),
     );
     if (sources.every((source) => source == null)) {
-      throw const PluginOperationException(
-        "getProjectQuestions",
+      throw PluginOperationException(
+        SessionOperation.getProjectQuestions.name,
         statusCode: 503,
         message: "all running plugins failed to get project questions",
       );
@@ -177,20 +190,26 @@ class QuestionRepository {
     required String sessionId,
     required List<ReplyAnswer> answers,
   }) async {
-    final target = await _requireBinding(
+    final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.replyToQuestion,
     );
-    await _throwIfMutationTargetTombstoned(
-      questionId: questionId,
-      backendSessionId: target.binding.backendSessionId,
+    return _runtime.use(
+      pluginId: binding.pluginId,
       operation: SessionOperation.replyToQuestion,
-      plugin: target.plugin,
-    );
-    return target.plugin.replyToQuestion(
-      questionId: questionId,
-      sessionId: target.binding.backendSessionId,
-      answers: answers.map((answer) => answer.values).toList(),
+      body: (plugin) async {
+        await _throwIfMutationTargetTombstoned(
+          questionId: questionId,
+          backendSessionId: binding.backendSessionId,
+          operation: SessionOperation.replyToQuestion,
+          plugin: plugin,
+        );
+        return plugin.replyToQuestion(
+          questionId: questionId,
+          sessionId: binding.backendSessionId,
+          answers: answers.map((answer) => answer.values).toList(),
+        );
+      },
     );
   }
 
@@ -201,26 +220,32 @@ class QuestionRepository {
   }) async {
     String? backendSessionId;
     if (sessionId != null) {
-      final target = await _requireBinding(
+      final binding = await _requireBinding(
         sessionId: sessionId,
         operation: SessionOperation.rejectQuestion,
       );
-      backendSessionId = target.binding.backendSessionId;
-      await _throwIfMutationTargetTombstoned(
-        questionId: questionId,
-        backendSessionId: backendSessionId,
+      backendSessionId = binding.backendSessionId;
+      return _runtime.use(
+        pluginId: binding.pluginId,
         operation: SessionOperation.rejectQuestion,
-        plugin: target.plugin,
+        body: (plugin) async {
+          await _throwIfMutationTargetTombstoned(
+            questionId: questionId,
+            backendSessionId: backendSessionId!,
+            operation: SessionOperation.rejectQuestion,
+            plugin: plugin,
+          );
+          return plugin.rejectQuestion(questionId: questionId, sessionId: backendSessionId);
+        },
       );
-      return target.plugin.rejectQuestion(questionId: questionId, sessionId: backendSessionId);
     }
-    final plugin = _operationalPlugins[_legacyMissingPluginId];
-    if (plugin == null) {
-      throw _pluginUnavailable(id: _legacyMissingPluginId, operation: SessionOperation.rejectQuestion);
-    }
-    return plugin.rejectQuestion(
-      questionId: questionId,
-      sessionId: backendSessionId,
+    return _runtime.use(
+      pluginId: _legacyMissingPluginId,
+      operation: SessionOperation.rejectQuestion,
+      body: (plugin) => plugin.rejectQuestion(
+        questionId: questionId,
+        sessionId: backendSessionId,
+      ),
     );
   }
 
@@ -258,7 +283,7 @@ class QuestionRepository {
     }
   }
 
-  Future<({SessionDto binding, BridgePluginApi plugin})> _requireBinding({
+  Future<SessionDto> _requireBinding({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -269,9 +294,7 @@ class QuestionRepository {
         message: "session $sessionId was not found",
       );
     }
-    final plugin = _operationalPlugins[binding.pluginId];
-    if (plugin == null) throw _pluginUnavailable(id: binding.pluginId, operation: operation);
-    return (binding: binding, plugin: plugin);
+    return binding;
   }
 
   Future<List<PendingQuestion>> _mapPendingQuestions({
@@ -299,13 +322,5 @@ class QuestionRepository {
                   : bindings[question.displaySessionId]!.sessionId,
             ),
     ];
-  }
-
-  PluginOperationException _pluginUnavailable({required String id, required SessionOperation operation}) {
-    return PluginOperationException(
-      operation.name,
-      statusCode: 503,
-      message: "plugin $id is not running",
-    );
   }
 }

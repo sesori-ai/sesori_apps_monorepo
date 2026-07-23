@@ -14,6 +14,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -373,11 +374,9 @@ void main() {
       final db = createTestDatabase();
       addTearDown(db.close);
       final derivedPlugin = _FakeDerivedPlugin(launchDirectory: "/derived", allSessions: const []);
-      final operationalPlugins = {plugin.id: plugin, derivedPlugin.id: derivedPlugin};
       final repository = SessionRepository(
-        operationalPlugins: operationalPlugins,
+        runtime: createTestPluginRuntime(plugins: [plugin]),
         bridgeDerivedProjectPluginIds: {derivedPlugin.id},
-        enabledPluginIds: [plugin.id, derivedPlugin.id],
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
@@ -415,7 +414,6 @@ void main() {
         lastAgentModel: null,
       );
 
-      operationalPlugins.remove(derivedPlugin.id);
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
@@ -1262,6 +1260,56 @@ void main() {
       );
     });
 
+    test("active-root hydration is not persisted after generation replacement", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const directory = "/projects/stale";
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: directory,
+            activeSessions: [PluginActiveSession(id: "stale-root", awaitingInput: true)],
+          ),
+        ]
+        ..sessionsByWorktree = const {
+          directory: [
+            PluginSession(
+              id: "stale-root",
+              projectID: directory,
+              directory: directory,
+              parentID: null,
+              title: "Stale root",
+              time: PluginSessionTime(created: 1, updated: 2, archived: null),
+            ),
+          ],
+        };
+      final runtime = _GenerationReplacingRuntime(plugin: plugin);
+      final repository = SessionRepository(
+        runtime: runtime,
+        bridgeDerivedProjectPluginIds: const {},
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+      );
+
+      final summaries = repository.getProjectActivitySummaries();
+      await runtime.observationCollected.future;
+      runtime.replaceGeneration();
+
+      expect(await summaries, isEmpty);
+      expect(await db.projectsDao.getAllProjects(), isEmpty);
+      expect(
+        await db.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "stale-root",
+        ),
+        isNull,
+      );
+    });
+
     test("active native-root hydration reuses the normalized-path catalog row", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1392,6 +1440,68 @@ void main() {
       expect(bindings.keys, {"backend-root-one", "backend-root-two"});
       expect(bindings.values.map((binding) => binding.projectId), everyElement(importedProjectId));
       expect(plugin.getSessionsCalls, 1, reason: "normalized summaries must hydrate their shared project once");
+    });
+
+    test("active native-root hydration retries an alias after session collection fails", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const directory = "/projects/retry";
+      const alias = "$directory/.";
+      const nativeProjectId = "native-project-id";
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: directory,
+            activeSessions: [PluginActiveSession(id: "backend-root", awaitingInput: true)],
+          ),
+          PluginProjectActivitySummary(
+            id: alias,
+            activeSessions: [PluginActiveSession(id: "backend-root", awaitingInput: true)],
+          ),
+        ]
+        ..projectsByDirectory = const {
+          directory: PluginProject(id: nativeProjectId, directory: alias),
+          alias: PluginProject(id: nativeProjectId, directory: alias),
+        }
+        ..getSessionsFailuresRemaining = 1
+        ..sessionsByWorktree = const {
+          alias: [
+            PluginSession(
+              id: "backend-root",
+              projectID: nativeProjectId,
+              directory: alias,
+              parentID: null,
+              title: "Recovered root",
+              time: PluginSessionTime(created: 1, updated: 2, archived: null),
+            ),
+          ],
+        };
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final summaries = await repository.getProjectActivitySummaries();
+
+      expect(plugin.getSessionsCalls, 2);
+      expect(
+        summaries.expand((summary) => summary.activeSessions).map((session) => session.id),
+        isNotEmpty,
+      );
+      expect(
+        summaries.expand((summary) => summary.activeSessions).map((session) => session.id),
+        everyElement(matches(RegExp(r"^ses_[0-9a-f]{32}$"))),
+      );
+      expect(
+        await db.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "backend-root",
+        ),
+        isNotNull,
+      );
     });
 
     test("getProjectActivitySummaries isolates a failed active-root hydration", () async {
@@ -2025,6 +2135,30 @@ void main() {
   });
 }
 
+class _GenerationReplacingRuntime extends TestPluginRuntime {
+  _GenerationReplacingRuntime({required BridgePluginApi plugin}) : super(plugins: {plugin.id: plugin});
+
+  final Completer<void> observationCollected = Completer<void>();
+  final Completer<void> _replacement = Completer<void>();
+
+  void replaceGeneration() {
+    generationCurrent = false;
+    _replacement.complete();
+  }
+
+  @override
+  Future<T?> useIfActive<T>({
+    required String pluginId,
+    required Enum operation,
+    required Future<T> Function(BridgePluginApi api, int generation) body,
+  }) async {
+    final result = await super.useIfActive(pluginId: pluginId, operation: operation, body: body);
+    observationCollected.complete();
+    await _replacement.future;
+    return result;
+  }
+}
+
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
@@ -2054,6 +2188,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   String? lastGetProjectDirectory;
   int getProjectsCalls = 0;
   int getSessionsCalls = 0;
+  int getSessionsFailuresRemaining = 0;
   int sendPromptCalls = 0;
   String? lastAbortSessionId;
   List<PluginProjectActivitySummary> activitySummaries = const [];
@@ -2079,6 +2214,10 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async {
     getSessionsCalls++;
     lastGetSessionsWorktree = worktree;
+    if (getSessionsFailuresRemaining > 0) {
+      getSessionsFailuresRemaining--;
+      throw StateError("session collection unavailable");
+    }
     return sessionsByWorktree[worktree] ?? sessionsResult;
   }
 

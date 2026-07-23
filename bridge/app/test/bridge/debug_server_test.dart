@@ -55,6 +55,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     ),
     legacyMissingPluginId: plugin.id,
     pluginLifecycleService: lifecycleService,
+    pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
     database: db,
     httpClient: httpClient,
     processRunner: ProcessRunner(),
@@ -497,7 +498,7 @@ void main() {
             )
             ..addPhase(
               phase: BridgeShutdownPhase.pluginDispose,
-              action: harness.lifecycleService.disposeStartedApis,
+              action: runtimeForLifecycleService(service: harness.lifecycleService).disposeStartedApis,
             );
       await debugServer.start();
 

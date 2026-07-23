@@ -25,7 +25,7 @@ class SessionCreationService {
        _sessionMutationDispatcher = sessionMutationDispatcher;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
-    _sessionRepository.ensurePluginAvailable(
+    await _sessionRepository.ensurePluginRoutable(
       pluginId: request.pluginId,
       operation: SessionOperation.createSession,
     );

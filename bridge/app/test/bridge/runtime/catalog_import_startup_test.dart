@@ -10,7 +10,7 @@ void main() {
       service: service,
       pluginIds: const ["selected"],
       headlessPluginIds: const ["selected", "selected"],
-      operationalPluginIds: const {"selected"},
+      eligiblePluginIds: const {"selected"},
     );
 
     expect(service.starts, const [
@@ -27,7 +27,7 @@ void main() {
       service: service,
       pluginIds: const ["healthy"],
       headlessPluginIds: const ["unavailable", "healthy"],
-      operationalPluginIds: const {"healthy"},
+      eligiblePluginIds: const {"healthy"},
     );
 
     expect(service.starts, const [

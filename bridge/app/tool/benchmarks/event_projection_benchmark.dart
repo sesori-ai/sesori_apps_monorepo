@@ -17,6 +17,8 @@ import "package:sesori_bridge/src/repositories/project_catalog_identity_calculat
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "benchmark_plugin_runtime.dart";
+
 const _defaultWarmupCount = 25;
 const _defaultSampleCount = 2000;
 const _pluginId = "event-benchmark";
@@ -79,9 +81,8 @@ class _EventProjectionBenchmark {
       await _seed(database: database);
       final plugin = _BenchmarkPlugin();
       repository = SessionRepository(
-        operationalPlugins: {plugin.id: plugin},
+        runtime: createBenchmarkPluginRuntime(plugins: [plugin]),
         bridgeDerivedProjectPluginIds: const {},
-        enabledPluginIds: [plugin.id],
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
