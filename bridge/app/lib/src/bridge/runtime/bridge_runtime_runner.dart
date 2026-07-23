@@ -611,12 +611,15 @@ class BridgeRuntimeRunner {
       );
       pluginRuntime = activePluginRuntime;
       final lifecycleRepository = PluginLifecycleRepository(runtime: activePluginRuntime);
-      final activePluginLifecycleService = PluginLifecycleService(lifecycleRepository: lifecycleRepository)
-        ..registerPlugins(
-          plugins: [
-            for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
-          ],
-        );
+      final activePluginLifecycleService =
+          PluginLifecycleService(
+            lifecycleRepository: lifecycleRepository,
+            preferredDefaultPluginId: preferredDefaultPluginId,
+          )..registerPlugins(
+            plugins: [
+              for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
+            ],
+          );
       pluginLifecycleService = activePluginLifecycleService;
       final eligiblePluginIds = {
         for (final descriptor in knownPlugins)

@@ -141,6 +141,9 @@ run their focused verification again.
   transaction completes before force stop or terminal retirement can replace
   the generation. Focused runtime/session/create coverage passed (98 tests) and
   bridge-app fatal analysis remained clean.
+- The derived bridge default now prefers OpenCode when it is selectable and
+  otherwise falls back to the first selectable plugin in deterministic display
+  order. Released payloads that omit `pluginId` still mean OpenCode directly.
 
 ## Delivery Rules
 

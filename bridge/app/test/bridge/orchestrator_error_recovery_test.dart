@@ -27,6 +27,7 @@ void main() {
     final lifecycleService =
         PluginLifecycleService(
             lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+            preferredDefaultPluginId: legacyMissingPluginId,
           )
           ..registerPlugins(
             plugins: const [(id: "opencode", displayName: "OpenCode")],

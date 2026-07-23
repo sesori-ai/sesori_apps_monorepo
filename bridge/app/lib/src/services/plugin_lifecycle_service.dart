@@ -23,15 +23,18 @@ typedef PluginStartupPolicy = ({
 });
 
 class PluginLifecycleService {
-  PluginLifecycleService({required PluginLifecycleRepository lifecycleRepository})
-    : _lifecycleRepository = lifecycleRepository;
+  PluginLifecycleService({
+    required PluginLifecycleRepository lifecycleRepository,
+    required String preferredDefaultPluginId,
+  }) : _lifecycleRepository = lifecycleRepository,
+       _preferredDefaultPluginId = preferredDefaultPluginId;
 
   final PluginLifecycleRepository _lifecycleRepository;
+  final String _preferredDefaultPluginId;
   List<RegisteredPluginMetadata>? _registeredPlugins;
   Set<String>? _knownPluginIds;
   List<String>? _eligiblePluginIds;
   List<String>? _setupReadyPluginIds;
-  String? _preferredDefaultPluginId;
   Map<String, PluginMetadata> _metadataById = <String, PluginMetadata>{};
   Map<String, PluginSetupStatus>? _setupById;
   BehaviorSubject<List<PluginMetadata>>? _metadataSubject;
@@ -79,14 +82,14 @@ class PluginLifecycleService {
     ]);
     _eligiblePluginIds = eligiblePluginIds;
     _setupReadyPluginIds = setupReadyPluginIds;
-    _preferredDefaultPluginId = setupReadyPluginIds.firstOrNull;
+    final defaultPluginId = _defaultPluginIdFrom(candidateIds: setupReadyPluginIds.toSet());
     _metadataById = <String, PluginMetadata>{
       for (final plugin in registeredPlugins)
         if (eligiblePluginIds.contains(plugin.id))
           plugin.id: PluginMetadata(
             id: plugin.id,
             displayName: plugin.displayName,
-            isDefault: plugin.id == _preferredDefaultPluginId,
+            isDefault: plugin.id == defaultPluginId,
             state: PluginLifecycleState.unavailable,
             actionHint: _actionHint(PluginLifecycleState.unavailable),
           ),
@@ -100,7 +103,7 @@ class PluginLifecycleService {
     return (
       eligiblePluginIds: eligiblePluginIds,
       eagerPluginIds: setupReadyPluginIds,
-      defaultPluginId: _preferredDefaultPluginId,
+      defaultPluginId: defaultPluginId,
     );
   }
 
@@ -187,15 +190,18 @@ class PluginLifecycleService {
   }
 
   String? _selectableDefaultPluginId() {
-    final eligiblePluginIds = _requireEligiblePluginIds();
     final selectableIds = {
       for (final snapshot in _lifecycleRepository.snapshot)
         if (_isSelectable(snapshot)) snapshot.pluginId,
     };
-    final preferred = _preferredDefaultPluginId;
-    if (preferred != null && selectableIds.contains(preferred)) return preferred;
+    return _defaultPluginIdFrom(candidateIds: selectableIds);
+  }
+
+  String? _defaultPluginIdFrom({required Set<String> candidateIds}) {
+    if (candidateIds.contains(_preferredDefaultPluginId)) return _preferredDefaultPluginId;
+    final eligiblePluginIds = _requireEligiblePluginIds();
     for (final pluginId in eligiblePluginIds) {
-      if (selectableIds.contains(pluginId)) return pluginId;
+      if (candidateIds.contains(pluginId)) return pluginId;
     }
     return null;
   }

@@ -82,9 +82,11 @@ migration/snapshot; never fold them into the merged version.
 - Pure Dart only — no Flutter dependencies anywhere in this workspace
 - `plugins.disabled` is the sole persisted plugin eligibility policy. Every
   other registered plugin is eligible; setup determines whether it is blocked
-  or routable. Presentation/default order is case-insensitive display name with
-  plugin ID as a tie-breaker. The OpenCode legacy identity is only for released
-  payloads that omit `pluginId` and must never be replaced by "first enabled".
+  or routable. Presentation order is case-insensitive display name with plugin
+  ID as a tie-breaker. The derived default prefers OpenCode when selectable and
+  otherwise uses the first plugin in that order. The OpenCode legacy identity
+  is only for released payloads that omit `pluginId` and must never be replaced
+  by "first enabled".
 - Project/root/detail/child catalog reads are database-only. Import is explicit,
   non-destructive, and per plugin; reads during import return the last committed
   catalog.

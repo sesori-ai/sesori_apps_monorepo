@@ -12,3 +12,7 @@ const List<BridgePluginDescriptor> knownPlugins = [
   CodexPluginDescriptor(),
   CursorPluginDescriptor(),
 ];
+
+/// Product-preferred default when OpenCode is selectable. Lifecycle policy
+/// falls back to the first selectable registration when it is not.
+String get preferredDefaultPluginId => const OpenCodePluginDescriptor().id;

@@ -68,7 +68,8 @@ available:
 
 - All plugin lists use case-insensitive display-name order with plugin ID as the
   deterministic tie-breaker.
-- The bridge default is the first currently selectable plugin in that order.
+- The bridge default prefers OpenCode when it is currently selectable and
+  otherwise uses the first currently selectable plugin in that order.
 - No default or last-used plugin is persisted by the bridge.
 - The mobile new-session chooser persists last-used plugin per client and
   bridge. It uses that plugin when still routable and otherwise uses the
@@ -597,7 +598,7 @@ the listed source files and committed with their stage.
 - config model/repository and local plugin commands;
 - unconditional plugin CLI option registration;
 - descriptor setup states/probes without installation;
-- alphabetical eligibility/default and zero-plugin startup;
+- alphabetical eligibility, OpenCode-preferred default, and zero-plugin startup;
 - snapshot setup API and compatible plugin list.
 
 ### Stage 11-P01 / PR #508 — dynamic runtime boundary
