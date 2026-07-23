@@ -70,7 +70,6 @@ class SessionCreationService {
             )
           : null,
     );
-    await _sessionMutationDispatcher.applyPendingTitle(sessionId: created.id);
     await _maybeSendCommand(
       session: created,
       command: normalizedCommand,

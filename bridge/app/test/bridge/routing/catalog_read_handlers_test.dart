@@ -7,7 +7,6 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/routing/get_child_sessions_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -20,7 +19,6 @@ void main() {
     late AppDatabase database;
     late _NeverCompletingPlugin plugin;
     late SessionRepository repository;
-    late SessionMutationDispatcher mutationDispatcher;
 
     setUp(() async {
       database = createTestDatabase();
@@ -32,7 +30,6 @@ void main() {
         pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
       await database.projectsDao.recordOpenedProject(
         projectId: "project",
         path: "/projects/project",
@@ -70,7 +67,6 @@ void main() {
     });
 
     tearDown(() async {
-      await mutationDispatcher.dispose();
       await repository.dispose();
       await database.close();
     });
@@ -79,7 +75,6 @@ void main() {
       final sessionsHandler = GetSessionsHandler(
         sessionRepository: repository,
         prSyncService: FakePrSyncService(),
-        sessionMutationDispatcher: mutationDispatcher,
       );
       final detailHandler = GetSessionHandler(repository);
       final childrenHandler = GetChildSessionsHandler(sessionRepository: repository);

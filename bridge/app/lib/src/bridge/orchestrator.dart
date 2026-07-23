@@ -363,7 +363,6 @@ class Orchestrator {
     );
     final sessionEventService = SessionEventService(
       sessionRepository: sessionRepository,
-      sessionMutationDispatcher: sessionMutationDispatcher,
       eventMapper: const SessionEventMapper(),
       eventTracker: SessionEventTracker(
         maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
@@ -413,7 +412,6 @@ class Orchestrator {
         GetSessionsHandler(
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
-          sessionMutationDispatcher: sessionMutationDispatcher,
         ),
         CreateSessionHandler(sessionCreationService: sessionCreationService),
         RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher),
@@ -1187,7 +1185,6 @@ class OrchestratorSession {
           parentId: info.parentID,
           occurredAt: info.time?.created,
         );
-        await _sessionMutationDispatcher.applyPendingTitle(sessionId: info.id);
       case SesoriSessionDeleted(:final info):
         await _sessionUnseenService.recordSessionDeleted(sessionId: info.id, projectId: info.projectID);
       case SesoriMessageUpdated(:final info):

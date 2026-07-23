@@ -52,15 +52,6 @@ void main() {
       );
     }
 
-    test("applies a title captured before the session row exists", () async {
-      await dispatcher.captureTitle(sessionId: "s1", title: "Early title");
-      await insertSession();
-
-      await dispatcher.applyPendingTitle(sessionId: "s1");
-
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Early title");
-    });
-
     test("rejects a rename when its root binding does not exist", () async {
       await expectLater(
         dispatcher.renameSession(sessionId: "s1", title: "User rename"),
@@ -107,97 +98,10 @@ void main() {
 
       final renamed = await dispatcher.renameSession(sessionId: "s1", title: "Stored title");
       await dispatcher.drain();
-      await dispatcher.captureTitle(sessionId: "s1", title: "Old backend title");
 
       expect(renamed.title, "Stored title");
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Stored title");
       expect(plugin.renameCalls, 1);
-    });
-
-    test("accepts a later backend rename that reuses an older local title", () async {
-      await insertSession();
-
-      await dispatcher.renameSession(sessionId: "s1", title: "First title");
-      await dispatcher.renameSession(sessionId: "s1", title: "Second title");
-      await dispatcher.renameSession(sessionId: "s1", title: "Third title");
-      await dispatcher.drain();
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
-      await dispatcher.captureTitle(sessionId: "s1", title: "First title");
-
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "First title");
-    });
-
-    test("suppresses an older rename event without blocking later backend titles", () async {
-      final renameStarted = Completer<void>();
-      final releaseRename = Completer<void>();
-      plugin
-        ..renameStarted = renameStarted
-        ..releaseRename = releaseRename.future;
-      await insertSession();
-
-      await dispatcher.renameSession(sessionId: "s1", title: "First title");
-      await renameStarted.future;
-      final newerRename = dispatcher.renameSession(sessionId: "s1", title: "Newer title");
-      final staleEvent = dispatcher.captureTitle(sessionId: "s1", title: "First title");
-
-      releaseRename.complete();
-      await newerRename;
-      await staleEvent;
-
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Newer title");
-
-      await dispatcher.captureTitle(sessionId: "s1", title: "Newer title");
-      await dispatcher.captureTitle(sessionId: "s1", title: "External title");
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Newer title");
-
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
-      await dispatcher.captureTitle(sessionId: "s1", title: "External title");
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "External title");
-    });
-
-    test("applies a pending null by removing the stored title copy", () async {
-      await dispatcher.captureTitle(sessionId: "s1", title: null);
-      await insertSession();
-      await db.sessionDao.setTitle(
-        sessionId: "s1",
-        title: "stale",
-        updatedAt: 2,
-        projectionUpdatedAt: 2,
-      );
-
-      await dispatcher.applyPendingTitle(sessionId: "s1");
-
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, isNull);
-    });
-
-    test("deletion discards a pending title", () async {
-      plugin.sessions = const [
-        PluginSession(
-          id: "s1",
-          projectID: "/repo",
-          directory: "/repo",
-          parentID: null,
-          title: null,
-          time: null,
-        ),
-      ];
-      await insertSession();
-      final deletionEvent = expectLater(
-        dispatcher.deletedSessions,
-        emits(
-          isA<Session>()
-              .having((session) => session.id, "id", "s1")
-              .having((session) => session.projectID, "projectID", "/repo"),
-        ),
-      );
-      await dispatcher.captureTitle(sessionId: "s1", title: "stale");
-      await dispatcher.deleteSession(sessionId: "s1");
-      await deletionEvent;
-      await insertSession();
-
-      await dispatcher.applyPendingTitle(sessionId: "s1");
-
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, isNull);
     });
 
     test("a rename waits for deletion and cannot reach the plugin afterward", () async {

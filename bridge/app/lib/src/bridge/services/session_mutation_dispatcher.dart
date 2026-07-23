@@ -6,14 +6,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 
-/// Serializes bridge-owned session mutations that share pending-title state.
+/// Serializes bridge-owned session mutations and backend propagation.
 class SessionMutationDispatcher {
-  static const _backendTitleGuardDuration = Duration(seconds: 1);
-
   final SessionRepository _sessionRepository;
   final StreamController<Session> _deletedSessionsController = StreamController<Session>.broadcast(sync: true);
-  final Map<String, String?> _pendingTitles = {};
-  final Map<String, ({DateTime? expiresAt, Object token})> _backendTitleGuards = {};
   Future<void> _tail = Future<void>.value();
   Future<void> _backendTail = Future<void>.value();
   bool _disposed = false;
@@ -21,18 +17,6 @@ class SessionMutationDispatcher {
   SessionMutationDispatcher({required SessionRepository sessionRepository}) : _sessionRepository = sessionRepository;
 
   Stream<Session> get deletedSessions => _deletedSessionsController.stream;
-
-  Future<void> captureTitle({required String sessionId, required String? title}) {
-    return _serialized(() async {
-      final guard = _backendTitleGuards[sessionId];
-      if (guard != null) {
-        final active = guard.expiresAt == null || DateTime.now().isBefore(guard.expiresAt!);
-        if (active) return;
-        _backendTitleGuards.remove(sessionId);
-      }
-      await _captureTitle(sessionId: sessionId, title: title);
-    });
-  }
 
   /// Completes after the authoritative DB title is stored. Backend propagation
   /// continues on its own serialized tail so later DB writes stay immediate
@@ -47,23 +31,10 @@ class SessionMutationDispatcher {
           message: "session $sessionId was not found",
         );
       }
-      final guardToken = Object();
-      _backendTitleGuards[sessionId] = (expiresAt: null, token: guardToken);
       unawaited(
-        _serializedBackend(() => _propagateTitle(sessionId: sessionId, title: title, guardToken: guardToken)),
+        _serializedBackend(() => _propagateTitle(sessionId: sessionId, title: title)),
       );
       return renamed;
-    });
-  }
-
-  Future<void> applyPendingTitle({required String sessionId}) {
-    return _serialized(() async {
-      if (!_pendingTitles.containsKey(sessionId)) return;
-      final stored = await _sessionRepository.setSessionTitleIfStored(
-        sessionId: sessionId,
-        title: _pendingTitles[sessionId],
-      );
-      if (stored) _pendingTitles.remove(sessionId);
     });
   }
 
@@ -71,8 +42,6 @@ class SessionMutationDispatcher {
     if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
     return _serialized(() async {
       final deleted = await _serializedBackend(() => _sessionRepository.deleteSession(sessionId: sessionId));
-      _pendingTitles.remove(sessionId);
-      _backendTitleGuards.remove(sessionId);
       _deletedSessionsController.add(deleted);
     });
   }
@@ -84,7 +53,6 @@ class SessionMutationDispatcher {
     _disposed = true;
     return _serialized(() async {
       await _serializedBackend(() async {});
-      _backendTitleGuards.clear();
       await _deletedSessionsController.close();
     });
   }
@@ -92,35 +60,12 @@ class SessionMutationDispatcher {
   Future<void> _propagateTitle({
     required String sessionId,
     required String title,
-    required Object guardToken,
   }) async {
     try {
       await _sessionRepository.renameSession(sessionId: sessionId, title: title);
     } catch (error, stackTrace) {
       Log.w("Could not propagate title for session $sessionId to its plugin", error, stackTrace);
-    } finally {
-      final guard = _backendTitleGuards[sessionId];
-      if (identical(guard?.token, guardToken) && guard?.expiresAt == null) {
-        _backendTitleGuards[sessionId] = (
-          expiresAt: DateTime.now().add(_backendTitleGuardDuration),
-          token: guardToken,
-        );
-        Timer(_backendTitleGuardDuration, () {
-          if (identical(_backendTitleGuards[sessionId]?.token, guardToken)) {
-            _backendTitleGuards.remove(sessionId);
-          }
-        });
-      }
     }
-  }
-
-  Future<void> _captureTitle({required String sessionId, required String? title}) async {
-    if (await _sessionRepository.isSessionTombstoned(sessionId: sessionId)) return;
-    final stored = await _sessionRepository.setSessionTitleIfStored(
-      sessionId: sessionId,
-      title: title,
-    );
-    if (!stored) _pendingTitles[sessionId] = title;
   }
 
   Future<T> _serialized<T>(Future<T> Function() operation) {

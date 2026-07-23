@@ -960,7 +960,6 @@ class FakeSessionRepository implements SessionRepository {
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
   String? projectPathResult;
-  final Map<String, String?> enrichedTitleOverrides = {};
   Object? publicationError;
 
   FakeSessionRepository({
@@ -1123,19 +1122,13 @@ class FakeSessionRepository implements SessionRepository {
       for (final session in sessions)
         if (_selectBestPr(prsBySessionId[session.id]) case final pr?) session.id: pullRequestInfoFromDto(pr),
     };
-    final enriched = enrichSharedSessions(
+    return enrichSharedSessions(
       sessions: sessions,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: const SessionUnseenCalculator(),
       adoptStoredProjectId: false,
     );
-    return [
-      for (final session in enriched)
-        enrichedTitleOverrides.containsKey(session.id)
-            ? session.copyWith(title: enrichedTitleOverrides[session.id])
-            : session,
-    ];
   }
 
   static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {

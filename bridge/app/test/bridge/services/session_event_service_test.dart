@@ -4,7 +4,6 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -17,7 +16,6 @@ void main() {
     late AppDatabase database;
     late _EventPlugin plugin;
     late SessionRepository repository;
-    late SessionMutationDispatcher mutationDispatcher;
     late SessionEventTracker eventTracker;
     late SessionEventService service;
 
@@ -31,11 +29,9 @@ void main() {
         pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
       eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
       service = SessionEventService(
         sessionRepository: repository,
-        sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: eventTracker,
         failureReporter: FakeFailureReporter(),
@@ -43,7 +39,6 @@ void main() {
     });
 
     tearDown(() async {
-      await mutationDispatcher.dispose();
       await database.close();
     });
 
@@ -229,6 +224,43 @@ void main() {
       final child = Session.fromJson((output.first as BridgeSseSessionCreated).info);
       expect(child.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
       expect(child.parentID, "stable-root");
+    });
+
+    test("plugin title updates the catalog fallback without replacing the Sesori title", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      await database.sessionDao.setTitle(
+        sessionId: "stable-root",
+        title: "Sesori title",
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
+
+      final output = await service.normalize(
+        source: (
+          pluginId: plugin.id,
+          projectionUpdatedAt: 3,
+          event: BridgeSseSessionUpdated(
+            info: _sessionInfo(
+              sessionId: "backend-root",
+              parentId: null,
+              projectId: "backend-project",
+              directory: "/repo",
+            ),
+            titleChanged: true,
+          ),
+        ),
+      );
+
+      final row = await database.sessionDao.getSession(sessionId: "stable-root");
+      expect(row?.title, "Sesori title");
+      expect(row?.catalogTitle, "title-backend-root");
+      final updated = output.single as BridgeSseSessionUpdated;
+      expect(Session.fromJson(updated.info).title, "Sesori title");
     });
 
     test("does not attach a child to a parent owned by another plugin", () async {
