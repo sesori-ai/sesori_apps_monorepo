@@ -18,6 +18,9 @@ class NotificationRegistrationService {
   String? _currentRegisteredToken;
   AuthState? _initialAuthStateToIgnore;
   Future<void> _syncQueue = Future<void>.value();
+  bool _localTokenDeleted = false;
+  bool _registrationSuspended = false;
+  bool _unauthenticatedObservedWhileSuspended = false;
   bool _started = false;
   bool _disposed = false;
 
@@ -61,12 +64,31 @@ class NotificationRegistrationService {
     return next;
   }
 
+  /// Stops push delivery for this installation before local auth is cleared.
+  /// Cleanup is best-effort so a failure cannot prevent local logout.
+  Future<void> unregisterCurrentDevice() {
+    return _enqueueSync(_unregisterCurrentDevice);
+  }
+
+  /// Restores push registration when local auth remains after logout fails.
+  Future<void> resumeRegistrationAfterFailedLogout() {
+    return _enqueueSync(_resumeRegistrationAfterFailedLogout);
+  }
+
   Future<void> _syncForState({required AuthState state}) async {
     switch (state) {
       case AuthAuthenticated():
+        if (_registrationSuspended) {
+          if (!_unauthenticatedObservedWhileSuspended) return;
+          _registrationSuspended = false;
+          _unauthenticatedObservedWhileSuspended = false;
+        }
         await _registerCurrentToken();
       case AuthUnauthenticated() || AuthFailed():
-        await _unregisterCurrentToken();
+        if (_registrationSuspended) {
+          _unauthenticatedObservedWhileSuspended = true;
+        }
+        await _deleteLocalToken();
       case AuthInitial() || AuthAuthenticating():
         return;
     }
@@ -74,22 +96,63 @@ class NotificationRegistrationService {
 
   Future<void> _registerCurrentToken() async {
     final token = await _pushMessagingSource.getToken();
-    if (token == null || token.isEmpty || token == _currentRegisteredToken) {
+    if (token == null || token.isEmpty) {
       return;
     }
+    _localTokenDeleted = false;
+    if (token == _currentRegisteredToken) return;
 
     await _repository.registerToken(token: token, platform: _pushMessagingSource.devicePlatform);
     _currentRegisteredToken = token;
   }
 
-  Future<void> _unregisterCurrentToken() async {
-    final token = _currentRegisteredToken ?? await _pushMessagingSource.getToken();
-    if (token == null) {
+  Future<void> _unregisterCurrentDevice() async {
+    // Do not let queued auth work or a refresh re-register before logout.
+    _registrationSuspended = true;
+    _unauthenticatedObservedWhileSuspended = false;
+
+    var token = _currentRegisteredToken;
+    if (token == null && !_localTokenDeleted) {
+      try {
+        token = await _pushMessagingSource.getToken();
+        if (token != null && token.isNotEmpty) {
+          _localTokenDeleted = false;
+        }
+      } catch (error, stackTrace) {
+        logw("Failed to read push token during logout", error, stackTrace);
+      }
+    }
+
+    if (token != null && token.isNotEmpty) {
+      try {
+        await _repository.unregisterToken(token: token);
+        _currentRegisteredToken = null;
+      } catch (error, stackTrace) {
+        logw("Failed to unregister push token during logout", error, stackTrace);
+      }
+    }
+  }
+
+  Future<void> _resumeRegistrationAfterFailedLogout() async {
+    if (_authSession.currentState is! AuthAuthenticated) return;
+
+    _registrationSuspended = false;
+    _unauthenticatedObservedWhileSuspended = false;
+    await _registerCurrentToken();
+  }
+
+  Future<void> _deleteLocalToken() async {
+    if (_localTokenDeleted) {
+      _currentRegisteredToken = null;
       return;
     }
 
-    await _repository.unregisterToken(token: token);
-    _currentRegisteredToken = null;
+    try {
+      await _pushMessagingSource.deleteToken();
+      _localTokenDeleted = true;
+    } finally {
+      _currentRegisteredToken = null;
+    }
   }
 
   void _onAuthStateChanged(AuthState state) {
@@ -115,6 +178,18 @@ class NotificationRegistrationService {
   }
 
   Future<void> _handleTokenRefresh({required String newToken}) async {
+    if (newToken.isEmpty) return;
+
+    _localTokenDeleted = false;
+    final authState = _authSession.currentState;
+    if (_registrationSuspended && authState is AuthAuthenticated) {
+      return;
+    }
+    if (authState is! AuthAuthenticated) {
+      await _syncForState(state: authState);
+      return;
+    }
+
     final oldToken = _currentRegisteredToken;
     if (oldToken != null && oldToken != newToken) {
       try {
@@ -123,10 +198,6 @@ class NotificationRegistrationService {
         logw("Failed to unregister old push token", error, stackTrace);
       }
       _currentRegisteredToken = null;
-    }
-
-    if (_authSession.currentState is! AuthAuthenticated || newToken.isEmpty) {
-      return;
     }
 
     await _repository.registerToken(token: newToken, platform: _pushMessagingSource.devicePlatform);

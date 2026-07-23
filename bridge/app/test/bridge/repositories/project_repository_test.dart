@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_activity.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_activity_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
@@ -23,17 +24,22 @@ void main() {
     late AppDatabase db;
     late _FakeBridgePlugin plugin;
     late ProjectRepository repo;
+    late ProjectActivityRepository activityRepo;
 
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeBridgePlugin();
       repo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
+      );
+      activityRepo = singlePluginProjectActivityRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
       );
     });
 
@@ -103,7 +109,7 @@ void main() {
       expect(plugin.getProjectsCallCount, 0);
     });
 
-    test("zero-plugin mode keeps catalog reads online and rejects default-targeted opens with 503", () async {
+    test("zero-plugin mode keeps catalog reads, project opens, and renames online", () async {
       await db.projectsDao.recordOpenedProject(
         projectId: "stored-project",
         path: "/projects/stored",
@@ -112,57 +118,27 @@ void main() {
         updatedAt: 2,
       );
       final zeroPluginRepository = ProjectRepository(
-        runtime: createTestPluginRuntime(plugins: const []),
-        readDefaultEnabledPluginId: () => null,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
         gitCliApi: FakeGitCliApi(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-        aggregateSourceDeadline: const Duration(seconds: 5),
       );
 
       final projects = await zeroPluginRepository.getProjects();
 
       expect(projects.map((project) => project.id), ["stored-project"]);
-      await expectLater(
-        zeroPluginRepository.resolveProjectOpenTarget(path: "/projects/new"),
-        throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.statusCode, "statusCode", 503)
-              .having((error) => error.message, "message", contains("no default plugin")),
-        ),
+      final target = await zeroPluginRepository.resolveProjectOpenTarget(path: "/projects/new/.");
+
+      expect(target.id, "/projects/new");
+      expect(target.name, "new");
+      expect(target.path, "/projects/new");
+      final renamed = await zeroPluginRepository.renameProject(
+        projectId: "stored-project",
+        name: "Renamed locally",
       );
-    });
-
-    test("default-targeted opens read the latest routable default", () async {
-      final first = _FakeBridgePlugin(pluginId: "first");
-      final second = _FakeBridgePlugin(pluginId: "second")
-        ..projectResult = const PluginProject(
-          id: "second-project",
-          directory: "/projects/second",
-          name: "Second",
-        );
-      var defaultPluginId = "first";
-      final liveDefaultRepository = ProjectRepository(
-        runtime: createTestPluginRuntime(plugins: [first, second]),
-        readDefaultEnabledPluginId: () => defaultPluginId,
-        projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-        gitCliApi: FakeGitCliApi(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-        aggregateSourceDeadline: const Duration(seconds: 5),
-      );
-
-      defaultPluginId = "second";
-      final target = await liveDefaultRepository.resolveProjectOpenTarget(path: "/projects/second");
-
-      expect(target.project.id, "second-project");
-      expect(first.lastGetProjectId, isNull);
-      expect(second.lastGetProjectId, "/projects/second");
+      expect(renamed.name, "Renamed locally");
     });
 
     test("activity reconciliation seeds native directories and preserves existing paths", () async {
@@ -185,7 +161,11 @@ void main() {
         createdAt: 1,
         updatedAt: 1,
       );
-      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
+      final service = ProjectActivityService(
+        projectRepository: repo,
+        projectActivityRepository: activityRepo,
+        now: () => 9999,
+      );
       addTearDown(service.dispose);
 
       await service.reconcile(pluginId: null);
@@ -216,7 +196,7 @@ void main() {
         updatedAt: 2,
       );
 
-      final evidence = await repo.listProjectActivityEvidence(pluginId: plugin.id);
+      final evidence = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
 
       expect(evidence.single.projectId, directory);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
@@ -234,16 +214,13 @@ void main() {
         ),
       ];
       final projectsDao = _BlockingSnapshotProjectsDao(database: db);
-      final racingRepo = singlePluginProjectRepository(
-        gitCliApi: FakeGitCliApi(),
+      final racingActivityRepo = singlePluginProjectActivityRepository(
         plugin: plugin,
         projectsDao: projectsDao,
         sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
       );
 
-      final reconciliation = racingRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      final reconciliation = racingActivityRepo.listProjectActivityEvidence(pluginId: plugin.id);
       await projectsDao.snapshotTaken.future;
       final catalogImport = db.transaction(() async {
         final storedProjects = await db.projectsDao.getAllProjects();
@@ -288,19 +265,15 @@ void main() {
       ];
       final runtime = createTestPluginRuntime(plugins: [plugin]);
       final projectsDao = _BlockingSnapshotProjectsDao(database: db);
-      final generationAwareRepo = ProjectRepository(
+      final generationAwareActivityRepo = ProjectActivityRepository(
         runtime: runtime,
-        readDefaultEnabledPluginId: () => plugin.id,
         projectsDao: projectsDao,
         sessionDao: db.sessionDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
-        gitCliApi: FakeGitCliApi(),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
 
-      final reconciliation = generationAwareRepo.listProjectActivityEvidence(pluginId: plugin.id);
+      final reconciliation = generationAwareActivityRepo.listProjectActivityEvidence(pluginId: plugin.id);
       await projectsDao.snapshotTaken.future;
       runtime.generationCurrent = false;
       projectsDao.releaseSnapshot.complete();
@@ -388,7 +361,6 @@ void main() {
       final projectsDao = _CountingProjectsDao(database: db);
       final countingRepo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -417,11 +389,18 @@ void main() {
       expect(result.map((project) => project.id), ["z", "b", "a"]);
     });
 
-    test("openProject discovers via plugin, unhides stored row, and maps result", () async {
+    test("openProject reuses and unhides the bridge-owned same-path row without calling a plugin", () async {
       plugin.projectResult = const PluginProject(
         id: "p-open",
         directory: "/tmp/p-open",
         name: "Opened",
+      );
+      await db.projectsDao.recordOpenedProject(
+        projectId: "p-open",
+        path: "/tmp/p-open",
+        displayName: "Stored name",
+        createdAt: 1,
+        updatedAt: 1,
       );
       await db.projectsDao.hideProject(projectId: "p-open");
 
@@ -431,18 +410,18 @@ void main() {
         observedAt: 2,
       );
       final result = await repo.mapOpenedProject(
-        target: commit.committedTarget,
+        project: commit.committedProject,
         committedActivity: commit.committedActivity,
       );
 
-      expect(plugin.lastGetProjectId, equals("/tmp/p-open"));
+      expect(plugin.lastGetProjectId, isNull);
       expect(result.id, equals("p-open"));
-      expect(result.name, equals("Opened"));
+      expect(result.name, equals("Stored name"));
       final hiddenIds = await db.projectsDao.getHiddenProjectIds();
       expect(hiddenIds, isNot(contains("p-open")));
     });
 
-    test("opening a new native project persists its backend display name", () async {
+    test("opening a new project uses local path metadata without persisting a plugin name", () async {
       plugin.projectResult = const PluginProject(
         id: "p-new",
         directory: "/tmp/p-new",
@@ -455,10 +434,11 @@ void main() {
         observedAt: 2,
       );
 
-      expect((await repo.getProjects()).single.name, "Backend project name");
+      expect(plugin.lastGetProjectId, isNull);
+      expect((await repo.getProjects()).single.name, "p-new");
     });
 
-    test("opening a native project reuses the normalized-path catalog row", () async {
+    test("opening reuses the normalized-path durable catalog row", () async {
       const directory = "/tmp/projects/shared";
       plugin.projectResult = const PluginProject(
         id: "native-project-id",
@@ -479,11 +459,12 @@ void main() {
         observedAt: 2,
       );
       final opened = await repo.mapOpenedProject(
-        target: commit.committedTarget,
+        project: commit.committedProject,
         committedActivity: commit.committedActivity,
       );
 
       expect(opened.id, directory);
+      expect(plugin.lastGetProjectId, isNull);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
     });
 
@@ -499,13 +480,20 @@ void main() {
       final projectsDao = _BlockingSnapshotProjectsDao(database: db);
       final racingRepo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
       );
-      final service = ProjectActivityService(projectRepository: racingRepo, now: () => 10);
+      final service = ProjectActivityService(
+        projectRepository: racingRepo,
+        projectActivityRepository: singlePluginProjectActivityRepository(
+          plugin: plugin,
+          projectsDao: projectsDao,
+          sessionDao: db.sessionDao,
+        ),
+        now: () => 10,
+      );
       addTearDown(service.dispose);
       final changes = <ProjectActivityChange>[];
       final subscription = service.changes.listen(changes.add);
@@ -535,7 +523,7 @@ void main() {
       expect(changes, [const ProjectActivityChange(projectId: importedProjectId, updatedAt: 10)]);
     });
 
-    test("reopening a native project preserves its user display name", () async {
+    test("reopening preserves the bridge-owned display name", () async {
       plugin.projectResult = const PluginProject(
         id: "p-renamed",
         directory: "/tmp/p-renamed",
@@ -561,6 +549,7 @@ void main() {
       );
 
       expect((await repo.getProjects()).single.name, "User project name");
+      expect(plugin.lastGetProjectId, isNull);
     });
 
     group("moved project (stable id, new live path)", () {
@@ -569,6 +558,13 @@ void main() {
         // /moved/a, and the backend keeps reporting the pinned original
         // worktree as the project id.
         plugin.projectResult = const PluginProject(id: "/projects/a", directory: "/moved/a", name: "A");
+        await db.projectsDao.recordOpenedProject(
+          projectId: "/projects/a",
+          path: "/moved/a",
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 1,
+        );
         await db.projectsDao.hideProject(projectId: "/projects/a");
         await db.projectsDao.setBaseBranch(projectId: "/projects/a", baseBranch: "develop");
 
@@ -578,12 +574,13 @@ void main() {
           observedAt: 2,
         );
         final result = await repo.mapOpenedProject(
-          target: commit.committedTarget,
+          project: commit.committedProject,
           committedActivity: commit.committedActivity,
         );
 
         expect(result.id, equals("/projects/a"));
         expect(result.path, equals("/moved/a"));
+        expect(plugin.lastGetProjectId, isNull);
         final row = await db.projectsDao.getProject(projectId: "/projects/a");
         expect(row!.path, equals("/moved/a"), reason: "the live path is recorded on the canonical row");
         expect(row.hidden, isFalse, reason: "re-opening unhides the canonical row");
@@ -602,12 +599,14 @@ void main() {
         plugin.projectsResult = const [
           PluginProject(id: "/projects/a", directory: "/projects/a", name: "A"),
         ];
-        await db.projectsDao.hideProject(projectId: "/projects/a");
-        await db.projectsDao.setActivity(
+        await db.projectsDao.recordOpenedProject(
           projectId: "/projects/a",
+          path: "/moved/a",
+          displayName: null,
           createdAt: 0,
           updatedAt: 1,
         );
+        await db.projectsDao.hideProject(projectId: "/projects/a");
         final target = await repo.resolveProjectOpenTarget(path: "/moved/a");
         await repo.persistOpenedProject(
           target: target,
@@ -619,6 +618,7 @@ void main() {
         expect(result, hasLength(1));
         expect(result.single.id, equals("/projects/a"));
         expect(result.single.path, equals("/moved/a"));
+        expect(plugin.lastGetProjectId, isNull);
       });
 
       test("getProjects computes directoryMissing against the live path, not the id", () async {
@@ -628,12 +628,18 @@ void main() {
         ];
         final repoWithMissing = singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
-          plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
           // The original location is gone; the folder lives at /moved/a now.
           filesystemApi: FakeFilesystemApi(missingPaths: {"/projects/a"}),
+        );
+        await db.projectsDao.recordOpenedProject(
+          projectId: "/projects/a",
+          path: "/moved/a",
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 1,
         );
         final target = await repoWithMissing.resolveProjectOpenTarget(path: "/moved/a");
         await repoWithMissing.persistOpenedProject(
@@ -646,7 +652,7 @@ void main() {
         expect(result.firstWhere((p) => p.id == "/projects/a").directoryMissing, isFalse);
       });
 
-      test("getProject is catalog-only while renameProject hands the plugin the live path", () async {
+      test("getProject and renameProject are catalog-only for a moved aggregate project", () async {
         plugin.projectResult = const PluginProject(id: "/projects/a", directory: "/moved/a", name: "A");
         await db.projectsDao.recordOpenedProject(
           projectId: "/projects/a",
@@ -661,11 +667,12 @@ void main() {
         expect(fetched.path, equals("/moved/a"));
 
         final renamed = await repo.renameProject(projectId: "/projects/a", name: "Renamed");
-        expect(plugin.lastRenameProjectId, equals("/moved/a"));
+        expect(plugin.lastRenameProjectId, isNull);
+        expect(renamed.name, "Renamed");
         expect(renamed.path, equals("/moved/a"));
       });
 
-      test("native rename retains the requested durable catalog identity and unseen state", () async {
+      test("rename retains the durable catalog identity and aggregate unseen state", () async {
         const directory = "/moved/shared";
         plugin.projectResult = const PluginProject(
           id: "native-project-id",
@@ -697,6 +704,7 @@ void main() {
 
         final renamed = await repo.renameProject(projectId: directory, name: "Renamed");
 
+        expect(plugin.lastRenameProjectId, isNull);
         expect(renamed.id, directory);
         expect(renamed.hasUnseenChanges, isTrue);
       });
@@ -731,7 +739,6 @@ void main() {
       ];
       final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -759,7 +766,6 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/gone"]);
       final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -776,7 +782,6 @@ void main() {
       await db.projectsDao.setActivity(projectId: "/denied", createdAt: 1, updatedAt: 2);
       final repoWithThrow = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -789,21 +794,26 @@ void main() {
     });
   });
 
-  group("ProjectRepository (bridge-derived)", () {
+  group("ProjectRepository (bridge-owned projects with derived activity)", () {
     late AppDatabase db;
     late _FakeDerivedPlugin plugin;
     late ProjectRepository repo;
+    late ProjectActivityRepository activityRepo;
 
     setUp(() {
       db = createTestDatabase();
       plugin = _FakeDerivedPlugin([]);
       repo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
+      );
+      activityRepo = singlePluginProjectActivityRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
       );
     });
 
@@ -845,7 +855,11 @@ void main() {
         _session("/tmp/proj/alpha", id: "a1", created: 20, updated: 30),
         _session("/tmp/proj/alpha", id: "a2", created: 10, updated: 40),
       ];
-      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
+      final service = ProjectActivityService(
+        projectRepository: repo,
+        projectActivityRepository: activityRepo,
+        now: () => 9999,
+      );
       addTearDown(service.dispose);
 
       final result = await service.getProjects();
@@ -891,7 +905,7 @@ void main() {
         deletedAt: 1,
       );
 
-      final result = await repo.listProjectActivityEvidence(pluginId: plugin.id);
+      final result = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
 
       expect(result.map((e) => e.projectId), isNot(contains("/tmp/proj/deleted-only")));
     });
@@ -908,7 +922,11 @@ void main() {
       );
       plugin.sessions = [_session(directory, id: "derived-session", created: 10, updated: 20)];
 
-      final service = ProjectActivityService(projectRepository: repo, now: () => 9999);
+      final service = ProjectActivityService(
+        projectRepository: repo,
+        projectActivityRepository: activityRepo,
+        now: () => 9999,
+      );
       addTearDown(service.dispose);
       await service.reconcile(pluginId: plugin.id);
 
@@ -924,7 +942,7 @@ void main() {
         observedAt: 2,
       );
       final opened = await repo.mapOpenedProject(
-        target: commit.committedTarget,
+        project: commit.committedProject,
         committedActivity: commit.committedActivity,
       );
 
@@ -940,7 +958,7 @@ void main() {
       expect(plugin.receivedKnownDirectories, isNull);
     });
 
-    test("derived open reuses a native catalog row for the normalized directory", () async {
+    test("bridge-owned open reuses an imported catalog identity for the normalized directory", () async {
       const directory = "/tmp/proj/shared-open";
       const nativeProjectId = "native-project-id";
       await db.projectsDao.recordOpenedProject(
@@ -957,7 +975,7 @@ void main() {
         observedAt: 3,
       );
 
-      expect(target.projectId, nativeProjectId);
+      expect(target.id, nativeProjectId);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [nativeProjectId]);
     });
 
@@ -976,7 +994,7 @@ void main() {
       expect(listed.name, "Renamed Alpha");
     });
 
-    test("getProject resolves a derived project without calling the plugin's guarded getProject", () async {
+    test("getProject resolves the bridge-owned catalog without calling the plugin", () async {
       plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
       await repo.getProjects();
       await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 30, updatedAt: 40);
@@ -996,7 +1014,6 @@ void main() {
       final projectsDao = _CountingProjectsDao(database: db);
       final countingRepo = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -1009,7 +1026,7 @@ void main() {
       expect(projectsDao.getProjectCallCount, 1);
     });
 
-    test("getProject and renameProject reject an unknown derived project id", () async {
+    test("getProject and renameProject reject an unknown aggregate project id", () async {
       await expectLater(
         () => repo.renameProject(projectId: "/tmp/proj/ghost", name: "Ghost Renamed"),
         throwsA(isA<ProjectNotFoundException>()),
@@ -1058,14 +1075,13 @@ void main() {
       expect(result.single.time?.updated, persistedActivity!.updatedAt);
     });
 
-    test("getProjects does not probe derived project directories", () async {
+    test("getProjects does not probe catalog project directories", () async {
       plugin.sessions = [
         _session("/tmp/proj/alpha", id: "a1", created: 1, updated: 2),
         _session("/tmp/proj/beta", id: "b1", created: 1, updated: 1),
       ];
       final repoWithMissing = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -1091,11 +1107,9 @@ void main() {
 
   group("ProjectRepository getRemoteIdentity", () {
     late AppDatabase db;
-    late _FakeBridgePlugin plugin;
 
     setUp(() {
       db = createTestDatabase();
-      plugin = _FakeBridgePlugin();
     });
 
     tearDown(() async {
@@ -1104,7 +1118,6 @@ void main() {
 
     ProjectRepository repoWith({required String? remoteUrl}) => singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(remoteUrl: remoteUrl),
-      plugin: plugin,
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
@@ -1177,12 +1190,9 @@ PluginSession _session(
   );
 }
 
-/// Minimal [BridgePluginApi] fake that only implements the surface touched by
-/// [ProjectRepository]. Every other member throws so accidental use is loud.
+/// Minimal [BridgePluginApi] fake for plugin activity evidence. Every other
+/// member throws so accidental project open/rename delegation is loud.
 class _FakeBridgePlugin implements NativeProjectsPluginApi {
-  _FakeBridgePlugin({this.pluginId = "fake"});
-
-  final String pluginId;
   List<PluginProject> projectsResult = const [];
   Future<List<PluginProject>>? getProjectsFuture;
   Object? getProjectsError;
@@ -1201,7 +1211,7 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
   }
 
   @override
-  String get id => pluginId;
+  String get id => "fake";
 
   @override
   Stream<BridgeSseEvent> get events => throw UnimplementedError();

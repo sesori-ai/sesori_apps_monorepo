@@ -178,7 +178,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProfileTitle => 'Profile';
 
   @override
+  String get settingsSectionAppearance => 'Appearance';
+
+  @override
+  String get settingsAppearanceLight => 'Light';
+
+  @override
+  String get settingsAppearanceDark => 'Dark';
+
+  @override
+  String get settingsAppearanceSystem => 'System';
+
+  @override
+  String get settingsSectionSupport => 'Support';
+
+  @override
+  String get settingsSupportEmail => 'Email';
+
+  @override
+  String get settingsSupportDiscord => 'Discord';
+
+  @override
+  String get settingsSupportX => 'DM on X';
+
+  @override
+  String get settingsSectionLegal => 'Legal';
+
+  @override
+  String get settingsLegalTerms => 'Terms of Service';
+
+  @override
+  String get settingsLegalPrivacy => 'Privacy Policy';
+
+  @override
+  String get legalDocumentRetry => 'Retry';
+
+  @override
   String get settingsClose => 'Close settings';
+
+  @override
+  String get settingsAppName => 'Sesori';
 
   @override
   String settingsVersion(String version, String buildNumber) {

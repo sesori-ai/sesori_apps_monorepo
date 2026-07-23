@@ -6,14 +6,20 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/project_activity.dart";
 import "../repositories/models/project_activity_evidence.dart";
+import "../repositories/project_activity_repository.dart";
 import "../repositories/project_repository.dart";
 
 class ProjectActivityService {
-  ProjectActivityService({required ProjectRepository projectRepository, required int Function() now})
-    : _projectRepository = projectRepository,
-      _now = now;
+  ProjectActivityService({
+    required ProjectRepository projectRepository,
+    required ProjectActivityRepository projectActivityRepository,
+    required int Function() now,
+  }) : _projectRepository = projectRepository,
+       _projectActivityRepository = projectActivityRepository,
+       _now = now;
 
   final ProjectRepository _projectRepository;
+  final ProjectActivityRepository _projectActivityRepository;
   final int Function() _now;
   final StreamController<ProjectActivityChange> _changes = StreamController<ProjectActivityChange>.broadcast();
 
@@ -35,12 +41,12 @@ class ProjectActivityService {
       );
       if (result.updatedAtAdvanced) {
         _emit(
-          projectId: result.committedTarget.projectId,
+          projectId: result.committedProject.id,
           updatedAt: result.committedActivity.updatedAt,
         );
       }
       return _projectRepository.mapOpenedProject(
-        target: result.committedTarget,
+        project: result.committedProject,
         committedActivity: result.committedActivity,
       );
     });
@@ -89,14 +95,14 @@ class ProjectActivityService {
   }
 
   Future<void> reconcile({required String? pluginId}) async {
-    final pluginIds = pluginId == null ? _projectRepository.operationalPluginIds : <String>{pluginId};
+    final pluginIds = pluginId == null ? _projectActivityRepository.operationalPluginIds : <String>{pluginId};
     await Future.wait(pluginIds.map(_reconcileSource));
   }
 
   Future<void> _reconcileSource(String pluginId) async {
     final List<ProjectActivityEvidence> evidence;
     try {
-      evidence = await _projectRepository.listProjectActivityEvidence(pluginId: pluginId);
+      evidence = await _projectActivityRepository.listProjectActivityEvidence(pluginId: pluginId);
     } on Object catch (error, stackTrace) {
       Log.w("Project activity reconciliation failed for plugin $pluginId", error, stackTrace);
       return;

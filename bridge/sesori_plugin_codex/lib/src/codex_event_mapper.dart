@@ -2,8 +2,10 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "api/models/codex_rollout_dto.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
+import "codex_rollout_tool_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
 
 /// Translates `codex app-server` `ServerNotification` frames into
@@ -53,6 +55,19 @@ class CodexEventMapper {
   /// global [config] default — making a model switch look like it never took
   /// effect even though codex honoured it. Falls back to [config] when unknown.
   final Map<String, String> _threadModel = {};
+  static const CodexRolloutToolMapper _rolloutToolMapper = CodexRolloutToolMapper();
+
+  /// Raw rollout state keyed by the same `call_id` app-server uses as a
+  /// command item id. It lets late normalized item notifications reuse the
+  /// richer result instead of replacing it with their smaller projection.
+  final Map<String, CodexRolloutToolCall> _rolloutToolCalls = {};
+  final Map<String, CodexRolloutToolResult> _rolloutToolResults = {};
+
+  /// Last-known thread times, used to turn activity notifications into a
+  /// timestamp-bearing `session.updated` payload. Codex sends the activity
+  /// time on the turn, not on a thread/session event.
+  final Map<String, int> _threadCreatedAt = {};
+  final Map<String, int> _threadUpdatedAt = {};
 
   /// Records the model codex resolved for [threadId] so subsequent
   /// live-streamed assistant messages are stamped with the model actually in
@@ -98,6 +113,30 @@ class CodexEventMapper {
     }
   }
 
+  /// Retains the earliest creation and latest update time seen for [record].
+  void setThreadTime(CodexThreadRecord record) {
+    final createdAt = record.createdAt;
+    final previousCreatedAt = _threadCreatedAt[record.id];
+    if (createdAt != null &&
+        (previousCreatedAt == null || createdAt < previousCreatedAt)) {
+      _threadCreatedAt[record.id] = createdAt;
+    }
+    final updatedAt = record.updatedAt;
+    final previousUpdatedAt = _threadUpdatedAt[record.id];
+    if (updatedAt != null &&
+        (previousUpdatedAt == null || updatedAt > previousUpdatedAt)) {
+      _threadUpdatedAt[record.id] = updatedAt;
+    }
+  }
+
+  void forgetThread(String threadId) {
+    _threadCreatedAt.remove(threadId);
+    _threadUpdatedAt.remove(threadId);
+    _threadModel.remove(threadId);
+    _threadProvider.remove(threadId);
+    _threadDirectory.remove(threadId);
+  }
+
   /// The project id a live session event should carry for [threadId]: the
   /// plugin-fed directory, else the notification's own [cwd], else the launch
   /// cwd — always normalized to match the bridge's derived project id.
@@ -106,6 +145,7 @@ class CodexEventMapper {
 
   /// Maps a repository-normalized `thread/started` record.
   List<BridgeSseEvent> mapThreadStarted(CodexThreadRecord record) {
+    setThreadTime(record);
     setThreadProvider(record.id, record.modelProvider);
     setThreadDirectory(record.id, record.directory);
     return [
@@ -127,6 +167,7 @@ class CodexEventMapper {
             info: _minimalSession(
               id: threadId,
               title: params["threadName"] as String?,
+              time: null,
             ).toJson(),
             titleChanged: true,
           ),
@@ -146,6 +187,10 @@ class CodexEventMapper {
         final threadId = params["threadId"] as String?;
         if (threadId == null) return const [];
         return [
+          _sessionActivityUpdated(
+            threadId: threadId,
+            timestampSeconds: _asMap(params["turn"])?["startedAt"],
+          ),
           BridgeSseSessionStatus(
             sessionID: threadId,
             status: const shared.SessionStatus.busy().toJson(),
@@ -155,7 +200,13 @@ class CodexEventMapper {
       case "turn/completed":
         final threadId = params["threadId"] as String?;
         if (threadId == null) return const [];
-        return [BridgeSseSessionIdle(sessionID: threadId)];
+        return [
+          _sessionActivityUpdated(
+            threadId: threadId,
+            timestampSeconds: _asMap(params["turn"])?["completedAt"],
+          ),
+          BridgeSseSessionIdle(sessionID: threadId),
+        ];
 
       case "item/started":
       case "item/completed":
@@ -200,6 +251,51 @@ class CodexEventMapper {
     //     ApprovalRegistry as permission/question events.
     //   - account/*, fs/changed, configWarning, realtime/* … — no analog.
     return const [];
+  }
+
+  /// Maps a complete response-item record observed in the active rollout.
+  ///
+  /// App-server's stable item stream remains the low-latency source. These
+  /// records update the same message ids with executor metadata and also
+  /// surface raw-only calls such as code-mode `exec` and `wait`.
+  List<BridgeSseEvent> mapRolloutLine({
+    required String threadId,
+    required CodexRolloutLineDto line,
+  }) {
+    if (line.type != CodexRolloutLineType.responseItem) return const [];
+    final payload = line.payload;
+    if (payload == null) return const [];
+    final call = _rolloutToolMapper.mapCall(payload);
+    if (call != null) {
+      _rolloutToolCalls[_rolloutToolKey(threadId, call.id)] = call;
+      return _toolItemEvents(
+        threadId: threadId,
+        itemId: call.id,
+        tool: call.tool,
+        title: call.title,
+        status: PluginToolStatus.running,
+      );
+    }
+    final result = _rolloutToolMapper.mapResult(payload);
+    if (result == null) return const [];
+    final key = _rolloutToolKey(threadId, result.callId);
+    final originalCall = _rolloutToolCalls[key];
+    if (originalCall == null) return const [];
+    _rolloutToolResults[key] = result;
+    return _toolItemEvents(
+      threadId: threadId,
+      itemId: originalCall.id,
+      tool: originalCall.tool,
+      title: originalCall.title,
+      status: result.status,
+      output: result.output,
+    );
+  }
+
+  void clearRolloutTurn({required String threadId}) {
+    final prefix = "$threadId\u0000";
+    _rolloutToolCalls.removeWhere((key, _) => key.startsWith(prefix));
+    _rolloutToolResults.removeWhere((key, _) => key.startsWith(prefix));
   }
 
   /// `item/*/delta` notifications stream text into an already-known part.
@@ -270,13 +366,31 @@ class CodexEventMapper {
           text: _extractReasoningText(item),
         );
       case "commandExecution":
+        final canonical = _canonicalRolloutTool(
+          threadId: threadId,
+          itemId: itemId,
+        );
+        final exitCode = item["exitCode"];
+        final appServerStatus = exitCode is num && exitCode.toInt() != 0
+            ? PluginToolStatus.error
+            : _toolStatus(item["status"], completed: completed);
         return _toolItemEvents(
           threadId: threadId,
           itemId: itemId,
-          tool: "shell",
-          title: item["command"] as String?,
-          status: _toolStatus(item["status"], completed: completed),
-          output: item["aggregatedOutput"] as String?,
+          tool: canonical?.call.tool ?? "shell",
+          title:
+              canonical?.call.title ??
+              _rolloutToolMapper.logicalCommandTitle(
+                item["command"] as String?,
+              ),
+          status: appServerStatus == PluginToolStatus.error
+              ? PluginToolStatus.error
+              : canonical?.result.status ?? appServerStatus,
+          output:
+              canonical?.result.output ??
+              _rolloutToolMapper.clipOutput(
+                item["aggregatedOutput"] as String?,
+              ),
         );
       case "fileChange":
         return _toolItemEvents(
@@ -297,6 +411,28 @@ class CodexEventMapper {
           output: _mcpResultText(item["result"]),
           error: _asMap(item["error"])?["message"] as String?,
         );
+      case "dynamicToolCall":
+        final canonical = _canonicalRolloutTool(
+          threadId: threadId,
+          itemId: itemId,
+        );
+        return _toolItemEvents(
+          threadId: threadId,
+          itemId: itemId,
+          tool:
+              canonical?.call.tool ??
+              switch (item["tool"]) {
+                final String tool when tool.isNotEmpty => tool,
+                _ => "tool",
+              },
+          title: canonical?.call.title ?? _dynamicToolTitle(item["arguments"]),
+          status: canonical?.result.status ?? _toolStatus(item["status"], completed: completed),
+          output:
+              canonical?.result.output ??
+              _rolloutToolMapper.clipOutput(
+                _dynamicToolOutput(item["contentItems"]),
+              ),
+        );
       case "webSearch":
         return _toolItemEvents(
           threadId: threadId,
@@ -307,9 +443,9 @@ class CodexEventMapper {
           status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
         );
       default:
-        // todoList, dynamicToolCall, hookPrompt, … — codex item kinds with no
-        // mobile representation yet. Dropped rather than surfaced as broken or
-        // empty messages.
+        // todoList, hookPrompt, … — codex item kinds with no mobile
+        // representation yet. Dropped rather than surfaced as broken or empty
+        // messages.
         return const [];
     }
   }
@@ -374,6 +510,18 @@ class CodexEventMapper {
     return completed ? PluginToolStatus.completed : PluginToolStatus.running;
   }
 
+  ({CodexRolloutToolCall call, CodexRolloutToolResult result})? _canonicalRolloutTool({
+    required String threadId,
+    required String itemId,
+  }) {
+    final key = _rolloutToolKey(threadId, itemId);
+    final call = _rolloutToolCalls[key];
+    final result = _rolloutToolResults[key];
+    return call == null || result == null ? null : (call: call, result: result);
+  }
+
+  String _rolloutToolKey(String threadId, String callId) => "$threadId\u0000$callId";
+
   /// A short title for a `fileChange` item: the touched paths (codex's
   /// `changes` are `{path, kind, diff}` entries).
   String? _fileChangeTitle(Object? changes) {
@@ -419,6 +567,29 @@ class CodexEventMapper {
     }
     final out = buffer.toString();
     return out.isEmpty ? null : out;
+  }
+
+  /// A concise rendering of the JSON-compatible arguments attached to a
+  /// `dynamicToolCall` item. Codex already decoded the app-server payload, so
+  /// maps and lists use their readable Dart representation here.
+  String? _dynamicToolTitle(Object? arguments) {
+    if (arguments == null) return null;
+    final rendered = arguments is String ? arguments : "$arguments";
+    if (rendered.isEmpty) return null;
+    return rendered.length > 120 ? rendered.substring(0, 120) : rendered;
+  }
+
+  /// Concatenates text outputs from a completed `dynamicToolCall`. Image
+  /// outputs have no bridge tool-state representation and are ignored.
+  String? _dynamicToolOutput(Object? contentItems) {
+    if (contentItems is! List) return null;
+    final buffer = StringBuffer();
+    for (final entry in contentItems) {
+      final text = _asMap(entry)?["text"];
+      if (text is String) buffer.write(text);
+    }
+    final output = buffer.toString();
+    return output.isEmpty ? null : output;
   }
 
   /// Builds an assistant message stamped with codex's agent/model/provider.
@@ -497,11 +668,41 @@ class CodexEventMapper {
     );
   }
 
+  BridgeSseSessionUpdated _sessionActivityUpdated({
+    required String threadId,
+    required Object? timestampSeconds,
+  }) {
+    final observedAt = timestampSeconds is num
+        ? (timestampSeconds * Duration.millisecondsPerSecond).round()
+        : DateTime.now().millisecondsSinceEpoch;
+    final previousUpdated = _threadUpdatedAt[threadId];
+    final updatedAt = previousUpdated != null && previousUpdated > observedAt
+        ? previousUpdated
+        : observedAt;
+    _threadUpdatedAt[threadId] = updatedAt;
+    return BridgeSseSessionUpdated(
+      info: _minimalSession(
+        id: threadId,
+        title: null,
+        time: shared.SessionTime(
+          created: _threadCreatedAt[threadId] ?? updatedAt,
+          updated: updatedAt,
+          archived: null,
+        ),
+      ).toJson(),
+      titleChanged: false,
+    );
+  }
+
   /// Builds a minimal [shared.Session] for notifications that only carry an
   /// id (and maybe a title). The bridge enrichment + the mobile client merge
   /// this against existing session state, so the missing fields are filled
   /// in downstream.
-  shared.Session _minimalSession({required String id, required String? title}) {
+  shared.Session _minimalSession({
+    required String id,
+    required String? title,
+    required shared.SessionTime? time,
+  }) {
     final projectId = _projectIdForThread(id);
     return shared.Session(
       branchName: null,
@@ -511,7 +712,7 @@ class CodexEventMapper {
       directory: projectId,
       parentID: null,
       title: title,
-      time: null,
+      time: time,
       pullRequest: null,
       promptDefaults: null,
     );
@@ -532,9 +733,14 @@ class CodexEventMapper {
   /// sesori [shared.SessionStatus] union. Anything that is not explicitly
   /// `idle` is treated as busy.
   shared.SessionStatus _codexStatusToSessionStatus(Object? raw) {
+    return isIdleThreadStatus(raw) ? const shared.SessionStatus.idle() : const shared.SessionStatus.busy();
+  }
+
+  /// Parses the direct and nested status shapes emitted by codex.
+  bool isIdleThreadStatus(Object? raw) {
     final map = _asMap(raw);
     final type = (map?["type"] ?? _asMap(map?["status"])?["type"]) as String?;
-    return type == "idle" ? const shared.SessionStatus.idle() : const shared.SessionStatus.busy();
+    return type == "idle";
   }
 
   /// Concatenates the `text` of every text-bearing entry in a codex `content`

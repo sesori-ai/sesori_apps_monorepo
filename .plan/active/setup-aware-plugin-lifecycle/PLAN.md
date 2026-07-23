@@ -3,11 +3,10 @@
 ## Status
 
 - **Plan slug:** `setup-aware-plugin-lifecycle`
-- **Status:** redesign approved; implementation stack is being rebuilt
-- **Implementation base:** latest `origin/main` at `5a91f582`
+- **Status:** Stage 10 merged; Stages 11-P01 through 13 rebuilt and open
+- **Implementation base:** latest `origin/main`
 - **Predecessor:** parallel-plugin Stages 0-9 and bridge-app-onboarding W02 are merged
-- **Delivery:** five stacked PRs; the old unmerged PRs #507-#511 are closed and
-  are reopened only after their replacement stage is implemented and verified
+- **Delivery:** five stacked PRs; #507 is merged and #508-#511 are open
 
 This plan replaces the first unmerged implementation. Nothing introduced only
 by that implementation needs compatibility handling. Released contracts still
@@ -74,6 +73,20 @@ available:
 - The mobile new-session chooser persists last-used plugin per client and
   bridge. It uses that plugin when still routable and otherwise uses the
   bridge-derived default.
+
+### Aggregate project ownership
+
+- The bridge always owns aggregate projects. One project may contain sessions
+  from multiple plugins; no plugin owns the aggregate project entity.
+- Project create, open, and rename use only the local filesystem and durable
+  bridge catalog. They never select, start, acquire, or call a plugin and remain
+  available when no plugin is routable.
+- Opening uses the canonical directory as the default bridge identity while
+  retaining an existing durable same-path catalog identity. Renaming writes the
+  bridge-owned display-name override only; it is never propagated to a backend.
+- Plugin project/session observations may remain activity and catalog evidence.
+  The bridge resolves that evidence into its durable aggregate identity; it does
+  not delegate aggregate ownership or user metadata to the source plugin.
 
 ### Residency and idle behavior
 
@@ -233,8 +246,9 @@ full CLI parser registers every plugin option
 ```
 
 The onboarding checkpoint remains standalone/interactive and no longer depends
-on at least one usable plugin. Project operations that still require a default
-return the existing typed unavailable response when none exists.
+on at least one usable plugin. Aggregate project create/open/rename operations
+also remain available with zero usable plugins; explicitly plugin-backed
+session operations retain their typed unavailable responses.
 
 ### Runtime boundary
 
@@ -288,7 +302,8 @@ The Stage 11-P01 method migration is complete before the branch is done:
 |---|---|
 | `SessionRepository` concrete backend operations | `use` the request or persisted binding's plugin; durable writes occur only after a current-generation result. |
 | `SessionRepository` aggregate activity/status reads | `useIfActive`; never wake every plugin. |
-| `ProjectRepository` open/rename | `use` the live nullable derived default; missing default remains typed unavailable. |
+| `ProjectRepository` create/open/rename | No plugin acquisition; use the durable bridge catalog and local filesystem only. |
+| `ProjectActivityRepository` reconciliation | `useIfActive` for the explicitly reconciled plugin source; plugin observations are evidence for bridge-owned aggregates. |
 | `AgentRepository`, `ProviderRepository` | `use` the explicit plugin ID. |
 | `QuestionRepository`, `PermissionRepository` | `use` the persisted session binding; aggregate project questions use active generations only. |
 | `WorktreeRepository` backend cleanup | observable best-effort `use` after git success; its future retains the lease and logs recovered failure. |
@@ -536,7 +551,7 @@ the listed source files and committed with their stage.
 |---|---|
 | Mechanical runtime | Add concrete `plugin_generation_factory.dart`, `plugin_runtime.dart`, and `plugin_lifecycle_repository.dart`; modify `bridge_runtime_runner.dart` and `plugin_lifecycle_service.dart`. |
 | Event composition | `orchestrator.dart`, `plugin_event_listener.dart`, `session_event_dispatcher.dart`, `bridge_runtime.dart`. |
-| Plugin-backed repositories | `session_repository.dart`, `project_repository.dart`, `agent_repository.dart`, `provider_repository.dart`, `question_repository.dart`, `permission_repository.dart`, `worktree_repository.dart`, `catalog_import_repository.dart`. |
+| Plugin-backed repositories | `session_repository.dart`, `project_activity_repository.dart`, `agent_repository.dart`, `provider_repository.dart`, `question_repository.dart`, `permission_repository.dart`, `worktree_repository.dart`, `catalog_import_repository.dart`. `project_repository.dart` remains plugin-neutral and owns aggregate project catalog/open/rename behavior. |
 | Owning services | `session_creation_service.dart`, `session_lifecycle_service.dart`, `permission_auto_approval_service.dart`, `project_activity_service.dart`, `catalog_import_service.dart`. |
 
 ### Stage 11-P02 / PR #509 files

@@ -2,12 +2,14 @@
 
 ## Plan State
 
-- **Status:** Stage 11-P01 delivered; replacement stack rebuilding
-- **Base:** `origin/main` at `5a91f582`
-- **Current branch:** `setup-aware-plugin-lifecycle-s11-p01`
-- **Current stage:** Stage 11-P02 rebuild
-- **Next action:** rebuild Stage 11-P02 from rewritten Stage 11-P01, verify it,
-  rewrite its branch, reopen #509, and start its monitor
+- **Status:** Stage 10 merged; Stage 11-P01 is being synchronized with `main`
+  and corrected for bridge-owned aggregate projects
+- **Base:** latest `origin/main`
+- **Current branch:** PR branch `setup-aware-plugin-lifecycle-s11-p01`
+  (local delivery branch `fix-p508-operation-enum`)
+- **Current stage:** Stage 11-P01 / PR #508 conflict resolution and ownership fix
+- **Next action:** finish focused verification and architecture review, merge any
+  newer `main`, push #508, resolve its ownership thread, and monitor only #508
 
 ## Closed First Implementation
 
@@ -15,11 +17,11 @@ The first unmerged stack was closed before redesign:
 
 | Old PR | State | Replacement |
 |---|---|---|
-| #507 | Reopened | Redesigned Stage 10 at `794e853e`; CI/review monitored |
-| #508 | Reopened | Redesigned Stage 11-P01 at `29472036`; CI/review monitored |
-| #509 | Closed | Reopen after redesigned Stage 11-P02 is implemented and verified |
-| #510 | Closed | Reopen after redesigned Stage 12 is implemented and verified |
-| #511 | Closed | Reopen after redesigned Stage 13 is implemented on merged Settings architecture |
+| #507 | Merged | Redesigned Stage 10 |
+| #508 | Open | Redesigned Stage 11-P01; current delivery focus and sole monitored PR |
+| #509 | Open | Redesigned Stage 11-P02 stacked on #508 |
+| #510 | Open | Redesigned Stage 12 stacked on #509 |
+| #511 | Open | Redesigned Stage 13 stacked on #510 |
 
 Old verification results are historical evidence only; replacement stages must
 run their focused verification again.
@@ -28,11 +30,11 @@ run their focused verification again.
 
 | Done | Stage | Branch | PR state |
 |---|---|---|---|
-| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 open and monitored |
-| [x] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 open and monitored |
-| [ ] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 closed |
-| [ ] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 closed |
-| [ ] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 closed |
+| [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
+| [x] | Stage 11-P01 — dynamic runtime boundary | `setup-aware-plugin-lifecycle-s11-p01` | #508 open; update in progress |
+| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-s11-p02` | #509 open |
+| [x] | Stage 12 — headless management | `setup-aware-plugin-lifecycle-s12-p01` | #510 open |
+| [x] | Stage 13 — redesigned mobile plugin settings | `setup-aware-plugin-lifecycle-s13-p01` | #511 open |
 
 ## Locked Redesign Deltas
 
@@ -48,6 +50,9 @@ run their focused verification again.
 - Settings work targets the merged Prego Settings landing/sub-page architecture.
 - No compatibility machinery is retained for any contract from the closed
   unmerged stack.
+- Aggregate projects are always bridge-owned and may contain sessions from
+  multiple plugins. Project create/open/rename never acquire or call a plugin;
+  plugin observations remain evidence for bridge-owned activity/catalog state.
 
 ## Review
 

@@ -165,12 +165,7 @@ void main() {
         catalogTitle: "New title",
       );
 
-      await repository.setSessionTitleIfStored(
-        sessionId: "stable-id",
-        title: "Local title",
-        sourcePluginId: null,
-        sourceGeneration: null,
-      );
+      await repository.setSessionTitleIfStored(sessionId: "stable-id", title: "Local title");
       final titledAt = (await database.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;
       await repository.archiveStoredSession(sessionId: "stable-id", archivedAt: 300);
       final archivedAt = (await database.sessionDao.getSession(sessionId: "stable-id"))!.projectionUpdatedAt;

@@ -182,6 +182,10 @@ class CodexCatalogRepository {
     for (final line in lines) {
       switch (line.type) {
         case CodexRolloutLineType.sessionMeta:
+          // Forked/subagent rollouts begin with their own metadata and then
+          // include the parent's copied session metadata. The leading header
+          // remains authoritative for the file.
+          if (id != null) continue;
           final payload = line.payload;
           final metadataId = payload?.id;
           if (metadataId == null || metadataId.isEmpty) continue;

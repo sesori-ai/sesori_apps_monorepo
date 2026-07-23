@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_activity_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
@@ -40,7 +41,6 @@ PermissionRepository singlePluginPermissionRepository({
 }
 
 ProjectRepository singlePluginProjectRepository({
-  required BridgePluginApi plugin,
   required ProjectsDao projectsDao,
   required SessionDao sessionDao,
   required SessionUnseenCalculator unseenCalculator,
@@ -48,13 +48,24 @@ ProjectRepository singlePluginProjectRepository({
   required GitCliApi gitCliApi,
 }) {
   return ProjectRepository(
-    runtime: createTestPluginRuntime(plugins: [plugin]),
-    readDefaultEnabledPluginId: () => plugin.id,
     projectsDao: projectsDao,
     sessionDao: sessionDao,
     unseenCalculator: unseenCalculator,
     filesystemApi: filesystemApi,
     gitCliApi: gitCliApi,
+    projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+  );
+}
+
+ProjectActivityRepository singlePluginProjectActivityRepository({
+  required BridgePluginApi plugin,
+  required ProjectsDao projectsDao,
+  required SessionDao sessionDao,
+}) {
+  return ProjectActivityRepository(
+    runtime: createTestPluginRuntime(plugins: [plugin]),
+    projectsDao: projectsDao,
+    sessionDao: sessionDao,
     projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
     aggregateSourceDeadline: const Duration(seconds: 5),
   );

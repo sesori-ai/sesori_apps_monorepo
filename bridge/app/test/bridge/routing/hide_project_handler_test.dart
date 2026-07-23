@@ -22,7 +22,6 @@ void main() {
       plugin = FakeBridgePlugin();
       projectRepository = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),

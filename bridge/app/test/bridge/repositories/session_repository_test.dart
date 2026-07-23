@@ -146,6 +146,14 @@ void main() {
           variant: "variant-1",
         ),
       );
+      await db.sessionDao.updateObservedSessionProjection(
+        sessionId: "s1",
+        directory: "/tmp/project",
+        catalogTitle: "Catalog title",
+        updateCatalogTitle: true,
+        updatedAt: 10,
+        projectionUpdatedAt: 10,
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "p1",
@@ -200,7 +208,7 @@ void main() {
           projectID: "p1",
           directory: "/tmp/project",
           parentID: null,
-          title: "session",
+          title: "Live plugin title",
           time: SessionTime(created: 1, updated: 2, archived: null),
           pullRequest: null,
           promptDefaults: null,
@@ -211,6 +219,7 @@ void main() {
       expect(result.pluginId, equals(plugin.id));
       expect(result.time?.updated, equals(2));
       expect(result.time?.archived, isNull);
+      expect(result.title, "Catalog title");
       expect(result.branchName, equals("feature/one"));
       expect(result.hasWorktree, isTrue);
       expect(result.promptDefaults?.agent, equals("agent-1"));
@@ -1856,13 +1865,8 @@ void main() {
       );
 
       expect(
-        await repository.setSessionTitleIfStored(
-          sessionId: "s1",
-          title: "My rename",
-          sourcePluginId: null,
-          sourceGeneration: null,
-        ),
-        SessionTitleWriteResult.stored,
+        await repository.setSessionTitleIfStored(sessionId: "s1", title: "My rename"),
+        isTrue,
       );
 
       // The next enumeration keeps serving the rename, not the backend's

@@ -8,7 +8,6 @@ import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/session_event_tracker.dart";
 import "../runtime/plugin_runtime.dart";
-import "session_mutation_dispatcher.dart";
 
 typedef SourcedBridgeEvent = ({
   String pluginId,
@@ -21,7 +20,6 @@ typedef _ProjectedSession = ({StoredSession binding, bool inserted});
 class SessionEventService {
   final SessionRepository _sessionRepository;
   final PluginRuntime _pluginRuntime;
-  final SessionMutationDispatcher _sessionMutationDispatcher;
   final SessionEventMapper _eventMapper;
   final SessionEventTracker _eventTracker;
   final FailureReporter _failureReporter;
@@ -29,13 +27,11 @@ class SessionEventService {
   SessionEventService({
     required SessionRepository sessionRepository,
     required PluginRuntime pluginRuntime,
-    required SessionMutationDispatcher sessionMutationDispatcher,
     required SessionEventMapper eventMapper,
     required SessionEventTracker eventTracker,
     required FailureReporter failureReporter,
   }) : _sessionRepository = sessionRepository,
        _pluginRuntime = pluginRuntime,
-       _sessionMutationDispatcher = sessionMutationDispatcher,
        _eventMapper = eventMapper,
        _eventTracker = eventTracker,
        _failureReporter = failureReporter;
@@ -373,15 +369,6 @@ class SessionEventService {
     required bool titleChanged,
   }) async {
     if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
-    if (titleChanged) {
-      await _sessionMutationDispatcher.captureTitle(
-        sessionId: session.id,
-        title: session.title,
-        pluginId: source.pluginId,
-        generation: source.generation,
-      );
-      if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
-    }
     final catalogSession = await _sessionRepository.getCatalogSession(sessionId: session.id);
     if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
     if (catalogSession == null) return null;

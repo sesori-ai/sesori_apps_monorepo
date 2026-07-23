@@ -45,21 +45,8 @@ void main() {
         final db = createTestDatabase();
         addTearDown(db.close);
 
-        final plugin = _FakeBridgePlugin(
-          projects: const [
-            PluginProject(
-              id: "proj-X",
-              directory: "proj-X",
-              name: "Project X",
-              activity: PluginProjectActivity(createdAt: 0, updatedAt: 100),
-            ),
-          ],
-          sessions: const [],
-        );
-
         final projectRepo = singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
-          plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),

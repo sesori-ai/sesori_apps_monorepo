@@ -23,7 +23,10 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => SettingsCubit(authSession: getIt<AuthSession>()),
+      create: (_) => SettingsCubit(
+        authSession: getIt<AuthSession>(),
+        notificationRegistrationService: getIt<NotificationRegistrationService>(),
+      ),
       child: const _ProfileBody(),
     );
   }

@@ -42,7 +42,6 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
     ),
     projectRepository: singlePluginProjectRepository(
       gitCliApi: FakeGitCliApi(),
-      plugin: plugin,
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       unseenCalculator: calculator,
@@ -734,12 +733,7 @@ class _NoopSessionRepository implements SessionRepository {
   Future<void> dispose() async {}
 
   @override
-  Future<SessionTitleWriteResult> setSessionTitleIfStored({
-    required String sessionId,
-    required String? title,
-    required String? sourcePluginId,
-    required int? sourceGeneration,
-  }) async => SessionTitleWriteResult.stored;
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
   Future<Session> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
@@ -967,7 +961,6 @@ class FakeSessionRepository implements SessionRepository {
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
   String? projectPathResult;
-  final Map<String, String?> enrichedTitleOverrides = {};
   Object? publicationError;
 
   FakeSessionRepository({
@@ -990,14 +983,9 @@ class FakeSessionRepository implements SessionRepository {
   final List<({String sessionId, String? title})> recordedTitles = [];
 
   @override
-  Future<SessionTitleWriteResult> setSessionTitleIfStored({
-    required String sessionId,
-    required String? title,
-    required String? sourcePluginId,
-    required int? sourceGeneration,
-  }) async {
+  Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
     recordedTitles.add((sessionId: sessionId, title: title));
-    return SessionTitleWriteResult.stored;
+    return true;
   }
 
   @override
@@ -1135,19 +1123,13 @@ class FakeSessionRepository implements SessionRepository {
       for (final session in sessions)
         if (_selectBestPr(prsBySessionId[session.id]) case final pr?) session.id: pullRequestInfoFromDto(pr),
     };
-    final enriched = enrichSharedSessions(
+    return enrichSharedSessions(
       sessions: sessions,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: const SessionUnseenCalculator(),
       adoptStoredProjectId: false,
     );
-    return [
-      for (final session in enriched)
-        enrichedTitleOverrides.containsKey(session.id)
-            ? session.copyWith(title: enrichedTitleOverrides[session.id])
-            : session,
-    ];
   }
 
   static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {

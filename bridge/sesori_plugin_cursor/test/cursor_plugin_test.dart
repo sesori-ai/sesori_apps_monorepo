@@ -144,6 +144,7 @@ void main() {
         "agentCapabilities": <String, dynamic>{},
         "authMethods": <Object?>[],
       });
+      await respond("cursor/list_available_models", const {"models": <Object?>[]});
       return future;
     }
 
@@ -151,10 +152,10 @@ void main() {
       expect(plugin.id, "cursor");
     });
 
-    test("the default binary is the official Cursor CLI name", () {
-      expect(CursorBinary.defaultBinary, "agent");
+    test("the default binary is the stable Cursor CLI executable", () {
+      expect(CursorBinary.defaultBinary, "cursor-agent");
       final spec = CursorBinary.launchSpec(cwd: "/repo");
-      expect(spec.command, "agent");
+      expect(spec.command, "cursor-agent");
       expect(spec.args, ["acp"]);
     });
 
@@ -904,6 +905,7 @@ void main() {
         "agentCapabilities": <String, dynamic>{},
         "authMethods": <Object?>[],
       });
+      await respond("cursor/list_available_models", const {"models": <Object?>[]});
       expect((await providers).providers, isEmpty);
     });
 
@@ -1041,6 +1043,7 @@ void main() {
     void Function() autoAnswer({
       required List<Map<String, dynamic>> listSessions,
       required Map<String, Map<String, dynamic>> loadResults,
+      List<Map<String, dynamic>>? availableModels,
       Map<String?, List<Map<String, dynamic>>>? listSessionsByScope,
       bool rejectUnfiltered = false,
       List<String>? loadOrder,
@@ -1064,6 +1067,16 @@ void main() {
                     },
                     "authMethods": <Object?>[],
                   };
+                case "cursor/list_available_models":
+                  if (availableModels == null) {
+                    fake.emit({
+                      "jsonrpc": "2.0",
+                      "id": id,
+                      "error": {"code": -32601, "message": "method not found"},
+                    });
+                    continue;
+                  }
+                  result = {"models": availableModels};
                 case "session/list":
                   final params = (frame["params"] as Map?)?.cast<String, dynamic>();
                   final listScope = params?["cwd"] as String?;
@@ -1094,6 +1107,56 @@ void main() {
       }());
       return () => running = false;
     }
+
+    test("discovers agents and models before the first Cursor session", () async {
+      final stop = autoAnswer(
+        listSessions: const [],
+        loadResults: const {},
+        availableModels: [
+          {"value": "default", "name": "Auto"},
+          {
+            "value": "gpt-5.6-sol",
+            "name": "GPT-5.6 Sol",
+            "configOptions": [
+              {
+                "id": "reasoning",
+                "name": "Reasoning",
+                "category": "thought_level",
+                "currentValue": "medium",
+                "options": [
+                  {"value": "none", "name": "None"},
+                  {"value": "low", "name": "Low"},
+                  {"value": "medium", "name": "Medium"},
+                  {"value": "high", "name": "High"},
+                ],
+              },
+            ],
+          },
+        ],
+      );
+
+      final providers = await plugin.getProviders(projectId: cwd);
+      final agents = await plugin.getAgents(projectId: cwd);
+      stop();
+
+      expect(providers.providers.single.models.map((model) => model.id), ["default", "gpt-5.6-sol"]);
+      expect(providers.providers.single.defaultModelID, "default");
+      expect(
+        providers.providers.single.models.last.variants,
+        ["medium", "none", "low", "high"],
+      );
+      expect(agents.map((agent) => agent.name), ["Agent", "Plan", "Ask"]);
+      expect(
+        allWritten().where((frame) => frame["method"] == "session/list"),
+        isEmpty,
+        reason: "account discovery does not require a historical session",
+      );
+      expect(
+        allWritten().where((frame) => frame["method"] == "session/new"),
+        isEmpty,
+        reason: "catalog discovery must not create a throwaway session",
+      );
+    });
 
     test("seeds provisional effort when the newest session is non-reasoning but an older one is reasoning", () async {
       final loadOrder = <String>[];

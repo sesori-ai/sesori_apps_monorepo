@@ -3,16 +3,7 @@ import "dart:math" show max;
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show
-        BridgeDerivedProjectsPluginApi,
-        BridgePluginApi,
-        Log,
-        NativeProjectsPluginApi,
-        PluginOperationException,
-        PluginProject,
-        PluginProjectOwnership,
-        PluginSessionTime;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
 
 import "../../api/database/daos/projects_dao.dart";
@@ -21,51 +12,37 @@ import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../../repositories/project_catalog_identity_calculator.dart";
 import "../api/filesystem_api.dart";
 import "../api/git_cli_api.dart";
-import "../runtime/plugin_runtime.dart";
 import "mappers/git_remote_identity_parser.dart";
-import "mappers/plugin_project_mapper.dart";
 import "mappers/project_catalog_mapper.dart";
 import "models/project_activity.dart";
-import "models/project_activity_evidence.dart";
 import "models/project_not_found_exception.dart";
 import "session_unseen_calculator.dart";
 
-/// Owns catalog project reads and bridge/plugin-backed targeted operations.
+/// Owns the bridge's aggregate project catalog and local project operations.
 class ProjectRepository {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
 
-  final PluginRuntime _runtime;
-  final String? Function() _readDefaultEnabledPluginId;
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final SessionUnseenCalculator _unseenCalculator;
   final FilesystemApi _filesystemApi;
   final GitCliApi _gitCliApi;
   final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator;
-  final Duration _aggregateSourceDeadline;
 
   ProjectRepository({
-    required PluginRuntime runtime,
-    required String? Function() readDefaultEnabledPluginId,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required SessionUnseenCalculator unseenCalculator,
     required FilesystemApi filesystemApi,
     required GitCliApi gitCliApi,
     required ProjectCatalogIdentityCalculator projectCatalogIdentityCalculator,
-    required Duration aggregateSourceDeadline,
-  }) : _runtime = runtime,
-       _readDefaultEnabledPluginId = readDefaultEnabledPluginId,
-       _projectsDao = projectsDao,
+  }) : _projectsDao = projectsDao,
        _sessionDao = sessionDao,
        _unseenCalculator = unseenCalculator,
        _filesystemApi = filesystemApi,
        _gitCliApi = gitCliApi,
-       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator,
-       _aggregateSourceDeadline = aggregateSourceDeadline;
-
-  Set<String> get operationalPluginIds => _runtime.activePluginIds;
+       _projectCatalogIdentityCalculator = projectCatalogIdentityCalculator;
 
   Future<List<Project>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
@@ -131,25 +108,9 @@ class ProjectRepository {
     );
   }
 
-  /// Resolves the canonical target for opening [path].
-  ///
-  /// For a native plugin the backend maps the opened directory to the stable
-  /// project id (a moved folder keeps its identity). A bridge-derived plugin
-  /// prefers the normalized directory while retaining any same-path catalog id.
-  Future<ProjectOpenTarget> resolveProjectOpenTarget({required String path}) async {
-    const operation = _ProjectOperation.openProject;
-    final defaultPluginId = _requireDefaultPluginId(operation: operation);
-    return _runtime.use(
-      pluginId: defaultPluginId,
-      operation: operation,
-      body: (api) async => switch (api) {
-        BridgeDerivedProjectsPluginApi() => await _resolveBridgeDerivedOpenTarget(path: path),
-        final NativeProjectsPluginApi plugin => await _resolveNativeOpenTarget(path: path, plugin: plugin),
-      },
-    );
-  }
-
-  Future<ProjectOpenTarget> _resolveBridgeDerivedOpenTarget({required String path}) async {
+  /// Resolves [path] locally, retaining any durable identity already recorded
+  /// for the same canonical directory.
+  Future<Project> resolveProjectOpenTarget({required String path}) async {
     final canonical = normalizeProjectDirectory(directory: path);
     final storedProjects = await _projectsDao.getAllProjects();
     final stored = _projectCatalogIdentityCalculator.calculate(
@@ -161,62 +122,28 @@ class ProjectRepository {
       observedPath: canonical,
     );
     final base = p.basename(canonical);
-    return ProjectOpenTarget(
-      project: Project(
-        id: stored?.projectId ?? canonical,
-        name: stored?.displayName ?? (base.isEmpty ? canonical : base),
-        path: canonical,
-        time: null,
-        supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: canonical),
-      ),
+    return Project(
+      id: stored?.projectId ?? canonical,
+      name: stored?.displayName ?? (base.isEmpty ? canonical : base),
       path: canonical,
-      projectOwnership: PluginProjectOwnership.bridgeDerived,
-    );
-  }
-
-  Future<ProjectOpenTarget> _resolveNativeOpenTarget({
-    required String path,
-    required NativeProjectsPluginApi plugin,
-  }) async {
-    final openedPath = normalizeProjectDirectory(directory: path);
-    final pluginProject = await plugin.getProject(openedPath);
-    final storedProjects = await _projectsDao.getAllProjects();
-    final existing = _projectCatalogIdentityCalculator.calculate(
-      projectsById: {for (final project in storedProjects) project.projectId: project},
-      projectsByNormalizedPath: _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
-        projects: storedProjects,
-      ),
-      preferredProjectId: pluginProject.id,
-      observedPath: openedPath,
-    );
-    return ProjectOpenTarget(
-      project: pluginProject
-          .toSharedProject(
-            path: openedPath,
-            hasUnseenChanges: false,
-            directoryMissing: false,
-            supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: openedPath),
-            time: null,
-          )
-          .copyWith(id: existing?.projectId ?? pluginProject.id),
-      path: openedPath,
-      projectOwnership: PluginProjectOwnership.native,
+      time: null,
+      supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: canonical),
     );
   }
 
   /// Rechecks the opened project's canonical identity, merges [observedAt]
   /// monotonically with that row's activity, persists it, and unhides it in one
   /// transaction. A concurrent catalog import may have claimed
-  /// [ProjectOpenTarget.path] after [resolveProjectOpenTarget] took its snapshot.
+  /// the resolved project's path after [resolveProjectOpenTarget] took its snapshot.
   Future<
     ({
       ProjectActivity committedActivity,
-      ProjectOpenTarget committedTarget,
+      Project committedProject,
       bool updatedAtAdvanced,
     })
   >
   persistOpenedProject({
-    required ProjectOpenTarget target,
+    required Project target,
     required int observedAt,
   }) {
     return _projectsDao.transaction(() async {
@@ -228,93 +155,46 @@ class ProjectRepository {
         projectsByNormalizedPath: _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
           projects: storedProjects,
         ),
-        preferredProjectId: target.projectId,
+        preferredProjectId: target.id,
         observedPath: target.path,
       );
-      final committedTarget = existing == null
-          ? target
-          : ProjectOpenTarget(
-              project: target.project.copyWith(id: existing.projectId),
-              path: target.path,
-              projectOwnership: target.projectOwnership,
-            );
+      final committedProject = existing == null ? target : target.copyWith(id: existing.projectId);
       final currentActivity = _mapActivity(existing);
       final committedActivity = ProjectActivity(
         createdAt: currentActivity?.createdAt ?? observedAt,
         updatedAt: max(currentActivity?.updatedAt ?? observedAt, observedAt),
       );
       await _projectsDao.recordOpenedProject(
-        projectId: committedTarget.projectId,
-        path: committedTarget.path,
-        displayName: target.projectOwnership == PluginProjectOwnership.native ? committedTarget.project.name : null,
+        projectId: committedProject.id,
+        path: committedProject.path,
+        displayName: null,
         createdAt: committedActivity.createdAt,
         updatedAt: committedActivity.updatedAt,
       );
       return (
         committedActivity: committedActivity,
-        committedTarget: committedTarget,
+        committedProject: committedProject,
         updatedAtAdvanced: currentActivity == null || committedActivity.updatedAt > currentActivity.updatedAt,
       );
     });
   }
 
   Future<Project> mapOpenedProject({
-    required ProjectOpenTarget target,
+    required Project project,
     required ProjectActivity committedActivity,
   }) async {
-    return target.project.copyWith(
+    return project.copyWith(
       time: _activityToTime(committedActivity),
-      hasUnseenChanges: await projectHasUnseenChanges(projectId: target.projectId),
-      directoryMissing: _directoryMissing(target.path),
+      hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
+      directoryMissing: _directoryMissing(project.path),
     );
   }
 
   Future<Project> renameProject({required String projectId, required String name}) async {
-    final path = await _projectsDao.getResolvedPath(projectId: projectId);
-    if (path == null) {
+    final existing = await _projectsDao.getProject(projectId: projectId);
+    if (existing == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
-    final activity = _mapActivity(await _projectsDao.getProject(projectId: projectId));
-    const operation = _ProjectOperation.renameProject;
-    final defaultPluginId = _requireDefaultPluginId(operation: operation);
-    final result = await _runtime.use<({PluginProjectOwnership ownership, PluginProject? nativeProject})>(
-      pluginId: defaultPluginId,
-      operation: operation,
-      body: (api) async => switch (api) {
-        BridgeDerivedProjectsPluginApi() => (
-          ownership: PluginProjectOwnership.bridgeDerived,
-          nativeProject: null,
-        ),
-        final NativeProjectsPluginApi plugin => (
-          ownership: PluginProjectOwnership.native,
-          nativeProject: await plugin.renameProject(projectId: path, name: name),
-        ),
-      },
-    );
-    return switch (result) {
-      (ownership: PluginProjectOwnership.bridgeDerived, nativeProject: _) => _renameBridgeDerivedProject(
-        projectId: projectId,
-        name: name,
-        path: path,
-      ),
-      (ownership: PluginProjectOwnership.native, nativeProject: final PluginProject updated) =>
-        _persistNativeProjectRename(
-          updated: updated,
-          projectId: projectId,
-          name: name,
-          path: path,
-          activity: activity!,
-        ),
-      _ => throw StateError("native project rename returned no project"),
-    };
-  }
-
-  Future<Project> _renameBridgeDerivedProject({
-    required String projectId,
-    required String name,
-    required String path,
-  }) async {
-    final canonical = normalizeProjectDirectory(directory: path);
     await _projectsDao.setDisplayName(
       projectId: projectId,
       displayName: name,
@@ -324,32 +204,9 @@ class ProjectRepository {
     return _projectCatalogMapper.map(
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
-      directoryMissing: _directoryMissing(canonical),
-      supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: canonical),
+      directoryMissing: _directoryMissing(row.path),
+      supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: row.path),
     );
-  }
-
-  Future<Project> _persistNativeProjectRename({
-    required PluginProject updated,
-    required String projectId,
-    required String name,
-    required String path,
-    required ProjectActivity activity,
-  }) async {
-    await _projectsDao.setDisplayName(
-      projectId: projectId,
-      displayName: name,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
-    );
-    return updated
-        .toSharedProject(
-          path: path,
-          hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
-          directoryMissing: _directoryMissing(path),
-          supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: path),
-          time: _activityToTime(activity),
-        )
-        .copyWith(id: projectId);
   }
 
   Future<void> hideProject({required String projectId}) {
@@ -391,157 +248,6 @@ class ProjectRepository {
     final activity = _mapActivity(project);
     if (activity == null) return null;
     return StoredProjectActivity(projectId: session.projectId, activity: activity);
-  }
-
-  Future<List<ProjectActivityEvidence>> listProjectActivityEvidence({required String pluginId}) async {
-    final source = await _runtime
-        .useIfActive<_ProjectActivitySource>(
-          pluginId: pluginId,
-          operation: _ProjectOperation.listProjectActivityEvidence,
-          body: (plugin, generation) => _loadProjectActivitySource(
-            plugin: plugin,
-            generation: generation,
-          ),
-        )
-        .timeout(_aggregateSourceDeadline);
-    if (source == null) return const <ProjectActivityEvidence>[];
-    switch (source) {
-      case _NativeProjectActivitySource():
-        return _persistNativeProjectActivityEvidence(source: source);
-      case _ResolvedProjectActivitySource(:final evidence):
-        _requireCurrentProjectActivitySource(source);
-        return evidence;
-    }
-  }
-
-  Future<_ProjectActivitySource> _loadProjectActivitySource({
-    required BridgePluginApi plugin,
-    required int generation,
-  }) async {
-    switch (plugin) {
-      case final NativeProjectsPluginApi plugin:
-        return _NativeProjectActivitySource(
-          pluginId: plugin.id,
-          generation: generation,
-          projects: await plugin.getProjects(),
-        );
-      case final BridgeDerivedProjectsPluginApi plugin:
-        final (storedProjects, sessionProjectPaths, tombstoned) = await (
-          _projectsDao.getAllProjects(),
-          _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
-          _sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
-        ).wait;
-        final sessions = await plugin.listAllSessions(
-          knownDirectories: {
-            for (final stored in storedProjects) stored.path,
-            for (final row in sessionProjectPaths) ?row.worktreePath,
-          },
-        );
-        final pathBySessionId = {
-          for (final row in sessionProjectPaths) row.backendSessionId: row.projectPath,
-        };
-        final grouped = <String, List<PluginSessionTime>>{};
-        for (final session in sessions) {
-          if (tombstoned.contains(session.id)) continue;
-          final time = session.time;
-          if (time == null) continue;
-          final projectPath = pathBySessionId[session.id] ?? session.directory;
-          final key = normalizeProjectDirectory(directory: projectPath);
-          grouped.putIfAbsent(key, () => []).add(time);
-        }
-        final projectsById = <String, ProjectDto>{
-          for (final project in storedProjects) project.projectId: project,
-        };
-        final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
-          projects: storedProjects,
-        );
-        final evidence = <ProjectActivityEvidence>[];
-        for (final entry in grouped.entries) {
-          final stored = _projectCatalogIdentityCalculator.calculate(
-            projectsById: projectsById,
-            projectsByNormalizedPath: projectsByNormalizedPath,
-            preferredProjectId: entry.key,
-            observedPath: entry.key,
-          );
-          if (stored == null) continue;
-          evidence.add(
-            ProjectActivityEvidence(
-              pluginId: plugin.id,
-              projectId: stored.projectId,
-              pluginActivity: null,
-              sessionActivities: entry.value,
-            ),
-          );
-        }
-        return _ResolvedProjectActivitySource(
-          pluginId: plugin.id,
-          generation: generation,
-          evidence: evidence,
-        );
-    }
-  }
-
-  Future<List<ProjectActivityEvidence>> _persistNativeProjectActivityEvidence({
-    required _NativeProjectActivitySource source,
-  }) {
-    return _projectsDao.transaction(() async {
-      final storedProjects = (await _projectsDao.getAllProjects()).toList();
-      final projectsById = <String, ProjectDto>{
-        for (final project in storedProjects) project.projectId: project,
-      };
-      final projectsByNormalizedPath = _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
-        projects: storedProjects,
-      );
-      final missingProjects = <String, ({String path, int? createdAt, int? updatedAt})>{};
-      final evidence = <ProjectActivityEvidence>[];
-      for (final project in source.projects) {
-        final existing = _projectCatalogIdentityCalculator.calculate(
-          projectsById: projectsById,
-          projectsByNormalizedPath: projectsByNormalizedPath,
-          preferredProjectId: project.id,
-          observedPath: project.directory,
-        );
-        final projectId = existing?.projectId ?? project.id;
-        if (existing == null) {
-          missingProjects[projectId] = (
-            path: project.directory,
-            createdAt: project.activity?.createdAt,
-            updatedAt: project.activity?.updatedAt,
-          );
-          final inserted = ProjectDto(
-            projectId: projectId,
-            path: project.directory,
-            createdAt: project.activity?.createdAt ?? 0,
-            updatedAt: project.activity?.updatedAt ?? 0,
-            projectionUpdatedAt: 0,
-          );
-          projectsById[projectId] = inserted;
-          projectsByNormalizedPath[normalizeProjectDirectory(directory: project.directory)] = inserted;
-        }
-        evidence.add(
-          ProjectActivityEvidence(
-            pluginId: source.pluginId,
-            projectId: projectId,
-            pluginActivity: project.activity,
-            sessionActivities: const [],
-          ),
-        );
-      }
-      _requireCurrentProjectActivitySource(source);
-      await _projectsDao.insertProjectsWithPathsIfMissing(
-        projects: missingProjects,
-      );
-      _requireCurrentProjectActivitySource(source);
-      return evidence;
-    });
-  }
-
-  void _requireCurrentProjectActivitySource(_ProjectActivitySource source) {
-    _runtime.requireCurrentGeneration(
-      pluginId: source.pluginId,
-      generation: source.generation,
-      operation: _ProjectOperation.listProjectActivityEvidence,
-    );
   }
 
   Future<Map<String, ProjectActivity>> getActivities({required Set<String> projectIds}) async {
@@ -594,62 +300,4 @@ class ProjectRepository {
     if (project == null) return null;
     return ProjectActivity(createdAt: project.createdAt, updatedAt: project.updatedAt);
   }
-
-  String _requireDefaultPluginId({required _ProjectOperation operation}) {
-    final defaultPluginId = _readDefaultEnabledPluginId();
-    if (defaultPluginId == null) {
-      throw PluginOperationException(
-        operation.name,
-        statusCode: 503,
-        message: "no default plugin is enabled",
-      );
-    }
-    return defaultPluginId;
-  }
-}
-
-enum _ProjectOperation { openProject, renameProject, listProjectActivityEvidence }
-
-sealed class _ProjectActivitySource {
-  const _ProjectActivitySource({required this.pluginId, required this.generation});
-
-  final String pluginId;
-  final int generation;
-}
-
-final class _NativeProjectActivitySource extends _ProjectActivitySource {
-  const _NativeProjectActivitySource({
-    required super.pluginId,
-    required super.generation,
-    required this.projects,
-  });
-
-  final List<PluginProject> projects;
-}
-
-final class _ResolvedProjectActivitySource extends _ProjectActivitySource {
-  const _ResolvedProjectActivitySource({
-    required super.pluginId,
-    required super.generation,
-    required this.evidence,
-  });
-
-  final List<ProjectActivityEvidence> evidence;
-}
-
-/// Canonical target returned by [ProjectRepository.resolveProjectOpenTarget].
-class ProjectOpenTarget {
-  const ProjectOpenTarget({
-    required this.project,
-    required this.path,
-    required this.projectOwnership,
-  });
-
-  final Project project;
-  String get projectId => project.id;
-
-  /// Live directory where the project currently resides on disk.
-  final String path;
-
-  final PluginProjectOwnership projectOwnership;
 }

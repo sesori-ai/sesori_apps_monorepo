@@ -11,7 +11,6 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -74,7 +73,6 @@ class _EventProjectionBenchmark {
     final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
     AppDatabase? database;
     SessionRepository? repository;
-    SessionMutationDispatcher? mutationDispatcher;
     SSEManager? sseManager;
 
     try {
@@ -93,12 +91,10 @@ class _EventProjectionBenchmark {
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
-      mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
       final failureReporter = _BenchmarkFailureReporter();
       final service = SessionEventService(
         sessionRepository: repository,
         pluginRuntime: runtime,
-        sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: SessionEventTracker(
           maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
@@ -121,8 +117,6 @@ class _EventProjectionBenchmark {
       final databaseSchemaVersion = database.schemaVersion;
       sseManager.stop();
       sseManager = null;
-      await mutationDispatcher.dispose();
-      mutationDispatcher = null;
       await repository.dispose();
       repository = null;
       await database.close();
@@ -160,7 +154,6 @@ class _EventProjectionBenchmark {
       };
     } finally {
       sseManager?.stop();
-      if (mutationDispatcher != null) await mutationDispatcher.dispose();
       if (repository != null) await repository.dispose();
       if (database != null) await database.close();
       try {

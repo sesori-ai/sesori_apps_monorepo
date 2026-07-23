@@ -5,7 +5,6 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
-import "../services/session_mutation_dispatcher.dart";
 import "request_handler.dart";
 
 /// Handles `GET /sessions` — returns sessions for a given project.
@@ -14,17 +13,14 @@ import "request_handler.dart";
 class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
-  final SessionMutationDispatcher _sessionMutationDispatcher;
   final Duration _prRefreshTimeout;
 
   GetSessionsHandler({
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
-    required SessionMutationDispatcher sessionMutationDispatcher,
     Duration prRefreshTimeout = const Duration(seconds: 5),
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
-       _sessionMutationDispatcher = sessionMutationDispatcher,
        _prRefreshTimeout = prRefreshTimeout,
        super(
          HttpMethod.post,
@@ -58,13 +54,6 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       limit: limit,
     );
 
-    for (final session in sessions) {
-      try {
-        await _sessionMutationDispatcher.applyPendingTitle(sessionId: session.id);
-      } on Object catch (e, st) {
-        Log.w("GetSessionsHandler: pending title failed for sessionId=${session.id}", e, st);
-      }
-    }
     try {
       sessions = await _sessionRepository.enrichSessions(sessions: sessions);
     } on Object catch (e, st) {

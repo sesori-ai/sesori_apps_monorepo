@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:math";
 
@@ -14,7 +15,9 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/login_failed_reason_x.dart";
+import "../../core/legal_links.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/widgets/legal_document_sheet.dart";
 import "../../core/widgets/markdown_styles.dart";
 import "../../core/widgets/sesori_background_widget.dart";
 import "../../core/widgets/sesori_logo.dart";
@@ -135,6 +138,18 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     } finally {
       if (mounted) setState(() => _isEmailSheetOpen = false);
     }
+  }
+
+  /// Opens the terms/privacy links in the agreement sentence as in-app document
+  /// sheets, and leaves any other link to the shared external-link handler.
+  // ignore: no_slop_linter/prefer_required_named_parameters, callback signature is defined by MarkdownBody.onTapLink
+  void _handleAgreementLinkTap(String text, String? href, String title) {
+    final document = href == null ? null : LegalLinks.documentFor(href);
+    if (document == null) {
+      handleMarkdownLinkTap(text, href, title);
+      return;
+    }
+    unawaited(showLegalDocumentSheet(context, document: document));
   }
 
   @override
@@ -286,7 +301,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                 const SizedBox(height: 22),
                                 MarkdownBody(
                                   data: loc.loginAgreementText,
-                                  onTapLink: handleMarkdownLinkTap,
+                                  onTapLink: _handleAgreementLinkTap,
                                   styleSheet: buildAgreementMarkdownStyleSheet(prego: prego),
                                 ),
                               ],

@@ -17,6 +17,7 @@ import "repositories/codex_message_repository.dart";
 import "repositories/codex_thread_repository.dart";
 import "repositories/models/codex_thread_record.dart";
 import "runtime/codex_managed_api.dart";
+import "services/codex_rollout_tailer.dart";
 import "services/codex_session_service.dart";
 
 /// Phase 4 of the Codex backend plugin.
@@ -38,6 +39,8 @@ import "services/codex_session_service.dart";
 /// Approval/permission flows still throw — those land in Phase 5.
 class CodexPlugin implements CodexManagedApi {
   static const String pluginId = "codex";
+  static const Duration _renameRetryDelay = Duration(milliseconds: 100);
+  static const Duration _renameRetryTimeout = Duration(seconds: 2);
 
   final String _serverUrl;
   // Passed to the default client built in [_createClient]; retained for future
@@ -50,6 +53,7 @@ class CodexPlugin implements CodexManagedApi {
   final CodexAppServerClient Function()? _clientFactory;
   final CodexSessionService _sessionService;
   final CodexEventMapper _eventMapper;
+  final CodexRolloutTailer _rolloutTailer;
   final String _projectCwd;
   final Duration _keepaliveInterval;
 
@@ -67,6 +71,8 @@ class CodexPlugin implements CodexManagedApi {
   CodexAppServerClient? _client;
   Future<bool>? _connectFuture;
   StreamSubscription<CodexServerNotification>? _notificationSubscription;
+  Future<void> _notificationWork = Future<void>.value();
+  StreamSubscription<CodexRolloutAppend>? _rolloutSubscription;
   ApprovalRegistry? _approvalRegistry;
 
   /// Periodic no-op RPC timer. codex `app-server` closes a connection that goes
@@ -103,6 +109,11 @@ class CodexPlugin implements CodexManagedApi {
     final configReader = CodexConfigReader();
     final rolloutApi = CodexRolloutApi();
     final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
+    final rolloutTailer = CodexRolloutTailer(
+      rolloutApi: rolloutApi,
+      catalogRepository: catalogRepository,
+      pollInterval: const Duration(milliseconds: 50),
+    );
     final metadataRepository = CodexMetadataRepository(
       skillReader: CodexSkillReader(),
       configReader: configReader,
@@ -125,6 +136,7 @@ class CodexPlugin implements CodexManagedApi {
         projectCwd: resolvedProjectCwd,
         config: configReader.readDefaults(),
       ),
+      rolloutTailer: rolloutTailer,
       projectCwd: resolvedProjectCwd,
       onConnected: onConnected,
       onDisconnected: onDisconnected,
@@ -138,6 +150,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexAppServerClient Function() clientFactory,
     required CodexSessionService sessionService,
     required CodexEventMapper eventMapper,
+    required CodexRolloutTailer rolloutTailer,
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
@@ -148,6 +161,7 @@ class CodexPlugin implements CodexManagedApi {
          clientFactory: clientFactory,
          sessionService: sessionService,
          eventMapper: eventMapper,
+         rolloutTailer: rolloutTailer,
          projectCwd: projectCwd,
          onConnected: onConnected,
          onDisconnected: onDisconnected,
@@ -160,6 +174,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexAppServerClient Function()? clientFactory,
     required CodexSessionService sessionService,
     required CodexEventMapper eventMapper,
+    required CodexRolloutTailer rolloutTailer,
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
@@ -170,10 +185,15 @@ class CodexPlugin implements CodexManagedApi {
        _clientFactory = clientFactory,
        _sessionService = sessionService,
        _eventMapper = eventMapper,
+       _rolloutTailer = rolloutTailer,
        _projectCwd = projectCwd,
        _onConnected = onConnected,
        _onDisconnected = onDisconnected,
-       _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
+       _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
+    _rolloutSubscription = _rolloutTailer.appends.listen(
+      _handleRolloutAppend,
+    );
+  }
 
   String get serverUrl => _serverUrl;
 
@@ -233,14 +253,35 @@ class CodexPlugin implements CodexManagedApi {
   /// Invoked when the underlying transport drops unexpectedly. Resets the
   /// cached connection state (so [healthCheck]/[_ensureConnected] no longer
   /// hand back a stale successful future for a dead socket and instead
-  /// re-establish on the next call), then forwards the signal to the runtime
-  /// descriptor's status reporter.
+  /// re-establish on the next call), clears connection-scoped activity, then
+  /// forwards the signal to the runtime descriptor's status reporter.
   void _handleClientDisconnected() {
+    final registry = _approvalRegistry;
+    final activeSessionIds = [
+      for (final entry in _sessionStatuses.entries)
+        if (_isActiveStatus(entry.value)) entry.key,
+    ];
+    final hadVisibleActivity =
+        activeSessionIds.isNotEmpty ||
+        _sessionStatuses.keys.any(
+          (sessionId) => registry?.hasPendingInput(sessionId) ?? false,
+        );
     _connectFuture = null;
     _client = null;
     _sessionService.detachThreadRepository();
+    _rolloutTailer.stopAll();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
+    _approvalRegistry = null;
+    unawaited(registry?.dispose());
+    _sessionStatuses.clear();
+    _activeTurnByThread.clear();
+    for (final sessionId in activeSessionIds) {
+      _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+    }
+    if (hadVisibleActivity) {
+      _eventBuffer.add(const BridgeSseProjectUpdated());
+    }
     _onDisconnected?.call();
   }
 
@@ -249,18 +290,65 @@ class CodexPlugin implements CodexManagedApi {
   /// and turn-id bookkeeping current.
   void _subscribeToNotifications(CodexAppServerClient client) {
     _notificationSubscription = client.notifications.listen((notification) {
-      if (notification.method == "thread/started") {
-        final thread = _sessionService.decodeStartedNotificationParams(
-          params: notification.params,
+      // Serialize notification side effects so a terminal rollout drain cannot
+      // let session.idle overtake its final tool update.
+      _notificationWork = _notificationWork.then((_) => _handleNotification(notification)).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        Log.e(
+          "[codex] failed to map app-server notification",
+          error,
+          stackTrace,
         );
-        if (thread == null) return;
-        _maintainThreadStarted(thread);
-        _eventMapper.mapThreadStarted(thread).forEach(_eventBuffer.add);
-        return;
-      }
-      _maintainBookkeeping(notification);
-      _eventMapper.map(notification).forEach(_eventBuffer.add);
+      });
     });
+  }
+
+  Future<void> _handleNotification(
+    CodexServerNotification notification,
+  ) async {
+    if (notification.method == "thread/started") {
+      final thread = _sessionService.decodeStartedNotificationParams(
+        params: notification.params,
+      );
+      if (thread == null) return;
+      _maintainThreadStarted(thread);
+      _eventMapper.mapThreadStarted(thread).forEach(_eventBuffer.add);
+      return;
+    }
+    final threadId = notification.params["threadId"] as String?;
+    if (notification.method == "turn/started" && threadId != null) {
+      // Calls initiated through this plugin start tailing before turn/start.
+      // This fallback covers a turn started by another app-server client.
+      _rolloutTailer.start(sessionId: threadId);
+    }
+    if (notification.method == "turn/completed" && threadId != null) {
+      await _rolloutTailer.finish(sessionId: threadId);
+    }
+    final activityChanged = _maintainBookkeeping(notification);
+    _eventMapper.map(notification).forEach(_eventBuffer.add);
+    if (notification.method == "item/completed" && threadId != null) {
+      // The app-server item is provisional; a rollout output written for the
+      // same call id immediately enriches it with executor metadata.
+      _rolloutTailer.drain(sessionId: threadId);
+    }
+    if (threadId != null && (notification.method == "error" || notification.method == "thread/closed")) {
+      _rolloutTailer.stop(sessionId: threadId);
+    }
+    if (threadId != null &&
+        (notification.method == "turn/completed" ||
+            notification.method == "error" ||
+            notification.method == "thread/closed")) {
+      _eventMapper.clearRolloutTurn(threadId: threadId);
+    }
+    if (activityChanged) {
+      _eventBuffer.add(const BridgeSseProjectUpdated());
+    }
+  }
+
+  void _handleRolloutAppend(CodexRolloutAppend append) {
+    _eventMapper.mapRolloutLine(threadId: append.sessionId, line: append.line).forEach(_eventBuffer.add);
   }
 
   void _maintainThreadStarted(CodexThreadRecord thread) {
@@ -274,7 +362,7 @@ class CodexPlugin implements CodexManagedApi {
   /// bridge permission/question events.
   void _attachApprovalRegistry(CodexAppServerClient client) {
     final registry = ApprovalRegistry(
-      emit: _eventBuffer.add,
+      emit: _emitApprovalEvent,
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
       respondError: (id, code, message) => client.respondToServerRequestWithError(
         id: id,
@@ -284,6 +372,11 @@ class CodexPlugin implements CodexManagedApi {
     );
     _approvalRegistry = registry;
     registry.attach(client.serverRequests);
+  }
+
+  void _emitApprovalEvent(BridgeSseEvent event) {
+    _eventBuffer.add(event);
+    _eventBuffer.add(const BridgeSseProjectUpdated());
   }
 
   /// Starts (or restarts) the idle-keepalive timer. Sends a cheap read RPC on
@@ -307,34 +400,53 @@ class CodexPlugin implements CodexManagedApi {
     );
   }
 
-  void _maintainBookkeeping(CodexServerNotification notification) {
+  bool _maintainBookkeeping(CodexServerNotification notification) {
     final params = notification.params;
     final threadId = params["threadId"] as String?;
     switch (notification.method) {
       case "turn/started":
-        if (threadId == null) return;
+        if (threadId == null) return false;
         final turn = (params["turn"] as Map?)?.cast<String, dynamic>();
         final turnId = turn?["id"] as String?;
         if (turnId != null) _activeTurnByThread[threadId] = turnId;
-        _sessionStatuses[threadId] = const PluginSessionStatus.busy();
+        return _setSessionStatus(threadId, const PluginSessionStatus.busy());
       case "turn/completed":
-        if (threadId == null) return;
+        if (threadId == null) return false;
         _activeTurnByThread.remove(threadId);
-        _sessionStatuses[threadId] = const PluginSessionStatus.idle();
+        return _setSessionStatus(threadId, const PluginSessionStatus.idle());
       case "error":
-        if (threadId == null) return;
+        if (threadId == null) return false;
         _activeTurnByThread.remove(threadId);
         // PluginSessionStatus has no explicit "error" — surfacing as idle
         // and letting the mapped BridgeSseSessionError carry the signal.
-        _sessionStatuses[threadId] = const PluginSessionStatus.idle();
+        return _setSessionStatus(threadId, const PluginSessionStatus.idle());
+      case "thread/status/changed":
+        if (threadId == null) return false;
+        return _setSessionStatus(
+          threadId,
+          _eventMapper.isIdleThreadStatus(params["status"])
+              ? const PluginSessionStatus.idle()
+              : const PluginSessionStatus.busy(),
+        );
       case "thread/closed":
-        if (threadId == null) return;
+        if (threadId == null) return false;
         _activeTurnByThread.remove(threadId);
-        _sessionStatuses.remove(threadId);
+        final wasActive = _isActiveStatus(_sessionStatuses.remove(threadId));
         // The app-server unloaded this thread; a later turn must resume it.
         _sessionService.markThreadUnloaded(threadId: threadId);
+        return wasActive;
     }
+    return false;
   }
+
+  bool _setSessionStatus(String threadId, PluginSessionStatus status) {
+    final wasActive = _isActiveStatus(_sessionStatuses[threadId]);
+    _sessionStatuses[threadId] = status;
+    return wasActive != _isActiveStatus(status);
+  }
+
+  bool _isActiveStatus(PluginSessionStatus? status) =>
+      status is PluginSessionStatusBusy || status is PluginSessionStatusRetry;
 
   /// Cold-start hook the runtime descriptor awaits before reporting the
   /// plugin ready: opens the WebSocket, performs the `initialize` handshake,
@@ -409,6 +521,7 @@ class CodexPlugin implements CodexManagedApi {
       model: model?.modelID,
       modelProvider: model?.providerID,
     );
+    _eventMapper.setThreadTime(thread);
     final threadId = thread.id;
     // codex's ThreadStartResponse carries the resolved model alongside the
     // thread; record it so live-streamed assistant messages are stamped with
@@ -530,15 +643,23 @@ class CodexPlugin implements CodexManagedApi {
     if (effort != null && effort.isNotEmpty) {
       params["effort"] = effort;
     }
+    // Capture the current EOF before Codex can append this turn's response
+    // items. `start` is idempotent when turn/started arrives afterwards.
+    _rolloutTailer.start(sessionId: threadId);
     try {
-      await client.request(method: "turn/start", params: params);
-    } on CodexRpcException catch (error) {
-      // Defensive: even if we believed the thread was loaded, the app-server
-      // may have dropped it (or our tracking is stale). Force a resume and
-      // retry the turn exactly once before giving up.
-      if (!_isThreadNotFound(error)) rethrow;
-      await _ensureThreadLoaded(threadId, force: true);
-      await client.request(method: "turn/start", params: params);
+      try {
+        await client.request(method: "turn/start", params: params);
+      } on CodexRpcException catch (error) {
+        // Defensive: even if we believed the thread was loaded, the app-server
+        // may have dropped it (or our tracking is stale). Force a resume and
+        // retry the turn exactly once before giving up.
+        if (!_isThreadNotFound(error)) rethrow;
+        await _ensureThreadLoaded(threadId, force: true);
+        await client.request(method: "turn/start", params: params);
+      }
+    } on Object {
+      _rolloutTailer.stop(sessionId: threadId);
+      rethrow;
     }
   }
 
@@ -563,6 +684,7 @@ class CodexPlugin implements CodexManagedApi {
       force: force,
     );
     if (response == null) return;
+    _eventMapper.setThreadTime(response);
     _eventMapper.setThreadModel(threadId, response.model);
     _eventMapper.setThreadProvider(threadId, response.modelProvider);
     // A thread resumed from a prior bridge run never re-emits `thread/started`,
@@ -583,6 +705,14 @@ class CodexPlugin implements CodexManagedApi {
     return message.contains("thread not found") ||
         message.contains("no such thread") ||
         (error.code == -32600 && message.contains("not found"));
+  }
+
+  bool _isEmptyRollout(CodexRpcException error) {
+    final message = error.message.toLowerCase();
+    return error.code == -32603 &&
+        message.contains("failed to read session metadata") &&
+        message.contains("rollout") &&
+        message.contains(" is empty");
   }
 
   Map<String, dynamic>? _promptPartToUserInput(PluginPromptPart part) {
@@ -615,10 +745,35 @@ class CodexPlugin implements CodexManagedApi {
     required String title,
   }) async {
     final client = await _connectedClient();
-    await client.request(
-      method: "thread/name/set",
-      params: {"threadId": sessionId, "name": title},
-    );
+    Stopwatch? retryClock;
+    for (var attempt = 1; ; attempt++) {
+      final requestTimeout = retryClock == null
+          ? const Duration(seconds: 30)
+          : _renameRetryTimeout - retryClock.elapsed;
+      if (requestTimeout <= Duration.zero) {
+        throw TimeoutException("Codex session rename retry deadline elapsed");
+      }
+      try {
+        await client.request(
+          method: "thread/name/set",
+          params: {"threadId": sessionId, "name": title},
+          timeout: requestTimeout,
+        );
+        break;
+      } on CodexRpcException catch (error) {
+        // thread/start can return after creating the rollout but before its
+        // initial session metadata has been flushed. Retry only that transient
+        // app-server failure; unrelated rename failures remain immediate.
+        if (!_isEmptyRollout(error)) rethrow;
+        retryClock ??= Stopwatch()..start();
+        if (retryClock.elapsed + _renameRetryDelay > _renameRetryTimeout) rethrow;
+        Log.d(
+          "Codex rollout metadata is not ready for session $sessionId; "
+          "retrying rename after attempt $attempt",
+        );
+        await Future<void>.delayed(_renameRetryDelay);
+      }
+    }
     final directory = _directoryForSession(sessionId);
     return PluginSession(
       id: sessionId,
@@ -670,6 +825,9 @@ class CodexPlugin implements CodexManagedApi {
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
     _threadDirectory.remove(sessionId);
+    _rolloutTailer.stop(sessionId: sessionId);
+    _eventMapper.clearRolloutTurn(threadId: sessionId);
+    _eventMapper.forgetThread(sessionId);
   }
 
   @override
@@ -938,7 +1096,31 @@ class CodexPlugin implements CodexManagedApi {
   }
 
   @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => const [];
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    final registry = _approvalRegistry;
+    final byProject = <String, List<PluginActiveSession>>{};
+    for (final entry in _sessionStatuses.entries) {
+      final running = _isActiveStatus(entry.value);
+      final awaitingInput = registry?.hasPendingInput(entry.key) ?? false;
+      if (!running && !awaitingInput) continue;
+      (byProject[_directoryForSession(entry.key)] ??= []).add(
+        PluginActiveSession(
+          id: entry.key,
+          mainAgentRunning: running,
+          awaitingInput: awaitingInput,
+          isRetrying: false,
+          childSessionIds: const [],
+        ),
+      );
+    }
+    return [
+      for (final entry in byProject.entries)
+        PluginProjectActivitySummary(
+          id: entry.key,
+          activeSessions: entry.value,
+        ),
+    ];
+  }
 
   @override
   Future<void> dispose() async {
@@ -946,6 +1128,10 @@ class CodexPlugin implements CodexManagedApi {
     _keepaliveTimer = null;
     await _notificationSubscription?.cancel();
     _notificationSubscription = null;
+    await _notificationWork;
+    await _rolloutSubscription?.cancel();
+    _rolloutSubscription = null;
+    await _rolloutTailer.dispose();
     await _approvalRegistry?.dispose();
     _approvalRegistry = null;
     await _client?.dispose();

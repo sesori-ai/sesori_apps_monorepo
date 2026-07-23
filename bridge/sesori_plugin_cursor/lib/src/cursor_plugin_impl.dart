@@ -86,7 +86,7 @@ class CursorPlugin extends AcpPlugin {
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
     return CursorApprovalRegistry(
       client: client,
-      emit: emitEvent,
+      emit: emitActivityEvent,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }

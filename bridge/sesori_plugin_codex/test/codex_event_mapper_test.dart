@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/codex_app_server_api.dart";
+import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -173,33 +174,89 @@ void main() {
       expect(session.projectID, "/repo/app/packages/ui");
     });
 
-    test("turn/started → SessionStatus(busy) parseable as SessionStatus", () {
-      final events = mapper.map(
+    test("turn/started updates session time and emits busy status", () {
+      final activityMapper = CodexEventMapper(
+        pluginId: CodexPlugin.pluginId,
+        projectCwd: projectCwd,
+      );
+      mapThreadStarted(
+        activityMapper,
         const CodexServerNotification(
-          method: "turn/started",
+          method: "thread/started",
           params: {
-            "threadId": "t-1",
-            "turn": {"id": "u-1"},
+            "thread": {
+              "id": "t-activity",
+              "cwd": projectCwd,
+              "createdAt": 1779293088,
+              "updatedAt": 1779293090,
+            },
           },
         ),
       );
 
-      expect(events, hasLength(1));
-      final status = events.single as BridgeSseSessionStatus;
-      expect(status.sessionID, "t-1");
+      final events = activityMapper.map(
+        const CodexServerNotification(
+          method: "turn/started",
+          params: {
+            "threadId": "t-activity",
+            "turn": {"id": "u-1", "startedAt": 1779293100},
+          },
+        ),
+      );
+
+      expect(events, hasLength(2));
+      final updated = events.whereType<BridgeSseSessionUpdated>().single;
+      final session = shared.Session.fromJson(updated.info);
+      expect(session.time?.created, 1779293088000);
+      expect(session.time?.updated, 1779293100000);
+      expect(updated.titleChanged, isFalse);
+      expect(parseAsSesori(updated), isA<shared.SesoriSessionUpdated>());
+
+      final status = events.whereType<BridgeSseSessionStatus>().single;
+      expect(status.sessionID, "t-activity");
       expect(shared.SessionStatus.fromJson(status.status), isA<shared.SessionStatusBusy>());
       expect(parseAsSesori(status), isA<shared.SesoriSessionStatus>());
     });
 
-    test("turn/completed → SessionIdle", () {
-      final events = mapper.map(
-        const CodexServerNotification(method: "turn/completed", params: {"threadId": "t-1"}),
+    test("turn/completed updates session time and emits idle status", () {
+      final activityMapper = CodexEventMapper(
+        pluginId: CodexPlugin.pluginId,
+        projectCwd: projectCwd,
       );
-      expect(events, hasLength(1));
-      expect((events.single as BridgeSseSessionIdle).sessionID, "t-1");
+      mapThreadStarted(
+        activityMapper,
+        const CodexServerNotification(
+          method: "thread/started",
+          params: {
+            "thread": {
+              "id": "t-activity",
+              "cwd": projectCwd,
+              "createdAt": 1779293088,
+              "updatedAt": 1779293090,
+            },
+          },
+        ),
+      );
+
+      final events = activityMapper.map(
+        const CodexServerNotification(
+          method: "turn/completed",
+          params: {
+            "threadId": "t-activity",
+            "turn": {"id": "u-1", "completedAt": 1779293110},
+          },
+        ),
+      );
+      expect(events, hasLength(2));
+      final session = shared.Session.fromJson(
+        events.whereType<BridgeSseSessionUpdated>().single.info,
+      );
+      expect(session.time?.created, 1779293088000);
+      expect(session.time?.updated, 1779293110000);
+      expect(events.whereType<BridgeSseSessionIdle>().single.sessionID, "t-activity");
     });
 
-    test("thread/status/changed maps active→busy and idle→idle", () {
+    test("thread/status/changed maps direct active and nested idle statuses", () {
       final active = mapper.map(
         const CodexServerNotification(
           method: "thread/status/changed",
@@ -214,7 +271,9 @@ void main() {
           method: "thread/status/changed",
           params: {
             "threadId": "t-1",
-            "status": {"type": "idle"},
+            "status": {
+              "status": {"type": "idle"},
+            },
           },
         ),
       );
@@ -411,7 +470,7 @@ void main() {
             "item": {
               "type": "commandExecution",
               "id": "i-cmd",
-              "command": "ls -la",
+              "command": "/bin/zsh -lc 'ls -la'",
               "aggregatedOutput": "total 0\nfoo.dart",
               "exitCode": 0,
               "status": "completed",
@@ -432,6 +491,163 @@ void main() {
       expect(part.state?.status, PluginToolStatus.completed);
       expect(part.state?.title, "ls -la");
       expect(part.state?.output, contains("foo.dart"));
+    });
+
+    test("commandExecution treats a non-zero exit code as an error", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "item": {
+              "type": "commandExecution",
+              "id": "i-failed",
+              "command": "/bin/zsh -lc /usr/bin/false",
+              "aggregatedOutput": "",
+              "exitCode": 1,
+              // Some app-server versions have reported `completed` here even
+              // though the explicit process exit code is authoritative.
+              "status": "completed",
+            },
+          },
+        ),
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.state?.title, "/usr/bin/false");
+      expect(part.state?.status, PluginToolStatus.error);
+      expect(part.state?.error, "");
+    });
+
+    test("raw rollout output enriches and cannot be downgraded by a later item", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "timestamp": "2026-07-23T08:00:00Z",
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "id": "fc-failed",
+          "call_id": "call-failed",
+          "name": "exec_command",
+          "arguments": '{"cmd":"/usr/bin/false"}',
+        },
+      });
+      final output = CodexRolloutLineDto.fromJson({
+        "timestamp": "2026-07-23T08:00:01Z",
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": "call-failed",
+          "output":
+              "Chunk ID: failed\n"
+              "Wall time: 0.01 seconds\n"
+              "Process exited with code 1\n"
+              "Final output:\n",
+        },
+      });
+
+      final running = mapper.mapRolloutLine(threadId: "t-raw", line: call);
+      final completed = mapper.mapRolloutLine(
+        threadId: "t-raw",
+        line: output,
+      );
+      final lateItem = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-raw",
+            "item": {
+              "type": "commandExecution",
+              "id": "call-failed",
+              "command": "/bin/zsh -lc /usr/bin/false",
+              "aggregatedOutput": "",
+              "exitCode": 1,
+              "status": "failed",
+            },
+          },
+        ),
+      );
+
+      expect(
+        (running[1] as BridgeSseMessagePartUpdated).part.state?.title,
+        "/usr/bin/false",
+      );
+      final rawPart = (completed[1] as BridgeSseMessagePartUpdated).part;
+      final latePart = (lateItem[1] as BridgeSseMessagePartUpdated).part;
+      expect(rawPart.state?.status, PluginToolStatus.error);
+      expect(rawPart.state?.output, contains("Chunk ID: failed"));
+      expect(latePart.state?.status, rawPart.state?.status);
+      expect(latePart.state?.output, rawPart.state?.output);
+      expect(latePart.state?.error, rawPart.state?.error);
+      mapper.clearRolloutTurn(threadId: "t-raw");
+    });
+
+    test("a structured non-zero exit overrides an unclassified raw result", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": "call-structured-failure",
+          "name": "exec_command",
+          "arguments": '{"cmd":"/usr/bin/false"}',
+        },
+      });
+      final output = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": "call-structured-failure",
+          "output": "opaque executor output",
+        },
+      });
+      mapper
+        ..mapRolloutLine(threadId: "t-structured", line: call)
+        ..mapRolloutLine(threadId: "t-structured", line: output);
+
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-structured",
+            "item": {
+              "type": "commandExecution",
+              "id": "call-structured-failure",
+              "command": "/bin/zsh -lc /usr/bin/false",
+              "aggregatedOutput": "",
+              "exitCode": 1,
+              "status": "completed",
+            },
+          },
+        ),
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.state?.status, PluginToolStatus.error);
+      expect(part.state?.output, "opaque executor output");
+      expect(part.state?.error, "opaque executor output");
+      mapper.clearRolloutTurn(threadId: "t-structured");
+    });
+
+    test("raw fallback titles clip non-BMP text by Unicode code point", () {
+      final prefix = List<String>.filled(119, "a").join();
+      final line = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": "call-unicode",
+          "name": "unknown_tool",
+          "arguments": "$prefix😀trailing",
+        },
+      });
+
+      final events = mapper.mapRolloutLine(
+        threadId: "t-unicode",
+        line: line,
+      );
+
+      final title = (events[1] as BridgeSseMessagePartUpdated).part.state?.title;
+      expect(title, "$prefix😀");
+      expect(title?.runes, hasLength(120));
+      mapper.clearRolloutTurn(threadId: "t-unicode");
     });
 
     test("commandExecution (started/inProgress) → running tool part", () {
@@ -506,6 +722,98 @@ void main() {
       expect(part.state?.status, PluginToolStatus.error);
       expect(part.state?.title, "playwright/click");
       expect(part.state?.error, "element not found");
+    });
+
+    test("dynamicToolCall streams a running tool and its completed output", () {
+      final started = mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": "t-1",
+            "item": {
+              "type": "dynamicToolCall",
+              "id": "i-wait",
+              "tool": "wait",
+              "namespace": "functions",
+              "arguments": {
+                "cell_id": "166",
+                "yield_time_ms": 10000,
+                "max_tokens": 20000,
+              },
+              "status": "inProgress",
+              "contentItems": null,
+              "durationMs": null,
+              "success": null,
+            },
+          },
+        ),
+      );
+
+      expect(started, hasLength(2));
+      final runningPart = (started[1] as BridgeSseMessagePartUpdated).part;
+      expect(runningPart.type, PluginMessagePartType.tool);
+      expect(runningPart.id, "i-wait-tool");
+      expect(runningPart.tool, "wait");
+      expect(runningPart.state?.status, PluginToolStatus.running);
+      expect(runningPart.state?.title, contains("cell_id: 166"));
+      expect(runningPart.state?.title, contains("yield_time_ms: 10000"));
+      expect(runningPart.state?.output, isNull);
+
+      final completed = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "item": {
+              "type": "dynamicToolCall",
+              "id": "i-wait",
+              "tool": "wait",
+              "namespace": "functions",
+              "arguments": {
+                "cell_id": "166",
+                "yield_time_ms": 10000,
+                "max_tokens": 20000,
+              },
+              "status": "completed",
+              "contentItems": [
+                {"type": "inputText", "text": "wait completed"},
+              ],
+              "durationMs": 2000,
+              "success": true,
+            },
+          },
+        ),
+      );
+
+      expect(completed, hasLength(2));
+      final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
+      expect(completedPart.id, runningPart.id);
+      expect(completedPart.state?.status, PluginToolStatus.completed);
+      expect(completedPart.state?.output, "wait completed");
+    });
+
+    test("dynamicToolCall falls back for malformed or empty tool names", () {
+      for (final rawTool in <Object?>[42, ""]) {
+        final events = mapper.map(
+          CodexServerNotification(
+            method: "item/started",
+            params: {
+              "threadId": "t-1",
+              "item": {
+                "type": "dynamicToolCall",
+                "id": "i-fallback",
+                "tool": rawTool,
+                "arguments": const <String, Object?>{},
+                "status": "inProgress",
+              },
+            },
+          ),
+        );
+
+        final part = (events[1] as BridgeSseMessagePartUpdated).part;
+        expect(part.tool, "tool");
+        expect(part.state?.status, PluginToolStatus.running);
+      }
     });
 
     test("genuinely unrenderable item kinds (todoList) are still dropped", () {

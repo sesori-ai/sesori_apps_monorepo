@@ -4,15 +4,21 @@ import "package:bloc/bloc.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
+import "../../logging/logging.dart";
+import "../../services/notification_registration_service.dart";
 import "settings_state.dart";
 
 class SettingsCubit extends Cubit<SettingsState> {
   final AuthSession _authSession;
+  final NotificationRegistrationService _notificationRegistrationService;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  SettingsCubit({required AuthSession authSession})
-    : _authSession = authSession,
-      super(SettingsState(account: _accountFrom(authSession.currentState))) {
+  SettingsCubit({
+    required AuthSession authSession,
+    required NotificationRegistrationService notificationRegistrationService,
+  }) : _authSession = authSession,
+       _notificationRegistrationService = notificationRegistrationService,
+       super(SettingsState(account: _accountFrom(authSession.currentState))) {
     // Keep the signed-in account in sync: the session is restored
     // asynchronously on launch, so the account may resolve after the cubit is
     // first constructed. Initial value comes from currentState above so the UI
@@ -36,10 +42,20 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(state.copyWith(logoutStatus: SettingsLogoutStatus.inProgress));
 
     try {
+      try {
+        await _notificationRegistrationService.unregisterCurrentDevice();
+      } catch (error, stackTrace) {
+        logw("Failed to clean up push notifications during logout", error, stackTrace);
+      }
       await _authSession.logoutCurrentDevice();
       if (isClosed) return;
       emit(state.copyWith(logoutStatus: SettingsLogoutStatus.success));
     } catch (_) {
+      try {
+        await _notificationRegistrationService.resumeRegistrationAfterFailedLogout();
+      } catch (error, stackTrace) {
+        logw("Failed to restore push notifications after logout failed", error, stackTrace);
+      }
       if (isClosed) return;
       emit(state.copyWith(logoutStatus: SettingsLogoutStatus.failure));
     }

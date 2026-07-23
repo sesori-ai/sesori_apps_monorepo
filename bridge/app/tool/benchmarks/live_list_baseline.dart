@@ -14,7 +14,6 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -198,14 +197,11 @@ class _LiveListBenchmark {
 
     final projectRepository = ProjectRepository(
       gitCliApi: gitCliApi,
-      runtime: createBenchmarkPluginRuntime(plugins: operationalPlugins.values),
-      readDefaultEnabledPluginId: () => plugins.first.id,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,
       filesystemApi: filesystemApi,
       projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-      aggregateSourceDeadline: const Duration(seconds: 5),
     );
     final results = <Map<String, Object?>>[];
     results.add(
@@ -239,7 +235,6 @@ class _LiveListBenchmark {
     );
 
     final sessionRepository = _sessionRepository(database: database, plugins: operationalPlugins);
-    final mutationDispatcher = SessionMutationDispatcher(sessionRepository: sessionRepository);
     final pageSize = min(100, _configuration.sessionCount);
 
     try {
@@ -258,7 +253,6 @@ class _LiveListBenchmark {
           pluginCounters: pluginCounters,
           operation: () => _sessionEndpointCoreCount(
             repository: sessionRepository,
-            mutationDispatcher: mutationDispatcher,
             projectId: _projectDirectory,
             start: 0,
             limit: pageSize,
@@ -285,7 +279,6 @@ class _LiveListBenchmark {
           pluginCounters: pluginCounters,
           operation: () => _sessionEndpointCoreCount(
             repository: sessionRepository,
-            mutationDispatcher: mutationDispatcher,
             projectId: _smallProjectDirectory,
             start: null,
             limit: null,
@@ -351,7 +344,6 @@ class _LiveListBenchmark {
       );
       return results;
     } finally {
-      await mutationDispatcher.dispose();
       await sessionRepository.dispose();
     }
   }
@@ -458,7 +450,6 @@ class _LiveListBenchmark {
 
   Future<int> _sessionEndpointCoreCount({
     required SessionRepository repository,
-    required SessionMutationDispatcher mutationDispatcher,
     required String projectId,
     required int? start,
     required int? limit,
@@ -470,9 +461,6 @@ class _LiveListBenchmark {
       start: start,
       limit: limit,
     );
-    for (final session in sessions) {
-      await mutationDispatcher.applyPendingTitle(sessionId: session.id);
-    }
     sessions = await repository.enrichSessions(sessions: sessions);
     _verifyBoundaries(
       name: "session catalog for $projectId",

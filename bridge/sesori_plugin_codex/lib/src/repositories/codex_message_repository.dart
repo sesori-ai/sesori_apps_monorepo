@@ -1,15 +1,16 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../codex_config_reader.dart";
+import "../codex_rollout_tool_mapper.dart";
 
 /// Layer-2 mapping from typed rollout transcript DTOs to plugin messages.
 class CodexMessageRepository {
   CodexMessageRepository({required CodexRolloutApi rolloutApi}) : _rolloutApi = rolloutApi;
 
   final CodexRolloutApi _rolloutApi;
+  static const CodexRolloutToolMapper _toolMapper = CodexRolloutToolMapper();
 
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
@@ -30,15 +31,12 @@ class CodexMessageRepository {
       );
     }
 
-    final toolOutputs = <String, String>{};
+    final toolOutputs = <String, CodexRolloutToolResult>{};
     for (final line in lines) {
       final payload = line.payload;
-      if (payload?.type != CodexRolloutPayloadType.functionCallOutput) {
-        continue;
-      }
-      final callId = payload?.callId;
-      final output = payload?.output;
-      if (callId != null && output != null) toolOutputs[callId] = output;
+      if (payload == null) continue;
+      final result = _toolMapper.mapResult(payload);
+      if (result != null) toolOutputs[result.callId] = result;
     }
 
     final messages = <PluginMessageWithParts>[];
@@ -74,34 +72,39 @@ class CodexMessageRepository {
       if (payload == null) continue;
       final messageTime = _messageTimeFrom(line.timestamp);
 
-      if (payload.type == CodexRolloutPayloadType.functionCall) {
-        final callId = payload.callId;
-        final name = payload.name ?? "tool";
-        final output = callId == null ? null : toolOutputs[callId];
-        messageCounter += 1;
+      if (payload.type == CodexRolloutPayloadType.functionCall ||
+          payload.type == CodexRolloutPayloadType.customToolCall) {
+        final call = _toolMapper.mapCall(payload);
+        if (call == null) continue;
+        final result = toolOutputs[call.id];
         messages.add(
           _toolMessage(
-            messageId: "m-$messageCounter",
+            messageId: call.id,
             sessionId: sessionId,
-            info: assistantInfo("m-$messageCounter", messageTime),
-            tool: _normalizeToolName(name),
-            title: _toolCallTitle(payload.arguments),
-            status: output != null ? PluginToolStatus.completed : PluginToolStatus.running,
-            output: output,
+            info: assistantInfo(call.id, messageTime),
+            tool: call.tool,
+            title: call.title,
+            status: result?.status ?? PluginToolStatus.running,
+            output: result?.output,
           ),
         );
         continue;
       }
-      if (payload.type == CodexRolloutPayloadType.functionCallOutput) {
+      if (payload.type == CodexRolloutPayloadType.functionCallOutput ||
+          payload.type == CodexRolloutPayloadType.customToolCallOutput) {
         continue;
       }
       if (payload.type == CodexRolloutPayloadType.webSearchCall) {
         messageCounter += 1;
+        final messageId = _persistedOrLegacyMessageId(
+          payload: payload,
+          legacyCounter: messageCounter,
+        );
         messages.add(
           _toolMessage(
-            messageId: "m-$messageCounter",
+            messageId: messageId,
             sessionId: sessionId,
-            info: assistantInfo("m-$messageCounter", messageTime),
+            info: assistantInfo(messageId, messageTime),
             tool: "web_search",
             title: payload.action?.query,
             status: PluginToolStatus.completed,
@@ -111,21 +114,60 @@ class CodexMessageRepository {
         continue;
       }
 
+      if (payload.type == CodexRolloutPayloadType.reasoning) {
+        final reasoning = _contentTexts(
+          payload.summary,
+          acceptedTypes: const {CodexRolloutContentType.summaryText},
+        ).join();
+        if (reasoning.isEmpty) continue;
+
+        messageCounter += 1;
+        final messageId = _persistedOrLegacyMessageId(
+          payload: payload,
+          legacyCounter: messageCounter,
+        );
+        messages.add(
+          PluginMessageWithParts(
+            info: assistantInfo(messageId, messageTime),
+            parts: [
+              PluginMessagePart(
+                id: "$messageId-reasoning",
+                sessionID: sessionId,
+                messageID: messageId,
+                type: PluginMessagePartType.reasoning,
+                text: reasoning,
+                tool: null,
+                state: null,
+                prompt: null,
+                description: null,
+                agent: null,
+                agentName: null,
+                attempt: null,
+                retryError: null,
+              ),
+            ],
+          ),
+        );
+        continue;
+      }
+
       if (payload.role != CodexRolloutRole.user && payload.role != CodexRolloutRole.assistant) {
         continue;
       }
-      final texts = [
-        for (final content in payload.content ?? const <CodexRolloutContentDto>[])
-          if ((content.type == CodexRolloutContentType.inputText ||
-                  content.type == CodexRolloutContentType.outputText) &&
-              content.text != null &&
-              content.text!.isNotEmpty)
-            content.text!,
-      ];
+      final texts = _contentTexts(
+        payload.content,
+        acceptedTypes: const {
+          CodexRolloutContentType.inputText,
+          CodexRolloutContentType.outputText,
+        },
+      );
       if (texts.isEmpty) continue;
 
       messageCounter += 1;
-      final messageId = "m-$messageCounter";
+      final messageId = _persistedOrLegacyMessageId(
+        payload: payload,
+        legacyCounter: messageCounter,
+      );
       final info = payload.role == CodexRolloutRole.user
           ? PluginMessage.user(
               id: messageId,
@@ -138,27 +180,36 @@ class CodexMessageRepository {
         PluginMessageWithParts(
           info: info,
           parts: [
-            for (var i = 0; i < texts.length; i++)
-              PluginMessagePart(
-                id: "$messageId-p$i",
-                sessionID: sessionId,
-                messageID: messageId,
-                type: PluginMessagePartType.text,
-                text: texts[i],
-                tool: null,
-                state: null,
-                prompt: null,
-                description: null,
-                agent: null,
-                agentName: null,
-                attempt: null,
-                retryError: null,
-              ),
+            PluginMessagePart(
+              id: "$messageId-text",
+              sessionID: sessionId,
+              messageID: messageId,
+              type: PluginMessagePartType.text,
+              text: texts.join(),
+              tool: null,
+              state: null,
+              prompt: null,
+              description: null,
+              agent: null,
+              agentName: null,
+              attempt: null,
+              retryError: null,
+            ),
           ],
         ),
       );
     }
     return messages;
+  }
+
+  List<String> _contentTexts(
+    List<CodexRolloutContentDto>? content, {
+    required Set<CodexRolloutContentType> acceptedTypes,
+  }) {
+    return [
+      for (final item in content ?? const <CodexRolloutContentDto>[])
+        if (item.text case final text? when acceptedTypes.contains(item.type) && text.isNotEmpty) text,
+    ];
   }
 
   PluginMessageWithParts _toolMessage({
@@ -170,9 +221,6 @@ class CodexMessageRepository {
     required String? title,
     required String? output,
   }) {
-    final clipped = output != null && output.runes.length > maxToolOutputLength
-        ? String.fromCharCodes(output.runes.take(maxToolOutputLength))
-        : output;
     return PluginMessageWithParts(
       info: info,
       parts: [
@@ -186,8 +234,8 @@ class CodexMessageRepository {
           state: PluginToolState(
             status: status,
             title: title,
-            output: clipped,
-            error: null,
+            output: output,
+            error: status == PluginToolStatus.error ? output : null,
           ),
           prompt: null,
           description: null,
@@ -200,40 +248,17 @@ class CodexMessageRepository {
     );
   }
 
-  String _normalizeToolName(String name) {
-    final normalized = name.toLowerCase();
-    if (normalized.contains("patch") || normalized.contains("edit") || normalized.contains("write")) {
-      return "edit";
-    }
-    if (normalized.contains("exec") ||
-        normalized.contains("shell") ||
-        normalized.contains("bash") ||
-        normalized.contains("command")) {
-      return "shell";
-    }
-    return name;
-  }
-
-  String? _toolCallTitle(String? argumentsJson) {
-    if (argumentsJson == null || argumentsJson.isEmpty) return null;
-    try {
-      final arguments = CodexToolArgumentsDto.fromJson(
-        jsonDecodeMap(argumentsJson),
-      );
-      for (final value in [
-        arguments.cmd,
-        arguments.command,
-        arguments.path,
-        arguments.filePath,
-        arguments.query,
-      ]) {
-        if (value is String && value.isNotEmpty) return value;
-        if (value is List && value.isNotEmpty) return value.join(" ");
-      }
-    } on Object {
-      // Fall through to the raw arguments.
-    }
-    return argumentsJson.length > 120 ? argumentsJson.substring(0, 120) : argumentsJson;
+  String _persistedOrLegacyMessageId({
+    required CodexRolloutPayloadDto payload,
+    required int legacyCounter,
+  }) {
+    final persisted = payload.id?.trim();
+    if (persisted != null && persisted.isNotEmpty) return persisted;
+    // COMPATIBILITY 2026-07-23 (legacy Codex rollouts): older response-item
+    // messages can omit `payload.id`. Keep a deterministic replay-local id so
+    // those histories remain visible. Remove after histories without persisted
+    // response-item ids are no longer supported.
+    return "m-$legacyCounter";
   }
 
   PluginMessageTime? _messageTimeFrom(String? raw) {

@@ -43,7 +43,6 @@ void main() {
       );
       projectRepository = singlePluginProjectRepository(
         gitCliApi: gitCliApi,
-        plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -51,6 +50,11 @@ void main() {
       );
       projectActivityService = ProjectActivityService(
         projectRepository: projectRepository,
+        projectActivityRepository: singlePluginProjectActivityRepository(
+          plugin: plugin,
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+        ),
         now: () => 1234,
       );
       handler = OpenProjectHandler(
@@ -215,7 +219,7 @@ void main() {
 
       expect(gitCliApi.initCalls, 0);
       expect(result.supportsDedicatedWorktrees, isFalse);
-      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
     test("opens an existing Git repository without commits but disables worktrees", () async {
@@ -235,7 +239,7 @@ void main() {
 
       expect(gitCliApi.initCalls, 0);
       expect(result.supportsDedicatedWorktrees, isFalse);
-      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
     test("opens a folder inside an enclosing Git worktree without initializing it", () async {
@@ -258,7 +262,7 @@ void main() {
       }
 
       expect(gitCliApi.initCalls, 0);
-      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
     test("an explicit Git action retries setup for a repository without commits", () async {
@@ -300,7 +304,7 @@ void main() {
       expect(gitCliApi.stageCalls, 1);
       expect(gitCliApi.commitCalls, 1);
       expect(result.supportsDedicatedWorktrees, isTrue);
-      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
     test("still opens the folder when Git setup is incomplete", () async {
@@ -320,13 +324,14 @@ void main() {
 
       expect(gitCliApi.commitCalls, 1);
       expect(result.supportsDedicatedWorktrees, isFalse);
-      expect(plugin.lastGetCurrentProjectProjectId, tempDir.path);
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
     // ── Successful discovery ─────────────────────────────────────────────────
 
-    test("calls plugin.getProject with the given path", () async {
+    test("does not call plugin.getProject when opening a project", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
+      plugin.throwOnGetProjectError = StateError("must not be called");
 
       await handler.handle(
         makeRequest("POST", "/project/open"),
@@ -336,7 +341,7 @@ void main() {
         fragment: null,
       );
 
-      expect(plugin.lastGetCurrentProjectProjectId, equals(tempDir.path));
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
     test("returns 200 with application/json content-type", () async {
@@ -353,7 +358,7 @@ void main() {
       expect(result.id, equals(tempDir.path));
     });
 
-    test("maps project id and name fields", () async {
+    test("maps the bridge-owned project id and local directory name", () async {
       plugin.currentProjectResult = PluginProject(
         id: tempDir.path,
         directory: tempDir.path,
@@ -369,7 +374,7 @@ void main() {
       );
 
       expect(result.id, equals(tempDir.path));
-      expect(result.name, equals("My Project"));
+      expect(result.name, equals(tempDir.path.split(Platform.pathSeparator).last));
     });
 
     test("maps ProjectTime from the persisted open timestamp", () async {
@@ -390,7 +395,7 @@ void main() {
       expect(result.time, const ProjectTime(created: 1234, updated: 1234));
     });
 
-    test("time is non-null when plugin returns no activity", () async {
+    test("time is non-null for a newly opened aggregate project", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
 
       final result = await handler.handle(
@@ -404,21 +409,21 @@ void main() {
       expect(result.time, const ProjectTime(created: 1234, updated: 1234));
     });
 
-    // ── Plugin error propagation ─────────────────────────────────────────────
+    // ── Plugin independence ──────────────────────────────────────────────────
 
-    test("returns 500 when plugin.getProject() throws", () async {
+    test("opens successfully when plugin.getProject would throw", () async {
       plugin.throwOnGetProjectError = PluginApiException("/project/open", 404);
 
-      await expectLater(
-        () => handler.handle(
-          makeRequest("POST", "/project/open"),
-          body: OpenProjectRequest(path: tempDir.path),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
-        ),
-        throwsA(isA<PluginApiException>()),
+      final result = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: OpenProjectRequest(path: tempDir.path),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
       );
+
+      expect(result.id, tempDir.path);
+      expect(plugin.lastGetCurrentProjectProjectId, isNull);
     });
 
     // ── Idempotency ──────────────────────────────────────────────────────────
@@ -449,7 +454,7 @@ void main() {
       expect(first, equals(second));
     });
 
-    test("unhides discovered project id", () async {
+    test("unhides the opened project id", () async {
       plugin.currentProjectResult = PluginProject(id: tempDir.path, directory: tempDir.path);
       await db.projectsDao.hideProject(projectId: tempDir.path);
 

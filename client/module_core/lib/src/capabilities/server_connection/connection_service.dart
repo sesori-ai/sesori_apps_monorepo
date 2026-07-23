@@ -249,9 +249,9 @@ class ConnectionService {
   /// for ongoing heartbeat monitoring.
   Future<ApiResponse<HealthResponse>> connect(
     ServerConnectionConfig config,
-  ) => _connectViaRelay(config);
+  ) async => (await _connectViaRelay(config)).response;
 
-  Future<ApiResponse<HealthResponse>> _connectViaRelay(
+  Future<({ApiResponse<HealthResponse> response, int? closeCode})> _connectViaRelay(
     ServerConnectionConfig config, {
     bool Function()? isStale,
   }) async {
@@ -261,7 +261,7 @@ class ConnectionService {
     // the previous socket was tearing down, don't open a replacement — otherwise
     // two sockets briefly race for the same account (relay close code 4005).
     if (isStale?.call() ?? false) {
-      return ApiResponse.error(ApiError.generic());
+      return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: null);
     }
 
     final relayClient = _relayClientFactory.call(
@@ -275,7 +275,7 @@ class ConnectionService {
     if (isStale?.call() ?? false) {
       _clearConnectingRelayClient(relayClient);
       await relayClient.disconnect();
-      return ApiResponse.error(ApiError.generic());
+      return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: null);
     }
 
     try {
@@ -286,7 +286,7 @@ class ConnectionService {
       if (isStale?.call() ?? false) {
         _clearConnectingRelayClient(relayClient);
         await relayClient.disconnect();
-        return ApiResponse.error(ApiError.generic());
+        return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: null);
       }
 
       // connect() returned but isConnected is false: the relay accepted and is
@@ -301,8 +301,7 @@ class ConnectionService {
       // transport state being `connected` too: a bridge-absent park sets the
       // state to connected with no session encryptor, whereas a disposed/early
       // return leaves it in `connecting` — only the former should park here.
-      if (relayClient.connectionState == RelayClientConnectionState.connected &&
-          !relayClient.isConnected) {
+      if (relayClient.connectionState == RelayClientConnectionState.connected && !relayClient.isConnected) {
         const bridgeOfflineHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: null);
         _clearConnectingRelayClient(relayClient);
         _relayClient = relayClient;
@@ -318,10 +317,13 @@ class ConnectionService {
         } catch (error, stackTrace) {
           loge("Failed to set up watchers after bridge-absent relay connect", error, stackTrace);
           await _disconnectRelayClient();
-          return ApiResponse.error(ApiError.generic());
+          return (
+            response: ApiResponse<HealthResponse>.error(ApiError.generic()),
+            closeCode: relayClient.lastCloseCode,
+          );
         }
         _status.add(ConnectionStatus.bridgeOffline(config: config, health: bridgeOfflineHealth));
-        return ApiResponse.success(bridgeOfflineHealth);
+        return (response: ApiResponse.success(bridgeOfflineHealth), closeCode: null);
       }
 
       // A resume_ack already proves the bridge is reachable; only fresh-DH
@@ -356,11 +358,14 @@ class ConnectionService {
         if (response.status < 200 || response.status >= 300 || response.body == null) {
           _clearConnectingRelayClient(relayClient);
           await relayClient.disconnect();
-          return ApiResponse.error(
-            ApiError.nonSuccessCode(
-              errorCode: response.status,
-              rawErrorString: response.body,
+          return (
+            response: ApiResponse<HealthResponse>.error(
+              ApiError.nonSuccessCode(
+                errorCode: response.status,
+                rawErrorString: response.body,
+              ),
             ),
+            closeCode: relayClient.lastCloseCode,
           );
         }
 
@@ -373,7 +378,7 @@ class ConnectionService {
       if (isStale?.call() ?? false) {
         _clearConnectingRelayClient(relayClient);
         await relayClient.disconnect();
-        return ApiResponse.error(ApiError.generic());
+        return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: null);
       }
 
       // Cache health only after the staleness gate, so a superseded attempt
@@ -394,12 +399,16 @@ class ConnectionService {
       } catch (error, stackTrace) {
         loge("Failed to setup SSE streams after successful relay connect", error, stackTrace);
         await _disconnectRelayClient();
-        return ApiResponse.error(ApiError.generic());
+        return (
+          response: ApiResponse<HealthResponse>.error(ApiError.generic()),
+          closeCode: relayClient.lastCloseCode,
+        );
       }
       _status.add(ConnectionStatus.connected(config: config, health: health));
-      return ApiResponse.success(health);
+      return (response: ApiResponse.success(health), closeCode: null);
     } catch (error, stackTrace) {
       loge("Failed to connect via relay", error, stackTrace);
+      final closeCode = relayClient.lastCloseCode;
       _clearConnectingRelayClient(relayClient);
       try {
         await relayClient.disconnect().timeout(const Duration(seconds: 3));
@@ -407,7 +416,7 @@ class ConnectionService {
         logw("Best-effort relay disconnect failed after connect error: ${disconnectError.toString()}");
         loge("Relay disconnect cleanup failed", disconnectError, disconnectStackTrace);
       }
-      return ApiResponse.error(ApiError.generic());
+      return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: closeCode);
     }
   }
 
@@ -450,8 +459,13 @@ class ConnectionService {
     final config = activeConfig;
     if (config == null) return;
 
+    _reconnectTimer?.cancel();
+    if (_reconnectDelayCompleter case final completer? when !completer.isCompleted) {
+      completer.complete();
+    }
+    _relayReconnectBackoff = const Duration(seconds: 1);
     _status.add(ConnectionStatus.reconnecting(config: config));
-    unawaited(_reconnectRelayWithRefresh(config));
+    unawaited(_reconnectRelayWithRefresh(config, immediate: true));
   }
 
   // ---------------------------------------------------------------------------
@@ -563,7 +577,7 @@ class ConnectionService {
         return;
       }
 
-      logd("[SSE] event: ${eventData.runtimeType}");
+      logt("[SSE] event: ${eventData.runtimeType}");
       final directory = switch (decoded["directory"]) {
         final String value => value,
         _ => null,
@@ -674,8 +688,7 @@ class ConnectionService {
         (status is ConnectionConnected || status is ConnectionBridgeOffline) &&
         backgroundedFor >= _resumeReconnectThreshold;
 
-    final needsReconnect =
-        status is ConnectionLost || status is ConnectionReconnecting || connectionLikelyStale;
+    final needsReconnect = status is ConnectionLost || status is ConnectionReconnecting || connectionLikelyStale;
     if (!needsReconnect) return;
 
     logd("App resumed — triggering reconnect (status=${status.runtimeType}, backgrounded=$backgroundedFor)");
@@ -757,6 +770,30 @@ class ConnectionService {
     // keeping two attempts from opening relay sockets concurrently.
     final attemptId = ++_reconnectAttemptId;
 
+    void handleFailure({required int? closeCode}) {
+      if (attemptId != _reconnectAttemptId) return;
+      if (_isInBackground) {
+        _status.add(ConnectionStatus.connectionLost(config: config));
+        return;
+      }
+      if (_status.value is ConnectionDisconnected) return;
+      if (!RelayCloseCodes.shouldReconnect(closeCode)) {
+        logw("Relay reconnect stopped by terminal closeCode=$closeCode");
+        _status.add(ConnectionStatus.connectionLost(config: config));
+        return;
+      }
+
+      _relayReconnectBackoff = Duration(
+        milliseconds: min(
+          _relayReconnectBackoff.inMilliseconds * 2,
+          _maxRelayReconnectBackoff.inMilliseconds,
+        ),
+      );
+      logw("Relay reconnect failed; retrying automatically");
+      _status.add(ConnectionStatus.reconnecting(config: config));
+      unawaited(_reconnectRelayWithRefresh(config));
+    }
+
     if (!immediate) {
       final backoff = _relayReconnectBackoff;
       final jitter = (backoff.inMilliseconds * 0.25 * (Random().nextDouble() * 2 - 1)).round();
@@ -772,8 +809,10 @@ class ConnectionService {
         }
       });
       await completer.future;
-      _reconnectTimer = null;
-      _reconnectDelayCompleter = null;
+      if (identical(_reconnectDelayCompleter, completer)) {
+        _reconnectTimer = null;
+        _reconnectDelayCompleter = null;
+      }
       if (attemptId != _reconnectAttemptId) return;
       if (_isInBackground) {
         _status.add(ConnectionStatus.connectionLost(config: config));
@@ -809,7 +848,7 @@ class ConnectionService {
         authToken: authToken,
       );
 
-      final result = await _connectViaRelay(
+      final connectResult = await _connectViaRelay(
         freshConfig,
         isStale: () => attemptId != _reconnectAttemptId || _status.value is ConnectionDisconnected || _isInBackground,
       );
@@ -823,31 +862,12 @@ class ConnectionService {
       }
       if (_status.value is ConnectionDisconnected) return;
 
-      if (result is ErrorResponse<HealthResponse>) {
-        logw("Relay reconnect failed; marking connection as lost");
-        _relayReconnectBackoff = Duration(
-          milliseconds: min(
-            _relayReconnectBackoff.inMilliseconds * 2,
-            _maxRelayReconnectBackoff.inMilliseconds,
-          ),
-        );
-        _status.add(ConnectionStatus.connectionLost(config: config));
+      if (connectResult.response is ErrorResponse<HealthResponse>) {
+        handleFailure(closeCode: connectResult.closeCode);
       }
     } catch (error, stackTrace) {
       loge("Relay reconnect attempt failed unexpectedly", error, stackTrace);
-      if (attemptId != _reconnectAttemptId) return;
-      if (_isInBackground) {
-        _status.add(ConnectionStatus.connectionLost(config: config));
-        return;
-      }
-      if (_status.value is ConnectionDisconnected) return;
-      _relayReconnectBackoff = Duration(
-        milliseconds: min(
-          _relayReconnectBackoff.inMilliseconds * 2,
-          _maxRelayReconnectBackoff.inMilliseconds,
-        ),
-      );
-      _status.add(ConnectionStatus.connectionLost(config: config));
+      handleFailure(closeCode: null);
     }
   }
 

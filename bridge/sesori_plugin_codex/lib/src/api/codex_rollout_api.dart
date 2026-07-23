@@ -10,6 +10,28 @@ import "models/codex_rollout_dto.dart";
 
 typedef CodexSessionIndexLine = ({CodexSessionIndexEntryDto? entry, String raw});
 
+class CodexRolloutTailChunk {
+  const CodexRolloutTailChunk({
+    required this.lines,
+    required this.nextOffset,
+    required this.trailingBytes,
+  });
+
+  final List<CodexRolloutLineDto> lines;
+  final int nextOffset;
+  final List<int> trailingBytes;
+}
+
+class CodexRolloutTailPosition {
+  const CodexRolloutTailPosition({
+    required this.offset,
+    required this.trailingBytes,
+  });
+
+  final int offset;
+  final List<int> trailingBytes;
+}
+
 /// Layer-1 filesystem boundary for Codex's on-disk rollout history.
 class CodexRolloutApi {
   CodexRolloutApi({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
@@ -88,6 +110,116 @@ class CodexRolloutApi {
       malformedWarning: "[codex] skipping malformed rollout transcript record",
       ignoreMalformedLastLine: true,
     );
+  }
+
+  CodexRolloutTailPosition rolloutTailPosition({
+    required String rolloutPath,
+  }) {
+    final file = File(rolloutPath);
+    if (!file.existsSync()) {
+      return const CodexRolloutTailPosition(
+        offset: 0,
+        trailingBytes: [],
+      );
+    }
+    final handle = file.openSync();
+    try {
+      final length = handle.lengthSync();
+      var position = length;
+      final reverseSuffixChunks = <List<int>>[];
+      while (position > 0) {
+        final start = position > 8192 ? position - 8192 : 0;
+        handle.setPositionSync(start);
+        final bytes = handle.readSync(position - start);
+        final newline = bytes.lastIndexOf(0x0A);
+        if (newline >= 0) {
+          reverseSuffixChunks.add(bytes.sublist(newline + 1));
+          break;
+        }
+        reverseSuffixChunks.add(bytes);
+        position = start;
+      }
+      return CodexRolloutTailPosition(
+        offset: length,
+        // COMPATIBILITY 2026-07-23 (Codex JSONL writer): tailing starts at
+        // logical EOF but must retain an already-written partial final record.
+        // Otherwise its later newline would be decoded without the skipped
+        // prefix. Remove with the live JSONL tail workaround itself.
+        trailingBytes: [
+          for (final chunk in reverseSuffixChunks.reversed) ...chunk,
+        ],
+      );
+    } finally {
+      handle.closeSync();
+    }
+  }
+
+  CodexRolloutTailChunk readTranscriptChunk({
+    required String rolloutPath,
+    required int offset,
+    required List<int> trailingBytes,
+  }) {
+    final file = File(rolloutPath);
+    if (!file.existsSync()) {
+      return CodexRolloutTailChunk(
+        lines: const [],
+        nextOffset: offset,
+        trailingBytes: trailingBytes,
+      );
+    }
+    final handle = file.openSync();
+    try {
+      final length = handle.lengthSync();
+      if (offset > length) {
+        throw StateError(
+          "Codex rollout shrank while being tailed: $rolloutPath "
+          "(offset=$offset, length=$length)",
+        );
+      }
+      handle.setPositionSync(offset);
+      final appended = handle.readSync(length - offset);
+      if (appended.isEmpty) {
+        return CodexRolloutTailChunk(
+          lines: const [],
+          nextOffset: offset,
+          trailingBytes: trailingBytes,
+        );
+      }
+      final combined = <int>[...trailingBytes, ...appended];
+      final lastNewline = combined.lastIndexOf(0x0A);
+      if (lastNewline < 0) {
+        return CodexRolloutTailChunk(
+          lines: const [],
+          nextOffset: length,
+          trailingBytes: combined,
+        );
+      }
+      final completeBytes = combined.sublist(0, lastNewline);
+      final remainingBytes = combined.sublist(lastNewline + 1);
+      final rawLines = <String>[];
+      var lineStart = 0;
+      for (var i = 0; i <= completeBytes.length; i++) {
+        if (i != completeBytes.length && completeBytes[i] != 0x0A) continue;
+        final bytes = completeBytes.sublist(lineStart, i);
+        lineStart = i + 1;
+        if (bytes.isEmpty) continue;
+        rawLines.add(utf8.decode(bytes));
+      }
+      return CodexRolloutTailChunk(
+        lines: _decodeRolloutLines(
+          rawLines,
+          malformedWarning: "[codex] skipping malformed live rollout transcript record",
+        ),
+        nextOffset: length,
+        // COMPATIBILITY 2026-07-23 (Codex JSONL writer): an observer can read
+        // between the record bytes and their terminating newline. Retain that
+        // suffix without warning; remove only if Codex exposes atomic appended
+        // records instead of a concurrently-written JSONL file.
+        trailingBytes: remainingBytes,
+      );
+    } finally {
+      handle.closeSync();
+    }
   }
 
   void deleteRollout({required String rolloutPath}) {

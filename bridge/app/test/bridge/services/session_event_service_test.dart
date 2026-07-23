@@ -7,7 +7,6 @@ import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -24,7 +23,6 @@ void main() {
     late _EventPlugin plugin;
     late TestPluginRuntime pluginRuntime;
     late SessionRepository repository;
-    late SessionMutationDispatcher mutationDispatcher;
     late SessionEventTracker eventTracker;
     late SessionEventService service;
 
@@ -43,12 +41,10 @@ void main() {
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
-      mutationDispatcher = SessionMutationDispatcher(sessionRepository: repository);
       eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
       service = SessionEventService(
         sessionRepository: repository,
         pluginRuntime: pluginRuntime,
-        sessionMutationDispatcher: mutationDispatcher,
         eventMapper: const SessionEventMapper(),
         eventTracker: eventTracker,
         failureReporter: FakeFailureReporter(),
@@ -56,7 +52,6 @@ void main() {
     });
 
     tearDown(() async {
-      await mutationDispatcher.dispose();
       await database.close();
     });
 
@@ -248,6 +243,44 @@ void main() {
       final child = Session.fromJson((output.first as BridgeSseSessionCreated).info);
       expect(child.id, matches(RegExp(r"^ses_[0-9a-f]{32}$")));
       expect(child.parentID, "stable-root");
+    });
+
+    test("plugin title updates the catalog fallback without replacing the Sesori title", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      await database.sessionDao.setTitle(
+        sessionId: "stable-root",
+        title: "Sesori title",
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
+
+      final output = await service.normalize(
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 3,
+          event: BridgeSseSessionUpdated(
+            info: _sessionInfo(
+              sessionId: "backend-root",
+              parentId: null,
+              projectId: "backend-project",
+              directory: "/repo",
+            ),
+            titleChanged: true,
+          ),
+        ),
+      );
+
+      final row = await database.sessionDao.getSession(sessionId: "stable-root");
+      expect(row?.title, "Sesori title");
+      expect(row?.catalogTitle, "title-backend-root");
+      final updated = output.single as BridgeSseSessionUpdated;
+      expect(Session.fromJson(updated.info).title, "Sesori title");
     });
 
     test("does not attach a child to a parent owned by another plugin", () async {
@@ -694,78 +727,6 @@ void main() {
       expect(after?.projectionUpdatedAt, before?.projectionUpdatedAt);
     });
 
-    test("rolls back a title override when its generation retires at the title write", () async {
-      await _insertRoot(
-        database: database,
-        pluginId: plugin.id,
-        sessionId: "stable-root",
-        backendSessionId: "backend-root",
-      );
-      sessionDao.gateNextTitleWrite();
-
-      final normalization = service.normalize(
-        source: (
-          pluginId: plugin.id,
-          generation: 1,
-          projectionUpdatedAt: 100,
-          event: BridgeSseSessionUpdated(
-            info: Session.fromJson(
-              _sessionInfo(
-                sessionId: "backend-root",
-                parentId: null,
-                projectId: "backend-project",
-                directory: "/repo",
-              ),
-            ).copyWith(title: "Retired title override").toJson(),
-            titleChanged: true,
-          ),
-        ),
-      );
-      await sessionDao.titleWriteEntered;
-      pluginRuntime.generationCurrent = false;
-      sessionDao.releaseTitleWrite();
-
-      expect(await normalization, isEmpty);
-      expect((await database.sessionDao.getSession(sessionId: "stable-root"))?.title, isNull);
-    });
-
-    test("commits a title override when its generation stays current through the write", () async {
-      await _insertRoot(
-        database: database,
-        pluginId: plugin.id,
-        sessionId: "stable-root",
-        backendSessionId: "backend-root",
-      );
-      sessionDao.gateNextTitleWrite();
-
-      final normalization = service.normalize(
-        source: (
-          pluginId: plugin.id,
-          generation: 1,
-          projectionUpdatedAt: 100,
-          event: BridgeSseSessionUpdated(
-            info: Session.fromJson(
-              _sessionInfo(
-                sessionId: "backend-root",
-                parentId: null,
-                projectId: "backend-project",
-                directory: "/repo",
-              ),
-            ).copyWith(title: "Current title override").toJson(),
-            titleChanged: true,
-          ),
-        ),
-      );
-      await sessionDao.titleWriteEntered;
-      sessionDao.releaseTitleWrite();
-
-      expect(await normalization, hasLength(1));
-      expect(
-        (await database.sessionDao.getSession(sessionId: "stable-root"))?.title,
-        "Current title override",
-      );
-    });
-
     test("does not commit a retired-generation child after transaction entry", () async {
       await _insertRoot(
         database: database,
@@ -935,11 +896,8 @@ class _TransactionGatedSessionDao extends SessionDao {
 
   Completer<void>? _transactionEntered;
   Completer<void>? _releaseTransaction;
-  Completer<void>? _titleWriteEntered;
-  Completer<void>? _releaseTitleWrite;
 
   Future<void> get projectionTransactionEntered => _transactionEntered!.future;
-  Future<void> get titleWriteEntered => _titleWriteEntered!.future;
 
   void gateNextProjectionTransaction() {
     _transactionEntered = Completer<void>();
@@ -948,38 +906,6 @@ class _TransactionGatedSessionDao extends SessionDao {
 
   void releaseProjectionTransaction() {
     _releaseTransaction!.complete();
-  }
-
-  void gateNextTitleWrite() {
-    _titleWriteEntered = Completer<void>();
-    _releaseTitleWrite = Completer<void>();
-  }
-
-  void releaseTitleWrite() {
-    _releaseTitleWrite!.complete();
-  }
-
-  @override
-  Future<void> setTitle({
-    required String sessionId,
-    required String? title,
-    required int updatedAt,
-    required int projectionUpdatedAt,
-  }) async {
-    final titleWriteEntered = _titleWriteEntered;
-    final releaseTitleWrite = _releaseTitleWrite;
-    if (titleWriteEntered != null && releaseTitleWrite != null) {
-      titleWriteEntered.complete();
-      await releaseTitleWrite.future;
-      _titleWriteEntered = null;
-      _releaseTitleWrite = null;
-    }
-    await super.setTitle(
-      sessionId: sessionId,
-      title: title,
-      updatedAt: updatedAt,
-      projectionUpdatedAt: projectionUpdatedAt,
-    );
   }
 
   @override
