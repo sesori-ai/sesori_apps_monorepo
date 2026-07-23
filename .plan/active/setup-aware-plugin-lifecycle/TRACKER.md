@@ -7,7 +7,7 @@
 - **Base:** `origin/main` at `583748ab`
 - **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
 - **Current stage:** Stage 11-P01C — dynamic events and durable fencing verification
-- **Next action:** commit and open P01C after handling new review feedback on #548
+- **Next action:** push and open P01C stacked on #548
 
 ## Frozen Oversized Stack
 
@@ -146,6 +146,11 @@ run their focused verification again.
   routing, dependency direction, and both contained stack-local seams with no
   findings.
 - Committed as `2e20026d`, pushed, and opened as stacked PR #548.
+- PR feedback moved aggregate deadlines inside runtime acquisition bodies,
+  kept best-effort worktree cleanup active-only, gated startup imports on
+  operational plugins, and protected active-root hydration commits through
+  generation replacement. Focused tests and fatal analysis passed; fixes were
+  pushed through `9cbe6c39`, with every review thread answered.
 
 ### 2026-07-23 — Stage 11-P01C dynamic events and durable fencing
 
@@ -167,6 +172,9 @@ run their focused verification again.
 - The second and final implementation-review pass approved P01C with no
   findings. Focused regression tests, fatal analysis, and `git diff --check`
   passed after the review fixes.
+- Merged the reviewed #548 feedback commits into the stack and reran fatal
+  analysis plus 133 focused runtime, repository, event, catalog, startup, and
+  orchestrator tests successfully.
 
 ## Delivery Rules
 
