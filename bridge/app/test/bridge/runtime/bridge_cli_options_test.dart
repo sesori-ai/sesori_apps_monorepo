@@ -1,4 +1,5 @@
 import "package:args/args.dart";
+import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
 import "package:test/test.dart";
 
@@ -25,6 +26,30 @@ void main() {
     final options = _parseOptions(args: ["--debug-port", "8080"]);
 
     expect(options.debugPort, 8080);
+  });
+
+  group("data directory", () {
+    test("uses the canonical default when the flag is absent", () {
+      final options = _parseOptions(args: const []);
+
+      expect(options.dataDirectory, "/default/sesori-data");
+    });
+
+    test("normalizes an explicit path to an absolute path", () {
+      final options = _parseOptions(args: const ["--data-dir", "relative-data"]);
+
+      expect(
+        options.dataDirectory,
+        path.normalize(path.absolute("relative-data")),
+      );
+    });
+
+    test("rejects an empty explicit path", () {
+      expect(
+        () => _parseOptions(args: const ["--data-dir", "   "]),
+        throwsA(isA<ArgParserException>()),
+      );
+    });
   });
 
   test("import plugin values retain order and duplicates", () {
@@ -83,6 +108,7 @@ BridgeCliOptions _parseOptions({required List<String> args}) {
   final parser = ArgParser()
     ..addOption("relay", defaultsTo: "wss://relay.sesori.com")
     ..addOption("auth-backend", defaultsTo: "")
+    ..addOption("data-dir")
     ..addMultiOption("import-plugin")
     ..addOption("debug-port", defaultsTo: "")
     ..addOption(
@@ -98,5 +124,6 @@ BridgeCliOptions _parseOptions({required List<String> args}) {
     results: results,
     environment: const {},
     defaultAuthUrl: "https://api.sesori.com",
+    defaultDataDirectory: "/default/sesori-data",
   );
 }

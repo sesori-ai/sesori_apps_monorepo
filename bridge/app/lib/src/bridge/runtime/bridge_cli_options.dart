@@ -1,9 +1,11 @@
-import "package:args/args.dart" show ArgResults;
+import "package:args/args.dart" show ArgParserException, ArgResults;
+import "package:path/path.dart" as path;
 
 class BridgeCliOptions {
   final List<String> cliArgs;
   final String relayUrl;
   final String authBackendUrl;
+  final String dataDirectory;
   final int? debugPort;
   final String logLevelName;
   final List<String> importPluginIds;
@@ -16,6 +18,7 @@ class BridgeCliOptions {
     required this.cliArgs,
     required this.relayUrl,
     required this.authBackendUrl,
+    required this.dataDirectory,
     required this.debugPort,
     required this.logLevelName,
     required this.importPluginIds,
@@ -33,6 +36,7 @@ class BridgeCliOptions {
     required ArgResults results,
     required Map<String, String> environment,
     required String defaultAuthUrl,
+    required String defaultDataDirectory,
   }) {
     final authBackendFlag = results["auth-backend"] as String;
     final authBackendUrl = resolveAuthBackendUrl(
@@ -41,6 +45,13 @@ class BridgeCliOptions {
       defaultAuthUrl: defaultAuthUrl,
     );
     final debugPortRaw = results["debug-port"] as String;
+    final dataDirectoryRaw = results["data-dir"] as String?;
+    if (dataDirectoryRaw != null && dataDirectoryRaw.trim().isEmpty) {
+      throw ArgParserException("--data-dir must not be empty.");
+    }
+    final dataDirectory = dataDirectoryRaw == null
+        ? defaultDataDirectory
+        : path.normalize(path.absolute(dataDirectoryRaw));
 
     // Supervised-only option: trim and treat blank as absent. Do NOT validate
     // it here (no URI parse) — strict parse-time validation would risk failing
@@ -52,6 +63,7 @@ class BridgeCliOptions {
       cliArgs: cliArgs,
       relayUrl: results["relay"] as String,
       authBackendUrl: authBackendUrl,
+      dataDirectory: dataDirectory,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
       logLevelName: results["log-level"] as String,
       importPluginIds: List.unmodifiable(results["import-plugin"] as List<String>),

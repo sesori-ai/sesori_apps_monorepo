@@ -128,6 +128,7 @@ Bridge core flags:
 | `--relay` | `wss://relay.sesori.com` | Relay server URL |
 | `--import-plugin` | *(none)* | Start an import for this eligible plugin after startup. Repeatable. |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
+| `--data-dir` | platform Sesori data directory | Override account-bound storage for tokens, bridge ID, database, and onboarding markers |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
 | `--log-level` | `info` | Minimum **diagnostic log** level (written to stderr): `verbose`, `debug`, `info`, `warning`, `error` |
 | `--version` | — | Print the bridge version and exit |
@@ -214,6 +215,21 @@ legacy `pluginId` still always means OpenCode.
 # Log out (clear stored tokens)
 ./dist/bridge-macos-arm64 logout
 ```
+
+For local multi-account testing, give each `dart run` bridge a unique data
+directory. Start the second bridge after the first finishes plugin startup; the
+host-wide startup mutex and plugin runtime state remain shared intentionally.
+
+```bash
+dart run bin/bridge.dart --data-dir /tmp/sesori-bridge-account-a
+dart run bin/bridge.dart --data-dir /tmp/sesori-bridge-account-b
+```
+
+The override isolates Sesori credentials, bridge identity, catalog database,
+and onboarding markers. Bridge settings in `~/.config/sesori`, managed plugin
+runtime state, and backend CLI credentials remain shared. Packaged native
+bridges still enforce the normal single-live-bridge rule; this workflow is for
+source-run test processes.
 
 Plugin-specific examples (OpenCode):
 

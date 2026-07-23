@@ -102,6 +102,11 @@ class RunCommand extends cli.Command<void> {
     argParser
       ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
       ..addOption(
+        'data-dir',
+        valueHelp: 'path',
+        help: 'Override the account data directory (tokens, bridge ID, and database)',
+      )
+      ..addOption(
         'debug-port',
         defaultsTo: '',
         help: 'Start a debug HTTP server on this port (for Postman/curl testing)',
@@ -149,6 +154,7 @@ class RunCommand extends cli.Command<void> {
         results: results,
         environment: Platform.environment,
         defaultAuthUrl: _defaultAuthURL,
+        defaultDataDirectory: sesoriDataDirectory(),
       );
     } on ArgParserException catch (e) {
       usageException(e.message);
@@ -210,6 +216,7 @@ class LogoutCommand extends cli.Command<void> {
 
   @override
   Future<void> run() async {
+    final dataDirectory = sesoriDataDirectory();
     final authBackendUrl = BridgeCliOptions.resolveAuthBackendUrl(
       authBackendFlag: argResults!['auth-backend'] as String,
       environment: Platform.environment,
@@ -254,10 +261,16 @@ class LogoutCommand extends cli.Command<void> {
         clock: const ServerClock(),
       ),
       terminalPromptRepository: terminalPromptRepository,
-      unregisterBridge: () => _unregisterBridgeRegistration(authBackendUrl: authBackendUrl),
-      appOnboardingStateRepository: AppOnboardingStateRepository(
-        storage: AppOnboardingStateStorage(directoryPath: appOnboardingStateDirectoryPath()),
+      unregisterBridge: () => _unregisterBridgeRegistration(
+        authBackendUrl: authBackendUrl,
+        dataDirectory: dataDirectory,
       ),
+      appOnboardingStateRepository: AppOnboardingStateRepository(
+        storage: AppOnboardingStateStorage(
+          directoryPath: appOnboardingStateDirectoryPath(dataDirectory: dataDirectory),
+        ),
+      ),
+      clearTokens: () => clearTokens(dataDirectory: dataDirectory),
     );
 
     final result = await logoutRunner.logout(currentPid: pid);
@@ -282,14 +295,19 @@ class LogoutCommand extends cli.Command<void> {
 
 /// Removes this bridge's registration on the auth server before the token
 /// file is deleted. Callers treat any failure as non-fatal.
-Future<void> _unregisterBridgeRegistration({required String authBackendUrl}) async {
-  final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
+Future<void> _unregisterBridgeRegistration({
+  required String authBackendUrl,
+  required String dataDirectory,
+}) async {
+  final bridgeIdStorage = BridgeIdStorage(
+    filePath: bridgeIdPath(dataDirectory: dataDirectory),
+  );
   // Adopt a legacy id persisted inside token.json first, so a never-reconnected
   // legacy install still unregisters cleanly; the service reads the bridge id
   // back out of storage.
   await BridgeIdMigrationService(
     bridgeIdStorage: bridgeIdStorage,
-    readLegacyBridgeId: readLegacyBridgeId,
+    readLegacyBridgeId: () => readLegacyBridgeId(dataDirectory: dataDirectory),
   ).migrate();
   if (await bridgeIdStorage.read() == null) {
     // Nothing registered to remove.
@@ -298,7 +316,7 @@ Future<void> _unregisterBridgeRegistration({required String authBackendUrl}) asy
 
   final TokenData tokens;
   try {
-    tokens = await loadTokens();
+    tokens = await loadTokens(dataDirectory: dataDirectory);
   } on Object catch (e) {
     // A registered bridge with no usable token file — there is no credential
     // left to authenticate the unregister call. Logout still proceeds, but
@@ -311,8 +329,8 @@ Future<void> _unregisterBridgeRegistration({required String authBackendUrl}) asy
   final tokenManager = TokenManager(
     initialToken: tokens.accessToken,
     authBackendUrl: authBackendUrl,
-    loadTokens: loadTokens,
-    saveTokens: saveTokens,
+    loadTokens: () => loadTokens(dataDirectory: dataDirectory),
+    saveTokens: (data) => saveTokens(data: data, dataDirectory: dataDirectory),
   );
   try {
     final registrationService = BridgeRegistrationService(

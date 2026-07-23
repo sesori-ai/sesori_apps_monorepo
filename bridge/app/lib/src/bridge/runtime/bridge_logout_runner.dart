@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
-import '../../auth/token.dart' as token_store;
 import '../../repositories/app_onboarding_state_repository.dart';
 import '../../server/foundation/terminal_prompt_decision.dart';
 import '../../server/repositories/bridge_instance_repository.dart';
@@ -43,7 +42,7 @@ class BridgeLogoutRunner {
     required TerminalPromptRepository terminalPromptRepository,
     required Future<void> Function() unregisterBridge,
     required AppOnboardingStateRepository appOnboardingStateRepository,
-    Future<void> Function() clearTokens = token_store.clearTokens,
+    required Future<void> Function() clearTokens,
   }) : _bridgeInstanceRepository = bridgeInstanceRepository,
        _bridgeInstanceService = bridgeInstanceService,
        _terminalPromptRepository = terminalPromptRepository,
