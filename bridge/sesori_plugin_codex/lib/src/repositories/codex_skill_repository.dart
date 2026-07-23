@@ -11,17 +11,9 @@ class CodexSkillRepository {
 
   Future<List<PluginCommand>> listCommands({required String cwd}) async {
     final response = await _appServerApi.listSkills(cwd: cwd);
-    CodexSkillsListEntryDto? entry;
-    for (final item in response.data) {
-      if (item.cwd == cwd) {
-        entry = item;
-        break;
-      }
-    }
-    if (entry == null && response.data.isNotEmpty) entry = response.data.first;
-    if (entry == null) return const [];
+    if (response.data.isEmpty) return const [];
     return [
-      for (final skill in entry.skills)
+      for (final skill in response.data.first.skills)
         if (skill.enabled)
           PluginCommand(
             name: skill.name,
