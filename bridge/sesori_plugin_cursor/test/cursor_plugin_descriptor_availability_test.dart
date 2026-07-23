@@ -21,7 +21,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("2026.07.16-899851b\n"),
+            stdoutBytes: utf8.encode("${CursorPluginDescriptor.targetVersion}\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -131,11 +131,16 @@ void main() {
       },
     );
 
+    test("tracks the installer target separately from the compatibility floor", () {
+      expect(CursorPluginDescriptor.minVersion, "2026.07.16");
+      expect(CursorPluginDescriptor.targetVersion, "2026.07.20-8cc9c0b");
+    });
+
     test("reports available when '<bin> --version' exits 0 with a recent build", () async {
       final processes = _ProbeProcessService(
         process: _ProbeProcess(
           pid: 4242,
-          stdoutBytes: utf8.encode("2026.07.16-899851b\n"),
+          stdoutBytes: utf8.encode("${CursorPluginDescriptor.targetVersion}\n"),
           exitCode: Future<int>.value(0),
         ),
       );

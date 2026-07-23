@@ -62,9 +62,13 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   /// Minimum Cursor CLI build the bridge supports. Earlier builds (e.g.
   /// `2026.05.28`) advertise the `acp` model picker and `session/load` but
   /// silently no-op model switching and history replay, so the experience is
-  /// broken in ways the user can't see. Keep this target aligned with the
-  /// latest verified Cursor CLI build.
+  /// broken in ways the user can't see. Raise this floor only when bridge
+  /// behavior requires a newer Cursor capability.
   static const String minVersion = "2026.07.16";
+
+  /// Latest official-installer build targeted for the future bundled Cursor
+  /// runtime. This records the preferred build without changing availability.
+  static const String targetVersion = "2026.07.20-8cc9c0b";
 
   /// CLI option naming the Cursor CLI binary (path or PATH name). Declared
   /// as the bare local name — the bridge's [PluginCliOptionsMapper] namespaces
