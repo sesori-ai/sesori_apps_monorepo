@@ -1,6 +1,7 @@
 import "dart:io" show FileSystemException;
 
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 
 import "../repositories/cursor_session_storage_repository.dart";
 
@@ -9,16 +10,16 @@ class CursorSessionCleanupService {
   CursorSessionCleanupService({
     required CursorSessionStorageRepository repository,
     required Map<String, String> environment,
-    required bool isWindows,
   }) : _repository = repository,
-       _environment = Map<String, String>.unmodifiable(environment),
-       _isWindows = isWindows;
+       _environment = Map<String, String>.unmodifiable(environment);
 
   static const String _sessionsDirectoryName = "acp-sessions";
 
   final CursorSessionStorageRepository _repository;
   final Map<String, String> _environment;
-  final bool _isWindows;
+  late final String _sessionsRoot = p.normalize(
+    p.absolute(p.join(_resolveConfigDirectory(), _sessionsDirectoryName)),
+  );
 
   Future<void> deletePersistedSession({required String backendSessionId}) async {
     if (backendSessionId.isEmpty ||
@@ -31,13 +32,10 @@ class CursorSessionCleanupService {
       );
     }
 
-    final sessionsRoot = p.normalize(
-      p.absolute(p.join(_resolveConfigDirectory(), _sessionsDirectoryName)),
-    );
     final sessionDirectory = p.normalize(
-      p.join(sessionsRoot, backendSessionId),
+      p.join(_sessionsRoot, backendSessionId),
     );
-    if (!p.isWithin(sessionsRoot, sessionDirectory)) {
+    if (!p.isWithin(_sessionsRoot, sessionDirectory)) {
       throw ArgumentError.value(
         backendSessionId,
         "backendSessionId",
@@ -74,9 +72,7 @@ class CursorSessionCleanupService {
     final xdg = _configuredValue("XDG_CONFIG_HOME");
     if (xdg != null) return p.join(xdg, "cursor");
 
-    final home = _isWindows
-        ? _configuredValue("USERPROFILE") ?? _configuredValue("HOME")
-        : _configuredValue("HOME") ?? _configuredValue("USERPROFILE");
+    final home = resolveUserHomeDirectory(environment: _environment);
     if (home == null) {
       throw StateError("Cannot resolve Cursor config directory: no user home is configured");
     }

@@ -21,7 +21,6 @@ Future<void> main(List<String> args) async {
         api: const CursorSessionStorageApi(),
       ),
       environment: Platform.environment,
-      isWindows: Platform.isWindows,
     ),
   );
   final assistant = StringBuffer();

@@ -22,14 +22,12 @@ void main() {
 
     CursorSessionCleanupService buildService({
       required Map<String, String> environment,
-      bool isWindows = false,
     }) {
       return CursorSessionCleanupService(
         repository: CursorSessionStorageRepository(
           api: const CursorSessionStorageApi(),
         ),
         environment: environment,
-        isWindows: isWindows,
       );
     }
 
@@ -195,7 +193,7 @@ void main() {
       );
     });
 
-    test("uses USERPROFILE as the Windows home", () async {
+    test("falls back to USERPROFILE when HOME is unavailable", () async {
       final profile = p.join(tempDirectory.path, "profile");
       await seedSession(
         configDirectory: p.join(profile, ".cursor"),
@@ -204,7 +202,6 @@ void main() {
 
       await buildService(
         environment: {"USERPROFILE": profile},
-        isWindows: true,
       ).deletePersistedSession(backendSessionId: "windows-session");
 
       expect(
@@ -243,7 +240,6 @@ void main() {
         environment: {
           "CURSOR_CONFIG_DIR": p.join(tempDirectory.path, "config"),
         },
-        isWindows: false,
       );
 
       await service.deletePersistedSession(

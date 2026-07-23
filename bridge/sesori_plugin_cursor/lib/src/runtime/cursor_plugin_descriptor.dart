@@ -341,7 +341,6 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
         api: const CursorSessionStorageApi(),
       ),
       environment: host.environment,
-      isWindows: io.Platform.isWindows,
     );
 
     final cursor = (_buildPlugin ?? _defaultBuildPlugin)(
