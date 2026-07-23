@@ -39,9 +39,13 @@ Future<String?> prepareCodexModelCatalog({
       );
     }
     final decoded = jsonDecode(result.stdout);
-    if (decoded is! Map<String, dynamic> || decoded["models"] is! List || (decoded["models"] as List).isEmpty) {
+    final models = decoded is Map<String, dynamic> ? decoded["models"] : null;
+    // Codex deserializes every static-catalog entry as a model object during
+    // startup. Reject a surprising debug-command shape here so this
+    // compatibility workaround falls back instead of breaking app-server.
+    if (models is! List || models.isEmpty || models.any((model) => model is! Map<String, dynamic>)) {
       throw const FormatException(
-        "Codex bundled model catalog did not contain a non-empty models list",
+        "Codex bundled model catalog did not contain model objects",
       );
     }
     // HostJsonStore makes replacement atomic, bridge startup is serialized

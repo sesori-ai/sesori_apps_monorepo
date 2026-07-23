@@ -70,6 +70,20 @@ void main() {
       expect(reader.hasExplicitModelCatalog(), isTrue);
     });
 
+    test("detects quoted top-level model catalog keys", () {
+      for (final key in [
+        '"model_catalog_json"',
+        "'model_catalog_json'",
+      ]) {
+        writeConfig('$key = "/private/models.json"\n');
+        expect(
+          reader.hasExplicitModelCatalog(),
+          isTrue,
+          reason: "TOML key form $key should preserve the user's catalog",
+        );
+      }
+    });
+
     test("does not treat a profile-scoped model catalog as global", () {
       writeConfig(
         "[profiles.work]\n"

@@ -89,6 +89,28 @@ void main() {
       expect(path, isNull);
       expect(store.files, isEmpty);
     });
+
+    test("rejects non-object model entries", () async {
+      final store = _MemoryJsonStore();
+
+      final path = await prepareCodexModelCatalog(
+        commandExecutor: _FakeCommandExecutor(
+          result: const CommandResult(
+            exitCode: 0,
+            stdout: '{"models":[{"slug":"valid"},"invalid"]}',
+            stderr: "",
+          ),
+        ),
+        store: store,
+        stateDirectory: "/state/runtime",
+        executablePath: "/custom/codex",
+        environment: const {},
+        timeout: const Duration(seconds: 10),
+      );
+
+      expect(path, isNull);
+      expect(store.files, isEmpty);
+    });
   });
 }
 

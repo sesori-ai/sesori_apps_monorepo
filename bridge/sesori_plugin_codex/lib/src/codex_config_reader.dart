@@ -102,9 +102,15 @@ class CodexConfigReader {
     required String line,
     required String key,
   }) {
-    if (!line.startsWith("$key ") && !line.startsWith("$key=")) return null;
     final eq = line.indexOf("=");
-    if (eq < 0 || line.substring(0, eq).trim() != key) return null;
+    if (eq < 0) return null;
+    final assignmentKey = line.substring(0, eq).trim();
+    // TOML allows basic-quoted and literal-quoted keys even when the same key
+    // could be bare. Recognize all three exact forms so the bridge never
+    // overrides a valid user-supplied compatibility setting.
+    if (assignmentKey != key && assignmentKey != '"$key"' && assignmentKey != "'$key'") {
+      return null;
+    }
     return _normalize(line.substring(eq + 1).trim());
   }
 
