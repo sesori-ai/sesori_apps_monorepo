@@ -501,8 +501,12 @@ void main() {
           ),
         ),
       ];
+      final encodedRecords = records.map(jsonEncode).toList();
+      final finalRecord = encodedRecords.removeLast();
+      final finalRecordSplit = finalRecord.length ~/ 2;
       rollout.writeAsStringSync(
-        "${records.map(jsonEncode).join("\n")}\n",
+        "${encodedRecords.join("\n")}\n"
+        "${finalRecord.substring(0, finalRecordSplit)}",
         mode: FileMode.append,
       );
 
@@ -510,7 +514,14 @@ void main() {
         "threadId": sessionId,
         "turn": {"id": "u-live"},
       });
-      await Future<void>.delayed(Duration.zero);
+      // Complete the final output after turn/completed has observed its partial
+      // suffix. The terminal drain must still deliver it before session.idle.
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      rollout.writeAsStringSync(
+        "${finalRecord.substring(finalRecordSplit)}\n",
+        mode: FileMode.append,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 30));
 
       final finalLiveParts = <String, PluginMessagePart>{};
       for (final event in events.whereType<BridgeSseMessagePartUpdated>()) {

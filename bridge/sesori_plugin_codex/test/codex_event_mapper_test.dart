@@ -581,6 +581,75 @@ void main() {
       mapper.clearRolloutTurn(threadId: "t-raw");
     });
 
+    test("a structured non-zero exit overrides an unclassified raw result", () {
+      final call = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": "call-structured-failure",
+          "name": "exec_command",
+          "arguments": '{"cmd":"/usr/bin/false"}',
+        },
+      });
+      final output = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": "call-structured-failure",
+          "output": "opaque executor output",
+        },
+      });
+      mapper
+        ..mapRolloutLine(threadId: "t-structured", line: call)
+        ..mapRolloutLine(threadId: "t-structured", line: output);
+
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-structured",
+            "item": {
+              "type": "commandExecution",
+              "id": "call-structured-failure",
+              "command": "/bin/zsh -lc /usr/bin/false",
+              "aggregatedOutput": "",
+              "exitCode": 1,
+              "status": "completed",
+            },
+          },
+        ),
+      );
+
+      final part = (events[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.state?.status, PluginToolStatus.error);
+      expect(part.state?.output, "opaque executor output");
+      expect(part.state?.error, "opaque executor output");
+      mapper.clearRolloutTurn(threadId: "t-structured");
+    });
+
+    test("raw fallback titles clip non-BMP text by Unicode code point", () {
+      final prefix = List<String>.filled(119, "a").join();
+      final line = CodexRolloutLineDto.fromJson({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "call_id": "call-unicode",
+          "name": "unknown_tool",
+          "arguments": "$prefix😀trailing",
+        },
+      });
+
+      final events = mapper.mapRolloutLine(
+        threadId: "t-unicode",
+        line: line,
+      );
+
+      final title = (events[1] as BridgeSseMessagePartUpdated).part.state?.title;
+      expect(title, "$prefix😀");
+      expect(title?.runes, hasLength(120));
+      mapper.clearRolloutTurn(threadId: "t-unicode");
+    });
+
     test("commandExecution (started/inProgress) → running tool part", () {
       final events = mapper.map(
         const CodexServerNotification(

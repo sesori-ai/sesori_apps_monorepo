@@ -102,7 +102,9 @@ class CodexRolloutToolMapper {
     if (embeddedCommand != null && embeddedCommand.isNotEmpty) {
       return embeddedCommand;
     }
-    return argumentsJson.length > 120 ? argumentsJson.substring(0, 120) : argumentsJson;
+    return argumentsJson.runes.length > 120
+        ? String.fromCharCodes(argumentsJson.runes.take(120))
+        : argumentsJson;
   }
 
   /// Removes the launcher added by app-server so the provisional live title

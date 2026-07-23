@@ -69,6 +69,7 @@ class CodexPlugin implements CodexManagedApi {
   CodexAppServerClient? _client;
   Future<bool>? _connectFuture;
   StreamSubscription<CodexServerNotification>? _notificationSubscription;
+  Future<void> _notificationWork = Future<void>.value();
   StreamSubscription<CodexRolloutAppend>? _rolloutSubscription;
   ApprovalRegistry? _approvalRegistry;
 
@@ -287,43 +288,62 @@ class CodexPlugin implements CodexManagedApi {
   /// and turn-id bookkeeping current.
   void _subscribeToNotifications(CodexAppServerClient client) {
     _notificationSubscription = client.notifications.listen((notification) {
-      if (notification.method == "thread/started") {
-        final thread = _sessionService.decodeStartedNotificationParams(
-          params: notification.params,
-        );
-        if (thread == null) return;
-        _maintainThreadStarted(thread);
-        _eventMapper.mapThreadStarted(thread).forEach(_eventBuffer.add);
-        return;
-      }
-      final threadId = notification.params["threadId"] as String?;
-      if (notification.method == "turn/started" && threadId != null) {
-        // Calls initiated through this plugin start tailing before turn/start.
-        // This fallback covers a turn started by another app-server client.
-        _rolloutTailer.start(sessionId: threadId);
-      }
-      final activityChanged = _maintainBookkeeping(notification);
-      if (notification.method == "turn/completed" && threadId != null) {
-        // Drain first so the final tool update is delivered before session.idle.
-        _rolloutTailer.drain(sessionId: threadId);
-      }
-      _eventMapper.map(notification).forEach(_eventBuffer.add);
-      if (notification.method == "item/completed" && threadId != null) {
-        // The app-server item is provisional; a rollout output written for the
-        // same call id immediately enriches it with executor metadata.
-        _rolloutTailer.drain(sessionId: threadId);
-      }
-      if (threadId != null &&
-          (notification.method == "turn/completed" ||
-              notification.method == "error" ||
-              notification.method == "thread/closed")) {
-        _rolloutTailer.stop(sessionId: threadId);
-        _eventMapper.clearRolloutTurn(threadId: threadId);
-      }
-      if (activityChanged) {
-        _eventBuffer.add(const BridgeSseProjectUpdated());
-      }
+      // Serialize notification side effects so a terminal rollout drain cannot
+      // let session.idle overtake its final tool update.
+      _notificationWork = _notificationWork
+          .then((_) => _handleNotification(notification))
+          .catchError((Object error, StackTrace stackTrace) {
+            Log.e(
+              "[codex] failed to map app-server notification",
+              error,
+              stackTrace,
+            );
+          });
     });
+  }
+
+  Future<void> _handleNotification(
+    CodexServerNotification notification,
+  ) async {
+    if (notification.method == "thread/started") {
+      final thread = _sessionService.decodeStartedNotificationParams(
+        params: notification.params,
+      );
+      if (thread == null) return;
+      _maintainThreadStarted(thread);
+      _eventMapper.mapThreadStarted(thread).forEach(_eventBuffer.add);
+      return;
+    }
+    final threadId = notification.params["threadId"] as String?;
+    if (notification.method == "turn/started" && threadId != null) {
+      // Calls initiated through this plugin start tailing before turn/start.
+      // This fallback covers a turn started by another app-server client.
+      _rolloutTailer.start(sessionId: threadId);
+    }
+    if (notification.method == "turn/completed" && threadId != null) {
+      await _rolloutTailer.finish(sessionId: threadId);
+    }
+    final activityChanged = _maintainBookkeeping(notification);
+    _eventMapper.map(notification).forEach(_eventBuffer.add);
+    if (notification.method == "item/completed" && threadId != null) {
+      // The app-server item is provisional; a rollout output written for the
+      // same call id immediately enriches it with executor metadata.
+      _rolloutTailer.drain(sessionId: threadId);
+    }
+    if (threadId != null &&
+        (notification.method == "error" ||
+            notification.method == "thread/closed")) {
+      _rolloutTailer.stop(sessionId: threadId);
+    }
+    if (threadId != null &&
+        (notification.method == "turn/completed" ||
+            notification.method == "error" ||
+            notification.method == "thread/closed")) {
+      _eventMapper.clearRolloutTurn(threadId: threadId);
+    }
+    if (activityChanged) {
+      _eventBuffer.add(const BridgeSseProjectUpdated());
+    }
   }
 
   void _handleRolloutAppend(CodexRolloutAppend append) {
@@ -1074,6 +1094,7 @@ class CodexPlugin implements CodexManagedApi {
     _keepaliveTimer = null;
     await _notificationSubscription?.cancel();
     _notificationSubscription = null;
+    await _notificationWork;
     await _rolloutSubscription?.cancel();
     _rolloutSubscription = null;
     await _rolloutTailer.dispose();

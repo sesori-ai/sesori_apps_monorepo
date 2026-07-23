@@ -204,6 +204,55 @@ void main() {
       expect(completed.trailingBytes, isEmpty);
     });
 
+    test("rolloutTailPosition seeds an existing partial final record", () {
+      final path = p.join(codexHome.path, "live-tail-start.jsonl");
+      final ignored = jsonEncode({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call",
+          "name": "wait",
+          "call_id": "old-call",
+          "arguments": "{}",
+        },
+      });
+      final current = jsonEncode({
+        "type": "response_item",
+        "payload": {
+          "type": "function_call_output",
+          "call_id": "current-call",
+          "output": "done",
+        },
+      });
+      final split = current.length ~/ 2;
+      File(path).writeAsStringSync(
+        "$ignored\n${current.substring(0, split)}",
+      );
+
+      final position = rolloutApi.rolloutTailPosition(
+        rolloutPath: path,
+      );
+
+      expect(position.offset, File(path).lengthSync());
+      expect(
+        utf8.decode(position.trailingBytes),
+        current.substring(0, split),
+      );
+
+      File(path).writeAsStringSync(
+        "${current.substring(split)}\n",
+        mode: FileMode.append,
+      );
+      final completed = rolloutApi.readTranscriptChunk(
+        rolloutPath: path,
+        offset: position.offset,
+        trailingBytes: position.trailingBytes,
+      );
+
+      expect(completed.lines, hasLength(1));
+      expect(completed.lines.single.payload?.callId, "current-call");
+      expect(completed.trailingBytes, isEmpty);
+    });
+
     test("current structured rollout records are not reported as malformed", () {
       final path = _writeRollout(
         codexHome,

@@ -383,7 +383,9 @@ class CodexEventMapper {
               _rolloutToolMapper.logicalCommandTitle(
                 item["command"] as String?,
               ),
-          status: canonical?.result.status ?? appServerStatus,
+          status: appServerStatus == PluginToolStatus.error
+              ? PluginToolStatus.error
+              : canonical?.result.status ?? appServerStatus,
           output:
               canonical?.result.output ??
               _rolloutToolMapper.clipOutput(

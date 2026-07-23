@@ -22,6 +22,16 @@ class CodexRolloutTailChunk {
   final List<int> trailingBytes;
 }
 
+class CodexRolloutTailPosition {
+  const CodexRolloutTailPosition({
+    required this.offset,
+    required this.trailingBytes,
+  });
+
+  final int offset;
+  final List<int> trailingBytes;
+}
+
 /// Layer-1 filesystem boundary for Codex's on-disk rollout history.
 class CodexRolloutApi {
   CodexRolloutApi({Map<String, String>? environment}) : _environment = environment ?? Platform.environment;
@@ -102,9 +112,46 @@ class CodexRolloutApi {
     );
   }
 
-  int rolloutLength({required String rolloutPath}) {
+  CodexRolloutTailPosition rolloutTailPosition({
+    required String rolloutPath,
+  }) {
     final file = File(rolloutPath);
-    return file.existsSync() ? file.lengthSync() : 0;
+    if (!file.existsSync()) {
+      return const CodexRolloutTailPosition(
+        offset: 0,
+        trailingBytes: [],
+      );
+    }
+    final handle = file.openSync();
+    try {
+      final length = handle.lengthSync();
+      var position = length;
+      final reverseSuffixChunks = <List<int>>[];
+      while (position > 0) {
+        final start = position > 8192 ? position - 8192 : 0;
+        handle.setPositionSync(start);
+        final bytes = handle.readSync(position - start);
+        final newline = bytes.lastIndexOf(0x0A);
+        if (newline >= 0) {
+          reverseSuffixChunks.add(bytes.sublist(newline + 1));
+          break;
+        }
+        reverseSuffixChunks.add(bytes);
+        position = start;
+      }
+      return CodexRolloutTailPosition(
+        offset: length,
+        // COMPATIBILITY 2026-07-23 (Codex JSONL writer): tailing starts at
+        // logical EOF but must retain an already-written partial final record.
+        // Otherwise its later newline would be decoded without the skipped
+        // prefix. Remove with the live JSONL tail workaround itself.
+        trailingBytes: [
+          for (final chunk in reverseSuffixChunks.reversed) ...chunk,
+        ],
+      );
+    } finally {
+      handle.closeSync();
+    }
   }
 
   CodexRolloutTailChunk readTranscriptChunk({

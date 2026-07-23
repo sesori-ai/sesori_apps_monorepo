@@ -25,6 +25,8 @@ class CodexRolloutAppend {
 /// this tailer when a stable app-server stream covers raw calls and outputs for
 /// both newly started and resumed threads.
 class CodexRolloutTailer {
+  static const int _terminalDrainPollAttempts = 10;
+
   CodexRolloutTailer({
     required CodexRolloutApi rolloutApi,
     required CodexCatalogRepository catalogRepository,
@@ -48,11 +50,30 @@ class CodexRolloutTailer {
 
   void start({required String sessionId}) {
     if (_cursors.containsKey(sessionId)) return;
-    final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
+    final String? path;
+    final CodexRolloutTailPosition position;
+    try {
+      path = _catalogRepository.findRolloutPath(sessionId: sessionId);
+      position = path == null
+          ? const CodexRolloutTailPosition(
+              offset: 0,
+              trailingBytes: [],
+            )
+          : _rolloutApi.rolloutTailPosition(rolloutPath: path);
+    } on Object catch (error, stackTrace) {
+      // Live rollout enrichment is auxiliary. A stat/open failure must not
+      // prevent the authoritative turn/start RPC from reaching Codex.
+      Log.w(
+        "[codex] could not start live rollout tail for $sessionId",
+        error,
+        stackTrace,
+      );
+      return;
+    }
     _cursors[sessionId] = _CodexRolloutCursor(
       path: path,
-      offset: path == null ? 0 : _rolloutApi.rolloutLength(rolloutPath: path),
-      trailingBytes: const [],
+      offset: position.offset,
+      trailingBytes: position.trailingBytes,
     );
     _timer ??= Timer.periodic(_pollInterval, (_) => drainAll());
   }
@@ -66,13 +87,13 @@ class CodexRolloutTailer {
   void drain({required String sessionId}) {
     final cursor = _cursors[sessionId];
     if (cursor == null) return;
-    var path = cursor.path;
-    if (path == null) {
-      path = _catalogRepository.findRolloutPath(sessionId: sessionId);
-      if (path == null) return;
-      cursor.path = path;
-    }
     try {
+      var path = cursor.path;
+      if (path == null) {
+        path = _catalogRepository.findRolloutPath(sessionId: sessionId);
+        if (path == null) return;
+        cursor.path = path;
+      }
       final chunk = _rolloutApi.readTranscriptChunk(
         rolloutPath: path,
         offset: cursor.offset,
@@ -92,6 +113,36 @@ class CodexRolloutTailer {
       );
       stop(sessionId: sessionId);
     }
+  }
+
+  /// Drains a terminal partial record before releasing this turn's cursor.
+  ///
+  /// Complete records stop synchronously. Only a suffix observed without its
+  /// newline waits, bounded to ten normal poll intervals so a broken writer
+  /// cannot hold `session.idle` indefinitely.
+  Future<void> finish({required String sessionId}) async {
+    drain(sessionId: sessionId);
+    var cursor = _cursors[sessionId];
+    if (cursor == null) return;
+    if (cursor.trailingBytes.isEmpty) {
+      stop(sessionId: sessionId);
+      return;
+    }
+    for (var attempt = 0; attempt < _terminalDrainPollAttempts; attempt++) {
+      await Future<void>.delayed(_pollInterval);
+      drain(sessionId: sessionId);
+      cursor = _cursors[sessionId];
+      if (cursor == null) return;
+      if (cursor.trailingBytes.isEmpty) {
+        stop(sessionId: sessionId);
+        return;
+      }
+    }
+    Log.w(
+      "[codex] timed out waiting for the final live rollout record for "
+      "$sessionId",
+    );
+    stop(sessionId: sessionId);
   }
 
   void stop({required String sessionId}) {
