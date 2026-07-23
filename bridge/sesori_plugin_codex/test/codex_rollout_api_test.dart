@@ -231,6 +231,37 @@ void main() {
       expect(output, isNot(contains("malformed rollout content list")));
       expect(transcript.last.type, CodexRolloutLineType.turnContext);
       expect(transcript.last.payload?.model, "gpt-5.4");
+      expect(transcript.last.payload?.summary, isNull);
+    });
+
+    test("response_item scalar summary remains observable as malformed", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/07/22/rollout-response-summary.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        cwd: "/repo/app",
+        cliVersion: "0.144.1",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "reasoning",
+              "summary": "schema-drifted response summary",
+            },
+          }),
+        ],
+      );
+
+      late List<CodexRolloutLineDto> transcript;
+      final output = _captureWarnings(() {
+        transcript = rolloutApi.readTranscript(rolloutPath: path);
+      }, level: LogLevel.verbose);
+
+      expect(
+        "malformed rollout content list".allMatches(output),
+        hasLength(1),
+      );
+      expect(transcript.last.type, CodexRolloutLineType.responseItem);
       expect(transcript.last.payload?.summary, isEmpty);
     });
 

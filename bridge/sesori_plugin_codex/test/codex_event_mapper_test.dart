@@ -576,6 +576,30 @@ void main() {
       expect(completedPart.state?.output, "wait completed");
     });
 
+    test("dynamicToolCall falls back for malformed or empty tool names", () {
+      for (final rawTool in <Object?>[42, ""]) {
+        final events = mapper.map(
+          CodexServerNotification(
+            method: "item/started",
+            params: {
+              "threadId": "t-1",
+              "item": {
+                "type": "dynamicToolCall",
+                "id": "i-fallback",
+                "tool": rawTool,
+                "arguments": const <String, Object?>{},
+                "status": "inProgress",
+              },
+            },
+          ),
+        );
+
+        final part = (events[1] as BridgeSseMessagePartUpdated).part;
+        expect(part.tool, "tool");
+        expect(part.state?.status, PluginToolStatus.running);
+      }
+    });
+
     test("genuinely unrenderable item kinds (todoList) are still dropped", () {
       final events = mapper.map(
         const CodexServerNotification(

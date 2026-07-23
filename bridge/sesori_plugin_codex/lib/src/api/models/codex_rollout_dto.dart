@@ -67,7 +67,9 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
     required CodexRolloutPayloadDto? payload,
   }) = _CodexRolloutLineDto;
 
-  factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(json);
+  factory CodexRolloutLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutLineDtoFromJson(
+    _normalizeRolloutLineJson(json: json),
+  );
 }
 
 @Freezed(fromJson: true, toJson: false)
@@ -82,7 +84,7 @@ sealed class CodexRolloutPayloadDto with _$CodexRolloutPayloadDto {
     @JsonKey(unknownEnumValue: CodexRolloutPayloadType.unknown) required CodexRolloutPayloadType? type,
     @JsonKey(unknownEnumValue: CodexRolloutRole.unknown) required CodexRolloutRole? role,
     @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? content,
-    @CodexRolloutSummaryConverter() required List<CodexRolloutContentDto>? summary,
+    @CodexRolloutContentListConverter() required List<CodexRolloutContentDto>? summary,
     @JsonKey(name: "call_id") required String? callId,
     required String? name,
     required String? arguments,
@@ -150,22 +152,6 @@ class CodexRolloutContentListConverter implements JsonConverter<List<CodexRollou
   }
 }
 
-/// Decodes the overloaded rollout `summary` field.
-///
-/// Reasoning response items use a typed content list, while `turn_context`
-/// records legitimately use a scalar string. The latter is context metadata,
-/// not a renderable reasoning part, so it is ignored without a malformed-list
-/// warning.
-class CodexRolloutSummaryConverter extends CodexRolloutContentListConverter {
-  const CodexRolloutSummaryConverter();
-
-  @override
-  List<CodexRolloutContentDto>? fromJson(Object? json) {
-    if (json is String) return const [];
-    return super.fromJson(json);
-  }
-}
-
 /// Normalizes Codex tool output across persisted rollout versions.
 ///
 /// Legacy function-call records store output as a string, while current custom
@@ -186,6 +172,26 @@ class CodexRolloutOutputConverter extends CodexRolloutContentListConverter {
     }
     return super.fromJson(json);
   }
+}
+
+/// Normalizes the overloaded `summary` field before generated DTO decoding.
+///
+/// Reasoning response items use a typed content list, while `turn_context`
+/// records legitimately use a scalar string. The latter is context metadata,
+/// not a renderable reasoning part, so only that line type drops the field.
+Map<String, dynamic> _normalizeRolloutLineJson({
+  required Map<String, dynamic> json,
+}) {
+  if (json["type"] != "turn_context") return json;
+  final payload = json["payload"];
+  if (payload is! Map || payload["summary"] is! String) return json;
+  return {
+    ...json,
+    "payload": {
+      ...payload,
+      "summary": null,
+    },
+  };
 }
 
 @Freezed(fromJson: true, toJson: false)

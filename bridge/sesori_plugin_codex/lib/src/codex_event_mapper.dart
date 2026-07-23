@@ -301,7 +301,10 @@ class CodexEventMapper {
         return _toolItemEvents(
           threadId: threadId,
           itemId: itemId,
-          tool: item["tool"] as String? ?? "tool",
+          tool: switch (item["tool"]) {
+            final String tool when tool.isNotEmpty => tool,
+            _ => "tool",
+          },
           title: _dynamicToolTitle(item["arguments"]),
           status: _toolStatus(item["status"], completed: completed),
           output: _dynamicToolOutput(item["contentItems"]),
