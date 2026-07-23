@@ -22,7 +22,6 @@ void main() {
       plugin = FakeBridgePlugin();
       projectRepository = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
-        plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -113,7 +112,6 @@ void main() {
       final slugHandler = GetBaseBranchHandler(
         projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(remoteUrl: "https://github.com/sesori-ai/sesori_apps.git"),
-          plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),

@@ -611,12 +611,15 @@ class BridgeRuntimeRunner {
       );
       pluginRuntime = activePluginRuntime;
       final lifecycleRepository = PluginLifecycleRepository(runtime: activePluginRuntime);
-      final activePluginLifecycleService = PluginLifecycleService(lifecycleRepository: lifecycleRepository)
-        ..registerPlugins(
-          plugins: [
-            for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
-          ],
-        );
+      final activePluginLifecycleService =
+          PluginLifecycleService(
+            lifecycleRepository: lifecycleRepository,
+            preferredDefaultPluginId: preferredDefaultPluginId,
+          )..registerPlugins(
+            plugins: [
+              for (final descriptor in knownPlugins) (id: descriptor.id, displayName: descriptor.displayName),
+            ],
+          );
       pluginLifecycleService = activePluginLifecycleService;
       final eligiblePluginIds = {
         for (final descriptor in knownPlugins)
@@ -631,7 +634,7 @@ class BridgeRuntimeRunner {
         setupById: setupById,
       );
       for (final importPluginId in options.importPluginIds) {
-        if (!startupPolicy.enabledPluginIds.contains(importPluginId)) {
+        if (!startupPolicy.eligiblePluginIds.contains(importPluginId)) {
           Console.error('Cannot import plugin "$importPluginId" because it is not eligible.');
           return 1;
         }
@@ -754,7 +757,7 @@ class BridgeRuntimeRunner {
         Log.i("Plugin start aborted as requested.");
         return 0;
       }
-      for (final pluginId in startupPolicy.enabledPluginIds) {
+      for (final pluginId in startupPolicy.eligiblePluginIds) {
         final diagnostics = activePluginRuntime.describe(pluginId: pluginId);
         if (diagnostics != null) Console.message("Target [$pluginId]: ${diagnostics.endpoint ?? pluginId}");
       }
@@ -869,7 +872,7 @@ class BridgeRuntimeRunner {
       final operationalPluginIds = activePluginRuntime.activePluginIds;
       startCatalogImports(
         service: activeRuntime.catalogImportService,
-        pluginIds: startupPolicy.enabledPluginIds,
+        pluginIds: startupPolicy.eligiblePluginIds,
         headlessPluginIds: options.importPluginIds,
         operationalPluginIds: operationalPluginIds,
       );

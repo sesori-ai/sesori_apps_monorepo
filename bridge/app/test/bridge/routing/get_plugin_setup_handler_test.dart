@@ -22,6 +22,7 @@ void main() {
       lifecycleService =
           PluginLifecycleService(
               lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+              preferredDefaultPluginId: legacyMissingPluginId,
             )
             ..registerPlugins(
               plugins: const [

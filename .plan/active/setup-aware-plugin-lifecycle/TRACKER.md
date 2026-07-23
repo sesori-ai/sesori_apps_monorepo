@@ -6,8 +6,8 @@
   stack in progress
 - **Base:** `origin/main` at `583748ab`
 - **Current branch:** `setup-aware-plugin-lifecycle-durable-events`
-- **Current stage:** Stage 11-P01D — bridge-owned projects and defaults
-- **Next action:** start P01D from the verified P01C head while monitoring #548/#549
+- **Current stage:** Stage 11-P01D — bridge-owned projects and defaults verification
+- **Next action:** commit P01D after handling new review feedback on #549
 
 ## Frozen Oversized Stack
 
@@ -35,7 +35,7 @@ run their focused verification again.
 | [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 open and monitored |
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 open and monitored |
-| [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | stack after P01C |
+| [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | implementation verified; architecture approved |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | rebuild branch TBD | frozen #509 descendant |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
@@ -178,6 +178,22 @@ run their focused verification again.
 - Committed the implementation as `2a461f8b`, merged the updated #548 head,
   pushed the verified branch, and opened stacked PR #549. Its initial monitor
   reported it mergeable with CI running and no review threads.
+
+### 2026-07-24 — Stage 11-P01D bridge-owned projects and defaults
+
+- Made project create/open/rename bridge-owned and plugin-neutral, extracted
+  runtime-backed project activity evidence, preferred OpenCode as the
+  selectable default with deterministic fallback, and removed the temporary
+  live API map.
+- Preserved generation attribution through final activity publication; both
+  native and derived evidence now commit activity through
+  `commitCurrentGeneration`, while native catalog insertion retains its own
+  protected commit.
+- Regenerated app database output from source after clearing a stale local
+  build-runner cache. Fatal analysis, `git diff --check`, and 213 focused
+  project, activity, lifecycle, runtime, routing, and orchestrator tests passed;
+  focused review-fix tests also passed.
+- The second implementation-review pass approved P01D with no findings.
 
 ## Delivery Rules
 

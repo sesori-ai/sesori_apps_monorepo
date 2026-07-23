@@ -12,9 +12,8 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   bool get hidden;
   String? get baseBranch;
 
-  /// Bridge-persisted display-name override for a renamed project. Used by
-  /// bridge-derived plugins, which have no backend to store a project name;
-  /// null means fall back to the directory basename.
+  /// Bridge-owned display-name override for a renamed aggregate project. Null
+  /// means fall back to the directory basename.
   String? get displayName;
 
   /// Wall-clock ms when this project row was first recorded — the folder was

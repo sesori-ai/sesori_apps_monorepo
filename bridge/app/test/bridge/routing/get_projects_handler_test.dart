@@ -27,11 +27,15 @@ void main() {
       projectActivityService = ProjectActivityService(
         projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
-          plugin: plugin,
           projectsDao: projectsDao,
           sessionDao: db.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
           filesystemApi: FakeFilesystemApi(),
+        ),
+        projectActivityRepository: singlePluginProjectActivityRepository(
+          plugin: plugin,
+          projectsDao: projectsDao,
+          sessionDao: db.sessionDao,
         ),
         now: () => 1234,
       );

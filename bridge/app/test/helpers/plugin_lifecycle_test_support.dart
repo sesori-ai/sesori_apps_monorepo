@@ -2,6 +2,7 @@ import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show legacyMissingPluginId;
 
 import "plugin_runtime_test_support.dart";
 
@@ -20,6 +21,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
   final service =
       PluginLifecycleService(
           lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+          preferredDefaultPluginId: legacyMissingPluginId,
         )
         ..registerPlugins(
           plugins: [for (final plugin in plugins) (id: plugin.id, displayName: plugin.id)],

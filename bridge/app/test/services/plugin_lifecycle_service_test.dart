@@ -38,6 +38,86 @@ void main() {
     expect(runtime.snapshot.singleWhere((entry) => entry.pluginId == "zeta").state, PluginRuntimeState.blocked);
   });
 
+  test("prefers OpenCode as the default before falling back to alphabetical availability", () async {
+    final opencode = _FakePluginApi(id: "opencode");
+    final alpha = _FakePluginApi(id: "alpha");
+    final runtime = createTestPluginRuntime(plugins: [alpha, opencode]);
+    addTearDown(runtime.dispose);
+    final service = _service(
+      runtime: runtime,
+      plugins: const [
+        (id: "alpha", displayName: "Alpha"),
+        (id: "opencode", displayName: "OpenCode"),
+      ],
+    );
+    addTearDown(service.dispose);
+
+    final policy = service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {
+        "alpha": PluginSetupReady(),
+        "opencode": PluginSetupReady(),
+      },
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(policy.defaultPluginId, "opencode");
+    expect(service.compositionView.defaultPluginId, "opencode");
+    expect(
+      service.selectableMetadataSnapshot.singleWhere((entry) => entry.isDefault).id,
+      "opencode",
+    );
+  });
+
+  test("falls back to the first setup-ready plugin when OpenCode is unavailable", () {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["opencode", "alpha"]);
+    addTearDown(runtime.dispose);
+    final service = _service(
+      runtime: runtime,
+      plugins: const [
+        (id: "opencode", displayName: "OpenCode"),
+        (id: "alpha", displayName: "Alpha"),
+      ],
+    );
+    addTearDown(service.dispose);
+
+    final policy = service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {
+        "opencode": PluginSetupRuntimeMissing(actionHint: "Install OpenCode."),
+        "alpha": PluginSetupReady(),
+      },
+    );
+
+    expect(policy.defaultPluginId, "alpha");
+  });
+
+  test("falls back when setup-ready OpenCode is not currently selectable", () async {
+    final alpha = _FakePluginApi(id: "alpha");
+    final runtime = createTestPluginRuntime(plugins: [alpha]);
+    addTearDown(runtime.dispose);
+    final service = _service(
+      runtime: runtime,
+      plugins: const [
+        (id: "opencode", displayName: "OpenCode"),
+        (id: "alpha", displayName: "Alpha"),
+      ],
+    );
+    addTearDown(service.dispose);
+
+    final policy = service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {
+        "opencode": PluginSetupReady(),
+        "alpha": PluginSetupReady(),
+      },
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(policy.defaultPluginId, "opencode");
+    expect(service.compositionView.defaultPluginId, "alpha");
+  });
+
   test("availability narrows startup access without changing eligibility", () {
     final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["alpha", "beta"]);
     addTearDown(runtime.dispose);
@@ -166,6 +246,7 @@ PluginLifecycleService _service({
 }) {
   return PluginLifecycleService(
     lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+    preferredDefaultPluginId: legacyMissingPluginId,
   )..registerPlugins(plugins: plugins);
 }
 

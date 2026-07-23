@@ -23,9 +23,8 @@ class ProjectsTable extends Table {
   BoolColumn get hidden => boolean().withDefault(const Constant(false))();
   TextColumn get baseBranch => text().nullable()();
 
-  /// Bridge-persisted display-name override for a renamed project. Used by
-  /// bridge-derived plugins, which have no backend to store a project name;
-  /// null means fall back to the directory basename.
+  /// Bridge-owned display-name override for a renamed aggregate project. Null
+  /// means fall back to the directory basename.
   TextColumn get displayName => text().nullable()();
 
   /// Wall-clock ms when this project row was first recorded — the folder was
@@ -36,8 +35,8 @@ class ProjectsTable extends Table {
 
   /// Wall-clock ms of the last recorded activity for this project. Advanced by
   /// the project-activity service from plugin activity, session evidence, and
-  /// user-facing events. The repository monotonically merges observations and
-  /// the DAO writes the resulting exact values.
+  /// user-facing events. The repository writes exact values supplied by the
+  /// service and performs no min/max itself.
   IntColumn get updatedAt => integer().clientDefault(() => DateTime.now().millisecondsSinceEpoch)();
 
   IntColumn get projectionUpdatedAt => integer()();

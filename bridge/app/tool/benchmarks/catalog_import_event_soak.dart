@@ -154,8 +154,6 @@ class _CatalogImportEventSoak {
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
       final projectRepository = ProjectRepository(
-        operationalPlugins: plugins,
-        readDefaultEnabledPluginId: () => plugin.id,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
@@ -165,7 +163,6 @@ class _CatalogImportEventSoak {
           gitPathExists: ({required String gitPath}) => false,
         ),
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-        aggregateSourceDeadline: const Duration(seconds: 5),
       );
       final eventTracker = SessionEventTracker(
         maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,

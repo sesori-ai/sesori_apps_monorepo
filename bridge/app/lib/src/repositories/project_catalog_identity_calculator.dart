@@ -2,7 +2,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 
 import "../api/database/tables/projects_table.dart" show ProjectDto;
 
-/// Selects the existing catalog row that owns an observed plugin project.
+/// Selects the existing bridge-owned catalog row for an observed project.
 class ProjectCatalogIdentityCalculator {
   const ProjectCatalogIdentityCalculator();
 
@@ -22,7 +22,7 @@ class ProjectCatalogIdentityCalculator {
     return result;
   }
 
-  /// Prefers the stable plugin-supplied id, then the normalized observed path.
+  /// Prefers the supplied durable id, then the normalized observed path.
   /// Returns null when neither signal identifies an existing catalog row.
   ProjectDto? calculate({
     required Map<String, ProjectDto> projectsById,
