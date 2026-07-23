@@ -6,8 +6,8 @@
   stack in progress
 - **Base:** `origin/main` at `583748ab`
 - **Current branch:** `setup-aware-plugin-lifecycle-operation-routing`
-- **Current stage:** Stage 11-P01B — plugin operation routing verified and approved
-- **Next action:** publish P01B stacked on #547 while continuing to monitor #547
+- **Current stage:** Stage 11-P01B — plugin operation routing open as PR #548
+- **Next action:** monitor #547/#548 and start P01C from the verified P01B head
 
 ## Frozen Oversized Stack
 
@@ -33,7 +33,7 @@ run their focused verification again.
 |---|---|---|---|
 | [x] | Stage 10 — setup discovery and denylist | `aware-plugin-lifecycle` | #507 merged |
 | [x] | Stage 11-P01A — runtime mechanics | `setup-aware-plugin-lifecycle-runtime-mechanics` | #547 open and monitored |
-| [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | verified; ready to publish |
+| [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 open and monitored |
 | [ ] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | stack after P01B |
 | [ ] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | stack after P01C |
 | [ ] | Stage 11-P02 — dormancy and numeric idle timeout | rebuild branch TBD | frozen #509 descendant |
@@ -145,6 +145,7 @@ run their focused verification again.
 - Architecture implementation review approved composition ownership, runtime
   routing, dependency direction, and both contained stack-local seams with no
   findings.
+- Committed as `2e20026d`, pushed, and opened as stacked PR #548.
 
 ## Delivery Rules
 
