@@ -64,6 +64,9 @@ class SessionEventService {
     try {
       return await _normalize(source: source, drainPending: drainPending);
     } on Object catch (error, stackTrace) {
+      if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
+        return const [];
+      }
       Log.w("[sse] failed to normalize ${source.event.runtimeType}", error, stackTrace);
       try {
         await _failureReporter.recordFailure(
@@ -210,22 +213,47 @@ class SessionEventService {
             ),
           ),
         );
-      } else if (_eventTracker.isBindingPending(
-        pluginId: source.pluginId,
-        generation: source.generation,
-        backendSessionId: observed.id,
-      )) {
-        _warnIfEvicted(
-          evicted: _eventTracker.addTranslation(
-            event: PendingTranslationEvent(
-              pluginId: source.pluginId,
-              generation: source.generation,
-              event: source.event,
-              backendSessionId: observed.id,
-              projectionUpdatedAt: source.projectionUpdatedAt,
-            ),
-          ),
+      } else {
+        final pendingGeneration = _eventTracker.pendingBindingGeneration(
+          pluginId: source.pluginId,
+          backendSessionId: observed.id,
         );
+        if (pendingGeneration == source.generation) {
+          _warnIfEvicted(
+            evicted: _eventTracker.addTranslation(
+              event: PendingTranslationEvent(
+                pluginId: source.pluginId,
+                generation: source.generation,
+                event: source.event,
+                backendSessionId: observed.id,
+                projectionUpdatedAt: source.projectionUpdatedAt,
+              ),
+            ),
+          );
+        } else if (pendingGeneration != null) {
+          _warnIfEvicted(
+            evicted: _eventTracker.addRoot(
+              event: PendingSessionEvent(
+                pluginId: source.pluginId,
+                generation: source.generation,
+                event: source.event,
+                session: observed,
+                projectionUpdatedAt: source.projectionUpdatedAt,
+              ),
+            ),
+          );
+          _warnIfEvicted(
+            evicted: _eventTracker.addTranslation(
+              event: PendingTranslationEvent(
+                pluginId: source.pluginId,
+                generation: source.generation,
+                event: source.event,
+                backendSessionId: observed.id,
+                projectionUpdatedAt: source.projectionUpdatedAt,
+              ),
+            ),
+          );
+        }
       }
       return null;
     }

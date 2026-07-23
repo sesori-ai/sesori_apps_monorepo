@@ -92,7 +92,7 @@ class SessionEventDispatcher {
                   pluginId: pluginId,
                   generation: generation,
                 )) {
-              return;
+              continue;
             }
             _eventsController.add((pluginId: pluginId, generation: generation, event: event));
           }

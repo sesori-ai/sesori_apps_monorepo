@@ -83,12 +83,52 @@ void main() {
     await subscription.cancel();
     await dispatcher.dispose();
   });
+
+  test("skips a stale replay without dropping later current output", () async {
+    final service = _GatedSessionEventService(normalizeGate: Future<void>.value())
+      ..currentGeneration = 2
+      ..bindingOutputs = const [
+        (
+          generation: 1,
+          event: BridgeSsePermissionAsked(
+            requestID: "stale",
+            sessionID: "session",
+            displaySessionId: "session",
+            tool: "read",
+            description: "stale",
+          ),
+        ),
+        (
+          generation: 2,
+          event: BridgeSsePermissionAsked(
+            requestID: "current",
+            sessionID: "session",
+            displaySessionId: "session",
+            tool: "read",
+            description: "current",
+          ),
+        ),
+      ];
+    final dispatcher = SessionEventDispatcher(sessionEventService: service);
+    final outputFuture = dispatcher.events.take(1).toList();
+
+    await dispatcher.dispatchBindingsCommitted(
+      commit: (pluginId: "plugin", backendSessionIds: const ["session"]),
+    );
+
+    final output = await outputFuture;
+    expect((output.single.event as BridgeSsePermissionAsked).requestID, "current");
+    expect(output.single.generation, 2);
+    await dispatcher.dispose();
+  });
 }
 
 class _GatedSessionEventService implements SessionEventService {
   final Future<void> _normalizeGate;
   bool createdIsPublishable = true;
   bool generationCurrent = true;
+  int currentGeneration = 1;
+  List<NormalizedRuntimeEvent> bindingOutputs = const [];
 
   _GatedSessionEventService({required Future<void> normalizeGate}) : _normalizeGate = normalizeGate;
 
@@ -109,12 +149,12 @@ class _GatedSessionEventService implements SessionEventService {
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) {
-    return generationCurrent && generation == 1;
+    return generationCurrent && generation == currentGeneration;
   }
 
   @override
   Future<List<NormalizedRuntimeEvent>> handleBindingsCommitted({required SessionBindingsCommitted commit}) async {
-    return const [];
+    return bindingOutputs;
   }
 
   @override

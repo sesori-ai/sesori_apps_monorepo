@@ -41,6 +41,7 @@ class TestPluginRuntime extends PluginRuntime {
 
   final Map<String, BridgePluginApi> _plugins;
   bool generationCurrent = true;
+  int currentGeneration = 1;
 
   @override
   Set<String> get activePluginIds => Set<String>.unmodifiable(_plugins.keys);
@@ -50,7 +51,7 @@ class TestPluginRuntime extends PluginRuntime {
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) {
-    return generationCurrent && generation == 1 && _plugins.containsKey(pluginId);
+    return generationCurrent && generation == currentGeneration && _plugins.containsKey(pluginId);
   }
 
   @override
@@ -83,7 +84,7 @@ class TestPluginRuntime extends PluginRuntime {
   Stream<SourcedPluginRuntimeEvent> get backendEvents {
     return Rx.merge([
       for (final plugin in _plugins.values)
-        plugin.events.map((event) => (pluginId: plugin.id, generation: 1, event: event)),
+        plugin.events.map((event) => (pluginId: plugin.id, generation: currentGeneration, event: event)),
     ]);
   }
 
@@ -109,7 +110,7 @@ class TestPluginRuntime extends PluginRuntime {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
     final result = await body(plugin);
-    requireCurrentGeneration(pluginId: pluginId, generation: 1, operation: operation);
+    requireCurrentGeneration(pluginId: pluginId, generation: currentGeneration, operation: operation);
     return result;
   }
 
@@ -125,9 +126,9 @@ class TestPluginRuntime extends PluginRuntime {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
     }
     final prepared = await prepare(plugin);
-    requireCurrentGeneration(pluginId: pluginId, generation: 1, operation: operation);
+    requireCurrentGeneration(pluginId: pluginId, generation: currentGeneration, operation: operation);
     final result = await commit(prepared);
-    requireCurrentGeneration(pluginId: pluginId, generation: 1, operation: operation);
+    requireCurrentGeneration(pluginId: pluginId, generation: currentGeneration, operation: operation);
     return result;
   }
 
@@ -156,7 +157,7 @@ class TestPluginRuntime extends PluginRuntime {
         PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running"),
       );
     }
-    return body(plugin, 1);
+    return body(plugin, currentGeneration);
   }
 
   @override
@@ -166,7 +167,7 @@ class TestPluginRuntime extends PluginRuntime {
     required Future<T> Function(BridgePluginApi api, int generation) body,
   }) async {
     final plugin = _plugins[pluginId];
-    return plugin == null ? null : body(plugin, 1);
+    return plugin == null ? null : body(plugin, currentGeneration);
   }
 
   PluginRuntimeSnapshot _snapshotFor(BridgePluginApi plugin) {
@@ -178,7 +179,7 @@ class TestPluginRuntime extends PluginRuntime {
       setup: const PluginSetupReady(),
       eligible: true,
       startAllowed: true,
-      generation: 1,
+      generation: currentGeneration,
       state: PluginRuntimeState.active,
       leaseCount: 0,
       transition: PluginRuntimeTransition.none,

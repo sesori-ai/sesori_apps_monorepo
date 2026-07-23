@@ -127,6 +127,10 @@ class SessionEventTracker {
     return _sessions[(pluginId: pluginId, backendSessionId: backendSessionId)]?.generation == generation;
   }
 
+  int? pendingBindingGeneration({required String pluginId, required String backendSessionId}) {
+    return _sessions[(pluginId: pluginId, backendSessionId: backendSessionId)]?.generation;
+  }
+
   PendingTrackedEvent? addTranslation({required PendingTranslationEvent event}) {
     final key = (pluginId: event.pluginId, backendSessionId: event.backendSessionId);
     if (!_sessions.containsKey(key)) {
