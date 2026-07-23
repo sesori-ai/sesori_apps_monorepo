@@ -45,6 +45,51 @@ void main() {
       expect(repository.resetCount, 1, reason: "the dedicated probe process is short-lived");
     });
 
+    test("uses the account catalog when no existing session is available", () async {
+      repository.bootstrapSnapshot = CursorCatalogBootstrapSnapshot(
+        models: const [
+          CursorCatalogOption(value: "default", name: "Auto", description: null),
+          CursorCatalogOption(value: "gpt-5.6-sol", name: "GPT-5.6 Sol", description: null),
+        ],
+        modes: const [
+          CursorCatalogOption(value: "agent", name: "Agent", description: null),
+          CursorCatalogOption(value: "plan", name: "Plan", description: null),
+          CursorCatalogOption(value: "ask", name: "Ask", description: null),
+        ],
+        defaultModeId: "agent",
+        thoughtLevelsByModel: {
+          "gpt-5.6-sol": CursorThoughtLevelSnapshot(
+            configId: "reasoning",
+            variants: const ["medium", "none", "low", "high"],
+            defaultValue: "medium",
+          ),
+        },
+      );
+
+      await service.ensureCatalog(scope: "/project");
+
+      expect(tracker.isComplete, isTrue);
+      expect(tracker.models.map((model) => model.value), ["default", "gpt-5.6-sol"]);
+      expect(tracker.modes.map((mode) => mode.value), ["agent", "plan", "ask"]);
+      expect(tracker.variantsForModel(modelId: "gpt-5.6-sol"), ["medium", "none", "low", "high"]);
+      expect(repository.listedScopes, isEmpty, reason: "no historical session walk is needed");
+      expect(
+        tracker.outcomeForScope(scope: "/project"),
+        CursorCatalogProbeOutcome.complete,
+      );
+    });
+
+    test("falls back to existing sessions when account catalog discovery fails", () async {
+      repository.bootstrapError = StateError("extension unavailable");
+      repository.candidates = _candidates([(id: "session", updatedAtMs: 1)]);
+      repository.snapshots["session"] = _snapshot(includeThoughtLevel: true);
+
+      await service.ensureCatalog(scope: "/project");
+
+      expect(repository.loadedSessionIds, ["session"]);
+      expect(tracker.isComplete, isTrue);
+    });
+
     test("loads at most eight candidates", () async {
       repository.candidates = _candidates([
         for (var i = 0; i < 10; i++) (id: "s$i", updatedAtMs: i),
@@ -236,12 +281,21 @@ class _FakeCursorCatalogRepository implements CursorCatalogRepository {
   Completer<void>? listGate;
   bool probeSupported = true;
   bool delayLoadsUntilTimeout = false;
+  CursorCatalogBootstrapSnapshot? bootstrapSnapshot;
+  Object? bootstrapError;
   int resetCount = 0;
   int _concurrentLists = 0;
   int maxConcurrentLists = 0;
 
   @override
   Future<bool> open({required Duration timeout}) async => probeSupported;
+
+  @override
+  Future<CursorCatalogBootstrapSnapshot?> loadAvailableCatalog({required Duration timeout}) async {
+    final error = bootstrapError;
+    if (error != null) throw error;
+    return bootstrapSnapshot;
+  }
 
   @override
   Future<CursorCatalogCandidateListResult> listCandidates({

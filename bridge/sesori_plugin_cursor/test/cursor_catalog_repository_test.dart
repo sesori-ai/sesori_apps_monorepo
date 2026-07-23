@@ -1,5 +1,6 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/src/api/cursor_catalog_probe_api.dart";
+import "package:cursor_plugin/src/api/models/cursor_available_models_dto.dart";
 import "package:cursor_plugin/src/repositories/cursor_catalog_repository.dart";
 import "package:test/test.dart";
 
@@ -151,6 +152,59 @@ void main() {
       expect(snapshot.thoughtLevel?.configId, "effort");
       expect(snapshot.thoughtLevel?.variants, ["medium", "low", "high"]);
     });
+
+    test("maps account models, stable modes, and per-model thought levels", () async {
+      api.availableModels = CursorAvailableModelsDto.fromJson({
+        "models": [
+          {"value": "default", "name": "Auto"},
+          {
+            "value": "gpt-5.6-sol",
+            "name": "GPT-5.6 Sol",
+            "configOptions": [
+              {
+                "id": "reasoning",
+                "name": "Reasoning",
+                "category": "thought_level",
+                "currentValue": "medium",
+                "options": [
+                  {"value": "none", "name": "None"},
+                  {"value": "low", "name": "Low"},
+                  {"value": "medium", "name": "Medium"},
+                  {"value": "high", "name": "High"},
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      final snapshot = await repository.loadAvailableCatalog(
+        timeout: const Duration(seconds: 1),
+      );
+
+      expect(snapshot, isNotNull);
+      expect(snapshot!.models.map((model) => model.value), ["default", "gpt-5.6-sol"]);
+      expect(snapshot.modes.map((mode) => mode.value), ["agent", "plan", "ask"]);
+      expect(snapshot.defaultModeId, "agent");
+      expect(snapshot.thoughtLevelsByModel["gpt-5.6-sol"]?.configId, "reasoning");
+      expect(
+        snapshot.thoughtLevelsByModel["gpt-5.6-sol"]?.variants,
+        ["medium", "none", "low", "high"],
+      );
+    });
+
+    test("maps an unsupported account catalog extension to absence", () async {
+      api.availableModelsError = AcpRpcException(
+        method: "cursor/list_available_models",
+        code: -32601,
+        message: "method not found",
+      );
+
+      expect(
+        await repository.loadAvailableCatalog(timeout: const Duration(seconds: 1)),
+        isNull,
+      );
+    });
   });
 }
 
@@ -217,6 +271,8 @@ class _FakeCursorCatalogProbeApi implements CursorCatalogProbeApi {
   final Map<String?, List<AcpSessionInfo>> sessionsByScope = {};
   final Map<String?, Object> errorsByScope = {};
   final List<String?> listedScopes = [];
+  CursorAvailableModelsDto availableModels = const CursorAvailableModelsDto();
+  Object? availableModelsError;
 
   @override
   Stream<AcpNotification> get notifications => const Stream.empty();
@@ -242,6 +298,13 @@ class _FakeCursorCatalogProbeApi implements CursorCatalogProbeApi {
     final error = errorsByScope[cwd];
     if (error != null) throw error;
     return sessionsByScope[cwd] ?? const [];
+  }
+
+  @override
+  Future<CursorAvailableModelsDto> listAvailableModels({required Duration timeout}) async {
+    final error = availableModelsError;
+    if (error != null) throw error;
+    return availableModels;
   }
 
   @override
