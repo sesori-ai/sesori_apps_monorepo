@@ -225,6 +225,7 @@ class SessionRepository {
     required String sessionId,
     required String command,
     required String arguments,
+    required String? userVisibleArguments,
     required SessionVariant? variant,
     required String? agent,
     required PromptModel? model,
@@ -238,6 +239,7 @@ class SessionRepository {
       sessionId: target.binding.backendSessionId,
       command: command,
       arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
       variant: _toPluginVariant(variant),
       agent: agent,
       model: switch (model) {
