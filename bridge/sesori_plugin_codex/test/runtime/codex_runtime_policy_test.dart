@@ -22,7 +22,26 @@ ProcessIdentity _identity({required int pid, required String? executablePath, re
 void main() {
   group("codexAppServerArgs / codexServerUrl", () {
     test("spawn args pin the loopback WebSocket on the chosen port", () {
-      expect(codexAppServerArgs(port: 51000), equals(<String>["app-server", "--listen", "ws://127.0.0.1:51000"]));
+      expect(
+        codexAppServerArgs(port: 51000, modelCatalogPath: null),
+        equals(<String>["app-server", "--listen", "ws://127.0.0.1:51000"]),
+      );
+    });
+
+    test("spawn args encode the isolated model catalog as TOML", () {
+      expect(
+        codexAppServerArgs(
+          port: 51000,
+          modelCatalogPath: r"C:\Sesori State\codex-model-catalog.json",
+        ),
+        equals(<String>[
+          "app-server",
+          "-c",
+          r'model_catalog_json="C:\\Sesori State\\codex-model-catalog.json"',
+          "--listen",
+          "ws://127.0.0.1:51000",
+        ]),
+      );
     });
 
     test("the server url matches the spawn listen address", () {
@@ -75,6 +94,7 @@ void main() {
           bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: "bridge-marker"),
           startedAt: DateTime.utc(2026, 6, 1, 9, 30),
         ),
+        modelCatalogPath: "/state/codex-model-catalog.json",
       );
 
       expect(record.ownerSessionId, equals("owner-1"));
@@ -82,7 +102,16 @@ void main() {
       expect(record.codexStartMarker, equals("marker"));
       expect(record.codexExecutablePath, equals("/bin/codex"));
       expect(record.codexCommand, equals("/bin/codex"));
-      expect(record.codexArgs, equals(<String>["app-server", "--listen", "ws://127.0.0.1:51000"]));
+      expect(
+        record.codexArgs,
+        equals(<String>[
+          "app-server",
+          "-c",
+          'model_catalog_json="/state/codex-model-catalog.json"',
+          "--listen",
+          "ws://127.0.0.1:51000",
+        ]),
+      );
       expect(record.port, equals(51000));
       expect(record.bridgePid, equals(900));
       expect(record.bridgeStartMarker, equals("bridge-marker"));
@@ -99,6 +128,7 @@ void main() {
           bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: null),
           startedAt: DateTime.utc(2026, 6, 1),
         ),
+        modelCatalogPath: null,
       );
       expect(record.codexExecutablePath, equals(""));
       expect(record.codexCommand, equals("codex"));

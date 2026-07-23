@@ -6,9 +6,11 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
+import "../codex_config_reader.dart";
 import "../codex_plugin_impl.dart";
 import "codex_bridge_plugin.dart";
 import "codex_managed_api.dart";
+import "codex_model_catalog.dart";
 import "codex_ownership_record.dart";
 import "codex_record_mapper.dart";
 import "codex_runtime_manifest.dart";
@@ -366,6 +368,29 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       throw const PluginStartAbortedException();
     }
 
+    final hasExplicitModelCatalog = CodexConfigReader(
+      environment: host.environment,
+    ).hasExplicitModelCatalog();
+    final modelCatalogPath = hasExplicitModelCatalog
+        ? null
+        : await prepareCodexModelCatalog(
+            commandExecutor: HostProcessCommandExecutor(
+              processes: host.processes,
+              runInShell: io.Platform.isWindows,
+              // The bundled catalog includes complete model instructions, so
+              // unlike diagnostic probes its stdout must not be truncated.
+              maxCapturedOutputCharactersPerStream: null,
+            ),
+            store: host.store,
+            stateDirectory: host.stateDirectory,
+            executablePath: executablePath,
+            environment: host.environment,
+            timeout: _versionProbeTimeout,
+          );
+    if (host.startAborted.isAborted) {
+      throw const PluginStartAbortedException();
+    }
+
     const mapper = CodexRecordMapper();
 
     final service = ManagedProcessService<CodexOwnershipRecord>(
@@ -407,6 +432,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     final spec = buildCodexManagedRuntimeSpec(
       host: host,
       executablePath: executablePath,
+      modelCatalogPath: modelCatalogPath,
       portPolicy: portPolicy,
     );
 

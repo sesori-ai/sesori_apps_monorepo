@@ -18,7 +18,7 @@ class CodexConfigDefaults {
   final String? modelProvider;
 }
 
-/// Reads the top-level `model` and `model_provider` keys from
+/// Reads selected top-level keys from
 /// `~/.codex/config.toml`.
 ///
 /// CODEX_HOME resolution mirrors codex itself (and `CodexRolloutApi`):
@@ -44,20 +44,8 @@ class CodexConfigReader {
   }
 
   CodexConfigDefaults readDefaults() {
-    final home = _codexHome;
-    if (home == null) return const CodexConfigDefaults.empty();
-
-    final file = File(p.join(home, "config.toml"));
-    if (!file.existsSync()) return const CodexConfigDefaults.empty();
-
-    final List<String> rawLines;
-    try {
-      rawLines = file.readAsLinesSync();
-    } catch (_) {
-      // Permission/IO error reading the config: this is only a fallback
-      // source, so degrade to no defaults rather than failing the caller.
-      return const CodexConfigDefaults.empty();
-    }
+    final rawLines = _readTopLevelLines();
+    if (rawLines == null) return const CodexConfigDefaults.empty();
 
     String? model;
     String? modelProvider;
@@ -74,6 +62,40 @@ class CodexConfigReader {
     }
 
     return CodexConfigDefaults(model: model, modelProvider: modelProvider);
+  }
+
+  /// Whether the user already selected a static catalog in global config.
+  ///
+  /// COMPATIBILITY 2026-07-23 (Codex custom providers): a user-supplied
+  /// `model_catalog_json` replaces the bundled catalog and may define private
+  /// or local models. The managed runtime must not override that explicit
+  /// choice with its cache-isolation catalog.
+  bool hasExplicitModelCatalog() {
+    final rawLines = _readTopLevelLines();
+    if (rawLines == null) return false;
+    for (final rawLine in rawLines) {
+      final line = rawLine.split("#").first.trim();
+      if (line.isEmpty) continue;
+      if (line.startsWith("[")) break;
+      if (_parseStringAssignment(line: line, key: "model_catalog_json") != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  List<String>? _readTopLevelLines() {
+    final home = _codexHome;
+    if (home == null) return null;
+    final file = File(p.join(home, "config.toml"));
+    if (!file.existsSync()) return null;
+    try {
+      return file.readAsLinesSync();
+    } catch (_) {
+      // Config values here are fallback/compatibility signals. A read failure
+      // must not make metadata queries or plugin startup fail.
+      return null;
+    }
   }
 
   static String? _parseStringAssignment({

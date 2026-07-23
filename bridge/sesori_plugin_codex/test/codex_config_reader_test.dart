@@ -59,5 +59,24 @@ void main() {
       final defaults = reader.readDefaults();
       expect(defaults.model, isNull);
     });
+
+    test("detects an explicit top-level model catalog", () {
+      writeConfig(
+        'model_catalog_json = "/private/models.json"\n'
+        "[profiles.work]\n"
+        'model_catalog_json = "/ignored/profile-models.json"\n',
+      );
+
+      expect(reader.hasExplicitModelCatalog(), isTrue);
+    });
+
+    test("does not treat a profile-scoped model catalog as global", () {
+      writeConfig(
+        "[profiles.work]\n"
+        'model_catalog_json = "/profile-models.json"\n',
+      );
+
+      expect(reader.hasExplicitModelCatalog(), isFalse);
+    });
   });
 }

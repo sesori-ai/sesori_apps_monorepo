@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io" as io;
 import "dart:math";
 
@@ -101,8 +102,20 @@ Iterable<int> codexDynamicCandidates({Iterable<int>? candidates, Random? random}
 /// The argument vector `codex app-server` is spawned with for a chosen [port].
 /// Kept in one place so the spawn and the ownership record agree byte-for-byte
 /// (the supervisor matches a record to a live process by its command line).
-List<String> codexAppServerArgs({required int port}) =>
-    <String>["app-server", "--listen", "ws://$codexLoopbackHost:$port"];
+List<String> codexAppServerArgs({
+  required int port,
+  required String? modelCatalogPath,
+}) => <String>[
+  "app-server",
+  if (modelCatalogPath != null) ...[
+    "-c",
+    // A JSON string is also a valid TOML basic string and safely carries
+    // spaces, quotes, and Windows path separators through Codex's `-c` parser.
+    "model_catalog_json=${jsonEncode(modelCatalogPath)}",
+  ],
+  "--listen",
+  "ws://$codexLoopbackHost:$port",
+];
 
 /// The `ws://` URL the [CodexAppServerClient] connects to for a chosen [port].
 String codexServerUrl({required int port}) => "ws://$codexLoopbackHost:$port";
@@ -117,10 +130,14 @@ Future<SpawnedProcess> spawnCodexProcess({
   required PluginHost host,
   required String executablePath,
   required int port,
+  required String? modelCatalogPath,
 }) async {
   final process = await host.processes.spawn(
     executable: executablePath,
-    arguments: codexAppServerArgs(port: port),
+    arguments: codexAppServerArgs(
+      port: port,
+      modelCatalogPath: modelCatalogPath,
+    ),
     environment: host.environment,
     workingDirectory: null,
     runInShell: io.Platform.isWindows,
@@ -148,14 +165,20 @@ Future<RuntimeHealthProbe> probeCodexHealth({
 /// Builds the "starting" ownership record from the post-spawn facts. The args
 /// mirror [codexAppServerArgs] so the persisted command line matches the live
 /// process for supervisor identity matching.
-CodexOwnershipRecord buildCodexOwnershipRecord(RuntimeRecordDraft draft) {
+CodexOwnershipRecord buildCodexOwnershipRecord(
+  RuntimeRecordDraft draft, {
+  required String? modelCatalogPath,
+}) {
   return CodexOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
     codexPid: draft.runtimeIdentity.pid,
     codexStartMarker: draft.runtimeIdentity.startMarker,
     codexExecutablePath: draft.runtimeIdentity.executablePath ?? "",
     codexCommand: draft.runtimeIdentity.executablePath ?? "codex",
-    codexArgs: codexAppServerArgs(port: draft.port),
+    codexArgs: codexAppServerArgs(
+      port: draft.port,
+      modelCatalogPath: modelCatalogPath,
+    ),
     port: draft.port,
     bridgePid: draft.bridgeIdentity.pid,
     bridgeStartMarker: draft.bridgeIdentity.startMarker,
@@ -171,14 +194,22 @@ CodexOwnershipRecord buildCodexOwnershipRecord(RuntimeRecordDraft draft) {
 ManagedRuntimeSpec<CodexOwnershipRecord> buildCodexManagedRuntimeSpec({
   required PluginHost host,
   required String executablePath,
+  required String? modelCatalogPath,
   required RuntimePortPolicy portPolicy,
 }) {
   return ManagedRuntimeSpec<CodexOwnershipRecord>(
-    spawn: ({required int port}) =>
-        spawnCodexProcess(host: host, executablePath: executablePath, port: port),
+    spawn: ({required int port}) => spawnCodexProcess(
+      host: host,
+      executablePath: executablePath,
+      port: port,
+      modelCatalogPath: modelCatalogPath,
+    ),
     probeHealth: probeCodexHealth,
     probePortBindable: ({required int port}) => host.ports.isBindable(host: codexLoopbackHost, port: port),
-    buildRecord: buildCodexOwnershipRecord,
+    buildRecord: (draft) => buildCodexOwnershipRecord(
+      draft,
+      modelCatalogPath: modelCatalogPath,
+    ),
     portPolicy: portPolicy,
     healthPolicy: RuntimeHealthPolicy.deadline(
       deadline: codexHealthDeadline,
