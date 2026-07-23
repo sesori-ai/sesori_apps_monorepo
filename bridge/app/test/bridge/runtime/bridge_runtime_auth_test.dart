@@ -142,6 +142,7 @@ BridgeCliOptions _options({required String authBackendUrl}) {
     cliArgs: const [],
     relayUrl: 'wss://relay.example.com',
     authBackendUrl: authBackendUrl,
+    dataDirectory: '/tmp/sesori-test-data',
     debugPort: null,
     logLevelName: 'info',
     importPluginIds: const [],

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
-import '../../auth/token.dart' as token_store;
 import '../../repositories/app_onboarding_state_repository.dart';
 import '../../server/foundation/terminal_prompt_decision.dart';
 import '../../server/repositories/bridge_instance_repository.dart';
@@ -43,7 +42,7 @@ class BridgeLogoutRunner {
     required TerminalPromptRepository terminalPromptRepository,
     required Future<void> Function() unregisterBridge,
     required AppOnboardingStateRepository appOnboardingStateRepository,
-    Future<void> Function() clearTokens = token_store.clearTokens,
+    required Future<void> Function() clearTokens,
   }) : _bridgeInstanceRepository = bridgeInstanceRepository,
        _bridgeInstanceService = bridgeInstanceService,
        _terminalPromptRepository = terminalPromptRepository,
@@ -58,28 +57,32 @@ class BridgeLogoutRunner {
   final AppOnboardingStateRepository _appOnboardingStateRepository;
   final Future<void> Function() _clearTokens;
 
-  Future<BridgeLogoutResult> logout({required int currentPid}) async {
-    final existingBridges = await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid);
-
+  Future<BridgeLogoutResult> logout({
+    required int currentPid,
+    required bool manageRunningBridges,
+  }) async {
     var runningBridgeCount = 0;
-    if (existingBridges.isNotEmpty) {
-      final decision = await _terminalPromptRepository.askStopBridgesBeforeLogout(
-        bridgeCount: existingBridges.length,
-      );
-      switch (decision) {
-        case TerminalPromptDecision.decline:
-          return BridgeLogoutResult(
-            status: BridgeLogoutStatus.cancelled,
-            runningBridgeCount: existingBridges.length,
-          );
-        case TerminalPromptDecision.nonInteractive:
-          runningBridgeCount = existingBridges.length;
-        case TerminalPromptDecision.replace:
-          final terminatedBridges = await _bridgeInstanceService.terminateBridges(
-            currentPid: currentPid,
-            existingBridges: existingBridges,
-          );
-          runningBridgeCount = existingBridges.length - terminatedBridges.length;
+    if (manageRunningBridges) {
+      final existingBridges = await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid);
+      if (existingBridges.isNotEmpty) {
+        final decision = await _terminalPromptRepository.askStopBridgesBeforeLogout(
+          bridgeCount: existingBridges.length,
+        );
+        switch (decision) {
+          case TerminalPromptDecision.decline:
+            return BridgeLogoutResult(
+              status: BridgeLogoutStatus.cancelled,
+              runningBridgeCount: existingBridges.length,
+            );
+          case TerminalPromptDecision.nonInteractive:
+            runningBridgeCount = existingBridges.length;
+          case TerminalPromptDecision.replace:
+            final terminatedBridges = await _bridgeInstanceService.terminateBridges(
+              currentPid: currentPid,
+              existingBridges: existingBridges,
+            );
+            runningBridgeCount = existingBridges.length - terminatedBridges.length;
+        }
       }
     }
 

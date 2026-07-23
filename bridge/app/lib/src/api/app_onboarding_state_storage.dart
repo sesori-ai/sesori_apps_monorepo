@@ -1,9 +1,8 @@
 import "dart:io";
 
 import "package:path/path.dart" as path;
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show sesoriDataDirectory;
 
-String appOnboardingStateDirectoryPath() => path.join(sesoriDataDirectory(), "app_onboarding");
+String appOnboardingStateDirectoryPath({required String dataDirectory}) => path.join(dataDirectory, "app_onboarding");
 
 /// Raw file boundary for opaque app-onboarding completion markers.
 class AppOnboardingStateStorage {

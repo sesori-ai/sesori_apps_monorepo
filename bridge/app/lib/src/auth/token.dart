@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
+import 'package:path/path.dart' as path;
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
@@ -45,9 +45,9 @@ class TokenData {
   }
 }
 
-String tokenPath() => '${sesoriDataDirectory()}/token.json';
+String tokenPath({required String dataDirectory}) => path.join(dataDirectory, 'token.json');
 
-String bridgeIdPath() => '${sesoriDataDirectory()}/bridge_id';
+String bridgeIdPath({required String dataDirectory}) => path.join(dataDirectory, 'bridge_id');
 
 /// Reads the bridge id persisted by an older bridge inside `token.json`.
 ///
@@ -57,8 +57,8 @@ String bridgeIdPath() => '${sesoriDataDirectory()}/bridge_id';
 /// minting a duplicate entry. Returns null when the token file is absent,
 /// corrupt, or has no `bridgeId` key.
 // COMPATIBILITY 2026-06-30 (v1.3.0): Old installs persist bridgeId inside token.json. Remove this reader with BridgeIdMigrationService once those installs are unsupported.
-Future<String?> readLegacyBridgeId() async {
-  final file = File(tokenPath());
+Future<String?> readLegacyBridgeId({required String dataDirectory}) async {
+  final file = File(tokenPath(dataDirectory: dataDirectory));
 
   try {
     final json = jsonDecodeMap(await file.readAsString());
@@ -79,9 +79,9 @@ Future<String?> readLegacyBridgeId() async {
 
 /// Saves the token data to the token file.
 /// Creates the directory structure if it doesn't exist.
-Future<void> saveTokens(TokenData data) async {
-  final path = tokenPath();
-  final dir = Directory(path).parent;
+Future<void> saveTokens({required TokenData data, required String dataDirectory}) async {
+  final filePath = tokenPath(dataDirectory: dataDirectory);
+  final dir = Directory(filePath).parent;
 
   // Create directory with restricted permissions (0o700 on Unix)
   await dir.create(recursive: true);
@@ -93,17 +93,16 @@ Future<void> saveTokens(TokenData data) async {
   final formatted = const JsonEncoder.withIndent('  ').convert(data.toJson());
 
   // Write file then restrict permissions (0o600 on Unix)
-  await File(path).writeAsString(formatted);
+  await File(filePath).writeAsString(formatted);
   if (!Platform.isWindows) {
-    await Process.run('chmod', ['600', path]);
+    await Process.run('chmod', ['600', filePath]);
   }
 }
 
 /// Loads the token data from the token file.
 /// Throws FileSystemException if the file does not exist.
-Future<TokenData> loadTokens() async {
-  final path = tokenPath();
-  final file = File(path);
+Future<TokenData> loadTokens({required String dataDirectory}) async {
+  final file = File(tokenPath(dataDirectory: dataDirectory));
 
   try {
     final content = await file.readAsString();
@@ -116,9 +115,8 @@ Future<TokenData> loadTokens() async {
 
 /// Clears the token file by deleting it.
 /// Does not throw an error if the file does not exist.
-Future<void> clearTokens() async {
-  final path = tokenPath();
-  final file = File(path);
+Future<void> clearTokens({required String dataDirectory}) async {
+  final file = File(tokenPath(dataDirectory: dataDirectory));
 
   if (file.existsSync()) {
     await file.delete();

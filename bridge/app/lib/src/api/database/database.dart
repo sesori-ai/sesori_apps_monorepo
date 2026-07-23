@@ -2,7 +2,7 @@ import "dart:io";
 
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:path/path.dart" as path;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "daos/catalog_hydrations_dao.dart";
@@ -254,13 +254,29 @@ class AppDatabase extends _$AppDatabase {
     },
   );
 
-  static AppDatabase create() {
-    final dbDir = Directory(sesoriDataDirectory());
+  static AppDatabase create({required String dataDirectory}) {
+    final dbDir = Directory(dataDirectory);
     if (!dbDir.existsSync()) {
       dbDir.createSync(recursive: true);
     }
-    final dbFile = File("${dbDir.path}/sesori.db");
+    if (!Platform.isWindows) {
+      _setUnixMode(targetPath: dbDir.path, mode: "700");
+    }
+    final dbFile = File(path.join(dbDir.path, "sesori.db"));
+    if (!Platform.isWindows) {
+      if (!dbFile.existsSync()) {
+        dbFile.createSync();
+      }
+      _setUnixMode(targetPath: dbFile.path, mode: "600");
+    }
     return openFile(file: dbFile);
+  }
+
+  static void _setUnixMode({required String targetPath, required String mode}) {
+    final result = Process.runSync("chmod", [mode, targetPath]);
+    if (result.exitCode != 0) {
+      throw FileSystemException("Failed to set mode $mode", targetPath);
+    }
   }
 
   static AppDatabase openFile({required File file}) {
