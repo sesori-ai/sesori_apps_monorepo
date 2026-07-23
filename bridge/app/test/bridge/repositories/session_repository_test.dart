@@ -71,6 +71,60 @@ void main() {
       );
     });
 
+    test("exposes tombstones only through persisted cleanup capabilities", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final cleanupPlugin = _FakePersistedCleanupPlugin();
+      final repository = singlePluginSessionRepository(
+        plugin: cleanupPlugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.sessionDao.insertSessionTombstone(
+        backendSessionId: "deleted-backend-session",
+        pluginId: cleanupPlugin.id,
+        deletedAt: 1,
+      );
+
+      expect(repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
+      expect(
+        await repository.getTombstonedBackendSessionIdsForCleanup(
+          pluginId: cleanupPlugin.id,
+        ),
+        {"deleted-backend-session"},
+      );
+
+      await repository.deletePersistedSession(
+        pluginId: cleanupPlugin.id,
+        backendSessionId: "deleted-backend-session",
+      );
+
+      expect(cleanupPlugin.persistedDeleteCalls, ["deleted-backend-session"]);
+      expect(
+        await db.sessionDao.isSessionTombstoned(
+          backendSessionId: "deleted-backend-session",
+          pluginId: cleanupPlugin.id,
+        ),
+        isTrue,
+      );
+    });
+
+    test("does not expose plugins without persisted cleanup support", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      expect(repository.persistedSessionCleanupPluginIds, isEmpty);
+    });
+
     test("coalesces tombstone loading and serves later lookups from memory", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -2164,6 +2218,15 @@ class _FakeBridgePlugin implements NativeProjectsPluginApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakePersistedCleanupPlugin extends _FakeBridgePlugin implements PersistedSessionCleanupApi {
+  final List<String> persistedDeleteCalls = [];
+
+  @override
+  Future<void> deletePersistedSession({required String sessionId}) async {
+    persistedDeleteCalls.add(sessionId);
+  }
 }
 
 class _CountingSessionDao implements SessionDao {

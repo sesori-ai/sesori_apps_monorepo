@@ -12,10 +12,11 @@ import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
 import "services/cursor_catalog_service.dart";
 import "services/cursor_command_service.dart";
+import "services/cursor_session_cleanup_service.dart";
 import "trackers/cursor_catalog_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
-class CursorPlugin extends AcpPlugin {
+class CursorPlugin extends AcpPlugin implements PersistedSessionCleanupApi {
   static const String pluginId = "cursor";
   static const String _providerId = "cursor";
 
@@ -24,6 +25,7 @@ class CursorPlugin extends AcpPlugin {
     String? launchDirectory,
     String? apiEndpoint,
     AcpProcessFactory? processFactory,
+    required CursorSessionCleanupService sessionCleanupService,
   }) {
     final cwd = launchDirectory ?? Directory.current.path;
     final launchSpec = CursorBinary.launchSpec(
@@ -69,6 +71,7 @@ class CursorPlugin extends AcpPlugin {
       catalogTracker: catalogTracker,
       commandService: commandService,
       commandTracker: commandTracker,
+      sessionCleanupService: sessionCleanupService,
     );
   }
 
@@ -81,11 +84,13 @@ class CursorPlugin extends AcpPlugin {
     required CursorCatalogTracker catalogTracker,
     required CursorCommandService commandService,
     required super.commandTracker,
+    required CursorSessionCleanupService sessionCleanupService,
     super.processFactory,
   }) : _catalogService = catalogService,
        _catalogCommandListener = catalogCommandListener,
        _catalogTracker = catalogTracker,
        _commandService = commandService,
+       _sessionCleanupService = sessionCleanupService,
        super(
          id: pluginId,
          agentDisplayName: "Cursor",
@@ -96,6 +101,7 @@ class CursorPlugin extends AcpPlugin {
   final AcpCommandListener _catalogCommandListener;
   final CursorCatalogTracker _catalogTracker;
   final CursorCommandService _commandService;
+  final CursorSessionCleanupService _sessionCleanupService;
 
   String? _appliedModelId;
   String? _appliedModeId;
@@ -345,6 +351,11 @@ class CursorPlugin extends AcpPlugin {
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
     await _ensureCatalog(projectId: projectId);
     return _modeAgents();
+  }
+
+  @override
+  Future<void> deletePersistedSession({required String sessionId}) {
+    return _sessionCleanupService.deletePersistedSession(sessionId: sessionId);
   }
 
   @override

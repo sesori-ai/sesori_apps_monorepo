@@ -33,6 +33,10 @@ class BridgeRuntime {
   OrchestratorSession get session => _composition.session;
   CatalogImportService get catalogImportService => _composition.catalogImportService;
 
+  Future<void> reconcileDeletedSessionStorage() {
+    return _composition.deletedSessionStorageCleanupService.reconcile();
+  }
+
   BandwidthTracker createBandwidthTracker() {
     return BandwidthTracker(bytesSent: session.bytesSent);
   }

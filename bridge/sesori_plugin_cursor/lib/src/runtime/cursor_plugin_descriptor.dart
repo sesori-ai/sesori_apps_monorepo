@@ -5,8 +5,11 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandResult, HostProcessCommandExecutor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../api/cursor_session_storage_api.dart";
 import "../cursor_binary.dart";
 import "../cursor_plugin_impl.dart";
+import "../repositories/cursor_session_storage_repository.dart";
+import "../services/cursor_session_cleanup_service.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
@@ -20,6 +23,7 @@ typedef CursorPluginFactory =
       required String launchDirectory,
       required String? apiEndpoint,
       required AcpProcessFactory processFactory,
+      required CursorSessionCleanupService sessionCleanupService,
     });
 
 CursorPlugin _defaultBuildPlugin({
@@ -27,12 +31,14 @@ CursorPlugin _defaultBuildPlugin({
   required String launchDirectory,
   required String? apiEndpoint,
   required AcpProcessFactory processFactory,
+  required CursorSessionCleanupService sessionCleanupService,
 }) {
   return CursorPlugin(
     binaryPath: binaryPath,
     launchDirectory: launchDirectory,
     apiEndpoint: apiEndpoint,
     processFactory: processFactory,
+    sessionCleanupService: sessionCleanupService,
   );
 }
 
@@ -330,6 +336,13 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       processes: host.processes,
       environment: host.environment,
     );
+    final sessionCleanupService = CursorSessionCleanupService(
+      repository: CursorSessionStorageRepository(
+        api: const CursorSessionStorageApi(),
+      ),
+      environment: host.environment,
+      isWindows: io.Platform.isWindows,
+    );
 
     final cursor = (_buildPlugin ?? _defaultBuildPlugin)(
       binaryPath: binaryPath,
@@ -339,6 +352,7 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       launchDirectory: io.Directory.current.path,
       apiEndpoint: apiEndpoint,
       processFactory: processFactory,
+      sessionCleanupService: sessionCleanupService,
     );
 
     final plugin = AcpBridgePlugin(
