@@ -159,6 +159,59 @@ void main() {
       expect(spec.args, ["acp"]);
     });
 
+    test("compact stays user-visible while summarize is dispatched", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final connecting = plugin.ensureConnected();
+      await respond("initialize", const {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      expect(await connecting, isTrue);
+
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond("session/new", const {"sessionId": "s-command"});
+      final session = await creating;
+
+      await plugin.sendCommand(
+        sessionId: session.id,
+        command: "compact",
+        arguments: "focus on the current task",
+        userVisibleArguments: "focus on the current task",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await pump();
+
+      expect(
+        events.whereType<BridgeSseMessagePartUpdated>().single.part.text,
+        "/compact focus on the current task",
+      );
+      final promptFrame = await waitForFrame("session/prompt");
+      final params = (promptFrame["params"] as Map).cast<String, dynamic>();
+      final prompt = params["prompt"] as List;
+      expect(
+        (prompt.single as Map)["text"],
+        "/summarize focus on the current task",
+      );
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": promptFrame["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+    });
+
     test("captureSessionConfig populates providers, effort variants, and mode agents", () async {
       capture(catalogResult(), fromNewSession: true);
 

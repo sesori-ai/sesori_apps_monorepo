@@ -25,7 +25,8 @@ import "acp_stdio_client.dart";
 /// (the "config row" case). Harnesses with quirks (e.g. Cursor's model
 /// selection and `cursor/*` extensions) subclass and override the hooks:
 /// [buildApprovalRegistry], [applyTurnSelection], [authMethodId],
-/// [initializeCapabilityMeta], [getAgents], [getProviders].
+/// [initializeCapabilityMeta], [commandForDispatch], [getAgents],
+/// [getProviders].
 ///
 /// Unlike the codex plugin (which connects to a process listening on a ws
 /// port), this owns the agent subprocess: it spawns lazily on first use and
@@ -167,6 +168,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// Non-standard capability hints sent under `clientCapabilities._meta`
   /// (e.g. Cursor's `parameterizedModelPicker`).
   Map<String, dynamic>? get initializeCapabilityMeta => null;
+
+  /// Maps the user-selected slash command to the command name sent to the ACP
+  /// agent. The original name remains authoritative for client-facing events.
+  String commandForDispatch({required String command}) => command;
 
   /// Builds the approval registry. Override to return a harness-specific
   /// subclass (e.g. one that also handles `cursor/ask_question`). The base
@@ -721,7 +726,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    final body = arguments.isEmpty ? "/$command" : "/$command $arguments";
+    final backendCommand = commandForDispatch(command: command);
+    final body = arguments.isEmpty
+        ? "/$backendCommand"
+        : "/$backendCommand $arguments";
     final visibleBody = userVisibleArguments.isEmpty ? "/$command" : "/$command $userVisibleArguments";
     // Acceptance gate — see [sendPrompt].
     await _connectedClient();
