@@ -4,7 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "codex_app_server_client.dart";
 
-/// Codex methods that we surface as permission asks.
+/// Codex methods that always surface as permission asks.
 ///
 /// These are the JSON-RPC method names codex `app-server` (0.142.0) sends as
 /// server-originated requests when it needs the user to allow / deny a
@@ -14,6 +14,8 @@ import "codex_app_server_client.dart";
 /// `execCommandApproval` requests (emitted only on the legacy
 /// `sendUserTurn`/`sendUserMessage` path we never call) are intentionally not
 /// handled — an unexpected one returns a soft -32601 rather than routing.
+/// Tagged MCP tool-call elicitations are classified from their payload in
+/// `_isMcpToolApproval` because that wire method also carries genuine forms.
 const Set<String> _permissionMethods = {
   "item/commandExecution/requestApproval",
   "item/fileChange/requestApproval",
@@ -22,7 +24,8 @@ const Set<String> _permissionMethods = {
 
 /// Codex methods that we surface as questions (free-form user input or
 /// MCP-driven elicitations). These get rendered by mobile as a question
-/// prompt rather than the binary allow/deny UI.
+/// prompt rather than the binary allow/deny UI unless an elicitation is
+/// explicitly tagged as an MCP tool-call approval.
 const Set<String> _questionMethods = {
   // v2 wire names.
   "item/tool/requestUserInput",
@@ -40,6 +43,10 @@ const String _elicitationMethod = "mcpServer/elicitation/request";
 /// The v2 user-input method. Its response is
 /// `{answers: {<questionId>: {answers: [..]}}}`.
 const String _userInputMethod = "item/tool/requestUserInput";
+
+const String _elicitationApprovalKindKey = "codex_approval_kind";
+
+enum _ElicitationApprovalKind { mcpToolCall, toolSuggestion }
 
 /// A pending codex approval, kept until the user answers or codex
 /// rescinds it.
@@ -255,8 +262,9 @@ class ApprovalRegistry {
 
   void _handle(CodexServerRequest request) {
     final method = request.method;
-    final isPermission = _permissionMethods.contains(method);
-    final isQuestion = _questionMethods.contains(method);
+    final isMcpToolApproval = method == _elicitationMethod && _isMcpToolApproval(request.params);
+    final isPermission = _permissionMethods.contains(method) || isMcpToolApproval;
+    final isQuestion = _questionMethods.contains(method) && !isMcpToolApproval;
     if (!isPermission && !isQuestion) {
       // Don't recognise — return a soft error so codex doesn't hang.
       _respondError(request.id, -32601, "method not handled by bridge: $method");
@@ -348,10 +356,31 @@ class ApprovalRegistry {
   /// request's wire method:
   ///   - command/file change   → `{decision: accept|acceptForSession|decline}`
   ///   - permissions request    → `{permissions: GrantedPermissionProfile, scope}`
+  ///   - MCP tool approval      → `{action, content, _meta}`
   Map<String, dynamic> _permissionResponse(
     _PendingApproval entry,
     PluginPermissionReply reply,
   ) {
+    if (entry.method == _elicitationMethod) {
+      return switch (reply) {
+        PluginPermissionReply.once => const {
+          "action": "accept",
+          "content": null,
+          "_meta": null,
+        },
+        PluginPermissionReply.always => const {
+          "action": "accept",
+          "content": null,
+          "_meta": {"persist": "always"},
+        },
+        PluginPermissionReply.reject => const {
+          "action": "decline",
+          "content": null,
+          "_meta": null,
+        },
+      };
+    }
+
     if (entry.method == _permissionsRequestMethod) {
       // Grant the requested profile on approve (turn- or session-scoped);
       // grant nothing on reject. RequestPermissionProfile and
@@ -439,7 +468,35 @@ class ApprovalRegistry {
     if (command is String && command.isNotEmpty) return command;
     final reason = params["reason"];
     if (reason is String && reason.isNotEmpty) return reason;
+    final message = params["message"];
+    if (message is String && message.isNotEmpty) return message;
     return method;
+  }
+
+  bool _isMcpToolApproval(Map<String, dynamic> params) {
+    if (params["mode"] != "form") return false;
+    final meta = _asMap(params["_meta"]);
+    if (_parseElicitationApprovalKind(
+          meta?[_elicitationApprovalKindKey],
+        ) !=
+        _ElicitationApprovalKind.mcpToolCall) {
+      return false;
+    }
+    if (!params.containsKey("requestedSchema")) return false;
+    final rawSchema = params["requestedSchema"];
+    if (rawSchema == null) return true;
+    final schema = _asMap(rawSchema);
+    if (schema?["type"] != "object") return false;
+    final properties = _asMap(schema?["properties"]);
+    return properties != null && properties.isEmpty;
+  }
+
+  _ElicitationApprovalKind? _parseElicitationApprovalKind(Object? raw) {
+    return switch (raw) {
+      "mcp_tool_call" => _ElicitationApprovalKind.mcpToolCall,
+      "tool_suggestion" => _ElicitationApprovalKind.toolSuggestion,
+      _ => null,
+    };
   }
 
   String? _extractSessionId(Map<String, dynamic> params) {

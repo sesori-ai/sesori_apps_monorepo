@@ -328,6 +328,114 @@ void main() {
     // --- v2 elicitation + user input questions ---
 
     test(
+      "empty MCP tool-call elicitation surfaces as an approvable permission",
+      () async {
+        requests.add(
+          const CodexServerRequest(
+            id: 199,
+            method: "mcpServer/elicitation/request",
+            params: {
+              "threadId": "t-3",
+              "turnId": "turn-1",
+              "serverName": "codex_apps",
+              "mode": "form",
+              "message": "Allow Calendar to create an event?",
+              "_meta": {
+                "codex_approval_kind": "mcp_tool_call",
+                "persist": ["session", "always"],
+                "tool_name": "calendar_create_event",
+              },
+              "requestedSchema": {
+                "type": "object",
+                "properties": <String, Object?>{},
+              },
+            },
+          ),
+        );
+        await pump();
+
+        final asked = emitted.single as BridgeSsePermissionAsked;
+        expect(asked.sessionID, equals("t-3"));
+        expect(asked.description, equals("Allow Calendar to create an event?"));
+        expect(registry.pendingPermissionsForSession("t-3"), hasLength(1));
+        expect(registry.pendingForSession("t-3"), isEmpty);
+
+        final replied = registry.replyPermission(
+          asked.requestID,
+          PluginPermissionReply.once,
+        );
+        expect(replied, isTrue);
+        expect(respondCalls.single.id, equals(199));
+        expect(
+          respondCalls.single.result,
+          equals({
+            "action": "accept",
+            "content": null,
+            "_meta": null,
+          }),
+        );
+      },
+    );
+
+    test(
+      "MCP tool-call metadata cannot turn a non-empty form into a permission",
+      () async {
+        requests.add(
+          const CodexServerRequest(
+            id: 198,
+            method: "mcpServer/elicitation/request",
+            params: {
+              "threadId": "t-3",
+              "serverName": "custom-mcp",
+              "mode": "form",
+              "message": "Which environment should I use?",
+              "_meta": {"codex_approval_kind": "mcp_tool_call"},
+              "requestedSchema": {
+                "type": "object",
+                "properties": {
+                  "environment": {"type": "string"},
+                },
+              },
+            },
+          ),
+        );
+        await pump();
+
+        expect(emitted.single, isA<BridgeSseQuestionAsked>());
+        expect(registry.pendingPermissionsForSession("t-3"), isEmpty);
+        expect(registry.pendingForSession("t-3"), hasLength(1));
+      },
+    );
+
+    test("tool suggestions remain questions", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 197,
+          method: "mcpServer/elicitation/request",
+          params: {
+            "threadId": "t-3",
+            "serverName": "codex_apps",
+            "mode": "form",
+            "message": "Install Google Calendar?",
+            "_meta": {
+              "codex_approval_kind": "tool_suggestion",
+              "tool_type": "connector",
+              "suggest_type": "install",
+            },
+            "requestedSchema": {
+              "type": "object",
+              "properties": <String, Object?>{},
+            },
+          },
+        ),
+      );
+      await pump();
+
+      expect(emitted.single, isA<BridgeSseQuestionAsked>());
+      expect(registry.pendingPermissionsForSession("t-3"), isEmpty);
+    });
+
+    test(
       "mcpServer/elicitation/request surfaces as QuestionAsked and is pending",
       () async {
         requests.add(
