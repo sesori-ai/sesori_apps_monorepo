@@ -160,6 +160,43 @@ void main() {
       expect(tracker.length, 0);
     });
 
+    test("successor child replaces stale pending ancestry and translations", () {
+      final tracker = SessionEventTracker(maxPendingEntriesPerPlugin: 4);
+      tracker.addChild(
+        event: _pending(pluginId: "a", sessionId: "child", parentId: "root"),
+      );
+      tracker.addTranslation(
+        event: _pendingTranslation(pluginId: "a", backendSessionId: "child"),
+      );
+      const successor = Session(
+        id: "child",
+        pluginId: "a",
+        projectID: "project",
+        directory: "/repo/child",
+        parentID: "root",
+        title: null,
+        time: null,
+        pullRequest: null,
+        promptDefaults: null,
+        branchName: null,
+      );
+
+      tracker.addChild(
+        event: PendingSessionEvent(
+          pluginId: "a",
+          generation: 2,
+          event: BridgeSseSessionCreated(info: successor.toJson()),
+          session: successor,
+          projectionUpdatedAt: 3,
+        ),
+      );
+
+      final children = tracker.takeChildren(pluginId: "a", backendParentId: "root");
+      expect(children.map((event) => event.generation), [2]);
+      expect(tracker.takeTranslations(pluginId: "a", backendSessionId: "child"), isEmpty);
+      expect(tracker.length, 0);
+    });
+
     test("rejects translation retention without a pending binding", () {
       final tracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1);
 
