@@ -84,6 +84,22 @@ void main() {
       );
     });
 
+    test("an initial prompt uses the history-stable message and part identity", () {
+      final events = mapper.mapInitialPrompt(
+        sessionId: "s1",
+        text: "Hello",
+      );
+
+      final message = shared.Message.fromJson(
+        events.whereType<BridgeSseMessageUpdated>().single.info,
+      );
+      final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(message.id, "s1-initial-user");
+      expect(part.id, "s1-initial-user-text");
+      expect(part.messageID, message.id);
+      expect(part.text, "Hello");
+    });
+
     test("a live agent user echo is dropped", () {
       mapper.mapSentPrompt(
         sessionId: "s1",

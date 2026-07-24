@@ -33,6 +33,7 @@ Future<void> main(List<String> args) async {
     directory: cwd,
     parentSessionId: null,
     parts: [PluginPromptPart.text(text: prompt)],
+    userVisibleText: prompt,
     variant: null,
     agent: null,
     model: null,

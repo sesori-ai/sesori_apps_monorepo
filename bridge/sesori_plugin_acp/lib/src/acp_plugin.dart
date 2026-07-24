@@ -100,6 +100,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   final Map<String, PluginSessionStatus> _sessionStatuses = {};
 
+  /// Sessions whose initial user message was synthesized by this bridge
+  /// process. History replay reuses that message identity to avoid a load/SSE
+  /// race rendering the same prompt twice.
+  final Set<String> _syntheticInitialPromptSessions = {};
+
   /// Per-session turn-queue state. ACP agents run one turn per session at a
   /// time, so turns are serialized behind each session's chain here; all
   /// decisions live on this class — the state object only holds fields.
@@ -625,6 +630,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required String? userVisibleText,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
@@ -662,6 +668,24 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
+    final created = PluginSession(
+      id: session.sessionId,
+      projectID: canonicalDirectory,
+      directory: canonicalDirectory,
+      parentID: parentSessionId,
+      title: null,
+      time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
+    );
+    emitEvent(eventMapper.mapCreatedSession(session: created));
+    if (userVisibleText != null && userVisibleText.trim().isNotEmpty) {
+      _syntheticInitialPromptSessions.add(session.sessionId);
+      eventMapper
+          .mapInitialPrompt(
+            sessionId: session.sessionId,
+            text: userVisibleText,
+          )
+          .forEach(emitEvent);
+    }
     if (parts.isEmpty) {
       // No first turn to carry the selection: apply it now so the session's
       // model/mode are in place for whichever turn comes first later.
@@ -683,14 +707,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         agent: agent,
       );
     }
-    return PluginSession(
-      id: session.sessionId,
-      projectID: canonicalDirectory,
-      directory: canonicalDirectory,
-      parentID: parentSessionId,
-      title: null,
-      time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
-    );
+    return created;
   }
 
   @override
@@ -1143,6 +1160,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     _inFlightTurnSessions.remove(sessionId);
     if (_lastTurnSessionId == sessionId) _lastTurnSessionId = null;
     _sessionStatuses.remove(sessionId);
+    _syntheticInitialPromptSessions.remove(sessionId);
     _residentSessions.remove(sessionId);
     _sessionDirectories.remove(sessionId);
     // Drops the session's project attribution plus all other per-session mapper
@@ -1196,6 +1214,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       agentId: agentDisplayName,
       modelId: eventMapper.modelForSession(sessionId),
       providerId: eventMapper.providerForSession(sessionId),
+      initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
+          ? AcpEventMapper.initialUserMessageId(sessionId)
+          : null,
       // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
       // the live stream does, so reloaded history renders it identically.
       haltClassifier: eventMapper.classifyHaltNotice,

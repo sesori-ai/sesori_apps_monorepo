@@ -15,11 +15,13 @@ class AcpReplayCollector {
     required this.agentId,
     this.modelId,
     this.providerId,
+    required this.initialUserMessageId,
     required this.haltClassifier,
   });
 
   final String sessionId;
   final String agentId;
+  final String? initialUserMessageId;
 
   /// Classifies a fully-accumulated assistant message as a backend halt notice
   /// (see [AcpEventMapper.classifyHaltNotice]) so a reloaded session renders the
@@ -35,6 +37,7 @@ class AcpReplayCollector {
 
   final List<_Draft> _drafts = [];
   int _seq = 0;
+  bool _hasUserDraft = false;
 
   void consume(Map<String, dynamic> params) {
     final update = _asMap(params["update"]);
@@ -229,11 +232,16 @@ class AcpReplayCollector {
   }
 
   _Draft _newDraft(String role, {required String? messageId}) {
+    final isFirstUser = role == "user" && !_hasUserDraft;
+    if (role == "user") _hasUserDraft = true;
+    final defaultId = messageId != null && messageId.isNotEmpty
+        ? "$sessionId-m$messageId-$role"
+        : "$sessionId-h${_seq++}-$role";
     final draft = _Draft(
       role: role,
-      id: messageId != null && messageId.isNotEmpty
-          ? "$sessionId-m$messageId-$role"
-          : "$sessionId-h${_seq++}-$role",
+      id: isFirstUser && initialUserMessageId != null
+          ? initialUserMessageId!
+          : defaultId,
       acpMessageId: messageId,
     );
     _drafts.add(draft);

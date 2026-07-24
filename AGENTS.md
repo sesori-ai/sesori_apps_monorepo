@@ -65,11 +65,16 @@ eagerly "just in case."
 - Never hand-edit generated files. Change their source and run the generator.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
-- App/bridge public and wire changes must consider compatibility in both
-  directions: older app -> newer bridge and newer app -> older bridge. Preserve
-  existing behavior with honest defaults or graceful degradation where
-  possible; when an older peer cannot support new behavior, surface that
-  limitation explicitly instead of silently breaking an existing flow.
+- Backward and forward compatibility is required only for transport
+  contracts exchanged between the client and bridge, because an older app can
+  use a newer bridge and a newer app can use an older bridge. Preserve those
+  wire contracts with honest defaults or graceful degradation where possible;
+  when an older peer cannot support new behavior, surface that limitation
+  explicitly instead of silently breaking an existing flow.
+- Dart/Flutter modules and plugin interfaces/packages have no external
+  consumers outside this repository and update together. Do not add
+  compatibility shims, optional parameters, or legacy API paths for those
+  internal contracts; update every in-repository consumer in lockstep instead.
 - A recovered failure that continues must remain observable. Do not add a
   redundant log when the error is rethrown or returned as an explicit failure.
 

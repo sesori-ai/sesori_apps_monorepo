@@ -112,6 +112,7 @@ void main() {
         directory: directory,
         parentSessionId: null,
         parts: const [],
+        userVisibleText: null,
         variant: null,
         agent: null,
         model: null,
@@ -153,7 +154,7 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
-    test("an initial create prompt is left to history replay", () async {
+    test("an initial create prompt emits its user-visible text only once", () async {
       await connect();
       emitted.clear();
 
@@ -164,6 +165,7 @@ void main() {
           const PluginPromptPart.text(text: "[SYSTEM CONTEXT — IMPORTANT] internal"),
           const PluginPromptPart.text(text: "visible prompt"),
         ],
+        userVisibleText: "visible prompt",
         variant: null,
         agent: null,
         model: null,
@@ -173,9 +175,30 @@ void main() {
       await creating;
       await pump();
 
-      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+      final created = emitted.whereType<BridgeSseSessionCreated>().single;
+      expect(created.info["id"], "s1");
+      final message = emitted.whereType<BridgeSseMessageUpdated>().single;
+      expect(message.info["role"], "user");
+      final part = emitted.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(part.text, "visible prompt");
+      expect(part.text, isNot(contains("SYSTEM CONTEXT")));
 
       final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "visible prompt"},
+          },
+        },
+      });
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), hasLength(1));
+      expect(emitted.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
@@ -301,6 +324,7 @@ void main() {
         directory: cwd,
         parentSessionId: null,
         parts: const [],
+        userVisibleText: null,
         variant: null,
         agent: null,
         model: null,
@@ -541,6 +565,7 @@ void main() {
         directory: cwd,
         parentSessionId: null,
         parts: const [],
+        userVisibleText: null,
         variant: null,
         agent: null,
         model: null,

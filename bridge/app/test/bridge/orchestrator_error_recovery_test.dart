@@ -296,6 +296,7 @@ class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required String? userVisibleText,
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,

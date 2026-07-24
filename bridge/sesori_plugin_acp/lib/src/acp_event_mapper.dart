@@ -207,6 +207,33 @@ class AcpEventMapper {
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
 
+  static String initialUserMessageId(String sessionId) => "$sessionId-initial-user";
+
+  /// Maps the user-authored portion of a creation prompt with an identity that
+  /// the same-process history replay can reuse. Matching message and part ids
+  /// let the client upsert either arrival order instead of rendering both.
+  List<BridgeSseEvent> mapInitialPrompt({
+    required String sessionId,
+    required String text,
+  }) {
+    if (text.trim().isEmpty) return const [];
+    final messageId = initialUserMessageId(sessionId);
+    return [
+      BridgeSseMessageUpdated(
+        info: _messageFor(_ChunkRole.user, messageId, sessionId).toJson(),
+      ),
+      BridgeSseMessagePartUpdated(
+        part: _part(
+          partId: "$messageId-text",
+          messageId: messageId,
+          sessionId: sessionId,
+          type: PluginMessagePartType.text,
+          text: text,
+        ),
+      ),
+    ];
+  }
+
   /// Maps an accepted outbound prompt to its canonical live user message.
   List<BridgeSseEvent> mapSentPrompt({
     required String sessionId,
@@ -236,6 +263,33 @@ class AcpEventMapper {
           ),
         ),
     ];
+  }
+
+  /// Maps a newly created ACP session before any prompt-derived events. The
+  /// bridge uses this root event to hold those events until its durable
+  /// backend-to-client session binding has committed.
+  BridgeSseSessionCreated mapCreatedSession({required PluginSession session}) {
+    final time = session.time;
+    return BridgeSseSessionCreated(
+      info: shared.Session(
+        branchName: null,
+        id: session.id,
+        pluginId: pluginId,
+        projectID: session.projectID,
+        directory: session.directory,
+        parentID: session.parentID,
+        title: session.title,
+        time: time == null
+            ? null
+            : shared.SessionTime(
+                created: time.created,
+                updated: time.updated,
+                archived: time.archived,
+              ),
+        pullRequest: null,
+        promptDefaults: null,
+      ).toJson(),
+    );
   }
 
   /// Maps a single notification to zero or more bridge events.
