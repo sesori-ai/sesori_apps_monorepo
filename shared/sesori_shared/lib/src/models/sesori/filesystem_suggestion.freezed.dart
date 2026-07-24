@@ -431,4 +431,141 @@ as bool,
 
 }
 
+
+/// @nodoc
+mixin _$FilesystemCreateDirectoryRequest {
+
+ String get parentPath; String get name;
+/// Create a copy of FilesystemCreateDirectoryRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FilesystemCreateDirectoryRequestCopyWith<FilesystemCreateDirectoryRequest> get copyWith => _$FilesystemCreateDirectoryRequestCopyWithImpl<FilesystemCreateDirectoryRequest>(this as FilesystemCreateDirectoryRequest, _$identity);
+
+  /// Serializes this FilesystemCreateDirectoryRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemCreateDirectoryRequest&&(identical(other.parentPath, parentPath) || other.parentPath == parentPath)&&(identical(other.name, name) || other.name == name));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,parentPath,name);
+
+@override
+String toString() {
+  return 'FilesystemCreateDirectoryRequest(parentPath: $parentPath, name: $name)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $FilesystemCreateDirectoryRequestCopyWith<$Res>  {
+  factory $FilesystemCreateDirectoryRequestCopyWith(FilesystemCreateDirectoryRequest value, $Res Function(FilesystemCreateDirectoryRequest) _then) = _$FilesystemCreateDirectoryRequestCopyWithImpl;
+@useResult
+$Res call({
+ String parentPath, String name
+});
+
+
+
+
+}
+/// @nodoc
+class _$FilesystemCreateDirectoryRequestCopyWithImpl<$Res>
+    implements $FilesystemCreateDirectoryRequestCopyWith<$Res> {
+  _$FilesystemCreateDirectoryRequestCopyWithImpl(this._self, this._then);
+
+  final FilesystemCreateDirectoryRequest _self;
+  final $Res Function(FilesystemCreateDirectoryRequest) _then;
+
+/// Create a copy of FilesystemCreateDirectoryRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? parentPath = null,Object? name = null,}) {
+  return _then(_self.copyWith(
+parentPath: null == parentPath ? _self.parentPath : parentPath // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _FilesystemCreateDirectoryRequest implements FilesystemCreateDirectoryRequest {
+  const _FilesystemCreateDirectoryRequest({required this.parentPath, required this.name});
+  factory _FilesystemCreateDirectoryRequest.fromJson(Map<String, dynamic> json) => _$FilesystemCreateDirectoryRequestFromJson(json);
+
+@override final  String parentPath;
+@override final  String name;
+
+/// Create a copy of FilesystemCreateDirectoryRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$FilesystemCreateDirectoryRequestCopyWith<_FilesystemCreateDirectoryRequest> get copyWith => __$FilesystemCreateDirectoryRequestCopyWithImpl<_FilesystemCreateDirectoryRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$FilesystemCreateDirectoryRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemCreateDirectoryRequest&&(identical(other.parentPath, parentPath) || other.parentPath == parentPath)&&(identical(other.name, name) || other.name == name));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,parentPath,name);
+
+@override
+String toString() {
+  return 'FilesystemCreateDirectoryRequest(parentPath: $parentPath, name: $name)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$FilesystemCreateDirectoryRequestCopyWith<$Res> implements $FilesystemCreateDirectoryRequestCopyWith<$Res> {
+  factory _$FilesystemCreateDirectoryRequestCopyWith(_FilesystemCreateDirectoryRequest value, $Res Function(_FilesystemCreateDirectoryRequest) _then) = __$FilesystemCreateDirectoryRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String parentPath, String name
+});
+
+
+
+
+}
+/// @nodoc
+class __$FilesystemCreateDirectoryRequestCopyWithImpl<$Res>
+    implements _$FilesystemCreateDirectoryRequestCopyWith<$Res> {
+  __$FilesystemCreateDirectoryRequestCopyWithImpl(this._self, this._then);
+
+  final _FilesystemCreateDirectoryRequest _self;
+  final $Res Function(_FilesystemCreateDirectoryRequest) _then;
+
+/// Create a copy of FilesystemCreateDirectoryRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? parentPath = null,Object? name = null,}) {
+  return _then(_FilesystemCreateDirectoryRequest(
+parentPath: null == parentPath ? _self.parentPath : parentPath // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
 // dart format on

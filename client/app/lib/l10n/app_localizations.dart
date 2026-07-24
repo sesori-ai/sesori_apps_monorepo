@@ -1291,23 +1291,53 @@ abstract class AppLocalizations {
   /// **'Add Project'**
   String get addProject;
 
-  /// No description provided for @projectNameHint.
+  /// Primary action of the add-project sheet: registers the folder the browser is currently showing as a Sesori project.
   ///
   /// In en, this message translates to:
-  /// **'Project name'**
-  String get projectNameHint;
+  /// **'Add as new project'**
+  String get addAsNewProject;
 
-  /// No description provided for @createProjectButton.
+  /// Secondary action of the add-project sheet: makes a new folder inside the one being browsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new folder'**
+  String get createNewFolder;
+
+  /// No description provided for @newFolderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New folder'**
+  String get newFolderTitle;
+
+  /// No description provided for @newFolderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder name'**
+  String get newFolderHint;
+
+  /// No description provided for @newFolderCreate.
   ///
   /// In en, this message translates to:
   /// **'Create'**
-  String get createProjectButton;
+  String get newFolderCreate;
 
-  /// No description provided for @openAsProject.
+  /// No description provided for @newFolderExists.
   ///
   /// In en, this message translates to:
-  /// **'Open as Project'**
-  String get openAsProject;
+  /// **'A file or folder with that name already exists here'**
+  String get newFolderExists;
+
+  /// No description provided for @newFolderFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create the folder'**
+  String get newFolderFailed;
+
+  /// No description provided for @newFolderUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori Bridge on your computer to create folders from here.'**
+  String get newFolderUnsupported;
 
   /// No description provided for @emptyDirectory.
   ///
@@ -1333,10 +1363,10 @@ abstract class AppLocalizations {
   /// **'Go Back'**
   String get fetchDirectoryGoBack;
 
-  /// No description provided for @gitRepoBadge.
+  /// Tag on a folder row in the add-project browser marking it as a git repository. Not necessarily hosted on GitHub — the bridge only reports that a repository is present.
   ///
   /// In en, this message translates to:
-  /// **'git'**
+  /// **'Git'**
   String get gitRepoBadge;
 
   /// No description provided for @projectHidden.
@@ -1387,24 +1417,6 @@ abstract class AppLocalizations {
   /// **'Add a project to get started'**
   String get addProjectPrompt;
 
-  /// No description provided for @creatingProject.
-  ///
-  /// In en, this message translates to:
-  /// **'Creating project...'**
-  String get creatingProject;
-
-  /// No description provided for @discoveringProject.
-  ///
-  /// In en, this message translates to:
-  /// **'Discovering project...'**
-  String get discoveringProject;
-
-  /// No description provided for @projectCreated.
-  ///
-  /// In en, this message translates to:
-  /// **'Project created'**
-  String get projectCreated;
-
   /// No description provided for @projectDiscovered.
   ///
   /// In en, this message translates to:
@@ -1452,12 +1464,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I understand'**
   String get addProjectGitSetupIncompleteAcknowledge;
-
-  /// No description provided for @projectCreateFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to create project'**
-  String get projectCreateFailed;
 
   /// No description provided for @projectDiscoverFailed.
   ///

@@ -951,6 +951,85 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
+    // Test 4c3: createDirectory
+    // -------------------------------------------------------------------------
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "createDirectory: returns the created entry and leaves the project list alone",
+      build: () {
+        when(
+          () => mockProjectRepository.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+        when(
+          () => mockProjectRepository.createDirectory(
+            parentPath: any(named: "parentPath"),
+            name: any(named: "name"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const FilesystemSuggestion(path: "/dev/new", name: "new", isGitRepo: false),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final result = await cubit.createDirectory(parentPath: "/dev", name: "new");
+        expect(result, isA<CreateDirectorySuccess>());
+        expect((result as CreateDirectorySuccess).directory.path, "/dev/new");
+      },
+      skip: 1,
+      // Making a folder is not adding a project, so nothing about the list
+      // changed and it is not refetched.
+      expect: () => <ProjectListState>[],
+      verify: (_) {
+        verify(() => mockProjectRepository.listProjects()).called(1);
+      },
+    );
+
+    for (final (label, error, expected) in <(String, ApiError, Matcher)>[
+      (
+        "409 conflict",
+        ApiError.nonSuccessCode(errorCode: 409, rawErrorString: "directory already exists"),
+        isA<CreateDirectoryAlreadyExists>(),
+      ),
+      (
+        "403 denial",
+        ApiError.nonSuccessCode(errorCode: 403, rawErrorString: "permission denied: /dev"),
+        isA<CreateDirectoryPermissionDenied>(),
+      ),
+      // A bridge from before the endpoint existed has no route to answer with.
+      (
+        "404 from an older bridge",
+        ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found"),
+        isA<CreateDirectoryUnsupported>(),
+      ),
+      ("any other failure", ApiError.generic(), isA<CreateDirectoryError>()),
+    ]) {
+      blocTest<ProjectListCubit, ProjectListState>(
+        "createDirectory: maps a $label to its own outcome",
+        build: () {
+          when(
+            () => mockProjectRepository.listProjects(),
+          ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+          when(
+            () => mockProjectRepository.createDirectory(
+              parentPath: any(named: "parentPath"),
+              name: any(named: "name"),
+            ),
+          ).thenAnswer((_) async => ApiResponse.error(error));
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          expect(await cubit.createDirectory(parentPath: "/dev", name: "new"), expected);
+        },
+        skip: 1,
+        expect: () => <ProjectListState>[],
+      );
+    }
+
+    // -------------------------------------------------------------------------
     // Test 4d: discoverProject success
     // -------------------------------------------------------------------------
 

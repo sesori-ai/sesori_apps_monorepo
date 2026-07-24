@@ -53,3 +53,17 @@ Map<String, dynamic> _$FilesystemSuggestionToJson(
   'name': instance.name,
   'isGitRepo': instance.isGitRepo,
 };
+
+_FilesystemCreateDirectoryRequest _$FilesystemCreateDirectoryRequestFromJson(
+  Map json,
+) => _FilesystemCreateDirectoryRequest(
+  parentPath: json['parentPath'] as String,
+  name: json['name'] as String,
+);
+
+Map<String, dynamic> _$FilesystemCreateDirectoryRequestToJson(
+  _FilesystemCreateDirectoryRequest instance,
+) => <String, dynamic>{
+  'parentPath': instance.parentPath,
+  'name': instance.name,
+};

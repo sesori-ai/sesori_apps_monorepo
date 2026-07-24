@@ -32,7 +32,8 @@ class FilesystemDirectoryNotFoundException implements Exception {
 /// The kind of entity at a path, as resolved by [FilesystemRepository.classifyPath].
 enum FilesystemEntityKind { notFound, notDirectory, directory }
 
-/// The outcome of preparing a directory for project creation.
+/// The outcome of preparing a directory for creation. [alreadyExists] covers
+/// any entity occupying the target path, not only a directory.
 enum CreatableDirectoryStatus { creatable, parentMissing, alreadyExists }
 
 sealed class BoundedTextFileReadResult {}
@@ -244,23 +245,29 @@ class FilesystemRepository {
 
   /// Checks whether [path] can be created as a new project directory.
   ///
+  /// Anything already occupying [path] — a directory, a file, or a link —
+  /// reports [CreatableDirectoryStatus.alreadyExists]: the name is taken either
+  /// way, and creation would fail on all of them. Reporting only the directory
+  /// case would leave a file with that name to surface later as a generic
+  /// creation failure rather than the name conflict it is.
+  ///
   /// Throws [FilesystemPermissionDeniedException] on an OS permission denial.
   CreatableDirectoryStatus checkCreatableDirectory({required String path}) {
     return _guard(path: path, () {
       if (!_filesystemApi.directoryExists(_filesystemApi.parentPath(path))) {
         return CreatableDirectoryStatus.parentMissing;
       }
-      if (_filesystemApi.directoryExists(path)) {
+      if (_filesystemApi.entityType(path) != FileSystemEntityType.notFound) {
         return CreatableDirectoryStatus.alreadyExists;
       }
       return CreatableDirectoryStatus.creatable;
     });
   }
 
-  /// Creates the project directory at [path].
+  /// Creates the directory at [path].
   ///
   /// Throws [FilesystemPermissionDeniedException] on an OS permission denial.
-  void createProjectDirectory({required String path}) {
+  void createDirectory({required String path}) {
     _guard(path: path, () {
       _filesystemApi.createDirectory(path);
     });
