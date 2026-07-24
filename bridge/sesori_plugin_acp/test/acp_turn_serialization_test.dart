@@ -154,7 +154,7 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
-    test("an initial create prompt emits only its user-visible text", () async {
+    test("an initial create prompt emits its user-visible text only once", () async {
       await connect();
       emitted.clear();
 
@@ -184,6 +184,21 @@ void main() {
       expect(part.text, isNot(contains("SYSTEM CONTEXT")));
 
       final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "visible prompt"},
+          },
+        },
+      });
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), hasLength(1));
+      expect(emitted.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
