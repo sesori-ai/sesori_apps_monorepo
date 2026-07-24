@@ -65,12 +65,11 @@ void main() {
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
         expect(await plugin.getSessionStatuses(), isEmpty);
         expect(plugin.getActiveSessionsSummary(), isEmpty);
-        // With no config or rollout history, codex still surfaces its single
-        // agent (the harness identity) but with no resolvable model, and no
-        // providers.
+        // With no config or rollout history, Codex still surfaces its two
+        // collaboration modes without a resolvable model, and no providers.
         final agents = await plugin.getAgents(projectId: "/repo/example");
-        expect(agents.single.name, equals("codex"));
-        expect(agents.single.model, isNull);
+        expect(agents.map((agent) => agent.name), equals(["Default", "Plan"]));
+        expect(agents.every((agent) => agent.model == null), isTrue);
         expect(
           (await plugin.getProviders(projectId: "/repo/example")).providers,
           isEmpty,
@@ -143,22 +142,25 @@ void main() {
           keepaliveInterval: const Duration(seconds: 30),
         );
 
-        final agent = (await plugin.getAgents(projectId: "/repo/example")).single;
-        expect(agent.name, equals("codex"));
+        final agents = await plugin.getAgents(projectId: "/repo/example");
+        expect(agents.map((agent) => agent.name), equals(["Default", "Plan"]));
+        final agent = agents.first;
+        expect(agent.name, equals("Default"));
         expect(agent.model?.modelID, equals("gpt-5.4-codex"));
         expect(agent.model?.providerID, equals("openai"));
+        expect(agents.last.model, equals(agent.model));
 
         final providers = (await plugin.getProviders(projectId: "/repo/example")).providers;
         expect(providers.single.id, equals("openai"));
         expect(providers.single.defaultModelID, equals("gpt-5.4-codex"));
 
         // The other derived project resolves its own rollout's defaults.
-        final otherAgent = (await plugin.getAgents(projectId: "/repo/other")).single;
+        final otherAgent = (await plugin.getAgents(projectId: "/repo/other")).first;
         expect(otherAgent.model?.modelID, equals("claude-x"));
         expect(otherAgent.model?.providerID, equals("anthropic"));
 
         // A project with no sessions falls back to the global config.toml.
-        final freshAgent = (await plugin.getAgents(projectId: "/repo/fresh")).single;
+        final freshAgent = (await plugin.getAgents(projectId: "/repo/fresh")).first;
         expect(freshAgent.model?.modelID, equals("gpt-5.5"));
         expect(freshAgent.model?.providerID, equals("openai"));
         await plugin.dispose();
@@ -189,6 +191,12 @@ void main() {
       fake.outgoing.first.then((Object? frame) {
         final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
         expect(decoded["method"], equals("initialize"));
+        final params = decoded["params"] as Map<String, dynamic>;
+        final capabilities = params["capabilities"] as Map<String, dynamic>;
+        expect(
+          capabilities["experimentalApi"],
+          isTrue,
+        );
         fake.serverSink.add(
           jsonEncode({
             "jsonrpc": "2.0",

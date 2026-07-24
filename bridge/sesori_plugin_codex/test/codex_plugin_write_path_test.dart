@@ -107,6 +107,7 @@ void main() {
         const _Response(
           result: {
             "thread": {"id": "t-existing", "cwd": "/work/sample"},
+            "model": "gpt-5.4",
           },
         ),
         const _Response(result: {"turnId": "u-skill"}),
@@ -120,7 +121,7 @@ void main() {
         arguments: "staged changes",
         userVisibleArguments: "staged changes",
         variant: null,
-        agent: null,
+        agent: "Plan",
         model: null,
       );
       await plugin.sendCommand(
@@ -146,6 +147,14 @@ void main() {
       });
       final input = fake.sentParamsFor("turn/start")["input"] as List;
       expect(input.single["text"], r"$review staged changes");
+      expect(fake.sentParamsFor("turn/start")["collaborationMode"], {
+        "mode": "plan",
+        "settings": {
+          "model": "gpt-5.4",
+          "reasoning_effort": "medium",
+          "developer_instructions": null,
+        },
+      });
     });
 
     test("a live event emitted during the first turn is scoped to the new session's directory", () async {
@@ -317,9 +326,7 @@ void main() {
       final stopwatch = Stopwatch()..start();
 
       await expectLater(
-        plugin
-            .renameSession(sessionId: "t-stalled", title: "Renamed")
-            .timeout(const Duration(seconds: 4)),
+        plugin.renameSession(sessionId: "t-stalled", title: "Renamed").timeout(const Duration(seconds: 4)),
         throwsA(isA<TimeoutException>()),
       );
 
@@ -354,6 +361,40 @@ void main() {
       expect(methods, equals(["initialize", "thread/resume", "turn/start"]));
       expect(fake.sentParamsFor("thread/resume")["threadId"], equals("t-existing"));
       expect(fake.sentParamsFor("turn/start")["threadId"], equals("t-existing"));
+    });
+
+    test("sendPrompt sends Default mode explicitly so it replaces Plan mode", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "model": "gpt-5.4-mini",
+            "modelProvider": "openai",
+            "thread": {"id": "t-default-mode"},
+          },
+        ),
+        const _Response(result: {"turnId": "u-default"}),
+      ]);
+
+      await plugin.sendPrompt(
+        sessionId: "t-default-mode",
+        parts: const [PluginPromptPart.text(text: "implement it")],
+        variant: null,
+        agent: "Default",
+        model: null,
+      );
+
+      final params = fake.sentParamsFor("turn/start");
+      expect(params.containsKey("model"), isFalse);
+      expect(params.containsKey("effort"), isFalse);
+      expect(params["collaborationMode"], {
+        "mode": "default",
+        "settings": {
+          "model": "gpt-5.4-mini",
+          "reasoning_effort": null,
+          "developer_instructions": null,
+        },
+      });
     });
 
     test("sendPrompt does not re-resume a thread created in this run", () async {
@@ -894,7 +935,7 @@ void main() {
       expect(result.providers.single.defaultModelID, equals("gpt-5.4-mini"));
     });
 
-    test("sendPrompt forwards the selected variant as the turn/start effort", () async {
+    test("sendPrompt forwards the selected variant in Plan mode settings", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -911,11 +952,20 @@ void main() {
         sessionId: "t-effort",
         parts: const [PluginPromptPart.text(text: "think hard")],
         variant: const PluginSessionVariant(id: "high"),
-        agent: null,
+        agent: "Plan",
         model: null,
       );
 
-      expect(fake.sentParamsFor("turn/start")["effort"], equals("high"));
+      final params = fake.sentParamsFor("turn/start");
+      expect(params.containsKey("effort"), isFalse);
+      expect(params["collaborationMode"], {
+        "mode": "plan",
+        "settings": {
+          "model": "gpt-5.5",
+          "reasoning_effort": "high",
+          "developer_instructions": null,
+        },
+      });
     });
 
     test("sendPrompt without a variant sends no effort (codex uses its default)", () async {
@@ -940,11 +990,12 @@ void main() {
       expect(fake.sentParamsFor("turn/start").containsKey("effort"), isFalse);
     });
 
-    test("createSession applies the variant on the first turn", () async {
+    test("legacy codex agent selects Default mode on the first turn", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
           result: {
+            "model": "gpt-5.5",
             "thread": {"id": "t-new"},
           },
         ),
@@ -956,12 +1007,19 @@ void main() {
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "start low")],
         variant: const PluginSessionVariant(id: "low"),
-        agent: null,
+        agent: "codex",
         model: null,
       );
 
       expect(fake.sentMethods, equals(["initialize", "thread/start", "turn/start"]));
-      expect(fake.sentParamsFor("turn/start")["effort"], equals("low"));
+      expect(fake.sentParamsFor("turn/start")["collaborationMode"], {
+        "mode": "default",
+        "settings": {
+          "model": "gpt-5.5",
+          "reasoning_effort": "low",
+          "developer_instructions": null,
+        },
+      });
     });
   });
 }

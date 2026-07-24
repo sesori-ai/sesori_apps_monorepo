@@ -180,7 +180,8 @@ class CodexAppServerClient {
             "version": clientVersion,
           },
           "capabilities": {
-            "experimentalApi": false,
+            // Codex gates turn/start.collaborationMode behind this capability.
+            "experimentalApi": true,
             // codex 0.139.0 added this capability: opting in makes codex send
             // `attestation/generate` server-requests (for upstream
             // `x-oai-attestation`) which the bridge does not handle. Stay opted
