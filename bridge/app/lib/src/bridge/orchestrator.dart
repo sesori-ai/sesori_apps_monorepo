@@ -1637,15 +1637,19 @@ class OrchestratorSession {
           }
         } on _ShutdownInProgressException {
           Log.v(
-            "[shutdown] route ${req.method} ${req.path} will finish without sending a response",
+            "[shutdown] route ${req.method} ${req.path} abandoned without sending a response",
           );
-          try {
-            await routeFuture;
-          } on Object catch (error, stackTrace) {
-            Log.w("[shutdown] route ${req.method} ${req.path} failed while draining", error, stackTrace);
-          } finally {
-            _restartService.consumeRestartRequest();
-          }
+          unawaited(
+            routeFuture.then<void>(
+              (_) {
+                _restartService.consumeRestartRequest();
+              },
+              onError: (Object error, StackTrace stackTrace) {
+                Log.w("[shutdown] abandoned route ${req.method} ${req.path} later failed", error, stackTrace);
+                _restartService.consumeRestartRequest();
+              },
+            ),
+          );
         } catch (e) {
           if (_cancelled) {
             Log.v("[shutdown] route ${req.method} ${req.path} failed during shutdown: $e");

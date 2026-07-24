@@ -78,6 +78,10 @@ class SessionEventTracker {
       throw ArgumentError("pending child event must carry a parent session id");
     }
     final bindingKey = (pluginId: event.pluginId, backendSessionId: event.session.id);
+    final previous = _sessions[bindingKey];
+    if (previous != null && previous.generation != event.generation) {
+      _removeSession(event: previous, dropTranslations: true);
+    }
     if (_translations[bindingKey]?.isNotEmpty ?? false) {
       return addTranslation(
         event: PendingTranslationEvent(
