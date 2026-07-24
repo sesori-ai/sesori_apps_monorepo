@@ -243,6 +243,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// Approval state participates in the activity summary, so invalidate that
   /// summary after forwarding each approval transition.
   void emitActivityEvent(BridgeSseEvent event) {
+    _syncWorkState();
     _eventBuffer.add(event);
     _eventBuffer.add(const BridgeSseProjectUpdated());
   }
@@ -345,7 +346,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
             method: AcpMethods.authenticate,
             params: {"methodId": methodId},
           );
-        } on Object catch (error) {
+        } on AcpRpcException catch (error) {
+          if (error.method != "<response>") rethrow;
           throw PluginAuthenticationRequiredException(
             AcpMethods.authenticate,
             actionHint: "Authenticate the configured agent locally, then retry.",
@@ -1191,6 +1193,7 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     if ((_turnStates[sessionId]?.pending ?? 0) > 0) {
       await abortSession(sessionId: sessionId);
     }
+    _approvalRegistry?.cancelForSession(sessionId);
     // The state object is dropped here; a still-settling cancelled turn holds
     // its own reference, so its accounting completes harmlessly off-map.
     _turnStates.remove(sessionId);
@@ -1589,7 +1592,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   }
 
   void _syncWorkState() {
-    final busy = _turnStates.values.any((state) => state.pending > 0);
+    final busy =
+        _turnStates.values.any((state) => state.pending > 0) || (_approvalRegistry?.hasAnyPendingInput ?? false);
     _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
   }
 }

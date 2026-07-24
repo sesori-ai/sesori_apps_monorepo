@@ -15,9 +15,10 @@ class PluginCatalogHydrationListener {
   final CatalogImportService _catalogImportService;
   StreamSubscription<List<String>>? _subscription;
   Set<String> _previousReadyIds = const {};
+  bool _disposed = false;
 
   void start() {
-    if (_subscription != null) return;
+    if (_disposed || _subscription != null) return;
     _subscription = _readyPluginIds.listen(
       _handleReadyPluginIds,
       onError: (Object error, StackTrace stackTrace) {
@@ -43,6 +44,7 @@ class PluginCatalogHydrationListener {
   }
 
   Future<void> dispose() async {
+    _disposed = true;
     await _subscription?.cancel();
     _subscription = null;
   }

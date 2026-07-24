@@ -29,6 +29,23 @@ void main() {
       (pluginId: "three", trigger: CatalogImportTrigger.automatic),
     ]);
   });
+
+  test("dispose is terminal", () async {
+    final readyPluginIds = StreamController<List<String>>.broadcast(sync: true);
+    final service = _RecordingCatalogImportService(operationalPluginIds: const {"one"});
+    final listener = PluginCatalogHydrationListener(
+      readyPluginIds: readyPluginIds.stream,
+      catalogImportService: service,
+    );
+    addTearDown(readyPluginIds.close);
+
+    listener.start();
+    await listener.dispose();
+    listener.start();
+    readyPluginIds.add(const ["one"]);
+
+    expect(service.starts, isEmpty);
+  });
 }
 
 class _RecordingCatalogImportService implements CatalogImportService {

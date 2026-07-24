@@ -463,6 +463,7 @@ class CodexPlugin implements CodexManagedApi {
         if (!_deletedThreadIds.contains(threadId)) {
           _recordAuthoritativeTurnEvidence(threadId);
         }
+        _approvalRegistry?.cancelForSession(threadId);
         _activeTurnByThread.remove(threadId);
         final wasActive = _isActiveStatus(_sessionStatuses.remove(threadId));
         // The app-server unloaded this thread; a later turn must resume it.
@@ -867,6 +868,7 @@ class CodexPlugin implements CodexManagedApi {
         // Continue with delete even if the abort raced.
       }
     }
+    _approvalRegistry?.cancelForSession(sessionId);
     _sessionService.deleteSession(sessionId: sessionId);
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);

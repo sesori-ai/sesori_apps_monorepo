@@ -136,6 +136,7 @@ void main() {
       expect(active.id, sessionId);
       expect(active.awaitingInput, isTrue);
       expect(active.mainAgentRunning, isFalse, reason: "no prompt turn in flight");
+      expect(plugin.currentWorkState, PluginWorkState.busy);
       expect(emitted.whereType<BridgeSseProjectUpdated>(), hasLength(1));
 
       final requestId = emitted.whereType<BridgeSsePermissionAsked>().single.requestID;
@@ -146,7 +147,32 @@ void main() {
       );
       await pump();
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
       expect(emitted.whereType<BridgeSseProjectUpdated>(), hasLength(2));
+    });
+
+    test("deleting a session clears its pending approval work state", () async {
+      final sessionId = await connectAndCreateSession();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 100,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": sessionId,
+          "toolCall": {"toolCallId": "tc-delete", "title": "Run", "kind": "execute"},
+          "options": [
+            {"optionId": "opt-allow-once", "name": "Allow", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      await plugin.deleteSession(sessionId);
+      await pump();
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(await plugin.getPendingPermissions(sessionId: sessionId), isEmpty);
     });
   });
 }

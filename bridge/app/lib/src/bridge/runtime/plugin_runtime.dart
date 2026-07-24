@@ -1228,6 +1228,10 @@ class PluginRuntime {
     late final Future<void> cleanup;
     cleanup = () async {
       try {
+        // A stream-originated auth failure must finish retaining its terminal
+        // future before generation cancellation can re-enter that stream.
+        await Future<void>.value();
+        await _cancelOperationStreams(slot);
         await _waitForLeaseDrain(slot);
         if (slot.generation != generation || !identical(slot.plugin, plugin)) return;
         slot.plugin = null;
@@ -1250,16 +1254,20 @@ class PluginRuntime {
     unawaited(cleanup);
   }
 
+  Future<void> _cancelOperationStreams(_PluginRuntimeSlot slot) async {
+    final cancellations = slot.operationStreamCancellations.toList(growable: false);
+    slot.operationStreamCancellations.clear();
+    await Future.wait([for (final cancel in cancellations) cancel()]);
+  }
+
   Future<void> _cancelGenerationSubscriptions(_PluginRuntimeSlot slot) async {
     final subscriptions = [slot.statusSubscription, slot.workSubscription, slot.eventSubscription];
-    final operationStreamCancellations = slot.operationStreamCancellations.toList(growable: false);
     slot
       ..statusSubscription = null
       ..workSubscription = null
-      ..eventSubscription = null
-      ..operationStreamCancellations.clear();
+      ..eventSubscription = null;
     await Future.wait([
-      for (final cancel in operationStreamCancellations) cancel(),
+      _cancelOperationStreams(slot),
       for (final subscription in subscriptions)
         if (subscription != null) subscription.cancel(),
     ]);

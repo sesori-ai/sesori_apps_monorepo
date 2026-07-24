@@ -7,8 +7,8 @@
 - **Base:** `origin/main` at `2bb376b2`
 - **Current branch:** `setup-aware-plugin-lifecycle-dormant-runtime`
 - **Current stage:** Stage 11-P02 — dormant runtime and numeric idle timeout rebuild
-- **Next action:** push the verified latest-main integration to draft PR #556,
-  monitor CI, then mark it ready
+- **Next action:** monitor ready PR #556 through review and CI, then merge when
+  approved
 
 ## Frozen Oversized Stack
 
@@ -37,7 +37,7 @@ run their focused verification again.
 | [x] | Stage 11-P01B — plugin operation routing | `setup-aware-plugin-lifecycle-operation-routing` | #548 merged as `96f63c69` |
 | [x] | Stage 11-P01C — dynamic events and durable fencing | `setup-aware-plugin-lifecycle-durable-events` | #549 merged as `cd0e0a31` |
 | [x] | Stage 11-P01D — bridge-owned projects and defaults | `setup-aware-plugin-lifecycle-project-ownership` | #550 merged as `5020c003` |
-| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 draft; synchronized and locally verified |
+| [x] | Stage 11-P02 — dormancy and numeric idle timeout | `setup-aware-plugin-lifecycle-dormant-runtime` | #556 ready; synchronized and locally verified |
 | [ ] | Stage 12 — headless management | rebuild branch TBD | frozen #510 descendant |
 | [ ] | Stage 13 — redesigned mobile plugin settings | rebuild branch TBD | frozen #511 descendant |
 
@@ -272,6 +272,12 @@ run their focused verification again.
   sourced backend reconnect and made pending Codex approvals keep generic work
   state busy until their response is delivered. Focused regressions, all 189
   Codex tests, and fatal Codex/bridge-app analysis passed.
+- A second feedback round moved operation-stream cancellation ahead of auth-loss
+  lease drain, limited ACP auth mapping to agent rejection responses, made
+  hydration-listener disposal terminal, restored the benchmark's broadcast
+  stream contract, and retained ACP/Codex pending approvals as work until reply
+  or session removal. Full bridge-app (2,094 tests), ACP (150), and Codex (191)
+  suites plus fatal analysis in all three packages passed.
 
 ## Delivery Rules
 

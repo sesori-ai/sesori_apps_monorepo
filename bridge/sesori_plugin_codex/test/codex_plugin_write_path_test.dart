@@ -46,6 +46,37 @@ void main() {
       } catch (_) {}
     });
 
+    Future<void> connectWithPendingPermission({required String threadId}) async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.healthCheck();
+      fake.pushNotification("thread/started", {
+        "thread": {
+          "id": threadId,
+          "cwd": "/work/sample",
+          "createdAt": 1700000000,
+          "updatedAt": 1700000000,
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final asked = plugin.events
+          .where((event) => event is BridgeSsePermissionAsked)
+          .cast<BridgeSsePermissionAsked>()
+          .first;
+      fake.pushServerRequest(
+        id: 99,
+        method: "item/commandExecution/requestApproval",
+        params: {
+          "threadId": threadId,
+          "turnId": "turn-1",
+          "itemId": "item-1",
+          "command": "ls",
+        },
+      );
+      await asked.timeout(const Duration(seconds: 1));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+    }
+
     test("createSession preserves a Default turn when no model resolves", () async {
       // Respond to: initialize, thread/start, turn/start.
       fake.respondInOrder([
@@ -642,6 +673,28 @@ void main() {
         model: null,
       );
       expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("deleting a thread rejects its pending approval and clears work state", () async {
+      await connectWithPendingPermission(threadId: "t-delete-pending");
+
+      await plugin.deleteSession("t-delete-pending");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(await plugin.getPendingPermissions(sessionId: "t-delete-pending"), isEmpty);
+      expect(fake.serverResponseFor(99)["result"], {"decision": "decline"});
+    });
+
+    test("a closed thread rejects its pending approval and clears work state", () async {
+      await connectWithPendingPermission(threadId: "t-close-pending");
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+
+      fake.pushNotification("thread/closed", {"threadId": "t-close-pending"});
+
+      await idle.timeout(const Duration(seconds: 1));
+      expect(await plugin.getPendingPermissions(sessionId: "t-close-pending"), isEmpty);
+      expect(fake.serverResponseFor(99)["result"], {"decision": "decline"});
     });
 
     for (final terminalNotification in ["error", "thread/status/changed"]) {
@@ -1448,6 +1501,7 @@ class _FakeAppServer {
   final List<_Response> _pending = [];
   final Set<String> _responsesToHold = {};
   final Map<String, Object> _heldRequestIds = {};
+  final Map<Object, Map<String, dynamic>> _serverResponses = {};
 
   /// Invoked with each request method BEFORE the canned response is sent —
   /// lets a test emit server notifications mid-request (e.g. codex pushing
@@ -1460,6 +1514,9 @@ class _FakeAppServer {
     final frame = _sent.firstWhere((f) => f.method == method);
     return frame.params ?? const {};
   }
+
+  Map<String, dynamic> serverResponseFor(Object id) =>
+      _serverResponses[id] ?? (throw StateError("no response for $id"));
 
   void respondInOrder(List<_Response> responses) {
     _pending
@@ -1483,19 +1540,30 @@ class _FakeAppServer {
     );
   }
 
+  void pushServerRequest({required Object id, required String method, required Map<String, dynamic> params}) {
+    _serverToClient.add(
+      jsonEncode({"jsonrpc": "2.0", "id": id, "method": method, "params": params}),
+    );
+  }
+
   void _onClientFrame(Object? frame) {
     final raw = frame as String;
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    final method = decoded["method"] as String?;
+    if (method == null) {
+      final id = decoded["id"] as Object?;
+      if (id != null) _serverResponses[id] = decoded;
+      return;
+    }
     _sent.add(
       _SentFrame(
-        method: decoded["method"] as String,
+        method: method,
         params: (decoded["params"] as Map?)?.cast<String, dynamic>(),
       ),
     );
-    onRequest?.call(decoded["method"] as String);
+    onRequest?.call(method);
     final id = decoded["id"] as Object?;
     if (id == null) return; // notification from client (none today)
-    final method = decoded["method"] as String;
     if (_responsesToHold.remove(method)) {
       _heldRequestIds[method] = id;
       return;

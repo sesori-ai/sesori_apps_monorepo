@@ -177,5 +177,32 @@ void main() {
 
       expect(await retrying, isTrue);
     });
+
+    test("a process exit during authentication remains a connection failure", () async {
+      final sending = plugin.sendPrompt(
+        sessionId: "session-1",
+        parts: const [PluginPromptPart.text(text: "hello")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final fake = fakes.single;
+      final initialize = await waitForMethod(fake, "initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": [
+            {"id": "agent_login", "name": "Agent login"},
+          ],
+        },
+      });
+      await waitForMethod(fake, "authenticate");
+      fake.exit(1);
+
+      await expectLater(sending, throwsA(isA<StateError>()));
+    });
   });
 }
