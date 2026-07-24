@@ -17,6 +17,7 @@ This skill **only writes a file** (`RELEASE_NOTES_<version>.md` in the repo root
 
 - **Version (required)** — e.g. `v1.1.0`. If the user omits the `v`, normalize to `v<x.y.z>`.
 - **Highlight hints (optional)** — the user may volunteer domain knowledge inline, e.g. "the windows fix was fully broken before", "android login often failed". Treat these as authoritative and weave them into Highlights / phrasing.
+- **Availability hints (optional)** — statements such as "this feature was hidden", "it was disabled before release", or "only OpenCode works in this release" are authoritative shipping decisions. Apply the rules below without asking the user to reconfirm them.
 - **Mode override (optional)** — a phrase like "don't use the existing release notes", "build it from the commits", "analyze the PRs/commits since last release" switches to **Mode B** (commit analysis). Absent such a phrase, **always use Mode A** (existing GitHub release notes).
 
 ## Prerequisites
@@ -109,23 +110,27 @@ This guarantees Mode B's range, exclusions, and classification exactly match wha
 
 Apply these to produce the App and Bridge narrative sections. The **All PRs merged** section is NEVER curated — it stays complete.
 
-1. **Merge multi-PR efforts into one entry.** Collapse clusters that are obviously one initiative (e.g. titles like "migration PR 5/15", a series of "sesori_plugin_runtime — …" PRs, or a feature plus its follow-ups). Write a single descriptive bullet and append all the PR links: `([#223](…), [#226](…), …)`. Describe the *outcome*, not the mechanics of each PR.
+1. **Merge multi-PR efforts into one entry.** Collapse clusters that are obviously one initiative (e.g. titles like "migration PR 5/15", a series of "sesori_plugin_runtime — …" PRs, or a feature plus its follow-ups). Write a single descriptive bullet and append all the PR links: `([#223](…), [#226](…), …)`. Describe the *final shipped outcome*, not the mechanics of each PR.
 
 2. **Drop chore/CI/infra/release-plumbing from the narrative.** Exclude version bumps, release commits, `ci:` workflow changes, linguist/gitattributes, editor configs, dependency-tooling wiring, and similar from the App/Bridge sections. They remain in **All PRs merged**. (Keep genuine user-relevant dependency/runtime bumps like a Flutter SDK upgrade under **Other**.)
 
-3. **Flag likely never-shipped bug fixes.** If a "fix" PR repairs a feature that was *added in this same release* (e.g. a split-view bug when split-view itself shipped this release, or a snackbar fix for a not-yet-released flow), it never reached production users and should usually be omitted. The skill cannot confirm prod state from git alone, so **list these as omission candidates and ask the user** unless they already told you. Default recommendation: omit.
+3. **Collapse fixes to unreleased code automatically.** If a "fix" PR repairs a feature added in this same release, users never received the broken intermediate state. When the completed feature ships, fold the feature and its follow-up PRs into one **New** or **Improved** outcome and cite the combined PR set. Do not create a separate **Fixed** entry or say that Sesori fixed behavior users never saw. Ask the user only when inspection cannot establish whether the original behavior shipped in an earlier release.
 
-4. **Reframe perf/UX wins out of "Fixed".** Items that aren't strictly bugs but improve feel (removing a UI-thread freeze via isolates, more natural scroll/collapse behavior, faster reconnect) belong in an **Improved** subsection with benefit-oriented wording, not **Fixed**.
+4. **Treat hidden or disabled work as unavailable.** If the user says a feature was hidden, disabled, incomplete, or limited to one backend before release, omit that feature and its dependent fixes from Highlights and the normal New / Improved / Fixed narrative. Do this without another confirmation question. If the raw PR list could otherwise imply that the feature is available, add one restrained **Other** bullet stating the exact current availability limitation. Describe the broader work as preparatory only when the user says so or inspected evidence supports that characterization; keep it out of Highlights and never advertise it as usable.
 
-5. **Order by real user impact.** Within each subsection, lead with the changes that matter most to users (reliability fixes, platform support, major UX) and push minor polish to the bottom. The **Highlights** block surfaces the few biggest items across both targets.
+5. **Reframe perf/UX wins out of "Fixed".** Items that aren't strictly bugs but improve feel (removing a UI-thread freeze via isolates, more natural scroll/collapse behavior, faster reconnect) belong in an **Improved** subsection with benefit-oriented wording, not **Fixed**.
 
-6. **Highlights block — the editorial layer.**
+6. **Order by real user impact.** Within each subsection, lead with the changes that matter most to users (reliability fixes, platform support, major UX) and push minor polish to the bottom. The **Highlights** block surfaces the few biggest items across both targets.
+
+7. **Highlights block — the editorial layer.**
    - If the user provided highlight hints, treat them as authoritative: use their framing (severity, "was fully broken", "often failed", etc.).
    - Otherwise, infer the top items from PR titles + scope. Good highlight candidates: new platform support, reliability fixes for flows that affect everyone (login, reconnect), and large UX features (adaptive layout, etc.).
    - **When a PR's user benefit is unclear**, do one of: (a) inspect the implementation/diff to understand impact (`gh pr view <n> --json title,body` / `gh pr diff <n>`), or (b) ask the user a concise question about what it does and how important it is. Prefer inspecting first; ask when still ambiguous.
-   - Keep Highlights to roughly 4–7 items. Each is one punchy sentence with the PR link(s), optionally a leading emoji to match house style.
+   - The bold lead must plainly name the important product change, such as "Redesigned sessions list" or "Improved Bridge onboarding." Do not replace the change with a vague slogan or inferred promise such as "Triage at a glance," "Stay connected," or "Make it yours."
+   - Use the non-bold sentence to add concrete supporting detail: what changed in the UI or behavior, the most useful specifics, and why users will notice. The highlight should make sense without opening its PRs.
+   - Keep Highlights to roughly 4–7 items, but do not promote a modest fix merely to fill the block. Four clear, release-defining changes are better than padded or speculative highlights. Each item may have a leading emoji to match house style.
 
-7. **Voice.** User-facing, benefit-first, concrete. Avoid internal jargon and PR-mechanics. Don't invent capabilities not supported by the PRs.
+8. **Voice.** User-facing, benefit-first, concrete. Avoid internal jargon and PR-mechanics. Don't invent capabilities not supported by the PRs.
 
 ---
 
@@ -138,7 +143,7 @@ Write to `RELEASE_NOTES_<version>.md` in the repo root:
 
 ## ✨ Highlights
 
-- **<emoji> <Punchy benefit>.** <One-sentence explanation.> ([#NNN](url), [#MMM](url))
+- **<emoji> <Concrete product change>.** <Specific details about what changed and why users will notice.> ([#NNN](url), [#MMM](url))
 - ... (4–7 items)
 
 ---
@@ -188,8 +193,8 @@ Omit any subsection (New/Improved/Fixed/Other) that has no entries. If a target 
 
 1. Determine **version** and **mode** (default = Mode A). Capture any highlight hints the user gave.
 2. **Mode A:** `gh release view <version>` → parse App/Bridge/All-PRs. **Mode B:** run `dart tool/generate_release_notes.dart` (with `GITHUB_TOKEN`) to produce the raw App/Bridge/All-PRs notes, then parse them the same way as Mode A. Do not re-derive the range, exclusions, or classification by hand.
-3. Apply the **Post-Processing Rules** (merge clusters, drop noise, flag never-shipped fixes, reframe perf/UX, order by impact, build Highlights).
-4. For unclear-benefit PRs: inspect the diff (`gh pr diff <n>`) or ask the user. For likely never-shipped fixes: present as omission candidates (default omit) unless the user already decided.
+3. Apply the **Post-Processing Rules** (merge clusters into final outcomes, drop noise, collapse fixes to unreleased code, omit disabled work, reframe perf/UX, order by impact, build Highlights).
+4. For unclear-benefit or unclear-shipping PRs, inspect the diff (`gh pr diff <n>`) before asking the user. Do not ask about clearly same-release repairs or availability decisions the user already supplied; apply the defaults above.
 5. Write `RELEASE_NOTES_<version>.md`. Report the path and a short summary of editorial decisions made (what was merged, dropped, flagged).
 
 ## Important Notes
@@ -197,5 +202,5 @@ Omit any subsection (New/Improved/Fixed/Other) that has no entries. If a target 
 - This skill writes a **file only** — it never edits or publishes the GitHub release.
 - Default behavior is **always Mode A** (start from existing GitHub release notes). Only switch to Mode B on an explicit instruction to ignore the existing notes.
 - The **All PRs merged** section is never trimmed or curated.
-- Confirm the resolved previous tag (Mode B) and surface omission candidates before finalizing, so the maintainer stays in control of the editorial calls.
+- Confirm the resolved previous tag in Mode B. Surface an omission candidate only when shipping history remains ambiguous after inspection; collapse clear same-release repair clusters automatically.
 - Repo is `sesori-ai/sesori_apps_monorepo`; requires authenticated `gh`.

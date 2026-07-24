@@ -7,9 +7,8 @@ import "analytics_reporter.dart";
 
 /// Forwards user-action events to Firebase Analytics.
 ///
-/// Registered as the [AnalyticsReporter] binding; on builds where Firebase is
-/// not initialized the DI setup swaps in `NoOpAnalyticsReporter` instead, so
-/// this class can assume a live Firebase app.
+/// Registered as the [AnalyticsReporter] binding. Firebase-disabled builds
+/// inject a type-compatible no-op analytics SDK object.
 @LazySingleton(as: AnalyticsReporter)
 class FirebaseAnalyticsReporter implements AnalyticsReporter {
   final FirebaseAnalytics _analytics;

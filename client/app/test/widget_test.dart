@@ -1,6 +1,5 @@
 // ignore_for_file: unnecessary_lambdas
 
-import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
@@ -23,11 +22,9 @@ void main() {
     when(() => mockStorage.read(key: "oauth_provider")).thenAnswer((_) async => null);
     when(() => mockStorage.read(key: "relay_room_key")).thenAnswer((_) async => null);
 
-    configureDependencies();
+    configureDependencies(firebaseEnabled: false);
     getIt.unregister<FlutterSecureStorage>();
     getIt.registerLazySingleton<FlutterSecureStorage>(() => mockStorage);
-    getIt.unregister<FirebaseCrashlytics>();
-    getIt.registerLazySingleton<FirebaseCrashlytics>(() => MockFirebaseCrashlytics());
 
     final statusStream = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.disconnected(),
