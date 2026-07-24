@@ -126,6 +126,47 @@ void main() {
     verify(() => api.rejectQuestion(requestId: "question-1", sessionId: "session-1")).called(1);
   });
 
+  test("temporary release gate forces session creation to OpenCode", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+    when(
+      () => api.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(testSession(id: "session-1")));
+
+    await repository.createSessionWithMessage(
+      projectId: "project-1",
+      pluginId: "codex",
+      text: "hello",
+      agent: null,
+      model: null,
+      variant: null,
+      command: null,
+      dedicatedWorktree: false,
+    );
+
+    verify(
+      () => api.createSessionWithMessage(
+        projectId: "project-1",
+        pluginId: legacyMissingPluginId,
+        text: "hello",
+        agent: null,
+        model: null,
+        variant: null,
+        command: null,
+        dedicatedWorktree: false,
+      ),
+    ).called(1);
+  });
+
   test("listProviders does not cache an empty response but caches one with models", () async {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);

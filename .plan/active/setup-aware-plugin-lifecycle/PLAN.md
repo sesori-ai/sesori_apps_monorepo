@@ -43,6 +43,15 @@ available:
   explicitly supplied invalid value remains a fatal CLI usage error even when
   that plugin is denied.
 - Eligibility is exactly `plugin id not in plugins.disabled`.
+- **Temporary next-release exception (2026-07-24):** PR A intersects ordinary
+  eligibility with an OpenCode-only release gate, filters client discovery to
+  OpenCode, hides the mobile new-session plugin chooser, and keeps session
+  submission on that sole choice. Registrations, namespaced CLI options,
+  implementation packages, and persisted settings remain intact; the gate does
+  not rewrite `plugins.disabled`.
+- PR B is an exact revert of PR A and merges immediately after the synchronized
+  release, before lifecycle delivery resumes. The temporary gate must not be
+  carried into Stage 11-P02 or later work.
 - Unknown disabled IDs and unknown plugin configuration objects survive a
   current bridge rewrite. Local config commands reject unknown IDs to catch
   typos.

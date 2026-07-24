@@ -16,3 +16,21 @@ const List<BridgePluginDescriptor> knownPlugins = [
 /// Product-preferred default when OpenCode is selectable. Lifecycle policy
 /// falls back to the first selectable registration when it is not.
 String get preferredDefaultPluginId => const OpenCodePluginDescriptor().id;
+
+/// TEMPORARY RELEASE GATE (2026-07-24): only OpenCode is approved for the next
+/// synchronized App + Bridge release. Keep every descriptor registered so CLI
+/// options and persisted settings remain known. Revert this gate immediately
+/// after that release.
+final Set<String> temporaryOpenCodeOnlyReleasePluginIds = Set<String>.unmodifiable({
+  preferredDefaultPluginId,
+});
+
+Set<String> disabledPluginIdsForTemporaryOpenCodeOnlyRelease({
+  required Set<String> configuredDisabledPluginIds,
+}) {
+  return Set<String>.unmodifiable({
+    ...configuredDisabledPluginIds,
+    for (final plugin in knownPlugins)
+      if (!temporaryOpenCodeOnlyReleasePluginIds.contains(plugin.id)) plugin.id,
+  });
+}
