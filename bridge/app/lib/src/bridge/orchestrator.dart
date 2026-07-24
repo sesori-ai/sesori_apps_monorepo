@@ -336,16 +336,17 @@ class Orchestrator {
 
     final catalogImportService = CatalogImportService(
       knownPluginIds: pluginComposition.knownPluginIds,
-      enabledPluginIds: pluginComposition.enabledPluginIds,
+      enabledPluginIds: pluginComposition.eligiblePluginIds,
       emptyHydrationPolicies: {
-        for (final entry in pluginComposition.operationalPlugins.entries)
-          entry.key: switch (entry.value) {
-            NativeProjectsPluginApi() => CatalogEmptyHydrationPolicy.complete,
-            BridgeDerivedProjectsPluginApi() => CatalogEmptyHydrationPolicy.retry,
-          },
+        for (final entry in pluginComposition.projectOwnershipById.entries)
+          if (pluginComposition.eligiblePluginIds.contains(entry.key))
+            entry.key: switch (entry.value) {
+              PluginProjectOwnership.native => CatalogEmptyHydrationPolicy.complete,
+              PluginProjectOwnership.bridgeDerived => CatalogEmptyHydrationPolicy.retry,
+            },
       },
       repository: CatalogImportRepository(
-        operationalPlugins: pluginComposition.operationalPlugins,
+        runtime: _pluginRuntime,
         projectsDao: _database.projectsDao,
         sessionDao: _database.sessionDao,
         catalogHydrationsDao: _database.catalogHydrationsDao,
@@ -371,6 +372,7 @@ class Orchestrator {
     );
     final sessionEventService = SessionEventService(
       sessionRepository: sessionRepository,
+      pluginRuntime: _pluginRuntime,
       eventMapper: const SessionEventMapper(),
       eventTracker: SessionEventTracker(
         maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
@@ -385,12 +387,7 @@ class Orchestrator {
       permissionRepository: permissionRepository,
     );
     final pluginEventListeners = [
-      for (final pluginId in pluginComposition.enabledPluginIds)
-        PluginEventListener(
-          pluginId: pluginId,
-          source: _pluginRuntime.backendEvents.where((event) => event.pluginId == pluginId).map((event) => event.event),
-          dispatcher: sessionEventDispatcher,
-        ),
+      PluginEventListener(source: _pluginRuntime.backendEvents, dispatcher: sessionEventDispatcher),
     ];
     final sessionBindingCommitListener = SessionBindingCommitListener(
       source: sessionRepository.bindingCommits,
@@ -477,6 +474,7 @@ class Orchestrator {
       sessionBindingCommitListener: sessionBindingCommitListener,
       sessionDeletionListener: sessionDeletionListener,
       sessionEventDispatcher: sessionEventDispatcher,
+      pluginRuntime: _pluginRuntime,
       pushDispatcher: pushDispatcher,
       completionListener: completionListener,
       maintenanceListener: maintenanceListener,
@@ -537,6 +535,7 @@ class OrchestratorSession {
   final SessionBindingCommitListener _sessionBindingCommitListener;
   final SessionDeletionListener _sessionDeletionListener;
   final SessionEventDispatcher _sessionEventDispatcher;
+  final PluginRuntime _pluginRuntime;
   final List<int> _roomKey;
   final SSEManager _sseManager;
   final RequestRouter _router;
@@ -601,6 +600,7 @@ class OrchestratorSession {
     required SessionBindingCommitListener sessionBindingCommitListener,
     required SessionDeletionListener sessionDeletionListener,
     required SessionEventDispatcher sessionEventDispatcher,
+    required PluginRuntime pluginRuntime,
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
@@ -632,6 +632,7 @@ class OrchestratorSession {
        _sessionBindingCommitListener = sessionBindingCommitListener,
        _sessionDeletionListener = sessionDeletionListener,
        _sessionEventDispatcher = sessionEventDispatcher,
+       _pluginRuntime = pluginRuntime,
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
@@ -1023,6 +1024,14 @@ class OrchestratorSession {
     return () async {
       await previous;
       try {
+        final generation = source.generation;
+        if (generation != null &&
+            !_pluginRuntime.isCurrentGeneration(
+              pluginId: source.pluginId,
+              generation: generation,
+            )) {
+          return;
+        }
         await _processPluginEvent(source);
       } finally {
         release.complete();
@@ -1032,8 +1041,12 @@ class OrchestratorSession {
 
   Future<void> _processPluginEvent(NormalizedSourcedBridgeEvent source) async {
     final pluginId = source.pluginId;
+    final generation = source.generation;
     final event = source.event;
     try {
+      if (generation != null && !_pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+        return;
+      }
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
 
       if (event is BridgeSsePermissionReplied) {
@@ -1069,8 +1082,15 @@ class OrchestratorSession {
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
       final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event);
+      if (generation != null && !_pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+        return;
+      }
       if (sesoriEvent != null) {
-        await _deliverSseEvent(event: sesoriEvent);
+        await _deliverSseEvent(
+          event: sesoriEvent,
+          pluginId: pluginId,
+          generation: generation,
+        );
       } else if (!refreshProjectsSummary) {
         Log.v("[sse] mapping returned null — event dropped");
       }
@@ -1078,7 +1098,13 @@ class OrchestratorSession {
       // Both trigger types mean activity changed. Rebuild from repository data
       // after delivering session.deleted so clients observe deletion first.
       if (refreshProjectsSummary) {
-        await _buildAndDeliverProjectsSummaryInOrder();
+        if (generation != null && !_pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation)) {
+          return;
+        }
+        await _buildAndDeliverProjectsSummaryInOrder(
+          pluginId: pluginId,
+          generation: generation,
+        );
       }
     } catch (e, st) {
       Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
@@ -1097,7 +1123,12 @@ class OrchestratorSession {
     }
   }
 
-  Future<void> _deliverSseEvent({required SesoriSseEvent event}) async {
+  Future<void> _deliverSseEvent({
+    required SesoriSseEvent event,
+    required String? pluginId,
+    required int? generation,
+  }) async {
+    if (!_isCurrentSource(pluginId: pluginId, generation: generation)) return;
     Log.v(
       "[sse] mapped to: ${event.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
     );
@@ -1110,6 +1141,7 @@ class OrchestratorSession {
     if (event is SesoriSessionCreated) {
       await _routeUnseenActivity(event);
     }
+    if (!_isCurrentSource(pluginId: pluginId, generation: generation)) return;
     _enqueueWireEvent(event);
     if (event is! SesoriSessionCreated) {
       try {
@@ -1125,19 +1157,38 @@ class OrchestratorSession {
     }
   }
 
-  Future<void> _buildAndDeliverProjectsSummaryInOrder() {
+  Future<void> _buildAndDeliverProjectsSummaryInOrder({
+    required String? pluginId,
+    required int? generation,
+  }) {
     final previous = _projectsSummaryTail;
     final release = Completer<void>();
     _projectsSummaryTail = release.future;
     return () async {
       await previous;
       try {
+        if (!_isCurrentSource(pluginId: pluginId, generation: generation)) return;
         final summary = await _buildProjectsSummary();
-        if (summary != null) await _deliverSseEvent(event: summary);
+        if (summary != null) {
+          await _deliverSseEvent(
+            event: summary,
+            pluginId: pluginId,
+            generation: generation,
+          );
+        }
       } finally {
         release.complete();
       }
     }();
+  }
+
+  bool _isCurrentSource({required String? pluginId, required int? generation}) {
+    if (generation == null) return true;
+    return pluginId != null &&
+        _pluginRuntime.isCurrentGeneration(
+          pluginId: pluginId,
+          generation: generation,
+        );
   }
 
   void _enqueueWireEvent(SesoriSseEvent event) {
@@ -1587,8 +1638,16 @@ class OrchestratorSession {
           }
         } on _ShutdownInProgressException {
           Log.v(
-            "[shutdown] route ${req.method} ${req.path} abandoned because shutdown was requested",
+            "[shutdown] route ${req.method} ${req.path} will finish without sending a response",
           );
+          // Keep route-owned services and plugin APIs alive until the operation
+          // settles. The shutdown coordinator's process backstop bounds this
+          // drain if an upstream operation never returns.
+          try {
+            await routeFuture;
+          } on Object catch (error, stackTrace) {
+            Log.w("[shutdown] route ${req.method} ${req.path} failed while draining", error, stackTrace);
+          }
         } catch (e) {
           if (_cancelled) {
             Log.v("[shutdown] route ${req.method} ${req.path} failed during shutdown: $e");

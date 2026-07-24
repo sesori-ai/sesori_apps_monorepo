@@ -84,7 +84,7 @@ class CatalogImportService {
       control.cancellationRequested = true;
       return;
     }
-    if (!_repository.operationalPluginIds.contains(pluginId)) {
+    if (!_repository.importEligiblePluginIds.contains(pluginId)) {
       throw CatalogImportPluginUnavailableException(pluginId: pluginId);
     }
   }
@@ -165,7 +165,7 @@ class CatalogImportService {
 
   void _validatePlugin(String pluginId) {
     _validateEnabledPlugin(pluginId);
-    if (!_repository.operationalPluginIds.contains(pluginId)) {
+    if (!_repository.importEligiblePluginIds.contains(pluginId)) {
       throw CatalogImportPluginUnavailableException(pluginId: pluginId);
     }
   }
