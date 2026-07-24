@@ -657,6 +657,20 @@ void main() {
     expect(sourced.generation, 1);
     expect(sourced.event, isA<BridgeSseProjectUpdated>());
   });
+
+  test("backend events emitted before the bridge listener attaches are replayed", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    factory.api.eventsController.add(const BridgeSseProjectUpdated());
+    final sourced = await runtime.backendEvents.first;
+
+    expect(sourced.pluginId, "one");
+    expect(sourced.generation, 1);
+    expect(sourced.event, isA<BridgeSseProjectUpdated>());
+  });
 }
 
 enum _TestOperation {

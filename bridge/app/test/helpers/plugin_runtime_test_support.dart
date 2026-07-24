@@ -3,8 +3,14 @@ import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart"
 import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-TestPluginRuntime createTestPluginRuntime({required Iterable<BridgePluginApi> plugins}) {
-  return TestPluginRuntime(plugins: {for (final plugin in plugins) plugin.id: plugin});
+TestPluginRuntime createTestPluginRuntime({
+  required Iterable<BridgePluginApi> plugins,
+  Set<String>? eligiblePluginIds,
+}) {
+  return TestPluginRuntime(
+    plugins: {for (final plugin in plugins) plugin.id: plugin},
+    eligiblePluginIds: eligiblePluginIds,
+  );
 }
 
 PluginRuntime createAlwaysCurrentTestPluginRuntime() => _AlwaysCurrentTestPluginRuntime();
@@ -28,23 +34,30 @@ PluginRuntime createRegisteredTestPluginRuntime({required Iterable<String> plugi
 }
 
 class TestPluginRuntime extends PluginRuntime {
-  TestPluginRuntime({required Map<String, BridgePluginApi> plugins})
-    : _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins),
-      super(
-        registrations: const [],
-        generationFactory: const _UnusedGenerationFactory(),
-        setupProcesses: const _UnusedHostProcessService(),
-        environment: const {},
-        clock: const ServerClock(),
-        shutdownBudget: const Duration(seconds: 1),
-      );
+  TestPluginRuntime({
+    required Map<String, BridgePluginApi> plugins,
+    required Set<String>? eligiblePluginIds,
+  }) : _eligiblePluginIds = Set<String>.unmodifiable(eligiblePluginIds ?? plugins.keys),
+       _plugins = Map<String, BridgePluginApi>.unmodifiable(plugins),
+       super(
+         registrations: const [],
+         generationFactory: const _UnusedGenerationFactory(),
+         setupProcesses: const _UnusedHostProcessService(),
+         environment: const {},
+         clock: const ServerClock(),
+         shutdownBudget: const Duration(seconds: 1),
+       );
 
   final Map<String, BridgePluginApi> _plugins;
+  final Set<String> _eligiblePluginIds;
   bool generationCurrent = true;
   int currentGeneration = 1;
 
   @override
   Set<String> get activePluginIds => Set<String>.unmodifiable(_plugins.keys);
+
+  @override
+  Set<String> get eligiblePluginIds => _eligiblePluginIds;
 
   @override
   Set<String> get startAllowedPluginIds => Set<String>.unmodifiable(_plugins.keys);
@@ -188,7 +201,7 @@ class TestPluginRuntime extends PluginRuntime {
 }
 
 class _AlwaysCurrentTestPluginRuntime extends TestPluginRuntime {
-  _AlwaysCurrentTestPluginRuntime() : super(plugins: const {});
+  _AlwaysCurrentTestPluginRuntime() : super(plugins: const {}, eligiblePluginIds: null);
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) => generation == 1;

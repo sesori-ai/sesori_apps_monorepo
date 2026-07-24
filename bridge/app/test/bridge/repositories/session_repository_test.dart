@@ -1184,6 +1184,23 @@ void main() {
       expect(statuses.statuses, equals({"stable-s1": const SessionStatus.busy()}));
     });
 
+    test("session statuses report eligible inactive plugins as unavailable", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        eligiblePluginIds: {plugin.id, "setup-blocked"},
+      );
+
+      final statuses = await repository.getSessionStatuses();
+
+      expect(statuses.unavailablePluginIds, ["setup-blocked"]);
+    });
+
     test("unknown sessions reject message and abort operations", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -2136,7 +2153,8 @@ void main() {
 }
 
 class _GenerationReplacingRuntime extends TestPluginRuntime {
-  _GenerationReplacingRuntime({required BridgePluginApi plugin}) : super(plugins: {plugin.id: plugin});
+  _GenerationReplacingRuntime({required BridgePluginApi plugin})
+    : super(plugins: {plugin.id: plugin}, eligiblePluginIds: null);
 
   final Completer<void> observationCollected = Completer<void>();
   final Completer<void> _replacement = Completer<void>();
